@@ -105,6 +105,11 @@ class ChatActivity : AppCompatActivity() {
     // 0 = нет активного ответа.
     private var pendingReplyMessageId: Long = 0L
 
+    // Активное редактирование: ID редактируемого сообщения (0 = режим обычной отправки).
+    // pendingEditFileIds — file_id существующих вложений (передаются в EditMessage без изменений).
+    private var pendingEditMessageId: Long = 0L
+    private var pendingEditFileIds: List<String> = emptyList()
+
     // Inline стикер-панель
     private enum class InputPanelState { NONE, KEYBOARD, STICKER_PANEL }
     private var inputPanelState = InputPanelState.NONE
@@ -639,6 +644,10 @@ class ChatActivity : AppCompatActivity() {
             clearPendingReply()
         }
 
+        binding.clearEditButton.setOnClickListener {
+            clearPendingEdit()
+        }
+
         // Обработка вставки изображений из буфера обмена
         ViewCompat.setOnReceiveContentListener(
             binding.messageEditText,
@@ -1153,6 +1162,15 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
         val messageText = text.trim()
+
+        // Если активен режим редактирования — редактируем существующее сообщение.
+        // fileIds игнорируем (вложения не меняются), используем сохранённые pendingEditFileIds.
+        val editId = pendingEditMessageId
+        if (editId != 0L) {
+            sendEdit(editId, messageText)
+            return
+        }
+
         // Reply без текста и без файлов — отправляем сам факт пересылки
         val replyId = pendingReplyMessageId
         if (messageText.isBlank() && fileIds.isEmpty() && replyId == 0L) return
@@ -1190,6 +1208,30 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private fun sendEdit(messageId: Long, text: String) {
+        val fileIds = pendingEditFileIds
+        if (text.isBlank() && fileIds.isEmpty()) {
+            Toast.makeText(this, "Сообщение не может быть пустым", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            val result = chatRepository.editMessage(messageId, text, fileIds)
+            if (result.isSuccess) {
+                binding.messageEditText.text?.clear()
+                clearPendingEdit()
+                // Применяем сразу, чтобы не ждать стрим
+                applyEditedMessage(result.getOrNull()!!)
+            } else {
+                Toast.makeText(
+                    this@ChatActivity,
+                    "Ошибка редактирования: ${result.exceptionOrNull()?.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     // ─── Reply / Forward UX ────────────────────────────────────────────────────
 
     private fun setPendingReply(item: MessageItem) {
@@ -1212,6 +1254,89 @@ class ChatActivity : AppCompatActivity() {
     private fun clearPendingReply() {
         pendingReplyMessageId = 0L
         binding.replyPreviewBar.visibility = View.GONE
+    }
+
+    // ─── Edit / Delete UX ─────────────────────────────────────────────────────
+
+    private fun setPendingEdit(item: MessageItem) {
+        // Edit и reply — взаимоисключающие режимы
+        if (pendingReplyMessageId != 0L) {
+            clearPendingReply()
+        }
+
+        pendingEditMessageId = item.messageId
+        // Сохраняем существующие вложения — backend перезаписывает по files_ids,
+        // forwarded-вложения он не трогает в любом случае
+        pendingEditFileIds = item.attachments
+            .filter { it.type != barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE }
+            .map { it.fileId }
+            .filter { it.isNotBlank() }
+
+        val preview = if (item.text.isNotBlank()) item.text else buildAttachmentSummary(item.attachments)
+        binding.editPreviewContentText.text = preview
+        binding.editPreviewBar.visibility = View.VISIBLE
+
+        binding.messageEditText.setText(item.text)
+        binding.messageEditText.setSelection(binding.messageEditText.text?.length ?: 0)
+        binding.messageEditText.requestFocus()
+        WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
+    }
+
+    private fun clearPendingEdit() {
+        pendingEditMessageId = 0L
+        pendingEditFileIds = emptyList()
+        binding.editPreviewBar.visibility = View.GONE
+        binding.messageEditText.text?.clear()
+    }
+
+    private fun confirmAndDelete(item: MessageItem) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Удалить сообщение?")
+            .setMessage("Это действие нельзя отменить.")
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Удалить") { _, _ ->
+                lifecycleScope.launch {
+                    val result = chatRepository.deleteMessage(item.messageId)
+                    if (result.isSuccess) {
+                        // Применяем сразу, не дожидаясь стрима
+                        removeMessageById(item.messageId)
+                    } else {
+                        Toast.makeText(
+                            this@ChatActivity,
+                            "Ошибка удаления: ${result.exceptionOrNull()?.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun applyEditedMessage(msg: barkfluff.shared.Shared.Message) {
+        val currentList = messageAdapter.currentList.toMutableList()
+        val index = currentList.indexOfFirst {
+            it.type == MessageType.MESSAGE && it.messageId == msg.id
+        }
+        if (index < 0) return
+
+        val old = currentList[index]
+        val updated = old.copy(
+            text = msg.content?.text ?: "",
+            attachments = msg.content?.attachmentsList ?: emptyList(),
+            isEdited = msg.isEdited
+        )
+        currentList[index] = updated
+        messageAdapter.submitList(currentList)
+    }
+
+    private fun removeMessageById(messageId: Long) {
+        val currentList = messageAdapter.currentList.toMutableList()
+        val removed = currentList.removeAll {
+            it.type == MessageType.MESSAGE && it.messageId == messageId
+        }
+        if (removed) {
+            messageAdapter.submitList(currentList)
+        }
     }
 
     /** Краткое описание вложений для reply preview (когда текста нет). */
@@ -1329,16 +1454,25 @@ class ChatActivity : AppCompatActivity() {
                         .newInstance(sourceId)
                         .show(supportFragmentManager, "forward_picker")
                 }
-                R.id.actionEdit, R.id.actionDelete, R.id.actionPin -> {
+                R.id.actionEdit -> setPendingEdit(item)
+                R.id.actionDelete -> confirmAndDelete(item)
+                R.id.actionPin -> {
                     Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
                 }
             }
             dismiss()
         }
 
+        // Edit и Delete — только для своих сообщений
+        val isOwnMessage = item.senderId == currentUserId
+        val editView = popupView.findViewById<View>(R.id.actionEdit)
+        val deleteView = popupView.findViewById<View>(R.id.actionDelete)
+        editView.visibility = if (isOwnMessage) View.VISIBLE else View.GONE
+        deleteView.visibility = if (isOwnMessage) View.VISIBLE else View.GONE
+
         popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
-        popupView.findViewById<View>(R.id.actionEdit).setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
-        popupView.findViewById<View>(R.id.actionDelete).setOnClickListener { onClickWithDismiss(R.id.actionDelete) }
+        editView.setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
+        deleteView.setOnClickListener { onClickWithDismiss(R.id.actionDelete) }
         popupView.findViewById<View>(R.id.actionForward).setOnClickListener { onClickWithDismiss(R.id.actionForward) }
         popupView.findViewById<View>(R.id.actionPin).setOnClickListener { onClickWithDismiss(R.id.actionPin) }
 
@@ -1717,7 +1851,8 @@ class ChatActivity : AppCompatActivity() {
                         if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
                     } else {
                         ReadStatus.NONE
-                    }
+                    },
+                    isEdited = msg.isEdited
                 )
             )
         }
@@ -1817,7 +1952,8 @@ class ChatActivity : AppCompatActivity() {
                         if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
                     } else {
                         ReadStatus.NONE
-                    }
+                    },
+                    isEdited = msg.isEdited
                 )
             )
         }
@@ -1854,6 +1990,22 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            realtimeService.messageEdited.collect { event ->
+                if (event.chatId == chatId) {
+                    applyEditedMessage(event.message)
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            realtimeService.messageDeleted.collect { event ->
+                if (event.chatId == chatId) {
+                    removeMessageById(event.messageId)
+                }
+            }
+        }
+
         // Подписка на онлайн-статусы обрабатывается в loadOnlineStatus()
     }
 
@@ -1877,7 +2029,8 @@ class ChatActivity : AppCompatActivity() {
                 if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
             } else {
                 ReadStatus.NONE
-            }
+            },
+            isEdited = msg.isEdited
         )
 
         // Убираем разделитель непрочитанных если он ещё есть

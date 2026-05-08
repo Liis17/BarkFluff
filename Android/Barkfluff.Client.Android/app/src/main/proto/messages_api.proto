@@ -38,7 +38,29 @@ service MessagesApi {
 
   // Получить информацию о чате
   rpc GetChatInfo(GetChatInfoRequest) returns(GetChatInfoResponse);
+
+  // Редактировать сообщение
+  rpc EditMessage(EditMessageRequest) returns(EditMessageResponse);
+
+  // Удалить сообщение (soft-delete)
+  rpc DeleteMessage(DeleteMessageRequest) returns(DeleteMessageResponse);
 }
+
+message EditMessageRequest {
+  int64 message_id = 1; // Идентификатор сообщения
+  string text = 2; // Новый текст
+  repeated string files_ids = 3; // Идентификаторы файлов (forwarded-вложения не редактируются)
+}
+
+message EditMessageResponse {
+  barkfluff.shared.Message message = 1; // Обновлённое сообщение
+}
+
+message DeleteMessageRequest {
+  int64 message_id = 1; // Идентификатор сообщения
+}
+
+message DeleteMessageResponse { }
 
 message MarkAsReadRequest {
   repeated int64 message_ids = 1; // Идентификаторы сообщений

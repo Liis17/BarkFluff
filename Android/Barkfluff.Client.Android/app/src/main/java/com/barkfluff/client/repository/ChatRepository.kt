@@ -130,6 +130,59 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     }
 
     /**
+     * Редактирует существующее сообщение.
+     * @param messageId ID сообщения
+     * @param text Новый текст
+     * @param fileIds Идентификаторы файлов (forwarded-вложения backend сохраняет сам)
+     */
+    suspend fun editMessage(
+        messageId: Long,
+        text: String,
+        fileIds: List<String> = emptyList()
+    ): Result<Shared.Message> = withContext(Dispatchers.IO) {
+        try {
+            if (grpcManager.messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages client not created"))
+            }
+
+            val request = MessagesApiOuterClass.EditMessageRequest.newBuilder()
+                .setMessageId(messageId)
+                .setText(text)
+                .addAllFilesIds(fileIds)
+                .build()
+
+            val response = grpcManager.messagesClient!!.editMessage(request)
+            Log.d(TAG, "Message edited, id=${response.message.id}")
+            Result.success(response.message)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error editing message $messageId", e)
+            Result.failure(Exception("Ошибка редактирования: ${e.message}"))
+        }
+    }
+
+    /**
+     * Удаляет сообщение (soft-delete на сервере).
+     */
+    suspend fun deleteMessage(messageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (grpcManager.messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages client not created"))
+            }
+
+            val request = MessagesApiOuterClass.DeleteMessageRequest.newBuilder()
+                .setMessageId(messageId)
+                .build()
+
+            grpcManager.messagesClient!!.deleteMessage(request)
+            Log.d(TAG, "Message $messageId deleted")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting message $messageId", e)
+            Result.failure(Exception("Ошибка удаления: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает информацию о чате.
      */
     suspend fun getChatInfo(chatId: String): Result<ChatInfo> = withContext(Dispatchers.IO) {

@@ -8,11 +8,17 @@ import "shared.proto";
 package barkfluff.updates;
 
 service UpdatesApi {
-  
+
   // Подписаться на новые сообщения
   rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent);
-  
+
   rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns(stream MessageReadEvent);
+
+  // Подписаться на отредактированные сообщения
+  rpc SubscribeMessagesEdited(SubscribeMessagesEditedRequest) returns (stream MessageEditedEvent);
+
+  // Подписаться на удалённые сообщения
+  rpc SubscribeMessagesDeleted(SubscribeMessagesDeletedRequest) returns (stream MessageDeletedEvent);
 }
 
 message SubscribeNewMessagesRequest {
@@ -33,5 +39,23 @@ message MessageReadEvent {
   string chat_id = 1; // Идентификатор чата
   int64 message_id = 2; // Идентификатор прочитанного сообщения
   repeated int64 new_read_by = 3; // Новый read_by сообщения (НЕ ТОЛЬКО НОВЫЕ, А ПОЛНОСТЬЮ ВСЕ, КТО ПРОЧИТАЛ)
+}
+
+message SubscribeMessagesEditedRequest {
+
+}
+
+message SubscribeMessagesDeletedRequest {
+
+}
+
+message MessageEditedEvent {
+  barkfluff.shared.Message message = 1; // Обновлённое сообщение
+  string chat_id = 2; // Идентификатор чата
+}
+
+message MessageDeletedEvent {
+  int64 message_id = 1; // Идентификатор удалённого сообщения
+  string chat_id = 2; // Идентификатор чата
 }
 
