@@ -6,7 +6,11 @@
 # Здесь — только то, что специфично для нашего набора зависимостей.
 
 # --- Стектрейсы остаются читаемыми после применения mapping.txt ---------------
+# RuntimeVisibleAnnotations / RuntimeVisibleParameterAnnotations критичны для Kotlin
+# metadata и для grpc-kotlin/coroutines рефлексии.
 -keepattributes Signature,*Annotation*,EnclosingMethod,InnerClasses,SourceFile,LineNumberTable
+-keepattributes RuntimeVisibleAnnotations,RuntimeVisibleTypeAnnotations,RuntimeVisibleParameterAnnotations
+-keepattributes RuntimeInvisibleAnnotations,RuntimeInvisibleTypeAnnotations,RuntimeInvisibleParameterAnnotations
 -renamesourcefileattribute SourceFile
 
 # --- @Keep аннотация ---------------------------------------------------------
@@ -28,11 +32,22 @@
 }
 -keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
 -keep class * extends com.google.protobuf.GeneratedMessageLite$Builder { *; }
+# MessageLite/MessageLiteOrBuilder и Internal типы (RawMessageInfo, FieldInfo) —
+# к ним обращается сгенерированный switch-статус в dynamicMethod().
+-keep class * implements com.google.protobuf.MessageLite { *; }
+-keep class * implements com.google.protobuf.MessageLiteOrBuilder { *; }
+-keepclassmembers class * implements com.google.protobuf.MessageLiteOrBuilder { *; }
+-keep class com.google.protobuf.Internal* { *; }
+-keep class com.google.protobuf.RawMessageInfo { *; }
 -dontwarn com.google.protobuf.**
 
-# Все сгенерированные нами proto-классы — barkfluff.* и google.protobuf.*
+# Все сгенерированные нами proto-классы — barkfluff.* и google.protobuf.*.
+# Без `-keepclassmembernames` имена приватных полей `*_` могут переименоваться,
+# а switch внутри dynamicMethod() ссылается на них через RawMessageInfo.objects[].
 -keep class barkfluff.** { *; }
+-keepclassmembernames class barkfluff.** { *; }
 -keep class google.protobuf.** { *; }
+-keepclassmembernames class google.protobuf.** { *; }
 
 # =============================================================================
 # gRPC (java + kotlin stubs)
