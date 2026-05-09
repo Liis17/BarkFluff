@@ -306,6 +306,19 @@
      * @returns {Promise<HTMLElement>}
      */
     function buildMessageElement(msg, myUserId, isGroupChat, getUserFn, onMediaClick, opts) {
+        // Системные сообщения (kick, pin/unpin/unpin-all, и т.п.) — центрированная
+        // таблетка без облачка, как в Telegram.
+        if (msg.type === 2 || msg.type === 'SYSTEM') {
+            var sys = document.createElement('div');
+            sys.className = 'msg-group msg-system';
+            sys.dataset.msgId = msg.id;
+            var pill = document.createElement('span');
+            pill.className = 'msg-system-pill';
+            pill.textContent = (msg.content && msg.content.text) || '';
+            sys.appendChild(pill);
+            return Promise.resolve(sys);
+        }
+
         var isOutgoing = msg.senderId === myUserId;
         var direction = isOutgoing ? 'outgoing' : 'incoming';
         var allAtts = (msg.content && msg.content.attachments) || [];
