@@ -93,6 +93,7 @@ class MessageAdapter(
         private const val VIEW_TYPE_DATE_SEPARATOR = 3
         private const val VIEW_TYPE_UNREAD_SEPARATOR = 4
         private const val VIEW_TYPE_FOOTER = 5
+        private const val VIEW_TYPE_SYSTEM = 6
 
         private val FOOTER_ITEM = MessageItem(
             messageId = Long.MIN_VALUE,
@@ -110,15 +111,27 @@ class MessageAdapter(
         add(FOOTER_ITEM)
     }
 
+    /**
+     * Отфильтровывает повторяющиеся по messageId items типа MESSAGE/SYSTEM —
+     * страховка от случайных дублей при пересечении realtime-event и пагинации.
+     */
+    private fun List<MessageItem>.dedupMessages(): List<MessageItem> {
+        val seen = HashSet<Long>()
+        return filter { item ->
+            if (item.type != MessageType.MESSAGE && item.type != MessageType.SYSTEM) true
+            else seen.add(item.messageId)
+        }
+    }
+
     /** Переопределяем submitList — footer всегда в конце списка. */
     override fun submitList(list: List<MessageItem>?) {
-        val mutable = (list ?: emptyList()).toMutableList()
+        val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
         mutable.ensureFooter()
         super.submitList(mutable)
     }
 
     override fun submitList(list: List<MessageItem>?, commitCallback: Runnable?) {
-        val mutable = (list ?: emptyList()).toMutableList()
+        val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
         mutable.ensureFooter()
         super.submitList(mutable, commitCallback)
     }
@@ -129,6 +142,7 @@ class MessageAdapter(
             MessageType.FOOTER -> VIEW_TYPE_FOOTER
             MessageType.DATE_SEPARATOR -> VIEW_TYPE_DATE_SEPARATOR
             MessageType.UNREAD_SEPARATOR -> VIEW_TYPE_UNREAD_SEPARATOR
+            MessageType.SYSTEM -> VIEW_TYPE_SYSTEM
             MessageType.MESSAGE -> if (item.senderId == currentUserId) VIEW_TYPE_SENT else VIEW_TYPE_RECEIVED
         }
     }
@@ -148,6 +162,10 @@ class MessageAdapter(
                 LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_message_footer, parent, false)
             )
+            VIEW_TYPE_SYSTEM -> SystemMessageViewHolder(
+                LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_message_system, parent, false)
+            )
             else -> DateSeparatorViewHolder(
                 ItemMessageDateSeparatorBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             )
@@ -161,7 +179,15 @@ class MessageAdapter(
             is ReceivedMessageViewHolder -> holder.bind(item)
             is DateSeparatorViewHolder -> holder.bind(item)
             is UnreadSeparatorViewHolder -> holder.bind(item)
+            is SystemMessageViewHolder -> holder.bind(item)
             is FooterViewHolder -> { /* спейсер, биндинг не нужен */ }
+        }
+    }
+
+    inner class SystemMessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val systemText: android.widget.TextView = view.findViewById(R.id.systemText)
+        fun bind(item: MessageItem) {
+            systemText.text = item.text.ifBlank { item.dateText }
         }
     }
 
@@ -1423,7 +1449,7 @@ class MessageAdapter(
 
 // ─── Data Classes & Enums ─────────────────────────────────────────────────────
 
-enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER }
+enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER, SYSTEM }
 
 data class MessageItem(
     val messageId: Long,
