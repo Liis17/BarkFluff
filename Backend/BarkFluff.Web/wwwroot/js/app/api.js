@@ -436,6 +436,140 @@
         return c().authCall(identity().setPassword.bind(identity()), req);
     }
 
+    // --- Chat Folders (UsersApi) ---
+
+    function mapChatFolder(f) {
+        return {
+            folderId: f.getFolderId(),
+            folderName: f.getFolderName(),
+            folderIcon: f.getFolderIcon(),
+            chatList: f.getChatListList(),
+            sortOrder: f.getSortOrder()
+        };
+    }
+
+    function getChatFolders() {
+        var req = new (usrPb().GetChatFoldersRequest)();
+        return c().authCall(users().getChatFolders.bind(users()), req).then(function (resp) {
+            return { folders: resp.getFoldersList().map(mapChatFolder) };
+        });
+    }
+
+    function createChatFolder(folderName, folderIcon) {
+        var req = new (usrPb().CreateChatFolderRequest)();
+        req.setFolderName(folderName || '');
+        req.setFolderIcon(folderIcon || '');
+        return c().authCall(users().createChatFolder.bind(users()), req).then(function (resp) {
+            var f = resp.getFolder();
+            return { folder: f ? mapChatFolder(f) : null };
+        });
+    }
+
+    function updateChatFolder(folderId, opts) {
+        opts = opts || {};
+        var req = new (usrPb().UpdateChatFolderRequest)();
+        req.setFolderId(folderId);
+        if (opts.folderName !== undefined) req.setFolderName(opts.folderName);
+        if (opts.folderIcon !== undefined) req.setFolderIcon(opts.folderIcon);
+        if (opts.hasChatListUpdate) {
+            req.setHasChatListUpdate(true);
+            req.setChatListList(opts.chatList || []);
+        }
+        return c().authCall(users().updateChatFolder.bind(users()), req).then(function (resp) {
+            var f = resp.getFolder();
+            return { folder: f ? mapChatFolder(f) : null };
+        });
+    }
+
+    function deleteChatFolder(folderId) {
+        var req = new (usrPb().DeleteChatFolderRequest)();
+        req.setFolderId(folderId);
+        return c().authCall(users().deleteChatFolder.bind(users()), req);
+    }
+
+    function addChatToFolder(folderId, chatId) {
+        var req = new (usrPb().AddChatToFolderRequest)();
+        req.setFolderId(folderId);
+        req.setChatId(chatId);
+        return c().authCall(users().addChatToFolder.bind(users()), req).then(function (resp) {
+            var f = resp.getFolder();
+            return { folder: f ? mapChatFolder(f) : null };
+        });
+    }
+
+    function removeChatFromFolder(folderId, chatId) {
+        var req = new (usrPb().RemoveChatFromFolderRequest)();
+        req.setFolderId(folderId);
+        req.setChatId(chatId);
+        return c().authCall(users().removeChatFromFolder.bind(users()), req).then(function (resp) {
+            var f = resp.getFolder();
+            return { folder: f ? mapChatFolder(f) : null };
+        });
+    }
+
+    function reorderChatFolders(orders) {
+        var req = new (usrPb().ReorderChatFoldersRequest)();
+        var list = (orders || []).map(function (o) {
+            var item = new (usrPb().ChatFolderOrder)();
+            item.setFolderId(o.folderId);
+            item.setSortOrder(o.sortOrder);
+            return item;
+        });
+        req.setOrdersList(list);
+        return c().authCall(users().reorderChatFolders.bind(users()), req);
+    }
+
+    // --- Pinned Messages (MessagesApi) ---
+
+    function mapPinnedInfo(p) {
+        var m = p.getMessage();
+        return {
+            message: m ? mapMessage(m) : null,
+            pinnerUserId: p.getPinnerUserId(),
+            pinnedAt: tsToMs(p.getPinnedAt())
+        };
+    }
+
+    function pinMessage(chatId, messageId) {
+        var req = new (msgPb().PinMessageRequest)();
+        req.setChatId(chatId);
+        req.setMessageId(messageId);
+        return c().authCall(messages().pinMessage.bind(messages()), req).then(function (resp) {
+            var p = resp.getPinned();
+            return { pinned: p ? mapPinnedInfo(p) : null };
+        });
+    }
+
+    function unpinMessage(chatId, messageId) {
+        var req = new (msgPb().UnpinMessageRequest)();
+        req.setChatId(chatId);
+        req.setMessageId(messageId);
+        return c().authCall(messages().unpinMessage.bind(messages()), req);
+    }
+
+    function listPinnedMessages(chatId, offset, size) {
+        var req = new (msgPb().ListPinnedMessagesRequest)();
+        req.setChatId(chatId);
+        var pg = new (sharedPb().PageRequest)();
+        pg.setOffset(offset || 0);
+        pg.setSize(Math.min(size || 50, 50));
+        req.setPagination(pg);
+        return c().authCall(messages().listPinnedMessages.bind(messages()), req).then(function (resp) {
+            return {
+                pinned: resp.getPinnedList().map(mapPinnedInfo),
+                totalCount: resp.getTotalCount()
+            };
+        });
+    }
+
+    function unpinAll(chatId) {
+        var req = new (msgPb().UnpinAllRequest)();
+        req.setChatId(chatId);
+        return c().authCall(messages().unpinAll.bind(messages()), req).then(function (resp) {
+            return { unpinnedCount: resp.getUnpinnedCount() };
+        });
+    }
+
     function setOnlineStatus() {
         var req = new (onlPb().SetOnlineStatusRequest)();
         return c().authCall(onliner().setOnlineStatus.bind(onliner()), req);
@@ -490,6 +624,19 @@
         confirmOtpVerification: confirmOtpVerification,
         disableOtpVerification: disableOtpVerification,
         setPassword: setPassword,
+        // Chat Folders
+        getChatFolders: getChatFolders,
+        createChatFolder: createChatFolder,
+        updateChatFolder: updateChatFolder,
+        deleteChatFolder: deleteChatFolder,
+        addChatToFolder: addChatToFolder,
+        removeChatFromFolder: removeChatFromFolder,
+        reorderChatFolders: reorderChatFolders,
+        // Pinned Messages
+        pinMessage: pinMessage,
+        unpinMessage: unpinMessage,
+        listPinnedMessages: listPinnedMessages,
+        unpinAll: unpinAll,
         // Expose mapping helpers for realtime module
         _mapMessage: mapMessage,
         _mapUser: mapUser
