@@ -50,12 +50,22 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             Type.PRIVATE -> {
                 binding.passphraseLayout.visibility = View.VISIBLE
                 binding.initialMessageLayout.visibility = View.GONE
-                binding.peerDeviceSpinner.visibility = View.GONE
+                binding.peerDeviceLabel.visibility = View.GONE
+                binding.peerDeviceCard.visibility = View.GONE
+                binding.modeIcon.setImageResource(R.drawable.ic_key)
+                binding.modeTitle.text = "Приватный чат"
+                binding.modeDescription.text =
+                    "Шифрование по passphrase. Чат доступен на всех ваших устройствах."
             }
             Type.SECRET -> {
                 binding.passphraseLayout.visibility = View.GONE
                 binding.initialMessageLayout.visibility = View.VISIBLE
-                binding.peerDeviceSpinner.visibility = View.VISIBLE
+                binding.peerDeviceLabel.visibility = View.VISIBLE
+                binding.peerDeviceCard.visibility = View.VISIBLE
+                binding.modeIcon.setImageResource(R.drawable.ic_security)
+                binding.modeTitle.text = "Секретный чат"
+                binding.modeDescription.text =
+                    "End-to-End через Signal Protocol. Привязан к одному устройству собеседника."
             }
         }
     }
