@@ -56,6 +56,81 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("Badges");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.ChatFolder", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.PrimitiveCollection<long[]>("ChatList")
+                        .IsRequired()
+                        .HasColumnType("bigint[]");
+
+                    b.Property<string>("FolderIcon")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FolderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FolderName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("OwnerUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FolderId")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.ToTable("ChatFolders");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.Privacy", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AvatarVisibility")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BioVisibility")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EmailVisibility")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OnlineVisibility")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ProfileVisibleOnSite")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SearchVisible")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Privacies");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.User", b =>
                 {
                     b.Property<long>("Id")
@@ -193,43 +268,6 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("UserDevices");
                 });
 
-            modelBuilder.Entity("BarkFluff.Users.Domain.Privacy", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("AvatarVisibility")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("BioVisibility")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EmailVisibility")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OnlineVisibility")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("ProfileVisibleOnSite")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("SearchVisible")
-                        .HasColumnType("boolean");
-
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("Privacies");
-                });
-
             modelBuilder.Entity("BarkFluff.Users.Domain.UserPersonalization", b =>
                 {
                     b.Property<long>("Id")
@@ -238,12 +276,12 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("ProfilePosterFileId")
-                        .HasColumnType("text");
-
-                    b.Property<string[]>("ChatBackgroundFileIds")
+                    b.PrimitiveCollection<string[]>("ChatBackgroundFileIds")
                         .IsRequired()
                         .HasColumnType("text[]");
+
+                    b.Property<string>("ProfilePosterFileId")
+                        .HasColumnType("text");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -254,6 +292,28 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("UserPersonalizations");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.ChatFolder", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.Privacy", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithOne()
+                        .HasForeignKey("BarkFluff.Users.Domain.Privacy", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("BarkFluff.Users.Domain.UserBadge", b =>
@@ -291,17 +351,6 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("BarkFluff.Users.Domain.Privacy", b =>
-                {
-                    b.HasOne("BarkFluff.Users.Domain.User", "User")
-                        .WithOne()
-                        .HasForeignKey("BarkFluff.Users.Domain.Privacy", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

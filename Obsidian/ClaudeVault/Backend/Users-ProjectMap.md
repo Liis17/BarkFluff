@@ -33,6 +33,7 @@
 | `Domain/Badge.cs` | Бадж: Name, Description, ImageUrl, IsActive |
 | `Domain/UserBadge.cs` | Связь пользователь↔бадж: UserId, BadgeId, Priority, IsActive |
 | `Domain/UserPersonalization.cs` | Персонализация (1:1 с User): ProfilePosterFileId, ChatBackgroundFileIds (массив) |
+| `Domain/ChatFolder.cs` | Папка чатов (1:Many с User): Id, OwnerUserId, FolderId (Guid), FolderName, FolderIcon, ChatList (bigint[]), SortOrder |
 
 ---
 
@@ -114,13 +115,25 @@
 | `Features/Personalization/GetProfilePoster/` | Быстрое получение только ProfilePosterFileId |
 | `Features/Personalization/SetProfilePoster/` | Установка/удаление постера профиля (пустой fileId → удаление) |
 
+### Папки чатов
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/ChatFolders/GetChatFolders/` | Список папок текущего пользователя (сортировка SortOrder, Id) |
+| `Features/ChatFolders/CreateChatFolder/` | Создать папку, авто-генерация FolderId (Guid) и SortOrder = max+1; имя ≤ 64 символов |
+| `Features/ChatFolders/UpdateChatFolder/` | Частичное обновление (имя/иконка/полная замена ChatList) |
+| `Features/ChatFolders/DeleteChatFolder/` | Удалить папку по Guid |
+| `Features/ChatFolders/AddChatToFolder/` | Добавить chat_id в ChatList (идемпотентно) |
+| `Features/ChatFolders/RemoveChatFromFolder/` | Удалить chat_id из ChatList (идемпотентно) |
+| `Features/ChatFolders/ReorderChatFolders/` | Массовое изменение SortOrder (чужие FolderId игнорируются) |
+
 ---
 
 ## Persistence — слой данных
 
 | Файл | Назначение |
 |------|-----------|
-| `Persistence/Contexts/UsersContext.cs` | EF Core DbContext: Users, UserContacts, Badges, UserBadges, UserDevices, Privacies, UserPersonalizations |
+| `Persistence/Contexts/UsersContext.cs` | EF Core DbContext: Users, UserContacts, Badges, UserBadges, UserDevices, Privacies, UserPersonalizations, ChatFolders |
 | `Persistence/Contexts/UsersContextExtensions.cs` | Extension-методы для контекста (применение миграций и пр.) |
 | `Persistence/Contexts/UsersContextFactory.cs` | IDesignTimeDbContextFactory для EF CLI |
 | `Persistence/Extensions/PostgresFullTextSearchExtensions.cs` | Extension для trigram-поиска (pg_trgm) |
@@ -128,6 +141,7 @@
 | `Persistence/Services/DevicesStorage.cs` | CRUD устройств: upsert, получение, удаление |
 | `Persistence/Services/PrivacyStorage.cs` | CRUD настроек приватности |
 | `Persistence/Services/PersonalizationStorage.cs` | CRUD персонализации (GetOrCreate паттерн) |
+| `Persistence/Services/ChatFolderStorage.cs` | CRUD папок чатов с фильтрацией по OwnerUserId; идемпотентные AddChat/RemoveChat; ReorderAsync |
 | `Persistence/Migrations/` | Миграции EF Core (история изменений схемы БД) |
 | `Migrations/` | Дополнительные миграции (AddPreviewAvatar, AddBadgesTables, AddStorageLimitGb, AddUserDevicesTable) |
 
@@ -157,6 +171,7 @@
 | `Mapping/BadgeMapping.cs` | Badge, UserBadge → proto-ответ |
 | `Mapping/PrivacyMapping.cs` | Privacy → proto-ответ |
 | `Mapping/PersonalizationMapping.cs` | UserPersonalization → proto-ответ |
+| `Mapping/ChatFolderMapping.cs` | ChatFolder → proto-ответ (FolderId.ToString, FolderIcon ?? "") |
 
 ---
 

@@ -46,6 +46,7 @@ public class Program
         builder.Services.AddTransient<DevicesStorage>();
         builder.Services.AddTransient<PrivacyStorage>();
         builder.Services.AddTransient<PersonalizationStorage>();
+        builder.Services.AddTransient<ChatFolderStorage>();
         builder.Services.AddScoped<UserInfoQueueSender>();
         builder.Services.AddSingleton<ReservedUsernamesService>();
 

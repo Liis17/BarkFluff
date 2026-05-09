@@ -6,6 +6,7 @@
 
 → [[Backend/Users-ProjectMap]] — карта всех файлов и классов проекта
 → [[Backend/Users-Metrics]] — реестр метрик сервиса (через `ServiceMetrics`-логи в Seq)
+→ [[Backend/Users-ChatFolders-ClientGuide]] — гайд для клиентских агентов: какие RPC папок чатов когда вызывать, ошибки, edge cases
 
 ## Сборка
 
@@ -25,10 +26,10 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`
+- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
-- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage` (Transient)
+- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage`, `ChatFolderStorage` (Transient)
 - `Infrastructure/` — `UserInfoQueueSender` (RabbitMQ события, Scoped)
 - `Services/` — `ReservedUsernamesService` (Singleton)
 - `Mapping/` — extension-методы маппинга доменных объектов в protobuf
@@ -73,6 +74,13 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                                |
 | `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера                 |
 | `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds`       |
+| `GetChatFolders()`                       | Список папок чатов текущего пользователя      | Сортировка по `SortOrder, Id`                                        |
+| `CreateChatFolder(name, icon)`           | Создать новую папку чатов                     | Имя обязательное (≤64 символа); `FolderId` (Guid) генерируется на сервере; `SortOrder = max+1` |
+| `UpdateChatFolder(folder_id, ...)`       | Частичное обновление папки                    | `optional` поля имени/иконки; `has_chat_list_update` — флаг замены списка чатов |
+| `DeleteChatFolder(folder_id)`            | Удалить папку                                 | Чужие папки не находятся → `ChatFolderNotFoundException`             |
+| `AddChatToFolder(folder_id, chat_id)`    | Добавить чат в папку                          | Идемпотентно (повтор не дублирует)                                   |
+| `RemoveChatFromFolder(folder_id, chat_id)` | Убрать чат из папки                         | Идемпотентно (отсутствующий — no-op)                                 |
+| `ReorderChatFolders(orders[])`           | Массовое изменение `SortOrder` папок          | Чужие `folder_id` молча игнорируются                                 |
 
 ## UsersServerApi — межсервисный (TokenType.Service)
 
@@ -129,6 +137,26 @@ FRIENDS трактуется как NONE до появления сервиса 
 
 Запись создаётся по требованию при первом обращении (`GetOrCreate`). Хранится в таблице `UserPersonalizations` (PostgreSQL `text[]` для массива).
 
+## Папки чатов
+
+`ChatFolder` (1:Many с `User`). Поля:
+
+| Поле | Тип | Описание |
+|------|-----|---------|
+| `Id` | `long` | Внутренний PK (identity) |
+| `OwnerUserId` | `long` | FK на `User`, индексирован |
+| `FolderId` | `Guid` | Публичный идентификатор, уникальный индекс — клиент работает только через него |
+| `FolderName` | `string` | Название (≤64 символа после Trim) |
+| `FolderIcon` | `string?` | Произвольная строка-идентификатор иконки (emoji / имя пресета / URL) |
+| `ChatList` | `long[]` | PostgreSQL `bigint[]` — ID чатов из Messages-сервиса |
+| `SortOrder` | `int` | Порядок отображения; меньше = выше |
+
+**Приватность:** все Storage-методы фильтруют `OwnerUserId == _userContext.UserId` — чужие папки невидимы и неизменяемы. NotFound → `ChatFolderNotFoundException`.
+
+**Денормализация:** `ChatList` хранит ID чатов плоским массивом без FK на Messages БД (это разные сервисы). Удалить чат на стороне Messages не вычистит его из ChatList — клиент сам отвечает за консистентность через `RemoveChatFromFolder`.
+
+**Клиентская интеграция:** подробный гайд по выбору RPC под конкретные UX-сценарии, ошибки, идемпотентность, поведение при гонках устройств — [[Backend/Users-ChatFolders-ClientGuide]].
+
 ## GDPR-экспорт (ExportData)
 
 Вызывается через `UsersServerApi.ExportData`. Возвращает массив `JsonFile`:
@@ -160,6 +188,13 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `user_searches` | SearchUsers |
 | `firebase_token_updates` | SetFirebaseToken |
 | `device_registrations` | RegisterDevice |
+| `chat_folder_lookups` | GetChatFolders |
+| `chat_folder_creates` | CreateChatFolder |
+| `chat_folder_updates` | UpdateChatFolder |
+| `chat_folder_deletes` | DeleteChatFolder |
+| `chat_folder_chat_adds` | AddChatToFolder |
+| `chat_folder_chat_removes` | RemoveChatFromFolder |
+| `chat_folder_reorders` | ReorderChatFolders |
 
 ## Конфигурация
 
