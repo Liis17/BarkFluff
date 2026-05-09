@@ -58,7 +58,7 @@ public class ChatFolderStorage
         bool updateIcon,
         string? folderIcon,
         bool updateChatList,
-        long[]? chatList)
+        Guid[]? chatList)
     {
         var folder = await GetByFolderIdAsync(userId, folderId);
         if (folder is null)
@@ -98,7 +98,7 @@ public class ChatFolderStorage
         return true;
     }
 
-    public async Task<ChatFolder?> AddChatAsync(long userId, Guid folderId, long chatId)
+    public async Task<ChatFolder?> AddChatAsync(long userId, Guid folderId, Guid chatId)
     {
         var folder = await GetByFolderIdAsync(userId, folderId);
         if (folder is null)
@@ -115,7 +115,7 @@ public class ChatFolderStorage
         return folder;
     }
 
-    public async Task<ChatFolder?> RemoveChatAsync(long userId, Guid folderId, long chatId)
+    public async Task<ChatFolder?> RemoveChatAsync(long userId, Guid folderId, Guid chatId)
     {
         var folder = await GetByFolderIdAsync(userId, folderId);
         if (folder is null)

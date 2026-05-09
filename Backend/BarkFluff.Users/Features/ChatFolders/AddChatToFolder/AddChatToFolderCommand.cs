@@ -8,5 +8,5 @@ public class AddChatToFolderCommand : IRequest<AddChatToFolderResponse>
 {
     public string? FolderId { get; set; }
 
-    public long ChatId { get; set; }
+    public Guid ChatId { get; set; }
 }
