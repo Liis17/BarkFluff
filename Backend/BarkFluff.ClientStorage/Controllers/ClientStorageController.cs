@@ -357,16 +357,18 @@ public class ClientStorageController : ControllerBase
                 checksum = Convert.ToHexStringLower(incrementalHash.GetHashAndReset());
             }
 
-            // 2) грузим temp-файл в S3
-            await using (var uploadStream = new FileStream(
-                tempPath, FileMode.Open, FileAccess.Read, FileShare.Read,
-                bufferSize: 81920, useAsync: true))
-            {
-                await _s3.UploadAsync(
-                    s3Key,
-                    uploadStream,
-                    file.ContentType ?? "application/octet-stream");
-            }
+            // 2) грузим temp-файл в S3 через TransferUtility (multipart)
+            await _s3.UploadAsync(
+                tempPath,
+                s3Key,
+                file.ContentType ?? "application/octet-stream");
+        }
+        catch (Amazon.S3.AmazonS3Exception s3ex)
+        {
+            _logger.LogError(s3ex,
+                "S3 error: Status={Status} Code={Code} RequestId={ReqId} Message={Msg}",
+                s3ex.StatusCode, s3ex.ErrorCode, s3ex.RequestId, s3ex.Message);
+            return StatusCode(500, new { error = $"S3: {s3ex.ErrorCode ?? "unknown"} ({s3ex.StatusCode})" });
         }
         catch (Exception ex)
         {

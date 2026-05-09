@@ -1,6 +1,7 @@
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3.Transfer;
 
 namespace BarkFluff.ClientStorage.Infrastructure;
 
@@ -33,8 +34,12 @@ public class S3StorageService : IDisposable
 
         var config = new AmazonS3Config
         {
-            ServiceURL = configuration["S3_SERVICE_URL"] ?? "http://localhost:9000",
-            ForcePathStyle = true
+            ServiceURL     = configuration["S3_SERVICE_URL"] ?? "http://localhost:9000",
+            ForcePathStyle = true,
+            Timeout        = TimeSpan.FromMinutes(30),
+            // MinIO/S3-compatible endpoints обычно не поддерживают новые SDK-чексуммы по умолчанию.
+            RequestChecksumCalculation  = Amazon.Runtime.RequestChecksumCalculation.WHEN_REQUIRED,
+            ResponseChecksumValidation  = Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED
         };
 
         var accessKey = configuration["S3_ACCESS_KEY"]
@@ -61,20 +66,32 @@ public class S3StorageService : IDisposable
         }
     }
 
-    public async Task<string> UploadAsync(string key, Stream data, string contentType)
+    /// <summary>
+    /// Заливка файла в S3 через TransferUtility с автоматическим multipart-разбиением.
+    /// На больших файлах (>10MB) надёжнее простого PutObject — устойчиво к таймаутам и кратко-сетевым сбоям.
+    /// </summary>
+    public async Task UploadAsync(string filePath, string key, string contentType)
     {
-        var request = new PutObjectRequest
+        try
         {
-            BucketName = _bucketName,
-            Key = key,
-            InputStream = data,
-            AutoCloseStream = false,
-            AutoResetStreamPosition = false,
-            ContentType = contentType
-        };
-
-        var response = await _client.PutObjectAsync(request);
-        return response.ETag;
+            var transferUtility = new TransferUtility(_client);
+            var request = new TransferUtilityUploadRequest
+            {
+                BucketName  = _bucketName,
+                Key         = key,
+                FilePath    = filePath,
+                ContentType = contentType,
+                PartSize    = 16 * 1024 * 1024, // 16 MB parts
+            };
+            await transferUtility.UploadAsync(request);
+        }
+        catch (AmazonS3Exception s3ex)
+        {
+            _logger.LogError(s3ex,
+                "S3 upload failed: StatusCode={StatusCode} ErrorCode={ErrorCode} RequestId={RequestId} Message={Message}",
+                s3ex.StatusCode, s3ex.ErrorCode, s3ex.RequestId, s3ex.Message);
+            throw;
+        }
     }
 
     /// <summary>
