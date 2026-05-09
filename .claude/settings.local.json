@@ -132,7 +132,6 @@
       "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/main.js\")",
       "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/messages.js\")",
       "Bash(dotnet ef *)",
-<<<<<<< Updated upstream
       "PowerShell(Copy-Item *)",
       "PowerShell(\\(Get-Content \"K:\\\\source\\\\BarkFluff\\\\Android\\\\Barkfluff.Client.Android\\\\app\\\\src\\\\main\\\\java\\\\com\\\\barkfluff\\\\client\\\\grpc\\\\GrpcManager.kt\" | Measure-Object -Line\\).Lines)",
       "Bash(curl -s \"https://build-artifacts.signal.org/libraries/maven/org/signal/libsignal-android/\")",
@@ -159,10 +158,9 @@
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.ecc.ECPrivateKey)",
       "Bash(./gradlew :app:assembleDebug -q)",
       "Bash(unzip -l K:/source/BarkFluff/Android/Barkfluff.Client.Android/app/build/outputs/apk/debug/app-debug.apk)",
-      "Bash(awk '/\\\\.so$/ { printf \"  %10d  %s\\\\n\", $1, $4 }')"
-=======
-      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build)"
->>>>>>> Stashed changes
+      "Bash(awk '/\\\\.so$/ { printf \"  %10d  %s\\\\n\", $1, $4 }')",
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build)",
+      "Bash(python3 -m json.tool /Users/liis/Projects/BarkFluff/.claude/settings.local.json)"
     ],
     "deny": [],
     "ask": []
