@@ -12,6 +12,8 @@ namespace BarkFluff.Users.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(@"DROP TABLE IF EXISTS ""ChatFolders"" CASCADE;");
+
             migrationBuilder.CreateTable(
                 name: "ChatFolders",
                 columns: table => new
