@@ -1,5 +1,3 @@
-using BarkFluff.ClientStorage.Infrastructure;
-
 using System.Security.Cryptography;
 using System.Text;
 
@@ -18,7 +16,7 @@ public class TokenAuthMiddleware
         _uploadTokenBytes = Encoding.UTF8.GetBytes(token);
     }
 
-    public async Task InvokeAsync(HttpContext context, MetricsCollector metrics)
+    public async Task InvokeAsync(HttpContext context)
     {
         if (context.Request.Path.StartsWithSegments("/set"))
         {
@@ -27,8 +25,6 @@ public class TokenAuthMiddleware
             if (string.IsNullOrEmpty(authHeader)
                 || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             {
-                metrics.Increment("auth_unauthorized_total");
-                metrics.Increment("auth_missing_token_total");
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsync("Unauthorized");
                 return;
@@ -38,14 +34,10 @@ public class TokenAuthMiddleware
 
             if (!CryptographicOperations.FixedTimeEquals(providedBytes, _uploadTokenBytes))
             {
-                metrics.Increment("auth_unauthorized_total");
-                metrics.Increment("auth_invalid_token_total");
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsync("Unauthorized");
                 return;
             }
-
-            metrics.Increment("auth_success_total");
         }
 
         await _next(context);
