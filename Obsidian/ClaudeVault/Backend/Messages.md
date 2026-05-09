@@ -73,13 +73,29 @@ docker-compose -f docker-compose-dev.yml up -d messages
 
 `ChatCache` (Scoped). Ключи: `chat_name_{chatId}_{userId}`, `chat_image_{chatId}_{userId}`. Префикс: `Messages_`.
 
+### Redis-буфер секретных чатов
+
+`SecretMessageBuffer` (Singleton, через `IConnectionMultiplexer` напрямую — не через IDistributedCache). TTL 24 часа.
+
+| Ключ | Назначение |
+|------|-----------|
+| `secret_msg:{recipientDeviceId}:{messageId}` | Сериализованный `SecretMessageRecord` (envelope + sender info) |
+| `secret_msgs:{recipientDeviceId}` | Redis SET с messageId — индекс pending сообщений устройства |
+| `secret_invite:{recipientDeviceId}:{inviteId}` | Сериализованный `SecretInviteRecord` (initial X3DH envelope) |
+| `secret_invites:{recipientDeviceId}` | Redis SET с inviteId — индекс pending инвайтов |
+
+API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (со cleanup'ом expired); `EnqueueInviteAsync` / `ConsumeInviteAsync` (атомарно: GET → DEL+SREM) / `ListPendingInvitesAsync`.
+
+Сериализация — System.Text.Json (byte[] → Base64). После Ack или Consume ключи удаляются из обоих STRING-ключа и SET-индекса.
+
 ## База данных
 
 | Сущность | Важные детали |
 |----------|---------------|
-| `Chat` | `LastMessage`, `CountUnread`, `FirstUnreadMessageId` — вычисляются в рантайме, не в БД |
+| `Chat` | `LastMessage`, `CountUnread`, `FirstUnreadMessageId` — вычисляются в рантайме, не в БД. `Type` (enum ChatType: Regular/Private/Secret, default=Regular). `KdfSalt` и `PassphraseVerifier` — bytea nullable, заполняются только для `Type=Private`. Чаты с `Type=Secret` сервер не материализует — поле существует только для совместимости proto |
 | `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление |
 | `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable) |
+| `EncryptedMessage` | Шифрованное сообщение приватного чата. Отдельная таблица `EncryptedMessages` (НЕ join с `Messages`). Поля: `Id` (bigserial), `ChatId`, `SenderId`, `SenderDeviceId` (Guid), `SentAt`, `Ciphertext`/`Nonce`/`AssociatedData` (bytea), `IsEdited`, `EditedAt`, `IsDeleted`. Soft-delete очищает все 3 bytea-поля. Индексы по `ChatId` и `(ChatId, SentAt)` |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |
 | `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker, ForwardedMessage |
 | `ForwardedMessageAttachment` | Owned collection в таблице `ForwardedMessageAttachments`; вложения внутри пересланного сообщения (без ForwardedMessage рекурсии) |

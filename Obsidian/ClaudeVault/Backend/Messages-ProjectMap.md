@@ -76,6 +76,8 @@
 | `Domain/MessageAttachmentType.cs` | Enum: Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker |
 | `Domain/MessageContentType.cs` | Enum: Default, System (системные сообщения чата) |
 | `Domain/PinnedMessage.cs` | Закреплённое сообщение: Id, ChatId, MessageId, PinnerUserId, PinnedAt |
+| `Domain/ChatType.cs` | Enum: Regular=0, Private=1, Secret=2. Используется в `Chat.Type` |
+| `Domain/EncryptedMessage.cs` | Шифрованное сообщение приватного чата (отдельная таблица): Id, ChatId, SenderId, SenderDeviceId, SentAt, Ciphertext/Nonce/AssociatedData (bytea), IsEdited, EditedAt, IsDeleted |
 
 ---
 
@@ -125,6 +127,11 @@
 | `Persistence/Configurations/ChatMemberConfiguration.cs` | EF Fluent API для ChatMember (индекс ChatId+UserId, каскадное удаление) |
 | `Persistence/Configurations/MessageConfiguration.cs` | EF Fluent API для Message (owned MessageContent, отдельная таблица MessageAttachments) |
 | `Persistence/Configurations/PinnedMessageConfiguration.cs` | EF Fluent API для PinnedMessage (уникальный индекс ChatId+MessageId, FK на Chats и Messages с каскадным удалением) |
+| `Persistence/Configurations/EncryptedMessageConfiguration.cs` | EF Fluent API для EncryptedMessage (PK Id, индексы ChatId и (ChatId, SentAt), bytea-поля с дефолтами) |
+| `Persistence/Services/EncryptedMessagesStorage.cs` | CRUD шифрованных сообщений: AddAsync, GetByIdAsync, ListByChatAsync (двунаправленная пагинация), EditAsync (выставляет IsEdited+EditedAt), SoftDeleteAsync (обнуляет ciphertext/nonce/AAD) |
+| `Persistence/Services/SecretMessageBuffer.cs` | Redis-буфер секретных envelope и инвайтов на 24ч. Использует `IConnectionMultiplexer` напрямую. EnqueueMessageAsync/EnqueueInviteAsync, ListPending*, AckMessageAsync, ConsumeInviteAsync (атомарно DEL) |
+| `Persistence/Services/Dtos/SecretMessageRecord.cs` | DTO для буфера: MessageId, SenderUserId, SenderDeviceId, RecipientDeviceId, Envelope, SentAt |
+| `Persistence/Services/Dtos/SecretInviteRecord.cs` | DTO для буфера: InviteId, Sender/Recipient User+Device, InitialEnvelope, SentAt |
 
 ---
 
