@@ -133,6 +133,18 @@ public class MessagesStorage
             .ToListAsync();
     }
 
+    public async Task<List<Message>> GetMessagesByIdsInChatAsync(Guid chatId, List<long> messageIds)
+    {
+        if (messageIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Messages
+            .Where(m => m.ChatId == chatId && messageIds.Contains(m.Id) && !m.IsDeleted)
+            .ToListAsync();
+    }
+
     public async Task<Message?> GetMessageById(long id)
     {
         return await _context.Messages

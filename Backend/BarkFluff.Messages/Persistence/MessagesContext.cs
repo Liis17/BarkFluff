@@ -19,11 +19,14 @@ public class MessagesContext : DbContext
 
     public DbSet<MessageAttachment> MessageAttachments { get; set; }
 
+    public DbSet<PinnedMessage> PinnedMessages { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
         modelBuilder.ApplyConfiguration(new ChatMemberConfiguration());
         modelBuilder.ApplyConfiguration(new MessageConfiguration());
+        modelBuilder.ApplyConfiguration(new PinnedMessageConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }
