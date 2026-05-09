@@ -591,6 +591,45 @@
 
                     </LinearLayout>
 
+                    <com.google.android.material.divider.MaterialDivider
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="56dp" />
+
+                    <!-- Тестирование -->
+                    <LinearLayout
+                        android:id="@+id/itemTesting"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/ic_science"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:text="Тестирование"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/ic_chevron_right" />
+
+                    </LinearLayout>
+
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>

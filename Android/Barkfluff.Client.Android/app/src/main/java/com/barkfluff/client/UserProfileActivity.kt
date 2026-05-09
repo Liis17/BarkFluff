@@ -1,5 +1,7 @@
 package com.barkfluff.client
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -86,9 +88,33 @@ class UserProfileActivity : AppCompatActivity() {
 
         binding.backButton.setOnClickListener { finish() }
 
+        setupIdsBlock()
         setupAttachmentsRecycler()
         loadProfileData()
         loadAttachmentsDefault()
+    }
+
+    private fun setupIdsBlock() {
+        val globalParam = GlobalParam(this)
+        if (!globalParam.showIdsInProfile) {
+            binding.profileIdsBlock.visibility = View.GONE
+            return
+        }
+        binding.profileIdsBlock.visibility = View.VISIBLE
+        binding.profileUserIdText.text = "UserId: $otherUserId"
+        binding.profileChatIdText.text = "ChatId: $chatId"
+        binding.profileUserIdText.setOnClickListener {
+            copyToClipboard("UserId", otherUserId.toString())
+        }
+        binding.profileChatIdText.setOnClickListener {
+            copyToClipboard("ChatId", chatId)
+        }
+    }
+
+    private fun copyToClipboard(label: String, text: String) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText(label, text))
+        Toast.makeText(this, "$label скопирован", Toast.LENGTH_SHORT).show()
     }
 
     // ── Attachments ───────────────────────────────────────────────────────────
