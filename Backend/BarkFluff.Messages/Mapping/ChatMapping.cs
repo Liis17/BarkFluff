@@ -21,7 +21,7 @@ public static class ChatMapping
             IsGroupChat = chat.IsGroupChat,
             LastMessage = chat.LastMessage?.ToGrpc(filesInfoMap ?? new Dictionary<string, UploadFileInfo>()),
             Picture = chat.Picture ?? string.Empty,
-            Title = chat.Title,
+            Title = chat.Title ?? string.Empty,
             Members = { chat.Members?.Select(x => x.ToGrpc()) },
             FirstUnreadMessageId = chat.FirstUnreadMessageId ?? 0,
             ChatType = (BarkFluff.Proto.Shared.ChatType)chat.Type,
