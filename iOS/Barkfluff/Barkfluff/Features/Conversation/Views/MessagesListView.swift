@@ -20,6 +20,14 @@ struct MessagesListView: View {
     var onRetry: ((String) -> Void)?
     var onDeleteFailed: ((String) -> Void)?
     var onAttachmentTap: ((MessageAttachment, [MessageAttachment]) -> Void)?
+    var onReply: ((Message) -> Void)?
+    var onForward: ((Int64) -> Void)?
+    var onEdit: ((Message) -> Void)?
+    var onDelete: ((Int64) -> Void)?
+    var onCopyText: ((String) -> Void)?
+    var onSaveImages: (([MessageAttachment]) -> Void)?
+    var onCopyImage: ((MessageAttachment) -> Void)?
+    var onSaveDocuments: (([MessageAttachment]) -> Void)?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -49,7 +57,15 @@ struct MessagesListView: View {
                                 showSenderName: isGroupChat,
                                 onRetry: onRetry,
                                 onDeleteFailed: onDeleteFailed,
-                                onAttachmentTap: onAttachmentTap
+                                onAttachmentTap: onAttachmentTap,
+                                onReply: onReply,
+                                onForward: onForward,
+                                onEdit: onEdit,
+                                onDelete: onDelete,
+                                onCopyText: onCopyText,
+                                onSaveImages: onSaveImages,
+                                onCopyImage: onCopyImage,
+                                onSaveDocuments: onSaveDocuments
                             )
                             .transition(.asymmetric(
                                 insertion: .move(edge: .bottom).combined(with: .opacity),
