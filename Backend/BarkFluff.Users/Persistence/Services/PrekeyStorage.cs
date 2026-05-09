@@ -171,7 +171,10 @@ public class PrekeyStorage(UsersContext context)
             return null;
         }
 
-        var prekey = await context.OneTimePrekeys
+        // FromSqlInterpolated(DELETE ... RETURNING) — non-composable, EF8/9 не позволяет
+        // добавлять FirstOrDefaultAsync/AsNoTracking сверху (LIMIT 1 не композируется).
+        // Подзапрос уже гарантирует максимум одну строку, поэтому ToListAsync + FirstOrDefault.
+        var prekeyList = await context.OneTimePrekeys
             .FromSqlInterpolated($@"
                 DELETE FROM ""OneTimePrekeys""
                 WHERE ""Id"" = (
@@ -182,8 +185,8 @@ public class PrekeyStorage(UsersContext context)
                     FOR UPDATE SKIP LOCKED
                 )
                 RETURNING *")
-            .AsNoTracking()
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+        var prekey = prekeyList.FirstOrDefault();
 
         var remaining = await context.OneTimePrekeys.CountAsync(p => p.DeviceId == peerDeviceId);
 
