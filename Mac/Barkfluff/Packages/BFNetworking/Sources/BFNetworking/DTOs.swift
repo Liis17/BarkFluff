@@ -442,6 +442,87 @@ public struct FileDownloadInfo: Sendable {
     }
 }
 
+// MARK: - Stickers
+
+public struct StickerPackInfoDTO: Sendable {
+    public let id: String
+    public let creatorUserID: Int64
+    public let coverStickerID: String
+    public let name: String
+    public let description: String
+    public let createdAt: Date
+    public let stickerCount: Int32
+
+    public init(
+        id: String,
+        creatorUserID: Int64,
+        coverStickerID: String,
+        name: String,
+        description: String,
+        createdAt: Date,
+        stickerCount: Int32
+    ) {
+        self.id = id
+        self.creatorUserID = creatorUserID
+        self.coverStickerID = coverStickerID
+        self.name = name
+        self.description = description
+        self.createdAt = createdAt
+        self.stickerCount = stickerCount
+    }
+}
+
+public struct StickerInfoDTO: Sendable {
+    public let id: String
+    public let stickerPackID: String
+    public let fileID: String
+    public let previewFileID: String
+    public let emoji: String
+    public let addedAt: Date
+    public let fileURL: String
+    public let previewURL: String
+
+    public init(
+        id: String,
+        stickerPackID: String,
+        fileID: String,
+        previewFileID: String,
+        emoji: String,
+        addedAt: Date,
+        fileURL: String,
+        previewURL: String
+    ) {
+        self.id = id
+        self.stickerPackID = stickerPackID
+        self.fileID = fileID
+        self.previewFileID = previewFileID
+        self.emoji = emoji
+        self.addedAt = addedAt
+        self.fileURL = fileURL
+        self.previewURL = previewURL
+    }
+}
+
+public struct StickerPacksPage: Sendable {
+    public let packs: [StickerPackInfoDTO]
+    public let totalCount: Int32
+
+    public init(packs: [StickerPackInfoDTO], totalCount: Int32) {
+        self.packs = packs
+        self.totalCount = totalCount
+    }
+}
+
+public struct StickerPackContent: Sendable {
+    public let pack: StickerPackInfoDTO
+    public let stickers: [StickerInfoDTO]
+
+    public init(pack: StickerPackInfoDTO, stickers: [StickerInfoDTO]) {
+        self.pack = pack
+        self.stickers = stickers
+    }
+}
+
 // MARK: - FileType (deprecated alias)
 
 /// Deprecated: используйте UploadFileType

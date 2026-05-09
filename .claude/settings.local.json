@@ -114,7 +114,8 @@
       "Bash(Sort-Object)",
       "Bash(Format-Table FullName)",
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-proto.ps1)",
-      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build -quiet)"
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build -quiet)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'generic/platform=macOS' build)"
     ],
     "deny": [],
     "ask": []

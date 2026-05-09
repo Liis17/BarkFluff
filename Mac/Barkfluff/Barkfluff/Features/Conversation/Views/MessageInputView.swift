@@ -9,6 +9,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
+import BFCore
 
 struct MessageInputView: View {
     @Binding var text: String
@@ -19,8 +20,15 @@ struct MessageInputView: View {
     var isEditMode: Bool = false
     let onSend: () -> Void
     let onFileSelected: ([URL], Bool) -> Void  // URLs, forceAsDocument
+    /// Сервис стикеров — нужен пикеру.
+    let stickersService: StickersServiceProtocol
+    /// Хранилище недавно использованных стикеров.
+    let recentStickersStore: RecentStickersStore
+    /// Колбэк выбора стикера в пикере.
+    let onStickerSelected: (Sticker) -> Void
 
     @State private var showEmojiPicker = false
+    @State private var showStickerPicker = false
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
@@ -95,6 +103,25 @@ struct MessageInputView: View {
                     .popover(isPresented: $showEmojiPicker, arrowEdge: .bottom) {
                         EmojiPickerView { emoji in
                             text.append(emoji)
+                        }
+                    }
+
+                    // Кнопка выбора стикера
+                    Button {
+                        showStickerPicker.toggle()
+                    } label: {
+                        Image(systemName: "square.grid.2x2.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showStickerPicker, arrowEdge: .bottom) {
+                        StickerPickerView(
+                            service: stickersService,
+                            recentStore: recentStickersStore
+                        ) { sticker in
+                            showStickerPicker = false
+                            onStickerSelected(sticker)
                         }
                     }
                 }

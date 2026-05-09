@@ -129,6 +129,11 @@ struct ConversationView: View {
                                 viewModel?.uploadError = error.localizedDescription
                             }
                         }
+                    },
+                    stickersService: container.stickersService,
+                    recentStickersStore: container.recentStickersStore,
+                    onStickerSelected: { sticker in
+                        Task { await viewModel?.sendSticker(sticker) }
                     }
                 )
                 .background(

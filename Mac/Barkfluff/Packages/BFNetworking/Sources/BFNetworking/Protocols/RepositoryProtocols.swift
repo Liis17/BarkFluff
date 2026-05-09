@@ -145,6 +145,16 @@ public protocol FilesRepositoryProtocol: Sendable {
     func getUserStorageInfo() async throws -> StorageInfo
 }
 
+// MARK: - Stickers
+
+public protocol StickersRepositoryProtocol: Sendable {
+    /// Список стикерпаков с пагинацией.
+    func listStickerPacks(offset: Int32, size: Int32) async throws -> StickerPacksPage
+
+    /// Стикерпак с содержимым (стикеры внутри).
+    func getStickerPack(packID: String) async throws -> StickerPackContent
+}
+
 // MARK: - Updates
 
 public protocol UpdatesRepositoryProtocol: Sendable {
