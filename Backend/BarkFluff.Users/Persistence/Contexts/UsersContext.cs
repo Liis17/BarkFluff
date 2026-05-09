@@ -24,6 +24,10 @@ public class UsersContext : DbContext
 
     public DbSet<ChatFolder> ChatFolders { get; set; }
 
+    public DbSet<DevicePrekeyBundle> DevicePrekeyBundles { get; set; }
+
+    public DbSet<OneTimePrekey> OneTimePrekeys { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
@@ -92,6 +96,27 @@ public class UsersContext : DbContext
         modelBuilder.Entity<ChatFolder>()
             .HasIndex(f => f.FolderId)
             .IsUnique();
+
+        // DevicePrekeyBundle (1:1 с UserDevice; PK = DeviceId)
+        modelBuilder.Entity<DevicePrekeyBundle>()
+            .HasOne(b => b.Device)
+            .WithOne()
+            .HasForeignKey<DevicePrekeyBundle>(b => b.DeviceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // OneTimePrekey (Many:1 с UserDevice; уникальный (DeviceId, PrekeyId))
+        modelBuilder.Entity<OneTimePrekey>()
+            .HasOne(p => p.Device)
+            .WithMany()
+            .HasForeignKey(p => p.DeviceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OneTimePrekey>()
+            .HasIndex(p => new { p.DeviceId, p.PrekeyId })
+            .IsUnique();
+
+        modelBuilder.Entity<OneTimePrekey>()
+            .HasIndex(p => p.DeviceId);
 
         base.OnModelCreating(modelBuilder);
 
