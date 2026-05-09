@@ -154,11 +154,13 @@ Server-streaming подписки:
 
 ### `attach.js` → `BF.attach`
 Диалог прикрепления файлов перед отправкой сообщения:
-- Открывается при выборе файлов (`open(files, onSendCallback)`)
-- Два режима: **images** (изображения с превью) / **docs** (документы)
+- Открывается при выборе файлов: `open(files, onSendCallback, prefillText?)`
+- Два режима: **images** (сетка превью) / **docs** (список с иконкой расширения и человекочитаемым размером); сегментированный переключатель в шапке скрывается, если изображений нет
 - Автоопределение типа по MIME / расширению
-- Превью изображений через `URL.createObjectURL`
-- Очистка URL при закрытии (`URL.revokeObjectURL`)
+- Превью изображений через `URL.createObjectURL`, очистка через `URL.revokeObjectURL` при удалении / закрытии
+- **Поле подписи** (`#attachCaption`): автоматически растёт до 140px, prefill из текста чата (`#messageInput`), Enter — отправка, Shift+Enter — перенос, Escape — закрыть
+- Callback вызывается как `onSend(outFiles, asDocuments, caption)`; в `main.js` `sendMessageWithFiles` использует `caption` как текст сообщения и обнуляет `#messageInput`, чтобы текст не отправился отдельным сообщением
+- В шапке диалога — счётчик файлов с правильным склонением (1 файл / 2 файла / 5 файлов)
 
 ### `settings.js` → `BF.settings`
 Многоэкранная панель настроек профиля (sliding view-stack):
