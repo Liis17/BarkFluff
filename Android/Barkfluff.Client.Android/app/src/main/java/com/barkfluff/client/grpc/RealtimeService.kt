@@ -60,6 +60,15 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     private val _messageDeleted = MutableSharedFlow<UpdatesApiOuterClass.MessageDeletedEvent>(extraBufferCapacity = 64)
     val messageDeleted: SharedFlow<UpdatesApiOuterClass.MessageDeletedEvent> = _messageDeleted
 
+    private val _messagePinned = MutableSharedFlow<UpdatesApiOuterClass.MessagePinnedEvent>(extraBufferCapacity = 64)
+    val messagePinned: SharedFlow<UpdatesApiOuterClass.MessagePinnedEvent> = _messagePinned
+
+    private val _messageUnpinned = MutableSharedFlow<UpdatesApiOuterClass.MessageUnpinnedEvent>(extraBufferCapacity = 64)
+    val messageUnpinned: SharedFlow<UpdatesApiOuterClass.MessageUnpinnedEvent> = _messageUnpinned
+
+    private val _allMessagesUnpinned = MutableSharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent>(extraBufferCapacity = 16)
+    val allMessagesUnpinned: SharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent> = _allMessagesUnpinned
+
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
@@ -106,6 +115,9 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         scope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
         scope.launch { streamWithReconnect("MessagesEdited") { collectMessagesEdited() } }
         scope.launch { streamWithReconnect("MessagesDeleted") { collectMessagesDeleted() } }
+        scope.launch { streamWithReconnect("MessagesPinned") { collectMessagesPinned() } }
+        scope.launch { streamWithReconnect("MessagesUnpinned") { collectMessagesUnpinned() } }
+        scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
         scope.launch { onlinePingLoop() }
         scope.launch { notificationLoop() }
@@ -222,6 +234,36 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeMessagesDeleted(request).collect { event ->
             Log.d(TAG, "Message deleted received: chatId=${event.chatId}, msgId=${event.messageId}")
             _messageDeleted.emit(event)
+        }
+    }
+
+    private suspend fun collectMessagesPinned() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeMessagesPinnedRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to MessagesPinned stream")
+        client.subscribeMessagesPinned(request).collect { event ->
+            Log.d(TAG, "Message pinned received: chatId=${event.chatId}, msgId=${event.messageId}")
+            _messagePinned.emit(event)
+        }
+    }
+
+    private suspend fun collectMessagesUnpinned() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeMessagesUnpinnedRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to MessagesUnpinned stream")
+        client.subscribeMessagesUnpinned(request).collect { event ->
+            Log.d(TAG, "Message unpinned received: chatId=${event.chatId}, msgId=${event.messageId}")
+            _messageUnpinned.emit(event)
+        }
+    }
+
+    private suspend fun collectAllMessagesUnpinned() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeAllMessagesUnpinnedRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to AllMessagesUnpinned stream")
+        client.subscribeAllMessagesUnpinned(request).collect { event ->
+            Log.d(TAG, "All messages unpinned: chatId=${event.chatId}")
+            _allMessagesUnpinned.emit(event)
         }
     }
 
