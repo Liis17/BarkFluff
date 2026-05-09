@@ -128,14 +128,15 @@ class PinnedMessagesActivity : AppCompatActivity() {
             }
             val items = list.map { p ->
                 val msg = p.message
+                val isSystem = msg.type == barkfluff.shared.Shared.MessageContentType.SYSTEM
                 MessageItem(
                     messageId = msg.id,
                     senderId = msg.senderId,
                     text = msg.content?.text ?: "",
                     timestamp = msg.sentAt.seconds * 1000,
                     attachments = msg.content?.attachmentsList ?: emptyList(),
-                    readStatus = if (msg.senderId == currentUserId) ReadStatus.READ else ReadStatus.NONE,
-                    type = MessageType.MESSAGE,
+                    readStatus = if (!isSystem && msg.senderId == currentUserId) ReadStatus.READ else ReadStatus.NONE,
+                    type = if (isSystem) MessageType.SYSTEM else MessageType.MESSAGE,
                     isEdited = msg.isEdited
                 )
             }
