@@ -51,7 +51,9 @@ docker-compose -f docker-compose-dev.yml up web
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`
-- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, online_status)
+- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status)
+- `folders.js` — `BF.folders`: папки чатов (горизонтальные вкладки `#folderTabs` над списком чатов, drag-and-drop реордер, контекстное меню чата `#chatContextMenu` с «Добавить/Удалить из папки», модалка `#folderEditOverlay` с emoji-сеткой 7×3). `init()` обязательно ДО `loadChats` — гайд требует «сперва папки, потом чаты».
+- `pinned.js` — `BF.pinned`: закреплённые сообщения. Плашка `#pinnedBar` под `.chat-header` Telegram-style (`1/N` слева, превью текущего, клик → переключение по кругу + scroll к оригиналу). Большая модалка `#pinnedListOverlay` со всеми пинами (рендер через `BF.messages.buildMessageElement`) + кнопка «Открепить все» с подтверждением.
 - `attach.js` — диалог прикрепления файлов: сегментированный переключатель images/docs, превью (сетка/список с иконкой расширения и размером), поле подписи (`#attachCaption`, prefill из `#messageInput`, Enter=отправка, Shift+Enter=перенос, Escape=закрыть). Подпись передаётся третьим аргументом callback'а (`outFiles, asDocuments, caption`) и используется как текст сообщения.
 - `settings.js` — многоэкранная панель настроек (профиль, 2FA, сессии, пароль)
 - `main.js` — bootstrap мессенджера
@@ -76,6 +78,9 @@ docker-compose -f docker-compose-dev.yml up web
 | readStream | UpdatesApi | SubscribeMessagesRead | Статусы прочтения |
 | editedStream | UpdatesApi | SubscribeMessagesEdited | Редактирование сообщений (синхронизация между устройствами) |
 | deletedStream | UpdatesApi | SubscribeMessagesDeleted | Удаление сообщений (синхронизация между устройствами) |
+| pinnedStream | UpdatesApi | SubscribeMessagesPinned | Закреп сообщения (синхронизация плашки `#pinnedBar`) |
+| unpinnedStream | UpdatesApi | SubscribeMessagesUnpinned | Открепление одного сообщения |
+| allUnpinnedStream | UpdatesApi | SubscribeAllMessagesUnpinned | Открепление всех сообщений в чате |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
 
 ## Редактирование и удаление сообщений (`main.js`)
@@ -88,6 +93,28 @@ docker-compose -f docker-compose-dev.yml up web
 - Во время `pendingEdit` attach-flow (`sendMessageWithFiles`) заблокирован, чтобы drop/paste не отправил новое сообщение поверх правки.
 
 Механизмы: exponential backoff (2с → 30с), page-visibility reconnection, keep-alive ping каждые 3с, tab title badge `(N)`, Browser Notification API, scroll-based mark-as-read.
+
+## Папки чатов (`folders.js`)
+
+Все RPC — `UsersApi` (см. [[Backend/Users-ChatFolders-ClientGuide]]). `chat_id` в API папок — **string (Guid)**, тот же формат что `Chat.id` из `messages_api`. Локально `chatToFolders: Map<string, Set<string>>`.
+
+- **Bootstrap**: `BF.folders.init()` (`getChatFolders` → заполняет `foldersById/sortedFolderIds/chatToFolders` → `renderTabs`) → затем `loadChats(true)`. Порядок жёсткий — иначе нечего фильтровать.
+- **Вкладки** `#folderTabs`: первая всегда «Все чаты» (`activeFolderId === 'all'`), остальные — `<button class="folder-tab" draggable>{icon} {name}</button>`. ПКМ на вкладке → `openEditModal(folderId)` (редактирование/удаление). Клик → `setActiveFolderId` → перерендер chat list через колбэк `setOnChange(renderChatList)`.
+- **Фильтр чатов**: `renderChatList()` применяет `BF.folders.filterChats(chats)` перед итерацией. Для `'all'` — без изменений; для папки — `chats.filter(c => folder.chatList.includes(c.id))`.
+- **DnD реордер**: `dragstart`/`dragover`/`drop` на `.folder-tab` (кроме «Все чаты»). При drop пересчитывает `sortOrder` по новому порядку и шлёт `reorderChatFolders([{folderId, sortOrder}])`. На ошибке — full refetch.
+- **Контекстное меню чата** `#chatContextMenu` (новое, отдельное от `#msgContextMenu`): ПКМ на `.chat-item` → секции «Добавить в папку» (папки без чата) / «Удалить из папки» (папки с чатом) + всегда пункт «Создать папку».
+- **Модалка** `#folderEditOverlay`: input имени (1-64 после Trim) + emoji-сетка 7×3 (20 пресетов + «без иконки»). Save → `createFolder` или `updateFolder({folderName, folderIcon})`. В режиме редактирования есть кнопка «Удалить» с `confirm()`.
+
+## Закреплённые сообщения (`pinned.js`)
+
+RPC — `MessagesApi.PinMessage/UnpinMessage/ListPinnedMessages/UnpinAll`, стримы `Subscribe*Pinned*` (см. [[Backend/Messages-PinnedMessages-ClientGuide]]). `MessageId` — `int64`.
+
+- **Init**: `BF.pinned.init({getMyUserId, getCurrentChatInfo, getUser, showMediaOverlay, scrollToMessage})` — main.js передаёт зависимости один раз.
+- **На каждый openChat**: `BF.pinned.openForChat(chatId)` → `listPinnedMessages(chatId, 0, 50)` → state (`byMessageId`, `sorted` по `pinnedAt DESC`, `barIndex=0`, `totalCount`) → `renderBar`.
+- **Плашка** `#pinnedBar`: `1/N` (скрыто если `N=1`), превью `sorted[barIndex]` (имя автора + текст/emoji вложения), кнопка справа `#pinnedBarOpen`. Клик по `.pinned-bar-preview` → `scrollToMessage(currentPinId)` + `barIndex = (barIndex+1) % N`.
+- **Контекстное меню сообщения** (`main.js::openContextMenu`): добавлена кнопка `data-act="pin"` с динамическим текстом «Закрепить»/«Открепить» (`BF.pinned.isPinned(msgId)`). Скрывается для системных сообщений.
+- **Realtime**: `applyPinnedEvent` (для current chat — refetch listPinnedMessages, иначе игнор), `applyUnpinnedEvent` (drop из map), `applyAllUnpinnedEvent` (clear). `applyMessageDeleted` вызывается из `applyMessageDelete` в main.js — превентивно убирает из плашки до прихода `message_unpinned`.
+- **Большая модалка** `#pinnedListOverlay`: список облачков через `BF.messages.buildMessageElement` + подпись «Закрепил {имя} · {pinnedAt}». Кнопка «Открепить все» → `confirm()` → `unpinAll`. Лимит 100 — на 101 пин backend бросает `TooManyPinnedMessagesException` (`F7E1A4B8-2C9D-4F3A-B6E7-8D5C1A0F9B23`), клиент показывает alert.
 
 ## QR Fast-Auth (`fast-auth.js`)
 

@@ -140,7 +140,8 @@
 
     function renderChatList() {
         chatListEl.innerHTML = '';
-        chats.forEach(function (chat) {
+        var visibleChats = (BF.folders && BF.folders.filterChats) ? BF.folders.filterChats(chats) : chats;
+        visibleChats.forEach(function (chat) {
             var el = document.createElement('div');
             el.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
             el.dataset.chatId = chat.id;
@@ -191,6 +192,8 @@
 
     function openChat(chatId) {
         if (chatId === currentChatId) return;
+
+        if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
         messages = [];
@@ -729,6 +732,18 @@
 
     BF.realtime.on('message_deleted', function (data) {
         applyMessageDelete(data.chatId, data.messageId);
+    });
+
+    BF.realtime.on('message_pinned', function (data) {
+        if (BF.pinned && BF.pinned.applyPinnedEvent) BF.pinned.applyPinnedEvent(data);
+    });
+
+    BF.realtime.on('message_unpinned', function (data) {
+        if (BF.pinned && BF.pinned.applyUnpinnedEvent) BF.pinned.applyUnpinnedEvent(data);
+    });
+
+    BF.realtime.on('all_messages_unpinned', function (data) {
+        if (BF.pinned && BF.pinned.applyAllUnpinnedEvent) BF.pinned.applyAllUnpinnedEvent(data);
     });
 
     function handleNewMessage(chatId, msg) {
@@ -1365,6 +1380,8 @@
             if (c.lastMessage && Number(c.lastMessage.id) === msgIdNum) anyChatTouched = true;
         });
         if (anyChatTouched) loadChats(true);
+
+        if (BF.pinned && BF.pinned.applyMessageDeleted) BF.pinned.applyMessageDeleted(msgIdNum);
     }
 
     function openContextMenu(x, y, msgEl) {
@@ -1381,6 +1398,20 @@
         var deleteBtn = msgContextMenu.querySelector('button[data-act="delete"]');
         if (editBtn) editBtn.style.display = canModify ? '' : 'none';
         if (deleteBtn) deleteBtn.style.display = canModify ? '' : 'none';
+
+        // Pin/Unpin: для системных сообщений скрываем; для остальных — динамический текст.
+        var pinBtn = msgContextMenu.querySelector('button[data-act="pin"]');
+        if (pinBtn) {
+            if (isSystem) {
+                pinBtn.style.display = 'none';
+            } else {
+                pinBtn.style.display = '';
+                var alreadyPinned = BF.pinned && BF.pinned.isPinned && BF.pinned.isPinned(msgId);
+                var pinLabel = pinBtn.querySelector('.cm-label');
+                if (pinLabel) pinLabel.textContent = alreadyPinned ? 'Открепить' : 'Закрепить';
+                pinBtn.dataset.state = alreadyPinned ? 'pinned' : 'unpinned';
+            }
+        }
 
         msgContextMenu.classList.add('visible');
 
@@ -1581,6 +1612,14 @@
                 if (msg && contextMenuTarget && contextMenuTarget.isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     requestDelete(msg.id);
                 }
+            } else if (act === 'pin') {
+                if (!BF.pinned) return;
+                var state = btn.dataset.state;
+                if (state === 'pinned') {
+                    BF.pinned.unpin(msgId);
+                } else {
+                    BF.pinned.pin(msgId);
+                }
             } else {
                 showSoonToast();
             }
@@ -1737,10 +1776,156 @@
         }
     }, 60000);
 
+    // ========== CHAT CONTEXT MENU (PCM на чате в сайдбаре) ==========
+
+    var chatContextMenu = $('#chatContextMenu');
+    var chatCmTargetId = null;
+    var chatCmShownAt = 0;
+
+    function buildChatContextMenu(chatId) {
+        if (!chatContextMenu) return;
+        chatContextMenu.innerHTML = '';
+
+        if (BF.folders) {
+            var without = BF.folders.getFoldersWithoutChat(chatId);
+            var inFolders = BF.folders.getFoldersForChat(chatId);
+
+            if (without.length > 0) {
+                var hdr1 = document.createElement('div');
+                hdr1.className = 'cm-section-title';
+                hdr1.textContent = 'Добавить в папку';
+                chatContextMenu.appendChild(hdr1);
+                without.forEach(function (f) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'cm-item';
+                    btn.dataset.act = 'add-folder';
+                    btn.dataset.folderId = f.folderId;
+                    var icon = (f.folderIcon || '📁') + ' ';
+                    btn.innerHTML = '<span class="cm-icon">' + u.escapeHtml(icon) + '</span><span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    chatContextMenu.appendChild(btn);
+                });
+            }
+
+            if (inFolders.length > 0) {
+                var hdr2 = document.createElement('div');
+                hdr2.className = 'cm-section-title';
+                hdr2.textContent = 'Удалить из папки';
+                chatContextMenu.appendChild(hdr2);
+                inFolders.forEach(function (f) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'cm-item';
+                    btn.dataset.act = 'remove-folder';
+                    btn.dataset.folderId = f.folderId;
+                    var icon = (f.folderIcon || '📁') + ' ';
+                    btn.innerHTML = '<span class="cm-icon">' + u.escapeHtml(icon) + '</span><span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    chatContextMenu.appendChild(btn);
+                });
+            }
+
+            if (without.length > 0 || inFolders.length > 0) {
+                var sep = document.createElement('div');
+                sep.className = 'cm-separator';
+                chatContextMenu.appendChild(sep);
+            }
+        }
+
+        var createBtn = document.createElement('button');
+        createBtn.type = 'button';
+        createBtn.className = 'cm-item';
+        createBtn.dataset.act = 'create-folder';
+        createBtn.innerHTML = '<span class="cm-icon">&#10133;</span><span class="cm-label">Создать папку</span>';
+        chatContextMenu.appendChild(createBtn);
+    }
+
+    function openChatContextMenu(x, y, chatId) {
+        if (!chatContextMenu) return;
+        chatCmTargetId = chatId;
+        buildChatContextMenu(chatId);
+        chatContextMenu.classList.add('visible');
+
+        var vw = window.innerWidth, vh = window.innerHeight;
+        var rect = chatContextMenu.getBoundingClientRect();
+        var w = rect.width, h = rect.height;
+        var left = Math.max(8, Math.min(x, vw - w - 8));
+        var top = (y + h > vh) ? Math.max(8, y - h) : y;
+        chatContextMenu.style.left = left + 'px';
+        chatContextMenu.style.top = top + 'px';
+        chatCmShownAt = Date.now();
+    }
+
+    function closeChatContextMenu() {
+        if (!chatContextMenu) return;
+        chatContextMenu.classList.remove('visible');
+        chatCmTargetId = null;
+    }
+
+    if (chatListEl) {
+        chatListEl.addEventListener('contextmenu', function (e) {
+            var item = e.target.closest('.chat-item');
+            if (!item || !item.dataset.chatId) return;
+            e.preventDefault();
+            openChatContextMenu(e.clientX, e.clientY, item.dataset.chatId);
+        });
+    }
+
+    if (chatContextMenu) {
+        chatContextMenu.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-act]');
+            if (!btn) return;
+            var act = btn.dataset.act;
+            var folderId = btn.dataset.folderId || '';
+            var chatId = chatCmTargetId;
+            closeChatContextMenu();
+            if (!BF.folders) return;
+            if (act === 'add-folder' && folderId && chatId) {
+                BF.folders.addChatToFolder(folderId, chatId);
+            } else if (act === 'remove-folder' && folderId && chatId) {
+                BF.folders.removeChatFromFolder(folderId, chatId);
+            } else if (act === 'create-folder') {
+                BF.folders.openCreateModal();
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!chatContextMenu || !chatContextMenu.classList.contains('visible')) return;
+        if (chatContextMenu.contains(e.target)) return;
+        if (Date.now() - chatCmShownAt < 300) return;
+        closeChatContextMenu();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && chatContextMenu && chatContextMenu.classList.contains('visible')) {
+            closeChatContextMenu();
+        }
+    });
+    window.addEventListener('resize', closeChatContextMenu);
+    if (chatListEl) chatListEl.addEventListener('scroll', closeChatContextMenu);
+
     // ========== INIT ==========
 
     requestNotificationPermission();
-    loadChats(true).then(updateTitleBadge);
+
+    if (BF.pinned && BF.pinned.init) {
+        BF.pinned.init({
+            getMyUserId: function () { return myUserId; },
+            getCurrentChatInfo: function () { return currentChatInfo; },
+            getUser: getUser,
+            showMediaOverlay: showMediaOverlay,
+            scrollToMessage: scrollToMessage
+        });
+    }
+
+    if (BF.folders && BF.folders.init) {
+        BF.folders.setOnChange(function () { renderChatList(); });
+        BF.folders.init().then(function () {
+            return loadChats(true);
+        }).then(updateTitleBadge);
+    } else {
+        loadChats(true).then(updateTitleBadge);
+    }
+
     BF.realtime.startAll();
 
 })();
