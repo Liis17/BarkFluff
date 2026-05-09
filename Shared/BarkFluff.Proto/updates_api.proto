@@ -28,6 +28,38 @@ service UpdatesApi {
 
   // Подписаться на события открепления всех сообщений в чате
   rpc SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) returns (stream AllMessagesUnpinnedEvent);
+
+  // -- Приватные чаты (user-scoped: получают все устройства пользователя) -----
+
+  // Новые сообщения в приватных чатах (шифротекст; расшифровка только клиентом со знанием passphrase)
+  rpc SubscribePrivateMessages(SubscribePrivateMessagesRequest) returns (stream NewEncryptedMessageEvent);
+
+  // Редактирование сообщений в приватных чатах
+  rpc SubscribePrivateMessageEdits(SubscribePrivateMessageEditsRequest) returns (stream EncryptedMessageEditedEvent);
+
+  // Удаление сообщений в приватных чатах
+  rpc SubscribePrivateMessageDeletes(SubscribePrivateMessageDeletesRequest) returns (stream EncryptedMessageDeletedEvent);
+
+  // Приглашения в приватные чаты (для приглашённого)
+  rpc SubscribePrivateChatInvites(SubscribePrivateChatInvitesRequest) returns (stream PrivateChatInviteEvent);
+
+  // Резолюция инвайта приватного чата (для отправителя инвайта)
+  rpc SubscribePrivateChatInviteResolutions(SubscribePrivateChatInviteResolutionsRequest) returns (stream PrivateChatInviteResolutionEvent);
+
+  // -- Секретные чаты (device-scoped: получает только конкретное устройство) --
+  //
+  // Подписки выполняются от имени устройства, определяемого по JWT текущей
+  // gRPC-сессии. Сервер маршрутизирует события только в стрим того устройства,
+  // которому адресован invite/message (recipient_device_id).
+
+  // Приглашения в секретные чаты, адресованные текущему устройству
+  rpc SubscribeSecretChatInvites(SubscribeSecretChatInvitesRequest) returns (stream SecretChatInviteEvent);
+
+  // Резолюция инвайта секретного чата, отправленного текущим устройством (accept/reject от собеседника)
+  rpc SubscribeSecretChatResolutions(SubscribeSecretChatResolutionsRequest) returns (stream SecretChatInviteResolutionEvent);
+
+  // Секретные сообщения, адресованные текущему устройству
+  rpc SubscribeSecretMessages(SubscribeSecretMessagesRequest) returns (stream NewSecretMessageEvent);
 }
 
 message SubscribeNewMessagesRequest {
@@ -84,5 +116,69 @@ message MessageUnpinnedEvent {
 
 message AllMessagesUnpinnedEvent {
   string chat_id = 1; // Идентификатор чата, где откреплены все сообщения
+}
+
+// -- Приватные чаты ----------------------------------------------------------
+
+message SubscribePrivateMessagesRequest { }
+message SubscribePrivateMessageEditsRequest { }
+message SubscribePrivateMessageDeletesRequest { }
+message SubscribePrivateChatInvitesRequest { }
+message SubscribePrivateChatInviteResolutionsRequest { }
+
+message NewEncryptedMessageEvent {
+  string chat_id = 1;                                  // ID приватного чата
+  barkfluff.shared.EncryptedMessage message = 2;       // Шифрованное сообщение
+}
+
+message EncryptedMessageEditedEvent {
+  string chat_id = 1;                                  // ID приватного чата
+  barkfluff.shared.EncryptedMessage message = 2;       // Обновлённое сообщение (с is_edited=true)
+}
+
+message EncryptedMessageDeletedEvent {
+  string chat_id = 1;     // ID приватного чата
+  int64 message_id = 2;   // ID удалённого шифрованного сообщения
+}
+
+message PrivateChatInviteEvent {
+  string chat_id = 1;              // ID приватного чата
+  int64 inviter_user_id = 2;       // Кто пригласил
+  bytes kdf_salt = 3;              // Salt чата (для вычисления ключа на принимающей стороне)
+  bytes passphrase_verifier = 4;   // Verifier для проверки passphrase до Accept
+  google.protobuf.Timestamp invited_at = 5; // Когда отправлен инвайт
+}
+
+message PrivateChatInviteResolutionEvent {
+  string chat_id = 1;          // ID приватного чата
+  int64 invitee_user_id = 2;   // Приглашённый пользователь
+  bool accepted = 3;           // true = принял, false = отклонил
+}
+
+// -- Секретные чаты ----------------------------------------------------------
+
+message SubscribeSecretChatInvitesRequest { }
+message SubscribeSecretChatResolutionsRequest { }
+message SubscribeSecretMessagesRequest { }
+
+message SecretChatInviteEvent {
+  string invite_id = 1;                    // ID инвайта (для AcceptSecretChatInvite/RejectSecretChatInvite)
+  int64 sender_user_id = 2;                // ID отправителя
+  string sender_device_id = 3;             // ID устройства-отправителя (для libsignal-сессии и UI)
+  bytes initial_envelope = 4;              // PreKeySignalMessage от отправителя (opaque)
+  google.protobuf.Timestamp invited_at = 5; // Когда отправлен инвайт
+  google.protobuf.Timestamp expires_at = 6; // Когда инвайт удалится из буфера (24ч)
+}
+
+message SecretChatInviteResolutionEvent {
+  string invite_id = 1;            // ID инвайта (отправленного текущим устройством)
+  int64 recipient_user_id = 2;     // Получатель, ответивший на инвайт
+  string recipient_device_id = 3;  // Устройство получателя
+  bool accepted = 4;               // true = принят, false = отклонён
+  bytes response_envelope = 5;     // Опциональный ответный SignalMessage от получателя (если он включил его в Accept)
+}
+
+message NewSecretMessageEvent {
+  barkfluff.shared.SecretEnvelope envelope = 1; // Опаковый envelope (libsignal SignalMessage)
 }
 

@@ -18,7 +18,7 @@ dotnet build BarkFluff.Proto.csproj
 
 | Файл | C# namespace | Назначение |
 |------|-------------|------------|
-| `shared.proto` | `BarkFluff.Proto.Shared` | `Message`, `MessageContent`, `MessageAttachment`, `MessageAttachmentType`, `PageRequest` |
+| `shared.proto` | `BarkFluff.Proto.Shared` | `Message`, `MessageContent`, `MessageAttachment`, `MessageAttachmentType`, `PageRequest`, `ChatType`, `EncryptedMessage`, `SecretEnvelope` |
 | `identity_api.proto` | `BarkFluff.Proto.Identity` | Auth, 2FA, сессии, сброс/смена пароля |
 | `users_api.proto` | `BarkFluff.Proto.Users` | Профили, устройства, бейджи, поиск |
 | `messages_api.proto` | `BarkFluff.Proto.Messages` | Чаты, сообщения, вложения |
@@ -55,6 +55,12 @@ dotnet build BarkFluff.Proto.csproj
 - `MessageAttachmentType.FORWARDED_MESSAGE = 8` — пересланное сообщение; исключается из медиа-галереи `ListChatAttachments` при пустом фильтре
 - `MessageAttachment.image_width` (field 8) и `image_height` (field 9) — размеры изображения в пикселях; 0 если вложение не является изображением. Используются Android-клиентом для вычисления соотношения сторон ячейки **до** загрузки картинки, чтобы облачко сообщения не меняло размер.
 - `UploadFileInfo.image_width` (field 12) и `image_height` (field 13) — аналогичные поля в данных о загруженном файле (в `files_api.proto`).
+- `ChatType` enum (`shared.proto`): `CHAT_TYPE_REGULAR=0` (default), `CHAT_TYPE_PRIVATE=1` (E2E через passphrase, шифротекст в БД сервера), `CHAT_TYPE_SECRET=2` (Signal Double Ratchet, **НЕ** хранится на сервере — клиент держит чат в локальном хранилище, не возвращается через `ListChats`).
+- `Chat.kdf_salt` (field 10) и `Chat.passphrase_verifier` (field 11) — заполнены только для `CHAT_TYPE_PRIVATE`. Verifier позволяет клиенту проверить корректность passphrase до Accept без передачи на сервер.
+- `EncryptedMessage` хранится в отдельной таблице `EncryptedMessages` (планируется), отдельной от `Messages` — серверный код не должен делать join/мержить эти потоки. `EncryptedMessage.id` — отдельная последовательность от `Message.id`.
+- `SecretEnvelope` сервер обращается как с opaque blob: только релэит указанному `recipient_device_id` и буферизует в Redis на 24ч (TTL). После `AckSecretMessage` удаляется. В БД секретные сообщения и чаты **не сохраняются** вообще.
+- Подписки на секретные события в `updates_api.proto` — **device-scoped** (только устройство, на которое пришло сообщение). Подписки на приватные события — **user-scoped** (все устройства пользователя получают шифротекст; расшифровать сможет только устройство со знанием passphrase).
+- Prekey-bundle (X3DH): RPC расположены в `users_api.proto` (`UsersApi`), не в `identity_api.proto`. Bundle принадлежит устройству, `device_id` берётся из JWT текущей сессии.
 
 ## Подключение в .csproj
 

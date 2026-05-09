@@ -27,6 +27,10 @@
 | `MessageAttachment` | Вложение: id, type, file_id, preview_url, size, preview_file_id, file_name, image_width (field 8), image_height (field 9) |
 | `MessageAttachmentType` | Enum: UNKNOWN, IMAGE, VIDEO, GIF, DOCUMENT, AUDIO, VOICE, STICKER |
 | `MessageContentType` | Enum: UNKNOWN, GENERIC, SYSTEM |
+| `PinnedMessageInfo` | Закреплённое сообщение: `Message` + pinner_user_id + pinned_at |
+| `ChatType` | Enum: REGULAR, PRIVATE (E2E через passphrase), SECRET (Signal Double Ratchet — НЕ хранится на сервере, не возвращается ListChats) |
+| `EncryptedMessage` | Шифрованное сообщение приватного чата: id, chat_id, sender_id, sender_device_id, sent_at, ciphertext, nonce, associated_data, is_edited, edited_at, is_deleted. Сервер хранит как opaque blob и не имеет ключа для расшифровки |
+| `SecretEnvelope` | Конверт секретного сообщения: message_id, sender_user_id, sender_device_id, recipient_device_id, envelope (libsignal opaque), sent_at. Сервер только релэит — в БД не сохраняется |
 
 > Импортируется в: `messages_api.proto`, `updates_api.proto`, `users_api.proto`, `files_api.proto`
 
@@ -90,6 +94,12 @@
 | `GetPrivacySettings` / `UpdatePrivacySettings` | Настройки приватности |
 | `GetPersonalization` / `UpdatePersonalization` | Персонализация (тема, язык и т.п.) |
 | `GetProfilePoster` / `SetProfilePoster` | Постер профиля (горизонтальный баннер) |
+| `GetChatFolders` / `CreateChatFolder` / `UpdateChatFolder` / `DeleteChatFolder` / `AddChatToFolder` / `RemoveChatFromFolder` / `ReorderChatFolders` | Папки чатов |
+| `RegisterPrekeyBundle` | **(X3DH)** Зарегистрировать prekey-bundle текущего устройства: identity_pubkey, signed_prekey + signature, начальный пул one-time prekeys (рекомендуется 100) |
+| `FetchPrekeyBundle` | **(X3DH)** Получить bundle устройства собеседника. Расходует одну one-time prekey. Возвращает `remaining_one_time_prekeys` для проактивного пополнения |
+| `ListPeerDevices` | Список устройств пользователя с `has_bundle` для выбора целевого устройства секретного чата |
+| `ReplenishOneTimePrekeys` | Пополнить пул one-time prekeys текущего устройства |
+| `RotateSignedPrekey` | Сменить signed prekey текущего устройства |
 
 #### `UsersServerApi` (внутренний, Service token)
 | RPC | Описание |
@@ -131,8 +141,27 @@
 | `ListChatAttachments` | Вложения чата с фильтрацией по типу и пагинацией |
 | `GetPersonChatId` | Получить ID личного чата с пользователем |
 | `GetChatInfo` | Информация о чате (last_message_id, first_unread_message_id) |
+| `EditMessage` / `DeleteMessage` | Редактирование/удаление обычного сообщения |
+| `PinMessage` / `UnpinMessage` / `ListPinnedMessages` / `UnpinAll` | Закрепление сообщений в чате |
 
-**Ключевые типы:** `Chat`, `ChatMember`, `OutgoingMessage` (text + files_ids), `ChatAttachmentInfo`
+**Приватные чаты (E2E через passphrase):**
+| RPC | Описание |
+|-----|----------|
+| `CreatePrivateChat` | Создать приватный чат: peer_user_id + kdf_salt (Argon2id) + passphrase_verifier. Собеседник присоединяется через AcceptPrivateChat |
+| `AcceptPrivateChat` / `RejectPrivateChat` | Принять/отклонить приглашение в приватный чат |
+| `SendPrivateMessage` | Отправить шифрованное сообщение (ciphertext+nonce+AAD). Сохраняется в `EncryptedMessages` |
+| `ListPrivateMessages` | Двунаправленная пагинация шифрованных сообщений (offset_before/offset_after) |
+| `EditPrivateMessage` / `DeletePrivateMessage` | Редактировать/удалить шифрованное сообщение (soft-delete очищает ciphertext) |
+
+**Секретные чаты (Signal Double Ratchet, НЕ хранятся на сервере):**
+| RPC | Описание |
+|-----|----------|
+| `SendSecretChatInvite` | Отправить инвайт с initial X3DH message (PreKeySignalMessage) на конкретное устройство собеседника. Буферизуется в Redis (24ч) |
+| `AcceptSecretChatInvite` / `RejectSecretChatInvite` | Принять/отклонить инвайт. Опционально приложить response_envelope в Accept |
+| `SendSecretMessage` | Отправить SignalMessage конкретному устройству. Буферизуется в Redis (24ч), push без содержимого |
+| `AckSecretMessage` | Подтвердить доставку — сервер удаляет envelope из буфера |
+
+**Ключевые типы:** `Chat` (поля 9-11: chat_type, kdf_salt, passphrase_verifier — последние два только для PRIVATE), `ChatMember`, `OutgoingMessage` (text + files_ids), `ChatAttachmentInfo`. Для приватных используется `barkfluff.shared.EncryptedMessage`, для секретных — `barkfluff.shared.SecretEnvelope`.
 
 ---
 
@@ -175,6 +204,24 @@
 |-----|-----|----------|
 | `SubscribeNewMessages` | server streaming | Стрим новых сообщений. Событие: `NewMessageEvent` (message + chat_id) |
 | `SubscribeMessagesRead` | server streaming | Стрим событий прочтения. `MessageReadEvent.new_read_by` — **полный** список прочитавших, не только новые |
+| `SubscribeMessagesEdited` / `SubscribeMessagesDeleted` | server streaming | Редактирование/удаление обычных сообщений |
+| `SubscribeMessagesPinned` / `SubscribeMessagesUnpinned` / `SubscribeAllMessagesUnpinned` | server streaming | События закрепления сообщений |
+
+**Приватные чаты (user-scoped — получают все устройства пользователя):**
+| RPC | Событие | Описание |
+|-----|---------|----------|
+| `SubscribePrivateMessages` | `NewEncryptedMessageEvent` | Новые шифрованные сообщения в приватных чатах |
+| `SubscribePrivateMessageEdits` | `EncryptedMessageEditedEvent` | Редактирование шифрованных сообщений |
+| `SubscribePrivateMessageDeletes` | `EncryptedMessageDeletedEvent` | Удаление шифрованных сообщений |
+| `SubscribePrivateChatInvites` | `PrivateChatInviteEvent` | Приглашения в приватные чаты (для приглашённого) — содержит kdf_salt + passphrase_verifier |
+| `SubscribePrivateChatInviteResolutions` | `PrivateChatInviteResolutionEvent` | accepted/rejected (для отправителя инвайта) |
+
+**Секретные чаты (device-scoped — получает только конкретное устройство по recipient_device_id из JWT текущей сессии):**
+| RPC | Событие | Описание |
+|-----|---------|----------|
+| `SubscribeSecretChatInvites` | `SecretChatInviteEvent` | Инвайты, адресованные текущему устройству — содержит initial_envelope (PreKeySignalMessage) |
+| `SubscribeSecretChatResolutions` | `SecretChatInviteResolutionEvent` | accept/reject от собеседника на инвайты, отправленные текущим устройством |
+| `SubscribeSecretMessages` | `NewSecretMessageEvent` | Секретные сообщения, адресованные текущему устройству — содержит `SecretEnvelope` |
 
 ---
 
