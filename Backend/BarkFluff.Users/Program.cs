@@ -47,6 +47,7 @@ public class Program
         builder.Services.AddTransient<PrivacyStorage>();
         builder.Services.AddTransient<PersonalizationStorage>();
         builder.Services.AddTransient<ChatFolderStorage>();
+        builder.Services.AddTransient<PrekeyStorage>();
         builder.Services.AddScoped<UserInfoQueueSender>();
         builder.Services.AddSingleton<ReservedUsernamesService>();
 

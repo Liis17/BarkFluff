@@ -34,6 +34,8 @@
 | `Domain/UserBadge.cs` | Связь пользователь↔бадж: UserId, BadgeId, Priority, IsActive |
 | `Domain/UserPersonalization.cs` | Персонализация (1:1 с User): ProfilePosterFileId, ChatBackgroundFileIds (массив) |
 | `Domain/ChatFolder.cs` | Папка чатов (1:Many с User): Id, OwnerUserId, FolderId (Guid), FolderName, FolderIcon, ChatList (bigint[]), SortOrder |
+| `Domain/DevicePrekeyBundle.cs` | X3DH bundle устройства (1:1 с UserDevice, PK=DeviceId): RegistrationId, IdentityPubkey, SignedPrekeyId/Public/Signature, SignedPrekeyRotatedAt, CreatedAt |
+| `Domain/OneTimePrekey.cs` | Разовая prekey (Many:1 с UserDevice, уникальный (DeviceId, PrekeyId)): PrekeyId, PublicKey, CreatedAt — расходуется FetchPrekeyBundle |
 
 ---
 
@@ -127,6 +129,16 @@
 | `Features/ChatFolders/RemoveChatFromFolder/` | Удалить chat_id из ChatList (идемпотентно) |
 | `Features/ChatFolders/ReorderChatFolders/` | Массовое изменение SortOrder (чужие FolderId игнорируются) |
 
+### Prekey-bundle (X3DH)
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/Prekeys/RegisterPrekeyBundle/` | Регистрация bundle текущего устройства (идемпотентно). DeviceId из JWT |
+| `Features/Prekeys/FetchPrekeyBundle/` | Получение bundle устройства собеседника с атомарным расходом одной one-time prekey |
+| `Features/Prekeys/ListPeerDevices/` | Устройства пользователя + флаг has_bundle |
+| `Features/Prekeys/ReplenishOneTimePrekeys/` | Пополнение пула one-time prekeys (дубликаты по PrekeyId игнорируются) |
+| `Features/Prekeys/RotateSignedPrekey/` | Смена signed prekey текущего устройства |
+
 ---
 
 ## Persistence — слой данных
@@ -142,8 +154,9 @@
 | `Persistence/Services/PrivacyStorage.cs` | CRUD настроек приватности |
 | `Persistence/Services/PersonalizationStorage.cs` | CRUD персонализации (GetOrCreate паттерн) |
 | `Persistence/Services/ChatFolderStorage.cs` | CRUD папок чатов с фильтрацией по OwnerUserId; идемпотентные AddChat/RemoveChat; ReorderAsync |
+| `Persistence/Services/PrekeyStorage.cs` | CRUD prekey-bundle: RegisterBundleAsync (upsert), FetchBundleAsync (атомарно расходует one-time prekey через PostgreSQL `DELETE...RETURNING ... FOR UPDATE SKIP LOCKED`), ReplenishOneTimePrekeysAsync, RotateSignedPrekeyAsync, ListPeerDevicesAsync |
 | `Persistence/Migrations/` | Миграции EF Core (история изменений схемы БД) |
-| `Migrations/` | Дополнительные миграции (AddPreviewAvatar, AddBadgesTables, AddStorageLimitGb, AddUserDevicesTable) |
+| `Migrations/` | Дополнительные миграции (AddPreviewAvatar, AddBadgesTables, AddStorageLimitGb, AddUserDevicesTable, AddChatFolders, AddPrekeyBundles) |
 
 ---
 
@@ -172,6 +185,7 @@
 | `Mapping/PrivacyMapping.cs` | Privacy → proto-ответ |
 | `Mapping/PersonalizationMapping.cs` | UserPersonalization → proto-ответ |
 | `Mapping/ChatFolderMapping.cs` | ChatFolder → proto-ответ (FolderId.ToString, FolderIcon ?? "") |
+| `Mapping/PrekeyMapping.cs` | DevicePrekeyBundle / OneTimePrekey / UserDevice → proto SignedPreKey, OneTimePreKey, PrekeyBundle, PeerDeviceInfo |
 
 ---
 
