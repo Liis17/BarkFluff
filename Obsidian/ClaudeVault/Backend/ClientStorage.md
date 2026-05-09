@@ -76,7 +76,8 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 ### Upload
 - ASP.NET буферирует IFormFile в temp-файл при разборе multipart
 - Контроллер пишет тело в собственный temp-файл (`Path.GetTempPath()/barkfluff-clientstorage-uploads/{guid}`) с попутным `IncrementalHash` SHA-256 — один проход по сети
-- Затем temp-файл стримится в S3 как обычный seekable `FileStream` через `S3StorageService.UploadAsync`
+- Temp-файл заливается в S3/MinIO через `Amazon.S3.Transfer.TransferUtility` (multipart, 16 MB parts) — устойчиво к таймаутам и сетевым флукам
+- В `AmazonS3Config`: `Timeout=30 мин`, `RequestChecksumCalculation/ResponseChecksumValidation = WHEN_REQUIRED` — иначе SDK 4 шлёт MinIO trailing-чексуммы (CRC64NVME), которые MinIO не понимает и отвечает ошибкой
 - В `finally` temp-файл удаляется
 - После ответа клиенту: фоновая задача скачивает файл из S3 в локальный кеш
 
