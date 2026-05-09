@@ -51,7 +51,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 включён: shrink + optimize + obfuscate (см. proguard-rules.pro).
+            // mapping.txt появляется в app/build/outputs/mapping/release/ — храните его
+            // вместе с APK, иначе stacktrace в продакшне будет нечитаемым.
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
