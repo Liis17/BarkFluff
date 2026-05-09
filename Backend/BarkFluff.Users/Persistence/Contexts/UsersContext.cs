@@ -22,6 +22,8 @@ public class UsersContext : DbContext
 
     public DbSet<UserPersonalization> UserPersonalizations { get; set; }
 
+    public DbSet<ChatFolder> ChatFolders { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
@@ -75,6 +77,20 @@ public class UsersContext : DbContext
 
         modelBuilder.Entity<UserPersonalization>()
             .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        // Настройка связей для ChatFolder (1:Many с User; уникальный индекс по публичному FolderId)
+        modelBuilder.Entity<ChatFolder>()
+            .HasOne(f => f.User)
+            .WithMany()
+            .HasForeignKey(f => f.OwnerUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatFolder>()
+            .HasIndex(f => f.OwnerUserId);
+
+        modelBuilder.Entity<ChatFolder>()
+            .HasIndex(f => f.FolderId)
             .IsUnique();
 
         base.OnModelCreating(modelBuilder);
