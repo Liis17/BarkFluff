@@ -38,6 +38,8 @@ public final class Database: @unchecked Sendable {
             try db.execute(sql: "DELETE FROM cached_message")
             try db.execute(sql: "DELETE FROM cached_chat")
             try db.execute(sql: "DELETE FROM cached_file")
+            try db.execute(sql: "DELETE FROM cached_sticker")
+            try db.execute(sql: "DELETE FROM cached_sticker_pack")
         }
     }
 

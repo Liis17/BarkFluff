@@ -84,6 +84,14 @@ struct MessageBubbleView: View {
         }
     }
 
+    /// Сообщение состоит ровно из одного стикера и не содержит текста.
+    /// Такое сообщение рисуется без bubble-фона — стикер «висит» в воздухе.
+    private var isStickerOnly: Bool {
+        !message.content.hasText
+            && message.content.attachments.count == 1
+            && message.content.attachments.first?.type == .sticker
+    }
+
     var body: some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.xxs) {
             if isOwn {
@@ -102,10 +110,17 @@ struct MessageBubbleView: View {
                 }
 
                 // Контент сообщения
-                bubbleContent
-                    .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
-                    .opacity(isSending && !message.content.hasAttachments ? 0.7 : 1.0)
-                    .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+                if isStickerOnly, let stickerAttachment = message.content.attachments.first {
+                    StickerMessageView(attachment: stickerAttachment)
+                        .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
+                        .opacity(isSending ? 0.7 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+                } else {
+                    bubbleContent
+                        .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
+                        .opacity(isSending && !message.content.hasAttachments ? 0.7 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+                }
 
                 // Ошибка отправки
                 if isFailed {
@@ -300,6 +315,9 @@ struct MessageBubbleView: View {
         let mediaAttachments = message.content.attachments.filter {
             $0.type == .image || $0.type == .video || $0.type == .gif
         }
+        let stickerAttachments = message.content.attachments.filter {
+            $0.type == .sticker
+        }
         let documentAttachments = message.content.attachments.filter {
             $0.type == .document || $0.type == .audio
         }
@@ -309,6 +327,12 @@ struct MessageBubbleView: View {
             if let payload = attachment.forwarded {
                 ForwardedMessageView(payload: payload, isOwn: isOwn)
             }
+        }
+
+        // Стикеры в составе сообщения с текстом / другими вложениями.
+        // Pure-sticker рисуется без bubble-фона выше по стеку (см. isStickerOnly).
+        ForEach(stickerAttachments) { attachment in
+            StickerMessageView(attachment: attachment, size: 140)
         }
 
         // Медиа вложения в сетке
