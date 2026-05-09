@@ -155,7 +155,8 @@
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.state.SignedPreKeyRecord)",
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.state.PreKeyRecord)",
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.state.IdentityKeyStore)",
-      "Bash(javap -p -classpath . org.signal.libsignal.protocol.ecc.ECPrivateKey)"
+      "Bash(javap -p -classpath . org.signal.libsignal.protocol.ecc.ECPrivateKey)",
+      "Bash(./gradlew :app:assembleDebug -q)"
     ],
     "deny": [],
     "ask": []
