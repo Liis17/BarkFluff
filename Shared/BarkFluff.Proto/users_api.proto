@@ -69,6 +69,27 @@ service UsersApi {
 
   // Установить (или удалить) постер профиля текущего пользователя
   rpc SetProfilePoster(SetProfilePosterRequest) returns(SetProfilePosterResponse);
+
+  // Получить папки чатов текущего пользователя
+  rpc GetChatFolders(GetChatFoldersRequest) returns(GetChatFoldersResponse);
+
+  // Создать новую папку чатов
+  rpc CreateChatFolder(CreateChatFolderRequest) returns(CreateChatFolderResponse);
+
+  // Обновить папку чатов (частичное обновление)
+  rpc UpdateChatFolder(UpdateChatFolderRequest) returns(UpdateChatFolderResponse);
+
+  // Удалить папку чатов
+  rpc DeleteChatFolder(DeleteChatFolderRequest) returns(DeleteChatFolderResponse);
+
+  // Добавить чат в папку
+  rpc AddChatToFolder(AddChatToFolderRequest) returns(AddChatToFolderResponse);
+
+  // Удалить чат из папки
+  rpc RemoveChatFromFolder(RemoveChatFromFolderRequest) returns(RemoveChatFromFolderResponse);
+
+  // Изменить порядок папок
+  rpc ReorderChatFolders(ReorderChatFoldersRequest) returns(ReorderChatFoldersResponse);
 }
 
 service UsersServerApi {
@@ -635,3 +656,75 @@ message SetProfilePosterRequest {
 }
 
 message SetProfilePosterResponse { }
+
+// Папки чатов
+
+message ChatFolderData {
+  string folder_id = 1;        // публичный идентификатор папки (Guid)
+  string folder_name = 2;      // название папки
+  string folder_icon = 3;      // строка-идентификатор иконки (пусто если не задана)
+  repeated int64 chat_list = 4; // ID чатов в папке
+  int32 sort_order = 5;        // порядок отображения (меньше = выше)
+}
+
+message GetChatFoldersRequest { }
+
+message GetChatFoldersResponse {
+  repeated ChatFolderData folders = 1; // папки текущего пользователя по возрастанию sort_order
+}
+
+message CreateChatFolderRequest {
+  string folder_name = 1; // название (обязательно)
+  string folder_icon = 2; // иконка (опционально, пусто = не задана)
+}
+
+message CreateChatFolderResponse {
+  ChatFolderData folder = 1; // созданная папка
+}
+
+message UpdateChatFolderRequest {
+  string folder_id = 1;                  // публичный Guid папки
+  optional string folder_name = 2;       // новое название (если задано)
+  optional string folder_icon = 3;       // новая иконка (пустая строка = очистить)
+  bool has_chat_list_update = 4;         // если true — заменить ChatList на значения ниже
+  repeated int64 chat_list = 5;          // используется только когда has_chat_list_update=true
+}
+
+message UpdateChatFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message DeleteChatFolderRequest {
+  string folder_id = 1; // Guid папки
+}
+
+message DeleteChatFolderResponse { }
+
+message AddChatToFolderRequest {
+  string folder_id = 1; // Guid папки
+  int64 chat_id = 2;    // ID чата
+}
+
+message AddChatToFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message RemoveChatFromFolderRequest {
+  string folder_id = 1; // Guid папки
+  int64 chat_id = 2;    // ID чата
+}
+
+message RemoveChatFromFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message ChatFolderOrder {
+  string folder_id = 1; // Guid папки
+  int32 sort_order = 2; // новый порядок
+}
+
+message ReorderChatFoldersRequest {
+  repeated ChatFolderOrder orders = 1; // новые значения SortOrder для папок
+}
+
+message ReorderChatFoldersResponse { }

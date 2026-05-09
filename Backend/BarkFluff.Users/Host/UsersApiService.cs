@@ -3,6 +3,13 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.Badges.GetUserBadges;
 using BarkFluff.Users.Features.ChangeBio;
+using BarkFluff.Users.Features.ChatFolders.AddChatToFolder;
+using BarkFluff.Users.Features.ChatFolders.CreateChatFolder;
+using BarkFluff.Users.Features.ChatFolders.DeleteChatFolder;
+using BarkFluff.Users.Features.ChatFolders.GetChatFolders;
+using BarkFluff.Users.Features.ChatFolders.RemoveChatFromFolder;
+using BarkFluff.Users.Features.ChatFolders.ReorderChatFolders;
+using BarkFluff.Users.Features.ChatFolders.UpdateChatFolder;
 using BarkFluff.Users.Features.ChangeName;
 using BarkFluff.Users.Features.ChangeUsername;
 using BarkFluff.Users.Features.CheckExistEmail;
@@ -250,5 +257,79 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         var fileId = string.IsNullOrEmpty(request.ProfilePosterFileId) ? null : request.ProfilePosterFileId;
         await _mediator.Send(new SetProfilePosterCommand { ProfilePosterFileId = fileId });
         return new SetProfilePosterResponse();
+    }
+
+    // Папки чатов
+
+    public override Task<GetChatFoldersResponse> GetChatFolders(GetChatFoldersRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_lookups");
+        return _mediator.Send(new GetChatFoldersQuery());
+    }
+
+    public override Task<CreateChatFolderResponse> CreateChatFolder(CreateChatFolderRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_creates");
+        var command = new CreateChatFolderCommand
+        {
+            FolderName = request.FolderName,
+            FolderIcon = request.FolderIcon,
+        };
+        return _mediator.Send(command);
+    }
+
+    public override Task<UpdateChatFolderResponse> UpdateChatFolder(UpdateChatFolderRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_updates");
+        var command = new UpdateChatFolderCommand
+        {
+            FolderId = request.FolderId,
+            FolderName = request.HasFolderName ? request.FolderName : null,
+            UpdateIcon = request.HasFolderIcon,
+            FolderIcon = request.HasFolderIcon ? request.FolderIcon : null,
+            UpdateChatList = request.HasChatListUpdate,
+            ChatList = request.HasChatListUpdate ? request.ChatList.ToArray() : null,
+        };
+        return _mediator.Send(command);
+    }
+
+    public override async Task<DeleteChatFolderResponse> DeleteChatFolder(DeleteChatFolderRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_deletes");
+        await _mediator.Send(new DeleteChatFolderCommand { FolderId = request.FolderId });
+        return new DeleteChatFolderResponse();
+    }
+
+    public override Task<AddChatToFolderResponse> AddChatToFolder(AddChatToFolderRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_chat_adds");
+        var command = new AddChatToFolderCommand
+        {
+            FolderId = request.FolderId,
+            ChatId = request.ChatId,
+        };
+        return _mediator.Send(command);
+    }
+
+    public override Task<RemoveChatFromFolderResponse> RemoveChatFromFolder(RemoveChatFromFolderRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_chat_removes");
+        var command = new RemoveChatFromFolderCommand
+        {
+            FolderId = request.FolderId,
+            ChatId = request.ChatId,
+        };
+        return _mediator.Send(command);
+    }
+
+    public override async Task<ReorderChatFoldersResponse> ReorderChatFolders(ReorderChatFoldersRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_folder_reorders");
+        var command = new ReorderChatFoldersCommand
+        {
+            Orders = request.Orders.ToList(),
+        };
+        await _mediator.Send(command);
+        return new ReorderChatFoldersResponse();
     }
 }
