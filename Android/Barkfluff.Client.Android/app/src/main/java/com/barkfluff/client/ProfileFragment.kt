@@ -64,6 +64,9 @@ class ProfileFragment : Fragment() {
         binding.itemPersonalization.setOnClickListener {
             startActivity(Intent(requireContext(), PersonalizationSettingsActivity::class.java))
         }
+        binding.itemChatFolders.setOnClickListener {
+            startActivity(Intent(requireContext(), ChatFoldersSettingsActivity::class.java))
+        }
         binding.itemStorage.setOnClickListener {
             startActivity(Intent(requireContext(), StorageSettingsActivity::class.java))
         }

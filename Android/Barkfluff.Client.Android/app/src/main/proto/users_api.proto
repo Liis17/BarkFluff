@@ -663,7 +663,7 @@ message ChatFolderData {
   string folder_id = 1;        // публичный идентификатор папки (Guid)
   string folder_name = 2;      // название папки
   string folder_icon = 3;      // строка-идентификатор иконки (пусто если не задана)
-  repeated int64 chat_list = 4; // ID чатов в папке
+  repeated string chat_list = 4; // ID чатов в папке (Guid строкой, тот же формат, что Chat.id из messages_api)
   int32 sort_order = 5;        // порядок отображения (меньше = выше)
 }
 
@@ -687,7 +687,7 @@ message UpdateChatFolderRequest {
   optional string folder_name = 2;       // новое название (если задано)
   optional string folder_icon = 3;       // новая иконка (пустая строка = очистить)
   bool has_chat_list_update = 4;         // если true — заменить ChatList на значения ниже
-  repeated int64 chat_list = 5;          // используется только когда has_chat_list_update=true
+  repeated string chat_list = 5;          // Guid'ы чатов; используется только когда has_chat_list_update=true
 }
 
 message UpdateChatFolderResponse {
@@ -702,7 +702,7 @@ message DeleteChatFolderResponse { }
 
 message AddChatToFolderRequest {
   string folder_id = 1; // Guid папки
-  int64 chat_id = 2;    // ID чата
+  string chat_id = 2;   // Guid чата (тот же формат, что Chat.id из messages_api)
 }
 
 message AddChatToFolderResponse {
@@ -711,7 +711,7 @@ message AddChatToFolderResponse {
 
 message RemoveChatFromFolderRequest {
   string folder_id = 1; // Guid папки
-  int64 chat_id = 2;    // ID чата
+  string chat_id = 2;   // Guid чата (тот же формат, что Chat.id из messages_api)
 }
 
 message RemoveChatFromFolderResponse {

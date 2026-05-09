@@ -239,6 +239,31 @@
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".PinnedMessagesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ChatFoldersSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".FolderEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".FolderChatPickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
         <receiver
             android:name=".notifications.MarkAsReadReceiver"
             android:exported="false" />

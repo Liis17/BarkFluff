@@ -2020,6 +2020,14 @@ class GrpcManager {
         val readBy: List<Long>
     )
 
+    data class ChatFolder(
+        val folderId: String,
+        val folderName: String,
+        val folderIcon: String,
+        val chatIds: List<String>,
+        val sortOrder: Int
+    )
+
     /**
      * Извлекает GUID (fileId) из URL файла.
      * Сервер файлов возвращает URL вида: https://files.barkfluff.com/web/download/{fileId}
@@ -2371,5 +2379,215 @@ class GrpcManager {
             Log.e(TAG, "Ошибка загрузки постера профиля", e)
             Result.failure(Exception("Ошибка загрузки постера: ${e.message}"))
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Папки чатов (UsersApi)
+    // ═══════════════════════════════════════════════════════════════
+
+    private fun UsersApiOuterClass.ChatFolderData.toDomain(): ChatFolder = ChatFolder(
+        folderId = folderId,
+        folderName = folderName,
+        folderIcon = folderIcon,
+        chatIds = chatListList.toList(),
+        sortOrder = sortOrder
+    )
+
+    suspend fun getChatFolders(): Result<List<ChatFolder>> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.GetChatFoldersRequest.getDefaultInstance()
+            val response = client.getChatFolders(request)
+            Result.success(response.foldersList.map { it.toDomain() })
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения папок чатов", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createChatFolder(name: String, icon: String): Result<ChatFolder> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.CreateChatFolderRequest.newBuilder()
+                .setFolderName(name)
+                .setFolderIcon(icon)
+                .build()
+            val response = client.createChatFolder(request)
+            Result.success(response.folder.toDomain())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания папки", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateChatFolder(
+        folderId: String,
+        name: String? = null,
+        icon: String? = null,
+        chatList: List<String>? = null
+    ): Result<ChatFolder> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val builder = UsersApiOuterClass.UpdateChatFolderRequest.newBuilder()
+                .setFolderId(folderId)
+            if (name != null) builder.folderName = name
+            if (icon != null) builder.folderIcon = icon
+            if (chatList != null) {
+                builder.hasChatListUpdate = true
+                builder.addAllChatList(chatList)
+            }
+            val response = client.updateChatFolder(builder.build())
+            Result.success(response.folder.toDomain())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления папки $folderId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteChatFolder(folderId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.DeleteChatFolderRequest.newBuilder()
+                .setFolderId(folderId)
+                .build()
+            client.deleteChatFolder(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка удаления папки $folderId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addChatToFolder(folderId: String, chatId: String): Result<ChatFolder> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.AddChatToFolderRequest.newBuilder()
+                .setFolderId(folderId)
+                .setChatId(chatId)
+                .build()
+            val response = client.addChatToFolder(request)
+            Result.success(response.folder.toDomain())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка добавления чата $chatId в папку $folderId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeChatFromFolder(folderId: String, chatId: String): Result<ChatFolder> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.RemoveChatFromFolderRequest.newBuilder()
+                .setFolderId(folderId)
+                .setChatId(chatId)
+                .build()
+            val response = client.removeChatFromFolder(request)
+            Result.success(response.folder.toDomain())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка удаления чата $chatId из папки $folderId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun reorderChatFolders(orders: List<Pair<String, Int>>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val builder = UsersApiOuterClass.ReorderChatFoldersRequest.newBuilder()
+            for ((folderId, sortOrder) in orders) {
+                builder.addOrders(
+                    UsersApiOuterClass.ChatFolderOrder.newBuilder()
+                        .setFolderId(folderId)
+                        .setSortOrder(sortOrder)
+                        .build()
+                )
+            }
+            client.reorderChatFolders(builder.build())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка изменения порядка папок", e)
+            Result.failure(e)
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Закреплённые сообщения (MessagesApi)
+    // ═══════════════════════════════════════════════════════════════
+
+    suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.PinMessageRequest.newBuilder()
+                .setChatId(chatId)
+                .setMessageId(messageId)
+                .build()
+            val response = client.pinMessage(request)
+            Result.success(response.pinned)
+        } catch (e: StatusException) {
+            val errorCode = e.trailers?.get(ERROR_CODE_KEY)
+            Log.e(TAG, "Ошибка закрепления сообщения $messageId, errorCode=$errorCode", e)
+            Result.failure(PinErrorException(errorCode, e))
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка закрепления сообщения $messageId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unpinMessage(chatId: String, messageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.UnpinMessageRequest.newBuilder()
+                .setChatId(chatId)
+                .setMessageId(messageId)
+                .build()
+            client.unpinMessage(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка открепления сообщения $messageId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun listPinnedMessages(
+        chatId: String,
+        offset: Int = 0,
+        size: Int = 50
+    ): Result<Pair<List<Shared.PinnedMessageInfo>, Int>> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.ListPinnedMessagesRequest.newBuilder()
+                .setChatId(chatId)
+                .setPagination(
+                    Shared.PageRequest.newBuilder()
+                        .setOffset(offset)
+                        .setSize(size)
+                        .build()
+                )
+                .build()
+            val response = client.listPinnedMessages(request)
+            Result.success(response.pinnedList.toList() to response.totalCount)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения закреплённых сообщений чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unpinAllMessages(chatId: String): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.UnpinAllRequest.newBuilder()
+                .setChatId(chatId)
+                .build()
+            val response = client.unpinAll(request)
+            Result.success(response.unpinnedCount)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка открепления всех сообщений чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    class PinErrorException(val errorCode: String?, cause: Throwable) : Exception(cause) {
+        companion object {
+            const val ERROR_TOO_MANY_PINNED = "F7E1A4B8-2C9D-4F3A-B6E7-8D5C1A0F9B23"
+        }
+        val isTooManyPinned: Boolean get() = errorCode.equals(ERROR_TOO_MANY_PINNED, ignoreCase = true)
     }
 }

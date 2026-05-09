@@ -123,7 +123,13 @@
       "Bash(tail -n +2200 \"K:\\\\\\\\source\\\\\\\\BarkFluff\\\\\\\\Backend\\\\\\\\BarkFluff.Web\\\\\\\\wwwroot\\\\\\\\messenger.html\")",
       "Bash(head *)",
       "Bash(findstr /C:\"ChatFolder\" /C:\"PinnedMessage\" /C:\"PinMessage\" \"K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\wwwroot\\\\js\\\\proto\\\\barkfluff.bundle.js\")",
-      "Bash(findstr /C:\"PinMessage\" /C:\"PinnedMessageInfo\" /C:\"SubscribeMessagesPinned\" \"K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\wwwroot\\\\js\\\\proto\\\\barkfluff.bundle.js\")"
+      "Bash(findstr /C:\"PinMessage\" /C:\"PinnedMessageInfo\" /C:\"SubscribeMessagesPinned\" \"K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\wwwroot\\\\js\\\\proto\\\\barkfluff.bundle.js\")",
+      "PowerShell(pwsh -ExecutionPolicy Bypass -File \"K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\scripts\\\\generate-proto.ps1\")",
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/api.js\")",
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/realtime.js\")",
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/folders.js\")",
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/pinned.js\")",
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/main.js\")"
     ],
     "deny": [],
     "ask": []
