@@ -240,6 +240,12 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".TestingSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".PinnedMessagesActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"

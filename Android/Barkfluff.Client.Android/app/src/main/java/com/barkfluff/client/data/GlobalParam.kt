@@ -208,6 +208,18 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getInt(KEY_CHAT_BACKGROUND_DIM, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_CHAT_BACKGROUND_DIM, value).apply()
 
+    // --- Тестирование (dev/QA-флаги) ---
+
+    /** Показывать UserId/ChatId в карточке профиля собеседника. */
+    var showIdsInProfile: Boolean
+        get() = sharedPreferences.getBoolean(KEY_TESTING_SHOW_IDS, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SHOW_IDS, value).apply()
+
+    /** Показывать кнопку создания скрытых (приватных/секретных) чатов в шапке списка чатов. */
+    var secretChatsEnabled: Boolean
+        get() = sharedPreferences.getBoolean(KEY_TESTING_SECRET_CHATS, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SECRET_CHATS, value).apply()
+
     /**
      * Очищает все данные аккаунта при разлогине.
      * Сохраняет только адреса сервера (socket_*, server_name, server_description).
@@ -291,6 +303,10 @@ class GlobalParam(private val context: Context) {
         private const val KEY_CHAT_BACKGROUND_BLUR = "chat_background_blur"
         private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
         private const val KEY_CHAT_BACKGROUND_DIM = "chat_background_dim"
+
+        // Тестирование
+        private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
+        private const val KEY_TESTING_SECRET_CHATS = "testing_secret_chats_enabled"
 
         /**
          * Генерирует уникальный ID устройства

@@ -73,6 +73,7 @@ class ChatsFragment : Fragment() {
         setupToolbar()
         setupChatList()
         setupSearchButton()
+        applySecretChatsVisibility()
 
         subscribeToRealtimeEvents()
         checkTokenAndLoadChats()
@@ -80,6 +81,7 @@ class ChatsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        applySecretChatsVisibility()
         val app = requireActivity().application as BarkFluffApplication
         if (app.cameFromBackground) {
             app.cameFromBackground = false
@@ -110,6 +112,12 @@ class ChatsFragment : Fragment() {
             val intent = Intent(requireContext(), CreateEncryptedChatActivity::class.java)
             startActivity(intent)
         }
+    }
+
+    private fun applySecretChatsVisibility() {
+        if (_binding == null) return
+        binding.encryptedChatButton.visibility =
+            if (globalParam.secretChatsEnabled) View.VISIBLE else View.GONE
     }
 
     private fun setupToolbar() {

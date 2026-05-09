@@ -84,11 +84,12 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="56dp"
+                android:layout_marginEnd="52dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Создать E2E чат"
+                android:contentDescription="Создать скрытый чат"
                 android:padding="12dp"
-                android:src="@android:drawable/ic_lock_lock"
+                android:src="@drawable/ic_hood"
+                android:visibility="gone"
                 app:tint="?attr/colorOnSurface" />
 
         </com.google.android.material.appbar.MaterialToolbar>

@@ -82,6 +82,9 @@ class ProfileFragment : Fragment() {
         binding.itemAbout.setOnClickListener {
             startActivity(Intent(requireContext(), AboutActivity::class.java))
         }
+        binding.itemTesting.setOnClickListener {
+            startActivity(Intent(requireContext(), TestingSettingsActivity::class.java))
+        }
         binding.buttonLogout.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Выход")

@@ -275,6 +275,17 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | `barkfluff_private_chat_keys` | EncryptedSharedPreferences. chatId → Base64(AES-256 key). |
 | `barkfluff_secret_chats` | EncryptedSharedPreferences. secretChatId → `peerUserId\|peerDeviceId\|inviteId\|role\|accepted`. |
 
+## Раздел «Тестирование» (dev/QA-флаги)
+
+В настройках профиля под пунктом «О приложении» есть пункт **Тестирование** (`itemTesting`, иконка `ic_science`), открывающий `TestingSettingsActivity`. Раздел содержит локальные `MaterialSwitch`-флаги, читаемые/записываемые через `data/GlobalParam.kt`. Все ключи — в `barkfluff_prefs` (plain SharedPreferences).
+
+| Свойство `GlobalParam` | Ключ prefs | Что включает |
+|---|---|---|
+| `showIdsInProfile` | `testing_show_ids_in_profile` | Блок `profileIdsBlock` в `UserProfileActivity` (под статусом онлайна). Показывает `UserId: <otherUserId>` и `ChatId: <chatId>`. Тап по строке копирует значение в `ClipboardManager` + Toast. |
+| `secretChatsEnabled` | `testing_secret_chats_enabled` | `encryptedChatButton` в шапке `ChatsFragment` (иконка `ic_hood`, открывает `CreateEncryptedChatActivity`). По умолчанию кнопка `View.GONE`; видимость переоценивается в `onViewCreated` и `onResume`, чтобы переключение в TestingSettings подхватывалось при возврате. |
+
+Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.
+
 ## gRPC Коды ошибок (из x-error-code trailer)
 
 | Исключение | ErrorCode |
