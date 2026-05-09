@@ -156,7 +156,9 @@
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.state.PreKeyRecord)",
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.state.IdentityKeyStore)",
       "Bash(javap -p -classpath . org.signal.libsignal.protocol.ecc.ECPrivateKey)",
-      "Bash(./gradlew :app:assembleDebug -q)"
+      "Bash(./gradlew :app:assembleDebug -q)",
+      "Bash(unzip -l K:/source/BarkFluff/Android/Barkfluff.Client.Android/app/build/outputs/apk/debug/app-debug.apk)",
+      "Bash(awk '/\\\\.so$/ { printf \"  %10d  %s\\\\n\", $1, $4 }')"
     ],
     "deny": [],
     "ask": []
