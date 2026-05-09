@@ -24,6 +24,9 @@ docker-compose -f docker-compose-dev.yml up -d updates
 | `read-receipts-updates-handler` | `ReadByConsumer` | `ReadByNotification` | `SubscribeMessagesRead` |
 | `messages-edited-updates-handler` | `MessageEditedConsumer` | `MessageEditedNotification` | `SubscribeMessagesEdited` |
 | `messages-deleted-updates-handler` | `MessageDeletedConsumer` | `MessageDeletedNotification` | `SubscribeMessagesDeleted` |
+| `messages-pinned-updates-handler` | `MessagePinnedConsumer` | `MessagePinnedNotification` | `SubscribeMessagesPinned` |
+| `messages-unpinned-updates-handler` | `MessageUnpinnedConsumer` | `MessageUnpinnedNotification` | `SubscribeMessagesUnpinned` |
+| `all-messages-unpinned-updates-handler` | `AllMessagesUnpinnedConsumer` | `AllMessagesUnpinnedNotification` | `SubscribeAllMessagesUnpinned` |
 | `session-revoked-updates` | `SessionRevokedConsumer` | — | — (инвалидация токена через `TokenRevocationCache`) |
 
 ### Схема прохождения события
@@ -60,6 +63,9 @@ rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessage
 rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns (stream MessageReadEvent)
 rpc SubscribeMessagesEdited(SubscribeMessagesEditedRequest) returns (stream MessageEditedEvent)
 rpc SubscribeMessagesDeleted(SubscribeMessagesDeletedRequest) returns (stream MessageDeletedEvent)
+rpc SubscribeMessagesPinned(SubscribeMessagesPinnedRequest) returns (stream MessagePinnedEvent)
+rpc SubscribeMessagesUnpinned(SubscribeMessagesUnpinnedRequest) returns (stream MessageUnpinnedEvent)
+rpc SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) returns (stream AllMessagesUnpinnedEvent)
 ```
 
 Оба метода: регистрируют подписку → `await Task.Delay(Infinite, context.CancellationToken)` → при отключении удаляют подписку.
