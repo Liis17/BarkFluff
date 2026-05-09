@@ -117,6 +117,11 @@ class ChatActivity : AppCompatActivity() {
     private var pendingEditMessageId: Long = 0L
     private var pendingEditFileIds: List<String> = emptyList()
 
+    // Закреплённые сообщения
+    private val pinnedById = mutableMapOf<Long, barkfluff.shared.Shared.PinnedMessageInfo>()
+    private val pinnedSorted = mutableListOf<barkfluff.shared.Shared.PinnedMessageInfo>()
+    private var pinnedTotalCount: Int = 0
+
     // Inline стикер-панель
     private enum class InputPanelState { NONE, KEYBOARD, STICKER_PANEL }
     private var inputPanelState = InputPanelState.NONE
@@ -191,7 +196,9 @@ class ChatActivity : AppCompatActivity() {
         setupStickerPanel()
         setupKeyboardTracking()
         setupChatBackground()
+        setupPinnedBar()
         loadChatInfoAndMessages()
+        loadPinnedMessages()
 
         // Устанавливаем этот чат как открытый
         OpenChatManager.setOpenChat(chatId)
@@ -1474,9 +1481,7 @@ class ChatActivity : AppCompatActivity() {
                 }
                 R.id.actionEdit -> setPendingEdit(item)
                 R.id.actionDelete -> confirmAndDelete(item)
-                R.id.actionPin -> {
-                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
-                }
+                R.id.actionPin -> togglePinForMessage(item)
             }
             dismiss()
         }
@@ -1517,11 +1522,16 @@ class ChatActivity : AppCompatActivity() {
         saveImagesView.setOnClickListener { saveMessageImages(imageAtts); dismiss() }
         saveDocsView.setOnClickListener { saveMessageDocuments(docAtts); dismiss() }
 
+        // Пункт «Закрепить» / «Открепить» — переключается по состоянию
+        val pinView = popupView.findViewById<TextView>(R.id.actionPin)
+        val isPinned = pinnedById.containsKey(item.messageId)
+        pinView.text = if (isPinned) "Открепить" else "Закрепить"
+
         popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
         editView.setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
         deleteView.setOnClickListener { onClickWithDismiss(R.id.actionDelete) }
         popupView.findViewById<View>(R.id.actionForward).setOnClickListener { onClickWithDismiss(R.id.actionForward) }
-        popupView.findViewById<View>(R.id.actionPin).setOnClickListener { onClickWithDismiss(R.id.actionPin) }
+        pinView.setOnClickListener { onClickWithDismiss(R.id.actionPin) }
 
         // Измеряем popup чтобы аккуратно расположить относительно точки касания и краёв экрана
         popupView.measure(
@@ -2142,7 +2152,185 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            realtimeService.messagePinned.collect { event ->
+                if (event.chatId.equals(chatId, ignoreCase = true)) {
+                    onMessagePinnedRemote(event.messageId, event.pinnerUserId, event.pinnedAt.seconds * 1000)
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            realtimeService.messageUnpinned.collect { event ->
+                if (event.chatId.equals(chatId, ignoreCase = true)) {
+                    onMessageUnpinnedRemote(event.messageId)
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            realtimeService.allMessagesUnpinned.collect { event ->
+                if (event.chatId.equals(chatId, ignoreCase = true)) {
+                    onAllMessagesUnpinnedRemote()
+                }
+            }
+        }
+
         // Подписка на онлайн-статусы обрабатывается в loadOnlineStatus()
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Закреплённые сообщения
+    // ═══════════════════════════════════════════════════════════════
+
+    private fun setupPinnedBar() {
+        binding.pinnedMessageBar.setOnClickListener {
+            val first = pinnedSorted.firstOrNull() ?: return@setOnClickListener
+            scrollToMessageId(first.message.id)
+        }
+        binding.pinnedListButton.setOnClickListener {
+            val intent = Intent(this, PinnedMessagesActivity::class.java)
+                .putExtra(PinnedMessagesActivity.EXTRA_CHAT_ID, chatId)
+            pinnedListLauncher.launch(intent)
+        }
+    }
+
+    private val pinnedListLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val targetId = result.data?.getLongExtra(PinnedMessagesActivity.RESULT_SCROLL_TO_MESSAGE_ID, 0L) ?: 0L
+            if (targetId > 0L) scrollToMessageId(targetId)
+        }
+    }
+
+    private fun loadPinnedMessages() {
+        lifecycleScope.launch {
+            val result = grpcManager.listPinnedMessages(chatId)
+            if (result.isSuccess) {
+                val (list, total) = result.getOrNull() ?: (emptyList<barkfluff.shared.Shared.PinnedMessageInfo>() to 0)
+                pinnedById.clear()
+                pinnedSorted.clear()
+                pinnedById.putAll(list.associateBy { it.message.id })
+                pinnedSorted.addAll(list)
+                pinnedTotalCount = total
+                updatePinnedBar()
+            }
+        }
+    }
+
+    private fun onMessagePinnedRemote(messageId: Long, pinnerUserId: Long, pinnedAtMs: Long) {
+        if (pinnedById.containsKey(messageId)) return
+        // Чтобы получить полный Message — перезагружаем последнюю страницу закрепов.
+        lifecycleScope.launch {
+            val result = grpcManager.listPinnedMessages(chatId)
+            if (result.isSuccess) {
+                val (list, total) = result.getOrNull() ?: return@launch
+                pinnedById.clear()
+                pinnedSorted.clear()
+                pinnedById.putAll(list.associateBy { it.message.id })
+                pinnedSorted.addAll(list)
+                pinnedTotalCount = total
+                updatePinnedBar()
+            }
+        }
+    }
+
+    private fun onMessageUnpinnedRemote(messageId: Long) {
+        val removed = pinnedById.remove(messageId) ?: return
+        pinnedSorted.remove(removed)
+        pinnedTotalCount = (pinnedTotalCount - 1).coerceAtLeast(0)
+        updatePinnedBar()
+    }
+
+    private fun onAllMessagesUnpinnedRemote() {
+        pinnedById.clear()
+        pinnedSorted.clear()
+        pinnedTotalCount = 0
+        updatePinnedBar()
+    }
+
+    private fun updatePinnedBar() {
+        val first = pinnedSorted.firstOrNull()
+        if (first == null) {
+            binding.pinnedMessageBar.visibility = View.GONE
+            return
+        }
+        binding.pinnedMessageBar.visibility = View.VISIBLE
+        binding.pinnedTitle.text = if (pinnedTotalCount > 1) {
+            "Закреплённое сообщение · ${pinnedTotalCount}"
+        } else {
+            "Закреплённое сообщение"
+        }
+        val text = first.message.content?.text ?: ""
+        binding.pinnedPreview.text = if (text.isBlank()) "[вложение]" else text
+    }
+
+    private fun scrollToMessageId(messageId: Long) {
+        val list = messageAdapter.currentList
+        val idx = list.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
+        if (idx >= 0) {
+            binding.messagesRecyclerView.smoothScrollToPosition(idx)
+        } else {
+            // Сообщение не загружено — подгружаем окно вокруг него.
+            lifecycleScope.launch {
+                val result = chatRepository.loadMessages(chatId, fromMessageId = messageId, offsetBefore = 20, offsetAfter = 20)
+                if (result.isSuccess) {
+                    rebuildMessagesFromList(result.getOrNull() ?: emptyList())
+                    val newIdx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
+                    if (newIdx >= 0) binding.messagesRecyclerView.scrollToPosition(newIdx)
+                }
+            }
+        }
+    }
+
+    private fun togglePinForMessage(item: MessageItem) {
+        val isPinned = pinnedById.containsKey(item.messageId)
+        lifecycleScope.launch {
+            if (isPinned) {
+                val result = grpcManager.unpinMessage(chatId, item.messageId)
+                if (result.isFailure) {
+                    Toast.makeText(this@ChatActivity, "Не удалось открепить сообщение", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                val result = grpcManager.pinMessage(chatId, item.messageId)
+                if (result.isFailure) {
+                    val cause = result.exceptionOrNull()
+                    val msg = if (cause is GrpcManager.PinErrorException && cause.isTooManyPinned) {
+                        "Достигнут лимит закреплённых сообщений (100). Открепите старые, чтобы закрепить новое."
+                    } else {
+                        "Не удалось закрепить сообщение"
+                    }
+                    Toast.makeText(this@ChatActivity, msg, Toast.LENGTH_LONG).show()
+                } else {
+                    // Оптимистичное обновление до прихода realtime-события
+                    val pinned = result.getOrNull() ?: return@launch
+                    if (!pinnedById.containsKey(pinned.message.id)) {
+                        pinnedById[pinned.message.id] = pinned
+                        pinnedSorted.add(0, pinned)
+                        pinnedTotalCount++
+                        updatePinnedBar()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun rebuildMessagesFromList(messages: List<barkfluff.shared.Shared.Message>) {
+        val items = messages.map { msg ->
+            MessageItem(
+                messageId = msg.id,
+                senderId = msg.senderId,
+                text = msg.content?.text ?: "",
+                timestamp = msg.sentAt.seconds * 1000,
+                attachments = msg.content?.attachmentsList ?: emptyList(),
+                readStatus = if (msg.senderId == currentUserId) {
+                    if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
+                } else ReadStatus.NONE,
+                isEdited = msg.isEdited
+            )
+        }
+        messageAdapter.submitList(items)
     }
 
     private fun addNewMessage(msg: barkfluff.shared.Shared.Message) {

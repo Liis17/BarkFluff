@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.activity.result.contract.ActivityResultContracts
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
@@ -17,9 +18,13 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +39,18 @@ class ChatsFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var realtimeService: RealtimeService
     private var loadChatsJob: Job? = null
+
+    // Папки чатов
+    private var folders: List<GrpcManager.ChatFolder> = emptyList()
+    private var allChats: List<GrpcManager.ChatData> = emptyList()
+    private var selectedFolderId: String? = null  // null = «Все чаты»
+
+    private val foldersSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // По возвращении из настроек папок — перезагрузить
+        loadChats()
+    }
 
     companion object {
         private const val TAG = "ChatsFragment"
@@ -239,32 +256,102 @@ class ChatsFragment : Fragment() {
         loadChatsJob = viewLifecycleOwner.lifecycleScope.launch {
             showLoading(true)
 
-            val result = grpcManager.getChats()
-            if (result.isSuccess) {
-                val chats = result.getOrNull() ?: emptyList()
-                Log.d(TAG, "Загружено ${chats.size} чатов")
+            // Параллельно: чаты и папки. Чаты критичны, папки — нет (если упали — log + пустой список).
+            val (chatsResult, foldersResult) = coroutineScope {
+                val chatsDeferred = async { grpcManager.getChats() }
+                val foldersDeferred = async { grpcManager.getChatFolders() }
+                chatsDeferred.await() to foldersDeferred.await()
+            }
 
-                val displayItems = chats.map { chat ->
-                    resolveDisplayItem(chat)
+            if (chatsResult.isSuccess) {
+                allChats = chatsResult.getOrNull() ?: emptyList()
+                Log.d(TAG, "Загружено ${allChats.size} чатов")
+
+                folders = if (foldersResult.isSuccess) foldersResult.getOrNull() ?: emptyList() else {
+                    Log.w(TAG, "Не удалось загрузить папки, продолжаем с пустым списком", foldersResult.exceptionOrNull())
+                    emptyList()
                 }
 
-                chatAdapter.submitList(displayItems)
-                showEmptyState(displayItems.isEmpty())
+                // Если выбранная папка пропала — сбрасываем на «Все чаты»
+                if (selectedFolderId != null && folders.none { it.folderId == selectedFolderId }) {
+                    selectedFolderId = null
+                }
+
+                renderFolderTabs()
+                applyFolderFilter()
 
                 // Обновляем подписку на онлайн-статусы всех участников чатов
-                val allMemberIds = chats.flatMap { it.memberIds }.distinct()
+                val allMemberIds = allChats.flatMap { it.memberIds }.distinct()
                 realtimeService.changeOnlineSubscription(allMemberIds)
             } else {
-                Log.e(TAG, "Ошибка загрузки чатов", result.exceptionOrNull())
+                Log.e(TAG, "Ошибка загрузки чатов", chatsResult.exceptionOrNull())
                 Snackbar.make(
                     binding.root,
-                    "Ошибка загрузки чатов: ${result.exceptionOrNull()?.message}",
+                    "Ошибка загрузки чатов: ${chatsResult.exceptionOrNull()?.message}",
                     Snackbar.LENGTH_LONG
                 ).show()
                 showEmptyState(true)
             }
 
             showLoading(false)
+        }
+    }
+
+    private fun renderFolderTabs() {
+        val group = binding.foldersChipGroup
+        group.removeAllViews()
+
+        if (folders.isEmpty()) {
+            binding.foldersScroll.visibility = View.GONE
+            return
+        }
+        binding.foldersScroll.visibility = View.VISIBLE
+
+        // «Все чаты» — первая вкладка
+        val allChip = makeFolderChip("Все чаты", null)
+        allChip.isChecked = selectedFolderId == null
+        group.addView(allChip)
+
+        for (folder in folders) {
+            val text = if (folder.folderIcon.isBlank()) folder.folderName else "${folder.folderIcon} ${folder.folderName}"
+            val chip = makeFolderChip(text, folder.folderId)
+            chip.isChecked = (selectedFolderId == folder.folderId)
+            group.addView(chip)
+        }
+    }
+
+    private fun makeFolderChip(text: String, folderId: String?): Chip {
+        val chip = Chip(requireContext())
+        chip.text = text
+        chip.isCheckable = true
+        chip.isClickable = true
+        chip.setOnClickListener {
+            if (chip.isChecked && selectedFolderId != folderId) {
+                selectedFolderId = folderId
+                applyFolderFilter()
+            } else if (!chip.isChecked) {
+                // ChipGroup требует selectionRequired — но при попытке снять — оставим выбранным.
+                chip.isChecked = true
+            }
+        }
+        return chip
+    }
+
+    private fun applyFolderFilter() {
+        val filtered: List<GrpcManager.ChatData> = if (selectedFolderId == null) {
+            allChats
+        } else {
+            val folder = folders.firstOrNull { it.folderId == selectedFolderId }
+            if (folder == null) allChats
+            else {
+                val ids = folder.chatIds.toSet()
+                allChats.filter { it.id in ids }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val displayItems = filtered.map { chat -> resolveDisplayItem(chat) }
+            chatAdapter.submitList(displayItems)
+            showEmptyState(displayItems.isEmpty())
         }
     }
 
@@ -315,6 +402,15 @@ class ChatsFragment : Fragment() {
 
     private fun handleNewMessage(event: barkfluff.updates.UpdatesApiOuterClass.NewMessageEvent) {
         val msg = event.message
+
+        // Если активна папка — отфильтровать события по чатам в ней.
+        val selectedFolder = folders.firstOrNull { it.folderId == selectedFolderId }
+        if (selectedFolder != null && event.chatId !in selectedFolder.chatIds) {
+            // Чат не в текущей папке — пропускаем UI-обновление.
+            // При следующем переключении вкладки / pull-to-refresh всё подтянется.
+            return
+        }
+
         val found = chatAdapter.updateChatWithNewMessage(
             chatId = event.chatId,
             senderId = msg.senderId,
