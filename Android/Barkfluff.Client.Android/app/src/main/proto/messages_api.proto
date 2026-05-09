@@ -56,6 +56,62 @@ service MessagesApi {
 
   // Открепить все сообщения в чате
   rpc UnpinAll(UnpinAllRequest) returns(UnpinAllResponse);
+
+  // -- Приватные чаты (E2E через passphrase) ------------------------------------
+  //
+  // Сервер хранит только шифротекст (EncryptedMessage) и метаданные чата
+  // (kdf_salt, passphrase_verifier). Ключ AES-256-GCM выводится клиентом из
+  // passphrase через Argon2id(passphrase, kdf_salt). Сервер расшифровать
+  // не может. Приватные чаты — только 1-к-1 на первой итерации.
+
+  // Создать приватный чат с пользователем. Собеседник присоединится через AcceptPrivateChat
+  // после получения SubscribePrivateChatInvites и проверки passphrase.
+  rpc CreatePrivateChat(CreatePrivateChatRequest) returns(CreatePrivateChatResponse);
+
+  // Присоединиться к приватному чату (вызывается приглашённым после успешной проверки verifier на клиенте).
+  rpc AcceptPrivateChat(AcceptPrivateChatRequest) returns(AcceptPrivateChatResponse);
+
+  // Отклонить приглашение в приватный чат (приглашённым).
+  rpc RejectPrivateChat(RejectPrivateChatRequest) returns(RejectPrivateChatResponse);
+
+  // Отправить шифрованное сообщение в приватный чат.
+  rpc SendPrivateMessage(SendPrivateMessageRequest) returns(SendPrivateMessageResponse);
+
+  // Получить список шифрованных сообщений приватного чата (двунаправленная пагинация по аналогии с ListMessages).
+  rpc ListPrivateMessages(ListPrivateMessagesRequest) returns(ListPrivateMessagesResponse);
+
+  // Редактировать шифрованное сообщение (новый ciphertext+nonce+AAD).
+  rpc EditPrivateMessage(EditPrivateMessageRequest) returns(EditPrivateMessageResponse);
+
+  // Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
+  rpc DeletePrivateMessage(DeletePrivateMessageRequest) returns(DeletePrivateMessageResponse);
+
+  // -- Секретные чаты (Signal Double Ratchet) -----------------------------------
+  //
+  // Сервер НЕ хранит ни сам чат, ни сообщения. Метаданные чата держит только
+  // клиент-инициатор и клиент-получатель в локальном хранилище. Сервер выполняет
+  // три функции: (1) релэит SecretEnvelope получателю, (2) буферизует в Redis
+  // (TTL 24ч) если получатель оффлайн, (3) шлёт push без содержимого.
+  // Все секретные чаты — 1-к-1 и привязаны к конкретным устройствам обеих сторон.
+
+  // Отправить инвайт секретного чата. Содержит initial X3DH message (PreKeySignalMessage).
+  // Инвайт буферизуется на сервере (Redis, TTL 24ч) до Accept/Reject получателя.
+  rpc SendSecretChatInvite(SendSecretChatInviteRequest) returns(SendSecretChatInviteResponse);
+
+  // Принять инвайт секретного чата (вызывается на устройстве получателя). После accept
+  // отправитель получит событие через SubscribeSecretChatAccepts и сможет отправлять SecretMessage.
+  rpc AcceptSecretChatInvite(AcceptSecretChatInviteRequest) returns(AcceptSecretChatInviteResponse);
+
+  // Отклонить инвайт секретного чата. Отправитель получает уведомление через SubscribeSecretChatAccepts
+  // (с флагом accepted=false). Инвайт удаляется из буфера.
+  rpc RejectSecretChatInvite(RejectSecretChatInviteRequest) returns(RejectSecretChatInviteResponse);
+
+  // Отправить шифрованное сообщение секретного чата конкретному устройству собеседника.
+  // Envelope opaque (libsignal SignalMessage). Сервер кладёт в Redis на 24ч и шлёт push без содержимого.
+  rpc SendSecretMessage(SendSecretMessageRequest) returns(SendSecretMessageResponse);
+
+  // Подтвердить доставку секретного сообщения (получатель). После ack сервер удаляет envelope из буфера.
+  rpc AckSecretMessage(AckSecretMessageRequest) returns(AckSecretMessageResponse);
 }
 
 message EditMessageRequest {
@@ -199,22 +255,28 @@ message ListChatsResponse {
 }
 
 message Chat {
-  
+
   string id = 1; // Идентификатор чата
-  
+
   string title = 2; // Название чата
-  
+
   string picture = 3; // Картиночка чата
-  
+
   bool is_group_chat = 4; // Признак того что это групповой чат
 
   barkfluff.shared.Message last_message = 5; // Последнее отправленное сообщение
 
   repeated ChatMember members = 6; // Участники чата (возвращается только для ЛС)
-  
+
   int64 count_unread = 7; // Количество непрочитанных сообщений
-  
+
   int64 first_unread_message_id = 8; // Идентификатор первого непрочитанного сообщения
+
+  barkfluff.shared.ChatType chat_type = 9; // Тип чата (REGULAR/PRIVATE; SECRET через ListChats не возвращается)
+
+  bytes kdf_salt = 10; // Соль для Argon2id (только для PRIVATE; пусто для REGULAR)
+
+  bytes passphrase_verifier = 11; // Верификатор passphrase, HMAC от константы (только для PRIVATE; пусто для REGULAR)
 }
 
 message ChatMember {
@@ -274,6 +336,114 @@ message GetChatInfoResponse {
   int64 count_unread = 6; // Количество непрочитанных сообщений
   repeated int64 members_id = 7; // Идентификаторы участников чата
 }
+
+// -- Приватные чаты (E2E через passphrase) ------------------------------------
+
+message CreatePrivateChatRequest {
+  int64 peer_user_id = 1;          // ID собеседника
+  bytes kdf_salt = 2;              // Соль Argon2id (32 байта, генерируется создателем)
+  bytes passphrase_verifier = 3;   // Верификатор passphrase: HMAC-SHA256(derived_key, "BARKFLUFF_PRIVATE_CHAT_VERIFIER")
+}
+
+message CreatePrivateChatResponse {
+  Chat chat = 1; // Созданный чат (с chat_type=PRIVATE; собеседник пока не присоединён)
+}
+
+message AcceptPrivateChatRequest {
+  string chat_id = 1; // ID приватного чата, в который пользователь приглашён
+}
+
+message AcceptPrivateChatResponse {
+  Chat chat = 1; // Чат с присоединившимся участником
+}
+
+message RejectPrivateChatRequest {
+  string chat_id = 1; // ID приватного чата
+}
+
+message RejectPrivateChatResponse { }
+
+message SendPrivateMessageRequest {
+  string chat_id = 1;          // ID приватного чата
+  bytes ciphertext = 2;        // Шифротекст AES-256-GCM
+  bytes nonce = 3;             // Уникальный nonce (12 байт), генерируется отправителем
+  bytes associated_data = 4;   // AAD для AES-GCM (привязка к chat_id и т.п.)
+}
+
+message SendPrivateMessageResponse {
+  barkfluff.shared.EncryptedMessage message = 1; // Сохранённое сообщение
+}
+
+message ListPrivateMessagesRequest {
+  string chat_id = 1;          // ID приватного чата
+  int64 from_message_id = 2;   // ID опорного сообщения
+  int32 offset_before = 3;     // Сколько сообщений до опорного (макс 50)
+  int32 offset_after = 4;      // Сколько сообщений после опорного (макс 50)
+}
+
+message ListPrivateMessagesResponse {
+  repeated barkfluff.shared.EncryptedMessage messages = 1; // Шифрованные сообщения
+}
+
+message EditPrivateMessageRequest {
+  int64 message_id = 1;        // ID шифрованного сообщения
+  bytes ciphertext = 2;        // Новый шифротекст
+  bytes nonce = 3;             // Новый nonce (обязательно отличный от старого)
+  bytes associated_data = 4;   // AAD
+}
+
+message EditPrivateMessageResponse {
+  barkfluff.shared.EncryptedMessage message = 1; // Обновлённое сообщение
+}
+
+message DeletePrivateMessageRequest {
+  int64 message_id = 1; // ID шифрованного сообщения
+}
+
+message DeletePrivateMessageResponse { }
+
+// -- Секретные чаты (Signal Double Ratchet) -----------------------------------
+
+message SendSecretChatInviteRequest {
+  int64 recipient_user_id = 1;     // ID пользователя-получателя
+  string recipient_device_id = 2;  // ID устройства-получателя (выбирается отправителем из ListPeerDevices)
+  bytes initial_envelope = 3;      // libsignal PreKeySignalMessage (opaque)
+}
+
+message SendSecretChatInviteResponse {
+  string invite_id = 1;                                  // ID инвайта (для AcceptSecretChatInvite)
+  google.protobuf.Timestamp invite_expires_at = 2;       // Когда инвайт удалится из буфера (24ч от sent_at)
+}
+
+message AcceptSecretChatInviteRequest {
+  string invite_id = 1;            // ID инвайта
+  bytes response_envelope = 2;     // Опционально: первое ответное сообщение (libsignal SignalMessage). Пусто = только подтверждение.
+}
+
+message AcceptSecretChatInviteResponse { }
+
+message RejectSecretChatInviteRequest {
+  string invite_id = 1; // ID инвайта
+}
+
+message RejectSecretChatInviteResponse { }
+
+message SendSecretMessageRequest {
+  int64 recipient_user_id = 1;     // ID пользователя-получателя (для маршрутизации в Updates)
+  string recipient_device_id = 2;  // ID устройства-получателя
+  bytes envelope = 3;              // libsignal SignalMessage (opaque)
+}
+
+message SendSecretMessageResponse {
+  string message_id = 1;                            // ID сообщения (для Ack клиентом-получателем)
+  google.protobuf.Timestamp expires_at = 2;         // Когда сообщение удалится из буфера (24ч)
+}
+
+message AckSecretMessageRequest {
+  string message_id = 1; // ID сообщения
+}
+
+message AckSecretMessageResponse { }
 
 // Server API для межсервисного взаимодействия
 

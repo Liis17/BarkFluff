@@ -78,6 +78,19 @@
                 android:src="@drawable/ic_search"
                 app:tint="?attr/colorOnSurface" />
 
+            <!-- Кнопка создания E2E чата (приватный/секретный) -->
+            <ImageButton
+                android:id="@+id/encryptedChatButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="56dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Создать E2E чат"
+                android:padding="12dp"
+                android:src="@android:drawable/ic_lock_lock"
+                app:tint="?attr/colorOnSurface" />
+
         </com.google.android.material.appbar.MaterialToolbar>
 
         <HorizontalScrollView
