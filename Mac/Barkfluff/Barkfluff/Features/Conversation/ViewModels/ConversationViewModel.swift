@@ -298,6 +298,76 @@ final class ConversationViewModel {
         }
     }
 
+    /// Отправить чистый стикер (без текста). Файл стикера уже на сервере — отправляем
+    /// его fileID через обычный sendMessage, как это делают веб- и Android-клиенты.
+    func sendSticker(_ sticker: Sticker) async {
+        let stickerFileID = sticker.fileID
+        guard !stickerFileID.isEmpty else { return }
+
+        // В новом диалоге — flow без optimistic, как в sendMessage.
+        if isNewConversation, let userID = targetUserID {
+            do {
+                let confirmed = try await messageService.sendMessage(
+                    chatID: nil,
+                    userID: userID,
+                    text: "",
+                    fileIDs: [stickerFileID],
+                    forwardedMessageID: nil
+                )
+                await resolveNewConversation(firstMessage: confirmed)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            return
+        }
+
+        let localID = UUID().uuidString
+        let pendingID = Self.nextPendingID()
+
+        // Локальное превью стикера: previewURL подсунем в presignedURLHint
+        // через MessageAttachment.previewURL.
+        let previewURL = sticker.previewURL.isEmpty ? sticker.fileURL : sticker.previewURL
+        let localAttachment = MessageAttachment(
+            id: -Int64.random(in: 1...Int64.max / 2),
+            type: .sticker,
+            fileID: stickerFileID,
+            fileName: "\(sticker.id).webp",
+            fileSize: 0,
+            previewURL: previewURL.isEmpty ? nil : previewURL,
+            previewFileID: sticker.previewFileID.isEmpty ? nil : sticker.previewFileID
+        )
+        let pending = Message(
+            id: pendingID,
+            chatID: chat.id,
+            senderID: currentUserID,
+            content: MessageContent(text: "", attachments: [localAttachment]),
+            sentAt: Date(),
+            sendingState: .sending,
+            localID: localID
+        )
+
+        withAnimation(.spring(duration: 0.3)) {
+            messages.append(pending)
+        }
+
+        do {
+            let confirmed = try await messageService.sendMessage(
+                chatID: chat.id,
+                userID: nil,
+                text: "",
+                fileIDs: [stickerFileID],
+                forwardedMessageID: nil
+            )
+            replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
+            onMessageSent?(confirmed)
+            await markVisibleMessagesAsRead()
+        } catch {
+            updatePendingMessage(localID: localID) { msg in
+                msg.sendingState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
     /// Отправка сообщения с вложениями
     func sendMessageWithAttachments(
         text: String,

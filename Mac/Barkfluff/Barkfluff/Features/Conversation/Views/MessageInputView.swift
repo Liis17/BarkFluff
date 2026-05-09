@@ -9,6 +9,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
+import BFCore
 
 struct MessageInputView: View {
     @Binding var text: String
@@ -17,14 +18,59 @@ struct MessageInputView: View {
     let uploadProgress: [UUID: Double]
     /// Режим редактирования — кнопка отправки показывается как галочка
     var isEditMode: Bool = false
+    /// Сообщение, на которое формируется ответ. Превью отрисовывается внутри composer
+    /// (под градиентом, плотно к инпуту), чтобы между ним и текстовым полем не было зазора.
+    var pendingReply: Message? = nil
+    /// Сообщение, которое сейчас редактируется. Превью отрисовывается так же, как pendingReply.
+    var editingMessage: Message? = nil
+    /// Сброс reply (обычно — viewModel.clearPendingReply()).
+    var onCancelReply: (() -> Void)? = nil
+    /// Сброс edit (обычно — viewModel.cancelEdit() + очистка messageText).
+    var onCancelEdit: (() -> Void)? = nil
     let onSend: () -> Void
     let onFileSelected: ([URL], Bool) -> Void  // URLs, forceAsDocument
+    /// Сервис стикеров — нужен пикеру.
+    let stickersService: StickersServiceProtocol
+    /// Хранилище недавно использованных стикеров.
+    let recentStickersStore: RecentStickersStore
+    /// Колбэк выбора стикера в пикере.
+    let onStickerSelected: (Sticker) -> Void
 
     @State private var showEmojiPicker = false
+    @State private var showStickerPicker = false
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
+            // Reply-превью — плотно над инпутом, в области градиента composer'а.
+            if let reply = pendingReply {
+                ReplyPreviewView(
+                    authorName: reply.senderName ?? "Сообщение",
+                    snippet: ReplyPreviewView.makeSnippet(reply),
+                    onCancel: { onCancelReply?() }
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.top, Theme.Spacing.sm)
+            }
+
+            // Edit-превью — то же место, что у reply (взаимоисключающие).
+            if let editing = editingMessage {
+                EditPreviewView(
+                    snippet: ReplyPreviewView.makeSnippet(editing),
+                    onCancel: { onCancelEdit?() }
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.top, Theme.Spacing.sm)
+            }
+
             // Полоса превью вложений (только если есть)
             if !selectedAttachments.isEmpty {
                 AttachmentPreviewStrip(
@@ -95,6 +141,25 @@ struct MessageInputView: View {
                     .popover(isPresented: $showEmojiPicker, arrowEdge: .bottom) {
                         EmojiPickerView { emoji in
                             text.append(emoji)
+                        }
+                    }
+
+                    // Кнопка выбора стикера
+                    Button {
+                        showStickerPicker.toggle()
+                    } label: {
+                        Image(systemName: "square.grid.2x2.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showStickerPicker, arrowEdge: .bottom) {
+                        StickerPickerView(
+                            service: stickersService,
+                            recentStore: recentStickersStore
+                        ) { sticker in
+                            showStickerPicker = false
+                            onStickerSelected(sticker)
                         }
                     }
                 }
