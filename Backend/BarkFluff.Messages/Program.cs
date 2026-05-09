@@ -80,7 +80,10 @@ public class Program
         builder.Services.AddTransient<PinnedMessagesStorage>();
         builder.Services.AddTransient<EncryptedMessagesStorage>();
         builder.Services.AddSingleton<SecretMessageBuffer>();
+        builder.Services.AddSingleton<PrivateChatInviteStore>();
         builder.Services.AddTransient<MessageQueueSender>();
+        builder.Services.AddTransient<EncryptedMessageQueueSender>();
+        builder.Services.AddTransient<SecretMessageQueueSender>();
         builder.Services.AddTransient<ReadByQueueSender>();
 
         builder.Services.AddMassTransit(x =>

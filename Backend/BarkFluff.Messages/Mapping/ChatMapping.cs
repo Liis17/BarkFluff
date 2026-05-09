@@ -1,6 +1,8 @@
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 
+using Google.Protobuf;
+
 namespace BarkFluff.Messages.Mapping;
 
 public static class ChatMapping
@@ -21,7 +23,10 @@ public static class ChatMapping
             Picture = chat.Picture ?? string.Empty,
             Title = chat.Title,
             Members = { chat.Members?.Select(x => x.ToGrpc()) },
-            FirstUnreadMessageId = chat.FirstUnreadMessageId ?? 0
+            FirstUnreadMessageId = chat.FirstUnreadMessageId ?? 0,
+            ChatType = (BarkFluff.Proto.Shared.ChatType)chat.Type,
+            KdfSalt = chat.KdfSalt is { Length: > 0 } salt ? ByteString.CopyFrom(salt) : ByteString.Empty,
+            PassphraseVerifier = chat.PassphraseVerifier is { Length: > 0 } v ? ByteString.CopyFrom(v) : ByteString.Empty,
         };
     }
 }
