@@ -78,6 +78,31 @@ public class S3StorageService : IDisposable
     }
 
     /// <summary>
+    /// Заливка из non-seekable потока с известной длиной.
+    /// Отключает payload-signing (UNSIGNED-PAYLOAD), потому что иначе SDK попытался бы
+    /// перемотать поток для подсчёта SHA-256 при формировании sigv4.
+    /// Целостность по-прежнему гарантирована TLS.
+    /// </summary>
+    public async Task<string> UploadStreamingAsync(string key, Stream data, long length, string contentType)
+    {
+        var request = new PutObjectRequest
+        {
+            BucketName              = _bucketName,
+            Key                     = key,
+            InputStream             = data,
+            AutoCloseStream         = false,
+            AutoResetStreamPosition = false,
+            ContentType             = contentType,
+            DisablePayloadSigning   = true,
+            DisableDefaultChecksumValidation = true
+        };
+        request.Headers.ContentLength = length;
+
+        var response = await _client.PutObjectAsync(request);
+        return response.ETag;
+    }
+
+    /// <summary>
     /// Возвращает стриминговый ответ S3 без буферизации.
     /// Caller должен через await using освободить результат.
     /// Поддерживает Range-запросы для возобновляемых загрузок / BITS.

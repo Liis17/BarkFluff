@@ -29,8 +29,6 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 | `S3_SERVICE_URL` | URL S3 (default: `http://localhost:9000`) |
 | `S3_BUCKET_NAME` | Имя бакета (default: `client-storage`) |
 | `UPLOAD_TOKEN` | **Обязательный** Bearer-токен для POST-эндпоинтов |
-| `Seq__ServerUrl` | URL Seq для логов и метрик (default `http://seq:80`) |
-| `Seq__ApiKey` | API-ключ Seq (опционально) |
 
 ## API Endpoints
 
@@ -77,8 +75,16 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 
 ### Upload
 - ASP.NET буферирует IFormFile в temp-файл при разборе multipart
-- `HashingReadStream` вычисляет SHA-256 одновременно с отправкой в S3 (один проход)
+- `Infrastructure/HashingReadStream` (read-only обёртка) считает SHA-256 пока AWS SDK стримит тело в S3 — один проход
+- В S3 заливается через `S3StorageService.UploadStreamingAsync` с `DisablePayloadSigning = true` и явным `Content-Length`, иначе SDK попытался бы перемотать non-seekable поток для sigv4
 - После ответа клиенту: фоновая задача скачивает файл из S3 в локальный кеш
+
+### Лимиты загрузки
+- `Kestrel.Limits.MaxRequestBodySize = 512 MB`
+- `FormOptions.MultipartBodyLengthLimit = 512 MB` (без него ASP.NET режет multipart по дефолтным 128 MB → 500)
+- `[RequestSizeLimit]` + `[RequestFormLimits]` на каждом POST-эндпоинте дублируют глобальные лимиты
+- nginx (`storage.barkfluff.com`): `client_max_body_size 512m`, `client_body_timeout 1800s`, `proxy_read/send_timeout 1800s`, `proxy_request_buffering off`
+- Kestrel `MinRequestBodyDataRate` отключён, чтобы медленные клиенты не получали 408
 
 ### Download (кеш → S3)
 - Приоритет: `LocalFileCache` (с диска контейнера) → стриминг из S3 как fallback
@@ -90,12 +96,6 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - Checksum (SHA-256 hex) и метаданные — для проверки целостности на клиенте
 - BITS качает через ClientStorage (кешированный файл), поддержка Range встроена
 
-## Логи и метрики
+## Логи
 
-Подключён Serilog (Console + Seq sink, буфер `logs/seq-buffer`). `Application = "BarkFluff.ClientStorage"`.
-
-Метрики локальные (не через `BarkFluff.GrpcServer`, чтобы сохранить изоляцию сервиса):
-- `Infrastructure/MetricsCollector.cs` — потокобезопасный `Increment/Add/Set`.
-- `Services/MetricsReporterService.cs` — каждые 5 сек пишет `LogInformation("ServiceMetrics {@Metrics}", ...)` — этот формат парсит `MetricsCollectorService` AdminPanel.
-
-Полный реестр метрик и формул производных значений — в файле памяти `project_clientstorage_metrics.md` (домены: `downloads_*`, `uploads_*`, `auth_*`, `cache_*`, `s3_*`, gauges `service_started_unix`, `cache_warmup_*`).
+Serilog → только Console (`Application = "BarkFluff.ClientStorage"`). Seq sink и метрики (`MetricsCollector`/`MetricsReporterService`) удалены — сервис изолирован от наблюдаемости основной инфраструктуры.

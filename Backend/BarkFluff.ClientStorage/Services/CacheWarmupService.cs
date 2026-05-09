@@ -31,14 +31,9 @@ public class CacheWarmupService : IHostedService
         try
         {
             using var scope = _services.CreateScope();
-            var db      = scope.ServiceProvider.GetRequiredService<ClientStorageContext>();
-            var s3      = scope.ServiceProvider.GetRequiredService<S3StorageService>();
-            var cache   = scope.ServiceProvider.GetRequiredService<LocalFileCache>();
-            var metrics = scope.ServiceProvider.GetRequiredService<MetricsCollector>();
-
-            metrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-
-            long warmedExisting = 0, warmedFetched = 0, warmupErrors = 0, totalFiles = 0;
+            var db    = scope.ServiceProvider.GetRequiredService<ClientStorageContext>();
+            var s3    = scope.ServiceProvider.GetRequiredService<S3StorageService>();
+            var cache = scope.ServiceProvider.GetRequiredService<LocalFileCache>();
 
             foreach (ClientType clientType in Enum.GetValues<ClientType>())
             {
@@ -52,11 +47,9 @@ public class CacheWarmupService : IHostedService
                         .FirstOrDefaultAsync(ct);
 
                     if (file == null) continue;
-                    totalFiles++;
 
                     if (cache.GetCachedFilePath(clientType, channel) != null)
                     {
-                        warmedExisting++;
                         _logger.LogInformation("Кеш актуален: {ClientType} {Channel}", clientType, channel);
                         continue;
                     }
@@ -66,38 +59,19 @@ public class CacheWarmupService : IHostedService
                     {
                         using var result = await s3.DownloadAsync(file.S3Key);
                         await cache.UpdateAsync(clientType, channel, result.Stream);
-                        warmedFetched++;
                     }
                     catch (Exception ex)
                     {
-                        warmupErrors++;
                         _logger.LogError(ex, "Ошибка прогрева кеша: {ClientType} {Channel}", clientType, channel);
                     }
                 }
             }
-
-            metrics.Set("cache_files_total", totalFiles);
-            metrics.Set("cache_warmup_existing", warmedExisting);
-            metrics.Set("cache_warmup_fetched", warmedFetched);
-            metrics.Set("cache_warmup_errors", warmupErrors);
-            metrics.Set("cache_warmup_healthy", warmupErrors == 0 ? 1 : 0);
-            metrics.Set("cache_warmup_completed_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
             _logger.LogInformation("Прогрев кеша завершён");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Критическая ошибка прогрева кеша");
-            try
-            {
-                using var scope = _services.CreateScope();
-                var metrics = scope.ServiceProvider.GetRequiredService<MetricsCollector>();
-                metrics.Set("cache_warmup_healthy", 0);
-            }
-            catch
-            {
-                // ignore — сервис ещё не успел собраться
-            }
         }
     }
 

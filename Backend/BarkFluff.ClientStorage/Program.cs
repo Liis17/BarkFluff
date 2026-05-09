@@ -4,6 +4,7 @@ using BarkFluff.ClientStorage.Middleware;
 using BarkFluff.ClientStorage.Persistence;
 using BarkFluff.ClientStorage.Services;
 
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,12 +16,11 @@ namespace BarkFluff.ClientStorage;
 public class Program
 {
     private const string ServiceName = "BarkFluff.ClientStorage";
+    private const long MaxUploadBytes = 512L * 1024 * 1024;
 
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-        var seqUrl = builder.Configuration["Seq:ServerUrl"] ?? "http://seq:80";
 
         builder.Host.UseSerilog((context, loggerConfig) =>
         {
@@ -36,23 +36,10 @@ public class Program
                 .Enrich.WithThreadId()
                 .Enrich.WithProperty("Application", ServiceName)
                 .WriteTo.Console(
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
-                .WriteTo.Seq(seqUrl,
-                    bufferBaseFilename: "logs/seq-buffer",
-                    bufferSizeLimitBytes: 104857600,
-                    batchPostingLimit: 100,
-                    period: TimeSpan.FromSeconds(2),
-                    queueSizeLimit: 100000);
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
         });
 
         builder.Services.AddControllers();
-
-        builder.Services.AddSingleton<MetricsCollector>();
-        builder.Services.AddHostedService(sp =>
-            new MetricsReporterService(
-                sp.GetRequiredService<MetricsCollector>(),
-                sp.GetRequiredService<ILogger<MetricsReporterService>>(),
-                ServiceName));
 
         builder.Services.AddSingleton<S3StorageService>();
         builder.Services.AddSingleton<LocalFileCache>();
@@ -68,9 +55,21 @@ public class Program
             options.KnownProxies.Clear();
         });
 
+        builder.Services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = MaxUploadBytes;
+            options.ValueLengthLimit         = int.MaxValue;
+            options.MultipartHeadersLengthLimit = int.MaxValue;
+        });
+
         builder.WebHost.ConfigureKestrel(options =>
         {
-            options.Limits.MaxRequestBodySize = 512 * 1024 * 1024; // 512 MB
+            options.Limits.MaxRequestBodySize = MaxUploadBytes;
+            options.Limits.KeepAliveTimeout   = TimeSpan.FromMinutes(30);
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(2);
+            // Не выставляем MinRequestBodyDataRate — медленные клиенты не должны получать 408.
+            options.Limits.MinRequestBodyDataRate = null;
+            options.Limits.MinResponseDataRate    = null;
         });
 
         var app = builder.Build();
