@@ -44,7 +44,6 @@ struct StickerPickerView: View {
                         stickers: viewModel.visibleStickers,
                         onTap: { sticker in
                             viewModel.didTap(sticker)
-                            onStickerSelected(sticker)
                         },
                         onLongPressStart: { sticker in
                             previewSticker = sticker

@@ -88,38 +88,19 @@ struct ConversationView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Превью ответа (Telegram-style) — над инпутом
-                if let viewModel, let reply = viewModel.pendingReply {
-                    ReplyPreviewView(
-                        authorName: reply.senderName ?? "Сообщение",
-                        snippet: ReplyPreviewView.makeSnippet(reply),
-                        onCancel: { viewModel.clearPendingReply() }
-                    )
-                    .padding(.horizontal, Theme.Spacing.md)
-                    .padding(.bottom, Theme.Spacing.xs)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-
-                // Превью редактирования — над инпутом
-                if let viewModel, let editing = viewModel.editingMessage {
-                    EditPreviewView(
-                        snippet: ReplyPreviewView.makeSnippet(editing),
-                        onCancel: {
-                            viewModel.cancelEdit()
-                            messageText = ""
-                        }
-                    )
-                    .padding(.horizontal, Theme.Spacing.md)
-                    .padding(.bottom, Theme.Spacing.xs)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-
                 MessageInputView(
                     text: $messageText,
                     selectedAttachments: $selectedAttachments,
                     isSending: viewModel?.isSendingAttachments ?? false,
                     uploadProgress: viewModel?.uploadProgress ?? [:],
                     isEditMode: viewModel?.editingMessage != nil,
+                    pendingReply: viewModel?.pendingReply,
+                    editingMessage: viewModel?.editingMessage,
+                    onCancelReply: { viewModel?.clearPendingReply() },
+                    onCancelEdit: {
+                        viewModel?.cancelEdit()
+                        messageText = ""
+                    },
                     onSend: { sendMessage() },
                     onFileSelected: { urls, forceAsDocument in
                         for url in urls {

@@ -18,7 +18,8 @@ struct EditPreviewView: View {
         HStack(alignment: .center, spacing: Theme.Spacing.sm) {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(Color.accentColor)
-                .frame(width: 3, height: 32)
+                .frame(width: 3)
+                .frame(maxHeight: .infinity)
 
             Image(systemName: "pencil")
                 .font(.callout)
