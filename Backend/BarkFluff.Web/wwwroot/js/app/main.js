@@ -1386,6 +1386,7 @@
 
     function openContextMenu(x, y, msgEl) {
         if (!msgContextMenu || !msgEl) return;
+        if (msgEl.classList.contains('msg-system')) return;
         var msgId = Number(msgEl.dataset.msgId);
         if (!msgId) return;
         var isOutgoing = msgEl.classList.contains('outgoing');

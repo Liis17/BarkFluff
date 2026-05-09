@@ -129,7 +129,9 @@
       "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/realtime.js\")",
       "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/folders.js\")",
       "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/pinned.js\")",
-      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/main.js\")"
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/main.js\")",
+      "Bash(node --check \"K:/source/BarkFluff/Backend/BarkFluff.Web/wwwroot/js/app/messages.js\")",
+      "Bash(dotnet ef *)"
     ],
     "deny": [],
     "ask": []
