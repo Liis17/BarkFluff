@@ -44,6 +44,18 @@ service MessagesApi {
 
   // Удалить сообщение (soft-delete: скрывается у всех клиентов)
   rpc DeleteMessage(DeleteMessageRequest) returns(DeleteMessageResponse);
+
+  // Закрепить сообщение в чате
+  rpc PinMessage(PinMessageRequest) returns(PinMessageResponse);
+
+  // Открепить сообщение в чате
+  rpc UnpinMessage(UnpinMessageRequest) returns(UnpinMessageResponse);
+
+  // Получить список закреплённых сообщений в чате
+  rpc ListPinnedMessages(ListPinnedMessagesRequest) returns(ListPinnedMessagesResponse);
+
+  // Открепить все сообщения в чате
+  rpc UnpinAll(UnpinAllRequest) returns(UnpinAllResponse);
 }
 
 message EditMessageRequest {
@@ -61,6 +73,40 @@ message DeleteMessageRequest {
 }
 
 message DeleteMessageResponse { }
+
+message PinMessageRequest {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор закрепляемого сообщения
+}
+
+message PinMessageResponse {
+  barkfluff.shared.PinnedMessageInfo pinned = 1; // Информация о закреплённом сообщении
+}
+
+message UnpinMessageRequest {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор откреплямого сообщения
+}
+
+message UnpinMessageResponse { }
+
+message ListPinnedMessagesRequest {
+  string chat_id = 1; // Идентификатор чата
+  barkfluff.shared.PageRequest pagination = 2; // Пагинация
+}
+
+message ListPinnedMessagesResponse {
+  repeated barkfluff.shared.PinnedMessageInfo pinned = 1; // Закреплённые сообщения
+  int32 total_count = 2; // Общее количество закреплённых сообщений в чате
+}
+
+message UnpinAllRequest {
+  string chat_id = 1; // Идентификатор чата
+}
+
+message UnpinAllResponse {
+  int32 unpinned_count = 1; // Сколько сообщений было откреплено
+}
 
 message MarkAsReadRequest {
   repeated int64 message_ids = 1; // Идентификаторы сообщений

@@ -56,4 +56,41 @@ public class MessageQueueSender
 
         await _publishEndpoint.Publish(deletedEvent);
     }
+
+    public async Task SendPinned(Guid chatId, long messageId, long pinnerUserId, DateTime pinnedAt, List<long> chatMembers)
+    {
+        var pinnedEvent = new MessagePinnedEvent()
+        {
+            ChatId = chatId,
+            ChatMembers = chatMembers,
+            MessageId = messageId,
+            PinnerUserId = pinnerUserId,
+            PinnedAt = pinnedAt
+        };
+
+        await _publishEndpoint.Publish(pinnedEvent);
+    }
+
+    public async Task SendUnpinned(Guid chatId, long messageId, List<long> chatMembers)
+    {
+        var unpinnedEvent = new MessageUnpinnedEvent()
+        {
+            ChatId = chatId,
+            ChatMembers = chatMembers,
+            MessageId = messageId
+        };
+
+        await _publishEndpoint.Publish(unpinnedEvent);
+    }
+
+    public async Task SendAllUnpinned(Guid chatId, List<long> chatMembers)
+    {
+        var allUnpinnedEvent = new AllMessagesUnpinnedEvent()
+        {
+            ChatId = chatId,
+            ChatMembers = chatMembers
+        };
+
+        await _publishEndpoint.Publish(allUnpinnedEvent);
+    }
 }
