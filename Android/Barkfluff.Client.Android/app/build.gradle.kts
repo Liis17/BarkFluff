@@ -28,6 +28,10 @@ android {
         versionName = "0.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {
@@ -43,6 +47,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            ndk {
+                abiFilters.clear()
+                abiFilters += "arm64-v8a"
+            }
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
@@ -71,7 +81,16 @@ android {
     }
     packaging {
         resources {
-            excludes += setOf("libsignal_jni*.dylib", "signal_jni*.dll", "**/libsignal_jni_testing.so")
+            // libsignal-client desktop JAR кладёт desktop-нативки в корень JAR;
+            // даже если зависимость случайно транзитивно протечёт — выпиливаем их из APK.
+            excludes += setOf(
+                "libsignal_jni*.dylib",
+                "libsignal_jni*.so",
+                "signal_jni*.dll",
+                "libsignal_jni_testing*.so",
+                "libsignal_jni_testing*.dylib",
+                "signal_jni_testing*.dll"
+            )
         }
     }
 }
@@ -183,9 +202,11 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
 
-    // E2E-шифрование: Signal Double Ratchet (секретные чаты) + Argon2id (приватные чаты)
+    // E2E-шифрование: Signal Double Ratchet (секретные чаты) + Argon2id (приватные чаты).
+    // ВНИМАНИЕ: libsignal-android уже включает libsignal-client транзитивно с правильными
+    // Android-нативками. Прямое подключение libsignal-client (desktop JAR) тащит ~280 МБ
+    // ненужных native libs (Linux x86_64, macOS, Windows) — НЕ добавлять.
     implementation(libs.libsignal.android)
-    implementation(libs.libsignal.client)
     implementation(libs.argon2kt)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
