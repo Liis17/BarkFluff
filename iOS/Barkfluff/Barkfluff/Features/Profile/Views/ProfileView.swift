@@ -54,7 +54,7 @@ struct ProfileView: View {
             Section {
                 Button(role: .destructive) {
                     Task {
-                        await coordinator.logout(
+                        try? await coordinator.logout(
                             authService: container.authService,
                             updatesService: container.updatesService
                         )
