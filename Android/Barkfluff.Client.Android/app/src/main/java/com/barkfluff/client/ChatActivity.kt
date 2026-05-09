@@ -1986,24 +1986,28 @@ class ChatActivity : AppCompatActivity() {
                 lastDate = msgDate
             }
 
-            result.add(
-                MessageItem(
-                    messageId = msg.id,
-                    senderId = msg.senderId,
-                    text = msg.content?.text ?: "",
-                    timestamp = msg.sentAt.seconds * 1000,
-                    attachments = msg.content?.attachmentsList ?: emptyList(),
-                    readStatus = if (msg.senderId == currentUserId) {
-                        if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-                    } else {
-                        ReadStatus.NONE
-                    },
-                    isEdited = msg.isEdited
-                )
-            )
+            result.add(toMessageItem(msg))
         }
 
         return result
+    }
+
+    private fun toMessageItem(msg: barkfluff.shared.Shared.Message): MessageItem {
+        val isSystem = msg.type == barkfluff.shared.Shared.MessageContentType.SYSTEM
+        return MessageItem(
+            messageId = msg.id,
+            senderId = msg.senderId,
+            text = msg.content?.text ?: "",
+            timestamp = msg.sentAt.seconds * 1000,
+            attachments = msg.content?.attachmentsList ?: emptyList(),
+            readStatus = if (!isSystem && msg.senderId == currentUserId) {
+                if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
+            } else {
+                ReadStatus.NONE
+            },
+            type = if (isSystem) MessageType.SYSTEM else MessageType.MESSAGE,
+            isEdited = msg.isEdited
+        )
     }
 
     private fun startOfDay(timestampMillis: Long): Long {
@@ -2087,21 +2091,7 @@ class ChatActivity : AppCompatActivity() {
                 currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
                 lastDate = msgDate
             }
-            currentList.add(
-                MessageItem(
-                    messageId = msg.id,
-                    senderId = msg.senderId,
-                    text = msg.content?.text ?: "",
-                    timestamp = msg.sentAt.seconds * 1000,
-                    attachments = msg.content?.attachmentsList ?: emptyList(),
-                    readStatus = if (msg.senderId == currentUserId) {
-                        if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-                    } else {
-                        ReadStatus.NONE
-                    },
-                    isEdited = msg.isEdited
-                )
-            )
+            currentList.add(toMessageItem(msg))
         }
 
         messageAdapter.submitList(currentList)
@@ -2317,20 +2307,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun rebuildMessagesFromList(messages: List<barkfluff.shared.Shared.Message>) {
-        val items = messages.map { msg ->
-            MessageItem(
-                messageId = msg.id,
-                senderId = msg.senderId,
-                text = msg.content?.text ?: "",
-                timestamp = msg.sentAt.seconds * 1000,
-                attachments = msg.content?.attachmentsList ?: emptyList(),
-                readStatus = if (msg.senderId == currentUserId) {
-                    if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-                } else ReadStatus.NONE,
-                isEdited = msg.isEdited
-            )
-        }
-        messageAdapter.submitList(items)
+        messageAdapter.submitList(messages.map { toMessageItem(it) })
     }
 
     private fun addNewMessage(msg: barkfluff.shared.Shared.Message) {
@@ -2339,23 +2316,11 @@ class ChatActivity : AppCompatActivity() {
             .toMutableList()
 
         // Проверка дубликата
-        if (currentList.any { it.type == MessageType.MESSAGE && it.messageId == msg.id }) {
+        if (currentList.any { (it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM) && it.messageId == msg.id }) {
             return
         }
 
-        val messageItem = MessageItem(
-            messageId = msg.id,
-            senderId = msg.senderId,
-            text = msg.content?.text ?: "",
-            timestamp = msg.sentAt.seconds * 1000,
-            attachments = msg.content?.attachmentsList ?: emptyList(),
-            readStatus = if (msg.senderId == currentUserId) {
-                if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-            } else {
-                ReadStatus.NONE
-            },
-            isEdited = msg.isEdited
-        )
+        val messageItem = toMessageItem(msg)
 
         // Убираем разделитель непрочитанных если он ещё есть
         currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }
@@ -2363,7 +2328,7 @@ class ChatActivity : AppCompatActivity() {
         // Проверяем, нужно ли добавить разделитель даты
         val msgDate = startOfDay(msg.sentAt.seconds * 1000)
         val lastItem = currentList.lastOrNull()
-        if (lastItem != null && lastItem.type == MessageType.MESSAGE) {
+        if (lastItem != null && (lastItem.type == MessageType.MESSAGE || lastItem.type == MessageType.SYSTEM)) {
             val lastMsgDate = startOfDay(lastItem.timestamp)
             if (msgDate != lastMsgDate) {
                 currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
