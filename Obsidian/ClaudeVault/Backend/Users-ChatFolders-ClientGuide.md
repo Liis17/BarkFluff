@@ -11,7 +11,7 @@
 | Поле | Тип на клиенте | Назначение |
 |------|----------------|-----------|
 | `folder_id` | `string` (Guid в текстовой форме) | **Единственный публичный идентификатор папки.** Возвращается при `Create`, используется во всех остальных RPC. Внутренний `Id` (long) клиенту не виден и не нужен. |
-| `chat_id` | `int64` | ID чата из Messages-сервиса (`ChatId`). Backend хранит плоский массив; не валидирует существование чата, не реагирует на удаление чата на стороне Messages. |
+| `chat_id` | `string` (Guid в текстовой форме) | ID чата из Messages-сервиса. **Тот же формат, что `Chat.id` в `messages_api.proto`** (Guid строкой, например `"e3a4...-..."`). Backend хранит плоский массив; не валидирует существование чата на стороне Messages. Невалидный Guid → `ChatIdNotValidException`. |
 | `folder_name` | `string` | После `Trim()` от 1 до 64 символов. Пустое или длиннее → `ChatFolderInvalidNameException`. |
 | `folder_icon` | `string` | Произвольная строка-идентификатор: emoji (`"📥"`), системный ключ (`"work"`, `"travel"`), или URL. Backend не интерпретирует — клиент сам решает как рендерить. Пустая строка эквивалентна «нет иконки». |
 | `sort_order` | `int32` | Порядок отображения. Меньше = выше. Backend сам ставит `max+1` при создании; клиент меняет порядок только через `ReorderChatFolders`. |
@@ -89,7 +89,7 @@
 | `folder_name` | `optional string` | Если установлено — обновить (после Trim). Если **не установлено** (`HasFolderName == false`) — не трогать. |
 | `folder_icon` | `optional string` | Если установлено пустой строкой — **очистить** иконку (записать NULL). Если установлено непустой — заменить. Если не установлено — не трогать. |
 | `has_chat_list_update` | `bool` | Флаг намеренной замены списка чатов. **Без него `chat_list` игнорируется.** Это нужно потому что у `repeated` в proto3 нет presence — пустой массив не отличить от «не передан». |
-| `chat_list` | `repeated int64` | Учитывается только при `has_chat_list_update == true`. Полностью замещает старый массив. |
+| `chat_list` | `repeated string` | Список Guid'ов чатов в текстовой форме. Учитывается только при `has_chat_list_update == true`. Полностью замещает старый массив. Любой невалидный Guid в списке → `ChatIdNotValidException`. |
 
 **Ответ:** `UpdateChatFolderResponse { ChatFolderData folder }` — папка после обновления.
 
@@ -130,7 +130,7 @@
 - Drag-and-drop чата в папку.
 - Сценарий «создать папку из выделенных чатов»: после `CreateChatFolder` — цикл `AddChatToFolder` (или один `UpdateChatFolder` с has_chat_list_update; первый вариант устойчивее к гонкам).
 
-**Запрос:** `AddChatToFolderRequest { string folder_id; int64 chat_id }`.
+**Запрос:** `AddChatToFolderRequest { string folder_id; string chat_id }` (`chat_id` — Guid строкой).
 
 **Ответ:** `AddChatToFolderResponse { ChatFolderData folder }` — папка после операции (с обновлённым `chat_list`).
 
@@ -140,7 +140,7 @@
 **Идемпотентность:** если `chat_id` уже в `chat_list`, backend это видит и не создаёт дубль (но всё равно возвращает текущее состояние). Клиент может смело повторять при ретраях, кешированных тапах и подобных кейсах.
 
 **Edge cases:**
-- Backend не проверяет, что `chat_id` существует в Messages. Если клиент передал мусорный ID — он молча сохранится. Это by design (Users и Messages — разные сервисы), но клиент не должен передавать произвольные числа.
+- Backend проверяет, что `chat_id` — валидный Guid (иначе `ChatIdNotValidException`), но **не** проверяет, что чат с таким Guid существует в Messages. Это by design (Users и Messages — разные сервисы), но клиент не должен передавать произвольные строки.
 - Один и тот же чат может одновременно лежать в нескольких папках — это не запрещено. Если продукт требует mutual exclusion, реализация на клиенте: перед `Add` сначала локально найти все папки с этим `chat_id` и сделать `RemoveChatFromFolder` для них.
 
 ---
@@ -152,7 +152,7 @@
 - Drag-and-drop чата из папки наружу.
 - Реакция на удаление чата из Messages (если клиент знает, что чат больше не существует — стоит вычистить из всех своих папок; backend этого не делает автоматически).
 
-**Запрос:** `RemoveChatFromFolderRequest { string folder_id; int64 chat_id }`.
+**Запрос:** `RemoveChatFromFolderRequest { string folder_id; string chat_id }` (`chat_id` — Guid строкой).
 
 **Ответ:** `RemoveChatFromFolderResponse { ChatFolderData folder }`.
 

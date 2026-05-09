@@ -17,7 +17,7 @@ public class ChatFolder
 
     public string? FolderIcon { get; set; }
 
-    public long[] ChatList { get; set; } = [];
+    public Guid[] ChatList { get; set; } = [];
 
     public int SortOrder { get; set; }
 }

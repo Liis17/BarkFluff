@@ -116,7 +116,14 @@
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-proto.ps1)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build -quiet)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'generic/platform=macOS' build)",
-      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'generic/platform=macOS' build)"
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'generic/platform=macOS' build)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(head -200 \"K:\\\\\\\\source\\\\\\\\BarkFluff\\\\\\\\Backend\\\\\\\\BarkFluff.Web\\\\\\\\wwwroot\\\\\\\\messenger.html\")",
+      "Bash(tail -n +2400 \"K:\\\\\\\\source\\\\\\\\BarkFluff\\\\\\\\Backend\\\\\\\\BarkFluff.Web\\\\\\\\wwwroot\\\\\\\\messenger.html\")",
+      "Bash(tail -n +2200 \"K:\\\\\\\\source\\\\\\\\BarkFluff\\\\\\\\Backend\\\\\\\\BarkFluff.Web\\\\\\\\wwwroot\\\\\\\\messenger.html\")",
+      "Bash(head *)",
+      "Bash(findstr /C:\"ChatFolder\" /C:\"PinnedMessage\" /C:\"PinMessage\" \"K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\wwwroot\\\\js\\\\proto\\\\barkfluff.bundle.js\")",
+      "Bash(findstr /C:\"PinMessage\" /C:\"PinnedMessageInfo\" /C:\"SubscribeMessagesPinned\" \"K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\wwwroot\\\\js\\\\proto\\\\barkfluff.bundle.js\")"
     ],
     "deny": [],
     "ask": []

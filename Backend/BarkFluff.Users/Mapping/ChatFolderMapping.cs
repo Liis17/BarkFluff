@@ -13,7 +13,7 @@ public static class ChatFolderMapping
             FolderIcon = domain.FolderIcon ?? string.Empty,
             SortOrder = domain.SortOrder,
         };
-        data.ChatList.AddRange(domain.ChatList);
+        data.ChatList.AddRange(domain.ChatList.Select(id => id.ToString()));
         return data;
     }
 }

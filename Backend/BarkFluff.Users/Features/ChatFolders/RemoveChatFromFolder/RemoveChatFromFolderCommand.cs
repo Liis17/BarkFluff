@@ -8,5 +8,5 @@ public class RemoveChatFromFolderCommand : IRequest<RemoveChatFromFolderResponse
 {
     public string? FolderId { get; set; }
 
-    public long ChatId { get; set; }
+    public Guid ChatId { get; set; }
 }

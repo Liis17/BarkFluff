@@ -16,5 +16,5 @@ public class UpdateChatFolderCommand : IRequest<UpdateChatFolderResponse>
 
     public bool UpdateChatList { get; set; }
 
-    public long[]? ChatList { get; set; }
+    public Guid[]? ChatList { get; set; }
 }

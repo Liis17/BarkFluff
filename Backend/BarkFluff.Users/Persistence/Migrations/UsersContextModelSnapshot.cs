@@ -64,9 +64,9 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.PrimitiveCollection<long[]>("ChatList")
+                    b.PrimitiveCollection<Guid[]>("ChatList")
                         .IsRequired()
-                        .HasColumnType("bigint[]");
+                        .HasColumnType("uuid[]");
 
                     b.Property<string>("FolderIcon")
                         .HasColumnType("text");
