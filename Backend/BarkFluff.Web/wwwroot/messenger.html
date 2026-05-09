@@ -417,7 +417,8 @@
         }
 
         .search-results.visible { display: block; }
-        .search-results.visible + .chat-list { display: none; }
+        .search-results.visible ~ .chat-list { display: none; }
+        .search-results.visible ~ .folder-tabs { display: none; }
 
         .search-result-item {
             display: flex;
@@ -2319,6 +2320,298 @@
                 align-items: flex-end;
             }
         }
+
+        /* === FOLDER TABS === */
+        .folder-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 8px 12px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            scrollbar-width: none;
+        }
+        .folder-tabs::-webkit-scrollbar { display: none; }
+
+        .folder-tabs:empty {
+            display: none;
+        }
+
+        .folder-tab {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+            user-select: none;
+        }
+        .folder-tab:hover {
+            background: var(--primary-alpha);
+        }
+        .folder-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .folder-tab.dragging {
+            opacity: 0.4;
+        }
+        .folder-tab.drop-target {
+            box-shadow: inset 0 0 0 2px var(--primary);
+        }
+
+        /* === PINNED BAR === */
+        .pinned-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            background: var(--dialog-bg);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            border-left: 3px solid var(--primary);
+            cursor: default;
+            min-height: 44px;
+        }
+        .pinned-bar.hidden { display: none; }
+
+        .pinned-bar-counter {
+            font-size: 11px;
+            color: var(--text-sub);
+            font-weight: 600;
+            min-width: 28px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .pinned-bar-preview {
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .pinned-bar-preview:hover .pinned-bar-author { color: var(--primary); }
+
+        .pinned-bar-author {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pinned-bar-text {
+            font-size: 13px;
+            color: var(--text-main);
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+        }
+
+        .pinned-bar-open {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            transition: background 0.15s, color 0.15s;
+        }
+        .pinned-bar-open:hover {
+            background: var(--primary-alpha);
+            color: var(--primary);
+        }
+
+        /* === CHAT CONTEXT MENU sections === */
+        .chat-context-menu .cm-section-title {
+            padding: 6px 14px 2px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .chat-context-menu .cm-separator {
+            height: 1px;
+            background: var(--card-border);
+            margin: 4px 6px;
+        }
+
+        /* === GENERIC OVERLAY/DIALOG (for new modals) === */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 250;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay.visible { display: flex; }
+
+        .dialog {
+            background: var(--dialog-bg);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        /* === FOLDER EDIT MODAL === */
+        .folder-edit-dialog {
+            width: 420px;
+            max-width: 95vw;
+        }
+        .folder-edit-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .folder-edit-title {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .folder-edit-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .folder-edit-close:hover { color: var(--text-main); }
+
+        .folder-edit-body {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .folder-edit-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .folder-edit-input {
+            padding: 10px 12px;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .folder-edit-input:focus { border-color: var(--primary); }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .emoji-cell {
+            aspect-ratio: 1;
+            background: transparent;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .emoji-cell:hover { background: var(--primary-alpha); }
+        .emoji-cell.selected {
+            background: var(--primary-alpha);
+            border-color: var(--primary);
+        }
+        .emoji-cell.emoji-none {
+            font-size: 18px;
+            color: var(--text-sub);
+        }
+
+        .folder-edit-actions {
+            display: flex;
+            gap: 8px;
+            padding: 14px 20px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        /* === PINNED LIST MODAL === */
+        .pinned-list-dialog {
+            width: 560px;
+            max-width: 95vw;
+            max-height: 85vh;
+        }
+        .pinned-list-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .pinned-list-title {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .pinned-list-counter {
+            color: var(--text-sub);
+            font-weight: 400;
+            font-size: 14px;
+            margin-left: 6px;
+        }
+        .pinned-list-inner {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .pinned-list-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .pinned-list-item .msg-group { cursor: pointer; }
+        .pinned-list-meta {
+            font-size: 11px;
+            color: var(--text-sub);
+            padding-left: 4px;
+        }
+        .pinned-list-empty {
+            text-align: center;
+            color: var(--text-sub);
+            padding: 40px 0;
+            font-size: 14px;
+        }
     </style>
     <script>
     /* Theme bootstrap — runs before render to avoid flash */
@@ -2365,6 +2658,7 @@
             </div>
 
             <div class="search-results" id="searchResults"></div>
+            <div class="folder-tabs" id="folderTabs"></div>
             <div class="chat-list" id="chatList"></div>
             <div class="sidebar-nav" id="sidebarNav">
                 <button class="nav-btn active" id="navChats">
@@ -2390,6 +2684,15 @@
                     <div class="chat-header-name" id="chatHeaderName"></div>
                     <div class="chat-header-status" id="chatHeaderStatus"></div>
                 </div>
+            </div>
+
+            <div class="pinned-bar hidden" id="pinnedBar">
+                <div class="pinned-bar-counter" id="pinnedBarCounter"></div>
+                <div class="pinned-bar-preview" id="pinnedBarPreview">
+                    <div class="pinned-bar-author" id="pinnedBarAuthor">Закреплённое</div>
+                    <div class="pinned-bar-text" id="pinnedBarText"></div>
+                </div>
+                <button class="pinned-bar-open" id="pinnedBarOpen" title="Все закреплённые сообщения">&#9776;</button>
             </div>
 
             <div class="chat-empty" id="chatEmpty">
@@ -2505,10 +2808,49 @@
 
     <!-- Message context menu -->
     <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon">&#8617;</span><span>Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon">&#8618;</span><span>Переслать</span></button>
-        <button data-act="edit"><span class="cm-icon">&#9998;</span><span>Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon">&#128465;</span><span>Удалить</span></button>
+        <button data-act="reply"><span class="cm-icon">&#8617;</span><span class="cm-label">Ответить</span></button>
+        <button data-act="forward"><span class="cm-icon">&#8618;</span><span class="cm-label">Переслать</span></button>
+        <button data-act="pin"><span class="cm-icon">&#128204;</span><span class="cm-label">Закрепить</span></button>
+        <button data-act="edit"><span class="cm-icon">&#9998;</span><span class="cm-label">Изменить</span></button>
+        <button data-act="delete" class="cm-danger"><span class="cm-icon">&#128465;</span><span class="cm-label">Удалить</span></button>
+    </div>
+
+    <!-- Chat context menu (PCM на чате в сайдбаре) -->
+    <div class="msg-context-menu chat-context-menu" id="chatContextMenu"></div>
+
+    <!-- Folder edit/create modal -->
+    <div class="overlay folder-edit-overlay" id="folderEditOverlay">
+        <div class="dialog folder-edit-dialog">
+            <div class="folder-edit-header">
+                <div class="folder-edit-title" id="folderEditTitle">Новая папка</div>
+                <button class="folder-edit-close" id="folderEditClose" title="Закрыть">&times;</button>
+            </div>
+            <div class="folder-edit-body">
+                <label class="folder-edit-label" for="folderNameInput">Название</label>
+                <input type="text" class="folder-edit-input" id="folderNameInput" maxlength="64" placeholder="Например: Работа" autocomplete="off">
+
+                <label class="folder-edit-label">Иконка</label>
+                <div class="emoji-grid" id="folderEmojiGrid"></div>
+            </div>
+            <div class="folder-edit-actions">
+                <button class="btn-confirm-cancel" id="folderEditDelete">Удалить</button>
+                <div style="flex:1"></div>
+                <button class="btn-confirm-cancel" id="folderEditCancel">Отмена</button>
+                <button class="btn-confirm-ok" id="folderEditSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pinned messages full-list modal -->
+    <div class="overlay pinned-list-overlay" id="pinnedListOverlay">
+        <div class="dialog pinned-list-dialog">
+            <div class="pinned-list-header">
+                <div class="pinned-list-title">Закреплённые сообщения <span class="pinned-list-counter" id="pinnedListCounter"></span></div>
+                <button class="btn-confirm-cancel" id="pinnedListUnpinAll">Открепить все</button>
+                <button class="folder-edit-close" id="pinnedListClose" title="Закрыть">&times;</button>
+            </div>
+            <div class="pinned-list-inner" id="pinnedListInner"></div>
+        </div>
     </div>
 
     <!-- Forward modal -->
@@ -2636,20 +2978,22 @@
     </script>
 
     <!-- gRPC-Web bundle -->
-    <script src="/js/proto/barkfluff.bundle.js?v=edit-delete-4"></script>
+    <script src="/js/proto/barkfluff.bundle.js?v=folders-pins-1"></script>
     <!-- App modules -->
     <script src="/js/app/device.js"></script>
     <script src="/js/app/tokens.js"></script>
     <script src="/js/app/metadata.js"></script>
     <script src="/js/app/clients.js"></script>
     <script src="/js/app/utils.js"></script>
-    <script src="/js/app/api.js?v=edit-delete-4"></script>
+    <script src="/js/app/api.js?v=folders-pins-1"></script>
     <script src="/js/app/files.js"></script>
     <script src="/js/app/messages.js?v=edit-delete-4"></script>
-    <script src="/js/app/realtime.js?v=edit-delete-4"></script>
+    <script src="/js/app/realtime.js?v=folders-pins-1"></script>
     <script src="/js/app/settings.js"></script>
     <script src="/js/app/attach.js"></script>
-    <script src="/js/app/main.js?v=edit-delete-4"></script>
+    <script src="/js/app/folders.js?v=folders-pins-1"></script>
+    <script src="/js/app/pinned.js?v=folders-pins-1"></script>
+    <script src="/js/app/main.js?v=folders-pins-1"></script>
     <script>
     /* Inject theme picker into settings dialog */
     (function () {

@@ -22,6 +22,9 @@
     var readStream = null;
     var editedStream = null;
     var deletedStream = null;
+    var pinnedStream = null;
+    var unpinnedStream = null;
+    var allUnpinnedStream = null;
     var onlineStream = null;
     var keepAliveTimer = null;
 
@@ -29,6 +32,9 @@
     var readBackoff = 2000;
     var editedBackoff = 2000;
     var deletedBackoff = 2000;
+    var pinnedBackoff = 2000;
+    var unpinnedBackoff = 2000;
+    var allUnpinnedBackoff = 2000;
     var onlineBackoff = 2000;
 
     var INITIAL_BACKOFF = 2000;
@@ -45,12 +51,18 @@
     var readAgeTimer    = null;
     var editedAgeTimer  = null;
     var deletedAgeTimer = null;
+    var pinnedAgeTimer  = null;
+    var unpinnedAgeTimer = null;
+    var allUnpinnedAgeTimer = null;
     var onlineAgeTimer  = null;
 
     var updatesOpenedAt = 0;
     var readOpenedAt    = 0;
     var editedOpenedAt  = 0;
     var deletedOpenedAt = 0;
+    var pinnedOpenedAt  = 0;
+    var unpinnedOpenedAt = 0;
+    var allUnpinnedOpenedAt = 0;
     var onlineOpenedAt  = 0;
 
     // Время последней активности (data/status) — для watchdog'а.
@@ -58,6 +70,9 @@
     var readLastActivity    = 0;
     var editedLastActivity  = 0;
     var deletedLastActivity = 0;
+    var pinnedLastActivity  = 0;
+    var unpinnedLastActivity = 0;
+    var allUnpinnedLastActivity = 0;
     var onlineLastActivity  = 0;
     var watchdogTimer = null;
 
@@ -387,6 +402,162 @@
         }, function () { handleNoToken(); });
     }
 
+    // --- Updates: message pinned ---
+
+    function subscribeMessagesPinned(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribeMessagesPinnedRequest();
+
+            if (pinnedStream) { try { pinnedStream.cancel(); } catch (e) {} }
+            pinnedStream = BF.clients.updates.subscribeMessagesPinned(req, meta);
+            pinnedOpenedAt = Date.now();
+            if (pinnedAgeTimer) clearTimeout(pinnedAgeTimer);
+            pinnedAgeTimer = setTimeout(function () {
+                if (_started) subscribeMessagesPinned(false);
+            }, STREAM_MAX_AGE);
+
+            pinnedLastActivity = Date.now();
+
+            pinnedStream.on('data', function (evt) {
+                pinnedBackoff = INITIAL_BACKOFF;
+                pinnedLastActivity = Date.now();
+                var pa = evt.getPinnedAt && evt.getPinnedAt();
+                emit('message_pinned', {
+                    chatId: evt.getChatId(),
+                    messageId: evt.getMessageId(),
+                    pinnerUserId: evt.getPinnerUserId(),
+                    pinnedAt: pa ? pa.toDate().getTime() : null
+                });
+            });
+
+            pinnedStream.on('status', function (status) {
+                pinnedLastActivity = Date.now();
+                if (status && status.code === 0) pinnedBackoff = INITIAL_BACKOFF;
+            });
+
+            pinnedStream.on('error', function (err) {
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeMessagesPinned(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeMessagesPinned(false); }, pinnedBackoff);
+                    pinnedBackoff = Math.min(pinnedBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            pinnedStream.on('end', function () {
+                if (Date.now() - pinnedOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    pinnedBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) setTimeout(function () { subscribeMessagesPinned(false); }, pinnedBackoff);
+            });
+        }, function () { handleNoToken(); });
+    }
+
+    // --- Updates: message unpinned ---
+
+    function subscribeMessagesUnpinned(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribeMessagesUnpinnedRequest();
+
+            if (unpinnedStream) { try { unpinnedStream.cancel(); } catch (e) {} }
+            unpinnedStream = BF.clients.updates.subscribeMessagesUnpinned(req, meta);
+            unpinnedOpenedAt = Date.now();
+            if (unpinnedAgeTimer) clearTimeout(unpinnedAgeTimer);
+            unpinnedAgeTimer = setTimeout(function () {
+                if (_started) subscribeMessagesUnpinned(false);
+            }, STREAM_MAX_AGE);
+
+            unpinnedLastActivity = Date.now();
+
+            unpinnedStream.on('data', function (evt) {
+                unpinnedBackoff = INITIAL_BACKOFF;
+                unpinnedLastActivity = Date.now();
+                emit('message_unpinned', {
+                    chatId: evt.getChatId(),
+                    messageId: evt.getMessageId()
+                });
+            });
+
+            unpinnedStream.on('status', function (status) {
+                unpinnedLastActivity = Date.now();
+                if (status && status.code === 0) unpinnedBackoff = INITIAL_BACKOFF;
+            });
+
+            unpinnedStream.on('error', function (err) {
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeMessagesUnpinned(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeMessagesUnpinned(false); }, unpinnedBackoff);
+                    unpinnedBackoff = Math.min(unpinnedBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            unpinnedStream.on('end', function () {
+                if (Date.now() - unpinnedOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    unpinnedBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) setTimeout(function () { subscribeMessagesUnpinned(false); }, unpinnedBackoff);
+            });
+        }, function () { handleNoToken(); });
+    }
+
+    // --- Updates: all messages unpinned ---
+
+    function subscribeAllMessagesUnpinned(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribeAllMessagesUnpinnedRequest();
+
+            if (allUnpinnedStream) { try { allUnpinnedStream.cancel(); } catch (e) {} }
+            allUnpinnedStream = BF.clients.updates.subscribeAllMessagesUnpinned(req, meta);
+            allUnpinnedOpenedAt = Date.now();
+            if (allUnpinnedAgeTimer) clearTimeout(allUnpinnedAgeTimer);
+            allUnpinnedAgeTimer = setTimeout(function () {
+                if (_started) subscribeAllMessagesUnpinned(false);
+            }, STREAM_MAX_AGE);
+
+            allUnpinnedLastActivity = Date.now();
+
+            allUnpinnedStream.on('data', function (evt) {
+                allUnpinnedBackoff = INITIAL_BACKOFF;
+                allUnpinnedLastActivity = Date.now();
+                emit('all_messages_unpinned', { chatId: evt.getChatId() });
+            });
+
+            allUnpinnedStream.on('status', function (status) {
+                allUnpinnedLastActivity = Date.now();
+                if (status && status.code === 0) allUnpinnedBackoff = INITIAL_BACKOFF;
+            });
+
+            allUnpinnedStream.on('error', function (err) {
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeAllMessagesUnpinned(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeAllMessagesUnpinned(false); }, allUnpinnedBackoff);
+                    allUnpinnedBackoff = Math.min(allUnpinnedBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            allUnpinnedStream.on('end', function () {
+                if (Date.now() - allUnpinnedOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    allUnpinnedBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) setTimeout(function () { subscribeAllMessagesUnpinned(false); }, allUnpinnedBackoff);
+            });
+        }, function () { handleNoToken(); });
+    }
+
     // --- Online status ---
 
     function subscribeOnline(userIds, forceRefresh) {
@@ -509,6 +680,18 @@
             console.warn('[realtime] watchdog: messages-deleted stream silent, reconnecting');
             subscribeMessagesDeleted();
         }
+        if (pinnedStream && (now - pinnedLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: messages-pinned stream silent, reconnecting');
+            subscribeMessagesPinned();
+        }
+        if (unpinnedStream && (now - unpinnedLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: messages-unpinned stream silent, reconnecting');
+            subscribeMessagesUnpinned();
+        }
+        if (allUnpinnedStream && (now - allUnpinnedLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: all-messages-unpinned stream silent, reconnecting');
+            subscribeAllMessagesUnpinned();
+        }
         if (onlineStream && (now - onlineLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
             if (currentOnlineUserIds.length > 0) {
                 console.warn('[realtime] watchdog: online stream silent, reconnecting');
@@ -539,6 +722,9 @@
                 if (!readConnected) subscribeMessagesRead();
                 if (!editedConnected) subscribeMessagesEdited();
                 if (!deletedConnected) subscribeMessagesDeleted();
+                if (!pinnedStream) subscribeMessagesPinned();
+                if (!unpinnedStream) subscribeMessagesUnpinned();
+                if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
                 if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
             });
             // Send keep-alive immediately
@@ -557,10 +743,16 @@
         readBackoff = INITIAL_BACKOFF;
         editedBackoff = INITIAL_BACKOFF;
         deletedBackoff = INITIAL_BACKOFF;
+        pinnedBackoff = INITIAL_BACKOFF;
+        unpinnedBackoff = INITIAL_BACKOFF;
+        allUnpinnedBackoff = INITIAL_BACKOFF;
         subscribeNewMessages();
         subscribeMessagesRead();
         subscribeMessagesEdited();
         subscribeMessagesDeleted();
+        subscribeMessagesPinned();
+        subscribeMessagesUnpinned();
+        subscribeAllMessagesUnpinned();
         startKeepAlive();
         startWatchdog();
     }
@@ -571,11 +763,17 @@
         if (readStream) { try { readStream.cancel(); } catch (e) {} readStream = null; }
         if (editedStream) { try { editedStream.cancel(); } catch (e) {} editedStream = null; }
         if (deletedStream) { try { deletedStream.cancel(); } catch (e) {} deletedStream = null; }
+        if (pinnedStream) { try { pinnedStream.cancel(); } catch (e) {} pinnedStream = null; }
+        if (unpinnedStream) { try { unpinnedStream.cancel(); } catch (e) {} unpinnedStream = null; }
+        if (allUnpinnedStream) { try { allUnpinnedStream.cancel(); } catch (e) {} allUnpinnedStream = null; }
         if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} onlineStream = null; }
         if (updatesAgeTimer) { clearTimeout(updatesAgeTimer); updatesAgeTimer = null; }
         if (readAgeTimer)    { clearTimeout(readAgeTimer);    readAgeTimer    = null; }
         if (editedAgeTimer)  { clearTimeout(editedAgeTimer);  editedAgeTimer  = null; }
         if (deletedAgeTimer) { clearTimeout(deletedAgeTimer); deletedAgeTimer = null; }
+        if (pinnedAgeTimer)  { clearTimeout(pinnedAgeTimer);  pinnedAgeTimer  = null; }
+        if (unpinnedAgeTimer) { clearTimeout(unpinnedAgeTimer); unpinnedAgeTimer = null; }
+        if (allUnpinnedAgeTimer) { clearTimeout(allUnpinnedAgeTimer); allUnpinnedAgeTimer = null; }
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
         updatesConnected = false;
         readConnected = false;
@@ -594,11 +792,17 @@
         readBackoff = INITIAL_BACKOFF;
         editedBackoff = INITIAL_BACKOFF;
         deletedBackoff = INITIAL_BACKOFF;
+        pinnedBackoff = INITIAL_BACKOFF;
+        unpinnedBackoff = INITIAL_BACKOFF;
+        allUnpinnedBackoff = INITIAL_BACKOFF;
         onlineBackoff = INITIAL_BACKOFF;
         subscribeNewMessages();
         subscribeMessagesRead();
         subscribeMessagesEdited();
         subscribeMessagesDeleted();
+        subscribeMessagesPinned();
+        subscribeMessagesUnpinned();
+        subscribeAllMessagesUnpinned();
         if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
     }
 
