@@ -36,6 +36,9 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<SessionRevokedConsumer>();
     x.AddConsumer<MessageEditedConsumer>();
     x.AddConsumer<MessageDeletedConsumer>();
+    x.AddConsumer<MessagePinnedConsumer>();
+    x.AddConsumer<MessageUnpinnedConsumer>();
+    x.AddConsumer<AllMessagesUnpinnedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -69,6 +72,21 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<MessageDeletedConsumer>(context);
         });
+
+        cfg.ReceiveEndpoint("messages-pinned-updates-handler", e =>
+        {
+            e.ConfigureConsumer<MessagePinnedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("messages-unpinned-updates-handler", e =>
+        {
+            e.ConfigureConsumer<MessageUnpinnedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("all-messages-unpinned-updates-handler", e =>
+        {
+            e.ConfigureConsumer<AllMessagesUnpinnedConsumer>(context);
+        });
     });
 });
 
@@ -87,6 +105,9 @@ startupMetrics.Set("new_messages_subscriptions_active", 0);
 startupMetrics.Set("read_by_subscriptions_active", 0);
 startupMetrics.Set("messages_edited_subscriptions_active", 0);
 startupMetrics.Set("messages_deleted_subscriptions_active", 0);
+startupMetrics.Set("messages_pinned_subscriptions_active", 0);
+startupMetrics.Set("messages_unpinned_subscriptions_active", 0);
+startupMetrics.Set("all_messages_unpinned_subscriptions_active", 0);
 startupMetrics.Set("subscriptions_active_total", 0);
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);

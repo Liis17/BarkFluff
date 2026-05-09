@@ -124,16 +124,31 @@ message UnpinAllResponse { int32 unpinned_count = 1; }
 
 ## 3. Realtime-события (RabbitMQ → Updates)
 
-События приходят в [[Backend/Updates]] и доставляются клиенту через **тот же стрим**, что и обычные `NewMessageEvent`/`MessageEditedEvent`/`MessageDeletedEvent` (см. [[Backend/Updates]]). Контракты — в `Shared/BarkFluff.Shared.Queue/Messages/`.
+События приходят в [[Backend/Updates]] и доставляются клиенту через **отдельные стримы** (по аналогии с `SubscribeMessagesEdited`/`SubscribeMessagesDeleted`):
 
-> ⚠️ На момент написания (2026-05-09) consumer'ы pin-событий в `Updates` ещё не реализованы — сейчас события только публикуются. Когда `Updates` начнёт их раздавать через стрим, клиенты должны их обрабатывать. До этого момента синхронизация между устройствами **только** через системные сообщения в чате (`NewMessageEvent` с `MessageContentType.System`) и периодический `ListPinnedMessages`.
+- `UpdatesApi.SubscribeMessagesPinned(SubscribeMessagesPinnedRequest) → stream MessagePinnedEvent`
+- `UpdatesApi.SubscribeMessagesUnpinned(SubscribeMessagesUnpinnedRequest) → stream MessageUnpinnedEvent`
+- `UpdatesApi.SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) → stream AllMessagesUnpinnedEvent`
+
+Авторизация — User-токен. Клиент должен открыть три долгоживущих стрима (как для других подписок) и обрабатывать сообщения, сравнивая `chat_id` с активными чатами. Контракты queue-событий — в `Shared/BarkFluff.Shared.Queue/Messages/`, proto-сообщения — в `Shared/BarkFluff.Proto/updates_api.proto`.
 
 ### 3.1. `MessagePinnedEvent`
 
+Proto (`updates_api.proto`):
+```proto
+message MessagePinnedEvent {
+  string chat_id = 1;
+  int64 message_id = 2;
+  int64 pinner_user_id = 3;
+  google.protobuf.Timestamp pinned_at = 4;
+}
+```
+
+Внутреннее queue-событие (`Shared/BarkFluff.Shared.Queue/Messages/MessagePinnedEvent.cs`):
 ```csharp
 public class MessagePinnedEvent {
     public Guid ChatId;
-    public List<long> ChatMembers;       // кому раздавать
+    public List<long> ChatMembers;       // кому раздавать (только сервер)
     public long MessageId;
     public long PinnerUserId;
     public DateTime PinnedAt;
@@ -147,6 +162,15 @@ public class MessagePinnedEvent {
 
 ### 3.2. `MessageUnpinnedEvent`
 
+Proto:
+```proto
+message MessageUnpinnedEvent {
+  string chat_id = 1;
+  int64 message_id = 2;
+}
+```
+
+Queue-событие:
 ```csharp
 public class MessageUnpinnedEvent {
     public Guid ChatId;
@@ -163,6 +187,14 @@ public class MessageUnpinnedEvent {
 
 ### 3.3. `AllMessagesUnpinnedEvent`
 
+Proto:
+```proto
+message AllMessagesUnpinnedEvent {
+  string chat_id = 1;
+}
+```
+
+Queue-событие:
 ```csharp
 public class AllMessagesUnpinnedEvent {
     public Guid ChatId;
