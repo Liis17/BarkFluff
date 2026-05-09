@@ -130,6 +130,49 @@ public class ChatsStorage
         return result.Entity;
     }
 
+    public async Task<Chat> CreatePrivateChat(long initiatorUserId, byte[] kdfSalt, byte[] passphraseVerifier)
+    {
+        var chat = new Chat
+        {
+            IsGroupChat = false,
+            Type = ChatType.Private,
+            KdfSalt = kdfSalt,
+            PassphraseVerifier = passphraseVerifier,
+            Members = new List<ChatMember>
+            {
+                new() { UserId = initiatorUserId, JoinedAt = DateTime.UtcNow }
+            }
+        };
+
+        var result = await _context.Chats.AddAsync(chat);
+        await _context.SaveChangesAsync();
+
+        return result.Entity;
+    }
+
+    public async Task<ChatMember> AddChatMember(Guid chatId, long userId)
+    {
+        var member = new ChatMember
+        {
+            ChatId = chatId,
+            UserId = userId,
+            JoinedAt = DateTime.UtcNow
+        };
+
+        await _context.ChatMembers.AddAsync(member);
+        await _context.SaveChangesAsync();
+        return member;
+    }
+
+    public async Task DeleteChat(Guid chatId)
+    {
+        var chat = await _context.Chats.FirstOrDefaultAsync(x => x.Id == chatId);
+        if (chat == null) return;
+
+        _context.Chats.Remove(chat);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<Chat> CreateGroupChat(List<long> members, string title, string? picture)
     {
         var chat = new Chat()

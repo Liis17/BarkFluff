@@ -20,7 +20,7 @@
 
 | Файл | Авторизация | Что делает |
 |------|------------|-----------|
-| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo, PinMessage, UnpinMessage, ListPinnedMessages, UnpinAll |
+| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo, PinMessage, UnpinMessage, ListPinnedMessages, UnpinAll, **CreatePrivateChat, AcceptPrivateChat, RejectPrivateChat, SendPrivateMessage, ListPrivateMessages, EditPrivateMessage, DeletePrivateMessage, SendSecretChatInvite, AcceptSecretChatInvite, RejectSecretChatInvite, SendSecretMessage, AckSecretMessage** |
 | `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт) |
 
 ---
@@ -60,6 +60,18 @@
 | `Features/UnpinMessage/UnpinMessageCommand.cs` + `Handler.cs` | Открепление сообщения: idempotent если не закреплено, системное сообщение, `MessageUnpinnedEvent` |
 | `Features/ListPinnedMessages/ListPinnedMessagesQuery.cs` + `Handler.cs` | Пагинированный список закреплённых; sort by `PinnedAt DESC`, фильтр `!IsDeleted`, files data из Files API |
 | `Features/UnpinAll/UnpinAllCommand.cs` + `Handler.cs` | Массовый откреп всех закрепов в чате, одно системное сообщение, `AllMessagesUnpinnedEvent` |
+| `Features/CreatePrivateChat/CreatePrivateChatCommand.cs` + `Handler.cs` | Создаёт приватный чат (Type=Private, KdfSalt+PassphraseVerifier), кладёт invitee в `PrivateChatInviteStore`, публикует `PrivateChatInviteEvent` |
+| `Features/AcceptPrivateChat/AcceptPrivateChatCommand.cs` + `Handler.cs` | Приглашённый присоединяется: проверяет invite в Redis, добавляет себя в `ChatMembers`, удаляет invite, публикует `PrivateChatInviteResolutionEvent(accepted=true)` |
+| `Features/RejectPrivateChat/RejectPrivateChatCommand.cs` + `Handler.cs` | Удаляет invite в Redis + `Chat` целиком, публикует `PrivateChatInviteResolutionEvent(accepted=false)` |
+| `Features/SendPrivateMessage/SendPrivateMessageCommand.cs` + `Handler.cs` | Сохраняет шифротекст через `EncryptedMessagesStorage.AddAsync`, публикует `NewEncryptedMessageEvent`. Требует DeviceId. Лимиты: ciphertext 1Б-64КиБ, nonce 12-32Б, AAD ≤ 4КиБ |
+| `Features/ListPrivateMessages/ListPrivateMessagesQuery.cs` + `Handler.cs` | Двунаправленная пагинация шифрованных сообщений (до 50 в каждую сторону) |
+| `Features/EditPrivateMessage/EditPrivateMessageCommand.cs` + `Handler.cs` | Перезаписывает ciphertext/nonce/AAD, выставляет IsEdited+EditedAt, публикует `EncryptedMessageEditedEvent` |
+| `Features/DeletePrivateMessage/DeletePrivateMessageCommand.cs` + `Handler.cs` | Soft-delete (физически очищает все 3 bytea-поля), публикует `EncryptedMessageDeletedEvent`, idempotent |
+| `Features/SendSecretChatInvite/SendSecretChatInviteCommand.cs` + `Handler.cs` | Кладёт PreKeySignalMessage в `SecretMessageBuffer.EnqueueInviteAsync`, публикует `SecretChatInviteEvent` + silent push. Лимит envelope 32Б-16КиБ |
+| `Features/AcceptSecretChatInvite/AcceptSecretChatInviteCommand.cs` + `Handler.cs` | Атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=true)` инициатору. Опционально содержит ответный SignalMessage |
+| `Features/RejectSecretChatInvite/RejectSecretChatInviteCommand.cs` + `Handler.cs` | Атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
+| `Features/SendSecretMessage/SendSecretMessageCommand.cs` + `Handler.cs` | Кладёт opaque envelope в `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч), публикует `NewSecretMessageEvent` (device-scope) + silent push. Лимит envelope 16Б-16КиБ |
+| `Features/AckSecretMessage/AckSecretMessageCommand.cs` + `Handler.cs` | Подтверждает доставку — `SecretMessageBuffer.AckMessageAsync(deviceId, messageId)`. Idempotent |
 
 ---
 
@@ -87,6 +99,8 @@
 |------|-----------|
 | `Infrastructure/MessageQueueSender.cs` | Публикует `NewMessageEvent`, `MessageEditedEvent`, `MessageDeletedEvent`, `MessagePinnedEvent`, `MessageUnpinnedEvent`, `AllMessagesUnpinnedEvent` в RabbitMQ → [[Backend/Updates]] |
 | `Infrastructure/ReadByQueueSender.cs` | Публикует `MessageReadEvent` в RabbitMQ → [[Backend/Updates]] |
+| `Infrastructure/EncryptedMessageQueueSender.cs` | Публикует `NewEncryptedMessageEvent`, `EncryptedMessageEditedEvent`, `EncryptedMessageDeletedEvent`, `PrivateChatInviteEvent`, `PrivateChatInviteResolutionEvent` (приватные чаты) в RabbitMQ → [[Backend/Updates]] |
+| `Infrastructure/SecretMessageQueueSender.cs` | Публикует `SecretChatInviteEvent`, `NewSecretMessageEvent`, `SecretChatInviteResolutionEvent` (секретные чаты, device-scope) + silent `PushNotificationEvent` → CloudMessaging |
 
 ---
 
@@ -104,7 +118,8 @@
 
 | Файл | Что делает |
 |------|-----------|
-| `Mapping/ChatMapping.cs` | `Domain.Chat` → proto `Chat` (с вложением LastMessage и данными участников) |
+| `Mapping/ChatMapping.cs` | `Domain.Chat` → proto `Chat` (с вложением LastMessage, участниками, ChatType/KdfSalt/PassphraseVerifier для приватных чатов) |
+| `Mapping/EncryptedMessageMapping.cs` | `Domain.EncryptedMessage` → proto `EncryptedMessage` (ciphertext/nonce/AAD как ByteString) |
 | `Mapping/ChatMemberMapping.cs` | `Domain.ChatMember` → proto `ChatMember` |
 | `Mapping/MessageMapping.cs` | `Domain.Message` → proto `Message` (принимает `filesInfoMap` для подстановки данных файлов) |
 | `Mapping/MessageContentMapping.cs` | `Domain.MessageContent` → proto `MessageContent` с вложениями |
@@ -130,6 +145,7 @@
 | `Persistence/Configurations/EncryptedMessageConfiguration.cs` | EF Fluent API для EncryptedMessage (PK Id, индексы ChatId и (ChatId, SentAt), bytea-поля с дефолтами) |
 | `Persistence/Services/EncryptedMessagesStorage.cs` | CRUD шифрованных сообщений: AddAsync, GetByIdAsync, ListByChatAsync (двунаправленная пагинация), EditAsync (выставляет IsEdited+EditedAt), SoftDeleteAsync (обнуляет ciphertext/nonce/AAD) |
 | `Persistence/Services/SecretMessageBuffer.cs` | Redis-буфер секретных envelope и инвайтов на 24ч. Использует `IConnectionMultiplexer` напрямую. EnqueueMessageAsync/EnqueueInviteAsync, ListPending*, AckMessageAsync, ConsumeInviteAsync (атомарно DEL) |
+| `Persistence/Services/PrivateChatInviteStore.cs` | Redis-стор pending-инвайтов приватных чатов. Ключ `private_invite:{chatId}` → invitee userId. Set/Get/Remove |
 | `Persistence/Services/Dtos/SecretMessageRecord.cs` | DTO для буфера: MessageId, SenderUserId, SenderDeviceId, RecipientDeviceId, Envelope, SentAt |
 | `Persistence/Services/Dtos/SecretInviteRecord.cs` | DTO для буфера: InviteId, Sender/Recipient User+Device, InitialEnvelope, SentAt |
 
