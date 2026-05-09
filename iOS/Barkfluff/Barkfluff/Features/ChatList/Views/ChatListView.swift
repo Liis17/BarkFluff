@@ -75,7 +75,8 @@ struct ChatListView: View {
                 ForEach(viewModel.chats) { chat in
                     ChatRowView(
                         chat: chat,
-                        onlineStatus: viewModel.onlineStatus(for: chat)
+                        currentUserID: container.currentUserID,
+                        onlineStatusService: container.onlineStatusService
                     )
                     .contentShape(Rectangle()) // Весь ряд кликабельный
                     .onTapGesture {
@@ -158,7 +159,15 @@ struct ChatListView: View {
 
 struct ChatRowView: View {
     let chat: Chat
-    let onlineStatus: OnlineStatus
+    let currentUserID: Int64
+    let onlineStatusService: OnlineStatusServiceProtocol
+
+    @State private var onlineStatus: OnlineStatus = .unknown
+
+    private var otherUserID: Int64? {
+        guard !chat.isGroupChat else { return nil }
+        return chat.otherUserID(excluding: currentUserID)
+    }
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
@@ -167,7 +176,7 @@ struct ChatRowView: View {
                 imageURL: chat.pictureURL,
                 initials: chat.avatarInitials,
                 size: 50,
-                isOnline: onlineStatus == .online,
+                isOnline: onlineStatus.isOnline,
                 showOnlineIndicator: !chat.isGroupChat
             )
 
@@ -210,6 +219,40 @@ struct ChatRowView: View {
             }
         }
         .padding(.vertical, Theme.Spacing.xs)
+        .task(id: otherUserID) {
+            await observeOnlineStatus()
+        }
+    }
+
+    /// Подписка на онлайн-статус собеседника.
+    /// `.task(id: otherUserID)` гарантирует, что при reuse cell под другой чат
+    /// предыдущая таска отменится и запустится новая для нового userID.
+    private func observeOnlineStatus() async {
+        guard let userID = otherUserID else {
+            onlineStatus = .unknown
+            return
+        }
+
+        // 1. Snapshot из кеша — мгновенный показ без сетевой задержки.
+        onlineStatus = await onlineStatusService.currentStatus(for: userID)
+
+        // 2. Track + подписка на per-user stream. При завершении таски
+        //    (исчезновение row или смена userID) — untrack через cancellation handler.
+        await onlineStatusService.track(userID)
+
+        await withTaskCancellationHandler {
+            let stream = await onlineStatusService.statusStream(for: userID)
+
+            // Свежий fetch уже состоялся внутри track — синхронизируем UI с кешем
+            // ещё раз на случай если он успел обновиться между snapshot'ом и track'ом.
+            onlineStatus = await onlineStatusService.currentStatus(for: userID)
+
+            for await newStatus in stream {
+                onlineStatus = newStatus
+            }
+        } onCancel: {
+            Task { await onlineStatusService.untrack(userID) }
+        }
     }
 }
 

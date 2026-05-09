@@ -46,7 +46,6 @@ final class DependencyContainer {
 
     let userCache: UserCache
     let chatCache: ChatCache
-    let fileCacheService: FileCacheService
     let onlineStatusCache: OnlineStatusCache
     let fileURLCache: FileURLCache
 
@@ -151,7 +150,6 @@ final class DependencyContainer {
         // Cache
         self.userCache = UserCache()
         self.chatCache = ChatCache()
-        self.fileCacheService = FileCacheService()
         self.onlineStatusCache = OnlineStatusCache()
         self.fileURLCache = FileURLCache()
 
@@ -253,7 +251,6 @@ final class DependencyContainer {
         await userCache.removeAll()
         await chatCache.removeAll()
         await onlineStatusCache.removeAll()
-        await fileCacheService.clearCache()
         await fileURLCache.clear()
         imagePipeline.cache.removeAll()
         await serverDiscoveryService.disconnect()

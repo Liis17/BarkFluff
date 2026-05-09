@@ -20,7 +20,7 @@ struct ConversationHeaderView: View {
                 imageURL: chat.pictureURL,
                 initials: chat.avatarInitials,
                 size: 36,
-                isOnline: onlineStatus == .online,
+                isOnline: onlineStatus.isOnline,
                 showOnlineIndicator: !chat.isGroupChat
             )
 
@@ -31,7 +31,7 @@ struct ConversationHeaderView: View {
                     .lineLimit(1)
 
                 if !chat.isGroupChat {
-                    onlineStatusText
+                    OnlineStatusText(status: onlineStatus)
                 }
             }
 
@@ -40,40 +40,6 @@ struct ConversationHeaderView: View {
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.vertical, Theme.Spacing.sm)
         .background(.ultraThinMaterial)
-    }
-
-    @ViewBuilder
-    private var onlineStatusText: some View {
-        switch onlineStatus {
-        case .online:
-            Text("онлайн")
-                .font(.caption)
-                .foregroundStyle(.green)
-        case .offline(let lastSeen):
-            Text(lastSeen.map { "был(а) \(formatLastSeen($0))" } ?? "не в сети")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .unknown:
-            EmptyView()
-        }
-    }
-
-    private func formatLastSeen(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let now = Date()
-
-        if calendar.isDateInToday(date) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "HH:mm"
-            return "в \(formatter.string(from: date))"
-        } else if calendar.isDateInYesterday(date) {
-            return "вчера"
-        } else {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "ru_RU")
-            formatter.dateFormat = "d MMM"
-            return formatter.string(from: date)
-        }
     }
 }
 
