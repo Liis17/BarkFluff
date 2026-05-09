@@ -18,9 +18,6 @@ final class ChatListViewModel {
     var searchResults: [User] = []
     var isSearching = false
 
-    /// Статусы онлайн для отображаемых чатов (userID → status)
-    var onlineStatuses: [Int64: OnlineStatus] = [:]
-
     /// Замыкание для проверки, открыт ли чат сейчас (активный)
     var isActiveChatChecker: ((String) -> Bool)?
 
@@ -37,7 +34,6 @@ final class ChatListViewModel {
     private var readEventsTask: Task<Void, Never>?
     private var connectionEventsTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
-    private var onlineStatusTasks: [Int64: Task<Void, Never>] = [:]
 
     init(
         chatService: ChatServiceProtocol,
@@ -65,7 +61,10 @@ final class ChatListViewModel {
             totalCount = result.totalCount
             applyFilter()
 
-            await startOnlineStatusTracking()
+            // Прогрев кеша онлайн-статусов для DM-чатов. Ref-counted tracking
+            // делают сами ChatRowView через .task(id:) когда строки появляются в List.
+            let userIDs = collectUserIDsFromChats()
+            await onlineStatusService.start(initialUserIDs: userIDs)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -85,11 +84,8 @@ final class ChatListViewModel {
             totalCount = result.totalCount
             applyFilter()
 
-            let newUserIDs = newChats.compactMap { chat -> Int64? in
-                guard !chat.isGroupChat else { return nil }
-                return chat.otherUserID(excluding: currentUserID)
-            }
-            await addToOnlineStatusTracking(newUserIDs)
+            // Tracking новых юзеров делают ChatRowView через .task(id:) когда
+            // их строки появляются в SwiftUI List — отдельная регистрация не нужна.
         } catch {
             // Silently fail for pagination
         }
@@ -142,64 +138,16 @@ final class ChatListViewModel {
         newMessagesTask = nil
         readEventsTask = nil
         connectionEventsTask = nil
-
-        let trackedIDs = Array(onlineStatusTasks.keys)
-        onlineStatusTasks.values.forEach { $0.cancel() }
-        onlineStatusTasks = [:]
-        if !trackedIDs.isEmpty {
-            Task { await onlineStatusService.untrack(trackedIDs) }
-        }
     }
 
     // MARK: - Online Status
 
-    private func startOnlineStatusTracking() async {
-        let userIDs = collectUserIDsFromChats()
-        await onlineStatusService.start(initialUserIDs: userIDs)
-        for userID in userIDs {
-            let status = await onlineStatusService.currentStatus(for: userID)
-            onlineStatuses[userID] = status
-            await startTrackingUser(userID)
-        }
-    }
-
-    private func startTrackingUser(_ userID: Int64) async {
-        guard onlineStatusTasks[userID] == nil else { return }
-        await onlineStatusService.track(userID)
-        onlineStatusTasks[userID] = Task { [weak self] in
-            guard let self else { return }
-            let stream = await self.onlineStatusService.statusStream(for: userID)
-            for await status in stream {
-                await MainActor.run {
-                    self.onlineStatuses[userID] = status
-                }
-            }
-        }
-    }
-
-    private func addToOnlineStatusTracking(_ newUserIDs: [Int64]) async {
-        guard !newUserIDs.isEmpty else { return }
-        let toAdd = newUserIDs.filter { onlineStatusTasks[$0] == nil }
-        guard !toAdd.isEmpty else { return }
-        for userID in toAdd {
-            let status = await onlineStatusService.currentStatus(for: userID)
-            await MainActor.run { self.onlineStatuses[userID] = status }
-            await startTrackingUser(userID)
-        }
-    }
-
+    /// Собрать ID пользователей из DM чатов (для warmup кеша при старте).
     private func collectUserIDsFromChats() -> [Int64] {
         allChats.compactMap { chat -> Int64? in
             guard !chat.isGroupChat else { return nil }
             return chat.otherUserID(excluding: currentUserID)
         }
-    }
-
-    func onlineStatus(for chat: Chat) -> OnlineStatus {
-        guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else {
-            return .unknown
-        }
-        return onlineStatuses[otherUserID] ?? .unknown
     }
 
     // MARK: - Event Handling
@@ -214,10 +162,8 @@ final class ChatListViewModel {
             allChats.insert(chat, at: 0)
             applyFilter()
         } else {
-            let senderID = event.message.senderID
-            if senderID != currentUserID {
-                Task { await self.addToOnlineStatusTracking([senderID]) }
-            }
+            // Новый чат — перезагружаем список. Tracking нового собеседника
+            // произойдёт автоматически когда его row появится в List.
             Task { await loadChats() }
         }
     }
