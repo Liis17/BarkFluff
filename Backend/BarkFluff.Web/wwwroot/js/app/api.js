@@ -62,7 +62,10 @@
             senderId: m.getSenderId(),
             readBy: m.getReadByList(),
             sentAt: tsToMs(m.getSentAt()),
-            type: enumName(m.getType()),
+            // Тип сообщения — MessageContentType (0=UNKNOWN, 1=GENERIC, 2=SYSTEM).
+            // Хранится числом; не пропускаем через enumName, т.к. enumName смотрит
+            // в MessageAttachmentType, где 2=VIDEO — это поломает определение system.
+            type: m.getType(),
             forwardedMessageId: m.getForwardedMessageId ? m.getForwardedMessageId() : 0,
             isEdited: m.getIsEdited ? m.getIsEdited() : false,
             editedAt: m.getEditedAt ? tsToMs(m.getEditedAt()) : null,
