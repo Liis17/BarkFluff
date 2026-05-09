@@ -30,7 +30,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // Только arm64-v8a. minSdk = 31 (Android 12, 2021+) — все такие устройства уже 64-bit ARM.
+            // armeabi-v7a добавил бы ~70 МБ libsignal_jni.so без какого-либо охвата реальных пользователей.
+            // x86/x86_64 — только эмуляторы; для них держим debug-вариант ниже при необходимости.
+            abiFilters += "arm64-v8a"
         }
     }
 
@@ -47,12 +50,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            ndk {
-                abiFilters.clear()
-                abiFilters += "arm64-v8a"
-            }
-        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
@@ -74,10 +71,6 @@ android {
     }
     buildFeatures {
         viewBinding = true
-        compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
     }
     packaging {
         resources {
@@ -91,6 +84,13 @@ android {
                 "libsignal_jni_testing*.dylib",
                 "signal_jni_testing*.dll"
             )
+        }
+        jniLibs {
+            // libsignal-android.aar кладёт в jni/<abi>/ ДВА .so:
+            //   libsignal_jni.so          — production
+            //   libsignal_jni_testing.so  — testing build, ~75 МБ на ABI, в production не нужен.
+            // Это native libraries, на них действует jniLibs.excludes (НЕ resources.excludes).
+            excludes += "**/libsignal_jni_testing.so"
         }
     }
 }
@@ -135,19 +135,9 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
 
-    // Jetpack Compose for Material 3 Expressive
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.material3:material3-window-size-class")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    // ProcessLifecycleOwner — используется в BarkFluffApplication для отслеживания
+    // foreground/background приложения и переподключения RealtimeService.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
-    implementation("androidx.navigation:navigation-compose:2.8.5")
 
     // gRPC dependencies
     implementation("io.grpc:grpc-okhttp:1.60.0")
@@ -171,7 +161,6 @@ dependencies {
 
     // Image loading and caching
     implementation("io.coil-kt:coil:2.7.0")
-    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-video:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
