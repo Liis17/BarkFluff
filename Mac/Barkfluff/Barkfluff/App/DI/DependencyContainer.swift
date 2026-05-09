@@ -36,6 +36,7 @@ final class DependencyContainer {
     let usersRepository: UsersRepository
     let messagesRepository: MessagesRepository
     let filesRepository: FilesRepository
+    let stickersRepository: StickersRepository
     let updatesRepository: UpdatesRepository
     let fastAuthRepository: FastAuthRepository
     let navigatorRepository: NavigatorRepository
@@ -62,6 +63,7 @@ final class DependencyContainer {
     let messageService: MessageService
     let userService: UserService
     let fileService: FileService
+    let stickersService: StickersService
     let updatesService: UpdatesService
     let fastAuthService: FastAuthService
     let serverDiscoveryService: ServerDiscoveryService
@@ -89,6 +91,11 @@ final class DependencyContainer {
 
     /// Локальные настройки внешнего вида (тема приложения).
     let appearanceSettings: AppearanceSettings
+
+    // MARK: - Stickers
+
+    /// Список недавно использованных стикеров (UserDefaults).
+    let recentStickersStore: RecentStickersStore
 
     // MARK: - Settings
 
@@ -142,6 +149,7 @@ final class DependencyContainer {
         self.usersRepository = UsersRepository(connectionManager: connectionManager)
         self.messagesRepository = MessagesRepository(connectionManager: connectionManager)
         self.filesRepository = FilesRepository(connectionManager: connectionManager)
+        self.stickersRepository = StickersRepository(connectionManager: connectionManager)
         self.updatesRepository = UpdatesRepository(connectionManager: connectionManager)
         self.fastAuthRepository = FastAuthRepository(connectionManager: connectionManager)
         self.navigatorRepository = NavigatorRepository(
@@ -218,6 +226,12 @@ final class DependencyContainer {
             fileService: fileService
         )
 
+        self.stickersService = StickersService(
+            repository: stickersRepository,
+            mediaCacheManager: mediaCacheManager,
+            database: database
+        )
+
         self.updatesService = UpdatesService(
             updatesRepository: updatesRepository,
             streamManager: updatesStreamManager
@@ -264,6 +278,9 @@ final class DependencyContainer {
         // Appearance (тема приложения)
         self.appearanceSettings = AppearanceSettings()
 
+        // Stickers
+        self.recentStickersStore = RecentStickersStore()
+
         // Устанавливаем интерсепторы после создания всех зависимостей
         // (нужен Task т.к. connectionManager — actor)
         let deviceMetadataInterceptor = DeviceMetadataInterceptor(
@@ -306,6 +323,8 @@ final class DependencyContainer {
         // 3. Чистим файловый и URL-кеши
         await mediaCacheManager.clearAll()
         await fileURLCache.clear()
+        await stickersService.clearCache()
+        recentStickersStore.clear()
 
         // 4. Чистим локальную БД
         try? await database.truncateAll()
