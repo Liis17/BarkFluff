@@ -12,18 +12,20 @@ struct MainTabView: View {
     @Environment(AppCoordinator.self) private var coordinator
 
     var body: some View {
-        TabView(selection: Binding(
-            get: { coordinator.activeTab },
-            set: { coordinator.activeTab = $0 }
-        )) {
+        @Bindable var coordinator = coordinator
+
+        TabView(selection: $coordinator.activeTab) {
             // Вкладка чатов
-            NavigationStack(path: Binding(
-                get: { coordinator.chatNavigationPath },
-                set: { coordinator.chatNavigationPath = $0 }
-            )) {
+            NavigationStack(path: $coordinator.chatNavigationPath) {
                 ChatListView()
                     .navigationDestination(for: Chat.self) { chat in
                         ConversationView(chat: chat)
+                    }
+                    .navigationDestination(for: ConversationDestination.self) { destination in
+                        switch destination {
+                        case .userProfile(let chat):
+                            UserProfilePanelView(chat: chat)
+                        }
                     }
             }
             .tabItem {
@@ -32,16 +34,32 @@ struct MainTabView: View {
             .tag(AppCoordinator.Tab.chats)
 
             // Вкладка профиля
-            NavigationStack(path: Binding(
-                get: { coordinator.profileNavigationPath },
-                set: { coordinator.profileNavigationPath = $0 }
-            )) {
+            NavigationStack(path: $coordinator.profileNavigationPath) {
                 ProfileView()
             }
             .tabItem {
                 Label("Профиль", systemImage: "person")
             }
             .tag(AppCoordinator.Tab.profile)
+
+            // Вкладка настроек
+            NavigationStack(path: $coordinator.settingsNavigationPath) {
+                SettingsView()
+            }
+            .tabItem {
+                Label("Настройки", systemImage: "gearshape")
+            }
+            .tag(AppCoordinator.Tab.settings)
+        }
+        .sheet(item: $coordinator.presentedSheet) { sheet in
+            switch sheet {
+            case .createGroupChat:
+                CreateGroupChatView()
+            case .userSearch:
+                UserSearchView()
+            case .forwardMessage(let messageID, let sourceChatID):
+                ForwardChatPickerView(messageID: messageID, sourceChatID: sourceChatID)
+            }
         }
     }
 }

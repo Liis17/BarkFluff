@@ -1,8 +1,10 @@
 //
 //  ConversationViewModel.swift
-//  Barkfluff
+//  Barkfluff (iOS)
 //
-//  ViewModel для экрана переписки (iOS версия)
+//  ViewModel для экрана переписки.
+//  Полный паритет с macOS-клиентом по сценариям edit/delete/reply/forward/sticker
+//  + stale-while-revalidate через локальный GRDB-кеш.
 //
 
 import SwiftUI
@@ -17,6 +19,9 @@ final class ConversationViewModel {
     let chat: Chat
     var messages: [Message] = []
     var isLoading = false
+    /// Идёт фоновое обновление сообщений с сервера, когда кэш уже показан
+    /// (stale-while-revalidate). Используется для индикатора «Обновление…».
+    var isRefreshing = false
     var isLoadingMore = false
     var errorMessage: String?
     var hasMoreMessages = true
@@ -35,6 +40,18 @@ final class ConversationViewModel {
 
     /// Ошибка загрузки файла
     var uploadError: String?
+
+    /// Сообщение, на которое сейчас формируется ответ. Превью показывается над полем ввода.
+    /// Очищается после успешной отправки или нажатия × в превью.
+    var pendingReply: Message?
+
+    /// Сообщение, которое сейчас редактируется. Превью с заголовком «Редактирование сообщения»
+    /// показывается над полем ввода. Edit и Reply — взаимоисключающие.
+    var editingMessage: Message?
+
+    /// fileIDs оригинального сообщения для передачи в editMessage (без forwarded-вложений).
+    /// На iOS, как и на macOS, нет UI редактирования вложений — сохраняем оригинальные.
+    private var editingOriginalFileIDs: [String] = []
 
     /// Замыкание для уведомления об отправке сообщения (обновление lastMessage в списке чатов)
     var onMessageSent: ((Message) -> Void)?
@@ -58,6 +75,7 @@ final class ConversationViewModel {
     private let onlineStatusService: OnlineStatusServiceProtocol
     private let fileService: FileServiceProtocol
     private let chatService: ChatServiceProtocol?
+    private let localMessageRepository: LocalMessageRepository?
     let currentUserID: Int64
 
     /// ID пользователя для нового диалога (когда чат ещё не создан на сервере)
@@ -71,6 +89,8 @@ final class ConversationViewModel {
     // Task management для стримов
     private var newMessagesTask: Task<Void, Never>?
     private var readEventsTask: Task<Void, Never>?
+    private var editedMessagesTask: Task<Void, Never>?
+    private var deletedMessagesTask: Task<Void, Never>?
     private var onlineStatusTask: Task<Void, Never>?
 
     // Сгруппированные элементы для отображения
@@ -87,7 +107,8 @@ final class ConversationViewModel {
         onlineStatusService: OnlineStatusServiceProtocol,
         fileService: FileServiceProtocol,
         currentUserID: Int64,
-        chatService: ChatServiceProtocol? = nil
+        chatService: ChatServiceProtocol? = nil,
+        localMessageRepository: LocalMessageRepository? = nil
     ) {
         self.chat = chat
         self.messageService = messageService
@@ -96,6 +117,7 @@ final class ConversationViewModel {
         self.fileService = fileService
         self.currentUserID = currentUserID
         self.chatService = chatService
+        self.localMessageRepository = localMessageRepository
         self.targetUserID = chat.newConversationUserID
     }
 
@@ -103,7 +125,6 @@ final class ConversationViewModel {
 
     /// Загрузить сообщения чата
     func loadMessages() async {
-        // Для нового диалога нечего загружать
         guard !isNewConversation else {
             isLoading = false
             hasMoreMessages = false
@@ -112,7 +133,20 @@ final class ConversationViewModel {
 
         guard !isLoading else { return }
 
-        isLoading = true
+        // 1. Stale: показать кешированные сообщения сразу.
+        var hasCachedData = false
+        if messages.isEmpty, let local = localMessageRepository {
+            if let cached = try? await local.loadCachedMessages(chatID: chat.id), !cached.isEmpty {
+                messages = cached
+                hasCachedData = true
+            }
+        }
+
+        if hasCachedData {
+            isRefreshing = true
+        } else {
+            isLoading = true
+        }
         errorMessage = nil
 
         do {
@@ -123,32 +157,41 @@ final class ConversationViewModel {
                 offsetAfter: 0
             )
 
-            // Убираем дубликаты по ID
             var seenIDs = Set<Int64>()
             let uniqueMessages = loadedMessages.filter { seenIDs.insert($0.id).inserted }
-            messages = uniqueMessages.sorted { $0.sentAt < $1.sentAt }
+            let serverMessages = uniqueMessages.sorted { $0.sentAt < $1.sentAt }
             hasMoreMessages = loadedMessages.count >= PaginationHelper.defaultMessagesPageSize
 
-            // Определяем первое непрочитанное сообщение (до пометки прочитанными)
+            // Слияние: сохраняем pending (id < 0, локальные) + берём актуальные с сервера.
+            let pending = messages.filter { $0.id < 0 }
+            messages = serverMessages + pending
+
+            // 2. Сохраняем актуальный снимок в БД.
+            if let local = localMessageRepository {
+                try? await local.upsertMessages(serverMessages, chatID: chat.id)
+            }
+
             firstUnreadMessageID = messages.first(where: {
                 $0.senderID != currentUserID && !$0.readBy.contains(currentUserID)
             })?.id
 
-            // Если первое непрочитанное близко к началу списка — подгружаем старые для контекста
             if let unreadID = firstUnreadMessageID,
                let unreadIndex = messages.firstIndex(where: { $0.id == unreadID }),
                unreadIndex < 5, hasMoreMessages {
                 isLoading = false
+                isRefreshing = false
                 await loadMoreMessages()
             }
 
-            // Пометить как прочитанные
             await markVisibleMessagesAsRead()
         } catch {
-            errorMessage = error.localizedDescription
+            if messages.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
 
         isLoading = false
+        isRefreshing = false
     }
 
     /// Загрузить старые сообщения (пагинация)
@@ -168,7 +211,6 @@ final class ConversationViewModel {
             if olderMessages.isEmpty {
                 hasMoreMessages = false
             } else {
-                // Добавляем старые сообщения в начало, исключая дубликаты
                 let existingIDs = Set(messages.map { $0.id })
                 let newMessages = olderMessages.filter { !existingIDs.contains($0.id) }
                 messages.insert(contentsOf: newMessages.sorted { $0.sentAt < $1.sentAt }, at: 0)
@@ -180,7 +222,6 @@ final class ConversationViewModel {
 
         isLoadingMore = false
 
-        // Помечаем загруженные старые сообщения как прочитанные
         await markVisibleMessagesAsRead()
     }
 
@@ -190,7 +231,11 @@ final class ConversationViewModel {
     func sendMessage(text: String, fileIDs: [String] = []) async {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !fileIDs.isEmpty else { return }
 
-        // Для новых диалогов — старый flow без optimistic
+        // Snapshot pending-reply и сразу очищаем — UI обновится синхронно с инпутом
+        let replyTarget = pendingReply
+        if replyTarget != nil { clearPendingReply() }
+
+        // Для новых диалогов — старый flow без optimistic. Reply в новом диалоге невозможен.
         if isNewConversation, let userID = targetUserID {
             do {
                 let message = try await messageService.sendMessage(
@@ -207,16 +252,18 @@ final class ConversationViewModel {
             return
         }
 
-        // Optimistic: создаём pending-сообщение
         let localID = UUID().uuidString
         let pendingID = Self.nextPendingID()
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let replyPlaceholder = replyTarget.map { Self.makeForwardedPlaceholder(from: $0) }
+        let pendingAttachments: [MessageAttachment] = replyPlaceholder.map { [$0] } ?? []
 
         let pendingMessage = Message(
             id: pendingID,
             chatID: chat.id,
             senderID: currentUserID,
-            content: MessageContent(text: trimmedText),
+            content: MessageContent(text: trimmedText, attachments: pendingAttachments),
             sentAt: Date(),
             sendingState: .sending,
             localID: localID
@@ -232,6 +279,73 @@ final class ConversationViewModel {
                 userID: nil,
                 text: trimmedText,
                 fileIDs: fileIDs,
+                forwardedMessageID: replyTarget?.id
+            )
+            replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
+            onMessageSent?(confirmed)
+            await markVisibleMessagesAsRead()
+        } catch {
+            updatePendingMessage(localID: localID) { msg in
+                msg.sendingState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Отправить чистый стикер (без текста). Файл стикера уже на сервере — отправляем
+    /// его fileID через обычный sendMessage, как это делают веб- и Android-клиенты.
+    func sendSticker(_ sticker: Sticker) async {
+        let stickerFileID = sticker.fileID
+        guard !stickerFileID.isEmpty else { return }
+
+        if isNewConversation, let userID = targetUserID {
+            do {
+                let confirmed = try await messageService.sendMessage(
+                    chatID: nil,
+                    userID: userID,
+                    text: "",
+                    fileIDs: [stickerFileID],
+                    forwardedMessageID: nil
+                )
+                await resolveNewConversation(firstMessage: confirmed)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            return
+        }
+
+        let localID = UUID().uuidString
+        let pendingID = Self.nextPendingID()
+
+        let previewURL = sticker.previewURL.isEmpty ? sticker.fileURL : sticker.previewURL
+        let localAttachment = MessageAttachment(
+            id: -Int64.random(in: 1...Int64.max / 2),
+            type: .sticker,
+            fileID: stickerFileID,
+            fileName: "\(sticker.id).webp",
+            fileSize: 0,
+            previewURL: previewURL.isEmpty ? nil : previewURL,
+            previewFileID: sticker.previewFileID.isEmpty ? nil : sticker.previewFileID
+        )
+        let pending = Message(
+            id: pendingID,
+            chatID: chat.id,
+            senderID: currentUserID,
+            content: MessageContent(text: "", attachments: [localAttachment]),
+            sentAt: Date(),
+            sendingState: .sending,
+            localID: localID
+        )
+
+        withAnimation(.spring(duration: 0.3)) {
+            messages.append(pending)
+        }
+
+        do {
+            let confirmed = try await messageService.sendMessage(
+                chatID: chat.id,
+                userID: nil,
+                text: "",
+                fileIDs: [stickerFileID],
                 forwardedMessageID: nil
             )
             replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
@@ -249,7 +363,9 @@ final class ConversationViewModel {
         text: String,
         attachments: [SelectedAttachment]
     ) async {
-        // Для новых диалогов — старый flow без optimistic
+        let replyTarget = pendingReply
+        if replyTarget != nil { clearPendingReply() }
+
         if isNewConversation, let userID = targetUserID {
             guard !isSendingAttachments else { return }
             isSendingAttachments = true
@@ -261,19 +377,23 @@ final class ConversationViewModel {
                 for attachment in attachments {
                     uploadProgress[attachment.id] = 0.0
                     var data = try attachment.loadData()
+                    var fileName = attachment.displayName
                     uploadProgress[attachment.id] = 0.1
                     if attachment.uploadFileType == .messageAttachmentImage {
-                        if let optimized = optimizeImage(data) { data = optimized }
+                        if let optimized = optimizeImage(data) {
+                            data = optimized
+                            fileName = jpegFileName(from: fileName)
+                        }
                     }
                     let fileID = try await fileService.uploadFile(
-                        data: data, fileName: attachment.displayName, fileType: attachment.uploadFileType
+                        data: data, fileName: fileName, fileType: attachment.uploadFileType
                     )
                     fileIDs.append(fileID)
                     uploadProgress[attachment.id] = 1.0
                 }
                 let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 let message = try await messageService.sendMessage(
-                    chatID: nil, userID: userID, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: nil
+                    chatID: nil, userID: userID, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: replyTarget?.id
                 )
                 await resolveNewConversation(firstMessage: message)
                 uploadProgress.removeAll()
@@ -285,16 +405,17 @@ final class ConversationViewModel {
             return
         }
 
-        // Optimistic flow для существующих чатов
         let localID = UUID().uuidString
         let pendingID = Self.nextPendingID()
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasAttachments = !attachments.isEmpty
 
-        // Создаём локальные превью вложений для немедленного отображения
-        let localAttachments = hasAttachments
+        var localAttachments = hasAttachments
             ? Self.createLocalAttachments(from: attachments)
             : []
+        if let replyTarget {
+            localAttachments.insert(Self.makeForwardedPlaceholder(from: replyTarget), at: 0)
+        }
 
         let pendingMessage = Message(
             id: pendingID,
@@ -312,21 +433,23 @@ final class ConversationViewModel {
         }
 
         do {
-            // 1. Загрузить файлы с плавной симуляцией прогресса
             var fileIDs: [String] = []
             let totalAttachments = Double(attachments.count)
 
             for (index, attachment) in attachments.enumerated() {
                 var data = try attachment.loadData()
+                var fileName = attachment.displayName
 
                 if attachment.uploadFileType == .messageAttachmentImage {
-                    if let optimized = optimizeImage(data) { data = optimized }
+                    if let optimized = optimizeImage(data) {
+                        data = optimized
+                        fileName = jpegFileName(from: fileName)
+                    }
                 }
 
                 let baseProgress = Double(index) / totalAttachments
-                let targetProgress = Double(index + 1) / totalAttachments * 0.9 // 90% на загрузку файлов
+                let targetProgress = Double(index + 1) / totalAttachments * 0.9
 
-                // Запускаем плавную симуляцию прогресса на время загрузки
                 let progressTask = Task { @MainActor [weak self] in
                     guard let self else { return }
                     var current = baseProgress * 0.9 + 0.02
@@ -341,7 +464,7 @@ final class ConversationViewModel {
                 }
 
                 let fileID = try await fileService.uploadFile(
-                    data: data, fileName: attachment.displayName, fileType: attachment.uploadFileType
+                    data: data, fileName: fileName, fileType: attachment.uploadFileType
                 )
                 fileIDs.append(fileID)
                 progressTask.cancel()
@@ -351,16 +474,14 @@ final class ConversationViewModel {
                 }
             }
 
-            // 2. Отправить сообщение с fileIDs
             updatePendingMessage(localID: localID) { msg in
                 msg.uploadProgress = 0.95
             }
 
             let confirmed = try await messageService.sendMessage(
-                chatID: chat.id, userID: nil, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: nil
+                chatID: chat.id, userID: nil, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: replyTarget?.id
             )
 
-            // 3. Заменить pending на confirmed
             replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
             onMessageSent?(confirmed)
             await markVisibleMessagesAsRead()
@@ -371,6 +492,112 @@ final class ConversationViewModel {
                 msg.uploadProgress = nil
             }
         }
+    }
+
+    // MARK: - Reply / Forward
+
+    /// Установить сообщение, на которое формируется ответ.
+    /// Превью покажется над полем ввода; следующая отправка прикрепит forwardedMessageID.
+    func setPendingReply(_ message: Message) {
+        guard !isNewConversation, message.id > 0 else { return }
+        if editingMessage != nil { cancelEdit() }
+        pendingReply = message
+    }
+
+    /// Очистить состояние ответа.
+    func clearPendingReply() {
+        pendingReply = nil
+    }
+
+    // MARK: - Edit / Delete
+
+    /// Войти в режим редактирования сообщения. Только для своих, отправленных сообщений.
+    func enterEditMode(_ message: Message) {
+        guard !isNewConversation,
+              message.senderID == currentUserID,
+              message.id > 0 else { return }
+        if pendingReply != nil { clearPendingReply() }
+        editingOriginalFileIDs = message.content.attachments
+            .filter { $0.type != .forwardedMessage }
+            .map { $0.fileID }
+            .filter { !$0.isEmpty }
+        editingMessage = message
+    }
+
+    /// Выйти из режима редактирования.
+    func cancelEdit() {
+        editingMessage = nil
+        editingOriginalFileIDs = []
+    }
+
+    /// Применить редактирование. Текст приходит из инпута ConversationView.
+    func submitEdit(text: String) async {
+        guard let original = editingMessage else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty || !editingOriginalFileIDs.isEmpty else { return }
+
+        let messageID = original.id
+        let fileIDs = editingOriginalFileIDs
+
+        if let idx = messages.firstIndex(where: { $0.id == messageID }) {
+            messages[idx].content.text = trimmed
+            messages[idx].isEdited = true
+            messages[idx].editedAt = Date()
+        }
+
+        cancelEdit()
+
+        do {
+            let confirmed = try await messageService.editMessage(
+                chatID: chat.id,
+                messageID: messageID,
+                text: trimmed,
+                fileIDs: fileIDs
+            )
+            applyEditedMessage(confirmed)
+            if let local = localMessageRepository {
+                try? await local.update(confirmed)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            await loadMessages()
+        }
+    }
+
+    /// Удалить сообщение (с серверной отправкой и optimistic remove).
+    func deleteMessage(messageID: Int64) async {
+        let snapshot = messages
+        withAnimation(.spring(duration: 0.25)) {
+            messages.removeAll { $0.id == messageID }
+        }
+
+        do {
+            try await messageService.deleteMessage(messageID: messageID)
+            if let local = localMessageRepository {
+                try? await local.delete(messageID: messageID, chatID: chat.id)
+            }
+        } catch {
+            messages = snapshot
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Локальный placeholder forwarded-attachment для optimistic UI до подтверждения сервером.
+    private static func makeForwardedPlaceholder(from original: Message) -> MessageAttachment {
+        let snippet = String(original.content.text.prefix(80))
+        return MessageAttachment(
+            id: -Int64.random(in: 1...Int64.max / 2),
+            type: .forwardedMessage,
+            fileID: "",
+            fileName: "",
+            fileSize: 0,
+            forwarded: ForwardedMessagePayload(
+                authorName: original.senderName ?? "Неизвестный",
+                originalMessageID: original.id,
+                text: snippet,
+                attachments: []
+            )
+        )
     }
 
     // MARK: - Local Attachment Previews
@@ -417,26 +644,22 @@ final class ConversationViewModel {
 
     // MARK: - Pending Message Helpers
 
-    /// Обновить pending-сообщение по localID
     private func updatePendingMessage(localID: String, update: (inout Message) -> Void) {
         if let index = messages.firstIndex(where: { $0.localID == localID }) {
             update(&messages[index])
         }
     }
 
-    /// Заменить pending на confirmed, сохраняя localID для стабильной identity
     private func replacePendingWithConfirmed(localID: String, confirmed: Message) {
         confirmedMessageIDs.insert(confirmed.id)
 
-        // Удалить дубликат, если стрим уже добавил это сообщение
         if let streamIndex = messages.firstIndex(where: { $0.id == confirmed.id && $0.localID == nil }) {
             messages.remove(at: streamIndex)
         }
 
-        // Заменить pending in-place
         if let index = messages.firstIndex(where: { $0.localID == localID }) {
             var updatedMessage = confirmed
-            updatedMessage.localID = localID  // Сохраняем localID для стабильной SwiftUI identity
+            updatedMessage.localID = localID
             messages[index] = updatedMessage
         }
     }
@@ -474,7 +697,6 @@ final class ConversationViewModel {
 
     // MARK: - New Conversation Resolution
 
-    /// Разрешить новый диалог: получить реальный chatID и переключиться на него
     private func resolveNewConversation(firstMessage: Message) async {
         guard let userID = targetUserID, let chatService else { return }
 
@@ -499,40 +721,51 @@ final class ConversationViewModel {
 
     // MARK: - Image Optimization
 
-    /// Оптимизация изображения перед отправкой
-    /// - Ресайз до max 2048px по большей стороне
-    /// - Сжатие JPEG с качеством 0.85
-    /// - Возврат оптимизированных данных
+    /// Параметры обработки изображений согласно dd.md (раздел «Изображения»):
+    /// макс. 2500 px по длинной стороне, JPEG 90%, итоговый размер ≤ 2 МБ.
+    private static let maxImageDimension: CGFloat = 2500
+    private static let maxImageBytes: Int = 2 * 1024 * 1024
+    private static let jpegQualitySteps: [CGFloat] = [0.9, 0.8, 0.7, 0.6, 0.5]
+
+    /// Оптимизация изображения перед отправкой:
+    /// - ресайз до 2500 px по большей стороне с сохранением пропорций;
+    /// - JPEG 90%, при превышении 2 МБ — пошаговое снижение качества до укладывания в лимит.
     private func optimizeImage(_ data: Data) -> Data? {
-        guard let image = UIImage(data: data) else { return nil }
+        guard let source = UIImage(data: data) else { return nil }
 
-        let maxDimension: CGFloat = 2048
-        let size = image.size
-
-        // Нужен ли ресайз?
-        guard size.width > maxDimension || size.height > maxDimension else {
-            // Просто пережимаем в JPEG
-            return image.jpegData(compressionQuality: 0.85) ?? data
+        let size = source.size
+        let scaled: UIImage
+        if size.width > Self.maxImageDimension || size.height > Self.maxImageDimension {
+            let ratio = min(Self.maxImageDimension / size.width, Self.maxImageDimension / size.height)
+            let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+            let renderer = UIGraphicsImageRenderer(size: newSize)
+            scaled = renderer.image { _ in
+                source.draw(in: CGRect(origin: .zero, size: newSize))
+            }
+        } else {
+            scaled = source
         }
 
-        let ratio = min(maxDimension / size.width, maxDimension / size.height)
-        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
-
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        let resizedImage = renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: newSize))
+        var lastEncoded: Data?
+        for quality in Self.jpegQualitySteps {
+            guard let encoded = scaled.jpegData(compressionQuality: quality) else { continue }
+            lastEncoded = encoded
+            if encoded.count <= Self.maxImageBytes { return encoded }
         }
+        return lastEncoded ?? data
+    }
 
-        return resizedImage.jpegData(compressionQuality: 0.85) ?? data
+    /// После `optimizeImage` байты гарантированно JPEG, и Content-Type на multipart-загрузке должен совпасть.
+    private func jpegFileName(from original: String) -> String {
+        let stem = (original as NSString).deletingPathExtension
+        return stem.isEmpty ? "image.jpg" : "\(stem).jpg"
     }
 
     // MARK: - Real-time Updates
 
-    /// Начать прослушивание обновлений
     func startListeningForUpdates() async {
         await updatesService.start()
 
-        // Слушаем новые сообщения
         newMessagesTask = Task { [weak self] in
             guard let self else { return }
             let stream = await self.updatesService.getNewMessagesStream()
@@ -543,7 +776,6 @@ final class ConversationViewModel {
             }
         }
 
-        // Слушаем события прочтения
         readEventsTask = Task { [weak self] in
             guard let self else { return }
             let stream = await self.updatesService.getReadEventsStream()
@@ -554,20 +786,41 @@ final class ConversationViewModel {
             }
         }
 
-        // Подписываемся на онлайн-статус собеседника (только для DM)
+        editedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getEditedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleEditedMessage(event)
+                }
+            }
+        }
+
+        deletedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getDeletedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleDeletedMessage(event)
+                }
+            }
+        }
+
         await startListeningForOnlineStatus()
     }
 
-    /// Остановить прослушивание обновлений
     func stopListeningForUpdates() {
         newMessagesTask?.cancel()
         readEventsTask?.cancel()
+        editedMessagesTask?.cancel()
+        deletedMessagesTask?.cancel()
         onlineStatusTask?.cancel()
         newMessagesTask = nil
         readEventsTask = nil
+        editedMessagesTask = nil
+        deletedMessagesTask = nil
         onlineStatusTask = nil
 
-        // Парный untrack для track из startListeningForOnlineStatus.
         if !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) {
             let service = onlineStatusService
             Task { await service.untrack(otherUserID) }
@@ -577,23 +830,16 @@ final class ConversationViewModel {
     // MARK: - Online Status
 
     private func startListeningForOnlineStatus() async {
-        // Только для DM чатов
         guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else { return }
 
-        // Snapshot из кеша — мгновенный показ.
         let status = await onlineStatusService.currentStatus(for: otherUserID)
         await MainActor.run { self.otherUserOnlineStatus = status }
 
-        // Track + per-user stream. track обязателен парный untrack — делаем
-        // в stopListeningForUpdates(). При reconnect / переоткрытии чата
-        // refcount корректно балансируется.
         await onlineStatusService.track(otherUserID)
 
-        // Свежее значение из кеша после track (track делает authoritative fetch).
         let refreshed = await onlineStatusService.currentStatus(for: otherUserID)
         await MainActor.run { self.otherUserOnlineStatus = refreshed }
 
-        // Отменяем предыдущую задачу — предотвращает утечку подписчиков.
         onlineStatusTask?.cancel()
         onlineStatusTask = Task { [weak self, onlineStatusService] in
             let stream = await onlineStatusService.statusStream(for: otherUserID)
@@ -607,56 +853,95 @@ final class ConversationViewModel {
     // MARK: - Event Handling
 
     private func handleNewMessage(_ event: NewMessageEvent) {
-        // Проверяем, что сообщение для этого чата
         guard event.chatID == chat.id else { return }
 
-        // Дедупликация: send response уже обработал это сообщение
         if confirmedMessageIDs.contains(event.message.id) { return }
 
-        // Проверяем, нет ли уже такого сообщения (по серверному ID)
         guard !messages.contains(where: { $0.id == event.message.id && $0.localID == nil }) else { return }
 
-        // Своё сообщение из стрима: если есть pending — пропускаем,
-        // replacePendingWithConfirmed обработает при получении ответа от sendMessage
         if event.message.senderID == currentUserID {
             let hasPending = messages.contains { $0.localID != nil && $0.senderID == currentUserID }
             if hasPending {
                 return
             }
-            // Своё сообщение с другого устройства — добавляем без анимации
             messages.append(event.message)
+            persistIncoming(event.message)
             return
         }
 
-        // Чужие сообщения — добавляем с анимацией
         withAnimation(.spring(duration: 0.3)) {
             messages.append(event.message)
         }
+        persistIncoming(event.message)
 
         Task {
             await markMessageAsRead(event.message)
         }
     }
 
+    private func persistIncoming(_ message: Message) {
+        guard let local = localMessageRepository else { return }
+        Task { try? await local.append(message) }
+    }
+
     private func handleMessageRead(_ event: MessageReadEvent) {
-        // Проверяем, что событие для этого чата
         guard event.chatID == chat.id else { return }
 
-        // Обновляем статус прочтения
         if let index = messages.firstIndex(where: { $0.id == event.messageID }) {
             messages[index].readBy = event.readBy
         }
     }
 
+    private func handleEditedMessage(_ event: MessageEditedEvent) {
+        guard event.chatID == chat.id else { return }
+        applyEditedMessage(event.message)
+        if let local = localMessageRepository {
+            let updated = event.message
+            Task { try? await local.update(updated) }
+        }
+    }
+
+    /// Применить пришедшее обновление, сохраняя локальные state-поля (localID, sendingState).
+    private func applyEditedMessage(_ updated: Message) {
+        guard let idx = messages.firstIndex(where: { $0.id == updated.id }) else { return }
+        let existing = messages[idx]
+        let merged = Message(
+            id: updated.id,
+            chatID: existing.chatID,
+            senderID: updated.senderID,
+            senderName: updated.senderName ?? existing.senderName,
+            content: updated.content,
+            sentAt: updated.sentAt,
+            readBy: updated.readBy,
+            isSystem: updated.isSystem,
+            sendingState: existing.sendingState,
+            localID: existing.localID,
+            uploadProgress: existing.uploadProgress,
+            isEdited: updated.isEdited,
+            editedAt: updated.editedAt
+        )
+        messages[idx] = merged
+    }
+
+    private func handleDeletedMessage(_ event: MessageDeletedEvent) {
+        guard event.chatID == chat.id else { return }
+        let messageID = event.messageID
+        withAnimation(.spring(duration: 0.25)) {
+            messages.removeAll { $0.id == messageID }
+        }
+        if let local = localMessageRepository {
+            let chatID = chat.id
+            Task { try? await local.delete(messageID: messageID, chatID: chatID) }
+        }
+    }
+
     // MARK: - Read Status
 
-    /// Публичный метод для повторного прочтения (вызывается при возврате фокуса в приложение)
     func markAllAsReadIfNeeded() async {
         await markVisibleMessagesAsRead()
     }
 
     private func markVisibleMessagesAsRead() async {
-        // Помечаем ВСЕ непрочитанные сообщения как прочитанные (исключая pending)
         let unreadMessages = messages.filter { $0.id > 0 && !$0.readBy.contains(currentUserID) && $0.senderID != currentUserID }
         guard !unreadMessages.isEmpty else { return }
 

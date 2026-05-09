@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 import BFCore
 import PhotosUI
 import Nuke
@@ -27,12 +28,19 @@ struct ConversationView: View {
     @State private var selectedMediaAttachment: MessageAttachment?
     @State private var allMediaInMessage: [MessageAttachment] = []
 
+    // Подтверждение удаления
+    @State private var deleteCandidateID: Int64?
+
     // MARK: - Constants
 
     private let maxFileSize: Int64 = 500_000_000  // 500 MB
 
     var body: some View {
         ZStack {
+            // Слой 0: Фон чата (персонализация)
+            ChatBackgroundView()
+                .ignoresSafeArea()
+
             // Слой 1: Список сообщений
             if let viewModel {
                 messagesList(viewModel: viewModel)
@@ -87,10 +95,10 @@ struct ConversationView: View {
                 }
             }
 
-            // Аватарка справа
+            // Аватарка справа — открывает профиль собеседника / инфо группы
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    // TODO: Открыть информацию о чате
+                    coordinator.openUserProfile(for: chat)
                 } label: {
                     AvatarView(
                         imageURL: chat.pictureURL,
@@ -103,23 +111,63 @@ struct ConversationView: View {
         .toolbar(.hidden, for: .tabBar) // Скрываем таб-бар в диалоге
         .safeAreaInset(edge: .bottom) {
             if let viewModel {
-                MessageInputView(
-                    text: $messageText,
-                    selectedAttachments: $selectedAttachments,
-                    isSending: viewModel.isSendingAttachments,
-                    uploadProgress: viewModel.uploadProgress,
-                    onSend: { sendMessage(viewModel: viewModel) },
-                    onFileSelected: { urls, forceAsDocument in
-                        for url in urls {
-                            do {
-                                try addAttachment(.fileURL(url: url, forceAsDocument: forceAsDocument))
-                            } catch {
-                                viewModel.uploadError = error.localizedDescription
+                VStack(spacing: 8) {
+                    if let editing = viewModel.editingMessage {
+                        EditPreviewView(
+                            snippet: ReplyPreviewView.makeSnippet(editing),
+                            onCancel: {
+                                viewModel.cancelEdit()
+                                messageText = ""
+                            }
+                        )
+                        .padding(.horizontal, 8)
+                    } else if let reply = viewModel.pendingReply {
+                        ReplyPreviewView(
+                            authorName: reply.senderName ?? "Неизвестный",
+                            snippet: ReplyPreviewView.makeSnippet(reply),
+                            onCancel: { viewModel.clearPendingReply() }
+                        )
+                        .padding(.horizontal, 8)
+                    }
+
+                    MessageInputView(
+                        text: $messageText,
+                        selectedAttachments: $selectedAttachments,
+                        isSending: viewModel.isSendingAttachments,
+                        uploadProgress: viewModel.uploadProgress,
+                        onSend: { sendMessage(viewModel: viewModel) },
+                        onFileSelected: { urls, forceAsDocument in
+                            for url in urls {
+                                do {
+                                    try addAttachment(.fileURL(url: url, forceAsDocument: forceAsDocument))
+                                } catch {
+                                    viewModel.uploadError = error.localizedDescription
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                }
             }
+        }
+        .confirmationDialog(
+            "Удалить сообщение?",
+            isPresented: Binding(
+                get: { deleteCandidateID != nil },
+                set: { if !$0 { deleteCandidateID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Удалить", role: .destructive) {
+                if let id = deleteCandidateID {
+                    Task { await viewModel?.deleteMessage(messageID: id) }
+                }
+                deleteCandidateID = nil
+            }
+            Button("Отмена", role: .cancel) {
+                deleteCandidateID = nil
+            }
+        } message: {
+            Text("Сообщение будет удалено для всех участников чата.")
         }
         .task {
             if viewModel == nil {
@@ -233,6 +281,34 @@ struct ConversationView: View {
                 onAttachmentTap: { attachment, allAttachments in
                     selectedMediaAttachment = attachment
                     allMediaInMessage = allAttachments
+                },
+                onReply: { message in
+                    viewModel.setPendingReply(message)
+                },
+                onForward: { messageID in
+                    coordinator.presentedSheet = .forwardMessage(
+                        messageID: messageID,
+                        sourceChatID: chat.id
+                    )
+                },
+                onEdit: { message in
+                    viewModel.enterEditMode(message)
+                    messageText = message.content.text
+                },
+                onDelete: { messageID in
+                    deleteCandidateID = messageID
+                },
+                onCopyText: { text in
+                    UIPasteboard.general.string = text
+                },
+                onSaveImages: { images in
+                    Task { await MediaActions.saveImages(images, container: container) }
+                },
+                onCopyImage: { image in
+                    Task { await MediaActions.copyImageToPasteboard(image, container: container) }
+                },
+                onSaveDocuments: { docs in
+                    Task { await MediaActions.saveDocuments(docs, container: container) }
                 }
             )
         }
@@ -243,6 +319,14 @@ struct ConversationView: View {
     private func sendMessage(viewModel: ConversationViewModel) {
         let trimmedText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty || !selectedAttachments.isEmpty else { return }
+
+        // Если в режиме редактирования — отправляем submit edit
+        if viewModel.editingMessage != nil {
+            let text = messageText
+            messageText = ""
+            Task { await viewModel.submitEdit(text: text) }
+            return
+        }
 
         let text = messageText
         let attachments = selectedAttachments
@@ -269,7 +353,8 @@ struct ConversationView: View {
             onlineStatusService: container.onlineStatusService,
             fileService: container.fileService,
             currentUserID: container.currentUserID,
-            chatService: chat.isNewConversation ? container.chatService : nil
+            chatService: chat.isNewConversation ? container.chatService : nil,
+            localMessageRepository: container.localMessageRepository
         )
         vm.onMessageSent = { [weak coordinator] message in
             coordinator?.notifyMessageSent(chatID: chat.id, message: message)

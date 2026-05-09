@@ -19,10 +19,14 @@ final class AppCoordinator {
     enum Tab: String, CaseIterable {
         case chats
         case profile
+        case settings
     }
 
     /// Активная вкладка
     var activeTab: Tab = .chats
+
+    /// Выбранная категория настроек (push в settingsNavigationPath)
+    var selectedSettingsCategory: SettingsCategory?
 
     // MARK: - App State
 
@@ -55,6 +59,9 @@ final class AppCoordinator {
     /// Путь навигации в профиле
     var profileNavigationPath = NavigationPath()
 
+    /// Путь навигации в настройках
+    var settingsNavigationPath = NavigationPath()
+
     // MARK: - Chat List Reference
 
     /// Weak ссылка на ChatListViewModel для уведомлений о прочтении
@@ -66,11 +73,14 @@ final class AppCoordinator {
     enum SheetType: Identifiable {
         case createGroupChat
         case userSearch
+        /// Переслать сообщение `messageID` из чата `sourceChatID` в выбранный пользователем чат
+        case forwardMessage(messageID: Int64, sourceChatID: String)
 
         var id: String {
             switch self {
             case .createGroupChat: return "createGroupChat"
             case .userSearch: return "userSearch"
+            case .forwardMessage(let id, _): return "forwardMessage_\(id)"
             }
         }
     }
@@ -136,6 +146,11 @@ final class AppCoordinator {
         }
     }
 
+    /// Открыть профиль собеседника (push в стек чата)
+    func openUserProfile(for chat: Chat) {
+        chatNavigationPath.append(ConversationDestination.userProfile(chat))
+    }
+
     /// Уведомить о прочтении чата (вызывается при открытии чата)
     func notifyChatOpened(_ chatID: String) {
         chatListViewModel?.markChatAsReadLocally(chatID: chatID)
@@ -146,15 +161,43 @@ final class AppCoordinator {
         chatListViewModel?.updateLastMessage(chatID: chatID, message: message)
     }
 
-    /// Выход из аккаунта
-    func logout(authService: AuthServiceProtocol, updatesService: UpdatesServiceProtocol) async throws {
-        await updatesService.stop()
-        try await authService.logout()
+    /// Выход из аккаунта.
+    ///
+    /// Сначала уведомляет сервер (`Identity.Logout`) — он удаляет refresh-токены и устройство из БД,
+    /// инвалидирует access-токен через шину. Только при успехе серверного шага выполняется
+    /// полный локальный wipe (кеши, БД, токены, device_id, эндпоинты) и переход на экран выбора сервера.
+    ///
+    /// Если серверный шаг падает — бросает ошибку. Локальные данные при этом остаются нетронутыми,
+    /// чтобы UI мог предложить «Повторить» или вызвать `forceLogout(...)`.
+    func logout(container: DependencyContainer) async throws {
+        try await container.authService.logout()
+        await performLocalWipe(container: container)
+    }
+
+    /// Принудительный выход без серверного шага. Локальные данные стираются полностью.
+    func forceLogout(container: DependencyContainer) async {
+        await container.authService.forceLocalLogout()
+        await performLocalWipe(container: container)
+    }
+
+    private func performLocalWipe(container: DependencyContainer) async {
+        await container.reset()
+
         selectedChat = nil
         activeTab = .chats
+        selectedSettingsCategory = nil
+        presentedSheet = nil
         chatNavigationPath = NavigationPath()
         profileNavigationPath = NavigationPath()
-        currentState = .authentication
+        settingsNavigationPath = NavigationPath()
+
+        currentState = .serverSelection
         authScreen = .login
     }
+}
+
+/// Назначения push-навигации внутри стека чата (помимо самого `Chat`).
+enum ConversationDestination: Hashable {
+    /// Полноэкранный профиль собеседника / групповой инфо-экран
+    case userProfile(Chat)
 }

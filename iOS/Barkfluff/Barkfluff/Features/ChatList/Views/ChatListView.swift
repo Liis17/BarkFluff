@@ -30,7 +30,8 @@ struct ChatListView: View {
                     userService: container.userService,
                     updatesService: container.updatesService,
                     onlineStatusService: container.onlineStatusService,
-                    currentUserID: container.currentUserID
+                    currentUserID: container.currentUserID,
+                    localChatRepository: container.localChatRepository
                 )
                 vm.isActiveChatChecker = { [weak coordinator] chatID in
                     coordinator?.selectedChat?.id == chatID
@@ -142,11 +143,25 @@ struct ChatListView: View {
         )
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    coordinator.presentedSheet = .createGroupChat
+                Menu {
+                    Button {
+                        coordinator.presentedSheet = .userSearch
+                    } label: {
+                        Label("Новый чат", systemImage: "person.crop.circle.badge.plus")
+                    }
+                    Button {
+                        coordinator.presentedSheet = .createGroupChat
+                    } label: {
+                        Label("Новая группа", systemImage: "person.3.fill")
+                    }
                 } label: {
                     Image(systemName: "square.and.pencil")
                 }
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if viewModel.isRefreshing {
+                RefreshingIndicatorView()
             }
         }
         .refreshable {

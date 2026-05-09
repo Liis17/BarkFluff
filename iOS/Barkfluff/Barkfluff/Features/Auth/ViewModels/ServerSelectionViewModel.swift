@@ -31,6 +31,11 @@ final class ServerSelectionViewModel {
 
     var serverAddress = ""
 
+    /// Раскрыта ли секция «Ввести адрес вручную». Раскрывается автоматически
+    /// при ошибке загрузки списка или пустом списке — иначе пользователь
+    /// не сможет подключиться без серверов навигатора.
+    var isManualSectionExpanded: Bool = false
+
     // MARK: - General
 
     var isLoading = false
@@ -61,11 +66,13 @@ final class ServerSelectionViewModel {
             let servers = try await serverDiscoveryService.listServers()
             if servers.isEmpty {
                 serverListState = .empty
+                isManualSectionExpanded = true
             } else {
                 serverListState = .loaded(servers)
             }
         } catch {
             serverListState = .error("Не удалось загрузить список серверов")
+            isManualSectionExpanded = true
         }
     }
 
