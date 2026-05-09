@@ -18,6 +18,15 @@ struct MessageInputView: View {
     let uploadProgress: [UUID: Double]
     /// Режим редактирования — кнопка отправки показывается как галочка
     var isEditMode: Bool = false
+    /// Сообщение, на которое формируется ответ. Превью отрисовывается внутри composer
+    /// (под градиентом, плотно к инпуту), чтобы между ним и текстовым полем не было зазора.
+    var pendingReply: Message? = nil
+    /// Сообщение, которое сейчас редактируется. Превью отрисовывается так же, как pendingReply.
+    var editingMessage: Message? = nil
+    /// Сброс reply (обычно — viewModel.clearPendingReply()).
+    var onCancelReply: (() -> Void)? = nil
+    /// Сброс edit (обычно — viewModel.cancelEdit() + очистка messageText).
+    var onCancelEdit: (() -> Void)? = nil
     let onSend: () -> Void
     let onFileSelected: ([URL], Bool) -> Void  // URLs, forceAsDocument
     /// Сервис стикеров — нужен пикеру.
@@ -33,6 +42,35 @@ struct MessageInputView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Reply-превью — плотно над инпутом, в области градиента composer'а.
+            if let reply = pendingReply {
+                ReplyPreviewView(
+                    authorName: reply.senderName ?? "Сообщение",
+                    snippet: ReplyPreviewView.makeSnippet(reply),
+                    onCancel: { onCancelReply?() }
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.top, Theme.Spacing.sm)
+            }
+
+            // Edit-превью — то же место, что у reply (взаимоисключающие).
+            if let editing = editingMessage {
+                EditPreviewView(
+                    snippet: ReplyPreviewView.makeSnippet(editing),
+                    onCancel: { onCancelEdit?() }
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.top, Theme.Spacing.sm)
+            }
+
             // Полоса превью вложений (только если есть)
             if !selectedAttachments.isEmpty {
                 AttachmentPreviewStrip(

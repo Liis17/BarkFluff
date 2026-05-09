@@ -322,8 +322,11 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         case .video: return .video
         case .gif: return .gif
         case .document: return .document
+        case .audio: return .audio
+        case .voice: return .voice
+        case .sticker: return .sticker
         case .forwardedMessage: return .forwardedMessage
-        default: return nil // unknown и другие - пропускаем
+        case .unknown, .UNRECOGNIZED: return nil
         }
     }
 
@@ -408,8 +411,11 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         case .video: return .video
         case .gif: return .gif
         case .document: return .document
+        case .audio: return .audio
+        case .voice: return .voice
+        case .sticker: return .sticker
         case .forwardedMessage: return .forwardedMessage
-        default: return .document
+        case .unknown, .UNRECOGNIZED: return .document
         }
     }
 
