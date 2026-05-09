@@ -1,12 +1,9 @@
 package com.barkfluff.client
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -21,6 +18,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.barkfluff.client.databinding.ActivityMediaViewerBinding
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileSaveUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -255,37 +253,16 @@ class MediaViewerActivity : AppCompatActivity() {
             Toast.makeText(this, "Файл не найден в кэше", Toast.LENGTH_SHORT).show()
             return
         }
+        val displayName = fileName.ifBlank { "BarkFluff_${System.currentTimeMillis()}.mp4" }
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val displayName = fileName.ifBlank { "BarkFluff_${System.currentTimeMillis()}.mp4" }
-                    val contentValues = ContentValues().apply {
-                        put(MediaStore.Downloads.DISPLAY_NAME, displayName)
-                        put(MediaStore.Downloads.MIME_TYPE, "video/mp4")
-                        put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
-                        put(MediaStore.Downloads.IS_PENDING, 1)
-                    }
-                    val uri = contentResolver.insert(
-                        MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues
-                    )
-                    if (uri != null) {
-                        contentResolver.openOutputStream(uri)?.use { out ->
-                            cachedFile.inputStream().use { it.copyTo(out) }
-                        }
-                        contentValues.clear()
-                        contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                        contentResolver.update(uri, contentValues, null, null)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(this@MediaViewerActivity, "Сохранено в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error saving video", e)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MediaViewerActivity, "Ошибка сохранения", Toast.LENGTH_SHORT).show()
-                    }
-                }
+            val ok = withContext(Dispatchers.IO) {
+                FileSaveUtils.saveToDownloads(this@MediaViewerActivity, cachedFile, displayName)
             }
+            Toast.makeText(
+                this@MediaViewerActivity,
+                if (ok) "Сохранено в Downloads/BarkFluff" else "Не удалось сохранить",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 

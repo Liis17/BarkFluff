@@ -2,14 +2,11 @@ package com.barkfluff.client
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +19,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.barkfluff.client.adapter.ImagePagerAdapter
 import com.barkfluff.client.databinding.ActivityImageViewerBinding
 import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.utils.FileSaveUtils
 import com.github.chrisbanes.photoview.PhotoView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -240,36 +238,15 @@ class ImageViewerActivity : AppCompatActivity() {
     }
 
     private suspend fun saveToGallery(bitmap: Bitmap, fileId: String) {
-        withContext(Dispatchers.IO) {
-            try {
-                val filename = "BarkFluff_${fileId.take(8)}_${System.currentTimeMillis()}.jpg"
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, filename)
-                    put(MediaStore.Downloads.MIME_TYPE, "image/jpeg")
-                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-                val uri = contentResolver.insert(
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues
-                )
-                if (uri != null) {
-                    contentResolver.openOutputStream(uri)?.use { stream ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
-                    }
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    contentResolver.update(uri, contentValues, null, null)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ImageViewerActivity, "Сохранено в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error saving image", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@ImageViewerActivity, "Ошибка сохранения: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
+        val filename = "BarkFluff_${fileId.take(8)}_${System.currentTimeMillis()}.jpg"
+        val ok = withContext(Dispatchers.IO) {
+            FileSaveUtils.saveBitmapToGallery(this@ImageViewerActivity, bitmap, filename)
         }
+        Toast.makeText(
+            this,
+            if (ok) "Сохранено в галерею (Pictures/BarkFluff)" else "Не удалось сохранить",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     override fun onDestroy() {

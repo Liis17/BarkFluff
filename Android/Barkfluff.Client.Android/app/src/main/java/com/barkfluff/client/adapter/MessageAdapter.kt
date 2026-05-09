@@ -819,74 +819,6 @@ class MessageAdapter(
                 )
             }
 
-            // Long press → context menu для картинок
-            cellView.setOnLongClickListener { view ->
-                val imageItems = allMedia.filter {
-                    it.type == Shared.MessageAttachmentType.IMAGE ||
-                    it.type == Shared.MessageAttachmentType.GIF
-                }
-                showImageContextMenu(view, cellView.context, imageItems)
-                true
-            }
-        }
-    }
-
-    private fun showImageContextMenu(
-        anchor: View,
-        context: Context,
-        imageItems: List<Shared.MessageAttachment>
-    ) {
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_image_attachment, popup.menu)
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_save_all_images -> {
-                    saveAllImages(context, imageItems)
-                    true
-                }
-                else -> false
-            }
-        }
-        popup.show()
-    }
-
-    private fun saveAllImages(context: Context, imageItems: List<Shared.MessageAttachment>) {
-        if (imageItems.isEmpty()) {
-            Toast.makeText(context, "Нет картинок для сохранения", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        Toast.makeText(context, "Сохранение ${imageItems.size} картинок...", Toast.LENGTH_SHORT).show()
-
-        scope.launch {
-            var savedCount = 0
-            for (image in imageItems) {
-                val fileId = image.fileId
-                val fileName = image.fileName.ifBlank { "image_${fileId.take(8)}.jpg" }
-
-                // Скачиваем файл в кеш если его нет
-                var cachedFile = FileCache.getFile(fileId)
-                if (cachedFile == null) {
-                    cachedFile = downloadToCache(fileId) { _ -> }
-                }
-
-                if (cachedFile != null) {
-                    withContext(Dispatchers.Main) {
-                        saveFileToDownloads(context, cachedFile, fileName)
-                    }
-                    savedCount++
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                if (savedCount > 0) {
-                    Toast.makeText(context, "Сохранено $savedCount картинок", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Не удалось сохранить картинки", Toast.LENGTH_SHORT).show()
-                }
-            }
         }
     }
 
@@ -1319,25 +1251,17 @@ class MessageAdapter(
         fileName: String,
         binding: ItemAttachmentDocumentBinding
     ) {
+        val isCached = FileCache.hasFile(fileId)
+        if (!isCached) {
+            // Меню сводилось к одному пункту "Удалить из кеша" — для нескачанного файла нет смысла показывать
+            return
+        }
         val popup = PopupMenu(context, anchor)
         val menuInflater = popup.menuInflater
         menuInflater.inflate(R.menu.menu_document_attachment, popup.menu)
 
-        val isCached = FileCache.hasFile(fileId)
-        popup.menu.findItem(R.id.action_delete_doc_from_cache).isVisible = isCached
-        popup.menu.findItem(R.id.action_save_document).isVisible = isCached
-
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
-                R.id.action_save_document -> {
-                    val cachedFile = FileCache.getFile(fileId)
-                    if (cachedFile != null) {
-                        saveFileToDownloads(context, cachedFile, fileName)
-                    } else {
-                        Toast.makeText(context, "Сначала скачайте файл", Toast.LENGTH_SHORT).show()
-                    }
-                    true
-                }
                 R.id.action_delete_doc_from_cache -> {
                     FileCache.deleteFile(fileId)
                     binding.docDownloadButton.visibility = View.VISIBLE
