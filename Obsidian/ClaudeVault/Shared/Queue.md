@@ -6,11 +6,27 @@
 
 ## Namespace: `BarkFluff.Shared.Queue.Messages`
 
-События чатов:
+События чатов (обычные, plaintext):
 - `NewMessageEvent` — новое сообщение (ChatId, ChatMembers, Message как `byte[]`)
 - `MessageReadEvent` — сообщение прочитано (ChatId, MessageId, NewReadBy, ChatMembers)
+- `MessageEditedEvent` — отредактированное сообщение (ChatId, ChatMembers, Message как `byte[]`)
+- `MessageDeletedEvent` — удалённое сообщение (ChatId, ChatMembers, MessageId)
+- `MessagePinnedEvent` / `MessageUnpinnedEvent` / `AllMessagesUnpinnedEvent` — закрепы
 - `ReadReceiptEvent` — подтверждение прочтения (ChatId, MessageId, ReadBy, IsLastMessage, ReadAt)
 - `PushNotificationEvent` — данные для push-уведомления (отправитель, чат, превью)
+- `DismissPushEvent` — отзыв push (когда сообщение прочитано/удалено)
+
+События приватных чатов (E2E через passphrase, user-scope):
+- `NewEncryptedMessageEvent` — новое шифрованное сообщение (ChatId, ChatMembers, Message как proto-bytes)
+- `EncryptedMessageEditedEvent` — отредактированное шифрованное (ChatId, ChatMembers, Message)
+- `EncryptedMessageDeletedEvent` — удалённое шифрованное (ChatId, ChatMembers, MessageId)
+- `PrivateChatInviteEvent` — инвайт в приватный чат (ChatId, InviterUserId, InviteeUserId, KdfSalt, PassphraseVerifier, InvitedAt)
+- `PrivateChatInviteResolutionEvent` — ответ на инвайт (ChatId, InviterUserId, InviteeUserId, Accepted)
+
+События секретных чатов (Signal Double Ratchet, **device-scope** в Updates):
+- `SecretChatInviteEvent` — инвайт секретного чата (InviteId, Sender User+Device, Recipient User+Device, InitialEnvelope, SentAt)
+- `SecretChatInviteResolutionEvent` — ответ на инвайт (InviteId, Sender User+Device, Recipient User+Device, Accepted, ResponseEnvelope)
+- `NewSecretMessageEvent` — opaque envelope (MessageId, Sender User+Device, Recipient User+Device, Envelope, SentAt)
 
 ## Namespace: `BarkFluff.Shared.Queue.Notifications`
 

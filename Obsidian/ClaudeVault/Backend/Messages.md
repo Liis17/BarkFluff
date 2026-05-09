@@ -40,6 +40,18 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `UnpinMessage` | Открепление сообщения. Любой участник. Системное сообщение + `MessageUnpinnedEvent`. Idempotent: noop если не был закреплён |
 | `ListPinnedMessages` | Пагинированный список закреплённых сообщений (sort by `PinnedAt DESC`). Soft-deleted фильтруются |
 | `UnpinAll` | Снять все закрепы в чате одним вызовом. Одно системное сообщение + `AllMessagesUnpinnedEvent` |
+| `CreatePrivateChat` | Создать приватный чат (E2E через passphrase). Сохраняет KdfSalt+PassphraseVerifier, добавляет инициатора участником, кладёт invitee в Redis (`PrivateChatInviteStore`), публикует `PrivateChatInviteEvent`. Валидация salt 16-64Б, verifier 16-128Б |
+| `AcceptPrivateChat` | Приглашённый присоединяется к приватному чату: проверяет invite в Redis, добавляет себя в `ChatMembers`, удаляет invite, публикует `PrivateChatInviteResolutionEvent(accepted=true)` |
+| `RejectPrivateChat` | Отклонить инвайт: удаляет чат целиком + Redis-invite, публикует `PrivateChatInviteResolutionEvent(accepted=false)` |
+| `SendPrivateMessage` | Отправить шифротекст в приватный чат через `EncryptedMessagesStorage`. Требует DeviceId в JWT. Лимиты: ciphertext 1Б-64КиБ, nonce 12-32Б, AAD ≤ 4КиБ. Публикует `NewEncryptedMessageEvent` всем участникам чата |
+| `ListPrivateMessages` | Двунаправленная пагинация шифрованных сообщений (до 50 в каждую сторону) через `EncryptedMessagesStorage.ListByChatAsync`. Soft-deleted отдаются с пустым ciphertext |
+| `EditPrivateMessage` | Перезаписывает ciphertext+nonce+AAD своего сообщения, выставляет IsEdited+EditedAt. Публикует `EncryptedMessageEditedEvent` |
+| `DeletePrivateMessage` | Soft-delete своего шифрованного сообщения (физически очищает все 3 bytea-поля). Публикует `EncryptedMessageDeletedEvent`. Idempotent |
+| `SendSecretChatInvite` | Отправить инвайт секретного чата конкретному устройству. Кладёт opaque PreKeySignalMessage в `SecretMessageBuffer.EnqueueInviteAsync` (Redis 24ч), публикует `SecretChatInviteEvent` + silent push. Лимит envelope 32Б-16КиБ |
+| `AcceptSecretChatInvite` | Принять инвайт на устройстве-получателе: атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=true)` инициатору, опционально вкладывает первое ответное SignalMessage |
+| `RejectSecretChatInvite` | Отклонить инвайт: `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
+| `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent` + silent push. Лимит envelope 16Б-16КиБ |
+| `AckSecretMessage` | Подтвердить доставку секретного сообщения — `SecretMessageBuffer.AckMessageAsync(deviceId, messageId)`. Idempotent |
 
 ### gRPC-сервисы
 
@@ -63,6 +75,15 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - `MessagePinnedEvent` → [[Backend/Updates]] (PinMessage)
 - `MessageUnpinnedEvent` → [[Backend/Updates]] (UnpinMessage; также при DeleteMessage если сообщение было закреплено)
 - `AllMessagesUnpinnedEvent` → [[Backend/Updates]] (UnpinAll)
+- `NewEncryptedMessageEvent` → [[Backend/Updates]] (SendPrivateMessage; user-scope)
+- `EncryptedMessageEditedEvent` → [[Backend/Updates]] (EditPrivateMessage; user-scope)
+- `EncryptedMessageDeletedEvent` → [[Backend/Updates]] (DeletePrivateMessage; user-scope)
+- `PrivateChatInviteEvent` → [[Backend/Updates]] (CreatePrivateChat; адресовано приглашённому)
+- `PrivateChatInviteResolutionEvent` → [[Backend/Updates]] (AcceptPrivateChat / RejectPrivateChat; адресовано инициатору)
+- `NewSecretMessageEvent` → [[Backend/Updates]] (SendSecretMessage; **device-scope**)
+- `SecretChatInviteEvent` → [[Backend/Updates]] (SendSecretChatInvite; **device-scope**)
+- `SecretChatInviteResolutionEvent` → [[Backend/Updates]] (Accept/Reject секретного инвайта; **device-scope** инициатора)
+- `PushNotificationEvent` → CloudMessaging (silent push при SendSecretChatInvite/SendSecretMessage — без content)
 
 **Потребляет:**
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён
@@ -72,6 +93,18 @@ docker-compose -f docker-compose-dev.yml up -d messages
 ### Redis-кеш
 
 `ChatCache` (Scoped). Ключи: `chat_name_{chatId}_{userId}`, `chat_image_{chatId}_{userId}`. Префикс: `Messages_`.
+
+### Redis-стор pending-инвайтов приватных чатов
+
+`PrivateChatInviteStore` (Singleton, через `IConnectionMultiplexer`). Хранит «кому отправлен invite, который ещё не принят». Один ключ STRING, без TTL.
+
+| Ключ | Значение |
+|------|----------|
+| `private_invite:{chatId}` | UserId приглашённого (long) |
+
+API: `SetAsync(chatId, inviteeUserId)` / `GetInviteeAsync(chatId)` / `RemoveAsync(chatId)`.
+
+После Accept invitee добавляется в `ChatMembers` и ключ удаляется. После Reject — ключ удаляется и сам Chat удаляется через `ChatsStorage.DeleteChat`.
 
 ### Redis-буфер секретных чатов
 

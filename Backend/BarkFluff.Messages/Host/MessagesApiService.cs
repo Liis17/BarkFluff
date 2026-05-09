@@ -1,6 +1,12 @@
+using BarkFluff.Messages.Features.AcceptPrivateChat;
+using BarkFluff.Messages.Features.AcceptSecretChatInvite;
+using BarkFluff.Messages.Features.AckSecretMessage;
 using BarkFluff.Messages.Features.CreateGroupChat;
+using BarkFluff.Messages.Features.CreatePrivateChat;
 using BarkFluff.Messages.Features.DeleteMessage;
+using BarkFluff.Messages.Features.DeletePrivateMessage;
 using BarkFluff.Messages.Features.EditMessage;
+using BarkFluff.Messages.Features.EditPrivateMessage;
 using BarkFluff.Messages.Features.GetChatInfo;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
@@ -9,9 +15,15 @@ using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
 using BarkFluff.Messages.Features.ListPinnedMessages;
+using BarkFluff.Messages.Features.ListPrivateMessages;
 using BarkFluff.Messages.Features.MarkAsRead;
 using BarkFluff.Messages.Features.PinMessage;
+using BarkFluff.Messages.Features.RejectPrivateChat;
+using BarkFluff.Messages.Features.RejectSecretChatInvite;
 using BarkFluff.Messages.Features.SendMessage;
+using BarkFluff.Messages.Features.SendPrivateMessage;
+using BarkFluff.Messages.Features.SendSecretChatInvite;
+using BarkFluff.Messages.Features.SendSecretMessage;
 using BarkFluff.Messages.Features.UnpinAll;
 using BarkFluff.Messages.Features.UnpinMessage;
 using BarkFluff.Proto.Messages;
@@ -345,6 +357,166 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Size = request.Pagination.Size,
             AttachmentType = request.AttachmentType == 0 ? null : (Domain.MessageAttachmentType?)(int)request.AttachmentType,
             SortDescending = request.SortDescending
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    // -- Приватные чаты ------------------------------------------------------
+
+    public override async Task<CreatePrivateChatResponse> CreatePrivateChat(CreatePrivateChatRequest request, ServerCallContext context)
+    {
+        var command = new CreatePrivateChatCommand
+        {
+            PeerUserId = request.PeerUserId,
+            KdfSalt = request.KdfSalt.ToByteArray(),
+            PassphraseVerifier = request.PassphraseVerifier.ToByteArray()
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<AcceptPrivateChatResponse> AcceptPrivateChat(AcceptPrivateChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        return await _mediator.Send(new AcceptPrivateChatCommand { ChatId = chatId });
+    }
+
+    public override async Task<RejectPrivateChatResponse> RejectPrivateChat(RejectPrivateChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        return await _mediator.Send(new RejectPrivateChatCommand { ChatId = chatId });
+    }
+
+    public override async Task<SendPrivateMessageResponse> SendPrivateMessage(SendPrivateMessageRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new SendPrivateMessageCommand
+        {
+            ChatId = chatId,
+            Ciphertext = request.Ciphertext.ToByteArray(),
+            Nonce = request.Nonce.ToByteArray(),
+            AssociatedData = request.AssociatedData.ToByteArray()
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<ListPrivateMessagesResponse> ListPrivateMessages(ListPrivateMessagesRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var query = new ListPrivateMessagesQuery
+        {
+            ChatId = chatId,
+            FromMessageId = request.FromMessageId,
+            OffsetBefore = request.OffsetBefore,
+            OffsetAfter = request.OffsetAfter
+        };
+
+        return await _mediator.Send(query);
+    }
+
+    public override async Task<EditPrivateMessageResponse> EditPrivateMessage(EditPrivateMessageRequest request, ServerCallContext context)
+    {
+        var command = new EditPrivateMessageCommand
+        {
+            MessageId = request.MessageId,
+            Ciphertext = request.Ciphertext.ToByteArray(),
+            Nonce = request.Nonce.ToByteArray(),
+            AssociatedData = request.AssociatedData.ToByteArray()
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<DeletePrivateMessageResponse> DeletePrivateMessage(DeletePrivateMessageRequest request, ServerCallContext context)
+    {
+        var command = new DeletePrivateMessageCommand
+        {
+            MessageId = request.MessageId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    // -- Секретные чаты ------------------------------------------------------
+
+    public override async Task<SendSecretChatInviteResponse> SendSecretChatInvite(SendSecretChatInviteRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.RecipientDeviceId, out var recipientDeviceId))
+        {
+            throw new DeviceIdRequiredException();
+        }
+
+        var command = new SendSecretChatInviteCommand
+        {
+            RecipientUserId = request.RecipientUserId,
+            RecipientDeviceId = recipientDeviceId,
+            InitialEnvelope = request.InitialEnvelope.ToByteArray()
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<AcceptSecretChatInviteResponse> AcceptSecretChatInvite(AcceptSecretChatInviteRequest request, ServerCallContext context)
+    {
+        var command = new AcceptSecretChatInviteCommand
+        {
+            InviteId = request.InviteId,
+            ResponseEnvelope = request.ResponseEnvelope.ToByteArray()
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<RejectSecretChatInviteResponse> RejectSecretChatInvite(RejectSecretChatInviteRequest request, ServerCallContext context)
+    {
+        var command = new RejectSecretChatInviteCommand
+        {
+            InviteId = request.InviteId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<SendSecretMessageResponse> SendSecretMessage(SendSecretMessageRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.RecipientDeviceId, out var recipientDeviceId))
+        {
+            throw new DeviceIdRequiredException();
+        }
+
+        var command = new SendSecretMessageCommand
+        {
+            RecipientUserId = request.RecipientUserId,
+            RecipientDeviceId = recipientDeviceId,
+            Envelope = request.Envelope.ToByteArray()
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<AckSecretMessageResponse> AckSecretMessage(AckSecretMessageRequest request, ServerCallContext context)
+    {
+        var command = new AckSecretMessageCommand
+        {
+            MessageId = request.MessageId
         };
 
         return await _mediator.Send(command);
