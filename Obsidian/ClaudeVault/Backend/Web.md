@@ -52,7 +52,7 @@ docker-compose -f docker-compose-dev.yml up web
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`
 - `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, online_status)
-- `attach.js` — диалог прикрепления файлов (images/docs режим, превью)
+- `attach.js` — диалог прикрепления файлов: сегментированный переключатель images/docs, превью (сетка/список с иконкой расширения и размером), поле подписи (`#attachCaption`, prefill из `#messageInput`, Enter=отправка, Shift+Enter=перенос, Escape=закрыть). Подпись передаётся третьим аргументом callback'а (`outFiles, asDocuments, caption`) и используется как текст сообщения.
 - `settings.js` — многоэкранная панель настроек (профиль, 2FA, сессии, пароль)
 - `main.js` — bootstrap мессенджера
 

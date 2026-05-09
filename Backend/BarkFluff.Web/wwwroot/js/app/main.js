@@ -418,13 +418,13 @@
         }).catch(function () { sendBtn.disabled = false; });
     }
 
-    function sendMessageWithFiles(files, asDocuments) {
+    function sendMessageWithFiles(files, asDocuments, caption) {
         if (pendingEdit) {
             // Во время редактирования attach-flow заблокирован, чтобы не отправить новое сообщение
             // вместо правки исходного. Завершите или отмените редактирование.
             return;
         }
-        var text = messageInput.value.trim();
+        var text = (caption != null ? caption : messageInput.value).trim();
         var sentChatId = currentChatId;
         sendBtn.disabled = true;
 
@@ -472,9 +472,14 @@
 
     function openAttachModal(files) {
         if (!currentChatId) return;
-        BF.attach.open(files, function (outFiles, asDocuments) {
-            sendMessageWithFiles(outFiles, asDocuments);
-        });
+        var prefill = messageInput.value;
+        BF.attach.open(files, function (outFiles, asDocuments, caption) {
+            // Если пользователь ввёл подпись в модалке — забираем её из неё, а исходный
+            // ввод в чате очищаем, чтобы текст не отправился ещё раз отдельным сообщением.
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendMessageWithFiles(outFiles, asDocuments, caption);
+        }, prefill);
     }
 
     sendBtn.addEventListener('click', sendMessage);
