@@ -75,8 +75,9 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 
 ### Upload
 - ASP.NET буферирует IFormFile в temp-файл при разборе multipart
-- `Infrastructure/HashingReadStream` (read-only обёртка) считает SHA-256 пока AWS SDK стримит тело в S3 — один проход
-- В S3 заливается через `S3StorageService.UploadStreamingAsync` с `DisablePayloadSigning = true` и явным `Content-Length`, иначе SDK попытался бы перемотать non-seekable поток для sigv4
+- Контроллер пишет тело в собственный temp-файл (`Path.GetTempPath()/barkfluff-clientstorage-uploads/{guid}`) с попутным `IncrementalHash` SHA-256 — один проход по сети
+- Затем temp-файл стримится в S3 как обычный seekable `FileStream` через `S3StorageService.UploadAsync`
+- В `finally` temp-файл удаляется
 - После ответа клиенту: фоновая задача скачивает файл из S3 в локальный кеш
 
 ### Лимиты загрузки

@@ -321,7 +321,9 @@ public class ClientStorageController : ControllerBase
 
     /// <summary>
     /// Загрузка нового дистрибутива.
-    /// SHA-256 считается одновременно со стримом в S3 (один проход по файлу).
+    /// Тело запроса сохраняется в локальный temp-файл с попутным подсчётом SHA-256 (один проход по сети),
+    /// затем temp-файл стримится в S3 как обычный seekable FileStream — без танцев с
+    /// non-seekable стримом и DisablePayloadSigning.
     /// После ответа клиенту локальный кеш обновляется в фоне.
     /// </summary>
     private async Task<IActionResult> UploadClient(IFormFile? file, ClientType clientType, ReleaseChannel releaseChannel)
@@ -329,27 +331,55 @@ public class ClientStorageController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Файл не предоставлен" });
 
-        var s3Key = Guid.NewGuid().ToString();
+        var s3Key   = Guid.NewGuid().ToString();
+        var tempDir = Path.Combine(Path.GetTempPath(), "barkfluff-clientstorage-uploads");
+        Directory.CreateDirectory(tempDir);
+        var tempPath = Path.Combine(tempDir, s3Key);
         string checksum;
 
         try
         {
-            await using var sourceStream = file.OpenReadStream();
-            using var incrementalHash    = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            await using var hashingStream = new HashingReadStream(sourceStream, incrementalHash);
+            // 1) принимаем файл с попутным SHA-256
+            using (var incrementalHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
+            {
+                await using var sourceStream = file.OpenReadStream();
+                await using var tempStream   = new FileStream(
+                    tempPath, FileMode.Create, FileAccess.Write, FileShare.None,
+                    bufferSize: 81920, useAsync: true);
 
-            await _s3.UploadStreamingAsync(
-                s3Key,
-                hashingStream,
-                file.Length,
-                file.ContentType ?? "application/octet-stream");
+                var buffer = new byte[81920];
+                int read;
+                while ((read = await sourceStream.ReadAsync(buffer)) > 0)
+                {
+                    incrementalHash.AppendData(buffer, 0, read);
+                    await tempStream.WriteAsync(buffer.AsMemory(0, read));
+                }
+                checksum = Convert.ToHexStringLower(incrementalHash.GetHashAndReset());
+            }
 
-            checksum = Convert.ToHexStringLower(hashingStream.GetHashAndReset());
+            // 2) грузим temp-файл в S3
+            await using (var uploadStream = new FileStream(
+                tempPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                bufferSize: 81920, useAsync: true))
+            {
+                await _s3.UploadAsync(
+                    s3Key,
+                    uploadStream,
+                    file.ContentType ?? "application/octet-stream");
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка загрузки файла {ClientType} в S3", clientType);
             return StatusCode(500, new { error = "Ошибка при загрузке файла" });
+        }
+        finally
+        {
+            try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось удалить temp-файл {Path}", tempPath);
+            }
         }
 
         _logger.LogInformation("Файл {FileName} загружен в S3 как {S3Key}, checksum: {Checksum}",
