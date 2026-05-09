@@ -214,6 +214,67 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - На RESULT_OK — вызывает `loadSessions()` для обновления списка устройств
 - Проверяет `CAMERA` permission перед запуском; при отказе — подсказка о настройках
 
+## E2E чаты (приватные + секретные)
+
+Stage 6 плана `messages-crystalline-axolotl.md` — на Android реализован клиентский слой E2E.
+
+### Зависимости (libs.versions.toml + build.gradle.kts)
+
+- `org.signal:libsignal-android:0.86.16` + `org.signal:libsignal-client:0.86.16` — Signal Double Ratchet для секретных чатов. Maven repo: `https://build-artifacts.signal.org/libraries/maven/` добавлен в `settings.gradle.kts`.
+- `com.lambdapioneer.argon2kt:argon2kt:1.6.0` — Argon2id для приватных чатов.
+- `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")` + `sourceCompatibility = VERSION_17` — требование libsignal (Java records).
+- `packaging.resources.excludes` — `libsignal_jni*.dylib`, `signal_jni*.dll`, `**/libsignal_jni_testing.so` чтобы не тащить native-либы других платформ в APK.
+
+### Crypto-модуль `com/barkfluff/client/crypto/`
+
+- `PrivateChatCrypto.kt` — Argon2id (t=3, m=64MiB, p=4) → 32-байтный ключ → AES-256-GCM (nonce 12 байт, GCM tag 128 бит). HMAC-SHA256(key, "BARKFLUFF_PRIVATE_CHAT_VERIFIER") — passphrase verifier для проверки на стороне приглашённого. AAD = `barkfluff:private:{chatId}`.
+- `BarkFluffSignalStore.kt` — реализация `org.signal.libsignal.protocol.state.SignalProtocolStore` поверх `EncryptedSharedPreferences("barkfluff_signal_store")`. Все записи (identity-key, sessions, prekeys, signed prekeys, kyber prekeys, sender keys) сериализуются через `.serialize() → Base64`. `saveIdentity` возвращает `IdentityKeyStore.IdentityChange`, `markKyberPreKeyUsed(int, int, ECPublicKey)` — no-op (Kyber не используется в текущем proto).
+- `PrekeyManager.kt` — генерация identity-key (`IdentityKeyPair.generate()`), registration_id (`KeyHelper.generateRegistrationId(false)`), signed prekey (ручной: `ECKeyPair.generate()` + `identityPriv.calculateSignature(pubBytes)`), 100 one-time prekeys (`PreKeyRecord(id, ECKeyPair.generate())`). Метаданные регистрации в `barkfluff_prekey_state` (plain prefs, не sensitive).
+- `E2EBootstrap.kt` — `ensurePrekeyBundleRegistered(context)`: при первом логине вызывается из `MainActivity.onCreate` → генерит bundle → `UsersApi.RegisterPrekeyBundle` → `PrekeyManager.persistBundle()`. Идемпотентно. Также `replenishIfNeeded(remaining)`.
+- `EncryptedInviteHandler.kt` — слушает 4 стрима (`privateChatInvites`, `privateChatInviteResolutions`, `secretChatInvites`, `secretChatResolutions`) из `RealtimeService` и показывает MaterialAlertDialog. При accept приватного — запрашивает passphrase, валидирует verifier, вызывает `PrivateChatRepository.acceptPrivateChatInvite`. Регистрируется в `MainActivity.onCreate`.
+
+### Repositories `com/barkfluff/client/repository/`
+
+- `PrivateChatRepository.kt` — фасад приватных чатов:
+  - `createPrivateChat(peerId, passphrase)`: генерит salt+key+verifier, gRPC, кеширует key в `EncryptedSharedPreferences("barkfluff_private_chat_keys")` ключ=chatId.
+  - `acceptPrivateChatInvite(chatId, passphrase, salt, verifier)`: derive → validate → если ОК, gRPC accept + кеширует key.
+  - `unlockExistingChat(chat, passphrase)`: для повторного открытия после разлогина или с другого устройства.
+  - `sendText/editText/deleteMessage/listMessages/decryptIncoming` — encrypt/decrypt поверх gRPC. Если ключ забыт — `KeyNotAvailableException`.
+- `SecretChatRepository.kt` — фасад секретных чатов:
+  - `createSecretChat(peerUserId, peerDeviceId, initialPlaintext)`: fetch peer bundle → SessionBuilder.process → SessionCipher.encrypt (PreKeySignalMessage) → SendSecretChatInvite. Метаданные локального чата (id, peer, inviteId, role) в `EncryptedSharedPreferences("barkfluff_secret_chats")`.
+  - `acceptIncomingInvite(inviteId, sender, envelope)`: decrypt PreKeySignalMessage → создать локальную SecretChat запись → AcceptSecretChatInvite gRPC.
+  - `sendMessage/decryptIncoming/ack` — runtime-операции через SessionCipher.
+  - **Лимитация**: libsignal 0.86+ требует Kyber prekey в `PreKeyBundle` (PQXDH), а текущий proto `barkfluff.users.PrekeyBundle` хранит только X25519. Метод `toLibsignal()` бросает `UnsupportedOperationException` с пояснением — требуется расширить proto Kyber-полями + backend Users (в плане как future work). Приватные чаты от этого не зависят и работают полностью.
+
+### gRPC методы (в `GrpcManager.kt`)
+
+Добавлены 16 новых методов:
+- Приватные: `createPrivateChat`, `acceptPrivateChat`, `rejectPrivateChat`, `sendPrivateMessage`, `listPrivateMessages`, `editPrivateMessage`, `deletePrivateMessage`, `getChat`.
+- Секретные: `sendSecretChatInvite`, `acceptSecretChatInvite`, `rejectSecretChatInvite`, `sendSecretMessage`, `ackSecretMessage`.
+- Prekey-bundle: `registerPrekeyBundle`, `fetchPrekeyBundle`, `listPeerDevices`, `replenishOneTimePrekeys`, `rotateSignedPrekey`.
+
+### RealtimeService — 8 новых SharedFlow + collectors
+
+`privateMessages`, `privateMessageEdits`, `privateMessageDeletes`, `privateChatInvites`, `privateChatInviteResolutions` (user-scope) + `secretChatInvites`, `secretChatResolutions`, `secretMessages` (device-scope; маршрутизация на `RecipientDeviceId` из JWT). Подписки запускаются в `RealtimeService.resume()` через `streamWithReconnect("…")` с тем же exponential backoff, что у существующих стримов.
+
+### UI
+
+- `CreateEncryptedChatActivity` (+ `activity_create_encrypted_chat.xml`) — единый экран создания: выбор типа (Private/Secret через MaterialButtonToggleGroup), ввод peer userId, passphrase ИЛИ peer device + initial message. Spinner устройств заполняется через `ListPeerDevices`.
+- `PrivateChatActivity` (+ `activity_private_chat.xml`) — минимальная история приватного чата: загрузка через `listPrivateMessages` (расшифровка inline), отправка `sendText`, реалтайм через `realtimeService.privateMessages`. При отсутствии локального ключа — диалог запроса passphrase + `unlockExistingChat`.
+- `SecretChatActivity` (+ `activity_secret_chat.xml`) — секретный чат, без истории (сервер не хранит). Только runtime-сообщения через `realtimeService.secretMessages` + `decryptIncoming` + `ack`.
+- `EncryptedMessageAdapter` + `item_encrypted_message.xml` — простой list-адаптер для расшифрованных сообщений (sender label / text / time).
+- `ChatsFragment` — кнопка `encryptedChatButton` в toolbar открывает `CreateEncryptedChatActivity`.
+- AndroidManifest — три новых Activity зарегистрированы.
+
+### Storage prefs
+
+| Имя | Содержимое |
+|-----|-----------|
+| `barkfluff_signal_store` | EncryptedSharedPreferences. Identity-key, sessions, prekeys (libsignal сериализация). |
+| `barkfluff_prekey_state` | Plain prefs. Флаги `prekey_registered`, `prekey_next_one_time_id`, `prekey_next_signed_id`. |
+| `barkfluff_private_chat_keys` | EncryptedSharedPreferences. chatId → Base64(AES-256 key). |
+| `barkfluff_secret_chats` | EncryptedSharedPreferences. secretChatId → `peerUserId\|peerDeviceId\|inviteId\|role\|accepted`. |
+
 ## gRPC Коды ошибок (из x-error-code trailer)
 
 | Исключение | ErrorCode |

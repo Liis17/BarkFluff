@@ -4,9 +4,13 @@ import android.app.Application
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.barkfluff.client.crypto.BarkFluffSignalStore
+import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.StickerCache
@@ -18,6 +22,18 @@ class BarkFluffApplication : Application() {
         private set
 
     lateinit var realtimeService: RealtimeService
+        private set
+
+    lateinit var signalStore: BarkFluffSignalStore
+        private set
+
+    lateinit var prekeyManager: PrekeyManager
+        private set
+
+    lateinit var privateChatRepository: PrivateChatRepository
+        private set
+
+    lateinit var secretChatRepository: SecretChatRepository
         private set
 
     /**
@@ -40,7 +56,13 @@ class BarkFluffApplication : Application() {
         NotificationHelper.createChannels(this)
         grpcManager = GrpcManager()
         realtimeService = RealtimeService(applicationContext, grpcManager)
-        
+
+        // E2E-инфраструктура (приватные + секретные чаты)
+        signalStore = BarkFluffSignalStore(applicationContext)
+        prekeyManager = PrekeyManager(applicationContext, signalStore)
+        privateChatRepository = PrivateChatRepository(applicationContext, grpcManager)
+        secretChatRepository = SecretChatRepository(applicationContext, grpcManager, signalStore)
+
         // Инициализируем персистентный кэш URL файлов
         AvatarLoader.initializeCache(this)
 

@@ -106,6 +106,10 @@ class ChatsFragment : Fragment() {
             val intent = Intent(requireContext(), SearchActivity::class.java)
             startActivity(intent)
         }
+        binding.encryptedChatButton.setOnClickListener {
+            val intent = Intent(requireContext(), CreateEncryptedChatActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun setupToolbar() {
