@@ -283,6 +283,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Barkfluff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Доступ к камере нужен для съёмки фото и сканирования QR-кодов авторизации.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Доступ к микрофону нужен для записи голосовых сообщений.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Доступ нужен, чтобы сохранять полученные фото и видео в вашу медиатеку.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Доступ к фото нужен для отправки изображений в чате и установки аватара.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -319,6 +323,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Barkfluff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Доступ к камере нужен для съёмки фото и сканирования QR-кодов авторизации.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Доступ к микрофону нужен для записи голосовых сообщений.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Доступ нужен, чтобы сохранять полученные фото и видео в вашу медиатеку.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Доступ к фото нужен для отправки изображений в чате и установки аватара.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -37,6 +37,7 @@ final class DependencyContainer {
     let usersRepository: UsersRepository
     let messagesRepository: MessagesRepository
     let filesRepository: FilesRepository
+    let stickersRepository: StickersRepository
     let updatesRepository: UpdatesRepository
     let fastAuthRepository: FastAuthRepository
     let navigatorRepository: NavigatorRepository
@@ -46,8 +47,15 @@ final class DependencyContainer {
 
     let userCache: UserCache
     let chatCache: ChatCache
+    let mediaCacheManager: MediaCacheManager
     let onlineStatusCache: OnlineStatusCache
     let fileURLCache: FileURLCache
+
+    // MARK: - Local Persistence
+
+    let database: Database
+    let localChatRepository: LocalChatRepository
+    let localMessageRepository: LocalMessageRepository
 
     // MARK: - Image Pipeline
 
@@ -60,6 +68,7 @@ final class DependencyContainer {
     let messageService: MessageService
     let userService: UserService
     let fileService: FileService
+    let stickersService: StickersService
     let updatesService: UpdatesService
     let fastAuthService: FastAuthService
     let serverDiscoveryService: ServerDiscoveryService
@@ -70,6 +79,21 @@ final class DependencyContainer {
 
     let updatesStreamManager: UpdatesStreamManager
     let onlinerStreamManager: OnlinerStreamManager
+
+    // MARK: - Personalization
+
+    /// Локальные настройки персонализации (UserDefaults-backed).
+    let personalizationSettings: PersonalizationSettings
+
+    // MARK: - Appearance
+
+    /// Локальные настройки внешнего вида (тема приложения).
+    let appearanceSettings: AppearanceSettings
+
+    // MARK: - Stickers
+
+    /// Список недавно использованных стикеров (UserDefaults).
+    let recentStickersStore: RecentStickersStore
 
     // MARK: - Settings
 
@@ -123,6 +147,7 @@ final class DependencyContainer {
         self.usersRepository = UsersRepository(connectionManager: connectionManager)
         self.messagesRepository = MessagesRepository(connectionManager: connectionManager)
         self.filesRepository = FilesRepository(connectionManager: connectionManager)
+        self.stickersRepository = StickersRepository(connectionManager: connectionManager)
         self.updatesRepository = UpdatesRepository(connectionManager: connectionManager)
         self.fastAuthRepository = FastAuthRepository(connectionManager: connectionManager)
         self.navigatorRepository = NavigatorRepository(
@@ -152,6 +177,16 @@ final class DependencyContainer {
         self.chatCache = ChatCache()
         self.onlineStatusCache = OnlineStatusCache()
         self.fileURLCache = FileURLCache()
+
+        // Local persistence (SQLite через GRDB).
+        // Если открыть БД не удалось — падаем сразу, чтобы не работать с битым стейтом.
+        do {
+            self.database = try Database()
+        } catch {
+            fatalError("Failed to open local cache database: \(error)")
+        }
+        self.localChatRepository = LocalChatRepository(database: database)
+        self.localMessageRepository = LocalMessageRepository(database: database)
 
         // Image Pipeline — disk cache, не зависит от HTTP cache headers
         self.imagePipeline = ImagePipeline {
@@ -192,6 +227,17 @@ final class DependencyContainer {
 
         self.fileService = FileService(filesRepository: filesRepository, fileURLCache: fileURLCache)
 
+        self.mediaCacheManager = MediaCacheManager(
+            database: database,
+            fileService: fileService
+        )
+
+        self.stickersService = StickersService(
+            repository: stickersRepository,
+            mediaCacheManager: mediaCacheManager,
+            database: database
+        )
+
         self.updatesService = UpdatesService(
             updatesRepository: updatesRepository,
             streamManager: updatesStreamManager
@@ -216,6 +262,15 @@ final class DependencyContainer {
             streamManager: onlinerStreamManager,
             cache: onlineStatusCache
         )
+
+        // Personalization (локальные настройки чата)
+        self.personalizationSettings = PersonalizationSettings()
+
+        // Appearance (тема приложения)
+        self.appearanceSettings = AppearanceSettings()
+
+        // Stickers
+        self.recentStickersStore = RecentStickersStore()
 
         // Устанавливаем интерсепторы после создания всех зависимостей
         // (нужен Task т.к. connectionManager — actor)
@@ -244,16 +299,36 @@ final class DependencyContainer {
 
     // MARK: - Helpers
 
-    /// Сбросить все данные (при выходе из аккаунта)
+    /// Полная очистка всех данных текущего инстанса: стримы, кеши, БД, токены, device_id, эндпоинты.
+    /// После вызова приложение должно перейти на экран выбора сервера (`.serverSelection`).
     func reset() async {
+        // 1. Останавливаем все стримы и фоновые подписки
+        await updatesService.stop()
         await onlineStatusService.stop()
-        await tokenProvider.clearAll()
+
+        // 2. Чистим in-memory кеши
         await userCache.removeAll()
         await chatCache.removeAll()
         await onlineStatusCache.removeAll()
+
+        // 3. Чистим файловый и URL-кеши
+        await mediaCacheManager.clearAll()
         await fileURLCache.clear()
+        await stickersService.clearCache()
+        recentStickersStore.clear()
         imagePipeline.cache.removeAll()
+
+        // 4. Чистим локальную БД
+        try? await database.truncateAll()
+
+        // 5. Полностью стираем токены, device_id и адрес сервера
+        await tokenProvider.purgeAll()
+
+        // 6. Сбрасываем gRPC-эндпоинты и информацию о сервере
         await serverDiscoveryService.disconnect()
+        await connectionManager.shutdown()
+
+        // 7. Сбрасываем флаги текущего пользователя
         currentUserID = 0
         currentUser = nil
     }

@@ -13,6 +13,9 @@ import BFCore
 final class ChatListViewModel {
     var chats: [Chat] = []
     var isLoading = false
+    /// Идёт фоновое обновление списка чатов с сервера, когда кеш уже показан
+    /// (stale-while-revalidate). Используется для индикатора «Обновление…».
+    var isRefreshing = false
     var errorMessage: String?
     var searchText = ""
     var searchResults: [User] = []
@@ -29,9 +32,12 @@ final class ChatListViewModel {
     private let userService: UserServiceProtocol
     private let updatesService: UpdatesServiceProtocol
     private let onlineStatusService: OnlineStatusServiceProtocol
+    private let localChatRepository: LocalChatRepository?
 
     private var newMessagesTask: Task<Void, Never>?
     private var readEventsTask: Task<Void, Never>?
+    private var editedMessagesTask: Task<Void, Never>?
+    private var deletedMessagesTask: Task<Void, Never>?
     private var connectionEventsTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
 
@@ -40,19 +46,35 @@ final class ChatListViewModel {
         userService: UserServiceProtocol,
         updatesService: UpdatesServiceProtocol,
         onlineStatusService: OnlineStatusServiceProtocol,
-        currentUserID: Int64
+        currentUserID: Int64,
+        localChatRepository: LocalChatRepository? = nil
     ) {
         self.chatService = chatService
         self.userService = userService
         self.updatesService = updatesService
         self.onlineStatusService = onlineStatusService
         self.currentUserID = currentUserID
+        self.localChatRepository = localChatRepository
     }
 
     // MARK: - Loading
 
     func loadChats() async {
-        isLoading = true
+        // 1. Stale: показать кешированные чаты сразу (если есть и список ещё пуст).
+        var hasCachedData = false
+        if allChats.isEmpty, let local = localChatRepository {
+            if let cached = try? await local.loadCachedChats(), !cached.isEmpty {
+                allChats = cached
+                applyFilter()
+                hasCachedData = true
+            }
+        }
+
+        if hasCachedData {
+            isRefreshing = true
+        } else {
+            isLoading = true
+        }
         errorMessage = nil
 
         do {
@@ -61,15 +83,23 @@ final class ChatListViewModel {
             totalCount = result.totalCount
             applyFilter()
 
-            // Прогрев кеша онлайн-статусов для DM-чатов. Ref-counted tracking
-            // делают сами ChatRowView через .task(id:) когда строки появляются в List.
+            // 2. Сохраняем актуальный снимок в БД.
+            if let local = localChatRepository {
+                try? await local.replaceAll(result.items)
+            }
+
+            // Прогрев кеша онлайн-статусов для DM-чатов.
             let userIDs = collectUserIDsFromChats()
             await onlineStatusService.start(initialUserIDs: userIDs)
         } catch {
-            errorMessage = error.localizedDescription
+            // Ошибку показываем только если кеш пустой; иначе кэш виден в UI.
+            if allChats.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
 
         isLoading = false
+        isRefreshing = false
     }
 
     func loadMoreChats() async {
@@ -129,14 +159,38 @@ final class ChatListViewModel {
                 }
             }
         }
+
+        editedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getEditedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleEditedMessage(event)
+                }
+            }
+        }
+
+        deletedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getDeletedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleDeletedMessage(event)
+                }
+            }
+        }
     }
 
     func stopListeningForUpdates() {
         newMessagesTask?.cancel()
         readEventsTask?.cancel()
+        editedMessagesTask?.cancel()
+        deletedMessagesTask?.cancel()
         connectionEventsTask?.cancel()
         newMessagesTask = nil
         readEventsTask = nil
+        editedMessagesTask = nil
+        deletedMessagesTask = nil
         connectionEventsTask = nil
     }
 
@@ -191,6 +245,26 @@ final class ChatListViewModel {
                 allChats[index].unreadCount = 0
             }
             applyFilter()
+        }
+    }
+
+    /// Обновляем превью lastMessage если отредактировано последнее сообщение чата.
+    private func handleEditedMessage(_ event: BFCore.MessageEditedEvent) {
+        guard let index = allChats.firstIndex(where: { $0.id == event.chatID }) else { return }
+        if var existing = allChats[index].lastMessage, existing.id == event.message.id {
+            existing.content = event.message.content
+            existing.isEdited = event.message.isEdited
+            existing.editedAt = event.message.editedAt
+            allChats[index].lastMessage = existing
+            applyFilter()
+        }
+    }
+
+    /// Если удалено сообщение, которое было превью lastMessage — перезагружаем чат-лист.
+    private func handleDeletedMessage(_ event: BFCore.MessageDeletedEvent) {
+        guard let index = allChats.firstIndex(where: { $0.id == event.chatID }) else { return }
+        if allChats[index].lastMessage?.id == event.messageID {
+            Task { await loadChats() }
         }
     }
 

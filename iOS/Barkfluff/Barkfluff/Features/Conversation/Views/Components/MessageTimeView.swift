@@ -16,6 +16,14 @@ struct MessageTimeView: View {
 
     var body: some View {
         HStack(spacing: 4) {
+            // Иконка карандаша — сообщение было отредактировано
+            if message.isEdited {
+                Image(systemName: "pencil")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityLabel("Сообщение отредактировано")
+            }
+
             // Время отправки
             Text(message.sentAt, style: .time)
                 .font(.caption2)

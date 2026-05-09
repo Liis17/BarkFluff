@@ -1,8 +1,9 @@
 //
 //  MessageBubbleView.swift
-//  Barkfluff
+//  Barkfluff (iOS)
 //
-//  Пузырь сообщения в стиле iMessage (iOS версия)
+//  Пузырь сообщения в стиле iMessage с поддержкой контекстного меню,
+//  пересланных сообщений, стикеров и отметок «изменено».
 //
 
 import SwiftUI
@@ -21,25 +22,46 @@ struct MessageBubbleView: View {
     var onDeleteFailed: ((String) -> Void)?
     /// Callback для нажатия на вложение
     var onAttachmentTap: ((MessageAttachment, [MessageAttachment]) -> Void)?
+    /// Callback на «Ответить»
+    var onReply: ((Message) -> Void)?
+    /// Callback на «Переслать» — передаётся id сообщения
+    var onForward: ((Int64) -> Void)?
+    /// Callback на «Изменить»
+    var onEdit: ((Message) -> Void)?
+    /// Callback на «Удалить»
+    var onDelete: ((Int64) -> Void)?
+    /// Callback на «Копировать текст»
+    var onCopyText: ((String) -> Void)?
+    /// Callback на «Сохранить изображения»
+    var onSaveImages: (([MessageAttachment]) -> Void)?
+    /// Callback на «Скопировать изображение» (одно изображение)
+    var onCopyImage: ((MessageAttachment) -> Void)?
+    /// Callback на «Сохранить документы»
+    var onSaveDocuments: (([MessageAttachment]) -> Void)?
 
-    /// Радиус скругления углов (как у облачка)
-    static let bubbleCornerRadius: CGFloat = 18
+    @Environment(DependencyContainer.self) private var container
 
-    /// Является ли сообщение своим
+    /// Радиус скругления по умолчанию (используется в превью без DI).
+    static let defaultBubbleCornerRadius: CGFloat = 18
+    static let bubbleCornerRadius: CGFloat = 18  // legacy alias
+
+    /// Текущий радиус из настроек.
+    private var bubbleCornerRadius: CGFloat {
+        CGFloat(container.personalizationSettings.bubbleCornerRadius)
+    }
+
     private var isOwn: Bool {
         message.senderID == currentUserID
     }
 
-    /// Максимальная ширина пузырька (70% от контейнера)
+    /// Максимальная ширина пузырька
     private let maxBubbleWidth: CGFloat = 300
 
-    /// Сообщение в процессе отправки
     private var isSending: Bool {
         if case .sending = message.sendingState { return true }
         return false
     }
 
-    /// Сообщение не удалось отправить
     private var isFailed: Bool {
         if case .failed = message.sendingState { return true }
         return false
@@ -53,6 +75,13 @@ struct MessageBubbleView: View {
         }
     }
 
+    /// Сообщение состоит ровно из одного стикера и не содержит текста.
+    private var isStickerOnly: Bool {
+        !message.content.hasText
+            && message.content.attachments.count == 1
+            && message.content.attachments.first?.type == .sticker
+    }
+
     var body: some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.xxs) {
             if isOwn {
@@ -60,7 +89,6 @@ struct MessageBubbleView: View {
             }
 
             VStack(alignment: isOwn ? .trailing : .leading, spacing: 2) {
-                // Имя отправителя (только для групповых чатов, первое в группе)
                 if !isOwn && showSenderName && groupInfo.isFirstInGroup {
                     Text(message.senderName ?? "Неизвестный")
                         .font(.caption)
@@ -70,13 +98,18 @@ struct MessageBubbleView: View {
                         .padding(.bottom, Theme.Spacing.xxs)
                 }
 
-                // Контент сообщения
-                bubbleContent
-                    .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
-                    .opacity(isSending && !message.content.hasAttachments ? 0.7 : 1.0)
-                    .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+                if isStickerOnly, let stickerAttachment = message.content.attachments.first {
+                    StickerMessageView(attachment: stickerAttachment)
+                        .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
+                        .opacity(isSending ? 0.7 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+                } else {
+                    bubbleContent
+                        .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
+                        .opacity(isSending && !message.content.hasAttachments ? 0.7 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+                }
 
-                // Ошибка отправки
                 if isFailed {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -87,15 +120,8 @@ struct MessageBubbleView: View {
                             .foregroundStyle(.red)
                     }
                     .padding(.horizontal, Theme.Spacing.sm)
-                    .contextMenu {
-                        if let localID = message.localID {
-                            Button("Повторить") { onRetry?(localID) }
-                            Button("Удалить", role: .destructive) { onDeleteFailed?(localID) }
-                        }
-                    }
                 }
 
-                // Время и статус
                 if groupInfo.showTime || groupInfo.isLastInGroup {
                     MessageTimeView(
                         message: message,
@@ -112,18 +138,92 @@ struct MessageBubbleView: View {
         }
         .padding(.vertical, 1)
         .contextMenu {
-            if isFailed, let localID = message.localID {
-                Button("Повторить отправку") { onRetry?(localID) }
-                Button("Удалить сообщение", role: .destructive) { onDeleteFailed?(localID) }
+            contextMenuContent
+        }
+    }
+
+    // MARK: - Context Menu
+
+    @ViewBuilder
+    private var contextMenuContent: some View {
+        if isFailed, let localID = message.localID {
+            Button("Повторить отправку") { onRetry?(localID) }
+            Button("Удалить сообщение", role: .destructive) { onDeleteFailed?(localID) }
+        } else if !message.isSystem && message.id > 0 {
+            let attachments = message.content.attachments
+            let imageAttachments = attachments.filter { $0.type == .image }
+            let documentAttachments = attachments.filter {
+                $0.type == .document || $0.type == .audio || $0.type == .voice
+            }
+            let nonForwardedAttachments = attachments.filter { $0.type != .forwardedMessage }
+            let canEdit = isOwn && (message.content.hasText || !nonForwardedAttachments.isEmpty)
+
+            if canEdit {
+                Button {
+                    onEdit?(message)
+                } label: {
+                    Label("Изменить", systemImage: "pencil")
+                }
+            }
+
+            Button {
+                onReply?(message)
+            } label: {
+                Label("Ответить", systemImage: "arrowshape.turn.up.left")
+            }
+            Button {
+                onForward?(message.forwardSourceID)
+            } label: {
+                Label("Переслать", systemImage: "arrowshape.turn.up.right")
+            }
+
+            if !message.content.text.isEmpty {
+                Button {
+                    onCopyText?(message.content.text)
+                } label: {
+                    Label("Копировать текст", systemImage: "doc.on.doc")
+                }
+            }
+
+            if imageAttachments.count == 1, let one = imageAttachments.first {
+                Button {
+                    onCopyImage?(one)
+                } label: {
+                    Label("Скопировать изображение", systemImage: "photo.on.rectangle")
+                }
+            }
+
+            if !imageAttachments.isEmpty {
+                let title = imageAttachments.count == 1 ? "Сохранить изображение" : "Сохранить изображения"
+                Button {
+                    onSaveImages?(imageAttachments)
+                } label: {
+                    Label(title, systemImage: "square.and.arrow.down")
+                }
+            }
+
+            if !documentAttachments.isEmpty {
+                Button {
+                    onSaveDocuments?(documentAttachments)
+                } label: {
+                    Label("Сохранить", systemImage: "arrow.down.doc")
+                }
+            }
+
+            if isOwn {
+                Divider()
+                Button(role: .destructive) {
+                    onDelete?(message.id)
+                } label: {
+                    Label("Удалить", systemImage: "trash")
+                }
             }
         }
     }
 
     @ViewBuilder
     private var bubbleContent: some View {
-        // Текст сообщения
         if message.isSystem {
-            // Системное сообщение
             Text(message.content.text)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -131,75 +231,85 @@ struct MessageBubbleView: View {
                 .padding(.horizontal, Theme.Spacing.lg)
                 .padding(.vertical, Theme.Spacing.md)
         } else if isOwn {
-            // Исходящее сообщение — синий пузырь
             let showTail = groupInfo.isLastInGroup
-            // Для медиа используем минимальные отступы, скругления уже на картинках
             let padding = isMediaOnly ? CGFloat(2) : Theme.Spacing.md
             let verticalPadding = isMediaOnly ? CGFloat(2) : Theme.Spacing.sm
 
-            VStack(alignment: .trailing, spacing: Theme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                if message.content.hasAttachments {
+                    attachmentsView
+                }
+
                 if message.content.hasText {
                     Text(message.content.text)
                         .font(.body)
                         .foregroundStyle(.white)
                         .textSelection(.enabled)
-                }
-
-                // Вложения
-                if message.content.hasAttachments {
-                    attachmentsView
+                        .multilineTextAlignment(.leading)
                 }
             }
             .padding(.horizontal, padding)
             .padding(.vertical, verticalPadding)
             .background(
-                MessageBubbleShape(tailSide: .right, showTail: showTail)
+                MessageBubbleShape(tailSide: .right, showTail: showTail, cornerRadius: bubbleCornerRadius)
                     .fill(Color(red: 0, green: 122/255, blue: 1))
             )
-            .clipShape(MessageBubbleShape(tailSide: .right, showTail: showTail))
+            .clipShape(MessageBubbleShape(tailSide: .right, showTail: showTail, cornerRadius: bubbleCornerRadius))
             .padding(.trailing, showTail ? 6 : 0)
         } else {
-            // Входящее сообщение — серый пузырь (как в macOS)
             let showTail = groupInfo.isLastInGroup
-            // Для медиа используем минимальные отступы, скругления уже на картинках
             let padding = isMediaOnly ? CGFloat(2) : Theme.Spacing.md
             let verticalPadding = isMediaOnly ? CGFloat(2) : Theme.Spacing.sm
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                if message.content.hasAttachments {
+                    attachmentsView
+                }
+
                 if message.content.hasText {
                     Text(message.content.text)
                         .font(.body)
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
-                }
-
-                // Вложения
-                if message.content.hasAttachments {
-                    attachmentsView
+                        .multilineTextAlignment(.leading)
                 }
             }
             .padding(.horizontal, padding)
             .padding(.vertical, verticalPadding)
             .background(
-                MessageBubbleShape(tailSide: .left, showTail: showTail)
+                MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius)
                     .fill(Color(uiColor: .tertiarySystemFill))
             )
-            .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail))
+            .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius))
             .padding(.leading, showTail ? 6 : 0)
         }
     }
 
     @ViewBuilder
     private var attachmentsView: some View {
-        // Разделяем вложения на медиа и документы
+        let forwardedAttachments = message.content.attachments.filter {
+            $0.type == .forwardedMessage && $0.forwarded != nil
+        }
         let mediaAttachments = message.content.attachments.filter {
             $0.type == .image || $0.type == .video || $0.type == .gif
+        }
+        let stickerAttachments = message.content.attachments.filter {
+            $0.type == .sticker
         }
         let documentAttachments = message.content.attachments.filter {
             $0.type == .document || $0.type == .audio
         }
 
-        // Медиа вложения в сетке
+        ForEach(forwardedAttachments) { attachment in
+            if let payload = attachment.forwarded {
+                ForwardedMessageView(payload: payload, isOwn: isOwn)
+            }
+        }
+
+        ForEach(stickerAttachments) { attachment in
+            StickerMessageView(attachment: attachment, size: 140)
+        }
+
         if !mediaAttachments.isEmpty {
             AttachmentGridView(
                 attachments: mediaAttachments,
@@ -209,15 +319,13 @@ struct MessageBubbleView: View {
                 }
             )
             .overlay {
-                // Круговой прогресс поверх медиа (Telegram-стиль)
                 if let progress = message.uploadProgress, progress < 1.0 {
                     MediaUploadProgressView(progress: progress)
-                        .clipShape(RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: bubbleCornerRadius, style: .continuous))
                 }
             }
         }
 
-        // Документы списком
         ForEach(documentAttachments) { attachment in
             if attachment.type == .document {
                 DocumentAttachmentView(
@@ -232,80 +340,4 @@ struct MessageBubbleView: View {
             }
         }
     }
-}
-
-#Preview {
-    let currentUserID: Int64 = 1
-
-    ScrollView {
-        VStack(spacing: Theme.Spacing.sm) {
-            // Разделитель даты
-            MessageDateSeparatorView(date: Date())
-
-            // Входящее сообщение
-            MessageBubbleView(
-                message: Message(
-                    id: 1,
-                    chatID: "test",
-                    senderID: 2,
-                    senderName: "Иван Иванов",
-                    content: MessageContent(text: "Привет! Как дела? Что нового?"),
-                    sentAt: Date().addingTimeInterval(-3600),
-                    readBy: [1, 2]
-                ),
-                currentUserID: currentUserID,
-                groupInfo: MessageGroupInfo(isFirstInGroup: true, isLastInGroup: true, showTime: true),
-                showSenderName: true
-            )
-
-            // Исходящее сообщение
-            MessageBubbleView(
-                message: Message(
-                    id: 2,
-                    chatID: "test",
-                    senderID: currentUserID,
-                    senderName: "Я",
-                    content: MessageContent(text: "Привет! Всё отлично, спасибо!"),
-                    sentAt: Date().addingTimeInterval(-3500),
-                    readBy: [1, 2]
-                ),
-                currentUserID: currentUserID,
-                groupInfo: MessageGroupInfo(isFirstInGroup: true, isLastInGroup: true, showTime: true),
-                showSenderName: true
-            )
-
-            // Группа сообщений от одного отправителя
-            MessageBubbleView(
-                message: Message(
-                    id: 3,
-                    chatID: "test",
-                    senderID: 2,
-                    senderName: "Иван Иванов",
-                    content: MessageContent(text: "Первое сообщение в группе"),
-                    sentAt: Date().addingTimeInterval(-3000),
-                    readBy: [2]
-                ),
-                currentUserID: currentUserID,
-                groupInfo: MessageGroupInfo(isFirstInGroup: true, isLastInGroup: false, showTime: false),
-                showSenderName: true
-            )
-
-            MessageBubbleView(
-                message: Message(
-                    id: 4,
-                    chatID: "test",
-                    senderID: 2,
-                    senderName: "Иван Иванов",
-                    content: MessageContent(text: "Второе сообщение в группе"),
-                    sentAt: Date().addingTimeInterval(-2950),
-                    readBy: [2]
-                ),
-                currentUserID: currentUserID,
-                groupInfo: MessageGroupInfo(isFirstInGroup: false, isLastInGroup: true, showTime: true),
-                showSenderName: true
-            )
-        }
-        .padding()
-    }
-    .frame(width: 400)
 }

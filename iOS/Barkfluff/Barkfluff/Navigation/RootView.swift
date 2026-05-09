@@ -29,6 +29,7 @@ struct RootView: View {
                 MainTabView()
             }
         }
+        .preferredColorScheme(container.appearanceSettings.colorScheme)
         .task {
             await coordinator.onAppLaunch(
                 serverDiscovery: container.serverDiscoveryService,

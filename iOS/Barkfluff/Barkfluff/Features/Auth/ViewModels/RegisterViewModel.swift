@@ -32,6 +32,12 @@ final class RegisterViewModel {
     /// Email подтверждён
     var emailCodeVerified = false
 
+    /// Пароль был отправлен на сервер (для индикации в UI)
+    var passwordSaved = false
+
+    /// Bio было сохранено на сервере (для индикации в UI)
+    var bioSaved = false
+
     // MARK: - Dependencies
 
     private let authService: AuthServiceProtocol
@@ -127,27 +133,30 @@ final class RegisterViewModel {
     }
 
     private func handlePersonalInfoStep() -> Bool {
-        if data.firstName.count < 2 {
-            errorMessage = "Имя должно содержать минимум 2 символа"
+        let firstResult = NameValidator.validateFirstName(data.firstName)
+        if !firstResult.isValid {
+            errorMessage = firstResult.error
             return false
         }
-        if data.lastName.count < 2 {
-            errorMessage = "Фамилия должна содержать минимум 2 символа"
+        let lastResult = NameValidator.validateLastName(data.lastName)
+        if !lastResult.isValid {
+            errorMessage = lastResult.error
             return false
         }
         return true
     }
 
     private func handleUsernameStep() async -> Bool {
-        if data.username.count < 3 {
-            errorMessage = "Минимум 3 символа"
+        let format = UsernameValidator.validate(data.username)
+        if !format.isValid {
+            errorMessage = format.error
             return false
         }
 
         do {
             let exists = try await userService.checkUsernameExists(username: data.username)
             if exists {
-                errorMessage = "Это имя пользователя уже занято"
+                errorMessage = UsernameValidationResult.unavailable.error
                 return false
             }
             return true
@@ -158,11 +167,9 @@ final class RegisterViewModel {
     }
 
     private func handleEmailStep() async -> Bool {
-        let emailPattern = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        let isValid = NSPredicate(format: "SELF MATCHES %@", emailPattern).evaluate(with: data.email)
-
-        if !isValid {
-            errorMessage = "Некорректный формат email"
+        let format = EmailValidator.validate(data.email)
+        if !format.isValid {
+            errorMessage = format.error
             return false
         }
 
@@ -194,8 +201,9 @@ final class RegisterViewModel {
     }
 
     private func handlePasswordStep() async -> Bool {
-        if data.password.count < 8 {
-            errorMessage = "Пароль должен содержать минимум 8 символов"
+        let result = PasswordValidator.validate(data.password)
+        if !result.isValid {
+            errorMessage = result.error
             return false
         }
 
@@ -204,7 +212,6 @@ final class RegisterViewModel {
             return false
         }
 
-        let result = PasswordValidator.validate(data.password)
         if !result.strength.isAcceptable {
             errorMessage = "Пароль слишком слабый"
             return false
@@ -215,6 +222,7 @@ final class RegisterViewModel {
 
         do {
             try await authService.setPassword(password: data.password)
+            passwordSaved = true
             return true
         } catch {
             errorMessage = "Не удалось сохранить пароль: \(error.localizedDescription)"
@@ -230,6 +238,7 @@ final class RegisterViewModel {
 
         do {
             try await userService.changeBio(newBio: data.bio)
+            bioSaved = true
             return true
         } catch {
             return true // Не критично
