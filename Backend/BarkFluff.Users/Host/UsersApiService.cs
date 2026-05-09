@@ -288,7 +288,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
             UpdateIcon = request.HasFolderIcon,
             FolderIcon = request.HasFolderIcon ? request.FolderIcon : null,
             UpdateChatList = request.HasChatListUpdate,
-            ChatList = request.HasChatListUpdate ? request.ChatList.ToArray() : null,
+            ChatList = request.HasChatListUpdate ? ParseChatGuids(request.ChatList) : null,
         };
         return _mediator.Send(command);
     }
@@ -306,7 +306,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         var command = new AddChatToFolderCommand
         {
             FolderId = request.FolderId,
-            ChatId = request.ChatId,
+            ChatId = ParseChatGuid(request.ChatId),
         };
         return _mediator.Send(command);
     }
@@ -317,9 +317,28 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         var command = new RemoveChatFromFolderCommand
         {
             FolderId = request.FolderId,
-            ChatId = request.ChatId,
+            ChatId = ParseChatGuid(request.ChatId),
         };
         return _mediator.Send(command);
+    }
+
+    private static Guid ParseChatGuid(string chatId)
+    {
+        if (!Guid.TryParse(chatId, out var guid))
+        {
+            throw new BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException();
+        }
+        return guid;
+    }
+
+    private static Guid[] ParseChatGuids(IEnumerable<string> chatIds)
+    {
+        var result = new List<Guid>();
+        foreach (var raw in chatIds)
+        {
+            result.Add(ParseChatGuid(raw));
+        }
+        return result.ToArray();
     }
 
     public override async Task<ReorderChatFoldersResponse> ReorderChatFolders(ReorderChatFoldersRequest request, ServerCallContext context)
