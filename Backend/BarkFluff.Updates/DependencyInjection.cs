@@ -15,6 +15,14 @@ public static class DependencyInjection
         services.AddSingleton<Features.SubscribeMessagesPinned.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeMessagesUnpinned.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeAllMessagesUnpinned.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribePrivateMessages.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribePrivateMessageEdits.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribePrivateMessageDeletes.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribePrivateChatInvites.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribePrivateChatInviteResolutions.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeSecretChatInvites.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeSecretChatResolutions.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeSecretMessages.StreamSubscriptionsManager>();
 
         // Регистрируем трекер ожидающих push-уведомлений
         services.AddSingleton<Features.PushNotifications.PendingPushTracker>();

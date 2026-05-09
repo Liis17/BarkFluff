@@ -27,6 +27,14 @@ docker-compose -f docker-compose-dev.yml up -d updates
 | `messages-pinned-updates-handler` | `MessagePinnedConsumer` | `MessagePinnedNotification` | `SubscribeMessagesPinned` |
 | `messages-unpinned-updates-handler` | `MessageUnpinnedConsumer` | `MessageUnpinnedNotification` | `SubscribeMessagesUnpinned` |
 | `all-messages-unpinned-updates-handler` | `AllMessagesUnpinnedConsumer` | `AllMessagesUnpinnedNotification` | `SubscribeAllMessagesUnpinned` |
+| `new-encrypted-messages-updates-handler` | `NewEncryptedMessageConsumer` | `NewEncryptedMessageNotification` | `SubscribePrivateMessages` (user-scope) |
+| `encrypted-messages-edited-updates-handler` | `EncryptedMessageEditedConsumer` | `EncryptedMessageEditedNotification` | `SubscribePrivateMessageEdits` (user-scope) |
+| `encrypted-messages-deleted-updates-handler` | `EncryptedMessageDeletedConsumer` | `EncryptedMessageDeletedNotification` | `SubscribePrivateMessageDeletes` (user-scope) |
+| `private-chat-invites-updates-handler` | `PrivateChatInviteConsumer` | `PrivateChatInviteNotification` | `SubscribePrivateChatInvites` (user-scope, маршрутизация только на InviteeUserId) |
+| `private-chat-invite-resolutions-updates-handler` | `PrivateChatInviteResolutionConsumer` | `PrivateChatInviteResolutionNotification` | `SubscribePrivateChatInviteResolutions` (user-scope, на InviterUserId) |
+| `secret-chat-invites-updates-handler` | `SecretChatInviteConsumer` | `SecretChatInviteNotification` | `SubscribeSecretChatInvites` (**device-scope**, на RecipientDeviceId) |
+| `secret-chat-invite-resolutions-updates-handler` | `SecretChatInviteResolutionConsumer` | `SecretChatInviteResolutionNotification` | `SubscribeSecretChatResolutions` (**device-scope**, на SenderDeviceId инициатора) |
+| `new-secret-messages-updates-handler` | `NewSecretMessageConsumer` | `NewSecretMessageNotification` | `SubscribeSecretMessages` (**device-scope**, на RecipientDeviceId) |
 | `session-revoked-updates` | `SessionRevokedConsumer` | — | — (инвалидация токена через `TokenRevocationCache`) |
 
 ### Схема прохождения события
@@ -37,11 +45,21 @@ Messages service → RabbitMQ → Consumer → IMediator.Publish() → Handler �
 
 ### StreamSubscriptionsManager (Singleton)
 
+Существует **две формы** менеджера подписок:
+
+**User-scope** (`UserStreamSubscriptionsBase<TEvent>` в `Features/Shared/`):
 ```csharp
 ConcurrentDictionary<long userId, ConcurrentDictionary<Guid subscriptionId, IServerStreamWriter<T>>>
 ```
+Используется для всех «обычных» стримов и приватных чатов: `SubscribeNewMessages`, `SubscribePrivateMessages`, `SubscribePrivateChatInvites` и т.д. Поддерживает несколько подключений одного пользователя (разные устройства).
 
-Поддерживает несколько подключений одного пользователя (разные устройства). При разрыве `UpdatesApiService` удаляет подписку через `RemoveSubscription`.
+**Device-scope** (`DeviceStreamSubscriptionsBase<TEvent>` в `Features/Shared/`):
+```csharp
+ConcurrentDictionary<(long userId, Guid deviceId), ConcurrentDictionary<Guid subscriptionId, IServerStreamWriter<T>>>
+```
+Используется для стримов **секретных чатов** (`SubscribeSecretChatInvites`, `SubscribeSecretChatResolutions`, `SubscribeSecretMessages`): событие маршрутизируется только в стрим конкретного устройства (recipient_device_id или sender_device_id для resolution). Если устройство оффлайн — событие в стрим не пишется (envelope/invite остаётся в Redis-буфере Messages-сервиса на 24ч + silent push). DeviceId извлекается из JWT-claim'а; если его нет — `Status.Unauthenticated`.
+
+При разрыве `UpdatesApiService` удаляет подписку через `RemoveSubscription`.
 
 ### Push-уведомления (отложенная отправка)
 
@@ -59,6 +77,7 @@ ConcurrentDictionary<long userId, ConcurrentDictionary<Guid subscriptionId, ISer
 ### gRPC API
 
 ```protobuf
+// User-scope (старые)
 rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent)
 rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns (stream MessageReadEvent)
 rpc SubscribeMessagesEdited(SubscribeMessagesEditedRequest) returns (stream MessageEditedEvent)
@@ -66,10 +85,22 @@ rpc SubscribeMessagesDeleted(SubscribeMessagesDeletedRequest) returns (stream Me
 rpc SubscribeMessagesPinned(SubscribeMessagesPinnedRequest) returns (stream MessagePinnedEvent)
 rpc SubscribeMessagesUnpinned(SubscribeMessagesUnpinnedRequest) returns (stream MessageUnpinnedEvent)
 rpc SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) returns (stream AllMessagesUnpinnedEvent)
+
+// User-scope (приватные чаты, E2E через passphrase)
+rpc SubscribePrivateMessages(...) returns (stream NewEncryptedMessageEvent)
+rpc SubscribePrivateMessageEdits(...) returns (stream EncryptedMessageEditedEvent)
+rpc SubscribePrivateMessageDeletes(...) returns (stream EncryptedMessageDeletedEvent)
+rpc SubscribePrivateChatInvites(...) returns (stream PrivateChatInviteEvent)
+rpc SubscribePrivateChatInviteResolutions(...) returns (stream PrivateChatInviteResolutionEvent)
+
+// Device-scope (секретные чаты, Signal Double Ratchet) — требуют DeviceId в JWT
+rpc SubscribeSecretChatInvites(...) returns (stream SecretChatInviteEvent)
+rpc SubscribeSecretChatResolutions(...) returns (stream SecretChatInviteResolutionEvent)
+rpc SubscribeSecretMessages(...) returns (stream NewSecretMessageEvent)
 ```
 
-Оба метода: регистрируют подписку → `await Task.Delay(Infinite, context.CancellationToken)` → при отключении удаляют подписку.
-Защита: `[Authorize(Policy = nameof(TokenType.User))]`.
+Все методы: регистрируют подписку → `await Task.Delay(Infinite, context.CancellationToken)` → при отключении удаляют подписку.
+Защита: `[Authorize(Policy = nameof(TokenType.User))]`. Device-scope методы дополнительно требуют DeviceId в claim'ах JWT.
 
 ## Добавление нового типа событий
 
