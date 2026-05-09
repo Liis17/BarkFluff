@@ -26,10 +26,10 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`
+- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
-- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage`, `ChatFolderStorage` (Transient)
+- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage`, `ChatFolderStorage`, `PrekeyStorage` (Transient)
 - `Infrastructure/` — `UserInfoQueueSender` (RabbitMQ события, Scoped)
 - `Services/` — `ReservedUsernamesService` (Singleton)
 - `Mapping/` — extension-методы маппинга доменных объектов в protobuf
@@ -49,6 +49,8 @@ dotnet ef database update --project BarkFluff.Users.csproj
 **Бейджи**: уникальное ограничение (UserId, BadgeId). `Priority` — меньше = выше приоритет (default 1000). Только активные баджи включаются при `GetUserBadges`. Создание всегда устанавливает `IsActive=true`.
 
 **Устройства**: `RegisterDevice` — upsert по DeviceId (Guid). Хранит AppName, OS, Location, FirebaseDeviceToken.
+
+**Prekey-bundle (X3DH)**: один bundle на устройство (1:1 с `UserDevice`, PK = DeviceId). Содержит `IdentityPubkey` (Ed25519, постоянный), `SignedPrekey*` (X25519 + signature, ротируется), `RegistrationId` (libsignal), `SignedPrekeyRotatedAt`. Пул `OneTimePrekey` (Many:1, уникальный (DeviceId, PrekeyId)) — расходные ключи. `FetchPrekeyBundle` атомарно claim'ит одну prekey через PostgreSQL `DELETE ... RETURNING ... FOR UPDATE SKIP LOCKED` — параллельные запросы не получают одну и ту же. Сервер не валидирует подпись signed prekey — это делает клиент-получатель через identity_pubkey.
 
 ## UsersApi — клиентский (TokenType.User)
 
@@ -74,6 +76,11 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                                |
 | `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера                 |
 | `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds`       |
+| `RegisterPrekeyBundle(...)`              | Зарегистрировать X3DH bundle текущего устройства | Идемпотентно (повторный вызов перезаписывает identity/signed prekey, дополняет one-time pool без дубликатов). DeviceId — из JWT |
+| `FetchPrekeyBundle(userId, deviceId)`    | Получить bundle устройства собеседника        | Атомарно расходует одну one-time prekey через `DELETE...RETURNING ... FOR UPDATE SKIP LOCKED` (PostgreSQL). Возвращает `remaining_one_time_prekeys` для проактивного пополнения |
+| `ListPeerDevices(userId)`                | Список устройств пользователя с флагом `has_bundle` | Без Privacy-фильтра на этой итерации; для UI выбора целевого устройства секретного чата |
+| `ReplenishOneTimePrekeys(prekeys[])`     | Дополнить пул one-time prekeys                | Дубликаты по PrekeyId игнорируются; возвращает общее количество |
+| `RotateSignedPrekey(signedPrekey)`       | Сменить signed prekey                         | Старый затирается; обновляется `SignedPrekeyRotatedAt` |
 | `GetChatFolders()`                       | Список папок чатов текущего пользователя      | Сортировка по `SortOrder, Id`                                        |
 | `CreateChatFolder(name, icon)`           | Создать новую папку чатов                     | Имя обязательное (≤64 символа); `FolderId` (Guid) генерируется на сервере; `SortOrder = max+1` |
 | `UpdateChatFolder(folder_id, ...)`       | Частичное обновление папки                    | `optional` поля имени/иконки; `has_chat_list_update` — флаг замены списка чатов |

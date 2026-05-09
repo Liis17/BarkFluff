@@ -94,6 +94,71 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("ChatFolders");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
+                {
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("IdentityPubkey")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<long>("RegistrationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SignedPrekeyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("SignedPrekeyPublic")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("SignedPrekeyRotatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("SignedPrekeySignature")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("DeviceId");
+
+                    b.ToTable("DevicePrekeyBundles");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.OneTimePrekey", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("PrekeyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("DeviceId", "PrekeyId")
+                        .IsUnique();
+
+                    b.ToTable("OneTimePrekeys");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.Privacy", b =>
                 {
                     b.Property<long>("Id")
@@ -303,6 +368,28 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.UserDevice", "Device")
+                        .WithOne()
+                        .HasForeignKey("BarkFluff.Users.Domain.DevicePrekeyBundle", "DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.OneTimePrekey", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.UserDevice", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
                 });
 
             modelBuilder.Entity("BarkFluff.Users.Domain.Privacy", b =>

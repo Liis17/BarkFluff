@@ -24,6 +24,11 @@ using BarkFluff.Users.Features.Personalization.GetPersonalization;
 using BarkFluff.Users.Features.Personalization.GetProfilePoster;
 using BarkFluff.Users.Features.Personalization.SetProfilePoster;
 using BarkFluff.Users.Features.Personalization.UpdatePersonalization;
+using BarkFluff.Users.Features.Prekeys.FetchPrekeyBundle;
+using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
+using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
+using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
+using BarkFluff.Users.Features.Prekeys.RotateSignedPrekey;
 using BarkFluff.Users.Features.Privacy.GetPrivacySettings;
 using BarkFluff.Users.Features.Privacy.UpdatePrivacySettings;
 using BarkFluff.Users.Features.SetProfilePicture;
@@ -350,5 +355,43 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         };
         await _mediator.Send(command);
         return new ReorderChatFoldersResponse();
+    }
+
+    // Prekey-bundle (X3DH) для секретных чатов
+
+    public override async Task<RegisterPrekeyBundleResponse> RegisterPrekeyBundle(RegisterPrekeyBundleRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("prekey_bundle_registrations");
+        await _mediator.Send(new RegisterPrekeyBundleCommand { Request = request });
+        return new RegisterPrekeyBundleResponse();
+    }
+
+    public override Task<FetchPrekeyBundleResponse> FetchPrekeyBundle(FetchPrekeyBundleRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("prekey_bundle_fetches");
+        return _mediator.Send(new FetchPrekeyBundleQuery
+        {
+            UserId = request.UserId,
+            DeviceId = request.DeviceId,
+        });
+    }
+
+    public override Task<ListPeerDevicesResponse> ListPeerDevices(ListPeerDevicesRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("peer_device_listings");
+        return _mediator.Send(new ListPeerDevicesQuery { UserId = request.UserId });
+    }
+
+    public override Task<ReplenishOneTimePrekeysResponse> ReplenishOneTimePrekeys(ReplenishOneTimePrekeysRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("one_time_prekey_replenishments");
+        return _mediator.Send(new ReplenishOneTimePrekeysCommand { Request = request });
+    }
+
+    public override async Task<RotateSignedPrekeyResponse> RotateSignedPrekey(RotateSignedPrekeyRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("signed_prekey_rotations");
+        await _mediator.Send(new RotateSignedPrekeyCommand { Request = request });
+        return new RotateSignedPrekeyResponse();
     }
 }
