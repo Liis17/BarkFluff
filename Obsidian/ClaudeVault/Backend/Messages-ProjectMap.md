@@ -20,7 +20,7 @@
 
 | Файл | Авторизация | Что делает |
 |------|------------|-----------|
-| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo |
+| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo, PinMessage, UnpinMessage, ListPinnedMessages, UnpinAll |
 | `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт) |
 
 ---
@@ -56,6 +56,10 @@
 | `Features/ListChatAttachments/ListChatAttachmentsCommandHandler.cs` | Фильтрация по типу вложения, сортировка, подтягивает данные файлов из Files API |
 | `Features/ExportData/GetUserAllMessagesQuery.cs` | Service-only запрос всех сообщений пользователя |
 | `Features/ExportData/GetUserAllMessagesQueryHandler.cs` | GDPR-экспорт: возвращает все сообщения и чаты пользователя |
+| `Features/PinMessage/PinMessageCommand.cs` + `Handler.cs` | Закрепление сообщения: проверки доступа, лимит 100, idempotent, системное сообщение, `MessagePinnedEvent` |
+| `Features/UnpinMessage/UnpinMessageCommand.cs` + `Handler.cs` | Открепление сообщения: idempotent если не закреплено, системное сообщение, `MessageUnpinnedEvent` |
+| `Features/ListPinnedMessages/ListPinnedMessagesQuery.cs` + `Handler.cs` | Пагинированный список закреплённых; sort by `PinnedAt DESC`, фильтр `!IsDeleted`, files data из Files API |
+| `Features/UnpinAll/UnpinAllCommand.cs` + `Handler.cs` | Массовый откреп всех закрепов в чате, одно системное сообщение, `AllMessagesUnpinnedEvent` |
 
 ---
 
@@ -71,6 +75,7 @@
 | `Domain/MessageAttachment.cs` | Вложение: FileId, Type, PreviewUrl, FileSize |
 | `Domain/MessageAttachmentType.cs` | Enum: Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker |
 | `Domain/MessageContentType.cs` | Enum: Default, System (системные сообщения чата) |
+| `Domain/PinnedMessage.cs` | Закреплённое сообщение: Id, ChatId, MessageId, PinnerUserId, PinnedAt |
 
 ---
 
@@ -78,7 +83,7 @@
 
 | Файл | Что делает |
 |------|-----------|
-| `Infrastructure/MessageQueueSender.cs` | Публикует `NewMessageEvent` в RabbitMQ → [[Backend/Updates]] |
+| `Infrastructure/MessageQueueSender.cs` | Публикует `NewMessageEvent`, `MessageEditedEvent`, `MessageDeletedEvent`, `MessagePinnedEvent`, `MessageUnpinnedEvent`, `AllMessagesUnpinnedEvent` в RabbitMQ → [[Backend/Updates]] |
 | `Infrastructure/ReadByQueueSender.cs` | Публикует `MessageReadEvent` в RabbitMQ → [[Backend/Updates]] |
 
 ---
@@ -101,6 +106,7 @@
 | `Mapping/ChatMemberMapping.cs` | `Domain.ChatMember` → proto `ChatMember` |
 | `Mapping/MessageMapping.cs` | `Domain.Message` → proto `Message` (принимает `filesInfoMap` для подстановки данных файлов) |
 | `Mapping/MessageContentMapping.cs` | `Domain.MessageContent` → proto `MessageContent` с вложениями |
+| `Mapping/PinnedMessageMapping.cs` | `Domain.PinnedMessage` + `Domain.Message` → proto `PinnedMessageInfo` (с подстановкой filesInfoMap) |
 
 ---
 
@@ -110,13 +116,15 @@
 |------|-----------|
 | `Persistence/MessagesContext.cs` | EF Core DbContext: Chats, Messages, GroupChatInfos |
 | `Persistence/Services/ChatsStorage.cs` | Запросы к БД: GetUserChats (с CountUnread, FirstUnreadMessageId, LastMessage), CreatePersonChat, GetUserChatIdWithPerson и др. |
-| `Persistence/Services/MessagesStorage.cs` | Запросы к БД: GetChatMessages, GetChatMessagesWithOffset (двунаправленная пагинация), SaveMessage, GetChatAttachments |
+| `Persistence/Services/MessagesStorage.cs` | Запросы к БД: GetChatMessages, GetChatMessagesWithOffset (двунаправленная пагинация), SaveMessage, GetChatAttachments, GetMessagesByIdsInChatAsync (для ListPinnedMessages) |
+| `Persistence/Services/PinnedMessagesStorage.cs` | CRUD по закреплённым сообщениям: GetPinByMessageIdAsync, ListByChatAsync, CountByChatAsync, AddAsync, Remove, RemoveAllByChatAsync, RemoveByMessageIdAsync |
 | `Persistence/Services/ChatCache.cs` | Redis-кеш имён и аватаров чатов. Ключи: `chat_name_{chatId}_{userId}`, `chat_image_{chatId}_{userId}` |
 | `Persistence/Services/Dtos/ChatAttachmentDto.cs` | DTO для запроса вложений (MessageId, SenderId, SentAt, AttachmentId, Type, FileId, PreviewUrl, FileSize) |
 | `Persistence/Exceptions/FromMessageNotFoundException.cs` | Исключение — стартовое сообщение пагинации не найдено |
 | `Persistence/Configurations/ChatConfiguration.cs` | EF Fluent API для Chat |
 | `Persistence/Configurations/ChatMemberConfiguration.cs` | EF Fluent API для ChatMember (индекс ChatId+UserId, каскадное удаление) |
 | `Persistence/Configurations/MessageConfiguration.cs` | EF Fluent API для Message (owned MessageContent, отдельная таблица MessageAttachments) |
+| `Persistence/Configurations/PinnedMessageConfiguration.cs` | EF Fluent API для PinnedMessage (уникальный индекс ChatId+MessageId, FK на Chats и Messages с каскадным удалением) |
 
 ---
 
@@ -129,6 +137,7 @@
 | `Persistence/Migrations/20250519230454_AddMessageContent` | Owned type `MessageContent`, таблица `MessageAttachments` |
 | `Persistence/Migrations/20250525182402_AddGroupChats` | Таблица `GroupChatInfo`, поле `UsersCanKick` |
 | `Migrations/20250720120941_AddAttachmentsPreview` | Поле `PreviewUrl` и `FileSize` для вложений (вне папки Persistence — возможно ошибка размещения) |
+| `Persistence/Migrations/20260509011814_AddPinnedMessages` | Таблица `PinnedMessages` с FK на Chats и Messages, уникальный индекс `(ChatId, MessageId)` |
 
 ---
 

@@ -71,6 +71,7 @@ public class Program
         builder.Services.AddTransient<ChatsStorage>();
         builder.Services.AddScoped<ChatCache>();
         builder.Services.AddTransient<MessagesStorage>();
+        builder.Services.AddTransient<PinnedMessagesStorage>();
         builder.Services.AddTransient<MessageQueueSender>();
         builder.Services.AddTransient<ReadByQueueSender>();
 

@@ -13,17 +13,20 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
 {
     private readonly MessagesStorage _messagesStorage;
     private readonly ChatsStorage _chatsStorage;
+    private readonly PinnedMessagesStorage _pinnedMessagesStorage;
     private readonly UserContext _userContext;
     private readonly MessageQueueSender _messageQueueSender;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<DeleteMessageCommandHandler> _logger;
 
     public DeleteMessageCommandHandler(MessagesStorage messagesStorage, ChatsStorage chatsStorage,
-        UserContext userContext, MessageQueueSender messageQueueSender, MetricsCollector metrics,
+        PinnedMessagesStorage pinnedMessagesStorage, UserContext userContext,
+        MessageQueueSender messageQueueSender, MetricsCollector metrics,
         ILogger<DeleteMessageCommandHandler> logger)
     {
         _messagesStorage = messagesStorage;
         _chatsStorage = chatsStorage;
+        _pinnedMessagesStorage = pinnedMessagesStorage;
         _userContext = userContext;
         _messageQueueSender = messageQueueSender;
         _metrics = metrics;
@@ -85,10 +88,21 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
 
         await _messagesStorage.SaveChangesAsync();
 
+        var removedPin = await _pinnedMessagesStorage.RemoveByMessageIdAsync(message.Id);
+        if (removedPin is not null)
+        {
+            await _pinnedMessagesStorage.SaveChangesAsync();
+        }
+
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
         var memberIds = members.Select(x => x.UserId).ToList();
 
         await _messageQueueSender.SendDeleted(message.ChatId, message.Id, memberIds);
+
+        if (removedPin is not null)
+        {
+            await _messageQueueSender.SendUnpinned(message.ChatId, message.Id, memberIds);
+        }
 
         _metrics.Increment("messages_deleted");
 

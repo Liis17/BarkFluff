@@ -55,6 +55,10 @@ builder.Services.AddMediatR(cfg =>
 | `list_chat_members`       | Список участников чата                                                   |
 | `list_chat_attachments`   | Список вложений чата (галерея/документы)                                 |
 | `get_user_all_messages`   | GDPR-экспорт всей истории пользователя                                   |
+| `pin_message`             | Закрепление сообщения в чате                                             |
+| `unpin_message`           | Открепление сообщения в чате                                             |
+| `list_pinned_messages`    | Список закреплённых сообщений в чате                                     |
+| `unpin_all`               | Открепление всех сообщений в чате                                        |
 
 ### Доменные счётчики — сбрасываются каждые 5 секунд
 
@@ -75,6 +79,10 @@ builder.Services.AddMediatR(cfg =>
 | `messages_edited_with_attachments`     | `EditMessageCommandHandler.cs`                                            | Из `messages_edited` — те, у которых остались/добавлены не-forwarded файлы |
 | `messages_deleted`                     | `Features/DeleteMessage/DeleteMessageCommandHandler.cs` (после публикации)| Успешные soft-delete                                                       |
 | `messages_delete_noop`                 | `DeleteMessageCommandHandler.cs`                                          | Повторное удаление уже удалённого сообщения (idempotent)                   |
+| `messages_pinned`                      | `Features/PinMessage/PinMessageCommandHandler.cs` (после публикации)      | Успешные закрепления сообщений                                             |
+| `messages_unpinned`                    | `Features/UnpinMessage/UnpinMessageCommandHandler.cs` (после публикации)  | Успешные открепления сообщений                                             |
+| `messages_unpin_noop`                  | `UnpinMessageCommandHandler.cs`                                           | Откреп несуществующего закрепа (idempotent)                                |
+| `messages_unpinned_all`                | `Features/UnpinAll/UnpinAllCommandHandler.cs` (после публикации)          | Массовый откреп всех закрепов в чате                                       |
 
 ### RabbitMQ-консьюмеры
 

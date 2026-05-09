@@ -104,3 +104,12 @@ enum MessageContentType {
   SYSTEM = 2; // Системное содержимое
 }
 
+message PinnedMessageInfo {
+
+  Message message = 1; // Закреплённое сообщение
+
+  int64 pinner_user_id = 2; // ID пользователя, закрепившего сообщение
+
+  google.protobuf.Timestamp pinned_at = 3; // Дата закрепления
+}
+

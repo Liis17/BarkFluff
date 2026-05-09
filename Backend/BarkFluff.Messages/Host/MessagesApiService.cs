@@ -8,8 +8,12 @@ using BarkFluff.Messages.Features.ListChatAttachments;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
+using BarkFluff.Messages.Features.ListPinnedMessages;
 using BarkFluff.Messages.Features.MarkAsRead;
+using BarkFluff.Messages.Features.PinMessage;
 using BarkFluff.Messages.Features.SendMessage;
+using BarkFluff.Messages.Features.UnpinAll;
+using BarkFluff.Messages.Features.UnpinMessage;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Files;
@@ -244,6 +248,76 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         var command = new DeleteMessageCommand
         {
             MessageId = request.MessageId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<PinMessageResponse> PinMessage(PinMessageRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new PinMessageCommand
+        {
+            ChatId = chatId,
+            MessageId = request.MessageId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<UnpinMessageResponse> UnpinMessage(UnpinMessageRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new UnpinMessageCommand
+        {
+            ChatId = chatId,
+            MessageId = request.MessageId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<ListPinnedMessagesResponse> ListPinnedMessages(ListPinnedMessagesRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        request.Pagination ??= new PageRequest
+        {
+            Size = 50,
+            Offset = 0
+        };
+
+        var query = new ListPinnedMessagesQuery
+        {
+            ChatId = chatId,
+            Skip = request.Pagination.Offset,
+            Count = request.Pagination.Size
+        };
+
+        return await _mediator.Send(query);
+    }
+
+    public override async Task<UnpinAllResponse> UnpinAll(UnpinAllRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new UnpinAllCommand
+        {
+            ChatId = chatId
         };
 
         return await _mediator.Send(command);

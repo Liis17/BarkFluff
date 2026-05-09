@@ -135,6 +135,38 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.ToTable("Messages");
                 });
 
+            modelBuilder.Entity("BarkFluff.Messages.Domain.PinnedMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("PinnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("PinnerUserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("ChatId", "MessageId")
+                        .IsUnique();
+
+                    b.ToTable("PinnedMessages");
+                });
+
             modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
                 {
                     b.HasOne("BarkFluff.Messages.Domain.Chat", "Chat")
@@ -246,6 +278,21 @@ namespace BarkFluff.Messages.Persistence.Migrations
                         });
 
                     b.Navigation("Content");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.PinnedMessage", b =>
+                {
+                    b.HasOne("BarkFluff.Messages.Domain.Chat", null)
+                        .WithMany()
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BarkFluff.Messages.Domain.Message", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.Chat", b =>

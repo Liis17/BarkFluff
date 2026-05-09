@@ -6,6 +6,7 @@
 
 📁 **Карта файлов проекта:** [[Backend/Messages-ProjectMap]]
 📊 **Реестр метрик:** [[Backend/Messages-Metrics]]
+📌 **Клиентский гайд по закреплённым сообщениям:** [[Backend/Messages-PinnedMessages-ClientGuide]] — какие RPC и события вызывать/слушать в Android/WPF/Web/iOS/macOS/Linux
 
 ## Сборка
 
@@ -35,6 +36,10 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ListChatMembers` | Пагинированный список с данными из Users API |
 | `ListChatAttachments` | Вложения по типу, фильтрация + сортировка |
 | `GetUserAllMessages` | Service-only: экспорт данных пользователя (GDPR) |
+| `PinMessage` | Закрепление сообщения в чате. Любой участник чата. Лимит: 100 закрепов на чат. Системное сообщение + `MessagePinnedEvent`. Idempotent при повторе |
+| `UnpinMessage` | Открепление сообщения. Любой участник. Системное сообщение + `MessageUnpinnedEvent`. Idempotent: noop если не был закреплён |
+| `ListPinnedMessages` | Пагинированный список закреплённых сообщений (sort by `PinnedAt DESC`). Soft-deleted фильтруются |
+| `UnpinAll` | Снять все закрепы в чате одним вызовом. Одно системное сообщение + `AllMessagesUnpinnedEvent` |
 
 ### gRPC-сервисы
 
@@ -51,10 +56,13 @@ docker-compose -f docker-compose-dev.yml up -d messages
 ### RabbitMQ
 
 **Публикует:**
-- `NewMessageEvent` → [[Backend/Updates]] (отправка сообщения, создание группы, kick)
+- `NewMessageEvent` → [[Backend/Updates]] (отправка сообщения, создание группы, kick, pin/unpin/unpin-all системные сообщения)
 - `MessageReadEvent` → [[Backend/Updates]] (MarkAsRead)
 - `MessageEditedEvent` → [[Backend/Updates]] (EditMessage)
 - `MessageDeletedEvent` → [[Backend/Updates]] (DeleteMessage)
+- `MessagePinnedEvent` → [[Backend/Updates]] (PinMessage)
+- `MessageUnpinnedEvent` → [[Backend/Updates]] (UnpinMessage; также при DeleteMessage если сообщение было закреплено)
+- `AllMessagesUnpinnedEvent` → [[Backend/Updates]] (UnpinAll)
 
 **Потребляет:**
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён
@@ -76,6 +84,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker, ForwardedMessage |
 | `ForwardedMessageAttachment` | Owned collection в таблице `ForwardedMessageAttachments`; вложения внутри пересланного сообщения (без ForwardedMessage рекурсии) |
 | `GroupChatInfo` | `UsersCanKick` — PostgreSQL array |
+| `PinnedMessage` | Отдельная таблица: `Id`, `ChatId`, `MessageId`, `PinnerUserId`, `PinnedAt`. Уникальный индекс `(ChatId, MessageId)`. FK с каскадным удалением на `Chats` и `Messages` |
 
 ## Важные нюансы
 
@@ -89,6 +98,9 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - **Self-chat**: `CreatePersonChat(userId, userId)` — личный чат с самим собой поддерживается
 - **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`). `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`
 - **Edit-семантика**: при правке forward-вложения сохраняются как есть (Telegram-style), не-forward attachments полностью пересоздаются по новому списку `FileIds`. Forward-снапшоты не обновляются автоматически
+- **Pin-права**: любой участник чата может закреплять/откреплять любые сообщения (общая для чата доска). Авторизация — `[Authorize(Policy = nameof(TokenType.User))]` + `CheckAccessToChat`. Лимит: 100 закрепов на чат → `TooManyPinnedMessagesException`
+- **Pin + Soft-delete**: при `DeleteMessage` запись из `PinnedMessages` удаляется автоматически и публикуется `MessageUnpinnedEvent`. `ListPinnedMessages` дополнительно фильтрует через `!IsDeleted` (защита от рассинхрона)
+- **Pin системные сообщения**: при pin/unpin/unpin-all создаётся системное сообщение `MessageContentType.System` с текстом «Пользователь {имя} закрепил/открепил…», публикуется `NewMessageEvent` параллельно с pin-событием
 
 ## Конфигурация
 
