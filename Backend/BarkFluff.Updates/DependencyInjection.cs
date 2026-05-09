@@ -12,6 +12,9 @@ public static class DependencyInjection
         services.AddSingleton<Features.SubscribeMessagesRead.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeMessagesEdited.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeMessagesDeleted.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeMessagesPinned.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeMessagesUnpinned.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeAllMessagesUnpinned.StreamSubscriptionsManager>();
 
         // Регистрируем трекер ожидающих push-уведомлений
         services.AddSingleton<Features.PushNotifications.PendingPushTracker>();

@@ -8,10 +8,10 @@ import "shared.proto";
 package barkfluff.updates;
 
 service UpdatesApi {
-  
+
   // Подписаться на новые сообщения
   rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent);
-  
+
   rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns(stream MessageReadEvent);
 
   // Подписаться на события редактирования сообщений
@@ -19,6 +19,15 @@ service UpdatesApi {
 
   // Подписаться на события удаления сообщений
   rpc SubscribeMessagesDeleted(SubscribeMessagesDeletedRequest) returns (stream MessageDeletedEvent);
+
+  // Подписаться на события закрепления сообщений
+  rpc SubscribeMessagesPinned(SubscribeMessagesPinnedRequest) returns (stream MessagePinnedEvent);
+
+  // Подписаться на события открепления сообщений
+  rpc SubscribeMessagesUnpinned(SubscribeMessagesUnpinnedRequest) returns (stream MessageUnpinnedEvent);
+
+  // Подписаться на события открепления всех сообщений в чате
+  rpc SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) returns (stream AllMessagesUnpinnedEvent);
 }
 
 message SubscribeNewMessagesRequest {
@@ -32,6 +41,12 @@ message SubscribeMessagesReadRequest {
 message SubscribeMessagesEditedRequest { }
 
 message SubscribeMessagesDeletedRequest { }
+
+message SubscribeMessagesPinnedRequest { }
+
+message SubscribeMessagesUnpinnedRequest { }
+
+message SubscribeAllMessagesUnpinnedRequest { }
 
 message NewMessageEvent {
   barkfluff.shared.Message message = 1; //Отправленное сообщение
@@ -53,5 +68,21 @@ message MessageEditedEvent {
 message MessageDeletedEvent {
   string chat_id = 1; // Идентификатор чата
   int64 message_id = 2; // Идентификатор удаленного сообщения
+}
+
+message MessagePinnedEvent {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор закреплённого сообщения
+  int64 pinner_user_id = 3; // Кто закрепил
+  google.protobuf.Timestamp pinned_at = 4; // Дата закрепления (UTC)
+}
+
+message MessageUnpinnedEvent {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор откреплённого сообщения
+}
+
+message AllMessagesUnpinnedEvent {
+  string chat_id = 1; // Идентификатор чата, где откреплены все сообщения
 }
 
