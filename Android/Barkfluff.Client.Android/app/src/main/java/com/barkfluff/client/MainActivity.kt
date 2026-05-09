@@ -73,6 +73,18 @@ class MainActivity : AppCompatActivity() {
         handleChatIntent(intent)
         handlePendingDeepLink()
         checkForUpdates()
+        registerPrekeyBundleIfNeeded()
+    }
+
+    private fun registerPrekeyBundleIfNeeded() {
+        val app = applicationContext as BarkFluffApplication
+        if (!app.prekeyManager.isRegistered) {
+            lifecycleScope.launch {
+                com.barkfluff.client.crypto.E2EBootstrap.ensurePrekeyBundleRegistered(this@MainActivity)
+            }
+        }
+        // Подписка на входящие E2E-инвайты (приватные и секретные)
+        com.barkfluff.client.crypto.EncryptedInviteHandler.attach(this, this)
     }
 
     override fun onNewIntent(intent: Intent) {

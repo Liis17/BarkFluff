@@ -69,6 +69,32 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     private val _allMessagesUnpinned = MutableSharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent>(extraBufferCapacity = 16)
     val allMessagesUnpinned: SharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent> = _allMessagesUnpinned
 
+    // --- Приватные чаты (user-scope) ---
+    private val _privateMessages = MutableSharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent>(extraBufferCapacity = 64)
+    val privateMessages: SharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent> = _privateMessages
+
+    private val _privateMessageEdits = MutableSharedFlow<UpdatesApiOuterClass.EncryptedMessageEditedEvent>(extraBufferCapacity = 64)
+    val privateMessageEdits: SharedFlow<UpdatesApiOuterClass.EncryptedMessageEditedEvent> = _privateMessageEdits
+
+    private val _privateMessageDeletes = MutableSharedFlow<UpdatesApiOuterClass.EncryptedMessageDeletedEvent>(extraBufferCapacity = 64)
+    val privateMessageDeletes: SharedFlow<UpdatesApiOuterClass.EncryptedMessageDeletedEvent> = _privateMessageDeletes
+
+    private val _privateChatInvites = MutableSharedFlow<UpdatesApiOuterClass.PrivateChatInviteEvent>(extraBufferCapacity = 32)
+    val privateChatInvites: SharedFlow<UpdatesApiOuterClass.PrivateChatInviteEvent> = _privateChatInvites
+
+    private val _privateChatInviteResolutions = MutableSharedFlow<UpdatesApiOuterClass.PrivateChatInviteResolutionEvent>(extraBufferCapacity = 32)
+    val privateChatInviteResolutions: SharedFlow<UpdatesApiOuterClass.PrivateChatInviteResolutionEvent> = _privateChatInviteResolutions
+
+    // --- Секретные чаты (device-scope) ---
+    private val _secretChatInvites = MutableSharedFlow<UpdatesApiOuterClass.SecretChatInviteEvent>(extraBufferCapacity = 16)
+    val secretChatInvites: SharedFlow<UpdatesApiOuterClass.SecretChatInviteEvent> = _secretChatInvites
+
+    private val _secretChatResolutions = MutableSharedFlow<UpdatesApiOuterClass.SecretChatInviteResolutionEvent>(extraBufferCapacity = 16)
+    val secretChatResolutions: SharedFlow<UpdatesApiOuterClass.SecretChatInviteResolutionEvent> = _secretChatResolutions
+
+    private val _secretMessages = MutableSharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent>(extraBufferCapacity = 64)
+    val secretMessages: SharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent> = _secretMessages
+
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
@@ -119,6 +145,16 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         scope.launch { streamWithReconnect("MessagesUnpinned") { collectMessagesUnpinned() } }
         scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
+        // E2E приватные чаты (user-scope)
+        scope.launch { streamWithReconnect("PrivateMessages") { collectPrivateMessages() } }
+        scope.launch { streamWithReconnect("PrivateMessageEdits") { collectPrivateMessageEdits() } }
+        scope.launch { streamWithReconnect("PrivateMessageDeletes") { collectPrivateMessageDeletes() } }
+        scope.launch { streamWithReconnect("PrivateChatInvites") { collectPrivateChatInvites() } }
+        scope.launch { streamWithReconnect("PrivateChatInviteResolutions") { collectPrivateChatInviteResolutions() } }
+        // E2E секретные чаты (device-scope)
+        scope.launch { streamWithReconnect("SecretChatInvites") { collectSecretChatInvites() } }
+        scope.launch { streamWithReconnect("SecretChatResolutions") { collectSecretChatResolutions() } }
+        scope.launch { streamWithReconnect("SecretMessages") { collectSecretMessages() } }
         scope.launch { onlinePingLoop() }
         scope.launch { notificationLoop() }
     }
@@ -264,6 +300,81 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeAllMessagesUnpinned(request).collect { event ->
             Log.d(TAG, "All messages unpinned: chatId=${event.chatId}")
             _allMessagesUnpinned.emit(event)
+        }
+    }
+
+    private suspend fun collectPrivateMessages() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateMessagesRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to PrivateMessages stream")
+        client.subscribePrivateMessages(request).collect { event ->
+            Log.v(TAG, "Private encrypted msg received: chatId=${event.chatId}, msgId=${event.message.id}")
+            _privateMessages.emit(event)
+        }
+    }
+
+    private suspend fun collectPrivateMessageEdits() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateMessageEditsRequest.getDefaultInstance()
+        client.subscribePrivateMessageEdits(request).collect { event ->
+            Log.v(TAG, "Private msg edited: chatId=${event.chatId}, msgId=${event.message.id}")
+            _privateMessageEdits.emit(event)
+        }
+    }
+
+    private suspend fun collectPrivateMessageDeletes() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateMessageDeletesRequest.getDefaultInstance()
+        client.subscribePrivateMessageDeletes(request).collect { event ->
+            Log.v(TAG, "Private msg deleted: chatId=${event.chatId}, msgId=${event.messageId}")
+            _privateMessageDeletes.emit(event)
+        }
+    }
+
+    private suspend fun collectPrivateChatInvites() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateChatInvitesRequest.getDefaultInstance()
+        client.subscribePrivateChatInvites(request).collect { event ->
+            Log.d(TAG, "Private chat invite received: chatId=${event.chatId}, inviter=${event.inviterUserId}")
+            _privateChatInvites.emit(event)
+        }
+    }
+
+    private suspend fun collectPrivateChatInviteResolutions() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateChatInviteResolutionsRequest.getDefaultInstance()
+        client.subscribePrivateChatInviteResolutions(request).collect { event ->
+            Log.d(TAG, "Private chat invite resolution: chatId=${event.chatId}, accepted=${event.accepted}")
+            _privateChatInviteResolutions.emit(event)
+        }
+    }
+
+    private suspend fun collectSecretChatInvites() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeSecretChatInvitesRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to SecretChatInvites stream (device-scope)")
+        client.subscribeSecretChatInvites(request).collect { event ->
+            Log.d(TAG, "Secret chat invite received: inviteId=${event.inviteId}, sender=${event.senderUserId}/${event.senderDeviceId}")
+            _secretChatInvites.emit(event)
+        }
+    }
+
+    private suspend fun collectSecretChatResolutions() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeSecretChatResolutionsRequest.getDefaultInstance()
+        client.subscribeSecretChatResolutions(request).collect { event ->
+            Log.d(TAG, "Secret chat resolution: inviteId=${event.inviteId}, accepted=${event.accepted}")
+            _secretChatResolutions.emit(event)
+        }
+    }
+
+    private suspend fun collectSecretMessages() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeSecretMessagesRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to SecretMessages stream (device-scope)")
+        client.subscribeSecretMessages(request).collect { event ->
+            Log.v(TAG, "Secret envelope received: msgId=${event.envelope.messageId}")
+            _secretMessages.emit(event)
         }
     }
 

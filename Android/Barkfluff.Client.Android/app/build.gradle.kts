@@ -53,11 +53,14 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // libsignal-android 0.86+ использует Java records (Java 16+) и требует
+        // sourceCompatibility = 17 + core library desugaring.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
     buildFeatures {
         viewBinding = true
@@ -65,6 +68,11 @@ android {
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
+    }
+    packaging {
+        resources {
+            excludes += setOf("libsignal_jni*.dylib", "signal_jni*.dll", "**/libsignal_jni_testing.so")
+        }
     }
 }
 
@@ -174,4 +182,10 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
+
+    // E2E-шифрование: Signal Double Ratchet (секретные чаты) + Argon2id (приватные чаты)
+    implementation(libs.libsignal.android)
+    implementation(libs.libsignal.client)
+    implementation(libs.argon2kt)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

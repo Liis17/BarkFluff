@@ -2590,4 +2590,304 @@ class GrpcManager {
         }
         val isTooManyPinned: Boolean get() = errorCode.equals(ERROR_TOO_MANY_PINNED, ignoreCase = true)
     }
+
+    /**
+     * Найти Chat по ID через ListChats. Используется приватным чатом для получения kdf_salt+verifier
+     * после повторного открытия (когда локальный ключ не сохранён).
+     */
+    suspend fun getChat(chatId: String): Result<MessagesApiOuterClass.Chat> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.ListChatsRequest.newBuilder()
+                .setPagination(Shared.PageRequest.newBuilder().setOffset(0).setSize(200).build())
+                .build()
+            val chats = client.listChats(request).chatsList
+            val match = chats.firstOrNull { it.id == chatId }
+                ?: return@withContext Result.failure(NoSuchElementException("Чат $chatId не найден"))
+            Result.success(match)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== Приватные чаты (E2E через passphrase) ====================
+
+    suspend fun createPrivateChat(
+        peerUserId: Long,
+        kdfSalt: ByteArray,
+        passphraseVerifier: ByteArray
+    ): Result<MessagesApiOuterClass.Chat> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.CreatePrivateChatRequest.newBuilder()
+                .setPeerUserId(peerUserId)
+                .setKdfSalt(com.google.protobuf.ByteString.copyFrom(kdfSalt))
+                .setPassphraseVerifier(com.google.protobuf.ByteString.copyFrom(passphraseVerifier))
+                .build()
+            Result.success(client.createPrivateChat(request).chat)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания приватного чата с $peerUserId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun acceptPrivateChat(chatId: String): Result<MessagesApiOuterClass.Chat> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.AcceptPrivateChatRequest.newBuilder().setChatId(chatId).build()
+            Result.success(client.acceptPrivateChat(request).chat)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка принятия приватного чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rejectPrivateChat(chatId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.RejectPrivateChatRequest.newBuilder().setChatId(chatId).build()
+            client.rejectPrivateChat(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отклонения приватного чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun sendPrivateMessage(
+        chatId: String,
+        ciphertext: ByteArray,
+        nonce: ByteArray,
+        associatedData: ByteArray
+    ): Result<Shared.EncryptedMessage> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.SendPrivateMessageRequest.newBuilder()
+                .setChatId(chatId)
+                .setCiphertext(com.google.protobuf.ByteString.copyFrom(ciphertext))
+                .setNonce(com.google.protobuf.ByteString.copyFrom(nonce))
+                .setAssociatedData(com.google.protobuf.ByteString.copyFrom(associatedData))
+                .build()
+            Result.success(client.sendPrivateMessage(request).message)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отправки приватного сообщения в $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun listPrivateMessages(
+        chatId: String,
+        fromMessageId: Long,
+        offsetBefore: Int,
+        offsetAfter: Int
+    ): Result<List<Shared.EncryptedMessage>> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.ListPrivateMessagesRequest.newBuilder()
+                .setChatId(chatId)
+                .setFromMessageId(fromMessageId)
+                .setOffsetBefore(offsetBefore)
+                .setOffsetAfter(offsetAfter)
+                .build()
+            Result.success(client.listPrivateMessages(request).messagesList.toList())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения приватных сообщений чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun editPrivateMessage(
+        messageId: Long,
+        ciphertext: ByteArray,
+        nonce: ByteArray,
+        associatedData: ByteArray
+    ): Result<Shared.EncryptedMessage> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.EditPrivateMessageRequest.newBuilder()
+                .setMessageId(messageId)
+                .setCiphertext(com.google.protobuf.ByteString.copyFrom(ciphertext))
+                .setNonce(com.google.protobuf.ByteString.copyFrom(nonce))
+                .setAssociatedData(com.google.protobuf.ByteString.copyFrom(associatedData))
+                .build()
+            Result.success(client.editPrivateMessage(request).message)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка редактирования приватного сообщения $messageId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deletePrivateMessage(messageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.DeletePrivateMessageRequest.newBuilder().setMessageId(messageId).build()
+            client.deletePrivateMessage(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка удаления приватного сообщения $messageId", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== Секретные чаты (Signal Double Ratchet) ====================
+
+    data class SecretInviteSent(val inviteId: String, val expiresAtSeconds: Long)
+    data class SecretMessageSent(val messageId: String, val expiresAtSeconds: Long)
+
+    suspend fun sendSecretChatInvite(
+        recipientUserId: Long,
+        recipientDeviceId: String,
+        initialEnvelope: ByteArray
+    ): Result<SecretInviteSent> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.SendSecretChatInviteRequest.newBuilder()
+                .setRecipientUserId(recipientUserId)
+                .setRecipientDeviceId(recipientDeviceId)
+                .setInitialEnvelope(com.google.protobuf.ByteString.copyFrom(initialEnvelope))
+                .build()
+            val resp = client.sendSecretChatInvite(request)
+            Result.success(SecretInviteSent(resp.inviteId, resp.inviteExpiresAt.seconds))
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отправки инвайта секретного чата", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun acceptSecretChatInvite(inviteId: String, responseEnvelope: ByteArray = ByteArray(0)): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.AcceptSecretChatInviteRequest.newBuilder()
+                .setInviteId(inviteId)
+                .setResponseEnvelope(com.google.protobuf.ByteString.copyFrom(responseEnvelope))
+                .build()
+            client.acceptSecretChatInvite(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка принятия секретного инвайта $inviteId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rejectSecretChatInvite(inviteId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.RejectSecretChatInviteRequest.newBuilder().setInviteId(inviteId).build()
+            client.rejectSecretChatInvite(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отклонения секретного инвайта $inviteId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun sendSecretMessage(
+        recipientUserId: Long,
+        recipientDeviceId: String,
+        envelope: ByteArray
+    ): Result<SecretMessageSent> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.SendSecretMessageRequest.newBuilder()
+                .setRecipientUserId(recipientUserId)
+                .setRecipientDeviceId(recipientDeviceId)
+                .setEnvelope(com.google.protobuf.ByteString.copyFrom(envelope))
+                .build()
+            val resp = client.sendSecretMessage(request)
+            Result.success(SecretMessageSent(resp.messageId, resp.expiresAt.seconds))
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отправки секретного сообщения", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun ackSecretMessage(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.AckSecretMessageRequest.newBuilder().setMessageId(messageId).build()
+            client.ackSecretMessage(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка подтверждения секретного сообщения $messageId", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== Prekey bundle (X3DH) ====================
+
+    suspend fun registerPrekeyBundle(
+        registrationId: Int,
+        identityPubkey: ByteArray,
+        signedPreKey: UsersApiOuterClass.SignedPreKey,
+        oneTimePreKeys: List<UsersApiOuterClass.OneTimePreKey>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.RegisterPrekeyBundleRequest.newBuilder()
+                .setRegistrationId(registrationId)
+                .setIdentityPubkey(com.google.protobuf.ByteString.copyFrom(identityPubkey))
+                .setSignedPrekey(signedPreKey)
+                .addAllOneTimePrekeys(oneTimePreKeys)
+                .build()
+            client.registerPrekeyBundle(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка регистрации prekey-bundle", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun fetchPrekeyBundle(
+        userId: Long,
+        deviceId: String
+    ): Result<UsersApiOuterClass.FetchPrekeyBundleResponse> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.FetchPrekeyBundleRequest.newBuilder()
+                .setUserId(userId)
+                .setDeviceId(deviceId)
+                .build()
+            Result.success(client.fetchPrekeyBundle(request))
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения prekey-bundle для $userId/$deviceId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun listPeerDevices(userId: Long): Result<List<UsersApiOuterClass.PeerDeviceInfo>> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.ListPeerDevicesRequest.newBuilder().setUserId(userId).build()
+            Result.success(client.listPeerDevices(request).devicesList.toList())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения списка устройств пользователя $userId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun replenishOneTimePrekeys(prekeys: List<UsersApiOuterClass.OneTimePreKey>): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.ReplenishOneTimePrekeysRequest.newBuilder()
+                .addAllPrekeys(prekeys)
+                .build()
+            Result.success(client.replenishOneTimePrekeys(request).totalOneTimePrekeys)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка пополнения one-time prekeys", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rotateSignedPrekey(signedPreKey: UsersApiOuterClass.SignedPreKey): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val request = UsersApiOuterClass.RotateSignedPrekeyRequest.newBuilder().setSignedPrekey(signedPreKey).build()
+            client.rotateSignedPrekey(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка ротации signed prekey", e)
+            Result.failure(e)
+        }
+    }
 }
