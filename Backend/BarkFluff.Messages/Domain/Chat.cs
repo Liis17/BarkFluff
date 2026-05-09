@@ -20,4 +20,10 @@ public class Chat
     public int CountUnread { get; set; }
 
     public long? FirstUnreadMessageId { get; set; }
+
+    public ChatType Type { get; set; } = ChatType.Regular;
+
+    public byte[]? KdfSalt { get; set; }
+
+    public byte[]? PassphraseVerifier { get; set; }
 }

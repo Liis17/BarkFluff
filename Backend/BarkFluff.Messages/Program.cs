@@ -18,6 +18,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Serilog;
 
+using StackExchange.Redis;
+
 namespace BarkFluff.Messages;
 
 using Consumers;
@@ -48,6 +50,10 @@ public class Program
             options.InstanceName = "Messages_";
         });
 
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
+                ?? throw new InvalidOperationException("Redis configuration is missing")));
+
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssemblyContaining<Program>();
@@ -72,6 +78,8 @@ public class Program
         builder.Services.AddScoped<ChatCache>();
         builder.Services.AddTransient<MessagesStorage>();
         builder.Services.AddTransient<PinnedMessagesStorage>();
+        builder.Services.AddTransient<EncryptedMessagesStorage>();
+        builder.Services.AddSingleton<SecretMessageBuffer>();
         builder.Services.AddTransient<MessageQueueSender>();
         builder.Services.AddTransient<ReadByQueueSender>();
 

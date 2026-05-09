@@ -21,12 +21,15 @@ public class MessagesContext : DbContext
 
     public DbSet<PinnedMessage> PinnedMessages { get; set; }
 
+    public DbSet<EncryptedMessage> EncryptedMessages { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
         modelBuilder.ApplyConfiguration(new ChatMemberConfiguration());
         modelBuilder.ApplyConfiguration(new MessageConfiguration());
         modelBuilder.ApplyConfiguration(new PinnedMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new EncryptedMessageConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

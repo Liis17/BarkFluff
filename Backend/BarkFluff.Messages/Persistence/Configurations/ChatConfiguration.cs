@@ -17,6 +17,15 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Ignore(x => x.FirstUnreadMessageId);
 
+        builder.Property(x => x.Type)
+            .HasDefaultValue(ChatType.Regular);
+
+        builder.Property(x => x.KdfSalt)
+            .HasColumnType("bytea");
+
+        builder.Property(x => x.PassphraseVerifier)
+            .HasColumnType("bytea");
+
         builder
             .HasMany(x => x.Members)
             .WithOne(m => m.Chat)

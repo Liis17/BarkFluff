@@ -32,11 +32,22 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<bool>("IsGroupChat")
                         .HasColumnType("boolean");
 
+                    b.Property<byte[]>("KdfSalt")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("PassphraseVerifier")
+                        .HasColumnType("bytea");
+
                     b.Property<string>("Picture")
                         .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 
@@ -65,6 +76,60 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.HasIndex("ChatId", "UserId");
 
                     b.ToTable("ChatMembers");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.EncryptedMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<byte[]>("AssociatedData")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Ciphertext")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEdited")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<byte[]>("Nonce")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("SenderDeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SenderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId");
+
+                    b.HasIndex("ChatId", "SentAt");
+
+                    b.ToTable("EncryptedMessages");
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.GroupChatInfo", b =>
