@@ -197,7 +197,8 @@ final class ConversationViewModel {
                     chatID: nil,
                     userID: userID,
                     text: text,
-                    fileIDs: fileIDs
+                    fileIDs: fileIDs,
+                    forwardedMessageID: nil
                 )
                 await resolveNewConversation(firstMessage: message)
             } catch {
@@ -230,7 +231,8 @@ final class ConversationViewModel {
                 chatID: chat.id,
                 userID: nil,
                 text: trimmedText,
-                fileIDs: fileIDs
+                fileIDs: fileIDs,
+                forwardedMessageID: nil
             )
             replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
             onMessageSent?(confirmed)
@@ -271,7 +273,7 @@ final class ConversationViewModel {
                 }
                 let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 let message = try await messageService.sendMessage(
-                    chatID: nil, userID: userID, text: trimmedText, fileIDs: fileIDs
+                    chatID: nil, userID: userID, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: nil
                 )
                 await resolveNewConversation(firstMessage: message)
                 uploadProgress.removeAll()
@@ -355,7 +357,7 @@ final class ConversationViewModel {
             }
 
             let confirmed = try await messageService.sendMessage(
-                chatID: chat.id, userID: nil, text: trimmedText, fileIDs: fileIDs
+                chatID: chat.id, userID: nil, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: nil
             )
 
             // 3. Заменить pending на confirmed
@@ -450,7 +452,7 @@ final class ConversationViewModel {
         Task {
             do {
                 let confirmed = try await messageService.sendMessage(
-                    chatID: chat.id, userID: nil, text: text, fileIDs: []
+                    chatID: chat.id, userID: nil, text: text, fileIDs: [], forwardedMessageID: nil
                 )
                 replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
                 onMessageSent?(confirmed)
@@ -564,6 +566,12 @@ final class ConversationViewModel {
         newMessagesTask = nil
         readEventsTask = nil
         onlineStatusTask = nil
+
+        // Парный untrack для track из startListeningForOnlineStatus.
+        if !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) {
+            let service = onlineStatusService
+            Task { await service.untrack(otherUserID) }
+        }
     }
 
     // MARK: - Online Status
@@ -572,18 +580,26 @@ final class ConversationViewModel {
         // Только для DM чатов
         guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else { return }
 
-        // Запросить текущий статус
+        // Snapshot из кеша — мгновенный показ.
         let status = await onlineStatusService.currentStatus(for: otherUserID)
         await MainActor.run { self.otherUserOnlineStatus = status }
 
-        // Подписаться на обновления
-        let stream = await onlineStatusService.statusStream(for: otherUserID)
-        onlineStatusTask = Task { [weak self] in
-            for await status in stream {
+        // Track + per-user stream. track обязателен парный untrack — делаем
+        // в stopListeningForUpdates(). При reconnect / переоткрытии чата
+        // refcount корректно балансируется.
+        await onlineStatusService.track(otherUserID)
+
+        // Свежее значение из кеша после track (track делает authoritative fetch).
+        let refreshed = await onlineStatusService.currentStatus(for: otherUserID)
+        await MainActor.run { self.otherUserOnlineStatus = refreshed }
+
+        // Отменяем предыдущую задачу — предотвращает утечку подписчиков.
+        onlineStatusTask?.cancel()
+        onlineStatusTask = Task { [weak self, onlineStatusService] in
+            let stream = await onlineStatusService.statusStream(for: otherUserID)
+            for await newStatus in stream {
                 guard let self else { break }
-                await MainActor.run {
-                    self.otherUserOnlineStatus = status
-                }
+                await MainActor.run { self.otherUserOnlineStatus = newStatus }
             }
         }
     }
