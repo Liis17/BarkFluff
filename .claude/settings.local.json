@@ -163,7 +163,9 @@
       "Bash(python3 -m json.tool /Users/liis/Projects/BarkFluff/.claude/settings.local.json)",
       "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/iOS/Barkfluff/Barkfluff.xcodeproj -list)",
       "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO)",
-      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'generic/platform=macOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO)"
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'generic/platform=macOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO)",
+      "Bash(xcodebuild -project iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 16' -quiet build)",
+      "Bash(xcodebuild -project iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' -quiet build)"
     ],
     "deny": [],
     "ask": []
