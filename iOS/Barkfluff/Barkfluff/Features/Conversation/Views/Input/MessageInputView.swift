@@ -16,6 +16,7 @@ struct MessageInputView: View {
     let uploadProgress: [UUID: Double]
     let onSend: () -> Void
     let onFileSelected: ([URL], Bool) -> Void  // URLs, forceAsDocument
+    let onStickerTap: () -> Void
 
     @FocusState private var isTextFieldFocused: Bool
     @State private var showPhotoPicker = false
@@ -44,6 +45,9 @@ struct MessageInputView: View {
             HStack(alignment: .center, spacing: Theme.Spacing.sm) {
                 // Кнопка прикрепления
                 attachButton
+
+                // Кнопка стикеров
+                stickerButton
 
                 // Поле ввода текста с Liquid Glass
                 textFieldView
@@ -132,6 +136,20 @@ struct MessageInputView: View {
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Sticker Button
+
+    private var stickerButton: some View {
+        Button {
+            onStickerTap()
+        } label: {
+            Image(systemName: "face.smiling")
+                .font(.title2)
+                .foregroundStyle(Color.accentColor)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Стикеры")
     }
 
     // MARK: - Text Field
@@ -253,7 +271,8 @@ struct VideoTransferable: Transferable {
             isSending: false,
             uploadProgress: [:],
             onSend: {},
-            onFileSelected: { _, _ in }
+            onFileSelected: { _, _ in },
+            onStickerTap: {}
         )
 
         MessageInputView(
@@ -262,7 +281,8 @@ struct VideoTransferable: Transferable {
             isSending: false,
             uploadProgress: [:],
             onSend: {},
-            onFileSelected: { _, _ in }
+            onFileSelected: { _, _ in },
+            onStickerTap: {}
         )
     }
     .environment(AppCoordinator())

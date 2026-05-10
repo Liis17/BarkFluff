@@ -2,8 +2,8 @@
 //  ProfileView.swift
 //  Barkfluff (iOS)
 //
-//  Корневой экран таба «Профиль»: карточка пользователя + переход к редактированию.
-//  Настройки вынесены в отдельный таб (см. SettingsView).
+//  Корневой экран таба «Профиль»: карточка пользователя сверху +
+//  сгруппированные категории настроек (по образцу Android-клиента).
 //
 
 import SwiftUI
@@ -20,6 +20,28 @@ struct ProfileView: View {
                     ProfileCardView()
                 }
             }
+
+            Section("Аккаунт и безопасность") {
+                categoryLink(.security)
+                categoryLink(.privacy)
+            }
+
+            Section("Персонализация") {
+                categoryLink(.personalization)
+            }
+
+            Section("Приложение") {
+                categoryLink(.cloud)
+                categoryLink(.cache)
+                categoryLink(.activeSessions)
+                categoryLink(.notifications)
+            }
+
+            Section("Другое") {
+                categoryLink(.general)
+                categoryLink(.aboutApp)
+                categoryLink(.aboutServer)
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Профиль")
@@ -34,9 +56,16 @@ struct ProfileView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func categoryLink(_ category: SettingsCategory) -> some View {
+        NavigationLink(value: category) {
+            SettingsCategoryRow(category: category)
+        }
+    }
 }
 
-/// Назначения push-навигации в табе «Профиль».
+/// Назначения push-навигации в табе «Профиль» (помимо категорий настроек).
 enum ProfileDestination: Hashable {
     case edit
 }

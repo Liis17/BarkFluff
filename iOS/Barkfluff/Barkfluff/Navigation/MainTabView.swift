@@ -33,23 +33,17 @@ struct MainTabView: View {
             }
             .tag(AppCoordinator.Tab.chats)
 
-            // Вкладка профиля
+            // Вкладка профиля (включает экраны настроек)
             NavigationStack(path: $coordinator.profileNavigationPath) {
                 ProfileView()
+                    .navigationDestination(for: SettingsCategory.self) { category in
+                        SettingsCategoryView(category: category)
+                    }
             }
             .tabItem {
                 Label("Профиль", systemImage: "person")
             }
             .tag(AppCoordinator.Tab.profile)
-
-            // Вкладка настроек
-            NavigationStack(path: $coordinator.settingsNavigationPath) {
-                SettingsView()
-            }
-            .tabItem {
-                Label("Настройки", systemImage: "gearshape")
-            }
-            .tag(AppCoordinator.Tab.settings)
         }
         .sheet(item: $coordinator.presentedSheet) { sheet in
             switch sheet {
