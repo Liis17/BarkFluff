@@ -84,11 +84,6 @@ struct ChatListView: View {
                         coordinator.openChat(chat)
                         viewModel.markChatAsReadLocally(chatID: chat.id)
                     }
-                    .onAppear {
-                        if chat.id == viewModel.chats.last?.id {
-                            Task { await viewModel.loadMoreChats() }
-                        }
-                    }
                 }
             }
             .listStyle(.plain)
