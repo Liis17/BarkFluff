@@ -2,32 +2,15 @@
 //  SettingsView.swift
 //  Barkfluff (iOS)
 //
-//  Корневой экран настроек: список категорий, push к подэкранам.
+//  Контейнер для row-компонента настроек и роутера категорий.
+//  Корневой экран настроек как отдельный таб больше не используется —
+//  категории показываются внутри таба «Профиль» (см. ProfileView).
 //
 
 import SwiftUI
 
-struct SettingsView: View {
-    @Environment(AppCoordinator.self) private var coordinator
-    @Environment(DependencyContainer.self) private var container
-
-    var body: some View {
-        List {
-            ForEach(SettingsCategory.allCases) { category in
-                NavigationLink(value: category) {
-                    SettingsCategoryRow(category: category)
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Настройки")
-        .navigationDestination(for: SettingsCategory.self) { category in
-            SettingsCategoryView(category: category)
-        }
-    }
-}
-
-private struct SettingsCategoryRow: View {
+/// Row для отображения категории настроек (используется из ProfileView).
+struct SettingsCategoryRow: View {
     let category: SettingsCategory
 
     var body: some View {
@@ -83,13 +66,5 @@ struct SettingsCategoryView: View {
         case .aboutServer:
             AboutServerSettingsView()
         }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        SettingsView()
-            .environment(AppCoordinator())
-            .environment(DependencyContainer())
     }
 }
