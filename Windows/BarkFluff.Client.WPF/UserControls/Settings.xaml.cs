@@ -21,16 +21,18 @@ namespace BarkFluff.Client.WPF.UserControls
 
             _factories = new Dictionary<string, Func<BaseSettingsPage>>
             {
-                { "Profile", () => new ProfileSettingsPage() },
-                { "Chats", () => new ChatsSettingsPage() },
-                { "Notifications", () => new NotificationsSettingsPage() },
-                { "Language", () => new LanguageSettingsPage() },
-                { "Security", () => new SecuritySettingsPage() },
-                { "Privacy", () => new PrivacySettingsPage() },
-                { "Devices", () => new DevicesSettingsPage() },
-                { "Cloud", () => new CloudSettingsPage() },
-                { "Cache", () => new CacheSettingsPage() },
-                { "About", () => new AboutSettingsPage() }
+                { "Profile",         () => new ProfileSettingsPage() },
+                { "General",         () => new GeneralSettingsPage() },
+                { "Notifications",   () => new NotificationsSettingsPage() },
+                { "Language",        () => new LanguageSettingsPage() },
+                { "Security",        () => new SecuritySettingsPage() },
+                { "Privacy",         () => new PrivacySettingsPage() },
+                { "Personalization", () => new PersonalizationSettingsPage() },
+                { "Cloud",           () => new CloudSettingsPage() },
+                { "Cache",           () => new CacheSettingsPage() },
+                { "Sessions",        () => new SessionsSettingsPage() },
+                { "AboutApp",        () => new AboutAppSettingsPage() },
+                { "AboutServer",     () => new AboutServerSettingsPage() }
             };
 
             LoadSidebarProfile();

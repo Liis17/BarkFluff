@@ -216,6 +216,10 @@ namespace BarkFluff.WebApi.Core
             => await UserManager.GetPersonalization(globalParam);
         public async Task<ErrorReturner> UpdatePersonalization(Proto.Users.UserPersonalizationData data, GlobalParam globalParam)
             => await UserManager.UpdatePersonalization(data, globalParam);
+        public async Task<(ErrorReturner error, string fileId)> GetProfilePoster(GlobalParam globalParam)
+            => await UserManager.GetProfilePoster(globalParam);
+        public async Task<ErrorReturner> SetProfilePoster(string fileId, GlobalParam globalParam)
+            => await UserManager.SetProfilePoster(fileId, globalParam);
         #endregion
 
         #region Настройка двухфакторной аутентификации (делегирование к AuthManager)

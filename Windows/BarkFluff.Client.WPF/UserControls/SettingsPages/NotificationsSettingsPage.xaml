@@ -12,15 +12,46 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Уведомления" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Уведомления и звук" />
 
             <!-- Описание -->
             <TextBlock
-                Margin="0,8,0,16"
+                Margin="0,8,0,12"
                 Foreground="{DynamicResource DescriptionText}"
                 FontSize="12"
                 TextWrapping="Wrap"
                 Text="Выберите, какую информацию показывать в уведомлениях о новых сообщениях" />
+
+            <!-- Звук уведомлений -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:SymbolIcon
+                        Grid.Column="0"
+                        Margin="0,0,12,0"
+                        VerticalAlignment="Center"
+                        Foreground="#FF57BB62"
+                        Symbol="Speaker224" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Звук уведомлений" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Воспроизводить звуковой сигнал при новых сообщениях" />
+                    </StackPanel>
+                    <ui:ToggleSwitch
+                        x:Name="SoundToggle"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Checked="SoundToggle_Changed"
+                        Unchecked="SoundToggle_Changed" />
+                </Grid>
+            </Border>
 
             <!-- Режимы уведомлений -->
             <StackPanel x:Name="NotificationModePanel" Margin="0,4,0,0">

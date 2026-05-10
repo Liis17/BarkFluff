@@ -473,5 +473,46 @@ namespace BarkFluff.WebApi.Core.Managers
                 return new ErrorReturner(false, "Ошибка обновления персонализации");
             }
         }
+
+        /// <summary>
+        /// Получить FileId постера профиля. Пустая строка если постер не задан.
+        /// </summary>
+        public async Task<(ErrorReturner error, string fileId)> GetProfilePoster(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.GetProfilePosterAsync(new Proto.Users.GetProfilePosterRequest());
+                    return (new ErrorReturner(true), response.ProfilePosterFileId ?? string.Empty);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения постера профиля"), string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Установить (или удалить — пустая строка) постер профиля.
+        /// </summary>
+        public async Task<ErrorReturner> SetProfilePoster(string fileId, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.SetProfilePosterAsync(new Proto.Users.SetProfilePosterRequest
+                    {
+                        ProfilePosterFileId = fileId ?? string.Empty
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка обновления постера профиля");
+            }
+        }
     }
 }

@@ -12,7 +12,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Защита" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Безопасность" />
 
             <!-- Смена пароля -->
             <Border
@@ -123,6 +123,15 @@
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
                             Content="Подтвердить"
+                            Visibility="Collapsed" />
+                        <ui:Button
+                            x:Name="DisableTwoFaButton"
+                            Margin="8,0,0,0"
+                            Click="DisableTwoFa_Click"
+                            Cursor="Hand"
+                            Background="#df5000"
+                            Foreground="White"
+                            Content="Отключить 2FA"
                             Visibility="Collapsed" />
                     </StackPanel>
                 </StackPanel>
