@@ -58,6 +58,7 @@ struct ReplyPreviewView: View {
             RoundedRectangle(cornerRadius: Theme.Radius.md)
                 .stroke(Color.accentColor.opacity(0.15), lineWidth: 1)
         )
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Сформировать однострочный snippet для превью.

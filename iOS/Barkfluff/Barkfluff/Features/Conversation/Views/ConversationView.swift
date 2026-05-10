@@ -31,6 +31,9 @@ struct ConversationView: View {
     // Подтверждение удаления
     @State private var deleteCandidateID: Int64?
 
+    // Sheet пикера стикеров
+    @State private var showStickerPicker = false
+
     // MARK: - Constants
 
     private let maxFileSize: Int64 = 500_000_000  // 500 MB
@@ -144,7 +147,8 @@ struct ConversationView: View {
                                     viewModel.uploadError = error.localizedDescription
                                 }
                             }
-                        }
+                        },
+                        onStickerTap: { showStickerPicker = true }
                     )
                 }
             }
@@ -206,6 +210,20 @@ struct ConversationView: View {
                 initialAttachment: attachment,
                 fileService: container.fileService
             )
+        }
+        // Bottom-sheet пикера стикеров
+        .sheet(isPresented: $showStickerPicker) {
+            StickerPickerView(
+                service: container.stickersService,
+                recentStore: container.recentStickersStore,
+                onStickerSelected: { sticker in
+                    Task { await viewModel?.sendSticker(sticker) }
+                    // Sheet остаётся открытым — Android-style, можно слать несколько подряд
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.hidden)
+            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         }
     }
 

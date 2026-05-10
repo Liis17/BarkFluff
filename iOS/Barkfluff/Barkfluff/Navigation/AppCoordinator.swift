@@ -19,14 +19,10 @@ final class AppCoordinator {
     enum Tab: String, CaseIterable {
         case chats
         case profile
-        case settings
     }
 
     /// Активная вкладка
     var activeTab: Tab = .chats
-
-    /// Выбранная категория настроек (push в settingsNavigationPath)
-    var selectedSettingsCategory: SettingsCategory?
 
     // MARK: - App State
 
@@ -56,11 +52,8 @@ final class AppCoordinator {
     /// Путь навигации в чатах
     var chatNavigationPath = NavigationPath()
 
-    /// Путь навигации в профиле
+    /// Путь навигации в профиле (включая категории настроек)
     var profileNavigationPath = NavigationPath()
-
-    /// Путь навигации в настройках
-    var settingsNavigationPath = NavigationPath()
 
     // MARK: - Chat List Reference
 
@@ -185,11 +178,9 @@ final class AppCoordinator {
 
         selectedChat = nil
         activeTab = .chats
-        selectedSettingsCategory = nil
         presentedSheet = nil
         chatNavigationPath = NavigationPath()
         profileNavigationPath = NavigationPath()
-        settingsNavigationPath = NavigationPath()
 
         currentState = .serverSelection
         authScreen = .login

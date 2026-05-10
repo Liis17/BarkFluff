@@ -31,7 +31,7 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 
 ## iOS-specific
 
-- Навигация: `NavigationStack` + `TabView` (3 таба: Чаты / Профиль / Настройки) вместо `NavigationSplitView`.
+- Навигация: `NavigationStack` + `TabView` (2 таба: Чаты / Профиль) вместо `NavigationSplitView`. Категории настроек живут внутри таба Профиль (по образцу Android).
 - Tab bar вместо Sidebar для основного интерфейса.
 - Профиль собеседника / инфо группы — push в стек чата (`ConversationDestination.userProfile(chat)`), не боковая панель.
 - Адаптивный UI для разных размеров экрана.
@@ -73,9 +73,9 @@ Barkfluff/
 │   ├── Models/TokenStorageSettings.swift
 │   └── Settings/{AppearanceSettings, PersonalizationSettings}.swift
 ├── Navigation/
-│   ├── AppCoordinator.swift           # loading → serverSelection → authentication → main; 3 таба + sheets
+│   ├── AppCoordinator.swift           # loading → serverSelection → authentication → main; 2 таба + sheets
 │   ├── RootView.swift                 # .preferredColorScheme(appearanceSettings.colorScheme)
-│   ├── MainTabView.swift              # Чаты / Профиль / Настройки + .sheet
+│   ├── MainTabView.swift              # Чаты / Профиль (с категориями настроек внутри) + .sheet
 │   └── SettingsCategory.swift
 ├── DesignSystem/
 │   ├── Theme.swift, Typography.swift
@@ -85,8 +85,8 @@ Barkfluff/
 │   ├── Auth/
 │   ├── ChatList/
 │   ├── Conversation/                  # VM полный паритет, ChatBackgroundView, ContextMenu, EditPreview/ReplyPreview
-│   ├── Profile/                       # ProfileEditView с PhotosPicker
-│   ├── Settings/                      # 5 VM + 9 экранов через SettingsCategory routing
+│   ├── Profile/                       # ProfileView (карточка + 4 группы категорий настроек, Android-pattern), ProfileEditView с PhotosPicker
+│   ├── Settings/                      # 5 VM + 9 экранов; SettingsCategoryRow + SettingsCategoryView (root SettingsView удалён)
 │   ├── UserProfile/                   # Push-навигация из ConversationView
 │   ├── UserSearch/                    # Sheet через coordinator.presentedSheet = .userSearch
 │   └── GroupChat/                     # Sheet через coordinator.presentedSheet = .createGroupChat
@@ -116,5 +116,5 @@ open Barkfluff.xcodeproj
 - **FastAuth (QR-авторизация)** — пропущено.
 - **NotificationService / push-уведомления** — отложено.
 - **Полноэкранные просмотрщики медиа** (отдельные `MediaViewerView`/`ImageViewerView`/`VideoPlayerView` как у macOS) — пока используется упрощённый viewer внутри ConversationView.
-- **EmojiPickerView, полноценный StickerPickerView UI**, **GIFAttachmentView**, **MediaPreviewCard/FilePreviewCard/SendButton** — VMs готовы, UI пока стандартный.
+- **EmojiPickerView**, **GIFAttachmentView**, **MediaPreviewCard/FilePreviewCard/SendButton** — VMs готовы, UI пока стандартный.
 - **Personalization poster/background picker UI** — VM есть, само редактирование фона/постера — следующий шаг.

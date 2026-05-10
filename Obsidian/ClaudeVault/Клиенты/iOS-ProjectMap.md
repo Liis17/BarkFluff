@@ -37,9 +37,9 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Navigation/AppCoordinator.swift` | `@Observable` координатор: состояния `loading → serverSelection → authentication → main`, табы chats/profile/settings, NavigationPath, `presentedSheet`, `selectedSettingsCategory`, `logout/forceLogout` через container.reset() |
+| `Navigation/AppCoordinator.swift` | `@Observable` координатор: состояния `loading → serverSelection → authentication → main`, табы chats/profile, NavigationPath (chat + profile, профильный включает категории настроек), `presentedSheet`, `logout/forceLogout` через container.reset() |
 | `Navigation/RootView.swift` | Корневой SwiftUI-вид + `.preferredColorScheme(appearanceSettings.colorScheme)` |
-| `Navigation/MainTabView.swift` | `TabView` (3 таба: Чаты / Профиль / Настройки) + `.sheet(item:)` для createGroupChat/userSearch/forwardMessage |
+| `Navigation/MainTabView.swift` | `TabView` (2 таба: Чаты / Профиль). У Profile-стека `navigationDestination(for: SettingsCategory.self)` → `SettingsCategoryView`. Sheet через `presentedSheet` для createGroupChat/userSearch/forwardMessage |
 | `Navigation/SettingsCategory.swift` | Enum категорий настроек (порт из macOS) |
 
 ---
@@ -102,7 +102,7 @@
 | `Conversation/Views/ForwardedMessageView.swift` | Карточка пересланного сообщения внутри пузыря |
 | `Conversation/Views/ForwardChatPickerView.swift` | Заглушка экрана пересылки (полная реализация: VM есть, UI ещё в разработке) |
 | `Conversation/Views/MessageInputView.swift` | (существующий) поле ввода + вложения |
-| `Conversation/Views/Input/MessageInputView.swift` | Поле ввода |
+| `Conversation/Views/Input/MessageInputView.swift` | Поле ввода: paperclip + кнопка-смайлик стикеров (между attach и текстовым полем) + TextField + send. Открытие пикера через `onStickerTap` callback |
 | `Conversation/Views/Input/AttachmentPreviewStrip.swift` | Полоса предпросмотра |
 | `Conversation/Views/Components/MessageTimeView.swift` | Время + галочки + иконка `pencil` для отредактированных |
 | `Conversation/Views/Components/ChatBackgroundView.swift` | Фон чата по PersonalizationSettings |
@@ -112,6 +112,10 @@
 | `Conversation/Views/Components/MessageDateSeparatorView.swift` | Разделитель дат |
 | `Conversation/Views/Components/ScrollToBottomButton.swift` | Кнопка вниз |
 | `Conversation/Views/Stickers/StickerImageView.swift` | UIImage + WebP через MediaCacheManager |
+| `Conversation/Views/Stickers/StickerPickerView.swift` | Bottom-sheet (`.presentationDetents([.medium, .large])`): поиск по emoji + сетка + табы паков. Sheet остаётся открытым после tap (Android-style) |
+| `Conversation/Views/Stickers/StickersGridView.swift` | LazyVGrid 4 колонки + empty-state |
+| `Conversation/Views/Stickers/StickerPackTabsView.swift` | Горизонтальная полоса табов: «Недавние» + по табу на пак с обложкой |
+| `Conversation/Views/Stickers/StickerThumbView.swift` | Превью стикера в гриде: tap → отправка, long-press → overlay (без hover, в отличие от macOS) |
 | `Conversation/Views/Attachments/StickerMessageView.swift` | Стикер в чате (180×180 / 140×140) |
 | `Conversation/Views/Attachments/AttachmentGridView.swift` | Сетка вложений |
 | `Conversation/Views/Attachments/{Image,Video,Audio,Document,FileIcon}AttachmentView.swift` | Существующие |
@@ -136,9 +140,9 @@
 |------|-----------|
 | `Profile/Models/UsernameValidationStatus.swift` | Статус валидации username |
 | `Profile/ViewModels/ProfileEditViewModel.swift` | PhotosPicker для аватара, валидация username (debounce 500ms), changeName/changeUsername/changeBio |
-| `Profile/Views/ProfileView.swift` | Корневой таб «Профиль»: ProfileCardView + NavigationLink к ProfileEditView, кнопка logout |
+| `Profile/Views/ProfileView.swift` | Корневой таб «Профиль»: List с ProfileCardView (NavigationLink → ProfileEditView) + 4 секциями категорий настроек по образцу Android (Аккаунт и безопасность / Персонализация / Приложение / Другое). NavigationLink через `SettingsCategory` → `SettingsCategoryView` (registered в MainTabView) |
 | `Profile/Views/ProfileCardView.swift` | Карточка пользователя (аватар + имя + username) |
-| `Profile/Views/ProfileEditView.swift` | PhotosPicker, форма с валидацией |
+| `Profile/Views/ProfileEditView.swift` | PhotosPicker, форма с валидацией. Кнопка «Выйти из аккаунта» через `coordinator.logout(...)` + force-logout fallback |
 | `Profile/Views/BadgesView.swift` | Сетка баджей |
 
 ---
@@ -159,7 +163,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Settings/Views/SettingsView.swift` | Корневой экран — список категорий из `SettingsCategory`, push к экранам |
+| `Settings/Views/SettingsView.swift` | Контейнер: `SettingsCategoryRow` (используется ProfileView) + `SettingsCategoryView` (роутер 11 категорий → конкретные экраны). Корневой `SettingsView` struct удалён — таба настроек больше нет, всё внутри Профиля |
 | `Settings/Views/GeneralSettingsView.swift` | Picker по `AppTheme` |
 | `Settings/Views/SecuritySettingsView.swift` | 2FA toggle + переключение хранилища токенов |
 | `Settings/Views/PrivacySettingsView.swift` | Видимость профиля + поиск + сообщения (через PrivacySettingsViewModel) |
@@ -224,7 +228,7 @@
 - **FastAuth (QR-авторизация)** — пропущено по решению.
 - **NotificationService / push** — отложено.
 - **Полноэкранные просмотрщики медиа** (`MediaViewerView`/`ImageViewerView`/`VideoPlayerView` как у macOS) — текущий iOS использует встроенный простой viewer в ConversationView.
-- **EmojiPickerView, полноценный StickerPickerView UI**, **GIFAttachmentView**, **MediaPreviewCard / FilePreviewCard / SendButton** — VMs есть, UI ещё переносится.
+- **EmojiPickerView**, **GIFAttachmentView**, **MediaPreviewCard / FilePreviewCard / SendButton** — VMs есть, UI ещё переносится.
 - **Personalization poster/background picker UI** — VM-инфраструктура готова, само редактирование — следующий шаг.
 - **iCloud sync настроек** — нет на macOS, нет и на iOS.
 - **Голосовые сообщения** (запись микрофоном) — повторяет текущий уровень macOS.
