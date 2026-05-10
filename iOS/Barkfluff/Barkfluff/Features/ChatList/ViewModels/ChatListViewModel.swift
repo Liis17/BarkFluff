@@ -60,6 +60,8 @@ final class ChatListViewModel {
     // MARK: - Loading
 
     func loadChats() async {
+        errorMessage = nil
+
         // 1. Stale: показать кешированные чаты сразу (если есть и список ещё пуст).
         var hasCachedData = false
         if allChats.isEmpty, let local = localChatRepository {
@@ -68,6 +70,8 @@ final class ChatListViewModel {
                 applyFilter()
                 hasCachedData = true
             }
+        } else if !allChats.isEmpty {
+            hasCachedData = true
         }
 
         if hasCachedData {
@@ -75,17 +79,33 @@ final class ChatListViewModel {
         } else {
             isLoading = true
         }
-        errorMessage = nil
 
+        // 2. Revalidate: тянем актуальные данные с сервера.
+        // Грузим ВСЕ страницы за один проход (как в macOS), иначе сортировка
+        // по `lastMessage.sentAt` применяется только к первой странице, и при
+        // дозагрузке более свежие чаты «прыгают» наверх.
         do {
-            let result = try await chatService.listChats(offset: 0, size: PaginationHelper.defaultChatsPageSize)
-            allChats = result.items
+            var accumulated: [Chat] = []
+            var result = try await chatService.listChats(offset: 0, size: PaginationHelper.defaultChatsPageSize)
+            accumulated.append(contentsOf: result.items)
             totalCount = result.totalCount
+
+            while result.hasMore {
+                let nextResult = try await chatService.listChats(
+                    offset: result.nextOffset,
+                    size: PaginationHelper.defaultChatsPageSize
+                )
+                accumulated.append(contentsOf: nextResult.items)
+                totalCount = nextResult.totalCount
+                result = nextResult
+            }
+
+            allChats = accumulated
             applyFilter()
 
-            // 2. Сохраняем актуальный снимок в БД.
+            // 3. Сохраняем актуальный снимок в БД.
             if let local = localChatRepository {
-                try? await local.replaceAll(result.items)
+                try? await local.replaceAll(accumulated)
             }
 
             // Прогрев кеша онлайн-статусов для DM-чатов.
@@ -100,25 +120,6 @@ final class ChatListViewModel {
 
         isLoading = false
         isRefreshing = false
-    }
-
-    func loadMoreChats() async {
-        guard !isLoading, Int32(allChats.count) < totalCount else { return }
-
-        let offset = PaginationHelper.calculateOffset(currentCount: allChats.count, pageSize: PaginationHelper.defaultChatsPageSize)
-
-        do {
-            let result = try await chatService.listChats(offset: offset, size: PaginationHelper.defaultChatsPageSize)
-            let newChats = result.items
-            allChats.append(contentsOf: newChats)
-            totalCount = result.totalCount
-            applyFilter()
-
-            // Tracking новых юзеров делают ChatRowView через .task(id:) когда
-            // их строки появляются в SwiftUI List — отдельная регистрация не нужна.
-        } catch {
-            // Silently fail for pagination
-        }
     }
 
     func refresh() async {
@@ -384,12 +385,13 @@ final class ChatListViewModel {
     // MARK: - Private
 
     private func applyFilter() {
-        if searchText.isEmpty {
-            chats = allChats
-        } else {
-            chats = allChats.filter { chat in
-                chat.title.localizedCaseInsensitiveContains(searchText)
-            }
+        let filtered = searchText.isEmpty
+            ? allChats
+            : allChats.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+        chats = filtered.sorted { lhs, rhs in
+            let lhsDate = lhs.lastMessage?.sentAt ?? .distantPast
+            let rhsDate = rhs.lastMessage?.sentAt ?? .distantPast
+            return lhsDate > rhsDate
         }
     }
 }
