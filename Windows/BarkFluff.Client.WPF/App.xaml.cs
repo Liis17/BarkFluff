@@ -340,6 +340,7 @@ namespace BarkFluff.Client.WPF
         }
         protected override void OnExit(ExitEventArgs e)
         {
+            FlushPendingSave();
             cts.Cancel();
             if (ServerCommunication != null)
             {
@@ -448,13 +449,68 @@ namespace BarkFluff.Client.WPF
                     MainHex = serverInfo.Color.MainHex,
                     HardHex = serverInfo.Color.HardHex,
                 };
-                string filePath = Path.Combine(AppContext.BaseDirectory, "datas", "GlobalParam.json");
-                if (App.GParam == null) { return; }
-                if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
-                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
+                SaveGlobalParam();
             }
 
 
+        }
+
+        /// <summary>
+        /// Сохраняет текущий <see cref="GParam"/> в зашифрованный JSON-файл.
+        /// Если PIN или путь не заданы — тихо ничего не делает.
+        /// </summary>
+        public static void SaveGlobalParam()
+        {
+            var gp = GParam;
+            if (gp == null) { return; }
+            if (string.IsNullOrEmpty(gp.AppPass) || string.IsNullOrEmpty(gp.AppPath)) { return; }
+            try
+            {
+                string filePath = Path.Combine(AppContext.BaseDirectory, "datas", "GlobalParam.json");
+                GlobalParam.Save(gp, filePath, gp.AppPass);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[App.SaveGlobalParam] Save failed: {ex.Message}");
+            }
+        }
+
+        private static System.Windows.Threading.DispatcherTimer? _saveDebounceTimer;
+        /// <summary>
+        /// Debounced-обёртка над <see cref="SaveGlobalParam"/>.
+        /// Откладывает сохранение на ~700 мс после последнего вызова.
+        /// </summary>
+        public static void SaveGlobalParamDebounced()
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                if (_saveDebounceTimer == null)
+                {
+                    _saveDebounceTimer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(700)
+                    };
+                    _saveDebounceTimer.Tick += (_, _) =>
+                    {
+                        _saveDebounceTimer!.Stop();
+                        SaveGlobalParam();
+                    };
+                }
+                _saveDebounceTimer.Stop();
+                _saveDebounceTimer.Start();
+            });
+        }
+
+        /// <summary>
+        /// Принудительно сбрасывает отложенный debounced-сейв (если есть) и сохраняет немедленно.
+        /// </summary>
+        public static void FlushPendingSave()
+        {
+            if (_saveDebounceTimer != null && _saveDebounceTimer.IsEnabled)
+            {
+                _saveDebounceTimer.Stop();
+                SaveGlobalParam();
+            }
         }
 
         public static void OpenMessengerPage()

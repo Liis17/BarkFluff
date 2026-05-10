@@ -266,17 +266,19 @@ Windows Toast (WinRT) уведомления:
 
 | Файл | Описание |
 |------|----------|
-| `BaseSettingsPage.cs` | Базовый класс страниц настроек |
-| `AboutSettingsPage.xaml / .cs` | О приложении (версия, лицензии) |
-| `CacheSettingsPage.xaml / .cs` | Управление кешем (очистка, размер) |
-| `ChatsSettingsPage.xaml / .cs` | Настройки чатов (шрифт, пузыри) |
-| `CloudSettingsPage.xaml / .cs` | Настройки облачного хранилища |
-| `DevicesSettingsPage.xaml / .cs` | Управление привязанными устройствами |
-| `LanguageSettingsPage.xaml / .cs` | Выбор языка интерфейса |
-| `NotificationsSettingsPage.xaml / .cs` | Настройки уведомлений (уровень, звук) |
-| `PrivacySettingsPage.xaml / .cs` | Настройки приватности |
-| `ProfileSettingsPage.xaml / .cs` | Редактирование профиля (имя, аватар, bio) |
-| `SecuritySettingsPage.xaml / .cs` | Настройки безопасности (PIN, 2FA, сессии) |
+| `BaseSettingsPage.cs` | Базовый класс страниц настроек (`Title`, `OnNavigatedTo`) |
+| `ProfileSettingsPage.xaml / .cs` | Редактирование профиля (имя, аватар, bio, username) |
+| `GeneralSettingsPage.xaml / .cs` | Общие — выбор темы (light / dark / system) |
+| `NotificationsSettingsPage.xaml / .cs` | Уведомления и звук (5 режимов NotificationDisplayMode + toggle звука + серверный SetNotificationsEnabled) |
+| `LanguageSettingsPage.xaml / .cs` | Выбор языка интерфейса (плейсхолдер) |
+| `SecuritySettingsPage.xaml / .cs` | Безопасность (3-step смена пароля, 2FA TOTP с OtpStatus/Disable, PIN) |
+| `PrivacySettingsPage.xaml / .cs` | Приватность профиля (видимость аватара/био/email/онлайна) |
+| `PersonalizationSettingsPage.xaml / .cs` | Персонализация: постер профиля, скругление пузырей, размытие фона, затемнение, сетка фонов |
+| `CloudSettingsPage.xaml / .cs` | Облако — статистика хранилища по типам файлов |
+| `CacheSettingsPage.xaml / .cs` | Локальный кеш (очистка по типам, общий объём) |
+| `SessionsSettingsPage.xaml / .cs` | Активные сессии (раньше `DevicesSettingsPage`) |
+| `AboutAppSettingsPage.xaml / .cs` | О приложении: версия, .NET, ОС, CPU, RAM, архитектура |
+| `AboutServerSettingsPage.xaml / .cs` | О сервере: имя/адрес/описание, авто-пинг, список микросервисов с health-статусом |
 
 ### UserControls/Classes/
 

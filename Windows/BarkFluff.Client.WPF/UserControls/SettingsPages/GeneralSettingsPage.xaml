@@ -1,0 +1,60 @@
+<local:BaseSettingsPage
+    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.GeneralSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="500"
+    d:DesignWidth="500"
+    mc:Ignorable="d">
+    <Grid Background="Transparent">
+        <StackPanel Margin="24,16,24,24">
+
+            <!-- Заголовок страницы -->
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Общие" />
+
+            <!-- ── Тема приложения ── -->
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,8,0,4" Text="ВНЕШНИЙ ВИД" />
+            <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:SymbolIcon Foreground="#FF5086B5" Symbol="PaintBrush24" Margin="0,0,8,0" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Тема приложения" />
+                    </StackPanel>
+                    <StackPanel x:Name="ThemePanel" Margin="0,4,0,0">
+                        <Border x:Name="ThemeLight" Padding="12" CornerRadius="6" Margin="0,2" Cursor="Hand"
+                                MouseLeftButtonUp="ThemeOption_Click" Tag="light">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Светлая"/>
+                                <Ellipse x:Name="RadioLight" Grid.Column="1" Width="18" Height="18"
+                                         Stroke="{DynamicResource DescriptionText}" StrokeThickness="2" Fill="Transparent"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="ThemeDark" Padding="12" CornerRadius="6" Margin="0,2" Cursor="Hand"
+                                MouseLeftButtonUp="ThemeOption_Click" Tag="dark">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Тёмная"/>
+                                <Ellipse x:Name="RadioDark" Grid.Column="1" Width="18" Height="18"
+                                         Stroke="{DynamicResource DescriptionText}" StrokeThickness="2" Fill="Transparent"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="ThemeSystem" Padding="12" CornerRadius="6" Margin="0,2" Cursor="Hand"
+                                MouseLeftButtonUp="ThemeOption_Click" Tag="system">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Системная"/>
+                                <Ellipse x:Name="RadioSystem" Grid.Column="1" Width="18" Height="18"
+                                         Stroke="{DynamicResource DescriptionText}" StrokeThickness="2" Fill="Transparent"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </Grid>
+</local:BaseSettingsPage>

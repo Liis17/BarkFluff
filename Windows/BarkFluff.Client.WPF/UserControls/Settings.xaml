@@ -80,17 +80,17 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Профиль" />
                             </StackPanel>
                         </ListBoxItem>
-                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Chats">
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="General">
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="ChatEmpty24" />
-                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Чаты" />
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Settings24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Общие" />
                             </StackPanel>
                         </ListBoxItem>
-                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Notifications">
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="CommentNote24" />
-                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Уведомления" />
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Alert28" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Уведомления и звук" />
                             </StackPanel>
                         </ListBoxItem>
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Language">
@@ -99,23 +99,23 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Язык" />
                             </StackPanel>
                         </ListBoxItem>
-                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Security">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="LockClosed32" />
-                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Защита" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Безопасность" />
                             </StackPanel>
                         </ListBoxItem>
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Privacy">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="ShieldLock28" />
-                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Конфиденциальность" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Приватность" />
                             </StackPanel>
                         </ListBoxItem>
-                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Devices">
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Personalization">
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="PhoneDesktop28" />
-                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Устройства" />
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="PaintBrush24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Персонализация" />
                             </StackPanel>
                         </ListBoxItem>
                         <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
@@ -131,11 +131,23 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Кеш" />
                             </StackPanel>
                         </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Sessions">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="PhoneDesktop28" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Активные сессии" />
+                            </StackPanel>
+                        </ListBoxItem>
                         <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
-                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="About">
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="AboutApp">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Info24" />
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="О приложении" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="AboutServer">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Server24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="О сервере" />
                             </StackPanel>
                         </ListBoxItem>
                     </ListBox>

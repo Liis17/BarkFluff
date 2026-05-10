@@ -1,0 +1,229 @@
+<local:BaseSettingsPage
+    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.PersonalizationSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:conv="clr-namespace:BarkFluff.Client.WPF.Services.App.Converter"
+    d:DesignHeight="900"
+    d:DesignWidth="500"
+    mc:Ignorable="d">
+    <local:BaseSettingsPage.Resources>
+        <conv:DoubleToCornerRadiusConverter x:Key="DoubleToCornerRadiusConverter"/>
+    </local:BaseSettingsPage.Resources>
+    <Grid Background="Transparent">
+        <StackPanel Margin="24,16,24,24">
+
+            <!-- Заголовок страницы -->
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Персонализация" />
+
+            <!-- ── Постер профиля ── -->
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,8,0,4" Text="ПОСТЕР ПРОФИЛЯ" />
+            <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <ui:SymbolIcon Foreground="#FFCA34A8" Symbol="ImageBorder24" Margin="0,0,8,0"/>
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Постер" />
+                    </StackPanel>
+
+                    <!-- Превью постера 16:9 -->
+                    <Border
+                        x:Name="PosterPreviewBorder"
+                        Height="140"
+                        CornerRadius="10"
+                        ClipToBounds="True"
+                        Background="{DynamicResource SettingsSidebarBackground}">
+                        <Grid>
+                            <Image
+                                x:Name="PosterImage"
+                                Stretch="UniformToFill"
+                                Visibility="Collapsed" />
+                            <TextBlock
+                                x:Name="PosterEmptyHint"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{DynamicResource DescriptionText}"
+                                Text="Постер не задан" />
+                        </Grid>
+                    </Border>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button
+                            x:Name="ChangePosterBtn"
+                            Grid.Column="0"
+                            HorizontalAlignment="Stretch"
+                            Margin="0,0,4,0"
+                            Click="ChangePoster_Click"
+                            Style="{DynamicResource DefaultButtonStyle}"
+                            Content="Изменить постер" />
+                        <Button
+                            x:Name="RemovePosterBtn"
+                            Grid.Column="1"
+                            Click="RemovePoster_Click"
+                            Style="{DynamicResource DefaultButtonStyle}"
+                            Content="Удалить" />
+                    </Grid>
+
+                    <TextBlock
+                        x:Name="PosterStatusText"
+                        FontSize="11"
+                        Foreground="{DynamicResource DescriptionText}"
+                        Margin="0,6,0,0"
+                        Text="" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Внешний вид сообщений ── -->
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="ВНЕШНИЙ ВИД СООБЩЕНИЙ" />
+            <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <ui:SymbolIcon Foreground="#FFCA6D34" Symbol="Chat24" Margin="0,0,8,0"/>
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Скругление пузырьков"/>
+                    </StackPanel>
+
+                    <!-- Превью пузырьков -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" HorizontalAlignment="Left" Padding="10,6" MaxWidth="140"
+                                Background="#FF3D86C6" Margin="0,0,4,0"
+                                CornerRadius="{Binding ElementName=CornerSlider, Path=Value, Converter={StaticResource DoubleToCornerRadiusConverter}}">
+                            <TextBlock Text="Привет! 👋" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
+                        </Border>
+                        <Border Grid.Column="1" HorizontalAlignment="Right" Padding="10,6" MaxWidth="140"
+                                Background="#FFDF5000" Margin="4,0,0,0"
+                                CornerRadius="{Binding ElementName=CornerSlider, Path=Value, Converter={StaticResource DoubleToCornerRadiusConverter}}">
+                            <TextBlock Text="Как дела? 😊" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
+                        </Border>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="0" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Slider x:Name="CornerSlider" Grid.Column="1" Minimum="0" Maximum="20" TickFrequency="1"
+                                IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                ValueChanged="CornerSlider_ValueChanged"/>
+                        <TextBlock Grid.Column="2" Text="20" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                    </Grid>
+                    <TextBlock x:Name="CornerValueLabel" FontSize="11" Foreground="{DynamicResource DescriptionText}"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" Text="12"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Фон чата (локальные настройки) ── -->
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="ФОН ЧАТА" />
+            <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
+                <StackPanel>
+                    <!-- Toggle размытия -->
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Размытие фона"/>
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,2,0,0" Text="Размывает выбранную картинку фона чата"/>
+                        </StackPanel>
+                        <ui:ToggleSwitch x:Name="BlurToggle" Grid.Column="1" Checked="BlurToggle_Changed" Unchecked="BlurToggle_Changed" />
+                    </Grid>
+
+                    <!-- Слайдер радиуса размытия -->
+                    <StackPanel x:Name="BlurRadiusPanel" Visibility="Collapsed">
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,4,0,4" Text="Радиус размытия"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="1" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <Slider x:Name="BlurRadiusSlider" Grid.Column="1" Minimum="1" Maximum="25" TickFrequency="1"
+                                    IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                    ValueChanged="BlurRadiusSlider_ValueChanged"/>
+                            <TextBlock Grid.Column="2" Text="25" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </Grid>
+                        <TextBlock x:Name="BlurRadiusLabel" FontSize="11" Foreground="{DynamicResource DescriptionText}"
+                                   HorizontalAlignment="Center" Margin="0,4,0,8" Text="12"/>
+                    </StackPanel>
+
+                    <!-- Слайдер затемнения -->
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,8,0,4" Text="Затемнение фона"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="0%" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Slider x:Name="DimSlider" Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5"
+                                IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                ValueChanged="DimSlider_ValueChanged"/>
+                        <TextBlock Grid.Column="2" Text="100%" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                    </Grid>
+                    <TextBlock x:Name="DimLabel" FontSize="11" Foreground="{DynamicResource DescriptionText}"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" Text="0%"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Изображения фона ── -->
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="ИЗОБРАЖЕНИЯ ФОНА" />
+            <Border Padding="12" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <ui:SymbolIcon Foreground="#FF9B59B6" Symbol="Image24" Margin="0,0,8,0"/>
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фоновые изображения"/>
+                        <TextBlock x:Name="BgStatusText" Foreground="{DynamicResource DescriptionText}" FontSize="12"
+                                   VerticalAlignment="Center" Margin="8,0,0,0" Text=""/>
+                    </StackPanel>
+
+                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="BackgroundsGrid">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="3"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="3"
+                                        CornerRadius="6"
+                                        ClipToBounds="True"
+                                        Cursor="Hand"
+                                        BorderThickness="3"
+                                        BorderBrush="{Binding BorderBrush}"
+                                        Tag="{Binding FileId}"
+                                        MouseLeftButtonUp="Background_Click">
+                                        <Border.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Удалить фон" Tag="{Binding FileId}"
+                                                          Click="DeleteBackground_Click"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <Viewbox Stretch="UniformToFill">
+                                            <Image
+                                                Width="120" Height="120"
+                                                Source="{Binding PreviewSource}"
+                                                Stretch="UniformToFill"/>
+                                        </Viewbox>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Button
+                        x:Name="AddBackgroundBtn"
+                        Margin="0,8,0,0"
+                        HorizontalAlignment="Stretch"
+                        Click="AddBackground_Click"
+                        Style="{DynamicResource DefaultButtonStyle}"
+                        Content="＋  Добавить фон" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </Grid>
+</local:BaseSettingsPage>

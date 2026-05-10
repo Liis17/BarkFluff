@@ -163,6 +163,7 @@ namespace BarkFluff.Client.WPF.Pages
 
             await UserInfoUpdate();
             ChatUpdate();
+            ApplyChatBackgroundSettings();
             await Task.Run(() => _realtime.Start(App.GParam));
 
             // Выполнение задачи от протокола
@@ -227,6 +228,59 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 _attachments.ShowAttachmentPreview(filePaths);
             }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        #endregion
+
+        #region Фон чата (персонализация)
+
+        /// <summary>
+        /// Применяет настройки фона чата из <see cref="App.GParam"/>:
+        /// картинка <c>CurrentBackgroundFileId</c>, размытие, затемнение.
+        /// Безопасно вызывать повторно — например, после смены настроек в Personalization.
+        /// </summary>
+        public async void ApplyChatBackgroundSettings()
+        {
+            var gp = App.GParam;
+            if (gp == null) return;
+
+            // Затемнение: сразу, не ждёт загрузки картинки
+            ChatBackgroundDim.Opacity = Math.Clamp(gp.BackgroundDimPercent / 100.0, 0.0, 1.0);
+
+            // Размытие: применяем только если картинка задана
+            BackgroundChatImage.Effect = gp.BackgroundBlurEnabled
+                ? new System.Windows.Media.Effects.BlurEffect
+                {
+                    Radius = Math.Clamp(gp.BackgroundBlurRadius, 1, 50),
+                    KernelType = System.Windows.Media.Effects.KernelType.Gaussian
+                }
+                : null;
+
+            // Картинка
+            var fileId = gp.CurrentBackgroundFileId;
+            if (string.IsNullOrEmpty(fileId))
+            {
+                BackgroundChatImage.Source = null;
+                return;
+            }
+
+            try
+            {
+                var (urlError, url) = await App.ServerCommunication.GetFile(gp, fileId);
+                if (!urlError.IsSuccess || string.IsNullOrEmpty(url))
+                {
+                    BackgroundChatImage.Source = null;
+                    return;
+                }
+
+                var source = await App.FileCacheService.GetCachedImageAsync(
+                    fileId, BarkFluff.Client.WPF.Services.App.Caching.FileType.Image, url);
+                BackgroundChatImage.Source = source;
+            }
+            catch
+            {
+                BackgroundChatImage.Source = null;
+            }
         }
 
         #endregion
