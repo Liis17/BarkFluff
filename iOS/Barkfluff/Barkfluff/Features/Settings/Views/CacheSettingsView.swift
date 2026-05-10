@@ -20,21 +20,22 @@ struct CacheSettingsView: View {
                 }
             }
 
-            Section("По типам") {
-                ForEach(viewModel.displayedTypes, id: \.self) { type in
-                    let bytes = viewModel.stats.bytesByType[type] ?? 0
-                    HStack {
-                        Image(systemName: type.systemImage)
-                            .foregroundStyle(type.tintColor)
-                            .frame(width: 22)
-                        VStack(alignment: .leading) {
-                            Text(type.displayName)
-                            Text(formatBytes(bytes))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if bytes > 0 {
+            let nonEmptyTypes = viewModel.displayedTypes.filter { (viewModel.stats.bytesByType[$0] ?? 0) > 0 }
+            if !nonEmptyTypes.isEmpty {
+                Section("По типам") {
+                    ForEach(nonEmptyTypes, id: \.self) { type in
+                        let bytes = viewModel.stats.bytesByType[type] ?? 0
+                        HStack {
+                            Image(systemName: type.systemImage)
+                                .foregroundStyle(type.tintColor)
+                                .frame(width: 22)
+                            VStack(alignment: .leading) {
+                                Text(type.displayName)
+                                Text(formatBytes(bytes))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
                             Button {
                                 Task { await viewModel.clear(type) }
                             } label: {

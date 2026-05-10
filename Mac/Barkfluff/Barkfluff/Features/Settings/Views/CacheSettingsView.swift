@@ -48,9 +48,12 @@ struct CacheSettingsView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Очистка по типам") {
-                ForEach(viewModel.displayedTypes, id: \.self) { type in
-                    cacheRow(for: type)
+            let nonEmptyTypes = viewModel.displayedTypes.filter { (viewModel.stats.bytesByType[$0] ?? 0) > 0 }
+            if !nonEmptyTypes.isEmpty {
+                Section("Очистка по типам") {
+                    ForEach(nonEmptyTypes, id: \.self) { type in
+                        cacheRow(for: type)
+                    }
                 }
             }
 

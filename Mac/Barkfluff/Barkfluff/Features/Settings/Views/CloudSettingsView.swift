@@ -54,9 +54,12 @@ struct CloudSettingsView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("По типам") {
-                ForEach(viewModel.displayedTypes, id: \.self) { type in
-                    typeRow(type)
+            let nonEmptyTypes = viewModel.displayedTypes.filter { (viewModel.info?.usedByType[$0] ?? 0) > 0 }
+            if !nonEmptyTypes.isEmpty {
+                Section("По типам") {
+                    ForEach(nonEmptyTypes, id: \.self) { type in
+                        typeRow(type)
+                    }
                 }
             }
 
