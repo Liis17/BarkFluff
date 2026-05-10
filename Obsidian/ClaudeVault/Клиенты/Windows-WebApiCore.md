@@ -20,7 +20,7 @@ dotnet build Windows/BarkFluff.WebApi.Core/BarkFluff.WebApi.Core.csproj
 WebApi (IDisposable, фасад)
 ├── WebApiClientManager      — gRPC каналы/клиенты + interceptors
 ├── WebApiTokenManager       — рефреш токенов + SafeCallAsync<T>
-├── WebApiUserManager        — профиль, устройства, сессии, приватность
+├── WebApiUserManager        — профиль, устройства, сессии, приватность, персонализация (постер, фоны)
 ├── WebApiAuthManager        — 2FA/OTP
 ├── WebApiRegistrationManager — регистрация
 ├── WebApiPasswordManager    — сброс/смена пароля

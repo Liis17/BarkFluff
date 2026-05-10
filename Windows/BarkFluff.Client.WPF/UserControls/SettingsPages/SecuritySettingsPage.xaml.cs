@@ -9,13 +9,47 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     /// </summary>
     public partial class SecuritySettingsPage : BaseSettingsPage
     {
-        public override string Title => "Защита";
+        public override string Title => "Безопасность";
 
         private string? _resetId;
 
         public SecuritySettingsPage()
         {
             InitializeComponent();
+        }
+
+        public override void OnNavigatedTo()
+        {
+            _ = RefreshTwoFaStatusAsync();
+        }
+
+        private async Task RefreshTwoFaStatusAsync()
+        {
+            try
+            {
+                var (error, authEnabled, _) = await App.ServerCommunication.OtpStatus(App.GParam);
+                if (!error.IsSuccess) return;
+
+                if (authEnabled)
+                {
+                    TwoFaStatusText.Text = "Включена";
+                    SetupTwoFaButton.Visibility = Visibility.Collapsed;
+                    ConfirmTwoFaButton.Visibility = Visibility.Collapsed;
+                    QrImage.Visibility = Visibility.Collapsed;
+                    OtpCodeBox.Visibility = Visibility.Collapsed;
+                    DisableTwoFaButton.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    TwoFaStatusText.Text = "Отключена";
+                    SetupTwoFaButton.Visibility = Visibility.Visible;
+                    DisableTwoFaButton.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         #region Смена пароля (3-шаговый flow)
@@ -169,12 +203,38 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 QrImage.Visibility = Visibility.Collapsed;
                 OtpCodeBox.Visibility = Visibility.Collapsed;
                 ConfirmTwoFaButton.Visibility = Visibility.Collapsed;
-                SetupTwoFaButton.Visibility = Visibility.Visible;
+                SetupTwoFaButton.Visibility = Visibility.Collapsed;
+                DisableTwoFaButton.Visibility = Visibility.Visible;
                 TwoFaStatusText.Text = "Включена";
             }
             else
             {
                 StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+            }
+        }
+
+        private async void DisableTwoFa_Click(object sender, RoutedEventArgs e)
+        {
+            StatusText.Text = "Отключение 2FA...";
+            DisableTwoFaButton.IsEnabled = false;
+            try
+            {
+                var error = await App.ServerCommunication.OtpDisable(App.GParam);
+                if (error.IsSuccess)
+                {
+                    StatusText.Text = "2FA отключена";
+                    DisableTwoFaButton.Visibility = Visibility.Collapsed;
+                    SetupTwoFaButton.Visibility = Visibility.Visible;
+                    TwoFaStatusText.Text = "Отключена";
+                }
+                else
+                {
+                    StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                }
+            }
+            finally
+            {
+                DisableTwoFaButton.IsEnabled = true;
             }
         }
 
@@ -185,21 +245,18 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         private void SavePin_Click(object sender, RoutedEventArgs e)
         {
             var pin = PinBox.Password?.Trim();
+            if (App.GParam == null) return;
+
             if (string.IsNullOrEmpty(pin))
             {
-                if (App.GParam != null)
-                {
-                    App.GParam.AppPass = null;
-                    StatusText.Text = "PIN-код удалён";
-                }
+                App.GParam.AppPass = string.Empty;
+                StatusText.Text = "PIN-код удалён";
                 return;
             }
 
-            if (App.GParam != null)
-            {
-                App.GParam.AppPass = pin;
-                StatusText.Text = "PIN-код сохранён";
-            }
+            App.GParam.AppPass = pin;
+            App.SaveGlobalParam();
+            StatusText.Text = "PIN-код сохранён";
         }
 
         #endregion

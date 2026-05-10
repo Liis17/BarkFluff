@@ -108,7 +108,78 @@ OnStartup
 
 ## Конфигурация и шифрование
 
-`GlobalParam` хранит состояние в `datas/GlobalParam.json`, зашифрованный AES-256 / PBKDF2 от PIN-кода.
+`GlobalParam` хранит состояние в `datas/GlobalParam.json`, зашифрованный AES-256 / PBKDF2 от PIN-кода. Класс — `Windows/BarkFluff.WebApi.Core/MessengerData/GlobalParam.cs` (общий с другими WPF-проектами).
+
+Помимо токенов, профиля и адресов микросервисов, в `GlobalParam` лежат **локальные пользовательские настройки**:
+
+| Поле | Тип | Default | Назначение |
+|------|-----|---------|------------|
+| `AppTheme` | string | `"system"` | Тема: `light` / `dark` / `system` (зеркало `ThemeRegistryHelper`) |
+| `NotificationMode` | enum | `FullWithPreview` | 5 режимов отображения уведомлений |
+| `NotificationSoundEnabled` | bool | `true` | Звук уведомлений |
+| `MessageBubbleCornerRadius` | int | `12` | Скругление пузырей сообщений (0–20) |
+| `BackgroundBlurEnabled` | bool | `false` | Размытие фона чата |
+| `BackgroundBlurRadius` | int | `12` | Радиус Gaussian blur (1–25) |
+| `BackgroundDimPercent` | int | `0` | Затемнение фона (0–100 %) |
+| `CurrentBackgroundFileId` | string | `""` | FileId выбранного фона из `ChatBackgroundFileIds` |
+
+### Сохранение
+
+В `App.xaml.cs` есть статические helper-методы — это **единственный** правильный способ записи на диск:
+
+```csharp
+App.SaveGlobalParam();              // синхронный, тихо ничего не делает если PIN/AppPath пусты
+App.SaveGlobalParamDebounced();     // DispatcherTimer 700 мс — для слайдеров
+App.FlushPendingSave();             // финальный flush (вызывается в OnExit)
+```
+
+Прямой вызов `GlobalParam.Save(...)` запрещён — обходит проверки и провоцирует дубликаты пути.
+
+## Settings (12 разделов)
+
+`UserControls/Settings.xaml` — UserControl 700×600 с sidebar-навигацией и `ContentControl`-областью. Sidebar собран по образцу macOS-клиента ([[Клиенты/macOS]]), плюс сохранён существующий раздел Language.
+
+| Sidebar Tag | Заголовок | Файл (`UserControls/SettingsPages/`) |
+|-------------|-----------|--------------------------------------|
+| `Profile` | Профиль | `ProfileSettingsPage` |
+| `General` | Общие | `GeneralSettingsPage` (тема) |
+| `Notifications` | Уведомления и звук | `NotificationsSettingsPage` |
+| `Language` | Язык | `LanguageSettingsPage` (плейсхолдер) |
+| `Security` | Безопасность | `SecuritySettingsPage` (пароль / 2FA TOTP / PIN) |
+| `Privacy` | Приватность | `PrivacySettingsPage` |
+| `Personalization` | Персонализация | `PersonalizationSettingsPage` (постер, скругление, размытие, затемнение, фоны) |
+| `Cloud` | Облако | `CloudSettingsPage` |
+| `Cache` | Кеш | `CacheSettingsPage` |
+| `Sessions` | Активные сессии | `SessionsSettingsPage` |
+| `AboutApp` | О приложении | `AboutAppSettingsPage` (версия, .NET, ОС, CPU, RAM) |
+| `AboutServer` | О сервере | `AboutServerSettingsPage` (имя/адрес сервера, авто-пинг, микросервисы) |
+
+Навигация — `Dictionary<string, Func<BaseSettingsPage>>` factory + кеш страниц (`_pageCache`) с fade-анимацией. Базовый класс `BaseSettingsPage` имеет `Title` и `OnNavigatedTo()` — последний вызывается на каждый переход (там грузим серверные данные).
+
+### Personalization — взаимодействие с сервером
+
+- **Постер** (`UserProfilePoster`) — `WebApi.UserManager.GetProfilePoster(gp)` / `SetProfilePoster(fileId, gp)` — атомарные методы; пустая строка = удалить.
+- **Список фонов** (`ChatBackgroundFileIds`) — `GetPersonalization` / `UpdatePersonalization`. Поскольку `UpdatePersonalization` **полностью** перезаписывает `UserPersonalizationData`, при апдейте фонов мы передаём актуальный `ProfilePosterFileId` чтобы не затереть постер.
+- **Локальные параметры** (размытие/затемнение/скругление/выбранный фон) — только в `App.GParam`, без серверной синхронизации.
+
+## Фон окна чата (ChatBackgroundLayer)
+
+`MessengerPage.xaml` содержит слой `ChatBackgroundLayer` (`ZIndex = -3`, `IsHitTestVisible="False"`):
+```xml
+<Grid x:Name="ChatBackgroundLayer">
+    <Image x:Name="BackgroundChatImage" Stretch="UniformToFill" />
+    <Border x:Name="ChatBackgroundDim" Background="Black" Opacity="0" />
+</Grid>
+```
+
+Метод `MessengerPage.ApplyChatBackgroundSettings()` читает `App.GParam` и применяет:
+- **Картинка** — `App.FileCacheService.GetCachedImageAsync(CurrentBackgroundFileId, FileType.Image, url)` где `url` получен через `WebApi.GetFile(...)`.
+- **Размытие** — `BlurEffect { Radius=BackgroundBlurRadius, KernelType=Gaussian }` на `BackgroundChatImage` (или `null`).
+- **Затемнение** — `Opacity = BackgroundDimPercent / 100.0` на `ChatBackgroundDim`.
+
+Вызывается:
+1. Один раз в `MessengerPage_Loaded` (после получения server info).
+2. Из `PersonalizationSettingsPage` после каждого изменения соответствующих настроек: `App.Messenger?.ApplyChatBackgroundSettings()`.
 
 ## Single Instance и Deep Links
 

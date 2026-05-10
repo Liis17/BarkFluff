@@ -12,12 +12,13 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     /// </summary>
     public partial class NotificationsSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Уведомления";
+        public override string Title => "Уведомления и звук";
 
         private static readonly SolidColorBrush AccentBrush = new(Color.FromRgb(0xB3, 0x58, 0x44));
         private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
 
         private readonly Dictionary<NotificationDisplayMode, Ellipse> _radioMap;
+        private bool _isLoadingFromGParam;
 
         public NotificationsSettingsPage()
         {
@@ -32,10 +33,22 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 { NotificationDisplayMode.FullWithPreview, RadioFullPreview }
             };
 
-            UpdateRadioVisuals(App.GParam?.NotificationMode ?? NotificationDisplayMode.FullWithPreview);
+            var mode = App.GParam?.NotificationMode ?? NotificationDisplayMode.FullWithPreview;
+            UpdateRadioVisuals(mode);
+
+            _isLoadingFromGParam = true;
+            try
+            {
+                SoundToggle.IsChecked = App.GParam?.NotificationSoundEnabled ?? true;
+                SoundToggle.IsEnabled = mode != NotificationDisplayMode.Disabled;
+            }
+            finally
+            {
+                _isLoadingFromGParam = false;
+            }
         }
 
-        private void Mode_Click(object sender, MouseButtonEventArgs e)
+        private async void Mode_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement element || element.Tag is not string tagStr)
                 return;
@@ -48,9 +61,29 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             if (App.GParam != null)
             {
                 App.GParam.NotificationMode = mode;
+                App.SaveGlobalParam();
             }
 
             UpdateRadioVisuals(mode);
+            SoundToggle.IsEnabled = mode != NotificationDisplayMode.Disabled;
+
+            // Серверная синхронизация: уведомления включены если не Disabled
+            try
+            {
+                await App.ServerCommunication.SetNotificationsEnabled(
+                    mode != NotificationDisplayMode.Disabled, App.GParam);
+            }
+            catch
+            {
+                // ignored — сервер мог быть недоступен, локальное значение уже применено
+            }
+        }
+
+        private void SoundToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingFromGParam || App.GParam == null) return;
+            App.GParam.NotificationSoundEnabled = SoundToggle.IsChecked == true;
+            App.SaveGlobalParam();
         }
 
         private void UpdateRadioVisuals(NotificationDisplayMode selectedMode)

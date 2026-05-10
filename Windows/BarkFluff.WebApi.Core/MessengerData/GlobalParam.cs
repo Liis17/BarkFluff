@@ -62,6 +62,36 @@ namespace BarkFluff.WebApi.Core.MessengerData
         /// </summary>
         public int MessageBubbleCornerRadius { get; set; } = 12;
 
+        /// <summary>
+        /// Тема приложения (зеркало ThemeRegistryHelper): "light" | "dark" | "system".
+        /// </summary>
+        public string AppTheme { get; set; } = "system";
+
+        /// <summary>
+        /// Звук уведомлений (отдельно от NotificationMode).
+        /// </summary>
+        public bool NotificationSoundEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Включено ли размытие фона чата.
+        /// </summary>
+        public bool BackgroundBlurEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Радиус размытия фона чата (1–25).
+        /// </summary>
+        public int BackgroundBlurRadius { get; set; } = 12;
+
+        /// <summary>
+        /// Затемнение фона чата в процентах (0–100).
+        /// </summary>
+        public int BackgroundDimPercent { get; set; } = 0;
+
+        /// <summary>
+        /// FileId выбранного фона чата (из списка ChatBackgroundFileIds Personalization).
+        /// </summary>
+        public string CurrentBackgroundFileId { get; set; } = string.Empty;
+
         #endregion
         #region Пользователь
         #region Токены пользователя

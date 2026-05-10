@@ -136,8 +136,12 @@ PeriodicTimer(30s)
 | **`GetPrivacySettings`** | `(GlobalParam)` | `(ErrorReturner, PrivacySettings?)` |
 | **`UpdatePrivacySettings`** | `(PrivacySettings, GlobalParam)` | `Task<ErrorReturner>` |
 | **`SetNotificationsEnabled`** | `(enabled, GlobalParam)` | `Task<ErrorReturner>` |
+| **`GetPersonalization`** | `(GlobalParam)` | `(ErrorReturner, UserPersonalizationData?)` |
+| **`UpdatePersonalization`** | `(UserPersonalizationData, GlobalParam)` | `Task<ErrorReturner>` — полностью перезаписывает данные, постер передавать всегда |
+| **`GetProfilePoster`** | `(GlobalParam)` | `(ErrorReturner, string fileId)` — пустая строка если постер не задан |
+| **`SetProfilePoster`** | `(fileId, GlobalParam)` | `Task<ErrorReturner>` — атомарно; пустая строка = удалить постер |
 
-> **Жирным** — добавлено в последнем обновлении
+> **Жирным** — добавлено в последних обновлениях
 
 **`UserData`** — `Username`, `FirstName`, `LastName`, `Email`, `Id`, `RegistrationDate`, `Badges`, `ProfilePictureUrl`, `ProfilePicturePreviewUrl`, `Description`
 

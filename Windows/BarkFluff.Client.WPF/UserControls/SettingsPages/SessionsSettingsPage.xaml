@@ -1,5 +1,5 @@
 <local:BaseSettingsPage
-    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.DevicesSettingsPage"
+    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.SessionsSettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -12,7 +12,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Устройства" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Активные сессии" />
 
             <!-- Текущее устройство -->
             <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,8" Text="Текущее устройство" />

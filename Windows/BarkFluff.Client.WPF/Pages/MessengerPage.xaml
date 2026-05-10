@@ -491,6 +491,22 @@
                         Drop="OpenedChat_Drop"
                         Visibility="Visible">
 
+                        <!--  Фон чата (управляется через App.GParam.CurrentBackgroundFileId)  -->
+                        <Grid
+                            x:Name="ChatBackgroundLayer"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Panel.ZIndex="-3"
+                            IsHitTestVisible="False">
+                            <Image
+                                x:Name="BackgroundChatImage"
+                                Stretch="UniformToFill" />
+                            <Border
+                                x:Name="ChatBackgroundDim"
+                                Background="Black"
+                                Opacity="0" />
+                        </Grid>
+
                         <!--  Заголовок диалога  -->
                         <Border>
                             <Grid>

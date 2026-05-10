@@ -9,26 +9,23 @@ using Wpf.Ui.Appearance;
 
 namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
-    /// <summary>
-    /// Логика взаимодействия для ChatsSettingsPage.xaml
-    /// </summary>
-    public partial class ChatsSettingsPage : BaseSettingsPage
+    public partial class GeneralSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Чаты";
+        public override string Title => "Общие";
 
-        private static readonly SolidColorBrush AccentBrush = new(Color.FromRgb(0xDF, 0x50, 0x00));
+        private static readonly SolidColorBrush AccentBrush      = new(Color.FromRgb(0xDF, 0x50, 0x00));
         private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
 
         private readonly Dictionary<string, Ellipse> _radioMap;
 
-        public ChatsSettingsPage()
+        public GeneralSettingsPage()
         {
             InitializeComponent();
 
             _radioMap = new Dictionary<string, Ellipse>
             {
-                { "light", RadioLight },
-                { "dark", RadioDark },
+                { "light",  RadioLight  },
+                { "dark",   RadioDark   },
                 { "system", RadioSystem }
             };
 
@@ -38,22 +35,26 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
         private void ThemeOption_Click(object sender, MouseButtonEventArgs e)
         {
-            if (sender is not FrameworkElement element || element.Tag is not string theme)
-                return;
+            if (sender is not FrameworkElement element || element.Tag is not string theme) return;
 
             ThemeRegistryHelper.SetTheme(theme);
 
             ApplicationTheme appTheme = theme switch
             {
-                "dark" => ApplicationTheme.Dark,
+                "dark"   => ApplicationTheme.Dark,
                 "system" => ApplicationThemeManager.GetSystemTheme() == SystemTheme.Dark
-                    ? ApplicationTheme.Dark
-                    : ApplicationTheme.Light,
-                _ => ApplicationTheme.Light
+                              ? ApplicationTheme.Dark : ApplicationTheme.Light,
+                _        => ApplicationTheme.Light
             };
 
             App.ApplyTheme(appTheme);
             UpdateRadioVisuals(theme);
+
+            if (App.GParam != null)
+            {
+                App.GParam.AppTheme = theme;
+                App.SaveGlobalParam();
+            }
         }
 
         private void UpdateRadioVisuals(string selectedTheme)
@@ -63,15 +64,14 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 if (theme == selectedTheme)
                 {
                     ellipse.Stroke = AccentBrush;
-                    ellipse.Fill = AccentBrush;
+                    ellipse.Fill   = AccentBrush;
                 }
                 else
                 {
                     ellipse.Stroke = (SolidColorBrush)FindResource("DescriptionText");
-                    ellipse.Fill = TransparentBrush;
+                    ellipse.Fill   = TransparentBrush;
                 }
             }
         }
     }
 }
-

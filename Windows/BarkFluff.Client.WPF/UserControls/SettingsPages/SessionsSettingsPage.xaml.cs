@@ -4,15 +4,15 @@ using System.Windows.Media;
 namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
     /// <summary>
-    /// Логика взаимодействия для DevicesSettingsPage.xaml
+    /// Страница настроек активных сессий пользователя.
     /// </summary>
-    public partial class DevicesSettingsPage : BaseSettingsPage
+    public partial class SessionsSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Устройства";
+        public override string Title => "Активные сессии";
 
         private string? _currentDeviceId;
 
-        public DevicesSettingsPage()
+        public SessionsSettingsPage()
         {
             InitializeComponent();
         }
@@ -29,7 +29,6 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             try
             {
-                // Загрузить текущее устройство
                 var (devError, currentDevice) = await App.ServerCommunication.GetCurrentDevice(gp);
                 if (devError.IsSuccess && currentDevice != null)
                 {
@@ -40,7 +39,6 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                     CurrentDeviceInfo.Text = $"{currentDevice.OperationSystem} · Сейчас";
                 }
 
-                // Загрузить все сессии
                 var (sessError, sessions) = await App.ServerCommunication.GetDevicesList(gp);
                 if (sessError.IsSuccess && sessions != null)
                 {
@@ -99,8 +97,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                         SessionsList.Children.Add(border);
                     }
 
-                    if (otherSessions.Count > 0)
-                        TerminateAllButton.Visibility = Visibility.Visible;
+                    TerminateAllButton.Visibility = otherSessions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
             catch (Exception ex)

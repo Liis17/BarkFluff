@@ -141,11 +141,9 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
-                string filePath = Path.Combine(SystemInfo.GetAppPath(), "datas", "GlobalParam.json");
-                if (App.GParam == null) { return; }
-                if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
-                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
-                App.ErideMessage.AddMessage($"Сохранение настроек: {filePath}", new Erida { Type = MType.Debug });
+                App.FlushPendingSave();
+                App.SaveGlobalParam();
+                App.ErideMessage.AddMessage("Сохранение настроек", new Erida { Type = MType.Debug });
             }
             catch
             {
