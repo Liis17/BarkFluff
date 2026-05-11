@@ -10,6 +10,21 @@ public static class RemoteDockerEndpoints
         var group = app.MapGroup("/api/remote")
             .WithTags("RemoteDocker");
 
+        group.MapGet("/{server}/inspect/{containerName}", async (
+            RemoteDockerService remoteDockerService,
+            HttpContext context,
+            string server,
+            string containerName) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var labels = await remoteDockerService.InspectContainerLabelsAsync(server, containerName);
+            return Results.Ok(new { containerName, labels });
+        })
+        .WithName("InspectRemoteContainer")
+        .WithOpenApi();
+
         group.MapGet("/{server}/config", (
             RemoteDockerService remoteDockerService,
             HttpContext context,

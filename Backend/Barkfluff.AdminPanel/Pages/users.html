@@ -414,22 +414,25 @@
             const posterUrl = p.profilePosterUrl || '';
             html += `
             <section class="-mx-6 -mt-6 mb-0">
-                <!-- Постер: полная ширина, соотношение 3:1 -->
-                <div class="relative w-full bg-slate-200 overflow-hidden group cursor-pointer"
-                     style="aspect-ratio: 3/1;"
-                     onclick="document.getElementById('posterFileInput').click()">
-                    ${posterUrl
-                        ? `<img id="modalPosterImg" src="${posterUrl}" class="w-full h-full object-cover" />`
-                        : `<div class="w-full h-full flex items-center justify-center text-slate-400"><i data-lucide="image" class="w-12 h-12 opacity-30"></i></div>`
-                    }
-                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <i data-lucide="image" class="w-8 h-8 text-white"></i>
-                        <span class="text-white ml-2 text-sm font-medium">Изменить постер</span>
+                <!-- Обёртка: relative без overflow-hidden, чтобы аватар не обрезался нижним краем постера -->
+                <div class="relative">
+                    <!-- Постер: полная ширина, соотношение 3:1 -->
+                    <div class="relative w-full bg-slate-200 overflow-hidden group cursor-pointer"
+                         style="aspect-ratio: 3/1;"
+                         onclick="document.getElementById('posterFileInput').click()">
+                        ${posterUrl
+                            ? `<img id="modalPosterImg" src="${posterUrl}" class="w-full h-full object-cover" />`
+                            : `<div class="w-full h-full flex items-center justify-center text-slate-400"><i data-lucide="image" class="w-12 h-12 opacity-30"></i></div>`
+                        }
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="image" class="w-8 h-8 text-white"></i>
+                            <span class="text-white ml-2 text-sm font-medium">Изменить постер</span>
+                        </div>
                     </div>
-                    <!-- Аватар поверх постера: по центру снизу -->
-                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
-                        <div class="relative w-20 h-20 rounded-full border-4 border-white bg-slate-200 overflow-hidden group/avatar cursor-pointer flex items-center justify-center"
-                             onclick="event.stopPropagation(); document.getElementById('avatarFileInput').click()">
+                    <!-- Аватар: снаружи overflow-hidden постера, по центру нижнего края -->
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20">
+                        <div class="relative w-24 h-24 rounded-full border-4 border-white bg-slate-200 overflow-hidden cursor-pointer flex items-center justify-center group/avatar"
+                             onclick="document.getElementById('avatarFileInput').click()">
                             ${p.profilePicture
                                 ? `<img id="modalAvatarImg" src="${p.profilePicture}" class="w-full h-full object-cover" />`
                                 : `<span id="modalAvatarInitials" class="text-xl font-bold text-slate-400">${getInitials(p.firstName, p.lastName)}</span>`
@@ -444,7 +447,7 @@
                 <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(this, ${p.id})" />
 
                 <!-- Поля профиля ниже постера -->
-                <div class="px-6 pt-14 pb-2">
+                <div class="px-6 pt-16 pb-2">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="text-xs text-slate-400">ID: ${p.id}</span>
                         <span class="text-xs text-slate-400">·</span>

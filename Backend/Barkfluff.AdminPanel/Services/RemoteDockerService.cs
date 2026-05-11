@@ -74,14 +74,22 @@ public class RemoteDockerService
         {
             try
             {
-                // Используем docker ps с фильтрацией по docker compose labels — стабильный NDJSON-формат,
-                // не зависит от версии docker compose и не путается с JSON-array выводом compose ps.
                 var cmd = $"docker ps --all" +
                           $" --filter \"label=com.docker.compose.service={container.ServiceName}\"" +
                           $" --filter \"label=com.docker.compose.project.working_dir={container.WorkDir}\"" +
                           $" --format \"{{{{json .}}}}\"";
 
                 var (stdout, _, _) = await RunSshCommandAsync(serverConfig, cmd);
+
+                // Fallback: если working_dir label не совпала с конфигом — ищем только по имени сервиса.
+                // Это случается когда compose запускался из другой директории чем указана в WorkDir.
+                if (string.IsNullOrWhiteSpace(stdout))
+                {
+                    var fallbackCmd = $"docker ps --all" +
+                                      $" --filter \"label=com.docker.compose.service={container.ServiceName}\"" +
+                                      $" --format \"{{{{json .}}}}\"";
+                    (stdout, _, _) = await RunSshCommandAsync(serverConfig, fallbackCmd);
+                }
 
                 results.Add(ParseDockerPsOutput(stdout, container));
             }
@@ -257,6 +265,20 @@ public class RemoteDockerService
         }
 
         return dto;
+    }
+
+    public async Task<string> InspectContainerLabelsAsync(string server, string containerName)
+    {
+        var serverConfig = GetServerConfig(server);
+        if (string.IsNullOrEmpty(serverConfig.Host))
+            return "Сервер не настроен";
+
+        var cmd = $"docker inspect {EscapeShell(containerName)}" +
+                  $" --format \"{{{{range $k,$v := .Config.Labels}}}}{{{{$k}}}}={{{{$v}}}}\\n{{{{end}}}}\"" +
+                  $" 2>&1 || echo 'container_not_found'";
+
+        var (stdout, stderr, _) = await RunSshCommandAsync(serverConfig, cmd);
+        return string.IsNullOrWhiteSpace(stdout) ? (stderr.Trim() is { Length: > 0 } e ? e : "нет вывода") : stdout.Trim();
     }
 
     public RemoteServerInfoDto GetServerInfo(string server)
