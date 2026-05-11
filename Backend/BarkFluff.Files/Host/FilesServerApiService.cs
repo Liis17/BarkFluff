@@ -12,6 +12,7 @@ using BarkFluff.Files.Features.UpdateSticker;
 using BarkFluff.Files.Features.UpdateStickerPack;
 using BarkFluff.Files.Features.UploadAvatarServer;
 using BarkFluff.Files.Features.UploadBadgeImage;
+using BarkFluff.Files.Features.UploadPosterServer;
 using BarkFluff.Files.Features.UploadStickerImage;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
@@ -78,6 +79,18 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
     public override Task<UploadAvatarServerResponse> UploadAvatarServer(UploadAvatarServerRequest request, ServerCallContext context)
     {
         var command = new UploadAvatarServerCommand
+        {
+            ImageData = request.ImageData.ToByteArray(),
+            Filename = request.Filename,
+            UserId = request.UserId
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<UploadPosterServerResponse> UploadPosterServer(UploadPosterServerRequest request, ServerCallContext context)
+    {
+        var command = new UploadPosterServerCommand
         {
             ImageData = request.ImageData.ToByteArray(),
             Filename = request.Filename,

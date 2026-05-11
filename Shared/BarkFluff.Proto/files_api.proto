@@ -32,6 +32,8 @@ service FilesServerApi {
 
   rpc UploadAvatarServer(UploadAvatarServerRequest) returns(UploadAvatarServerResponse); // Загрузить аватарку пользователя (для админ-панели)
 
+  rpc UploadPosterServer(UploadPosterServerRequest) returns(UploadPosterServerResponse); // Загрузить постер профиля пользователя (для админ-панели)
+
   // Стикерпаки
   rpc CreateStickerPack(CreateStickerPackRequest) returns(CreateStickerPackResponse);
   rpc UpdateStickerPack(UpdateStickerPackRequest) returns(UpdateStickerPackResponse);
@@ -154,6 +156,18 @@ message UploadAvatarServerResponse {
   string file_url = 1;          // ссылка на полное изображение
   string preview_url = 2;       // ссылка на превью
   string file_id = 3;           // идентификатор файла
+}
+
+// Загрузить постер профиля (серверный, для админ-панели)
+message UploadPosterServerRequest {
+  bytes image_data = 1;   // содержимое файла
+  string filename = 2;    // имя файла
+  int64 user_id = 3;      // идентификатор пользователя
+}
+
+message UploadPosterServerResponse {
+  string file_url = 1;    // ссылка на изображение
+  string file_id = 2;     // идентификатор файла
 }
 
 message CheckFileHashRequest {

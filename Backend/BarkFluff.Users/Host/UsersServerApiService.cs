@@ -25,7 +25,10 @@ using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using BarkFluff.Users.Features.Privacy.GetUserPrivacyServer;
 using BarkFluff.Users.Features.SearchUsersServer;
+using BarkFluff.Users.Features.Personalization.GetProfilePosterServer;
+using BarkFluff.Users.Features.Personalization.SetProfilePosterServer;
 using BarkFluff.Users.Features.SetProfilePictureServer;
+using BarkFluff.Users.Features.UpdateProfileServer;
 using BarkFluff.Users.Features.UpdateStorageLimit;
 using BarkFluff.Users.Persistence.Services;
 
@@ -441,5 +444,34 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(query);
+    }
+
+    public override Task<UpdateProfileServerResponse> UpdateProfileServer(UpdateProfileServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("profile_updates_server");
+        return _mediator.Send(new UpdateProfileServerCommand
+        {
+            UserId = request.UserId,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Bio = request.Bio,
+            Username = request.Username
+        });
+    }
+
+    public override Task<SetProfilePosterServerResponse> SetProfilePosterServer(SetProfilePosterServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("profile_poster_updates");
+        return _mediator.Send(new SetProfilePosterServerCommand
+        {
+            UserId = request.UserId,
+            PosterFileId = string.IsNullOrEmpty(request.PosterFileId) ? null : request.PosterFileId
+        });
+    }
+
+    public override Task<GetProfilePosterServerResponse> GetProfilePosterServer(GetProfilePosterServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("profile_poster_lookups");
+        return _mediator.Send(new GetProfilePosterServerQuery { UserId = request.UserId });
     }
 }
