@@ -15,41 +15,41 @@ struct ChatBackgroundView: View {
     var body: some View {
         @Bindable var settings = container.personalizationSettings
 
-        ZStack {
-            if settings.currentBackgroundFileID.isEmpty {
-                Color(nsColor: .windowBackgroundColor)
-            } else {
-                CachedImageView(
-                    fileID: settings.currentBackgroundFileID,
-                    type: .image,
-                    content: { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    },
-                    placeholder: {
-                        Color(nsColor: .windowBackgroundColor)
-                    }
-                )
-                // Явно зажимаем картинку в фрейм родителя, иначе её
-                // intrinsic size может «вытянуть» родительский ZStack.
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .blur(
-                    radius: settings.backgroundBlurEnabled
-                        ? CGFloat(settings.backgroundBlurRadius)
-                        : 0,
-                    opaque: true
-                )
-                .clipped()
+        // Color.clear имеет нулевой intrinsic size — это гарантирует, что
+        // ChatBackgroundView никогда не претендует на больший фрейм, чем ему
+        // предложили (иначе intrinsic size картинки внутри ZStack может
+        // растянуть родителя и вытолкнуть инпут/шапку за пределы экрана).
+        Color.clear
+            .overlay {
+                if settings.currentBackgroundFileID.isEmpty {
+                    Color(nsColor: .windowBackgroundColor)
+                } else {
+                    CachedImageView(
+                        fileID: settings.currentBackgroundFileID,
+                        type: .image,
+                        content: { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        },
+                        placeholder: {
+                            Color(nsColor: .windowBackgroundColor)
+                        }
+                    )
+                    .blur(
+                        radius: settings.backgroundBlurEnabled
+                            ? CGFloat(settings.backgroundBlurRadius)
+                            : 0,
+                        opaque: true
+                    )
+                }
             }
-
-            // Затемняющий оверлей цветом фона окна (адаптируется к теме).
-            if settings.backgroundDimPercent > 0 {
-                Color(nsColor: .windowBackgroundColor)
-                    .opacity(Double(settings.backgroundDimPercent) / 100.0)
+            .overlay {
+                if settings.backgroundDimPercent > 0 {
+                    Color(nsColor: .windowBackgroundColor)
+                        .opacity(Double(settings.backgroundDimPercent) / 100.0)
+                }
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
+            .clipped()
     }
 }

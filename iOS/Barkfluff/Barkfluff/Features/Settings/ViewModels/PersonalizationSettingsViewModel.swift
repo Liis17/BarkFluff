@@ -41,21 +41,31 @@ final class PersonalizationSettingsViewModel {
 
     // MARK: - PhotosPicker selection
 
-    /// Выбранный пользователем элемент для постера. didSet → uploadPoster.
+    /// Выбранный пользователем элемент для постера. didSet → загрузить картинку в pendingPosterImage
+    /// и показать кропер 3:1. Сама заливка на сервер — после onCrop.
     var selectedPosterItem: PhotosPickerItem? {
         didSet {
             guard let item = selectedPosterItem else { return }
-            Task { await uploadPoster(from: item) }
+            Task { await loadPosterForCropping(from: item) }
         }
     }
 
     /// Выбранный пользователем элемент для нового фона. didSet → addBackground.
+    /// Фон не кропается — для него полно-сетка с aspect-fill в гриде.
     var selectedBackgroundItem: PhotosPickerItem? {
         didSet {
             guard let item = selectedBackgroundItem else { return }
             Task { await addBackground(from: item) }
         }
     }
+
+    // MARK: - Poster cropper state
+
+    /// Картинка постера, ждущая обрезки в кропере 3:1.
+    var pendingPosterImage: UIImage?
+
+    /// Флаг показа модального экрана кропера постера.
+    var showPosterCropper: Bool = false
 
     // MARK: - Init
 
@@ -87,23 +97,42 @@ final class PersonalizationSettingsViewModel {
 
     // MARK: - Poster
 
-    private func uploadPoster(from item: PhotosPickerItem) async {
+    /// Прочитать выбранную в PhotosPicker картинку и показать кропер 3:1.
+    private func loadPosterForCropping(from item: PhotosPickerItem) async {
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                errorMessage = "Не удалось прочитать выбранное изображение"
+                selectedPosterItem = nil
+                return
+            }
+            pendingPosterImage = image
+            showPosterCropper = true
+        } catch {
+            errorMessage = error.localizedDescription
+            selectedPosterItem = nil
+        }
+    }
+
+    /// Залить уже обрезанный в кропере постер: JPEG 0.85 → upload → setProfilePoster.
+    func uploadPoster(_ image: UIImage) async {
         isUploadingPoster = true
         errorMessage = nil
         defer {
             isUploadingPoster = false
+            pendingPosterImage = nil
             selectedPosterItem = nil
         }
 
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            errorMessage = "Ошибка обработки изображения"
+            return
+        }
+
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                errorMessage = "Не удалось прочитать выбранное изображение"
-                return
-            }
-            let fileName = "poster.\(item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg")"
             let fileID = try await fileService.uploadFile(
                 data: data,
-                fileName: fileName,
+                fileName: "poster.jpg",
                 fileType: .userProfilePoster
             )
             try await userService.setProfilePoster(fileID: fileID)
@@ -114,6 +143,12 @@ final class PersonalizationSettingsViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Сбросить выбор постера без загрузки (вызывается при отмене в кропере).
+    func cancelPosterCropping() {
+        pendingPosterImage = nil
+        selectedPosterItem = nil
     }
 
     // MARK: - Backgrounds

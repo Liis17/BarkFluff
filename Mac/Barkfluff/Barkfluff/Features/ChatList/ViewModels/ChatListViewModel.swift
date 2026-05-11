@@ -24,11 +24,25 @@ final class ChatListViewModel {
     /// Замыкание для проверки, открыт ли чат сейчас (активный)
     var isActiveChatChecker: ((String) -> Bool)?
 
+    /// Папки чатов пользователя (по возрастанию sortOrder). Пустой массив — нет папок.
+    var folders: [ChatFolder] = []
+
+    /// ID выбранной папки или nil = таб «Все чаты».
+    var selectedFolderID: String? = nil
+
+    /// Не показывать чаты, входящие в папки, на табе «Все чаты» (синхронизируется из @AppStorage).
+    var excludeFolderChatsFromAll: Bool = false {
+        didSet {
+            if oldValue != excludeFolderChatsFromAll { applyFilter() }
+        }
+    }
+
     private var allChats: [Chat] = []
     private var totalCount: Int32 = 0
     private var currentUserID: Int64 = 0
 
     private let chatService: ChatServiceProtocol
+    private let chatFolderService: ChatFolderServiceProtocol?
     private let userService: UserServiceProtocol
     private let updatesService: UpdatesServiceProtocol
     private let onlineStatusService: OnlineStatusServiceProtocol
@@ -47,7 +61,8 @@ final class ChatListViewModel {
         updatesService: UpdatesServiceProtocol,
         onlineStatusService: OnlineStatusServiceProtocol,
         currentUserID: Int64,
-        localChatRepository: LocalChatRepository? = nil
+        localChatRepository: LocalChatRepository? = nil,
+        chatFolderService: ChatFolderServiceProtocol? = nil
     ) {
         self.chatService = chatService
         self.userService = userService
@@ -55,6 +70,7 @@ final class ChatListViewModel {
         self.onlineStatusService = onlineStatusService
         self.currentUserID = currentUserID
         self.localChatRepository = localChatRepository
+        self.chatFolderService = chatFolderService
     }
 
     // MARK: - Loading
@@ -143,6 +159,52 @@ final class ChatListViewModel {
 
     func refresh() async {
         await loadChats()
+        await loadFolders()
+    }
+
+    // MARK: - Folders
+
+    func loadFolders() async {
+        guard let service = chatFolderService else { return }
+
+        let cached = await service.loadCached()
+        if !cached.isEmpty && folders.isEmpty {
+            folders = cached
+            sanitizeSelectedFolder()
+            applyFilter()
+        }
+
+        do {
+            folders = try await service.refresh()
+            sanitizeSelectedFolder()
+            applyFilter()
+        } catch {
+            // Молча — кешированные папки (если были) останутся в UI.
+        }
+    }
+
+    func selectFolder(_ id: String?) {
+        guard selectedFolderID != id else { return }
+        selectedFolderID = id
+        applyFilter()
+    }
+
+    func unreadCount(for folder: ChatFolder?) -> Int {
+        if let folder {
+            let allowed = Set(folder.chatIDs)
+            return allChats.reduce(0) { $1.id.isEmpty || !allowed.contains($1.id) ? $0 : $0 + Int($1.unreadCount) }
+        }
+        if excludeFolderChatsFromAll && !folders.isEmpty {
+            let inFolders = Set(folders.flatMap { $0.chatIDs })
+            return allChats.reduce(0) { inFolders.contains($1.id) ? $0 : $0 + Int($1.unreadCount) }
+        }
+        return allChats.reduce(0) { $0 + Int($1.unreadCount) }
+    }
+
+    private func sanitizeSelectedFolder() {
+        if let id = selectedFolderID, !folders.contains(where: { $0.id == id }) {
+            selectedFolderID = nil
+        }
     }
 
     // MARK: - Real-time Updates
@@ -250,7 +312,10 @@ final class ChatListViewModel {
     private func handleConnectionEvent(_ event: BFCore.UpdatesConnectionEvent) {
         switch event {
         case .reconnected:
-            Task { await loadChats() }
+            Task {
+                await loadChats()
+                await loadFolders()
+            }
         case .connectionLost:
             break
         }
@@ -407,9 +472,20 @@ final class ChatListViewModel {
     // MARK: - Private
 
     private func applyFilter() {
+        let base: [Chat]
+        if let selectedFolderID, let folder = folders.first(where: { $0.id == selectedFolderID }) {
+            let allowed = Set(folder.chatIDs)
+            base = allChats.filter { allowed.contains($0.id) }
+        } else if excludeFolderChatsFromAll && !folders.isEmpty {
+            let inFolders = Set(folders.flatMap { $0.chatIDs })
+            base = allChats.filter { !inFolders.contains($0.id) }
+        } else {
+            base = allChats
+        }
+
         let filtered = searchText.isEmpty
-            ? allChats
-            : allChats.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+            ? base
+            : base.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
         chats = filtered.sorted { lhs, rhs in
             let lhsDate = lhs.lastMessage?.sentAt ?? .distantPast
             let rhsDate = rhs.lastMessage?.sentAt ?? .distantPast

@@ -1,32 +1,35 @@
 //
-//  SquareImageCropperView.swift
+//  ImageCropperView.swift
 //  Barkfluff (iOS)
 //
-//  Квадратный кропер картинки. Pinch-zoom + pan через UIScrollView внутри
-//  UIViewControllerRepresentable, поверх — затемнение с вырезанным квадратом
-//  по центру. На «Готово» возвращает 1024×1024 UIImage из выделенной области.
+//  Универсальный кропер картинки с заданным aspectRatio.
+//  Pinch-zoom + pan через UIScrollView в UIViewControllerRepresentable,
+//  поверх — затемнение с вырезанным окном кропа по центру.
+//  На «Готово» возвращает UIImage размером outputWidth × outputWidth/aspectRatio
+//  из выделенной области, картинка не может выезжать за пределы окна.
 //
 
 import SwiftUI
 import UIKit
 
-struct SquareImageCropperView: View {
+struct ImageCropperView: View {
     let image: UIImage
+    /// Соотношение ширины к высоте окна кропа. 1.0 — квадрат (аватар),
+    /// 3.0 — постер 3:1.
+    let aspectRatio: CGFloat
+    /// Ширина итогового UIImage. Высота вычисляется как outputWidth / aspectRatio.
+    let outputWidth: CGFloat
     let onCancel: () -> Void
     let onCrop: (UIImage) -> Void
 
-    private let outputSize: CGFloat = 1024
+    private var outputSize: CGSize {
+        CGSize(width: outputWidth, height: outputWidth / aspectRatio)
+    }
 
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
-                let cropSize = min(geo.size.width, geo.size.height) - 32
-                let cropRect = CGRect(
-                    x: (geo.size.width - cropSize) / 2,
-                    y: (geo.size.height - cropSize) / 2,
-                    width: cropSize,
-                    height: cropSize
-                )
+                let cropRect = makeCropRect(in: geo.size)
 
                 ZStack {
                     Color.black.ignoresSafeArea()
@@ -54,7 +57,7 @@ struct SquareImageCropperView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Готово") {
-                        NotificationCenter.default.post(name: .squareCropperRequestCrop, object: nil)
+                        NotificationCenter.default.post(name: .imageCropperRequestCrop, object: nil)
                     }
                     .foregroundStyle(.white)
                     .bold()
@@ -67,17 +70,35 @@ struct SquareImageCropperView: View {
         .preferredColorScheme(.dark)
     }
 
+    /// Вписать прямоугольник заданного aspectRatio в экранную область с отступом 16
+    /// со всех сторон. Берём минимум по ширине и по высоте, чтобы окно гарантированно
+    /// влезло на портретный/ландшафтный экран.
+    private func makeCropRect(in size: CGSize) -> CGRect {
+        let padding: CGFloat = 16
+        let maxWidth = size.width - padding * 2
+        let maxHeight = size.height - padding * 2
+        let widthByHeight = maxHeight * aspectRatio
+        let cropWidth = min(maxWidth, widthByHeight)
+        let cropHeight = cropWidth / aspectRatio
+        return CGRect(
+            x: (size.width - cropWidth) / 2,
+            y: (size.height - cropHeight) / 2,
+            width: cropWidth,
+            height: cropHeight
+        )
+    }
+
     @ViewBuilder
     private func overlay(cropRect: CGRect, in size: CGSize) -> some View {
         ZStack {
-            // Затемнение с вырезанным квадратом (even-odd fill).
+            // Затемнение с вырезанным окном кропа (even-odd fill).
             Path { path in
                 path.addRect(CGRect(origin: .zero, size: size))
                 path.addRect(cropRect)
             }
             .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
 
-            // Белая рамка.
+            // Белая рамка по окну кропа.
             Rectangle()
                 .stroke(Color.white.opacity(0.9), lineWidth: 1)
                 .frame(width: cropRect.width, height: cropRect.height)
@@ -85,17 +106,16 @@ struct SquareImageCropperView: View {
         }
     }
 
-    private func resize(_ image: UIImage, to size: CGFloat) -> UIImage {
-        let target = CGSize(width: size, height: size)
-        let renderer = UIGraphicsImageRenderer(size: target)
+    private func resize(_ image: UIImage, to size: CGSize) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: target))
+            image.draw(in: CGRect(origin: .zero, size: size))
         }
     }
 }
 
 extension Notification.Name {
-    static let squareCropperRequestCrop = Notification.Name("com.barkfluff.squareCropper.requestCrop")
+    static let imageCropperRequestCrop = Notification.Name("com.barkfluff.imageCropper.requestCrop")
 }
 
 // MARK: - UIScrollView с зумом, который умеет отдавать обрезанный UIImage
@@ -165,7 +185,7 @@ private final class CroppableScrollViewController: UIViewController, UIScrollVie
         scrollView.addGestureRecognizer(doubleTap)
 
         observer = NotificationCenter.default.addObserver(
-            forName: .squareCropperRequestCrop,
+            forName: .imageCropperRequestCrop,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -190,12 +210,14 @@ private final class CroppableScrollViewController: UIViewController, UIScrollVie
     }
 
     private func configureZoomScales() {
-        let cropSize = cropRect.width
-        guard cropSize > 0, image.size.width > 0, image.size.height > 0 else { return }
+        let cropWidth = cropRect.width
+        let cropHeight = cropRect.height
+        guard cropWidth > 0, cropHeight > 0, image.size.width > 0, image.size.height > 0 else { return }
 
-        // Минимальный зум: картинка должна как минимум полностью покрывать квадрат кропа.
-        let minWidthScale = cropSize / image.size.width
-        let minHeightScale = cropSize / image.size.height
+        // Минимальный зум: картинка должна как минимум полностью покрывать окно кропа
+        // и по ширине, и по высоте — тогда невозможно «вытянуть» край окна за картинку.
+        let minWidthScale = cropWidth / image.size.width
+        let minHeightScale = cropHeight / image.size.height
         let minScale = max(minWidthScale, minHeightScale)
 
         scrollView.minimumZoomScale = minScale
@@ -205,22 +227,22 @@ private final class CroppableScrollViewController: UIViewController, UIScrollVie
             scrollView.zoomScale = minScale
         }
 
-        // Инсеты так, чтобы можно было довести любой край картинки до центра квадрата кропа.
+        // Инсеты так, чтобы можно было довести любой край картинки до центра окна кропа.
         let horizontalInset = cropRect.midX
         let verticalInset = cropRect.midY
         scrollView.contentInset = UIEdgeInsets(
-            top: verticalInset - cropSize / 2,
-            left: horizontalInset - cropSize / 2,
-            bottom: verticalInset - cropSize / 2,
-            right: horizontalInset - cropSize / 2
+            top: verticalInset - cropHeight / 2,
+            left: horizontalInset - cropWidth / 2,
+            bottom: verticalInset - cropHeight / 2,
+            right: horizontalInset - cropWidth / 2
         )
 
-        // Центрируем картинку под квадратом кропа.
+        // Центрируем картинку под окном кропа.
         let contentWidth = image.size.width * scrollView.zoomScale
         let contentHeight = image.size.height * scrollView.zoomScale
         scrollView.contentOffset = CGPoint(
-            x: (contentWidth - cropSize) / 2 - scrollView.contentInset.left,
-            y: (contentHeight - cropSize) / 2 - scrollView.contentInset.top
+            x: (contentWidth - cropWidth) / 2 - scrollView.contentInset.left,
+            y: (contentHeight - cropHeight) / 2 - scrollView.contentInset.top
         )
     }
 
@@ -229,12 +251,11 @@ private final class CroppableScrollViewController: UIViewController, UIScrollVie
             scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
         } else {
             let location = gesture.location(in: imageView)
-            let size = cropRect.width / 2
             let zoomRect = CGRect(
-                x: location.x - size / 2,
-                y: location.y - size / 2,
-                width: size,
-                height: size
+                x: location.x - cropRect.width / 4,
+                y: location.y - cropRect.height / 4,
+                width: cropRect.width / 2,
+                height: cropRect.height / 2
             )
             scrollView.zoom(to: zoomRect, animated: true)
         }
@@ -258,8 +279,8 @@ private final class CroppableScrollViewController: UIViewController, UIScrollVie
             return
         }
 
-        // Учитываем ориентацию: переводим visibleRect (в координатах UIImage)
-        // в координаты CGImage (там оси могут быть повёрнуты).
+        // Учитываем ориентацию: visibleRect — в координатах UIImage,
+        // переводим в координаты CGImage (там оси могут быть повёрнуты).
         let scale = image.scale
         let pixelRect = CGRect(
             x: visibleRect.origin.x * scale,

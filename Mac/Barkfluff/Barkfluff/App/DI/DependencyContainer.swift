@@ -34,6 +34,7 @@ final class DependencyContainer {
     let beaconRepository: BeaconRepository
     let identityRepository: IdentityRepository
     let usersRepository: UsersRepository
+    let chatFoldersRepository: ChatFoldersRepository
     let messagesRepository: MessagesRepository
     let filesRepository: FilesRepository
     let stickersRepository: StickersRepository
@@ -54,12 +55,14 @@ final class DependencyContainer {
 
     let database: Database
     let localChatRepository: LocalChatRepository
+    let localChatFolderRepository: LocalChatFolderRepository
     let localMessageRepository: LocalMessageRepository
 
     // MARK: - Services (BFCore)
 
     let authService: AuthService
     let chatService: ChatService
+    let chatFolderService: ChatFolderService
     let messageService: MessageService
     let userService: UserService
     let fileService: FileService
@@ -147,6 +150,7 @@ final class DependencyContainer {
         self.beaconRepository = BeaconRepository(connectionManager: connectionManager)
         self.identityRepository = IdentityRepository(connectionManager: connectionManager)
         self.usersRepository = UsersRepository(connectionManager: connectionManager)
+        self.chatFoldersRepository = ChatFoldersRepository(connectionManager: connectionManager)
         self.messagesRepository = MessagesRepository(connectionManager: connectionManager)
         self.filesRepository = FilesRepository(connectionManager: connectionManager)
         self.stickersRepository = StickersRepository(connectionManager: connectionManager)
@@ -188,6 +192,7 @@ final class DependencyContainer {
             fatalError("Failed to open local cache database: \(error)")
         }
         self.localChatRepository = LocalChatRepository(database: database)
+        self.localChatFolderRepository = LocalChatFolderRepository(database: database)
         self.localMessageRepository = LocalMessageRepository(database: database)
 
         // Streaming
@@ -208,6 +213,11 @@ final class DependencyContainer {
         )
 
         self.chatService = ChatService(messagesRepository: messagesRepository)
+
+        self.chatFolderService = ChatFolderService(
+            repository: chatFoldersRepository,
+            localRepository: localChatFolderRepository
+        )
 
         self.messageService = MessageService(
             messagesRepository: messagesRepository,

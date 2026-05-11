@@ -55,6 +55,8 @@ struct SettingsCategoryView: View {
             PrivacySettingsView()
         case .personalization:
             PersonalizationSettingsView()
+        case .chatFolders:
+            ChatFoldersListView()
         case .cloud:
             CloudSettingsView()
         case .cache:
