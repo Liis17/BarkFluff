@@ -24,10 +24,12 @@ import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import barkfluff.files.FilesApiOuterClass
+import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 /**
  * Экран настроек персонализации (редизайн).
@@ -75,7 +77,19 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private val pickPosterLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) uploadPosterFromUri(uri)
+        if (uri != null) startPosterCrop(uri)
+    }
+
+    private val ucropPosterLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uri = UCrop.getOutput(result.data!!)
+            if (uri != null) uploadPosterFromUri(uri)
+        } else if (result.resultCode == UCrop.RESULT_ERROR) {
+            val error = UCrop.getError(result.data!!)
+            Toast.makeText(this, "Ошибка кадрирования: ${error?.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -210,14 +224,31 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun startPosterCrop(uri: Uri) {
+        val destUri = Uri.fromFile(File(cacheDir, "cropped_poster_${System.currentTimeMillis()}.jpg"))
+        val options = UCrop.Options().apply {
+            setCompressionFormat(Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(90)
+            setToolbarColor(getColor(android.R.color.white))
+            setStatusBarColor(getColor(android.R.color.black))
+            setFreeStyleCropEnabled(false)
+        }
+        UCrop.of(uri, destUri)
+            .withAspectRatio(3f, 1f)
+            .withMaxResultSize(2400, 800)
+            .withOptions(options)
+            .let { ucropPosterLauncher.launch(it.getIntent(this)) }
+    }
+
     private fun uploadPosterFromUri(uri: Uri) {
         lifecycleScope.launch {
             try {
                 binding.buttonSetPoster.isEnabled = false
                 binding.buttonSetPoster.text = "Загрузка..."
 
+                // UCrop уже сохранил обрезанное изображение как JPEG 90%, читаем байты напрямую
                 val jpegBytes = withContext(Dispatchers.IO) {
-                    compressToJpeg85(uri)
+                    contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 } ?: run {
                     Toast.makeText(this@PersonalizationSettingsActivity, "Не удалось обработать изображение", Toast.LENGTH_SHORT).show()
                     return@launch
