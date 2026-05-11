@@ -93,8 +93,20 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         setupCornerRadiusSlider()
         setupBlurToggle()
         setupDimSlider()
+        setupFolderSettings()
         setupBackgroundsGrid()
         loadPersonalizationFromServer()
+    }
+
+    private fun setupFolderSettings() {
+        binding.switchCompactFolders.isChecked = globalParam.compactFolders
+        binding.switchCompactFolders.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.compactFolders = isChecked
+        }
+        binding.switchExcludeFromAll.isChecked = globalParam.excludeFolderChatsFromAll
+        binding.switchExcludeFromAll.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.excludeFolderChatsFromAll = isChecked
+        }
     }
 
     private fun setupToolbar() {

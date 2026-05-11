@@ -208,6 +208,16 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getInt(KEY_CHAT_BACKGROUND_DIM, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_CHAT_BACKGROUND_DIM, value).apply()
 
+    /** Компактные папки: показывать только иконку без имени. По умолчанию false. */
+    var compactFolders: Boolean
+        get() = sharedPreferences.getBoolean(KEY_COMPACT_FOLDERS, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_COMPACT_FOLDERS, value).apply()
+
+    /** Убирать чаты, входящие хотя бы в одну папку, из вкладки «Все чаты». По умолчанию false. */
+    var excludeFolderChatsFromAll: Boolean
+        get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, value).apply()
+
     // --- Тестирование (dev/QA-флаги) ---
 
     /** Показывать UserId/ChatId в карточке профиля собеседника. */
@@ -303,6 +313,8 @@ class GlobalParam(private val context: Context) {
         private const val KEY_CHAT_BACKGROUND_BLUR = "chat_background_blur"
         private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
         private const val KEY_CHAT_BACKGROUND_DIM = "chat_background_dim"
+        private const val KEY_COMPACT_FOLDERS = "folders_compact"
+        private const val KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL = "folders_exclude_from_all"
 
         // Тестирование
         private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
