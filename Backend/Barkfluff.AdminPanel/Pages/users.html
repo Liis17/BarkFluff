@@ -410,30 +410,77 @@
 
             let html = '';
 
-            // ─── PROFILE SECTION ───
+            // ─── PROFILE SECTION (постер + аватар + редактируемые поля) ───
+            const posterUrl = p.profilePosterUrl || '';
             html += `
-            <section>
-                <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Профиль</h4>
-                <div class="flex items-start gap-6">
-                    <div class="relative w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 group cursor-pointer"
-                         onclick="document.getElementById('avatarFileInput').click()">
-                        ${p.profilePicture
-                            ? `<img id="modalAvatarImg" src="${p.profilePicture}" class="w-full h-full object-cover" />`
-                            : `<span id="modalAvatarInitials" class="text-2xl font-bold text-slate-400">${getInitials(p.firstName, p.lastName)}</span>`
-                        }
-                        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                            <i data-lucide="image" class="w-8 h-8 text-white"></i>
+            <section class="-mx-6 -mt-6 mb-0">
+                <!-- Постер: полная ширина, соотношение 3:1 -->
+                <div class="relative w-full bg-slate-200 overflow-hidden group cursor-pointer"
+                     style="aspect-ratio: 3/1;"
+                     onclick="document.getElementById('posterFileInput').click()">
+                    ${posterUrl
+                        ? `<img id="modalPosterImg" src="${posterUrl}" class="w-full h-full object-cover" />`
+                        : `<div class="w-full h-full flex items-center justify-center text-slate-400"><i data-lucide="image" class="w-12 h-12 opacity-30"></i></div>`
+                    }
+                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i data-lucide="image" class="w-8 h-8 text-white"></i>
+                        <span class="text-white ml-2 text-sm font-medium">Изменить постер</span>
+                    </div>
+                    <!-- Аватар поверх постера: по центру снизу -->
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
+                        <div class="relative w-20 h-20 rounded-full border-4 border-white bg-slate-200 overflow-hidden group/avatar cursor-pointer flex items-center justify-center"
+                             onclick="event.stopPropagation(); document.getElementById('avatarFileInput').click()">
+                            ${p.profilePicture
+                                ? `<img id="modalAvatarImg" src="${p.profilePicture}" class="w-full h-full object-cover" />`
+                                : `<span id="modalAvatarInitials" class="text-xl font-bold text-slate-400">${getInitials(p.firstName, p.lastName)}</span>`
+                            }
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity rounded-full">
+                                <i data-lucide="camera" class="w-6 h-6 text-white"></i>
+                            </div>
                         </div>
                     </div>
-                    <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(this, ${p.id})" />
-                    <div class="space-y-1 text-sm">
-                        <p><span class="text-slate-500">Имя:</span> ${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</p>
-                        <p><span class="text-slate-500">Username:</span> @${escapeHtml(p.username)}</p>
-                        <p><span class="text-slate-500">Email:</span> ${data.contacts?.email || '—'}</p>
-                        <p><span class="text-slate-500">ID:</span> ${p.id}</p>
-                        <p><span class="text-slate-500">Регистрация:</span> ${p.registrationDate ? new Date(p.registrationDate).toLocaleString('ru-RU') : '—'}</p>
-                        ${p.bio ? `<p><span class="text-slate-500">Био:</span> ${escapeHtml(p.bio)}</p>` : ''}
+                </div>
+                <input type="file" id="posterFileInput" accept="image/*" class="hidden" onchange="handlePosterUpload(this, ${p.id})" />
+                <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(this, ${p.id})" />
+
+                <!-- Поля профиля ниже постера -->
+                <div class="px-6 pt-14 pb-2">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs text-slate-400">ID: ${p.id}</span>
+                        <span class="text-xs text-slate-400">·</span>
+                        <span class="text-xs text-slate-400">Email: ${escapeHtml(data.contacts?.email || '—')}</span>
+                        <span class="text-xs text-slate-400">·</span>
+                        <span class="text-xs text-slate-400">Регистрация: ${p.registrationDate ? new Date(p.registrationDate).toLocaleDateString('ru-RU') : '—'}</span>
                     </div>
+                    <div class="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Имя</label>
+                            <input id="editFirstName" type="text" value="${escapeHtml(p.firstName)}"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Фамилия</label>
+                            <input id="editLastName" type="text" value="${escapeHtml(p.lastName)}"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1">Username</label>
+                            <div class="flex">
+                                <span class="inline-flex items-center px-3 bg-slate-100 border border-r-0 border-slate-300 rounded-l-lg text-sm text-slate-500">@</span>
+                                <input id="editUsername" type="text" value="${escapeHtml(p.username)}"
+                                    class="flex-1 border border-slate-300 rounded-r-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            </div>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1">Био</label>
+                            <textarea id="editBio" rows="2"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none">${escapeHtml(p.bio || '')}</textarea>
+                        </div>
+                    </div>
+                    <button onclick="saveProfileChanges(${p.id})"
+                        class="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        Сохранить профиль
+                    </button>
                 </div>
             </section>`;
 
@@ -468,7 +515,7 @@
             <section>
                 <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Устройства и сессии</h4>
                 ${sessions.length > 0 ? `
-                <div class="space-y-2">
+                <div class="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                     ${sessions.map(s => `
                         <div class="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors"
                              onclick='showDeviceDetails(${JSON.stringify(s).replace(/'/g, "&#39;")})'>
@@ -515,6 +562,21 @@
                 </div>` : '<p class="text-sm text-slate-400">Данные недоступны</p>'}
             </section>`;
 
+            // ─── PASSWORD CHANGE SECTION ───
+            html += `
+            <section>
+                <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Смена пароля</h4>
+                <div class="flex items-center gap-2">
+                    <input type="password" id="newPasswordInput" placeholder="Новый пароль (мин. 6 символов)"
+                        class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                    <button onclick="changeUserPassword(${p.id})"
+                        class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors flex-shrink-0">
+                        Применить
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400 mt-1.5">Пользователь получит email-уведомление об изменении пароля администратором.</p>
+            </section>`;
+
             // ─── STORAGE SECTION ───
             const st = data.storage;
             html += `
@@ -534,7 +596,11 @@
                         3: 'Видео',
                         4: 'GIF',
                         5: 'Документы',
-                        6: 'Обложки чатов'
+                        6: 'Обложки чатов',
+                        7: 'Аудио',
+                        8: 'Голосовые сообщения',
+                        9: 'Стикеры',
+                        10: 'Постер профиля'
                     };
 
                     return `
@@ -751,6 +817,85 @@
                 await loadUsers(true);
             } catch (e) {
                 alert(`Ошибка загрузки аватара: ${e.message}`);
+            } finally {
+                input.value = '';
+            }
+        }
+
+        // ─── PROFILE EDIT ACTIONS ────────────────────────────────────────────────
+
+        async function saveProfileChanges(userId) {
+            const firstName = document.getElementById('editFirstName')?.value?.trim() || '';
+            const lastName = document.getElementById('editLastName')?.value?.trim() || '';
+            const username = document.getElementById('editUsername')?.value?.trim() || '';
+            const bio = document.getElementById('editBio')?.value?.trim() || '';
+
+            try {
+                const res = await fetch(`/api/users/${userId}/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ firstName, lastName, bio, username })
+                });
+                if (!res.ok) throw new Error(await res.text());
+                await openUserModal(userId);
+                await loadUsers(true);
+            } catch (e) {
+                alert(`Ошибка: ${e.message}`);
+            }
+        }
+
+        async function changeUserPassword(userId) {
+            const input = document.getElementById('newPasswordInput');
+            const password = input?.value?.trim() || '';
+            if (!password) { alert('Введите новый пароль'); return; }
+            if (password.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
+
+            if (!confirm('Сменить пароль пользователю? Пользователь получит email-уведомление.')) return;
+
+            try {
+                const res = await fetch(`/api/users/${userId}/password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword: password })
+                });
+                if (!res.ok) throw new Error(await res.text());
+                if (input) input.value = '';
+                alert('Пароль успешно изменён. Уведомление отправлено пользователю.');
+            } catch (e) {
+                alert(`Ошибка: ${e.message}`);
+            }
+        }
+
+        async function handlePosterUpload(input, userId) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('Выберите изображение');
+                input.value = '';
+                return;
+            }
+
+            if (file.size > 15 * 1024 * 1024) {
+                alert('Файл слишком большой (макс. 15 МБ)');
+                input.value = '';
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('poster', file, file.name);
+
+                const res = await fetch(`/api/users/${userId}/poster`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+
+                await openUserModal(userId);
+            } catch (e) {
+                alert(`Ошибка загрузки постера: ${e.message}`);
             } finally {
                 input.value = '';
             }

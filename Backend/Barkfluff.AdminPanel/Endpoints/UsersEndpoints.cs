@@ -84,8 +84,9 @@ public static class UsersEndpoints
             var storageTask = SafeCall(() => filesClient.GetUserStorageInfoServerAsync(new GetUserStorageInfoServerRequest { UserId = id }));
             var otpTask = SafeCall(() => identityClient.ListOtpVerificationServerAsync(new ListOtpVerificationServerRequest { UserId = id }));
             var sessionsTask = SafeCall(() => identityClient.GetActiveSessionsServerAsync(new GetActiveSessionsServerRequest { UserId = id }));
+            var posterTask = SafeCall(() => usersClient.GetProfilePosterServerAsync(new GetProfilePosterServerRequest { UserId = id }));
 
-            await Task.WhenAll(userSearchTask, contactsTask, devicesTask, storageTask, otpTask, sessionsTask);
+            await Task.WhenAll(userSearchTask, contactsTask, devicesTask, storageTask, otpTask, sessionsTask, posterTask);
 
             var userSearch = userSearchTask.Result;
             var contacts = contactsTask.Result;
@@ -93,6 +94,7 @@ public static class UsersEndpoints
             var storage = storageTask.Result;
             var otp = otpTask.Result;
             var sessions = sessionsTask.Result;
+            var poster = posterTask.Result;
 
             var userProto = userSearch?.Users.FirstOrDefault();
             if (userProto is null)
@@ -108,6 +110,7 @@ public static class UsersEndpoints
                     username = userProto.Username,
                     profilePicture = userProto.ProfilePicture,
                     profilePicturePreview = userProto.ProfilePicturePreview,
+                    profilePosterUrl = poster?.PosterUrl ?? string.Empty,
                     bio = userProto.Bio,
                     registrationDate = userProto.RegistrationDate?.ToDateTime(),
                     storageLimitGb = userProto.StorageLimitGb,
@@ -326,6 +329,107 @@ public static class UsersEndpoints
         .DisableAntiforgery()
         .WithName("UploadUserAvatar");
 
+        // PUT /api/users/{id}/profile
+        group.MapPut("/{id:long}/profile", async (
+            long id,
+            HttpRequest request,
+            UsersServerApi.UsersServerApiClient usersClient,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var body = await request.ReadFromJsonAsync<UpdateProfileBody>();
+            if (body is null)
+                return Results.BadRequest("Invalid request body");
+
+            await usersClient.UpdateProfileServerAsync(new UpdateProfileServerRequest
+            {
+                UserId = id,
+                FirstName = body.FirstName ?? string.Empty,
+                LastName = body.LastName ?? string.Empty,
+                Bio = body.Bio ?? string.Empty,
+                Username = body.Username ?? string.Empty
+            });
+
+            return Results.Ok(new { success = true });
+        })
+        .WithName("UpdateUserProfile");
+
+        // POST /api/users/{id}/password
+        group.MapPost("/{id:long}/password", async (
+            long id,
+            HttpRequest request,
+            IdentityServerApi.IdentityServerApiClient identityClient,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var body = await request.ReadFromJsonAsync<ChangePasswordBody>();
+            if (body is null || string.IsNullOrWhiteSpace(body.NewPassword))
+                return Results.BadRequest("newPassword is required");
+
+            if (body.NewPassword.Length < 6)
+                return Results.BadRequest("newPassword must be at least 6 characters");
+
+            await identityClient.ForceSetPasswordServerAsync(new ForceSetPasswordServerRequest
+            {
+                UserId = id,
+                NewPassword = body.NewPassword
+            });
+
+            return Results.Ok(new { success = true });
+        })
+        .WithName("ForceChangeUserPassword");
+
+        // POST /api/users/{id}/poster
+        group.MapPost("/{id:long}/poster", async (
+            long id,
+            HttpRequest request,
+            FilesServerApi.FilesServerApiClient filesClient,
+            UsersServerApi.UsersServerApiClient usersClient,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            if (!request.HasFormContentType)
+                return Results.BadRequest("Expected multipart/form-data");
+
+            var form = await request.ReadFormAsync();
+            var file = form.Files.GetFile("poster");
+            if (file is null || file.Length == 0)
+                return Results.BadRequest("No poster file provided");
+
+            if (file.Length > 15 * 1024 * 1024)
+                return Results.BadRequest("File too large (max 15 MB)");
+
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+
+            var uploadResponse = await filesClient.UploadPosterServerAsync(new UploadPosterServerRequest
+            {
+                ImageData = ByteString.CopyFrom(ms.ToArray()),
+                Filename = file.FileName,
+                UserId = id
+            });
+
+            await usersClient.SetProfilePosterServerAsync(new SetProfilePosterServerRequest
+            {
+                UserId = id,
+                PosterFileId = uploadResponse.FileId
+            });
+
+            return Results.Ok(new
+            {
+                posterUrl = uploadResponse.FileUrl,
+                fileId = uploadResponse.FileId
+            });
+        })
+        .DisableAntiforgery()
+        .WithName("UploadUserPoster");
+
         // DELETE /api/users/{id}/sessions/{deviceId}
         group.MapDelete("/{id:long}/sessions/{deviceId}", async (
             long id,
@@ -362,4 +466,6 @@ public static class UsersEndpoints
     private sealed record AssignBadgeBody(int BadgeId, int? Priority);
     private sealed record UpdateStorageLimitBody(int StorageLimitGb);
     private sealed record DisableOtpBody(int OtpType);
+    private sealed record UpdateProfileBody(string? FirstName, string? LastName, string? Bio, string? Username);
+    private sealed record ChangePasswordBody(string? NewPassword);
 }

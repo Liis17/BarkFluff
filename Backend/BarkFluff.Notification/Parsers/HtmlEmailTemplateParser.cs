@@ -20,6 +20,7 @@ public partial class HtmlEmailTemplateParser
         { NotificationType.SuccessfulLogin, "successful_login.html"},
         { NotificationType.PasswordChanged, "password_changed.html"},
         { NotificationType.TwoFactorMethodChanged, "two_factor_method_changed.html"},
+        { NotificationType.PasswordChangedByAdmin, "password_changed_by_admin.html"},
     };
 
     public async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)
