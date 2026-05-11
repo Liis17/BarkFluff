@@ -59,6 +59,20 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 - `ConversationViewModel.startListeningForOnlineStatus()` — `track` + snapshot + stream; парный `untrack` в `stopListeningForUpdates()`.
 - Текстовый статус — компонент `OnlineStatusText` (общий с Mac), использует `OnlineStatus.displayText` из BFCore.
 
+## Персонализация (паритет с macOS / Android)
+
+`Features/Settings/Views/PersonalizationSettingsView.swift` + `Features/Settings/Views/Personalization/Components/` (`PosterPreviewCard.swift`, `BubblePreviewView.swift`, `BackgroundsGrid.swift`) + `Features/Settings/ViewModels/PersonalizationSettingsViewModel.swift`.
+
+Один Form-экран с четырьмя секциями:
+1. **Превью профиля** — постер 3:1, аватар поверх (88pt), имя/`@username`, кнопка «Установить новый постер» через `PhotosPicker`. После аплоада — `userService.setProfilePoster` + `container.loadCurrentUser()` (шапки в боковых панелях подхватывают новый постер).
+2. **Внешний вид сообщений** — 5 пузырей (`MessageBubbleShape`) на реальном `ChatBackgroundView` + Slider закругления (0-30 pt).
+3. **Фон чата** — Toggle размытия, Slider радиуса размытия (1-25), Slider затемнения (0-100%).
+4. **Изображения фона** — `LazyVGrid` 1:2-ячейки, первая ячейка — `PhotosPicker` для добавления. Long-press → delete-mode → красные крестики и «Готово» в шапке секции. «Убрать фон чата» сбрасывает выбор.
+
+Серверная синхронизация — через `UserService.getPersonalization` / `setProfilePoster` / `updatePersonalization` (BFCore, общие для iOS/macOS). Локальные настройки (radius/blur/dim/currentBackgroundFileID) — `PersonalizationSettings` (UserDefaults) из DI.
+
+PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPickerItem?` / `var selectedBackgroundItem: PhotosPickerItem?` с `didSet` → загрузка через `loadTransferable(type: Data.self)` → `fileService.uploadFile(fileType: .userProfilePoster | .messageAttachmentImage)`.
+
 ## Контекстное меню сообщения (паритет с macOS)
 
 `MessageBubbleView` показывает long-press меню: Изменить / Ответить / Переслать / Копировать текст / Скопировать изображение / Сохранить (изображения) / Сохранить (документы) / Удалить. Все действия проксируются в `ConversationViewModel` (edit/reply/delete/sendSticker), а медиа-действия — в `MediaActions` (UIPasteboard / PHPhotoLibrary / share sheet).
@@ -117,4 +131,3 @@ open Barkfluff.xcodeproj
 - **NotificationService / push-уведомления** — отложено.
 - **Полноэкранные просмотрщики медиа** (отдельные `MediaViewerView`/`ImageViewerView`/`VideoPlayerView` как у macOS) — пока используется упрощённый viewer внутри ConversationView.
 - **EmojiPickerView**, **GIFAttachmentView**, **MediaPreviewCard/FilePreviewCard/SendButton** — VMs готовы, UI пока стандартный.
-- **Personalization poster/background picker UI** — VM есть, само редактирование фона/постера — следующий шаг.
