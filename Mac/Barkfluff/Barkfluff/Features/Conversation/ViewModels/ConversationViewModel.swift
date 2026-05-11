@@ -1018,12 +1018,6 @@ final class ConversationViewModel {
 }
 
 // MARK: - NSImage Extension
-
-extension NSImage {
-    /// Конвертация NSImage в JPEG Data с заданным качеством сжатия
-    func jpegData(compressionQuality: CGFloat) -> Data? {
-        guard let tiffData = tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
-        return bitmap.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
-    }
-}
+//
+// `jpegData(compressionQuality:)` вынесен в общий extension
+// `DesignSystem/Extensions/NSImage+JPEG.swift`, см. там.

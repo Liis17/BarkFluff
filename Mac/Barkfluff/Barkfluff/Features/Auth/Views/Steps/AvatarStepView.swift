@@ -2,11 +2,14 @@
 //  AvatarStepView.swift
 //  Barkfluff
 //
-//  Шаг 6: Загрузка аватара (опционально)
+//  Шаг 6: Загрузка аватара (опционально).
+//  После выбора файла открывается квадратный кропер; на сервер уходит
+//  только обрезанная картинка.
 //
 
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 import BFCore
 
 /// Шаг регистрации: загрузка аватара
@@ -18,6 +21,8 @@ struct AvatarStepView: View {
     @State private var isUploading = false
     @State private var uploadError: String?
     @State private var showFilePicker = false
+    @State private var pendingImage: NSImage?
+    @State private var showCropper: Bool = false
 
     var body: some View {
         VStack(spacing: Theme.Spacing.lg) {
@@ -40,7 +45,6 @@ struct AvatarStepView: View {
                         )
                 }
 
-                // Индикатор загрузки
                 if isUploading {
                     Circle()
                         .fill(Color.black.opacity(0.5))
@@ -72,14 +76,12 @@ struct AvatarStepView: View {
                 }
             }
 
-            // Ошибка
             if let error = uploadError {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
             }
 
-            // Подсказка
             Text("Вы можете пропустить этот шаг и добавить аватар позже")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -92,50 +94,85 @@ struct AvatarStepView: View {
         ) { result in
             Task { await handleFileSelection(result) }
         }
+        .sheet(isPresented: $showCropper) {
+            if let pendingImage {
+                ImageCropperView(
+                    image: pendingImage,
+                    aspectRatio: 1,
+                    outputWidth: 1024,
+                    onCancel: {
+                        showCropper = false
+                        self.pendingImage = nil
+                    },
+                    onCrop: { cropped in
+                        showCropper = false
+                        Task { await uploadCropped(cropped) }
+                    }
+                )
+            }
+        }
     }
 
     private func handleFileSelection(_ result: Result<[URL], Error>) async {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-            await uploadAvatar(from: url)
-
+            await loadImageForCropping(from: url)
         case .failure(let error):
             uploadError = error.localizedDescription
         }
     }
 
-    private func uploadAvatar(from url: URL) async {
-        isUploading = true
+    private func loadImageForCropping(from url: URL) async {
         uploadError = nil
-        defer { isUploading = false }
+        guard url.startAccessingSecurityScopedResource() else {
+            uploadError = "Нет доступа к файлу"
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
 
         do {
-            // Читаем данные
-            guard url.startAccessingSecurityScopedResource() else {
-                throw NSError(domain: "AvatarStepView", code: 1, userInfo: [NSLocalizedDescriptionKey: "Нет доступа к файлу"])
-            }
-            defer { url.stopAccessingSecurityScopedResource() }
-
             let imageData = try Data(contentsOf: url)
+            guard let nsImage = NSImage(data: imageData) else {
+                uploadError = "Не удалось прочитать изображение"
+                return
+            }
+            await MainActor.run {
+                pendingImage = nsImage
+                showCropper = true
+            }
+        } catch {
+            uploadError = "Не удалось прочитать файл: \(error.localizedDescription)"
+        }
+    }
 
-            // Загружаем файл
+    private func uploadCropped(_ image: NSImage) async {
+        isUploading = true
+        uploadError = nil
+        defer {
+            isUploading = false
+            pendingImage = nil
+        }
+
+        guard let compressedData = image.jpegData(compressionQuality: 0.85) else {
+            uploadError = "Ошибка обработки изображения"
+            return
+        }
+
+        do {
             let fileID = try await fileService.uploadFile(
-                data: imageData,
-                fileName: url.lastPathComponent,
+                data: compressedData,
+                fileName: "avatar.jpg",
                 fileType: .userAvatar
             )
 
-            // Устанавливаем как аватар
             try await userService.setProfilePicture(fileID: fileID)
 
-            // Обновляем UI
             await MainActor.run {
-                data.avatarData = imageData
+                data.avatarData = compressedData
                 data.avatarFileID = fileID
-                data.avatarImage = Image(nsImage: NSImage(data: imageData) ?? NSImage())
+                data.avatarImage = Image(nsImage: image)
             }
-
         } catch {
             uploadError = "Не удалось загрузить фото: \(error.localizedDescription)"
         }

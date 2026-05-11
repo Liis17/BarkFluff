@@ -12,23 +12,33 @@ struct RootView: View {
     @Environment(DependencyContainer.self) private var container
 
     var body: some View {
-        Group {
-            switch coordinator.currentState {
-            case .loading:
-                LoadingView()
-            case .serverSelection:
-                ServerSelectionView()
-            case .authentication:
-                switch coordinator.authScreen {
-                case .login:
-                    LoginView()
-                case .register:
-                    RegisterView()
+        ZStack {
+            Group {
+                switch coordinator.currentState {
+                case .loading:
+                    // Под сплешем — `LoadingView` больше не используется.
+                    Color.clear
+                case .serverSelection:
+                    ServerSelectionView()
+                case .authentication:
+                    switch coordinator.authScreen {
+                    case .login:
+                        LoginView()
+                    case .register:
+                        RegisterView()
+                    }
+                case .main:
+                    MainTabView()
                 }
-            case .main:
-                MainTabView()
+            }
+
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: showSplash)
         .preferredColorScheme(container.appearanceSettings.colorScheme)
         .task {
             await coordinator.onAppLaunch(
@@ -43,6 +53,19 @@ struct RootView: View {
                     await container.loadCurrentUser()
                 }
             }
+        }
+    }
+
+    /// Splash виден на cold start и пока в `.main` не загружена первая партия чатов.
+    /// На `.serverSelection` / `.authentication` сплеш не показываем.
+    private var showSplash: Bool {
+        switch coordinator.currentState {
+        case .loading:
+            return true
+        case .main:
+            return !coordinator.isInitialChatsLoaded
+        case .serverSelection, .authentication:
+            return false
         }
     }
 }

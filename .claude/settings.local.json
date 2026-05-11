@@ -167,7 +167,17 @@
       "Bash(xcodebuild -project iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 16' -quiet build)",
       "Bash(xcodebuild -project iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' -quiet build)",
       "Bash(xcrun xcodebuild *)",
-      "Bash(xcrun simctl *)"
+      "Bash(xcrun simctl *)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination \"generic/platform=iOS Simulator\" -configuration Debug -quiet build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination \"generic/platform=iOS Simulator\" -configuration Debug build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination \"generic/platform=macOS\" -configuration Debug build)",
+      "Bash(xcodebuild -project iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -configuration Debug build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -configuration Debug build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' -configuration Debug build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'generic/platform=iOS Simulator' -configuration Debug build)"
     ],
     "deny": [],
     "ask": []

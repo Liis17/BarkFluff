@@ -15,6 +15,9 @@ struct PersonalizationSettingsView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel: PersonalizationSettingsViewModel?
 
+    @AppStorage("folders.compact") private var compactFolders: Bool = false
+    @AppStorage("folders.excludeFromAll") private var excludeFolderChatsFromAll: Bool = false
+
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.lg) {
@@ -130,6 +133,11 @@ struct PersonalizationSettingsView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 56, alignment: .trailing)
                 }
+            }
+
+            Section("Папки чатов") {
+                Toggle("Компактные папки", isOn: $compactFolders)
+                Toggle("Не показывать чаты папок во «Все чаты»", isOn: $excludeFolderChatsFromAll)
             }
 
             Section {

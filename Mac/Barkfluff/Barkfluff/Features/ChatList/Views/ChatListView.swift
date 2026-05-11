@@ -13,6 +13,9 @@ struct ChatListView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel: ChatListViewModel?
 
+    @AppStorage("folders.compact") private var compactFolders: Bool = false
+    @AppStorage("folders.excludeFromAll") private var excludeFolderChatsFromAll: Bool = false
+
     var body: some View {
         Group {
             if let viewModel {
@@ -30,12 +33,14 @@ struct ChatListView: View {
                     updatesService: container.updatesService,
                     onlineStatusService: container.onlineStatusService,
                     currentUserID: container.currentUserID,
-                    localChatRepository: container.localChatRepository
+                    localChatRepository: container.localChatRepository,
+                    chatFolderService: container.chatFolderService
                 )
                 // Устанавливаем замыкание для проверки активного чата
                 vm.isActiveChatChecker = { [weak coordinator] chatID in
                     coordinator?.selectedChat?.id == chatID
                 }
+                vm.excludeFolderChatsFromAll = excludeFolderChatsFromAll
                 viewModel = vm
                 // Устанавливаем ссылку в координатор для уведомлений о прочтении
                 coordinator.chatListViewModel = vm
@@ -43,9 +48,13 @@ struct ChatListView: View {
                 // и загрузка чатов (сразу из кэша + revalidate с сервера).
                 async let userLoad: Void = container.loadCurrentUser()
                 async let chatsLoad: Void = vm.loadChats()
-                _ = await (userLoad, chatsLoad)
+                async let foldersLoad: Void = vm.loadFolders()
+                _ = await (userLoad, chatsLoad, foldersLoad)
                 await vm.startListeningForUpdates()
             }
+        }
+        .onChange(of: excludeFolderChatsFromAll) { _, newValue in
+            viewModel?.excludeFolderChatsFromAll = newValue
         }
         .onDisappear {
             viewModel?.stopListeningForUpdates()
@@ -54,6 +63,22 @@ struct ChatListView: View {
 
     @ViewBuilder
     private func chatListContent(viewModel: ChatListViewModel) -> some View {
+        VStack(spacing: 0) {
+            ChatFolderTabsBar(
+                folders: viewModel.folders,
+                selectedFolderID: viewModel.selectedFolderID,
+                allChatsUnread: viewModel.unreadCount(for: nil),
+                unreadByFolder: { viewModel.unreadCount(for: $0) },
+                compact: compactFolders,
+                onSelect: { viewModel.selectFolder($0) }
+            )
+
+            chatListContentInner(viewModel: viewModel)
+        }
+    }
+
+    @ViewBuilder
+    private func chatListContentInner(viewModel: ChatListViewModel) -> some View {
         List(selection: Binding(
             get: { coordinator.selectedChat?.id },
             set: { newID in

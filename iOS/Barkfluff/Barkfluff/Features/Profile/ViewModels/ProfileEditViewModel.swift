@@ -42,14 +42,23 @@ final class ProfileEditViewModel {
     var errorMessage = ""
     var usernameStatus: UsernameValidationStatus?
 
-    // MARK: - Avatar selection (PhotosPicker)
+    // MARK: - Avatar selection (PhotosPicker + cropper)
 
     var selectedAvatarItem: PhotosPickerItem? {
         didSet {
             guard let item = selectedAvatarItem else { return }
-            Task { await loadAvatar(from: item) }
+            Task { await loadImageForCropping(from: item) }
         }
     }
+
+    /// Картинка, выбранная в PhotosPicker и ждущая обрезки.
+    var pendingAvatarImage: UIImage?
+
+    /// Флаг показа модального экрана кропера.
+    var showCropper: Bool = false
+
+    /// Флаг загрузки уже обрезанной картинки на сервер.
+    var isUploadingAvatar: Bool = false
 
     // MARK: - Username validation
 
@@ -197,39 +206,57 @@ final class ProfileEditViewModel {
         }
     }
 
-    /// Обработка выбора аватара через PhotosPicker.
+    /// Прочитать выбранное в PhotosPicker изображение и показать кропер.
     /// PhotosPicker.loadTransferable отдаёт уже декодированные байты;
-    /// никакого security-scoped resource на iOS не требуется.
-    private func loadAvatar(from item: PhotosPickerItem) async {
+    /// security-scoped resource на iOS не нужен.
+    private func loadImageForCropping(from item: PhotosPickerItem) async {
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
                 errorMessage = "Не удалось прочитать выбранное изображение"
                 showError = true
                 return
             }
-
-            // Имя файла определяем эвристикой по типу контента;
-            // PhotosPickerItem не отдаёт оригинальное имя.
-            let fileName: String = {
-                if let utType = item.supportedContentTypes.first {
-                    return "avatar.\(utType.preferredFilenameExtension ?? "jpg")"
-                }
-                return "avatar.jpg"
-            }()
-
-            let fileID = try await fileService.uploadFile(
-                data: data,
-                fileName: fileName,
-                fileType: .userAvatar
-            )
-
-            try await userService.setProfilePicture(fileID: fileID)
-
-            await loadProfile()
-
+            pendingAvatarImage = image
+            showCropper = true
         } catch {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+
+    /// Загрузить уже обрезанную в кропере картинку: JPEG 0.85 → upload → setProfilePicture.
+    func uploadCropped(_ image: UIImage) async {
+        isUploadingAvatar = true
+        defer {
+            isUploadingAvatar = false
+            pendingAvatarImage = nil
+            selectedAvatarItem = nil
+        }
+
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            errorMessage = "Ошибка обработки изображения"
+            showError = true
+            return
+        }
+
+        do {
+            let fileID = try await fileService.uploadFile(
+                data: data,
+                fileName: "avatar.jpg",
+                fileType: .userAvatar
+            )
+            try await userService.setProfilePicture(fileID: fileID)
+            await loadProfile()
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    /// Сбросить выбор без загрузки (вызывается при отмене в кропере).
+    func cancelAvatarCropping() {
+        pendingAvatarImage = nil
+        selectedAvatarItem = nil
     }
 }

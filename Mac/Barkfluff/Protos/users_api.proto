@@ -69,6 +69,50 @@ service UsersApi {
 
   // Установить (или удалить) постер профиля текущего пользователя
   rpc SetProfilePoster(SetProfilePosterRequest) returns(SetProfilePosterResponse);
+
+  // Получить папки чатов текущего пользователя
+  rpc GetChatFolders(GetChatFoldersRequest) returns(GetChatFoldersResponse);
+
+  // Создать новую папку чатов
+  rpc CreateChatFolder(CreateChatFolderRequest) returns(CreateChatFolderResponse);
+
+  // Обновить папку чатов (частичное обновление)
+  rpc UpdateChatFolder(UpdateChatFolderRequest) returns(UpdateChatFolderResponse);
+
+  // Удалить папку чатов
+  rpc DeleteChatFolder(DeleteChatFolderRequest) returns(DeleteChatFolderResponse);
+
+  // Добавить чат в папку
+  rpc AddChatToFolder(AddChatToFolderRequest) returns(AddChatToFolderResponse);
+
+  // Удалить чат из папки
+  rpc RemoveChatFromFolder(RemoveChatFromFolderRequest) returns(RemoveChatFromFolderResponse);
+
+  // Изменить порядок папок
+  rpc ReorderChatFolders(ReorderChatFoldersRequest) returns(ReorderChatFoldersResponse);
+
+  // -- Prekey bundle (X3DH) для секретных чатов ---------------------------------
+  //
+  // Bundle принадлежит устройству (device_id берётся из текущей сессии).
+  // identity_pubkey — Ed25519 (long-term ключ, не меняется).
+  // signed_prekey   — X25519, подписан identity_key, ротируется периодически (~раз в неделю).
+  // one_time_prekey — X25519, пул разовых ключей, расходуется FetchPrekeyBundle.
+  // Сервер НЕ валидирует подпись signed_prekey — это делает клиент-получатель.
+
+  // Зарегистрировать prekey-bundle текущего устройства (вызывается один раз после генерации ключей).
+  rpc RegisterPrekeyBundle(RegisterPrekeyBundleRequest) returns(RegisterPrekeyBundleResponse);
+
+  // Получить prekey-bundle устройства собеседника. Расходует одну one-time prekey (если осталась).
+  rpc FetchPrekeyBundle(FetchPrekeyBundleRequest) returns(FetchPrekeyBundleResponse);
+
+  // Список устройств пользователя c флагом наличия bundle (для выбора целевого устройства секретного чата).
+  rpc ListPeerDevices(ListPeerDevicesRequest) returns(ListPeerDevicesResponse);
+
+  // Пополнить пул one-time prekeys текущего устройства.
+  rpc ReplenishOneTimePrekeys(ReplenishOneTimePrekeysRequest) returns(ReplenishOneTimePrekeysResponse);
+
+  // Сменить signed prekey текущего устройства.
+  rpc RotateSignedPrekey(RotateSignedPrekeyRequest) returns(RotateSignedPrekeyResponse);
 }
 
 service UsersServerApi {
@@ -635,3 +679,158 @@ message SetProfilePosterRequest {
 }
 
 message SetProfilePosterResponse { }
+
+// Папки чатов
+
+message ChatFolderData {
+  string folder_id = 1;        // публичный идентификатор папки (Guid)
+  string folder_name = 2;      // название папки
+  string folder_icon = 3;      // строка-идентификатор иконки (пусто если не задана)
+  repeated string chat_list = 4; // ID чатов в папке (Guid строкой, тот же формат, что Chat.id из messages_api)
+  int32 sort_order = 5;        // порядок отображения (меньше = выше)
+}
+
+message GetChatFoldersRequest { }
+
+message GetChatFoldersResponse {
+  repeated ChatFolderData folders = 1; // папки текущего пользователя по возрастанию sort_order
+}
+
+message CreateChatFolderRequest {
+  string folder_name = 1; // название (обязательно)
+  string folder_icon = 2; // иконка (опционально, пусто = не задана)
+}
+
+message CreateChatFolderResponse {
+  ChatFolderData folder = 1; // созданная папка
+}
+
+message UpdateChatFolderRequest {
+  string folder_id = 1;                  // публичный Guid папки
+  optional string folder_name = 2;       // новое название (если задано)
+  optional string folder_icon = 3;       // новая иконка (пустая строка = очистить)
+  bool has_chat_list_update = 4;         // если true — заменить ChatList на значения ниже
+  repeated string chat_list = 5;          // Guid'ы чатов; используется только когда has_chat_list_update=true
+}
+
+message UpdateChatFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message DeleteChatFolderRequest {
+  string folder_id = 1; // Guid папки
+}
+
+message DeleteChatFolderResponse { }
+
+message AddChatToFolderRequest {
+  string folder_id = 1; // Guid папки
+  string chat_id = 2;   // Guid чата (тот же формат, что Chat.id из messages_api)
+}
+
+message AddChatToFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message RemoveChatFromFolderRequest {
+  string folder_id = 1; // Guid папки
+  string chat_id = 2;   // Guid чата (тот же формат, что Chat.id из messages_api)
+}
+
+message RemoveChatFromFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message ChatFolderOrder {
+  string folder_id = 1; // Guid папки
+  int32 sort_order = 2; // новый порядок
+}
+
+message ReorderChatFoldersRequest {
+  repeated ChatFolderOrder orders = 1; // новые значения SortOrder для папок
+}
+
+message ReorderChatFoldersResponse { }
+
+// -- Prekey bundle (X3DH) -------------------------------------------------------
+
+// X25519 prekey, подписанный identity-ключом устройства.
+message SignedPreKey {
+  uint32 prekey_id = 1; // ID prekey (генерируется устройством, уникален в рамках устройства)
+  bytes public_key = 2; // X25519 публичный ключ (32 байта)
+  bytes signature = 3;  // Ed25519-подпись public_key, сделанная identity-ключом устройства (64 байта)
+}
+
+// X25519 разовая prekey. Расходуется при первом FetchPrekeyBundle.
+message OneTimePreKey {
+  uint32 prekey_id = 1; // ID prekey (уникален в рамках устройства)
+  bytes public_key = 2; // X25519 публичный ключ (32 байта)
+}
+
+// Bundle для X3DH-инициации сессии Double Ratchet.
+message PrekeyBundle {
+  string device_id = 1;             // Устройство, которому принадлежит bundle
+  uint32 registration_id = 2;       // ID регистрации устройства в libsignal
+  bytes identity_pubkey = 3;        // Ed25519 публичный identity-ключ устройства (32 байта)
+  SignedPreKey signed_prekey = 4;   // Текущий signed prekey
+  OneTimePreKey one_time_prekey = 5; // Разовая prekey (отсутствует если пул исчерпан)
+  bool has_one_time_prekey = 6;     // true если one_time_prekey заполнен — позволяет различать "пусто" и "не задан"
+}
+
+// Регистрация bundle текущего устройства
+
+message RegisterPrekeyBundleRequest {
+  uint32 registration_id = 1;            // ID регистрации устройства в libsignal
+  bytes identity_pubkey = 2;             // Ed25519 публичный identity-ключ устройства (32 байта)
+  SignedPreKey signed_prekey = 3;        // Начальный signed prekey
+  repeated OneTimePreKey one_time_prekeys = 4; // Стартовый пул разовых prekeys (рекомендуется 100 шт)
+}
+
+message RegisterPrekeyBundleResponse { }
+
+// Получение bundle устройства собеседника
+
+message FetchPrekeyBundleRequest {
+  int64 user_id = 1;       // ID пользователя-собеседника
+  string device_id = 2;    // ID устройства собеседника
+}
+
+message FetchPrekeyBundleResponse {
+  PrekeyBundle bundle = 1;     // Bundle с расходуемой one-time prekey (если осталась)
+  int32 remaining_one_time_prekeys = 2; // Сколько prekey осталось у этого устройства после fetch
+}
+
+// Список устройств пользователя для выбора цели секретного чата
+
+message ListPeerDevicesRequest {
+  int64 user_id = 1; // ID пользователя
+}
+
+message ListPeerDevicesResponse {
+  repeated PeerDeviceInfo devices = 1; // Устройства пользователя
+}
+
+message PeerDeviceInfo {
+  string device_id = 1;   // ID устройства
+  string display_name = 2; // Имя для отображения (custom_name либо original_name)
+  bool has_bundle = 3;    // true если устройство зарегистрировало prekey-bundle (без этого секретный чат с ним невозможен)
+  google.protobuf.Timestamp last_seen_at = 4; // Время последней активности (опционально, для сортировки в UI)
+}
+
+// Пополнение пула one-time prekeys текущего устройства
+
+message ReplenishOneTimePrekeysRequest {
+  repeated OneTimePreKey prekeys = 1; // Новые prekeys; ID не должны пересекаться с уже существующими у устройства
+}
+
+message ReplenishOneTimePrekeysResponse {
+  int32 total_one_time_prekeys = 1; // Сколько prekey теперь у устройства всего
+}
+
+// Ротация signed prekey текущего устройства
+
+message RotateSignedPrekeyRequest {
+  SignedPreKey signed_prekey = 1; // Новый signed prekey (старый удерживается на сервере короткое время для in-flight handshakes)
+}
+
+message RotateSignedPrekeyResponse { }

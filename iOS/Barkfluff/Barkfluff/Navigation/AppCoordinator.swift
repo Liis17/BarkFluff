@@ -43,6 +43,13 @@ final class AppCoordinator {
     /// Текущее состояние
     var currentState: AppState = .loading
 
+    /// Первая партия чатов загружена (или попытка завершилась с ошибкой).
+    /// Используется `RootView`, чтобы держать `SplashView` поверх `MainTabView`,
+    /// пока `ChatListView` ещё ждёт первый ответ от сервера/кеша.
+    /// Один раз становится `true` и в течение жизни `AppCoordinator` больше не сбрасывается —
+    /// splash хотим видеть только на cold start.
+    var isInitialChatsLoaded: Bool = false
+
     /// Текущий экран авторизации
     var authScreen: AuthScreen = .login
 

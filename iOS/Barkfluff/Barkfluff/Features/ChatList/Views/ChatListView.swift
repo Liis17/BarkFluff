@@ -13,6 +13,9 @@ struct ChatListView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel: ChatListViewModel?
 
+    @AppStorage("folders.compact") private var compactFolders: Bool = false
+    @AppStorage("folders.excludeFromAll") private var excludeFolderChatsFromAll: Bool = false
+
     var body: some View {
         Group {
             if let viewModel {
@@ -31,17 +34,34 @@ struct ChatListView: View {
                     updatesService: container.updatesService,
                     onlineStatusService: container.onlineStatusService,
                     currentUserID: container.currentUserID,
-                    localChatRepository: container.localChatRepository
+                    localChatRepository: container.localChatRepository,
+                    chatFolderService: container.chatFolderService
                 )
                 vm.isActiveChatChecker = { [weak coordinator] chatID in
                     coordinator?.selectedChat?.id == chatID
                 }
+                vm.excludeFolderChatsFromAll = excludeFolderChatsFromAll
                 viewModel = vm
                 coordinator.chatListViewModel = vm
-                await container.loadCurrentUser()
-                await vm.loadChats()
+
+                // Параллельно: текущий пользователь (для онлайн-статусов),
+                // папки (для табов сверху), чаты (для основного списка).
+                // Папки маленькие — табы появляются почти мгновенно из кеша,
+                // не дожидаясь сетевой подгрузки чатов.
+                async let userLoad: Void = container.loadCurrentUser()
+                async let foldersLoad: Void = vm.loadFolders()
+                async let chatsLoad: Void = vm.loadChats()
+                _ = await (userLoad, foldersLoad, chatsLoad)
+
+                // Первая загрузка завершена (даже при ошибке — иначе сплеш повиснет;
+                // ошибка отобразится плашкой в списке чатов).
+                coordinator.isInitialChatsLoaded = true
+
                 await vm.startListeningForUpdates()
             }
+        }
+        .onChange(of: excludeFolderChatsFromAll) { _, newValue in
+            viewModel?.excludeFolderChatsFromAll = newValue
         }
         .onDisappear {
             viewModel?.stopListeningForUpdates()
@@ -50,10 +70,18 @@ struct ChatListView: View {
 
     @ViewBuilder
     private func chatListContent(viewModel: ChatListViewModel) -> some View {
-        ZStack {
-            // Основной список
+        VStack(spacing: 0) {
+            // Папки сверху — всегда видны, ничем не перекрываются.
+            ChatFolderTabsBar(
+                folders: viewModel.folders,
+                selectedFolderID: viewModel.selectedFolderID,
+                allChatsUnread: viewModel.unreadCount(for: nil),
+                unreadByFolder: { viewModel.unreadCount(for: $0) },
+                compact: compactFolders,
+                onSelect: { viewModel.selectFolder($0) }
+            )
+
             List {
-                // Search results section
                 if !viewModel.searchResults.isEmpty {
                     Section("Пользователи") {
                         ForEach(viewModel.searchResults) { user in
@@ -72,58 +100,60 @@ struct ChatListView: View {
                     }
                 }
 
-                // Chats section (без заголовка)
-                ForEach(viewModel.chats) { chat in
-                    ChatRowView(
-                        chat: chat,
-                        currentUserID: container.currentUserID,
-                        onlineStatusService: container.onlineStatusService
-                    )
-                    .contentShape(Rectangle()) // Весь ряд кликабельный
-                    .onTapGesture {
-                        coordinator.openChat(chat)
-                        viewModel.markChatAsReadLocally(chatID: chat.id)
+                if viewModel.isLoading && viewModel.chats.isEmpty {
+                    ForEach(0..<5, id: \.self) { _ in
+                        ChatRowPlaceholderView()
+                    }
+                } else {
+                    ForEach(viewModel.chats) { chat in
+                        ChatRowView(
+                            chat: chat,
+                            currentUserID: container.currentUserID,
+                            onlineStatusService: container.onlineStatusService
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            coordinator.openChat(chat)
+                            viewModel.markChatAsReadLocally(chatID: chat.id)
+                        }
                     }
                 }
             }
             .listStyle(.plain)
+            .overlay {
+                if !viewModel.isLoading && viewModel.chats.isEmpty
+                    && viewModel.searchText.isEmpty && viewModel.errorMessage == nil {
+                    ContentUnavailableView(
+                        "Нет чатов",
+                        systemImage: "message",
+                        description: Text("Начните диалог или создайте группу")
+                    )
+                } else if let error = viewModel.errorMessage, viewModel.chats.isEmpty {
+                    VStack(spacing: Theme.Spacing.md) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
 
-            // Крутеляшка загрузки (только при самой первой загрузке)
-            if viewModel.isLoading && viewModel.chats.isEmpty {
-                Color(uiColor: .systemBackground)
-                    .ignoresSafeArea()
-                ProgressView()
-                    .scaleEffect(1.2)
-            }
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
 
-            // "Нет чатов" - только когда не грузим и список действительно пустой
-            if !viewModel.isLoading && viewModel.chats.isEmpty && viewModel.searchText.isEmpty && viewModel.errorMessage == nil {
-                ContentUnavailableView(
-                    "Нет чатов",
-                    systemImage: "message",
-                    description: Text("Начните диалог или создайте группу")
-                )
-            }
-
-            // Ошибка
-            if let error = viewModel.errorMessage, viewModel.chats.isEmpty {
-                VStack(spacing: Theme.Spacing.md) {
-                    Image(systemName: "wifi.exclamationmark")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-
-                    Text(error)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-
-                    Button("Повторить") {
-                        Task { await viewModel.refresh() }
+                        Button("Повторить") {
+                            Task { await viewModel.refresh() }
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
+                    .padding()
                 }
-                .padding()
-                .background(Color(uiColor: .systemBackground))
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if viewModel.isRefreshing {
+                    RefreshingIndicatorView()
+                }
+            }
+            .refreshable {
+                await viewModel.refresh()
             }
         }
         .searchable(
@@ -153,14 +183,6 @@ struct ChatListView: View {
                     Image(systemName: "square.and.pencil")
                 }
             }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if viewModel.isRefreshing {
-                RefreshingIndicatorView()
-            }
-        }
-        .refreshable {
-            await viewModel.refresh()
         }
     }
 }

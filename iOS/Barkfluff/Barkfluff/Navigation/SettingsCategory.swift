@@ -16,6 +16,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case security
     case privacy
     case personalization
+    case chatFolders
     case cloud
     case cache
     case activeSessions
@@ -33,6 +34,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .security: "Безопасность"
         case .privacy: "Приватность"
         case .personalization: "Персонализация"
+        case .chatFolders: "Папки чатов"
         case .cloud: "Облако"
         case .cache: "Кеш"
         case .activeSessions: "Активные сессии"
@@ -50,6 +52,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .security: "lock.fill"
         case .privacy: "eye.slash.fill"
         case .personalization: "paintbrush.fill"
+        case .chatFolders: "folder.fill"
         case .cloud: "cloud.fill"
         case .cache: "internaldrive.fill"
         case .activeSessions: "laptopcomputer.and.iphone"
@@ -67,6 +70,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .security: .green
         case .privacy: .cyan
         case .personalization: .pink
+        case .chatFolders: .brown
         case .cloud: .indigo
         case .cache: .purple
         case .activeSessions: .orange

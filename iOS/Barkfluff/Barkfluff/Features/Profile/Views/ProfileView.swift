@@ -30,6 +30,10 @@ struct ProfileView: View {
                 categoryLink(.personalization)
             }
 
+            Section("Чаты") {
+                categoryLink(.chatFolders)
+            }
+
             Section("Приложение") {
                 categoryLink(.cloud)
                 categoryLink(.cache)

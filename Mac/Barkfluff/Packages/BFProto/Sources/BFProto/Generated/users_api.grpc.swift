@@ -280,6 +280,162 @@ public enum Barkfluff_Users_UsersApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "GetChatFolders" metadata.
+        public enum GetChatFolders: Sendable {
+            /// Request type for "GetChatFolders".
+            public typealias Input = Barkfluff_Users_GetChatFoldersRequest
+            /// Response type for "GetChatFolders".
+            public typealias Output = Barkfluff_Users_GetChatFoldersResponse
+            /// Descriptor for "GetChatFolders".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "GetChatFolders",
+                type: .unary
+            )
+        }
+        /// Namespace for "CreateChatFolder" metadata.
+        public enum CreateChatFolder: Sendable {
+            /// Request type for "CreateChatFolder".
+            public typealias Input = Barkfluff_Users_CreateChatFolderRequest
+            /// Response type for "CreateChatFolder".
+            public typealias Output = Barkfluff_Users_CreateChatFolderResponse
+            /// Descriptor for "CreateChatFolder".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "CreateChatFolder",
+                type: .unary
+            )
+        }
+        /// Namespace for "UpdateChatFolder" metadata.
+        public enum UpdateChatFolder: Sendable {
+            /// Request type for "UpdateChatFolder".
+            public typealias Input = Barkfluff_Users_UpdateChatFolderRequest
+            /// Response type for "UpdateChatFolder".
+            public typealias Output = Barkfluff_Users_UpdateChatFolderResponse
+            /// Descriptor for "UpdateChatFolder".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "UpdateChatFolder",
+                type: .unary
+            )
+        }
+        /// Namespace for "DeleteChatFolder" metadata.
+        public enum DeleteChatFolder: Sendable {
+            /// Request type for "DeleteChatFolder".
+            public typealias Input = Barkfluff_Users_DeleteChatFolderRequest
+            /// Response type for "DeleteChatFolder".
+            public typealias Output = Barkfluff_Users_DeleteChatFolderResponse
+            /// Descriptor for "DeleteChatFolder".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "DeleteChatFolder",
+                type: .unary
+            )
+        }
+        /// Namespace for "AddChatToFolder" metadata.
+        public enum AddChatToFolder: Sendable {
+            /// Request type for "AddChatToFolder".
+            public typealias Input = Barkfluff_Users_AddChatToFolderRequest
+            /// Response type for "AddChatToFolder".
+            public typealias Output = Barkfluff_Users_AddChatToFolderResponse
+            /// Descriptor for "AddChatToFolder".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "AddChatToFolder",
+                type: .unary
+            )
+        }
+        /// Namespace for "RemoveChatFromFolder" metadata.
+        public enum RemoveChatFromFolder: Sendable {
+            /// Request type for "RemoveChatFromFolder".
+            public typealias Input = Barkfluff_Users_RemoveChatFromFolderRequest
+            /// Response type for "RemoveChatFromFolder".
+            public typealias Output = Barkfluff_Users_RemoveChatFromFolderResponse
+            /// Descriptor for "RemoveChatFromFolder".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "RemoveChatFromFolder",
+                type: .unary
+            )
+        }
+        /// Namespace for "ReorderChatFolders" metadata.
+        public enum ReorderChatFolders: Sendable {
+            /// Request type for "ReorderChatFolders".
+            public typealias Input = Barkfluff_Users_ReorderChatFoldersRequest
+            /// Response type for "ReorderChatFolders".
+            public typealias Output = Barkfluff_Users_ReorderChatFoldersResponse
+            /// Descriptor for "ReorderChatFolders".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "ReorderChatFolders",
+                type: .unary
+            )
+        }
+        /// Namespace for "RegisterPrekeyBundle" metadata.
+        public enum RegisterPrekeyBundle: Sendable {
+            /// Request type for "RegisterPrekeyBundle".
+            public typealias Input = Barkfluff_Users_RegisterPrekeyBundleRequest
+            /// Response type for "RegisterPrekeyBundle".
+            public typealias Output = Barkfluff_Users_RegisterPrekeyBundleResponse
+            /// Descriptor for "RegisterPrekeyBundle".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "RegisterPrekeyBundle",
+                type: .unary
+            )
+        }
+        /// Namespace for "FetchPrekeyBundle" metadata.
+        public enum FetchPrekeyBundle: Sendable {
+            /// Request type for "FetchPrekeyBundle".
+            public typealias Input = Barkfluff_Users_FetchPrekeyBundleRequest
+            /// Response type for "FetchPrekeyBundle".
+            public typealias Output = Barkfluff_Users_FetchPrekeyBundleResponse
+            /// Descriptor for "FetchPrekeyBundle".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "FetchPrekeyBundle",
+                type: .unary
+            )
+        }
+        /// Namespace for "ListPeerDevices" metadata.
+        public enum ListPeerDevices: Sendable {
+            /// Request type for "ListPeerDevices".
+            public typealias Input = Barkfluff_Users_ListPeerDevicesRequest
+            /// Response type for "ListPeerDevices".
+            public typealias Output = Barkfluff_Users_ListPeerDevicesResponse
+            /// Descriptor for "ListPeerDevices".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "ListPeerDevices",
+                type: .unary
+            )
+        }
+        /// Namespace for "ReplenishOneTimePrekeys" metadata.
+        public enum ReplenishOneTimePrekeys: Sendable {
+            /// Request type for "ReplenishOneTimePrekeys".
+            public typealias Input = Barkfluff_Users_ReplenishOneTimePrekeysRequest
+            /// Response type for "ReplenishOneTimePrekeys".
+            public typealias Output = Barkfluff_Users_ReplenishOneTimePrekeysResponse
+            /// Descriptor for "ReplenishOneTimePrekeys".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "ReplenishOneTimePrekeys",
+                type: .unary
+            )
+        }
+        /// Namespace for "RotateSignedPrekey" metadata.
+        public enum RotateSignedPrekey: Sendable {
+            /// Request type for "RotateSignedPrekey".
+            public typealias Input = Barkfluff_Users_RotateSignedPrekeyRequest
+            /// Response type for "RotateSignedPrekey".
+            public typealias Output = Barkfluff_Users_RotateSignedPrekeyResponse
+            /// Descriptor for "RotateSignedPrekey".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "RotateSignedPrekey",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.users.UsersApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             GetUser.descriptor,
@@ -301,7 +457,19 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             GetPersonalization.descriptor,
             UpdatePersonalization.descriptor,
             GetProfilePoster.descriptor,
-            SetProfilePoster.descriptor
+            SetProfilePoster.descriptor,
+            GetChatFolders.descriptor,
+            CreateChatFolder.descriptor,
+            UpdateChatFolder.descriptor,
+            DeleteChatFolder.descriptor,
+            AddChatToFolder.descriptor,
+            RemoveChatFromFolder.descriptor,
+            ReorderChatFolders.descriptor,
+            RegisterPrekeyBundle.descriptor,
+            FetchPrekeyBundle.descriptor,
+            ListPeerDevices.descriptor,
+            ReplenishOneTimePrekeys.descriptor,
+            RotateSignedPrekey.descriptor
         ]
     }
 }
@@ -779,6 +947,282 @@ extension Barkfluff_Users_UsersApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetProfilePosterResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePosterResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetChatFolders" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить папки чатов текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetChatFoldersRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetChatFoldersRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetChatFoldersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getChatFolders<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetChatFoldersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetChatFoldersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetChatFoldersResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetChatFoldersResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CreateChatFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Создать новую папку чатов
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_CreateChatFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_CreateChatFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_CreateChatFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func createChatFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_CreateChatFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_CreateChatFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_CreateChatFolderResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_CreateChatFolderResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateChatFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить папку чатов (частичное обновление)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdateChatFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdateChatFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdateChatFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateChatFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdateChatFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdateChatFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdateChatFolderResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateChatFolderResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DeleteChatFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить папку чатов
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_DeleteChatFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_DeleteChatFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_DeleteChatFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func deleteChatFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_DeleteChatFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_DeleteChatFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_DeleteChatFolderResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_DeleteChatFolderResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AddChatToFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Добавить чат в папку
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_AddChatToFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_AddChatToFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_AddChatToFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func addChatToFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_AddChatToFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_AddChatToFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_AddChatToFolderResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_AddChatToFolderResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RemoveChatFromFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить чат из папки
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_RemoveChatFromFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_RemoveChatFromFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_RemoveChatFromFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func removeChatFromFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_RemoveChatFromFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_RemoveChatFromFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RemoveChatFromFolderResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RemoveChatFromFolderResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ReorderChatFolders" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Изменить порядок папок
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_ReorderChatFoldersRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_ReorderChatFoldersRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_ReorderChatFoldersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func reorderChatFolders<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_ReorderChatFoldersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_ReorderChatFoldersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_ReorderChatFoldersResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReorderChatFoldersResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RegisterPrekeyBundle" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Зарегистрировать prekey-bundle текущего устройства (вызывается один раз после генерации ключей).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_RegisterPrekeyBundleRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_RegisterPrekeyBundleRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_RegisterPrekeyBundleResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func registerPrekeyBundle<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_RegisterPrekeyBundleRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_RegisterPrekeyBundleRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RegisterPrekeyBundleResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RegisterPrekeyBundleResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "FetchPrekeyBundle" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить prekey-bundle устройства собеседника. Расходует одну one-time prekey (если осталась).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_FetchPrekeyBundleRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_FetchPrekeyBundleRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_FetchPrekeyBundleResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func fetchPrekeyBundle<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_FetchPrekeyBundleRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_FetchPrekeyBundleRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_FetchPrekeyBundleResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_FetchPrekeyBundleResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListPeerDevices" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Список устройств пользователя c флагом наличия bundle (для выбора целевого устройства секретного чата).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_ListPeerDevicesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_ListPeerDevicesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_ListPeerDevicesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listPeerDevices<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_ListPeerDevicesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_ListPeerDevicesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_ListPeerDevicesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ListPeerDevicesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ReplenishOneTimePrekeys" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Пополнить пул one-time prekeys текущего устройства.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_ReplenishOneTimePrekeysRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_ReplenishOneTimePrekeysRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_ReplenishOneTimePrekeysResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func replenishOneTimePrekeys<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_ReplenishOneTimePrekeysRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_ReplenishOneTimePrekeysRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_ReplenishOneTimePrekeysResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReplenishOneTimePrekeysResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RotateSignedPrekey" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Сменить signed prekey текущего устройства.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_RotateSignedPrekeyRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_RotateSignedPrekeyRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_RotateSignedPrekeyResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func rotateSignedPrekey<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_RotateSignedPrekeyRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_RotateSignedPrekeyRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RotateSignedPrekeyResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RotateSignedPrekeyResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -1477,6 +1921,414 @@ extension Barkfluff_Users_UsersApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "GetChatFolders" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить папки чатов текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetChatFoldersRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetChatFoldersRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetChatFoldersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getChatFolders<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetChatFoldersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetChatFoldersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetChatFoldersResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetChatFoldersResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.GetChatFolders.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CreateChatFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Создать новую папку чатов
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_CreateChatFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_CreateChatFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_CreateChatFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func createChatFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_CreateChatFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_CreateChatFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_CreateChatFolderResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_CreateChatFolderResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.CreateChatFolder.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateChatFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить папку чатов (частичное обновление)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdateChatFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdateChatFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdateChatFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func updateChatFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdateChatFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdateChatFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdateChatFolderResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateChatFolderResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.UpdateChatFolder.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DeleteChatFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить папку чатов
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_DeleteChatFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_DeleteChatFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_DeleteChatFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func deleteChatFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_DeleteChatFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_DeleteChatFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_DeleteChatFolderResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_DeleteChatFolderResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.DeleteChatFolder.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AddChatToFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Добавить чат в папку
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_AddChatToFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_AddChatToFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_AddChatToFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func addChatToFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_AddChatToFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_AddChatToFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_AddChatToFolderResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_AddChatToFolderResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.AddChatToFolder.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RemoveChatFromFolder" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить чат из папки
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_RemoveChatFromFolderRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_RemoveChatFromFolderRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_RemoveChatFromFolderResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func removeChatFromFolder<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_RemoveChatFromFolderRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_RemoveChatFromFolderRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RemoveChatFromFolderResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RemoveChatFromFolderResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.RemoveChatFromFolder.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ReorderChatFolders" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Изменить порядок папок
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_ReorderChatFoldersRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_ReorderChatFoldersRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_ReorderChatFoldersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func reorderChatFolders<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_ReorderChatFoldersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_ReorderChatFoldersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_ReorderChatFoldersResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReorderChatFoldersResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.ReorderChatFolders.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RegisterPrekeyBundle" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Зарегистрировать prekey-bundle текущего устройства (вызывается один раз после генерации ключей).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_RegisterPrekeyBundleRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_RegisterPrekeyBundleRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_RegisterPrekeyBundleResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func registerPrekeyBundle<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_RegisterPrekeyBundleRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_RegisterPrekeyBundleRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RegisterPrekeyBundleResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RegisterPrekeyBundleResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.RegisterPrekeyBundle.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "FetchPrekeyBundle" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить prekey-bundle устройства собеседника. Расходует одну one-time prekey (если осталась).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_FetchPrekeyBundleRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_FetchPrekeyBundleRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_FetchPrekeyBundleResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func fetchPrekeyBundle<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_FetchPrekeyBundleRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_FetchPrekeyBundleRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_FetchPrekeyBundleResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_FetchPrekeyBundleResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.FetchPrekeyBundle.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListPeerDevices" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Список устройств пользователя c флагом наличия bundle (для выбора целевого устройства секретного чата).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_ListPeerDevicesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_ListPeerDevicesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_ListPeerDevicesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func listPeerDevices<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_ListPeerDevicesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_ListPeerDevicesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_ListPeerDevicesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ListPeerDevicesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.ListPeerDevices.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ReplenishOneTimePrekeys" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Пополнить пул one-time prekeys текущего устройства.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_ReplenishOneTimePrekeysRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_ReplenishOneTimePrekeysRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_ReplenishOneTimePrekeysResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func replenishOneTimePrekeys<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_ReplenishOneTimePrekeysRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_ReplenishOneTimePrekeysRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_ReplenishOneTimePrekeysResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReplenishOneTimePrekeysResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.ReplenishOneTimePrekeys.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RotateSignedPrekey" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Сменить signed prekey текущего устройства.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_RotateSignedPrekeyRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_RotateSignedPrekeyRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_RotateSignedPrekeyResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func rotateSignedPrekey<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_RotateSignedPrekeyRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_RotateSignedPrekeyRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RotateSignedPrekeyResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RotateSignedPrekeyResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.RotateSignedPrekey.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -2058,6 +2910,354 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_SetProfilePosterRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_SetProfilePosterResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetChatFolders" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить папки чатов текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_GetChatFoldersRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getChatFolders<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_GetChatFoldersRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetChatFoldersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getChatFolders(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetChatFoldersRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetChatFoldersResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateChatFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Создать новую папку чатов
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_CreateChatFolderRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createChatFolder<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_CreateChatFolderRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_CreateChatFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.createChatFolder(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_CreateChatFolderRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_CreateChatFolderResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateChatFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить папку чатов (частичное обновление)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_UpdateChatFolderRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateChatFolder<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_UpdateChatFolderRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateChatFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateChatFolder(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_UpdateChatFolderRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_UpdateChatFolderResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteChatFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить папку чатов
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_DeleteChatFolderRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteChatFolder<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_DeleteChatFolderRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_DeleteChatFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deleteChatFolder(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_DeleteChatFolderRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_DeleteChatFolderResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AddChatToFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Добавить чат в папку
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_AddChatToFolderRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func addChatToFolder<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_AddChatToFolderRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_AddChatToFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.addChatToFolder(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_AddChatToFolderRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_AddChatToFolderResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RemoveChatFromFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить чат из папки
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_RemoveChatFromFolderRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func removeChatFromFolder<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_RemoveChatFromFolderRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RemoveChatFromFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.removeChatFromFolder(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_RemoveChatFromFolderRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_RemoveChatFromFolderResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ReorderChatFolders" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Изменить порядок папок
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_ReorderChatFoldersRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func reorderChatFolders<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_ReorderChatFoldersRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReorderChatFoldersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.reorderChatFolders(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_ReorderChatFoldersRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_ReorderChatFoldersResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RegisterPrekeyBundle" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Зарегистрировать prekey-bundle текущего устройства (вызывается один раз после генерации ключей).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_RegisterPrekeyBundleRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func registerPrekeyBundle<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_RegisterPrekeyBundleRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RegisterPrekeyBundleResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.registerPrekeyBundle(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_RegisterPrekeyBundleRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_RegisterPrekeyBundleResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "FetchPrekeyBundle" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить prekey-bundle устройства собеседника. Расходует одну one-time prekey (если осталась).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_FetchPrekeyBundleRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func fetchPrekeyBundle<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_FetchPrekeyBundleRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_FetchPrekeyBundleResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.fetchPrekeyBundle(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_FetchPrekeyBundleRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_FetchPrekeyBundleResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListPeerDevices" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Список устройств пользователя c флагом наличия bundle (для выбора целевого устройства секретного чата).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_ListPeerDevicesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listPeerDevices<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_ListPeerDevicesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ListPeerDevicesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listPeerDevices(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_ListPeerDevicesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_ListPeerDevicesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ReplenishOneTimePrekeys" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Пополнить пул one-time prekeys текущего устройства.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_ReplenishOneTimePrekeysRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func replenishOneTimePrekeys<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_ReplenishOneTimePrekeysRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReplenishOneTimePrekeysResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.replenishOneTimePrekeys(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_ReplenishOneTimePrekeysRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_ReplenishOneTimePrekeysResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RotateSignedPrekey" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Сменить signed prekey текущего устройства.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_RotateSignedPrekeyRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func rotateSignedPrekey<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_RotateSignedPrekeyRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RotateSignedPrekeyResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.rotateSignedPrekey(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_RotateSignedPrekeyRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_RotateSignedPrekeyResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -2721,6 +3921,402 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.setProfilePoster(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetChatFolders" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить папки чатов текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getChatFolders<Result>(
+        _ message: Barkfluff_Users_GetChatFoldersRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetChatFoldersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_GetChatFoldersRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getChatFolders(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateChatFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Создать новую папку чатов
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createChatFolder<Result>(
+        _ message: Barkfluff_Users_CreateChatFolderRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_CreateChatFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_CreateChatFolderRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.createChatFolder(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateChatFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить папку чатов (частичное обновление)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateChatFolder<Result>(
+        _ message: Barkfluff_Users_UpdateChatFolderRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateChatFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_UpdateChatFolderRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateChatFolder(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteChatFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить папку чатов
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteChatFolder<Result>(
+        _ message: Barkfluff_Users_DeleteChatFolderRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_DeleteChatFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_DeleteChatFolderRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deleteChatFolder(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AddChatToFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Добавить чат в папку
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func addChatToFolder<Result>(
+        _ message: Barkfluff_Users_AddChatToFolderRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_AddChatToFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_AddChatToFolderRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.addChatToFolder(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RemoveChatFromFolder" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить чат из папки
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func removeChatFromFolder<Result>(
+        _ message: Barkfluff_Users_RemoveChatFromFolderRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RemoveChatFromFolderResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_RemoveChatFromFolderRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.removeChatFromFolder(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ReorderChatFolders" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Изменить порядок папок
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func reorderChatFolders<Result>(
+        _ message: Barkfluff_Users_ReorderChatFoldersRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReorderChatFoldersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_ReorderChatFoldersRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.reorderChatFolders(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RegisterPrekeyBundle" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Зарегистрировать prekey-bundle текущего устройства (вызывается один раз после генерации ключей).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func registerPrekeyBundle<Result>(
+        _ message: Barkfluff_Users_RegisterPrekeyBundleRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RegisterPrekeyBundleResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_RegisterPrekeyBundleRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.registerPrekeyBundle(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "FetchPrekeyBundle" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить prekey-bundle устройства собеседника. Расходует одну one-time prekey (если осталась).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func fetchPrekeyBundle<Result>(
+        _ message: Barkfluff_Users_FetchPrekeyBundleRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_FetchPrekeyBundleResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_FetchPrekeyBundleRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.fetchPrekeyBundle(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListPeerDevices" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Список устройств пользователя c флагом наличия bundle (для выбора целевого устройства секретного чата).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listPeerDevices<Result>(
+        _ message: Barkfluff_Users_ListPeerDevicesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ListPeerDevicesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_ListPeerDevicesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listPeerDevices(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ReplenishOneTimePrekeys" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Пополнить пул one-time prekeys текущего устройства.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func replenishOneTimePrekeys<Result>(
+        _ message: Barkfluff_Users_ReplenishOneTimePrekeysRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_ReplenishOneTimePrekeysResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_ReplenishOneTimePrekeysRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.replenishOneTimePrekeys(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RotateSignedPrekey" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Сменить signed prekey текущего устройства.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func rotateSignedPrekey<Result>(
+        _ message: Barkfluff_Users_RotateSignedPrekeyRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RotateSignedPrekeyResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_RotateSignedPrekeyRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.rotateSignedPrekey(
             request: request,
             options: options,
             onResponse: handleResponse

@@ -45,6 +45,14 @@ struct MessageBubbleView: View {
     static let defaultBubbleCornerRadius: CGFloat = 18
     static let bubbleCornerRadius: CGFloat = 18  // legacy alias
 
+    /// Непрозрачный серый для входящих пузырей. Адаптируется к теме —
+    /// близко к iMessage (светло-серый в light, тёмно-серый в dark).
+    static let incomingBubbleColor: UIColor = UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark
+            ? UIColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1.0)
+            : UIColor(red: 229/255, green: 229/255, blue: 234/255, alpha: 1.0)
+    }
+
     /// Текущий радиус из настроек.
     private var bubbleCornerRadius: CGFloat {
         CGFloat(container.personalizationSettings.bubbleCornerRadius)
@@ -278,7 +286,7 @@ struct MessageBubbleView: View {
             .padding(.vertical, verticalPadding)
             .background(
                 MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius)
-                    .fill(Color(uiColor: .tertiarySystemFill))
+                    .fill(Color(uiColor: Self.incomingBubbleColor))
             )
             .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius))
             .padding(.leading, showTail ? 6 : 0)

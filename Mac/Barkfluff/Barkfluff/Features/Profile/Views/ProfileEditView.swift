@@ -186,6 +186,23 @@ struct ProfileEditView: View {
                     .background(.ultraThinMaterial)
             }
         }
+        .sheet(isPresented: $viewModel.showCropper) {
+            if let pendingImage = viewModel.pendingAvatarImage {
+                ImageCropperView(
+                    image: pendingImage,
+                    aspectRatio: 1,
+                    outputWidth: 1024,
+                    onCancel: {
+                        viewModel.showCropper = false
+                        viewModel.cancelAvatarCropping()
+                    },
+                    onCrop: { cropped in
+                        viewModel.showCropper = false
+                        Task { await viewModel.uploadCropped(cropped) }
+                    }
+                )
+            }
+        }
         .alert("Ошибка", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) { }
         } message: {

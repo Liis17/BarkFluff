@@ -98,8 +98,10 @@ struct AvatarStepView: View {
         }
         .fullScreenCover(isPresented: $showCropper) {
             if let pendingImage {
-                SquareImageCropperView(
+                ImageCropperView(
                     image: pendingImage,
+                    aspectRatio: 1,
+                    outputWidth: 1024,
                     onCancel: {
                         showCropper = false
                         self.pendingImage = nil

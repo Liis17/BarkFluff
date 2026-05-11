@@ -336,6 +336,25 @@ UI настроек — `Features/Settings/Views/NotificationsSettingsView.swift
 
 Контракт `UpdatePersonalization` затирает обе стороны (`profilePosterFileID` + `chatBackgroundFileIds`), поэтому `PersonalizationSettingsViewModel` хранит текущий `posterFileID` и при апдейте списка фонов передаёт его без изменений — иначе сервер обнулит постер. Фоны заливаются как `UploadFileType.messageAttachmentImage` (паритет с Android), постер — `UploadFileType.userProfilePoster`.
 
+Постер перед заливкой проходит через `ImageCropperView` (см. раздел [[Клиенты/macOS#Кропер изображений — ImageCropperView]]): `fileImporter` → `NSImage(data:)` → `pendingPosterImage` + `showPosterCropper = true` → после `onCrop` — `uploadPoster(_ image: NSImage)` → `jpegData(0.85)` → `fileService.uploadFile(.userProfilePoster)`. Фоны кропом не идут.
+
+## Кропер изображений — `ImageCropperView`
+
+`DesignSystem/Components/ImageCropperView.swift` — общий SwiftUI-кропер для аватара (1:1, output 1024×1024) и постера (3:1, output 1500×500). Жесты — `MagnifyGesture` (pinch на трекпаде) + `DragGesture` (pan), двойной клик — toggle zoom. Минимальный масштаб подбирается так, что картинка всегда покрывает окно кропа по обеим осям, max — `minScale * 5`. Offset после каждого жеста клампится к `(imageSize * scale − cropSize) / 2`, поэтому край картинки не может выехать внутрь окна кропа.
+
+Параметры: `image: NSImage`, `aspectRatio: CGFloat` (1 / 3), `outputWidth: CGFloat`, `onCancel`, `onCrop`. Презентация — `.sheet(isPresented:)`. Тулбар с «Отмена» / «Готово» (cancel/default action keyboard shortcuts).
+
+На «Готово» считается `srcRect` в координатах logical NSImage points (`imgW/2 − offset.x/scale − cropW/(2*scale)`, аналогично по Y, `srcSize = cropSize / scale`), и через `NSImage.draw(in:from:operation:.copy)` рендерится в новый `NSImage` целевого размера с `imageInterpolation = .high`.
+
+Точки вызова:
+- `Features/Auth/Views/Steps/AvatarStepView.swift` — регистрация, 1:1.
+- `Features/Profile/Views/ProfileEditView.swift` — настройки профиля, 1:1, биндится к `ProfileEditViewModel.showCropper`.
+- `Features/Settings/Personalization/Components/PosterPreviewCard.swift` — персонализация, 3:1, биндится к `PersonalizationSettingsViewModel.showPosterCropper`.
+
+Общий flow: `fileImporter` → `Data(contentsOf:)` → `NSImage(data:)` → cropper → `NSImage.jpegData(compressionQuality: 0.85)` → `fileService.uploadFile` → `setProfilePicture` / `setProfilePoster`.
+
+`NSImage.jpegData(compressionQuality:)` живёт в `DesignSystem/Extensions/NSImage+JPEG.swift` (общий для всего таргета — переиспользуется и кропером, и `ConversationViewModel` при отправке изображений-вложений).
+
 Ключевые файлы:
 - UI: `Features/Settings/Personalization/PersonalizationSettingsView.swift` + `Components/{PosterPreviewCard,BubblePreviewView,BackgroundsGrid}.swift`.
 - VM: `Features/Settings/Personalization/PersonalizationSettingsViewModel.swift` (`@MainActor @Observable`).
@@ -355,6 +374,22 @@ UI настроек — `Features/Settings/Views/NotificationsSettingsView.swift
 - Service: `BFCore.UserService.getPrivacySettings()` / `updatePrivacySettings(_:)` — простая делегация в репозиторий, без кеша.
 - VM: `Features/Settings/ViewModels/PrivacySettingsViewModel.swift` (`@MainActor @Observable`). Загрузка в `.task`. Метод `update(_ mutate:)` применяет мутацию к локальной копии, шлёт `updatePrivacySettings`; **на ошибке откатывает локальную копию и показывает `errorMessage`** — UI всегда отражает реальное состояние сервера.
 - UI: `Features/Settings/Views/PrivacySettingsView.swift`. Биндинги через приватные `boolBinding(_:)` / `visibilityBinding(_:)` с `WritableKeyPath` — `set` запускает `Task { await viewModel.update { ... } }`, поэтому каждое переключение Toggle/Picker автосохраняется без отдельной кнопки.
+
+### Папки чатов
+
+Полный паритет с [[Android]]-клиентом (контракт описан в [[Backend/Users-ChatFolders-ClientGuide]]). UI — горизонтальный ряд «чипов» над сайдбаром: первый таб «Все чаты», далее пользовательские папки с бейджем непрочитанных. Раздел `Settings → Папки чатов` управляет порядком (drag-drop) и создаёт/редактирует папки через sheet.
+
+Shared-слой (общий с [[iOS]]):
+- `BFCore.ChatFolder` — доменная модель (`id`, `name`, `icon`, `chatIDs`, `sortOrder`).
+- `BFNetworking.ChatFoldersRepository` — gRPC-репозиторий, 7 методов (`getChatFolders`/`create`/`update`/`delete`/`addChatToFolder`/`removeChatFromFolder`/`reorder`).
+- `BFCore.ChatFolderService` — stale-while-revalidate. Persist через `LocalChatFolderRepository` (GRDB, миграция `v5_chat_folders`).
+
+Mac-специфика:
+- `Features/Settings/Views/ChatFoldersListView.swift` (список с drag-drop), `EditChatFolderView.swift` (sheet — имя, эмодзи-grid, выбор чатов), `FolderChatPickerView.swift`.
+- Категория `.chatFolders` в `Navigation/SettingsCategory.swift`, маршрутизация в `SettingsCategoryView`.
+- `Features/ChatList/Views/FolderTabChip.swift` + `ChatFolderTabsBar` — горизонтальный ряд табов над `ChatListView`.
+- `ChatListViewModel.folders/selectedFolderID/excludeFolderChatsFromAll` + `loadFolders()`, `selectFolder(_:)`, `unreadCount(for:)`. Метод `applyFilter()` учитывает выбранную папку и флаг исключения чатов папок из «Все чаты».
+- Персонализация: два `@AppStorage` ключа `folders.compact` и `folders.excludeFromAll`. Тогглы в `PersonalizationSettingsView`.
 
 ## Code Conventions
 

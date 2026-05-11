@@ -80,6 +80,37 @@ public protocol UsersRepositoryProtocol: Sendable {
     func getUserBadges(userID: Int64) async throws -> [UserBadgeInfo]
 }
 
+// MARK: - Chat Folders
+
+public protocol ChatFoldersRepositoryProtocol: Sendable {
+    /// Получить все папки чатов текущего пользователя (по возрастанию sortOrder).
+    func getChatFolders() async throws -> [ChatFolderInfo]
+
+    /// Создать новую папку (без чатов; добавлять чаты через update).
+    func createChatFolder(name: String, icon: String) async throws -> ChatFolderInfo
+
+    /// Частичное обновление папки. Поля nil не трогаются.
+    /// Передача `chatIDs != nil` заменит список чатов в папке.
+    func updateChatFolder(
+        folderID: String,
+        name: String?,
+        icon: String?,
+        chatIDs: [String]?
+    ) async throws -> ChatFolderInfo
+
+    /// Удалить папку (чаты остаются).
+    func deleteChatFolder(folderID: String) async throws
+
+    /// Добавить чат в папку (идемпотентно).
+    func addChatToFolder(folderID: String, chatID: String) async throws -> ChatFolderInfo
+
+    /// Удалить чат из папки (идемпотентно).
+    func removeChatFromFolder(folderID: String, chatID: String) async throws -> ChatFolderInfo
+
+    /// Установить новый порядок папок.
+    func reorderChatFolders(orders: [(folderID: String, sortOrder: Int32)]) async throws
+}
+
 // MARK: - Messages
 
 public protocol MessagesRepositoryProtocol: Sendable {

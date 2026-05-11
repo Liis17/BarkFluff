@@ -7,14 +7,13 @@
 //
 
 import SwiftUI
+import AppKit
 import BFCore
 import UniformTypeIdentifiers
 
 struct PosterPreviewCard: View {
     @Environment(DependencyContainer.self) private var container
     @Bindable var viewModel: PersonalizationSettingsViewModel
-
-    @State private var showPosterPicker = false
 
     private static let avatarSize: CGFloat = 88
     private static let avatarOverlap: CGFloat = avatarSize / 2
@@ -51,14 +50,16 @@ struct PosterPreviewCard: View {
             .padding(.bottom, Theme.Spacing.md)
 
             Button {
-                showPosterPicker = true
+                print("[BarkFluff] poster button tapped")
+                openPosterPicker()
             } label: {
                 Label(
                     viewModel.isUploadingPoster ? "Загрузка…" : "Установить новый постер",
                     systemImage: "photo.on.rectangle.angled"
                 )
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 8)
             }
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(viewModel.isUploadingPoster)
             .padding(.horizontal, Theme.Spacing.md)
@@ -68,12 +69,44 @@ struct PosterPreviewCard: View {
         // и наследует её стиль (rounded card на ультратонком материале).
         // clipShape оставлен, чтобы постер сверху имел те же углы, что и Section.
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
-        .fileImporter(
-            isPresented: $showPosterPicker,
-            allowedContentTypes: [.image],
-            allowsMultipleSelection: false
-        ) { result in
-            Task { await viewModel.handlePosterSelection(result: result) }
+    }
+
+    /// Открыть NSOpenPanel явно, прочитать выбранное изображение, показать кропер
+    /// в отдельном NSWindow (через `CropperWindowController`) и при успехе — залить
+    /// результат. Полностью обходим SwiftUI `.sheet`/`.fileImporter` — на macOS 26
+    /// внутри Form.grouped Section они ломают hit-testing соседних контролов.
+    private func openPosterPicker() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.image]
+        panel.message = "Выберите изображение для постера"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { @MainActor in
+                presentCropper(for: url)
+            }
+        }
+    }
+
+    @MainActor
+    private func presentCropper(for url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            guard let image = NSImage(data: data) else {
+                viewModel.errorMessage = "Не удалось прочитать изображение"
+                return
+            }
+            CropperWindowController.shared.present(
+                image: image,
+                aspectRatio: 3,
+                outputWidth: 1500
+            ) { cropped in
+                Task { await viewModel.uploadPoster(cropped) }
+            }
+        } catch {
+            viewModel.errorMessage = error.localizedDescription
         }
     }
 
