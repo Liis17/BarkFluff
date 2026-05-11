@@ -119,6 +119,20 @@
             background: #fef2f2;
             border: 1px solid #fecaca;
         }
+
+        .remote-tab {
+            color: #94a3b8;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .remote-tab.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+            background: transparent;
+        }
+        .remote-tab:hover:not(.active) {
+            color: #475569;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800 font-sans antialiased">
@@ -301,6 +315,81 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- REMOTE SERVERS -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mt-6">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="font-bold text-lg text-slate-700 flex items-center gap-2">
+                            <i data-lucide="globe" class="w-5 h-5 text-indigo-400"></i>
+                            Удалённые серверы
+                        </h3>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex gap-1 mb-5 border-b border-slate-100">
+                        <button id="tab-navigator"
+                            onclick="switchRemoteTab('navigator')"
+                            class="remote-tab px-4 py-2 text-sm font-medium rounded-t-lg transition-colors">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                                Navigator Server
+                            </span>
+                        </button>
+                        <button id="tab-msk"
+                            onclick="switchRemoteTab('msk')"
+                            class="remote-tab px-4 py-2 text-sm font-medium rounded-t-lg transition-colors">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="building-2" class="w-4 h-4"></i>
+                                MSK Server
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Tables per server -->
+                    <div id="remote-navigator" class="remote-panel hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-xs text-slate-400 border-b border-slate-100">
+                                        <th class="py-3 font-semibold uppercase">Сервис</th>
+                                        <th class="py-3 font-semibold uppercase">Статус</th>
+                                        <th class="py-3 font-semibold uppercase text-center">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="remote-navigator-body" class="text-sm">
+                                    <tr><td colspan="3" class="py-6 text-center text-slate-400">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+                                            Загрузка...
+                                        </div>
+                                    </td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="remote-msk" class="remote-panel hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-xs text-slate-400 border-b border-slate-100">
+                                        <th class="py-3 font-semibold uppercase">Сервис</th>
+                                        <th class="py-3 font-semibold uppercase">Статус</th>
+                                        <th class="py-3 font-semibold uppercase text-center">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="remote-msk-body" class="text-sm">
+                                    <tr><td colspan="3" class="py-6 text-center text-slate-400">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+                                            Загрузка...
+                                        </div>
+                                    </td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -951,14 +1040,181 @@
             await runSequentialProcessing('update');
         }
 
+        // ---- Удалённые серверы ----
+
+        const remoteServers = [
+            {
+                id: 'navigator',
+                label: 'Navigator Server',
+                services: [
+                    { name: 'navigator-dev', label: 'Navigator' }
+                ]
+            },
+            {
+                id: 'msk',
+                label: 'MSK Server',
+                services: [
+                    { name: 'clientstorage-dev', label: 'ClientStorage' },
+                    { name: 'webserver-dev', label: 'WebServer' },
+                    { name: 'nginx', label: 'Nginx' }
+                ]
+            }
+        ];
+
+        let activeRemoteTab = 'navigator';
+
+        function switchRemoteTab(serverId) {
+            activeRemoteTab = serverId;
+            document.querySelectorAll('.remote-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + serverId).classList.add('active');
+            document.querySelectorAll('.remote-panel').forEach(panel => panel.classList.add('hidden'));
+            document.getElementById('remote-' + serverId).classList.remove('hidden');
+            loadRemoteContainers(serverId);
+        }
+
+        async function loadRemoteContainers(serverId) {
+            const tbody = document.getElementById('remote-' + serverId + '-body');
+            try {
+                const response = await fetch('/api/remote/' + serverId + '/containers');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                renderRemoteTable(serverId, data);
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="py-6 text-center text-red-400">
+                            <div class="flex flex-col items-center gap-2">
+                                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                                Ошибка загрузки: ${escapeHtml(error.message)}
+                            </div>
+                        </td>
+                    </tr>`;
+                lucide.createIcons();
+            }
+        }
+
+        function renderRemoteTable(serverId, data) {
+            const tbody = document.getElementById('remote-' + serverId + '-body');
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-slate-400">Нет данных</td></tr>`;
+                lucide.createIcons();
+                return;
+            }
+
+            const dockerStateMap = {
+                'running':    { cls: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  label: 'Запущен' },
+                'restarting': { cls: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500',   label: 'Перезапуск' },
+                'paused':     { cls: 'bg-yellow-100 text-yellow-700',dot: 'bg-yellow-500', label: 'Приостановлен' },
+                'exited':     { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
+                'dead':       { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
+                'not_found':  { cls: 'bg-slate-100 text-slate-500',  dot: 'bg-slate-300',  label: 'Не найден' },
+                'unconfigured':{ cls: 'bg-slate-100 text-slate-400', dot: 'bg-slate-200',  label: 'Не настроен' },
+                'error':      { cls: 'bg-orange-100 text-orange-700',dot: 'bg-orange-400', label: 'Ошибка' }
+            };
+
+            const rows = data.map(svc => {
+                const stateInfo = dockerStateMap[svc.state] ||
+                    { cls: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', label: svc.state };
+
+                const badge = `<span class="px-2 py-1 ${stateInfo.cls} text-xs rounded-md font-medium inline-flex items-center gap-1">
+                    <span class="w-2 h-2 ${stateInfo.dot} rounded-full"></span>
+                    ${stateInfo.label}
+                </span>`;
+
+                const isRunning = svc.state === 'running';
+                const startStopIcon = isRunning ? 'square' : 'play';
+                const startStopTitle = isRunning ? 'Остановить' : 'Запустить';
+                const startStopClass = isRunning ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50';
+                const isUnconfigured = svc.state === 'unconfigured';
+
+                return `
+                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
+                        <td class="py-4 font-medium text-slate-700">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="server" class="w-4 h-4 text-indigo-400"></i>
+                                ${escapeHtml(svc.label)}
+                                <span class="text-xs text-slate-400 font-normal">${escapeHtml(svc.serviceName)}</span>
+                            </div>
+                        </td>
+                        <td class="py-4">
+                            ${badge}
+                            ${svc.status && svc.state !== 'unconfigured' && svc.state !== 'not_found' ? `<span class="ml-2 text-xs text-slate-400">${escapeHtml(svc.status)}</span>` : ''}
+                        </td>
+                        <td class="py-4">
+                            <div class="flex items-center justify-center gap-1">
+                                ${isUnconfigured ? '<span class="text-xs text-slate-400">—</span>' : `
+                                <button class="p-2 rounded-lg transition-colors ${startStopClass}"
+                                        title="${startStopTitle}"
+                                        onclick="handleRemoteAction(event, '${serverId}', '${svc.serviceName}', '${isRunning ? 'stop' : 'start'}')">
+                                    <i data-lucide="${startStopIcon}" class="w-4 h-4"></i>
+                                </button>
+                                <button class="p-2 rounded-lg transition-colors text-blue-600 hover:bg-blue-50"
+                                        title="Перезапустить"
+                                        onclick="handleRemoteAction(event, '${serverId}', '${svc.serviceName}', 'restart')">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+                                <button class="p-2 rounded-lg transition-colors text-purple-600 hover:bg-purple-50"
+                                        title="Обновить образ и пересоздать"
+                                        onclick="handleRemoteAction(event, '${serverId}', '${svc.serviceName}', 'pull')">
+                                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                                </button>`}
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            tbody.innerHTML = rows;
+            lucide.createIcons();
+        }
+
+        async function handleRemoteAction(event, serverId, serviceName, action) {
+            event.stopPropagation();
+
+            const actionNames = { start: 'запуска', stop: 'остановки', restart: 'перезапуска', pull: 'обновления' };
+            if (!confirm(`Выполнить действие "${actionNames[action]}" для ${serviceName}?`)) return;
+
+            const button = event.currentTarget;
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
+            lucide.createIcons();
+
+            try {
+                const response = await fetch(`/api/remote/${serverId}/containers/${serviceName}/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('success', result.message);
+                    setTimeout(() => loadRemoteContainers(serverId), 3000);
+                } else {
+                    showNotification('error', result.message || 'Ошибка выполнения действия');
+                }
+            } catch (error) {
+                showNotification('error', 'Ошибка: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                lucide.createIcons();
+            }
+        }
+
+        function initRemoteServers() {
+            switchRemoteTab('navigator');
+        }
+
         // Инициализация
         checkAuth();
         initS3Menu();
         loadServices();
+        initRemoteServers();
 
         // Авто-обновление каждые 30 секунд
         refreshInterval = setInterval(() => {
             loadServices();
+            loadRemoteContainers(activeRemoteTab);
         }, 30000);
     </script>
 </body>

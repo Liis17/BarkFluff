@@ -63,6 +63,10 @@ public class Program
         // Register DockerService as Singleton
         builder.Services.AddSingleton<DockerService>();
 
+        // Register RemoteDockerService as Singleton
+        builder.Services.Configure<RemoteServersSettings>(builder.Configuration.GetSection(RemoteServersSettings.SectionName));
+        builder.Services.AddSingleton<RemoteDockerService>();
+
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
 
@@ -211,6 +215,9 @@ public class Program
 
         // Map S3 Browser Endpoints
         app.MapS3BrowserEndpoints();
+
+        // Map Remote Docker Endpoints
+        app.MapRemoteDockerEndpoints();
 
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
@@ -393,4 +400,19 @@ public class AuthSettings
     public const string SectionName = "Auth";
     public int TokenExpirationDays { get; set; } = 3;
     public int PendingRequestTimeoutMinutes { get; set; } = 10;
+}
+
+public class RemoteServerSettings
+{
+    public string Host { get; set; } = string.Empty;
+    public int Port { get; set; } = 22;
+    public string Username { get; set; } = "root";
+    public string Password { get; set; } = string.Empty;
+}
+
+public class RemoteServersSettings
+{
+    public const string SectionName = "RemoteServers";
+    public RemoteServerSettings Navigator { get; set; } = new();
+    public RemoteServerSettings Msk { get; set; } = new();
 }

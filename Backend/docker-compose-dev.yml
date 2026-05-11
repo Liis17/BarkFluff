@@ -199,6 +199,14 @@ services:
       FilesService__Token: "${FILES_SERVICE_TOKEN}"
       IdentityService__Host: "${IDENTITY_SERVICE_HOST}"
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
+      RemoteServers__Navigator__Host: "${NAVIGATOR_SSH_HOST:-}"
+      RemoteServers__Navigator__Port: "${NAVIGATOR_SSH_PORT:-22}"
+      RemoteServers__Navigator__Username: "${NAVIGATOR_SSH_USER:-root}"
+      RemoteServers__Navigator__Password: "${NAVIGATOR_SSH_PASSWORD:-}"
+      RemoteServers__Msk__Host: "${MSK_SSH_HOST:-}"
+      RemoteServers__Msk__Port: "${MSK_SSH_PORT:-22}"
+      RemoteServers__Msk__Username: "${MSK_SSH_USER:-root}"
+      RemoteServers__Msk__Password: "${MSK_SSH_PASSWORD:-}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db
