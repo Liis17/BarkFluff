@@ -56,7 +56,8 @@ public actor NavigatorRepository: NavigatorRepositoryProtocol {
                 accountsCount: server.accountsCount,
                 host: cleanHost(server.beaconUri.host),
                 port: Int(server.beaconUri.port),
-                serverPublicName: server.serverPublicName
+                serverPublicName: server.serverPublicName,
+                location: server.location
             )
         }
     }

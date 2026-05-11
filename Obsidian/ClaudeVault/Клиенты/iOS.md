@@ -73,6 +73,22 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 
 PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPickerItem?` / `var selectedBackgroundItem: PhotosPickerItem?` с `didSet` → загрузка через `loadTransferable(type: Data.self)` → `fileService.uploadFile(fileType: .userProfilePoster | .messageAttachmentImage)`.
 
+## Logout (паритет с macOS)
+
+Кнопка «Выйти из аккаунта» в `ProfileEditView` → `coordinator.logout(container:)` → `authService.logout()` (gRPC `Identity.Logout`) → `container.reset()`. При ошибке серверного шага — alert «Не удалось разлогиниться» с тремя действиями: «Повторить» / «Выйти всё равно» (через `coordinator.forceLogout(container:)`) / «Отмена».
+
+**Что стирает logout:**
+- Токены (access/refresh) + `device_id` — через `tokenProvider.purgeForLogout()` (общий пакет `BFNetworking`, `UserDefaultsTokenProvider` / `KeychainTokenProvider`).
+- БД (GRDB), все in-memory кеши, файловый кеш картинок, recent stickers, ImagePipeline (Nuke).
+- Локальные UserDefaults-настройки: `AppearanceSettings.reset()` (тема), `PersonalizationSettings.reset()` (cornerRadius/blur/dim/background fileID), `DeveloperSettings.reset()` (showUserIDs/showChatIDs).
+
+**Что сохраняет:**
+- `serverHost`/`serverPort` beacon-сервера. После wipe `AppCoordinator.performLocalWipe` вызывает `serverDiscoveryService.tryReconnect()` чтобы перезаполнить service endpoints в `ConnectionManager`, и уводит на `.authentication` (логин того же сервера), а не на `.serverSelection`.
+
+## Раздел «Тестирование» в Профиле
+
+Профиль → секция «Другое» → «Тестирование» (`SettingsCategory.testing` → `TestingSettingsView`). Содержит два локальных тогла из `DeveloperSettings` (UserDefaults): «Показывать ID пользователей» и «Показывать ID чатов». Эти флаги читает `ProfileInfoSection` в профиле собеседника — соответствующие строки появляются только при включённом тогле; тап по ID копирует значение в `UIPasteboard.general` + haptic. Тап по `@username` в `ProfileHeaderSection` — аналогично копирует.
+
 ## Контекстное меню сообщения (паритет с macOS)
 
 `MessageBubbleView` показывает long-press меню: Изменить / Ответить / Переслать / Копировать текст / Скопировать изображение / Сохранить (изображения) / Сохранить (документы) / Удалить. Все действия проксируются в `ConversationViewModel` (edit/reply/delete/sendSticker), а медиа-действия — в `MediaActions` (UIPasteboard / PHPhotoLibrary / share sheet).
@@ -85,7 +101,7 @@ Barkfluff/
 │   ├── BarkfluffApp.swift
 │   ├── DI/DependencyContainer.swift   # Database, LocalRepos, MediaCacheManager, Stickers, Personalization, Appearance
 │   ├── Models/TokenStorageSettings.swift
-│   └── Settings/{AppearanceSettings, PersonalizationSettings}.swift
+│   └── Settings/{AppearanceSettings, PersonalizationSettings, DeveloperSettings}.swift
 ├── Navigation/
 │   ├── AppCoordinator.swift           # loading → serverSelection → authentication → main; 2 таба + sheets
 │   ├── RootView.swift                 # .preferredColorScheme(appearanceSettings.colorScheme)

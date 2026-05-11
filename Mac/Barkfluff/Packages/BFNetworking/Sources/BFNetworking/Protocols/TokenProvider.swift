@@ -42,6 +42,10 @@ public protocol TokenProvider: Sendable {
     /// Используется при «жёстком» logout, когда не должно остаться ни единого следа от старого инстанса.
     func purgeAll() async
 
+    /// Очистка для обычного logout: токены + device_id, **сохраняем** server host/port,
+    /// чтобы после logout пользователь сразу попал на логин того же сервера.
+    func purgeForLogout() async
+
     /// Есть ли сохранённый refresh-токен
     var hasRefreshToken: Bool { get async }
 

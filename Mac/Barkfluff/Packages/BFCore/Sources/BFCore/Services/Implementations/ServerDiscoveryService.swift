@@ -78,7 +78,8 @@ public actor ServerDiscoveryService: ServerDiscoveryServiceProtocol {
             port: $0.port,
             description: $0.description.isEmpty ? nil : $0.description,
             accountsCount: $0.accountsCount,
-            serverPublicName: $0.serverPublicName
+            serverPublicName: $0.serverPublicName,
+            location: $0.location
         ) }
     }
 

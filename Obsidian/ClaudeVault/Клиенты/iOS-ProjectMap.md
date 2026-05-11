@@ -28,8 +28,9 @@
 |------|-----------|
 | `App/DI/DependencyContainer.swift` | DI-контейнер: репозитории, сервисы, кеши; `Database` + `LocalChat/MessageRepository`, `MediaCacheManager`, `StickersService`, `RecentStickersStore`, `AppearanceSettings`, `PersonalizationSettings`. `reset()` чистит БД, токены и кеш. |
 | `App/Models/TokenStorageSettings.swift` | Модель настроек хранилища токенов |
-| `App/Settings/AppearanceSettings.swift` | Тема приложения (system/light/dark) — UserDefaults + `.preferredColorScheme()` |
-| `App/Settings/PersonalizationSettings.swift` | Радиус пузыря, размытие/затемнение фона, fileID фона чата |
+| `App/Settings/AppearanceSettings.swift` | Тема приложения (system/light/dark) — UserDefaults + `.preferredColorScheme()`. Метод `reset()` для logout. |
+| `App/Settings/PersonalizationSettings.swift` | Радиус пузыря, размытие/затемнение фона, fileID фона чата. Метод `reset()` для logout. |
+| `App/Settings/DeveloperSettings.swift` | Локальные отладочные флаги (`showUserIDs`, `showChatIDs`) — UserDefaults + `reset()` для logout. Использует `TestingSettingsView` и `ProfileInfoSection`. |
 
 ---
 
@@ -58,6 +59,7 @@
 | `DesignSystem/Components/LoadingView.swift` | Индикатор загрузки |
 | `DesignSystem/Components/OnlineStatusText.swift` | Текстовый онлайн-статус |
 | `DesignSystem/Components/RefreshingIndicatorView.swift` | Полоска "Обновление…" поверх списков |
+| `DesignSystem/Components/SquareImageCropperView.swift` | Квадратный кропер картинки (pinch/pan через `UIScrollView`, выход 1024×1024). Используется в `AvatarStepView`. |
 | `DesignSystem/Components/UnreadBadgeView.swift` | Бейдж непрочитанных |
 | `DesignSystem/LiquidGlass/GlassButtonStyle.swift` | `GlassButtonStyle` + `GlassCapsuleButtonStyle` |
 | `DesignSystem/LiquidGlass/GlassCardView.swift` | Glass карточка |
@@ -173,6 +175,7 @@
 | `Settings/Views/AboutAppSettingsView.swift` | Версия приложения, OS, модель устройства |
 | `Settings/Views/AboutServerSettingsView.swift` | Beacon, ping, список микросервисов |
 | `Settings/Views/PersonalizationSettingsView.swift` | Слайдеры для PersonalizationSettings (cornerRadius, blur, dim) |
+| `Settings/Views/TestingSettingsView.swift` | Раздел «Тестирование» — `DeveloperSettings` toggles (`showUserIDs`, `showChatIDs`). Виден в Профиль → «Другое» под «О приложении». |
 
 > **Не переносится в эту итерацию:** `NotificationsSettingsView` (push-уведомления отложены), полноценный poster picker / background grid в Personalization (нужен отдельный PhotosPicker workflow + serverside upload).
 

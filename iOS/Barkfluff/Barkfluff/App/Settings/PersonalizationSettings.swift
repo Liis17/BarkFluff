@@ -57,4 +57,18 @@ final class PersonalizationSettings {
         self.backgroundDimPercent = defaults.object(forKey: Keys.dimPercent) as? Int ?? 0
         self.currentBackgroundFileID = defaults.string(forKey: Keys.currentBgFileID) ?? ""
     }
+
+    /// Сброс к дефолтам и удаление значений из UserDefaults (вызывается при logout).
+    func reset() {
+        bubbleCornerRadius = 18
+        backgroundBlurEnabled = false
+        backgroundBlurRadius = 12
+        backgroundDimPercent = 0
+        currentBackgroundFileID = ""
+        defaults.removeObject(forKey: Keys.cornerRadius)
+        defaults.removeObject(forKey: Keys.blurEnabled)
+        defaults.removeObject(forKey: Keys.blurRadius)
+        defaults.removeObject(forKey: Keys.dimPercent)
+        defaults.removeObject(forKey: Keys.currentBgFileID)
+    }
 }
