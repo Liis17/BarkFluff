@@ -126,6 +126,20 @@ class AccountSettingsActivity : AppCompatActivity() {
             }
         }
 
+        binding.itemBio.setOnClickListener {
+            showEditDialog("О себе", globalParam.description, allowEmpty = true) { newValue ->
+                lifecycleScope.launch {
+                    val result = grpcManager.changeBio(newValue)
+                    if (result.isSuccess) {
+                        globalParam.description = newValue
+                        updateUI()
+                    } else {
+                        Toast.makeText(this@AccountSettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
         binding.buttonLogout.setOnClickListener {
             MaterialAlertDialogBuilder(this)
                 .setTitle("Выход")
@@ -146,6 +160,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         binding.textFirstName.text = globalParam.firstName
         binding.textLastName.text = globalParam.lastName
         binding.textUsername.text = "@${globalParam.userName}"
+        binding.textBio.text = globalParam.description.ifBlank { "Не указано" }
         loadAvatar()
     }
 

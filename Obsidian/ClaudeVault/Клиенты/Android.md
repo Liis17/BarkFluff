@@ -35,6 +35,28 @@ Package: `com.barkfluff.client`
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
 
+## Сегмент папок над списком чатов
+
+`fragment_chats.xml` содержит горизонтальный `RecyclerView` `foldersRecyclerView` поверх `chatRecyclerView`, скрытый при отсутствии папок. Раньше был `ChipGroup` с одинарными `Chip`-ами; заменён на кастомный адаптер ради иконки + имени + бейджа непрочитанных и поддержки компактного режима.
+
+- `adapter/FolderTabsAdapter.kt` — `RecyclerView.Adapter` с моделью `Item(id, icon, name, unreadCount)`. Метод `submit(items, compact, selected)` обновляет список целиком; `updateSelection(id)` — только подсветку. Иконка по умолчанию для папки «Все чаты» (folderId=null) — `📋`. Бейдж непрочитанных рисуется при `unreadCount > 0`, формат `99+` при переполнении.
+- `layout/item_folder_tab.xml` — корневой `LinearLayout` с `bg_folder_tab` selector (state_selected → `bg_folder_tab_selected` с `colorSecondaryContainer`, иначе прозрачный). Иконка (TextView 18sp под эмодзи) + имя (`?attr/textAppearanceLabelLarge`, ellipsize=end) + бейдж (`bg_folder_unread_badge` — rounded rect `colorPrimary` r=10dp, 20dp высота, minWidth=20dp, текст bold 11sp на `colorOnPrimary`).
+- `ChatsFragment`:
+  - `setupFolderTabs()` инициализирует горизонтальный `LinearLayoutManager` + адаптер.
+  - `renderFolderTabs()` собирает `Item`-ы из `folders`, добавляя первой «Все чаты»; передаёт `compact = globalParam.compactFolders`.
+  - `computeFolderUnread(chatIds)` суммирует `chat.countUnread` из `allChats`, ограничиваясь `chatIds` папки. Для «Все чаты» — `computeAllChatsUnread()` (см. ниже).
+  - Реалтайм-события зеркалятся в `allChats` через `mirrorNewMessageInAllChats` / `mirrorReadInAllChats`, после чего `refreshFolderTabs()` пересчитывает бейджи без перезагрузки чатов.
+  - На клик по табу — `selectedFolderId` обновляется, `foldersAdapter.updateSelection` + `applyFolderFilter()`.
+  - `onResume()` ререндерит сегмент с актуальной настройкой компактности (чтобы изменение в персонализации применялось при возврате).
+
+### Настройка «Убирать чаты из «Все чаты»» (`excludeFolderChatsFromAll`)
+
+Если включена — чаты, входящие хотя бы в одну пользовательскую папку, исключаются из вкладки «Все чаты» **и** не учитываются в её бейдже непрочитанных. Логика в `applyFolderFilter()` (фильтрация списка) и `computeAllChatsUnread()` (счётчик). Реализовано чисто на клиенте.
+
+### Настройка «Компактные папки» (`compactFolders`)
+
+Скрывает `folderName` (`View.GONE`) в каждом табе, оставляя иконку + бейдж. Передаётся в `FolderTabsAdapter.submit(compact = ...)`.
+
 ## Хранение токенов
 
 - EncryptedSharedPreferences (`barkfluff_secure_prefs`)
@@ -285,6 +307,21 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | `secretChatsEnabled` | `testing_secret_chats_enabled` | `encryptedChatButton` в шапке `ChatsFragment` (иконка `ic_hood`, открывает `CreateEncryptedChatActivity`). По умолчанию кнопка `View.GONE`; видимость переоценивается в `onViewCreated` и `onResume`, чтобы переключение в TestingSettings подхватывалось при возврате. |
 
 Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.
+
+## Раздел «Персонализация» — папки
+
+`PersonalizationSettingsActivity` (между блоками «Настройки отображения» и «Фон чатов») содержит блок «Папки» с двумя `MaterialSwitch`:
+
+| Свойство `GlobalParam` | Ключ prefs | Что включает |
+|---|---|---|
+| `compactFolders` | `folders_compact` | Компактные папки: в сегменте `ChatsFragment.foldersRecyclerView` скрывает текст имени папки, оставляя только иконку + бейдж непрочитанных. |
+| `excludeFolderChatsFromAll` | `folders_exclude_from_all` | Чаты, входящие хотя бы в одну пользовательскую папку, не показываются во вкладке «Все чаты» и не учитываются в её бейдже. |
+
+Оба флага по умолчанию `false`. Применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. При возврате на список чатов из персонализации `onResume()` фрагмента ререндерит сегмент.
+
+## Настройки → Аккаунт — поле «О себе»
+
+`AccountSettingsActivity` в карточке полей профиля содержит `itemBio` под `itemUsername` (разделитель `MaterialDivider`). Текущее значение читается из `globalParam.description` и отображается в `textBio` (placeholder «Не указано» при пустой строке). По клику — `showEditDialog("О себе", …, allowEmpty = true)` → `grpcManager.changeBio(newValue)` (`GrpcManager.kt:1674`). При успехе значение сохраняется в `globalParam.description` (тот же бэкенд-поле, что наполняется из `getCurrentUserData().bio` в `SplashActivity`/`LoginActivity`/`RegisterActivity`).
 
 ## gRPC Коды ошибок (из x-error-code trailer)
 

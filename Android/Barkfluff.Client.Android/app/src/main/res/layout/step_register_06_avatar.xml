@@ -68,8 +68,9 @@
                             android:layout_height="match_parent"
                             android:contentDescription="Avatar placeholder"
                             android:padding="50dp"
-                            android:scaleType="centerCrop"
-                            android:src="@mipmap/ic_launcher" />
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_person"
+                            app:tint="?attr/colorOnSurfaceVariant" />
 
                         <!-- Cropped image preview (hidden initially) -->
                         <ImageView
