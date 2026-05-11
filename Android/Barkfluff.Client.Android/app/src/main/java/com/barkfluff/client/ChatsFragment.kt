@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.activity.result.contract.ActivityResultContracts
 import com.barkfluff.client.adapter.ChatAdapter
+import com.barkfluff.client.adapter.FolderTabsAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
@@ -18,7 +19,6 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FirebaseTokenHelper
-import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,6 +37,7 @@ class ChatsFragment : Fragment() {
     private lateinit var globalParam: GlobalParam
     private lateinit var grpcManager: GrpcManager
     private lateinit var chatAdapter: ChatAdapter
+    private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var realtimeService: RealtimeService
     private var loadChatsJob: Job? = null
 
@@ -72,6 +73,7 @@ class ChatsFragment : Fragment() {
 
         setupToolbar()
         setupChatList()
+        setupFolderTabs()
         setupSearchButton()
         applySecretChatsVisibility()
 
@@ -79,9 +81,28 @@ class ChatsFragment : Fragment() {
         checkTokenAndLoadChats()
     }
 
+    private fun setupFolderTabs() {
+        foldersAdapter = FolderTabsAdapter { folderId ->
+            if (selectedFolderId != folderId) {
+                selectedFolderId = folderId
+                foldersAdapter.updateSelection(folderId)
+                applyFolderFilter()
+            }
+        }
+        binding.foldersRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            adapter = foldersAdapter
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         applySecretChatsVisibility()
+        // Перерендерить сегмент папок с актуальными настройками компактности
+        if (_binding != null && ::foldersAdapter.isInitialized && folders.isNotEmpty()) {
+            renderFolderTabs()
+            applyFolderFilter()
+        }
         val app = requireActivity().application as BarkFluffApplication
         if (app.cameFromBackground) {
             app.cameFromBackground = false
@@ -310,48 +331,77 @@ class ChatsFragment : Fragment() {
     }
 
     private fun renderFolderTabs() {
-        val group = binding.foldersChipGroup
-        group.removeAllViews()
-
         if (folders.isEmpty()) {
-            binding.foldersScroll.visibility = View.GONE
+            binding.foldersRecyclerView.visibility = View.GONE
             return
         }
-        binding.foldersScroll.visibility = View.VISIBLE
+        binding.foldersRecyclerView.visibility = View.VISIBLE
 
-        // «Все чаты» — первая вкладка
-        val allChip = makeFolderChip("Все чаты", null)
-        allChip.isChecked = selectedFolderId == null
-        group.addView(allChip)
+        val allChatsItem = FolderTabsAdapter.Item(
+            id = null,
+            icon = "",
+            name = "Все чаты",
+            unreadCount = computeAllChatsUnread()
+        )
+        val folderItems = folders.map { folder ->
+            FolderTabsAdapter.Item(
+                id = folder.folderId,
+                icon = folder.folderIcon,
+                name = folder.folderName,
+                unreadCount = computeFolderUnread(folder.chatIds)
+            )
+        }
+        foldersAdapter.submit(
+            newItems = listOf(allChatsItem) + folderItems,
+            compact = globalParam.compactFolders,
+            selected = selectedFolderId
+        )
+    }
 
-        for (folder in folders) {
-            val text = if (folder.folderIcon.isBlank()) folder.folderName else "${folder.folderIcon} ${folder.folderName}"
-            val chip = makeFolderChip(text, folder.folderId)
-            chip.isChecked = (selectedFolderId == folder.folderId)
-            group.addView(chip)
+    private fun refreshFolderTabs() {
+        if (::foldersAdapter.isInitialized && folders.isNotEmpty()) {
+            renderFolderTabs()
         }
     }
 
-    private fun makeFolderChip(text: String, folderId: String?): Chip {
-        val chip = Chip(requireContext())
-        chip.text = text
-        chip.isCheckable = true
-        chip.isClickable = true
-        chip.setOnClickListener {
-            if (chip.isChecked && selectedFolderId != folderId) {
-                selectedFolderId = folderId
-                applyFolderFilter()
-            } else if (!chip.isChecked) {
-                // ChipGroup требует selectionRequired — но при попытке снять — оставим выбранным.
-                chip.isChecked = true
-            }
+    /** Множество id чатов, входящих хотя бы в одну пользовательскую папку. */
+    private fun chatsInUserFolders(): Set<String> {
+        if (folders.isEmpty()) return emptySet()
+        val s = HashSet<String>()
+        for (f in folders) s.addAll(f.chatIds)
+        return s
+    }
+
+    private fun computeFolderUnread(folderChatIds: List<String>): Int {
+        if (folderChatIds.isEmpty() || allChats.isEmpty()) return 0
+        val ids = folderChatIds.toSet()
+        var sum = 0
+        for (chat in allChats) {
+            if (chat.id in ids) sum += chat.countUnread.toInt()
         }
-        return chip
+        return sum
+    }
+
+    private fun computeAllChatsUnread(): Int {
+        if (allChats.isEmpty()) return 0
+        val exclude = globalParam.excludeFolderChatsFromAll
+        val inFolders = if (exclude) chatsInUserFolders() else emptySet()
+        var sum = 0
+        for (chat in allChats) {
+            if (exclude && chat.id in inFolders) continue
+            sum += chat.countUnread.toInt()
+        }
+        return sum
     }
 
     private fun applyFolderFilter() {
         val filtered: List<GrpcManager.ChatData> = if (selectedFolderId == null) {
-            allChats
+            if (globalParam.excludeFolderChatsFromAll && folders.isNotEmpty()) {
+                val inFolders = chatsInUserFolders()
+                allChats.filter { it.id !in inFolders }
+            } else {
+                allChats
+            }
         } else {
             val folder = folders.firstOrNull { it.folderId == selectedFolderId }
             if (folder == null) allChats
@@ -415,6 +465,10 @@ class ChatsFragment : Fragment() {
     private fun handleNewMessage(event: barkfluff.updates.UpdatesApiOuterClass.NewMessageEvent) {
         val msg = event.message
 
+        // Зеркалим состояние в allChats для корректного подсчёта бейджей папок.
+        mirrorNewMessageInAllChats(event.chatId, msg.senderId, msg.id, msg.content?.text ?: "", msg.sentAt.seconds * 1000)
+        refreshFolderTabs()
+
         // Если активна папка — отфильтровать события по чатам в ней.
         val selectedFolder = folders.firstOrNull { it.folderId == selectedFolderId }
         if (selectedFolder != null && event.chatId !in selectedFolder.chatIds) {
@@ -472,6 +526,66 @@ class ChatsFragment : Fragment() {
             newReadBy = event.newReadByList,
             currentUserId = globalParam.userId
         )
+        // Зеркалим обнуление непрочитанных текущего пользователя в allChats и пересчитываем бейджи папок.
+        if (event.newReadByList.contains(globalParam.userId)) {
+            mirrorReadInAllChats(event.chatId)
+            refreshFolderTabs()
+        }
+    }
+
+    private fun mirrorNewMessageInAllChats(
+        chatId: String,
+        senderId: Long,
+        messageId: Long,
+        text: String,
+        sentAtMillis: Long
+    ) {
+        val idx = allChats.indexOfFirst { it.id == chatId }
+        if (idx < 0) {
+            // Новый чат — добавим минимальный объект, бейдж пересчитается корректно.
+            val isOwn = senderId == globalParam.userId
+            val newChat = GrpcManager.ChatData(
+                id = chatId,
+                title = "",
+                picture = "",
+                pictureFileId = "",
+                isGroupChat = false,
+                lastMessage = GrpcManager.LastMessageData(
+                    id = messageId,
+                    senderId = senderId,
+                    text = text,
+                    sentAt = sentAtMillis,
+                    readBy = listOf(senderId)
+                ),
+                memberIds = listOf(globalParam.userId, senderId),
+                countUnread = if (isOwn) 0L else 1L,
+                firstUnreadMessageId = if (isOwn) 0L else messageId
+            )
+            allChats = allChats + newChat
+            return
+        }
+        val existing = allChats[idx]
+        val isOwn = senderId == globalParam.userId
+        val updated = existing.copy(
+            lastMessage = GrpcManager.LastMessageData(
+                id = messageId,
+                senderId = senderId,
+                text = text,
+                sentAt = sentAtMillis,
+                readBy = listOf(senderId)
+            ),
+            countUnread = if (isOwn) existing.countUnread else existing.countUnread + 1
+        )
+        allChats = allChats.toMutableList().also { it[idx] = updated }
+    }
+
+    private fun mirrorReadInAllChats(chatId: String) {
+        val idx = allChats.indexOfFirst { it.id == chatId }
+        if (idx < 0) return
+        val existing = allChats[idx]
+        if (existing.countUnread == 0L) return
+        val updated = existing.copy(countUnread = 0L)
+        allChats = allChats.toMutableList().also { it[idx] = updated }
     }
 
     private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {

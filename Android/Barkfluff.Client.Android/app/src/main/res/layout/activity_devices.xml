@@ -32,13 +32,13 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Большая иконка устройства -->
+            <!-- Большая иконка QR-кода -->
             <ImageView
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:layout_gravity="center_horizontal"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_smartphone"
+                android:src="@drawable/ic_qr_code"
                 android:alpha="0.7"
                 app:tint="?attr/colorOnSurfaceVariant" />
 

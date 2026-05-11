@@ -26,7 +26,6 @@ class SelectServerActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SelectServerActivity"
-        private const val SELF_HOSTED_URL = "https://barkfluff.com/selfhosted"
         private const val MIN_PORT = 1
         private const val MAX_PORT = 65535
         private val SERVER_ADDRESS_PATTERN = Pattern.compile("^([^:]+):(\\d+)$")
@@ -78,11 +77,6 @@ class SelectServerActivity : AppCompatActivity() {
             if (validateServerAddress(address)) {
                 connectToServer(address)
             }
-        }
-
-        // Ссылка на self-hosted
-        binding.selfHostedLink.setOnClickListener {
-            openSelfHostedUrl()
         }
     }
 
@@ -308,15 +302,6 @@ class SelectServerActivity : AppCompatActivity() {
                 .setMessage(message)
                 .setPositiveButton("OK", null)
                 .show()
-        }
-    }
-
-    private fun openSelfHostedUrl() {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SELF_HOSTED_URL))
-            startActivity(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Не удалось открыть URL", e)
         }
     }
 
