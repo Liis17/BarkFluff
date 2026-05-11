@@ -64,7 +64,7 @@ Views → ViewModels → Services → Repositories → gRPC
 - Кеш медиа на диске: `MediaCacheManager`, типизация — `CachedFileType`, статистика — `CacheStats`, парсинг ключей S3 — `S3URLParser`
 - `TokenRefreshCoordinator` — автоматический рефреш через `AuthInterceptor`
 
-## Паттерн: logout — полный wipe
+## Паттерн: logout — wipe всего, кроме адреса сервера
 
 Logout строится по «server-first, fail-loud» схеме: если серверный шаг упал, локальные данные **не трогаются**, чтобы пользователь мог повторить или сознательно выйти принудительно.
 
@@ -74,26 +74,28 @@ Logout строится по «server-first, fail-loud» схеме: если с
 2. `AuthService.logout() async throws`:
    - `IdentityRepository.logout()` → gRPC `Identity.Logout` (на бэке `LogoutCommandHandler` удаляет refresh-токены устройства, публикует `SessionRevokedEvent` → инвалидируется access-токен по сервисам через шину, и зовёт `Users.DeleteUserDevice` для удаления записи устройства).
    - При ошибке — пробрасывается наружу, токены **не** очищаются.
-   - При успехе — `tokenProvider.purgeAll()` (полная очистка, включая `device_id` и `server_host/port`).
+   - При успехе — `tokenProvider.purgeAll()` локально (полная очистка токенов и `device_id`).
 3. `DependencyContainer.reset()` (вызывается из `performLocalWipe`):
    - `updatesService.stop()`, `onlineStatusService.stop()` — закрывают gRPC-стримы и AsyncStream-ы.
    - `userCache`/`chatCache`/`onlineStatusCache.removeAll()` — in-memory кеши.
    - `mediaCacheManager.clearAll()` — файловый медиа-кеш с диска.
    - `fileURLCache.clear()` — runtime + UserDefaults-домен `com.barkfluff.fileURLCache`.
    - `database.truncateAll()` — SQLite (`cached_message`, `cached_chat`, `cached_file`).
-   - `tokenProvider.purgeAll()` — токены, даты истечения, `server_host`/`server_port`, `device_id`.
-   - `serverDiscoveryService.disconnect()` + `connectionManager.shutdown()` — gRPC-эндпоинты и `ServerInfo`.
-4. UI-state в `AppCoordinator` сбрасывается, `currentState = .serverSelection` (не `.authentication` — после полного wipe нужен новый bootstrap через Beacon).
+   - `tokenProvider.purgeForLogout()` — токены, даты истечения, `device_id`. **`server_host`/`server_port` сохраняются.**
+   - `personalizationSettings.reset()` + `appearanceSettings.reset()` — локальные UserDefaults-настройки клиента (тема, радиус пузыря, blur/dim, фон чата) сбрасываются к дефолтам.
+   - `connectionManager.shutdown()` — закрывает gRPC-соединения. `serverDiscoveryService.disconnect()` **больше не вызывается** — мы хотим оставить сам адрес.
+4. UI-state в `AppCoordinator` сбрасывается, затем `performLocalWipe` пробует `serverDiscoveryService.tryReconnect()` (использует сохранённый host/port). При успехе — `currentState = .authentication`, `authScreen = .login` (пользователь сразу видит логин того же сервера). При неудаче — fallback на `.serverSelection`.
 
 **Force-вариант** (`AppCoordinator.forceLogout(container:)`): пропускает серверный шаг, локальный wipe идентичный. Используется UI-фолбэком при ошибке `logout()`. Сессия на сервере при этом остаётся «висящей» до истечения срока действия — её можно будет завершить позже через «Активные сессии» (`Identity.RemoveActiveSession`).
 
 **UI-обработка ошибки**: `ProfileEditView` ловит throw из `coordinator.logout(container:)` и показывает алерт «Не удалось разлогиниться» с тремя кнопками — «Повторить» / «Выйти всё равно» (→ `forceLogout`) / «Отмена».
 
-**TokenProvider.clearAll() vs purgeAll()**:
-- `clearAll()` — стирает только токены и их даты (используется в `tryRestoreSession` при провале refresh, чтобы юзер потерял сессию, но сохранил `device_id` и адрес сервера для повторного логина).
-- `purgeAll()` — стирает всё, включая `device_id` и эндпоинт сервера. Используется только при logout/reset.
+**TokenProvider API** (общий пакет `BFNetworking`, реализации `UserDefaultsTokenProvider` / `KeychainTokenProvider`):
+- `clearAll()` — стирает только токены и их даты (используется в `tryRestoreSession` при провале refresh).
+- `purgeForLogout()` — стирает токены + `device_id`, **сохраняет** `server_host`/`server_port`. Используется при штатном logout.
+- `purgeAll()` — стирает всё, включая `device_id` и адрес сервера. Зарезервирован под будущий «забыть сервер» / диагностический reset.
 
-**Сохраняется** после полного wipe: настройка `com.barkfluff.tokenStorage.type` (выбор хранилища токенов: UserDefaults / Keychain / Keychain+iCloud) — это user preference, не account data.
+**Сохраняется** после logout-wipe: `server_host`/`server_port` + настройка `com.barkfluff.tokenStorage.type` (выбор хранилища токенов: UserDefaults / Keychain / Keychain+iCloud) — это user preference, не account data.
 
 `UpdatesStreamManager.start()` **пересоздаёт AsyncStream-ы** при каждом запуске: после `stop()` continuations завершаются (`.finish()`), и старые потоки мертвы — без пересоздания `forwardNewMessagesTask` в `UpdatesService` сразу завершался бы без событий.
 
@@ -329,7 +331,7 @@ UI настроек — `Features/Settings/Views/NotificationsSettingsView.swift
 3. **Фон чата** — тогл размытия + слайдеры радиуса блюра (1…25) и затемнения (0…100%) + сетка 3×N с вертикальными ячейками 1:2 (`Color.clear.aspectRatio(0.5, .fit).overlay { CachedImageView }`) и ячейкой добавления. Long-press / context menu переключает delete-mode на ячейке. Применяется в `Conversation/Views/Components/ChatBackgroundView.swift` через `.background { ChatBackgroundView() }` модификатор у корневого ZStack `ConversationView` (а **не** как первый слот ZStack — так intrinsic size картинки не растягивает контейнер и не выталкивает плавающие шапку и поле ввода): `CachedImageView(.image)` с `.frame(maxWidth/Height: .infinity)` + `.blur(radius:opaque: true)` + `.clipped()` + dim-overlay цвета `Color(nsColor: .windowBackgroundColor)` с `.opacity(percent / 100)`.
 
 Хранилище:
-- Локальные настройки (radius, blur on/off, blur radius, dim, currentBackgroundFileID) — `App/Settings/PersonalizationSettings.swift` поверх `UserDefaults` (ключи `personalization.*`). Не очищаются при logout — паритет с Android-`GlobalParam`.
+- Локальные настройки (radius, blur on/off, blur radius, dim, currentBackgroundFileID) — `App/Settings/PersonalizationSettings.swift` поверх `UserDefaults` (ключи `personalization.*`). **Очищаются при logout** через `PersonalizationSettings.reset()` (см. раздел [[Клиенты/macOS#Паттерн: logout — wipe всего, кроме адреса сервера]]) — на чистый аккаунт пользователь приходит с дефолтным радиусом пузыря, без фона.
 - Постер и список фонов — синхронизируются с сервером через `Users.GetPersonalization` / `Users.UpdatePersonalization` / `Users.GetProfilePoster` / `Users.SetProfilePoster`. Реализация в `BFNetworking/Repositories/UsersRepository.swift` (DTO `PersonalizationInfo`) и `BFCore/Services/Implementations/UserService.swift`.
 
 Контракт `UpdatePersonalization` затирает обе стороны (`profilePosterFileID` + `chatBackgroundFileIds`), поэтому `PersonalizationSettingsViewModel` хранит текущий `posterFileID` и при апдейте списка фонов передаёт его без изменений — иначе сервер обнулит постер. Фоны заливаются как `UploadFileType.messageAttachmentImage` (паритет с Android), постер — `UploadFileType.userProfilePoster`.

@@ -2,7 +2,9 @@
 //  AvatarStepView.swift
 //  Barkfluff
 //
-//  Шаг 6: Загрузка аватара (iOS)
+//  Шаг 6: Загрузка аватара (iOS).
+//  После выбора картинки открывается квадратный кропер; на сервер уходит
+//  только обрезанная картинка.
 //
 
 import SwiftUI
@@ -17,6 +19,8 @@ struct AvatarStepView: View {
     @State private var isUploading = false
     @State private var uploadError: String?
     @State private var selectedItem: PhotosPickerItem?
+    @State private var pendingImage: UIImage?
+    @State private var showCropper: Bool = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -92,6 +96,22 @@ struct AvatarStepView: View {
         .onChange(of: selectedItem) { _, newItem in
             Task { await handlePhotoSelection(newItem) }
         }
+        .fullScreenCover(isPresented: $showCropper) {
+            if let pendingImage {
+                SquareImageCropperView(
+                    image: pendingImage,
+                    onCancel: {
+                        showCropper = false
+                        self.pendingImage = nil
+                        selectedItem = nil
+                    },
+                    onCrop: { cropped in
+                        showCropper = false
+                        Task { await uploadCropped(cropped) }
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Actions
@@ -99,22 +119,39 @@ struct AvatarStepView: View {
     private func handlePhotoSelection(_ item: PhotosPickerItem?) async {
         guard let item = item else { return }
 
-        isUploading = true
         uploadError = nil
-        defer { isUploading = false }
 
         do {
-            guard let imageData = try await item.loadTransferable(type: Data.self) else {
+            guard let imageData = try await item.loadTransferable(type: Data.self),
+                  let uiImage = UIImage(data: imageData) else {
                 uploadError = "Не удалось загрузить изображение"
                 return
             }
 
-            guard let uiImage = UIImage(data: imageData),
-                  let compressedData = uiImage.jpegData(compressionQuality: 0.7) else {
-                uploadError = "Ошибка обработки изображения"
-                return
+            await MainActor.run {
+                pendingImage = uiImage
+                showCropper = true
             }
+        } catch {
+            uploadError = "Не удалось загрузить фото"
+        }
+    }
 
+    private func uploadCropped(_ image: UIImage) async {
+        isUploading = true
+        uploadError = nil
+        defer {
+            isUploading = false
+            pendingImage = nil
+            selectedItem = nil
+        }
+
+        guard let compressedData = image.jpegData(compressionQuality: 0.85) else {
+            uploadError = "Ошибка обработки изображения"
+            return
+        }
+
+        do {
             let fileID = try await fileService.uploadFile(
                 data: compressedData,
                 fileName: "avatar.jpg",
@@ -126,9 +163,8 @@ struct AvatarStepView: View {
             await MainActor.run {
                 data.avatarData = compressedData
                 data.avatarFileID = fileID
-                data.avatarImage = Image(uiImage: uiImage)
+                data.avatarImage = Image(uiImage: image)
             }
-
         } catch {
             uploadError = "Не удалось загрузить фото"
         }
@@ -139,6 +175,7 @@ struct AvatarStepView: View {
         data.avatarData = nil
         data.avatarFileID = nil
         selectedItem = nil
+        pendingImage = nil
     }
 }
 

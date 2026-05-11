@@ -72,4 +72,10 @@ final class AppearanceSettings {
             self.theme = .system
         }
     }
+
+    /// Сброс к дефолтам и удаление значений из UserDefaults (вызывается при logout).
+    func reset() {
+        theme = .system
+        defaults.removeObject(forKey: Keys.theme)
+    }
 }

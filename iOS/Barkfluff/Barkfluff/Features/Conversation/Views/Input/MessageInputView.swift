@@ -83,7 +83,6 @@ struct MessageInputView: View {
                     .fill(.ultraThinMaterial)
             }
         }
-        .ignoresSafeArea(edges: .bottom)
         .animation(.spring(duration: 0.3), value: selectedAttachments.count)
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItems, maxSelectionCount: 10, matching: .any(of: [.images, .videos]))
         .onChange(of: selectedPhotoItems) { _, newItems in

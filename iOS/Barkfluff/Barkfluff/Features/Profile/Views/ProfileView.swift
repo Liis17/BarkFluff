@@ -41,6 +41,7 @@ struct ProfileView: View {
                 categoryLink(.general)
                 categoryLink(.aboutApp)
                 categoryLink(.aboutServer)
+                categoryLink(.testing)
             }
         }
         .listStyle(.insetGrouped)

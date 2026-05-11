@@ -90,6 +90,11 @@ final class DependencyContainer {
     /// Локальные настройки внешнего вида (тема приложения).
     let appearanceSettings: AppearanceSettings
 
+    // MARK: - Developer
+
+    /// Локальные отладочные флаги (показ ID пользователей/чатов в профиле).
+    let developerSettings: DeveloperSettings
+
     // MARK: - Stickers
 
     /// Список недавно использованных стикеров (UserDefaults).
@@ -269,6 +274,9 @@ final class DependencyContainer {
         // Appearance (тема приложения)
         self.appearanceSettings = AppearanceSettings()
 
+        // Developer (отладочные флаги)
+        self.developerSettings = DeveloperSettings()
+
         // Stickers
         self.recentStickersStore = RecentStickersStore()
 
@@ -299,8 +307,11 @@ final class DependencyContainer {
 
     // MARK: - Helpers
 
-    /// Полная очистка всех данных текущего инстанса: стримы, кеши, БД, токены, device_id, эндпоинты.
-    /// После вызова приложение должно перейти на экран выбора сервера (`.serverSelection`).
+    /// Очистка всех персональных данных при logout.
+    /// Стирает: стримы, in-memory кеши, файловые кеши, локальную БД, токены, device_id,
+    /// локальные UserDefaults-настройки клиента (тема, персонализация, developer-флаги).
+    /// **Сохраняет**: host/port beacon-сервера, чтобы после logout пользователь сразу
+    /// попал на экран логина того же сервера.
     func reset() async {
         // 1. Останавливаем все стримы и фоновые подписки
         await updatesService.stop()
@@ -321,11 +332,17 @@ final class DependencyContainer {
         // 4. Чистим локальную БД
         try? await database.truncateAll()
 
-        // 5. Полностью стираем токены, device_id и адрес сервера
-        await tokenProvider.purgeAll()
+        // 5. Стираем токены и device_id, СОХРАНЯЕМ host/port сервера
+        await tokenProvider.purgeForLogout()
 
-        // 6. Сбрасываем gRPC-эндпоинты и информацию о сервере
-        await serverDiscoveryService.disconnect()
+        // 5a. Стираем локальные настройки клиента
+        await MainActor.run {
+            personalizationSettings.reset()
+            appearanceSettings.reset()
+            developerSettings.reset()
+        }
+
+        // 6. Закрываем gRPC-соединения (эндпоинты будут перевыбраны через beacon при логине)
         await connectionManager.shutdown()
 
         // 7. Сбрасываем флаги текущего пользователя

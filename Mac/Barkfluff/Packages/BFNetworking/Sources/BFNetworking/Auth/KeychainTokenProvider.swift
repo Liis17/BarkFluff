@@ -215,6 +215,24 @@ public actor KeychainTokenProvider: TokenProvider {
         keychain[Keys.deviceId] = nil
     }
 
+    /// Очистка для обычного logout: токены + device_id, host/port остаются.
+    public func purgeForLogout() {
+        ensureCacheLoaded()
+        let preservedHost = cache.serverHost
+        let preservedPort = cache.serverPort
+
+        cache = TokenCache(isLoaded: true)
+        cache.serverHost = preservedHost
+        cache.serverPort = preservedPort
+
+        keychain[Keys.accessToken] = nil
+        keychain[Keys.accessTokenExpiresAt] = nil
+        keychain[Keys.refreshToken] = nil
+        keychain[Keys.refreshTokenExpiresAt] = nil
+        keychain[Keys.deviceId] = nil
+        // serverHost / serverPort оставляем нетронутыми.
+    }
+
     // MARK: - Server Endpoint
 
     public var savedServerHost: String? {

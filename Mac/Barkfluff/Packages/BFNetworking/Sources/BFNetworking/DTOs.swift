@@ -651,6 +651,9 @@ public struct NavigatorServerInfo: Sendable, Identifiable, Hashable {
     /// Публичное имя сервера (для отображения)
     public let serverPublicName: String
 
+    /// Локация сервера (например, "Berlin", "Amsterdam")
+    public let location: String
+
     /// Отображаемое имя — публичное если задано, иначе внутреннее
     public var displayName: String {
         serverPublicName.isEmpty ? name : serverPublicName
@@ -667,7 +670,8 @@ public struct NavigatorServerInfo: Sendable, Identifiable, Hashable {
         accountsCount: Int64,
         host: String,
         port: Int,
-        serverPublicName: String
+        serverPublicName: String,
+        location: String = ""
     ) {
         self.name = name
         self.description = description
@@ -675,5 +679,6 @@ public struct NavigatorServerInfo: Sendable, Identifiable, Hashable {
         self.host = host
         self.port = port
         self.serverPublicName = serverPublicName
+        self.location = location
     }
 }
