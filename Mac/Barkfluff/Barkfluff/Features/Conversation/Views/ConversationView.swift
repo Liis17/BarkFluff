@@ -54,6 +54,12 @@ struct ConversationView: View {
 
     var body: some View {
         ZStack {
+            // Слой 0: Фон чата (персонализация). Лежит как первый child ZStack-а,
+            // чтобы все остальные слои (сообщения, шапка, инпут) рисовались поверх.
+            // `Color.clear` внутри ChatBackgroundView фиксирует размер по родителю,
+            // поэтому intrinsic size картинки не растягивает ZStack.
+            ChatBackgroundView()
+
             // Слой 1: Список сообщений (полная область)
             if let viewModel {
                 messagesList(viewModel: viewModel)
@@ -84,10 +90,50 @@ struct ConversationView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: viewModel?.isRefreshing)
 
-            // Слой 3: Плавающий ввод снизу
-            VStack(spacing: 0) {
-                Spacer()
+            // Слой 4: Кнопка "вниз" (над вводом)
+            if scrollPosition.showScrollToBottom {
+                VStack {
+                    Spacer()
+                    ScrollToBottomButton(
+                        unreadCount: scrollPosition.unreadCount
+                    ) {
+                        scrollPosition.scrollToBottom()
+                    }
+                    .padding(.bottom, inputHeight + Theme.Spacing.md)
+                }
+            }
 
+            // Ошибка (если есть)
+            if let viewModel, let error = viewModel.errorMessage {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(Theme.Spacing.sm)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
+                        Spacer()
+                    }
+                    .padding(.bottom, inputHeight + Theme.Spacing.lg)
+                }
+            }
+
+            // Drag & Drop overlay
+            if isDragOver {
+                DragDropOverlay()
+                    .transition(.opacity)
+            }
+        }
+        // Инпут — через overlay(alignment: .bottom), чтобы гарантированно
+        // лежать поверх всех слоёв ZStack (включая фоновую картинку и
+        // ScrollView с сообщениями), вне зависимости от safe area и intrinsic
+        // size фона. ScrollView с сообщениями получает нижний padding вручную
+        // через inputHeight в MessagesListView.
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
                 MessageInputView(
                     text: $messageText,
                     selectedAttachments: $selectedAttachments,
@@ -142,48 +188,6 @@ struct ConversationView: View {
                     .padding(.bottom, Theme.Spacing.xs)
                 }
             }
-
-            // Слой 4: Кнопка "вниз" (над вводом)
-            if scrollPosition.showScrollToBottom {
-                VStack {
-                    Spacer()
-                    ScrollToBottomButton(
-                        unreadCount: scrollPosition.unreadCount
-                    ) {
-                        scrollPosition.scrollToBottom()
-                    }
-                    .padding(.bottom, inputHeight + Theme.Spacing.md)
-                }
-            }
-
-            // Ошибка (если есть)
-            if let viewModel, let error = viewModel.errorMessage {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(Theme.Spacing.sm)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
-                        Spacer()
-                    }
-                    .padding(.bottom, inputHeight + Theme.Spacing.lg)
-                }
-            }
-
-            // Drag & Drop overlay
-            if isDragOver {
-                DragDropOverlay()
-                    .transition(.opacity)
-            }
-        }
-        // Фон чата — через .background, чтобы intrinsic size картинки
-        // не растягивал ZStack и не выталкивал шапку с полем ввода.
-        .background {
-            ChatBackgroundView()
         }
         // Карточный стиль: square top (уходит под toolbar — закругление
         // там не видно), rounded bottom + боковой/нижний padding.

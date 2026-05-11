@@ -16,6 +16,9 @@ struct PersonalizationSettingsView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel: PersonalizationSettingsViewModel?
 
+    @AppStorage("folders.compact") private var compactFolders: Bool = false
+    @AppStorage("folders.excludeFromAll") private var excludeFolderChatsFromAll: Bool = false
+
     var body: some View {
         Group {
             if let viewModel {
@@ -132,7 +135,13 @@ struct PersonalizationSettingsView: View {
                 }
             }
 
-            // 4. Изображения фона
+            // 4. Папки чатов
+            Section("Папки чатов") {
+                Toggle("Компактные папки", isOn: $compactFolders)
+                Toggle("Не показывать чаты папок во «Все чаты»", isOn: $excludeFolderChatsFromAll)
+            }
+
+            // 5. Изображения фона
             Section {
                 if vm.isLoading {
                     HStack {

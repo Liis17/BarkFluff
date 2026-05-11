@@ -74,19 +74,31 @@ final class SettingsViewModel {
         async let currentDeviceTask = dc.usersRepository.getCurrentDevice()
 
         do {
-            sessions = try await sessionsTask
+            let loaded = try await sessionsTask
             let serverDevice: DeviceInfo? = (try? await currentDeviceTask) ?? nil
             if let id = serverDevice?.deviceId, !id.isEmpty {
                 currentDeviceId = id
             } else {
                 currentDeviceId = localDeviceId
             }
+            sessions = sortSessionsCurrentFirst(loaded)
         } catch {
             currentDeviceId = localDeviceId
             errorMessage = "Не удалось загрузить сессии"
         }
 
         isSessionsLoading = false
+    }
+
+    private func sortSessionsCurrentFirst(_ sessions: [SessionInfo]) -> [SessionInfo] {
+        guard !currentDeviceId.isEmpty else { return sessions }
+        guard let index = sessions.firstIndex(where: {
+            $0.deviceId.caseInsensitiveCompare(currentDeviceId) == .orderedSame
+        }) else { return sessions }
+        var reordered = sessions
+        let current = reordered.remove(at: index)
+        reordered.insert(current, at: 0)
+        return reordered
     }
 
     func terminateSession(deviceID: String) async {

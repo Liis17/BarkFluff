@@ -91,6 +91,18 @@ enum Migrations {
             try db.create(indexOn: "cached_sticker", columns: ["pack_id"])
         }
 
+        migrator.registerMigration("v5_chat_folders") { db in
+            try db.create(table: "cached_chat_folder") { t in
+                t.column("id", .text).primaryKey()
+                t.column("name", .text).notNull()
+                t.column("icon", .text).notNull().defaults(to: "")
+                t.column("chat_ids_json", .blob).notNull()
+                t.column("sort_order", .integer).notNull().defaults(to: 0)
+                t.column("updated_at", .integer).notNull()
+            }
+            try db.create(indexOn: "cached_chat_folder", columns: ["sort_order"])
+        }
+
         return migrator
     }
 }

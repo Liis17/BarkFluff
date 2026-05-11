@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 import BFCore
 import BFNetworking
 
@@ -40,6 +41,17 @@ final class ProfileEditViewModel {
     var showError = false
     var errorMessage = ""
     var usernameStatus: UsernameValidationStatus?
+
+    // MARK: - Avatar cropper state
+
+    /// Картинка из fileImporter, ждущая обрезки в кропере 1:1.
+    var pendingAvatarImage: NSImage?
+
+    /// Флаг показа модального экрана кропера.
+    var showCropper: Bool = false
+
+    /// Флаг загрузки уже обрезанной картинки на сервер.
+    var isUploadingAvatar: Bool = false
 
     // MARK: - Username validation
 
@@ -196,39 +208,29 @@ final class ProfileEditViewModel {
         }
     }
 
-    /// Обработка выбора аватара
+    /// Обработка выбора аватара через fileImporter: читаем файл, превращаем
+    /// в NSImage и показываем кропер 1:1. Сама заливка — после onCrop через uploadCropped.
     func handleAvatarSelection(result: Result<[URL], Error>) async {
         switch result {
         case .success(let urls):
             guard let fileURL = urls.first else { return }
 
-            // macOS sandbox: получаем доступ к security-scoped resource
             guard fileURL.startAccessingSecurityScopedResource() else {
                 errorMessage = "Нет доступа к файлу"
                 showError = true
                 return
             }
-
-            defer {
-                fileURL.stopAccessingSecurityScopedResource()
-            }
+            defer { fileURL.stopAccessingSecurityScopedResource() }
 
             do {
-                // Читаем данные файла
                 let data = try Data(contentsOf: fileURL)
-
-                // Получаем имя файла
-                let fileName = fileURL.lastPathComponent
-
-                // Загружаем файл (с дедупликацией по SHA256)
-                let fileID = try await fileService.uploadFile(data: data, fileName: fileName, fileType: .userAvatar)
-
-                // Устанавливаем аватар
-                try await userService.setProfilePicture(fileID: fileID)
-
-                // Перезагружаем профиль для получения актуального URL аватара
-                await loadProfile()
-
+                guard let image = NSImage(data: data) else {
+                    errorMessage = "Не удалось прочитать изображение"
+                    showError = true
+                    return
+                }
+                pendingAvatarImage = image
+                showCropper = true
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
@@ -238,6 +240,39 @@ final class ProfileEditViewModel {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+
+    /// Залить уже обрезанную в кропере картинку: JPEG 0.85 → upload → setProfilePicture.
+    func uploadCropped(_ image: NSImage) async {
+        isUploadingAvatar = true
+        defer {
+            isUploadingAvatar = false
+            pendingAvatarImage = nil
+        }
+
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            errorMessage = "Ошибка обработки изображения"
+            showError = true
+            return
+        }
+
+        do {
+            let fileID = try await fileService.uploadFile(
+                data: data,
+                fileName: "avatar.jpg",
+                fileType: .userAvatar
+            )
+            try await userService.setProfilePicture(fileID: fileID)
+            await loadProfile()
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    /// Отменить кроп — сбросить pending state.
+    func cancelAvatarCropping() {
+        pendingAvatarImage = nil
     }
 
     /// Выход из аккаунта

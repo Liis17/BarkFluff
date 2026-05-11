@@ -50,6 +50,20 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 | `NSApplication.shared.appearance` | `.preferredColorScheme()` через `AppearanceSettings.colorScheme` |
 | Sandbox entitlements | `INFOPLIST_KEY_NS*UsageDescription` build settings (Photo Library, Camera, Microphone) |
 
+## Иконка приложения и сплеш-скрин
+
+**Иконка** (`Assets.xcassets/AppIcon.appiconset/`): один файл `AppIcon.png` (1024×1024, заимствован у macOS — `Mac/.../AppIcon.appiconset/icon-ios-1024x1024.png`). Формат iOS 17+ single-size — iOS сама рендерит все промежуточные размеры. В `Contents.json` три слота (universal / dark / tinted) указывают на тот же PNG, отдельных variants нет.
+
+**Сплеш-скрин** (`DesignSystem/Components/SplashView.swift`): `Image("BrandLogo")` (отдельный imageset на той же 1024×1024) + название «BarkFluff» + `ProgressView`. Показывается:
+- На `AppCoordinator.currentState == .loading` (вместо прежнего `LoadingView`).
+- На `.main`, пока `coordinator.isInitialChatsLoaded == false` — флаг ставится в `true` в `ChatListView.task` после `await (userLoad, foldersLoad, chatsLoad)` (даже при ошибке, чтобы splash не повис).
+
+Реализация: `RootView` оборачивает switch по `currentState` в `ZStack`, поверх лежит `SplashView` с `.transition(.opacity)` и `.animation(.easeInOut(duration: 0.25), value: showSplash)`. Контент рендерится «под» сплешем, чтобы `ChatListView.task` стартовал параллельно с показом сплеша.
+
+Флаг `isInitialChatsLoaded` живёт в `AppCoordinator` и **не сбрасывается** при logout/`handleSessionExpired` — splash появляется только на cold start. При повторном входе пользователь видит `MainTabView` сразу с `ChatRowPlaceholderView` плашками, пока чаты грузятся.
+
+Нативный iOS LaunchScreen — авто-генерируемый пустой (`INFOPLIST_KEY_UILaunchScreen_Generation = YES`), наш SwiftUI splash перекрывает его мгновенно.
+
 ## Онлайн-статусы
 
 Реализация идентична [[Клиенты/macOS]]: per-row подписка через `.task(id: otherUserID)` с парой `track`/`untrack` и `withTaskCancellationHandler`.
@@ -71,7 +85,20 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 
 Серверная синхронизация — через `UserService.getPersonalization` / `setProfilePoster` / `updatePersonalization` (BFCore, общие для iOS/macOS). Локальные настройки (radius/blur/dim/currentBackgroundFileID) — `PersonalizationSettings` (UserDefaults) из DI.
 
-PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPickerItem?` / `var selectedBackgroundItem: PhotosPickerItem?` с `didSet` → загрузка через `loadTransferable(type: Data.self)` → `fileService.uploadFile(fileType: .userProfilePoster | .messageAttachmentImage)`.
+PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPickerItem?` / `var selectedBackgroundItem: PhotosPickerItem?` с `didSet`. Постер: `didSet` → `loadTransferable(Data.self)` → `UIImage(data:)` → `pendingPosterImage` + `showPosterCropper = true` → после `onCrop` — `uploadPoster(_ image:)` → `jpegData(0.85)` → `fileService.uploadFile(.userProfilePoster)`. Фоны кропом не идут — сразу `uploadFile(.messageAttachmentImage)`.
+
+## Кропер изображений — `ImageCropperView`
+
+`DesignSystem/Components/ImageCropperView.swift` — общий кропер для аватара (1:1, output 1024×1024) и постера (3:1, output 1500×500). Pinch-zoom + pan через `UIScrollView` в `UIViewControllerRepresentable`, поверх — затемнение even-odd с белой рамкой по окну кропа. Минимальный зум подобран так, что картинка всегда покрывает окно (выделение не может выехать за пределы), max — `minScale * 4`. Двойной тап — toggle zoom. На «Готово» возвращает `UIImage` нужного output-size через `UIGraphicsImageRenderer`, уважая `imageOrientation`.
+
+Параметры: `image: UIImage`, `aspectRatio: CGFloat` (1 / 3), `outputWidth: CGFloat` (1024 / 1500), `onCancel`, `onCrop`. Презентация — `.fullScreenCover`.
+
+Точки вызова:
+- `Features/Auth/Views/Steps/AvatarStepView.swift` — регистрация, 1:1.
+- `Features/Profile/Views/ProfileEditView.swift` — настройки профиля, 1:1, биндится к `ProfileEditViewModel.showCropper`.
+- `Features/Settings/Views/Personalization/Components/PosterPreviewCard.swift` — персонализация, 3:1, биндится к `PersonalizationSettingsViewModel.showPosterCropper`.
+
+Общий flow: PhotosPicker → `loadTransferable(Data)` → `UIImage` → cropper → `jpegData(0.85)` → `fileService.uploadFile` → `setProfilePicture` / `setProfilePoster`.
 
 ## Logout (паритет с macOS)
 
@@ -140,6 +167,22 @@ API совпадает с macOS 26. Перенесены `GlassButtonStyle`, `Gl
 xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build
 open Barkfluff.xcodeproj
 ```
+
+## Папки чатов
+
+Полный паритет с [[Android]]-клиентом (контракт описан в [[Backend/Users-ChatFolders-ClientGuide]]). UI — горизонтальный ряд «чипов» над списком чатов: первый таб «Все чаты», далее пользовательские папки с бейджем непрочитанных. Раздел `Settings → Папки чатов` управляет порядком (drag-drop), созданием/редактированием/удалением.
+
+Shared-слой (общий с [[macOS]]):
+- `BFCore.ChatFolder` — доменная модель (`id`, `name`, `icon`, `chatIDs`, `sortOrder`).
+- `BFNetworking.ChatFoldersRepository` — gRPC-репозиторий с 7 методами (`getChatFolders`/`create`/`update`/`delete`/`addChatToFolder`/`removeChatFromFolder`/`reorder`).
+- `BFCore.ChatFolderService` — stale-while-revalidate поверх `ChatFoldersRepository` + `LocalChatFolderRepository` (GRDB, миграция `v5_chat_folders`, таблица `cached_chat_folder`).
+
+iOS-специфика:
+- `Features/Settings/Views/ChatFoldersListView.swift` + `EditChatFolderView.swift` + `FolderChatPickerView.swift` (+ соответствующие ViewModel-ы).
+- Категория `.chatFolders` в [[Клиенты/iOS]] `Navigation/SettingsCategory.swift`, в `ProfileView` — отдельная секция «Чаты».
+- `Features/ChatList/Views/FolderTabChip.swift` + `ChatFolderTabsBar` — горизонтальный ряд табов над `ChatListView`.
+- `ChatListViewModel.folders/selectedFolderID/excludeFolderChatsFromAll` + `loadFolders()`, `selectFolder(_:)`, `unreadCount(for:)`. Метод `applyFilter()` учитывает выбранную папку и флаг «исключать чаты папок из «Все чаты»».
+- Персонализация: два `@AppStorage` ключа `folders.compact` (компактные табы — только иконки) и `folders.excludeFromAll`. Тогглы в `PersonalizationSettingsView`.
 
 ## Что вне scope текущей итерации
 

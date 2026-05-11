@@ -68,6 +68,23 @@ struct PosterPreviewCard: View {
         }
         // clipShape оставлен, чтобы постер сверху имел те же углы, что и Section.
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+        .fullScreenCover(isPresented: $viewModel.showPosterCropper) {
+            if let pendingImage = viewModel.pendingPosterImage {
+                ImageCropperView(
+                    image: pendingImage,
+                    aspectRatio: 3,
+                    outputWidth: 1500,
+                    onCancel: {
+                        viewModel.showPosterCropper = false
+                        viewModel.cancelPosterCropping()
+                    },
+                    onCrop: { cropped in
+                        viewModel.showPosterCropper = false
+                        Task { await viewModel.uploadPoster(cropped) }
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Subviews

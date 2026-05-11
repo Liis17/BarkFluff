@@ -174,6 +174,25 @@ public struct PrivacySettingsInfo: Sendable, Hashable {
     }
 }
 
+// MARK: - Chat Folders
+
+/// Папка чатов пользователя (DTO из репозитория)
+public struct ChatFolderInfo: Sendable, Identifiable, Hashable {
+    public let id: String
+    public let name: String
+    public let icon: String
+    public let chatIDs: [String]
+    public let sortOrder: Int32
+
+    public init(id: String, name: String, icon: String, chatIDs: [String], sortOrder: Int32) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.chatIDs = chatIDs
+        self.sortOrder = sortOrder
+    }
+}
+
 // MARK: - Chat
 
 public struct ChatInfo: Sendable, Identifiable {

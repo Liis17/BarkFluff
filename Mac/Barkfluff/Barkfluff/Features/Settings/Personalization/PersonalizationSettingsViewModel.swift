@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import AppKit
 import BFCore
 import BFNetworking
 
@@ -23,8 +24,13 @@ final class PersonalizationSettingsViewModel {
 
     // MARK: - Server-synced state
 
-    /// fileID текущего постера профиля. Пустая строка — нет постера.
-    var posterFileID: String = ""
+    /// fileID текущего постера профиля. Берётся напрямую из `container.currentUser`,
+    /// чтобы превью отрисовывалось мгновенно из уже загруженного `currentUser`
+    /// и не мигало плейсхолдером во время `getPersonalization`.
+    /// Пустая строка — постера нет.
+    var posterFileID: String {
+        container.currentUser?.profilePosterFileID ?? ""
+    }
 
     /// Полный список фонов чата с сервера (включает выбранный).
     var backgroundFileIDs: [String] = []
@@ -36,6 +42,7 @@ final class PersonalizationSettingsViewModel {
     var isUploadingBackground = false
     var errorMessage: String?
     var deleteMode = false
+
 
     // MARK: - Init
 
@@ -51,13 +58,13 @@ final class PersonalizationSettingsViewModel {
 
     // MARK: - Loading
 
-    /// Подтянуть постер и список фонов с сервера.
+    /// Подтянуть список фонов с сервера.
+    /// Постер берём из `container.currentUser` (уже загружен при старте сессии).
     func load() async {
         isLoading = true
         errorMessage = nil
         do {
             let info = try await userService.getPersonalization()
-            posterFileID = info.profilePosterFileID
             backgroundFileIDs = info.chatBackgroundFileIDs
         } catch {
             errorMessage = error.localizedDescription
@@ -67,43 +74,33 @@ final class PersonalizationSettingsViewModel {
 
     // MARK: - Poster
 
-    /// Обработать выбор постера через SwiftUI fileImporter.
-    func handlePosterSelection(result: Result<[URL], Error>) async {
-        switch result {
-        case .success(let urls):
-            guard let fileURL = urls.first else { return }
-            await uploadPoster(from: fileURL)
-        case .failure(let error):
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func uploadPoster(from fileURL: URL) async {
-        guard fileURL.startAccessingSecurityScopedResource() else {
-            errorMessage = "Нет доступа к файлу"
-            return
-        }
-        defer { fileURL.stopAccessingSecurityScopedResource() }
-
+    /// Залить уже обрезанный в кропере постер: JPEG 0.85 → upload → setProfilePoster.
+    /// Кроп управляется самой View (через `CropperWindowController`), сюда
+    /// прилетает уже готовый `NSImage`.
+    func uploadPoster(_ image: NSImage) async {
         isUploadingPoster = true
         errorMessage = nil
+        defer { isUploadingPoster = false }
+
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            errorMessage = "Ошибка обработки изображения"
+            return
+        }
+
         do {
-            let data = try Data(contentsOf: fileURL)
-            let fileName = fileURL.lastPathComponent
             let fileID = try await fileService.uploadFile(
                 data: data,
-                fileName: fileName,
+                fileName: "poster.jpg",
                 fileType: .userProfilePoster
             )
             try await userService.setProfilePoster(fileID: fileID)
-            posterFileID = fileID
             // Перечитать текущего пользователя, чтобы шапки профиля
-            // (свой и в ProfileSidebarView) увидели новый постер сразу.
+            // (свой и в ProfileSidebarView) и `posterFileID` (computed
+            // из currentUser) увидели новый постер сразу.
             await container.loadCurrentUser()
         } catch {
             errorMessage = error.localizedDescription
         }
-        isUploadingPoster = false
     }
 
     // MARK: - Backgrounds

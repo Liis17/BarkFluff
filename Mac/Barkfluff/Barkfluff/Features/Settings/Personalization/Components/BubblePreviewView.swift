@@ -50,7 +50,7 @@ struct BubblePreviewView: View {
                 .padding(.vertical, Theme.Spacing.sm)
                 .background(
                     MessageBubbleShape(tailSide: .left, showTail: true, cornerRadius: radius)
-                        .fill(Color(nsColor: .secondarySystemFill))
+                        .fill(Color(nsColor: MessageBubbleView.incomingBubbleColor))
                 )
                 .clipShape(
                     MessageBubbleShape(tailSide: .left, showTail: true, cornerRadius: radius)

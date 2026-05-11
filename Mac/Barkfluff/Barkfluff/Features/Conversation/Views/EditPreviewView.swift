@@ -16,10 +16,11 @@ struct EditPreviewView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+            // Полоска-акцент. Без maxHeight: .infinity, иначе HStack тянется
+            // на всю доступную вертикаль внутри VStack composer'а.
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(Color.accentColor)
-                .frame(width: 3)
-                .frame(maxHeight: .infinity)
+                .frame(width: 3, height: 32)
 
             Image(systemName: "pencil")
                 .font(.callout)
@@ -52,7 +53,7 @@ struct EditPreviewView: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
-        .frame(minHeight: 44)
+        .fixedSize(horizontal: false, vertical: true)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.md))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.md)
