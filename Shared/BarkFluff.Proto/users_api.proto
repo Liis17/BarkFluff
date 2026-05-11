@@ -194,6 +194,15 @@ service UsersServerApi {
 
   // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
   rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
+
+  // Обновить профиль пользователя (для админ-панели)
+  rpc UpdateProfileServer(UpdateProfileServerRequest) returns(UpdateProfileServerResponse);
+
+  // Установить постер профиля пользователя (для админ-панели)
+  rpc SetProfilePosterServer(SetProfilePosterServerRequest) returns(SetProfilePosterServerResponse);
+
+  // Получить URL постера профиля пользователя (для админ-панели)
+  rpc GetProfilePosterServer(GetProfilePosterServerRequest) returns(GetProfilePosterServerResponse);
 }
 
 // Установить аватарку (серверный)
@@ -204,6 +213,34 @@ message SetProfilePictureServerRequest {
 }
 
 message SetProfilePictureServerResponse { }
+
+// Обновить профиль пользователя (серверный, для админ-панели)
+message UpdateProfileServerRequest {
+  int64 user_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string bio = 4;
+  string username = 5;
+}
+
+message UpdateProfileServerResponse { }
+
+// Установить постер профиля (серверный, для админ-панели)
+message SetProfilePosterServerRequest {
+  int64 user_id = 1;
+  string poster_file_id = 2; // пусто — удалить постер
+}
+
+message SetProfilePosterServerResponse { }
+
+// Получить URL постера профиля (серверный, для админ-панели)
+message GetProfilePosterServerRequest {
+  int64 user_id = 1;
+}
+
+message GetProfilePosterServerResponse {
+  string poster_url = 1; // пусто если постер не задан
+}
 
 // Поиск пользователей (серверный)
 message SearchUsersServerRequest {

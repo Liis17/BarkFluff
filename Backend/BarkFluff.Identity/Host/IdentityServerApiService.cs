@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Features.CreateSessionForUserServer;
 using BarkFluff.Identity.Features.DisableOtpVerificationServer;
+using BarkFluff.Identity.Features.ForceSetPasswordServer;
 using BarkFluff.Identity.Features.GetActiveSessionsServer;
 using BarkFluff.Identity.Features.ListOtpVerificationServer;
 using BarkFluff.Identity.Features.RemoveActiveSessionServer;
@@ -92,5 +93,16 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
         };
 
         return _mediator.Send(command);
+    }
+
+    public override Task<ForceSetPasswordServerResponse> ForceSetPasswordServer(
+        ForceSetPasswordServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("server_force_password_changes");
+        return _mediator.Send(new ForceSetPasswordServerCommand
+        {
+            UserId = request.UserId,
+            NewPassword = request.NewPassword
+        });
     }
 }

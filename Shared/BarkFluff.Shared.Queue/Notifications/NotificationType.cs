@@ -21,4 +21,6 @@ public enum NotificationType
     PasswordChanged = 8,
 
     TwoFactorMethodChanged = 9,
+
+    PasswordChangedByAdmin = 10,
 }
