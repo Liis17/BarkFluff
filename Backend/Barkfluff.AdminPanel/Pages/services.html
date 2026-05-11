@@ -120,17 +120,17 @@
             border: 1px solid #fecaca;
         }
 
-        .remote-tab {
+        .server-tab {
             color: #94a3b8;
             border-bottom: 2px solid transparent;
             margin-bottom: -1px;
         }
-        .remote-tab.active {
+        .server-tab.active {
             color: #4f46e5;
             border-bottom-color: #4f46e5;
             background: transparent;
         }
-        .remote-tab:hover:not(.active) {
+        .server-tab:hover:not(.active) {
             color: #475569;
         }
     </style>
@@ -270,11 +270,37 @@
             <!-- SCROLLABLE CONTENT -->
             <div class="flex-1 overflow-y-auto p-8">
 
-                <!-- SERVICES TABLE -->
+                <!-- ALL SERVERS — единая карточка с вкладками -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <h3 class="font-bold text-lg text-slate-700">Состояние сервисов</h3>
+
+                    <!-- Tab bar -->
+                    <div class="flex gap-1 mb-5 border-b border-slate-100">
+                        <button id="tab-barkfluff" onclick="switchTab('barkfluff')"
+                            class="server-tab px-4 py-2 text-sm font-medium transition-colors">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="server" class="w-4 h-4"></i>
+                                BarkFluff Server
+                            </span>
+                        </button>
+                        <button id="tab-navigator" onclick="switchTab('navigator')"
+                            class="server-tab px-4 py-2 text-sm font-medium transition-colors">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                                Navigator Server
+                            </span>
+                        </button>
+                        <button id="tab-msk" onclick="switchTab('msk')"
+                            class="server-tab px-4 py-2 text-sm font-medium transition-colors">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="building-2" class="w-4 h-4"></i>
+                                MSK Server
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- BarkFluff panel -->
+                    <div id="panel-barkfluff" class="server-panel">
+                        <div class="flex items-center gap-3 mb-4">
                             <button onclick="restartAllServices()"
                                 class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
                                 <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
@@ -285,70 +311,39 @@
                                 <i data-lucide="download-cloud" class="w-3.5 h-3.5"></i>
                                 Обновить все
                             </button>
+                            <button id="refreshBtn" class="ml-auto text-sm text-blue-600 hover:underline flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                Обновить
+                            </button>
                         </div>
-                        <button id="refreshBtn" class="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            Обновить
-                        </button>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-xs text-slate-400 border-b border-slate-100">
+                                        <th class="py-3 font-semibold uppercase">Сервис</th>
+                                        <th class="py-3 font-semibold uppercase">Статус</th>
+                                        <th class="py-3 font-semibold uppercase">Последний лог</th>
+                                        <th class="py-3 font-semibold uppercase">Ошибки</th>
+                                        <th class="py-3 font-semibold uppercase">Событий</th>
+                                        <th class="py-3 font-semibold uppercase text-center">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="servicesTableBody" class="text-sm">
+                                    <tr>
+                                        <td colspan="6" class="py-8 text-center text-slate-400">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <i data-lucide="loader" class="w-6 h-6 animate-spin"></i>
+                                                Загрузка сервисов...
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="text-xs text-slate-400 border-b border-slate-100">
-                                    <th class="py-3 font-semibold uppercase">Сервис</th>
-                                    <th class="py-3 font-semibold uppercase">Статус</th>
-                                    <th class="py-3 font-semibold uppercase">Последний лог</th>
-                                    <th class="py-3 font-semibold uppercase">Ошибки</th>
-                                    <th class="py-3 font-semibold uppercase">Событий</th>
-                                    <th class="py-3 font-semibold uppercase text-center">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="servicesTableBody" class="text-sm">
-                                <tr>
-                                    <td colspan="6" class="py-8 text-center text-slate-400">
-                                        <div class="flex flex-col items-center gap-2">
-                                            <i data-lucide="loader" class="w-6 h-6 animate-spin"></i>
-                                            Загрузка сервисов...
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- REMOTE SERVERS -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mt-6">
-                    <div class="flex items-center justify-between mb-5">
-                        <h3 class="font-bold text-lg text-slate-700 flex items-center gap-2">
-                            <i data-lucide="globe" class="w-5 h-5 text-indigo-400"></i>
-                            Удалённые серверы
-                        </h3>
-                    </div>
-
-                    <!-- Tabs -->
-                    <div class="flex gap-1 mb-5 border-b border-slate-100">
-                        <button id="tab-navigator"
-                            onclick="switchRemoteTab('navigator')"
-                            class="remote-tab px-4 py-2 text-sm font-medium rounded-t-lg transition-colors">
-                            <span class="flex items-center gap-1.5">
-                                <i data-lucide="map-pin" class="w-4 h-4"></i>
-                                Navigator Server
-                            </span>
-                        </button>
-                        <button id="tab-msk"
-                            onclick="switchRemoteTab('msk')"
-                            class="remote-tab px-4 py-2 text-sm font-medium rounded-t-lg transition-colors">
-                            <span class="flex items-center gap-1.5">
-                                <i data-lucide="building-2" class="w-4 h-4"></i>
-                                MSK Server
-                            </span>
-                        </button>
-                    </div>
-
-                    <!-- Tables per server -->
-                    <div id="remote-navigator" class="remote-panel hidden">
+                    <!-- Navigator panel -->
+                    <div id="panel-navigator" class="server-panel hidden">
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
@@ -370,7 +365,8 @@
                         </div>
                     </div>
 
-                    <div id="remote-msk" class="remote-panel hidden">
+                    <!-- MSK panel -->
+                    <div id="panel-msk" class="server-panel hidden">
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
@@ -391,6 +387,7 @@
                             </table>
                         </div>
                     </div>
+
                 </div>
 
             </div>
@@ -809,7 +806,8 @@
 
         // Кнопка ручного обновления
         document.getElementById('refreshBtn').addEventListener('click', () => {
-            loadServices();
+            if (activeTab === 'barkfluff') loadServices();
+            else loadRemoteContainers(activeTab);
         });
 
         // Список сервисов BarkFluff в порядке перезапуска
@@ -1040,36 +1038,33 @@
             await runSequentialProcessing('update');
         }
 
-        // ---- Удалённые серверы ----
+        // ---- Единая система вкладок ----
 
-        const remoteServers = [
-            {
-                id: 'navigator',
-                label: 'Navigator Server',
-                services: [
-                    { name: 'navigator-dev', label: 'Navigator' }
-                ]
-            },
-            {
-                id: 'msk',
-                label: 'MSK Server',
-                services: [
-                    { name: 'clientstorage-dev', label: 'ClientStorage' },
-                    { name: 'webserver-dev', label: 'WebServer' },
-                    { name: 'nginx', label: 'Nginx' }
-                ]
-            }
-        ];
+        const remoteStateMap = {
+            'running':     { cls: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  label: 'Запущен' },
+            'restarting':  { cls: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500',   label: 'Перезапуск' },
+            'paused':      { cls: 'bg-yellow-100 text-yellow-700',dot: 'bg-yellow-500', label: 'Приостановлен' },
+            'exited':      { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
+            'dead':        { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
+            'not_found':   { cls: 'bg-slate-100 text-slate-500',  dot: 'bg-slate-300',  label: 'Не найден' },
+            'unconfigured':{ cls: 'bg-slate-100 text-slate-400',  dot: 'bg-slate-200',  label: 'Не настроен' },
+            'error':       { cls: 'bg-orange-100 text-orange-700',dot: 'bg-orange-400', label: 'Ошибка' }
+        };
 
-        let activeRemoteTab = 'navigator';
+        let activeTab = localStorage.getItem('services-active-tab') || 'barkfluff';
 
-        function switchRemoteTab(serverId) {
-            activeRemoteTab = serverId;
-            document.querySelectorAll('.remote-tab').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('tab-' + serverId).classList.add('active');
-            document.querySelectorAll('.remote-panel').forEach(panel => panel.classList.add('hidden'));
-            document.getElementById('remote-' + serverId).classList.remove('hidden');
-            loadRemoteContainers(serverId);
+        function switchTab(tabId) {
+            activeTab = tabId;
+            localStorage.setItem('services-active-tab', tabId);
+
+            document.querySelectorAll('.server-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            document.querySelectorAll('.server-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById('panel-' + tabId).classList.remove('hidden');
+
+            if (tabId === 'barkfluff') loadServices();
+            else loadRemoteContainers(tabId);
         }
 
         async function loadRemoteContainers(serverId) {
@@ -1102,19 +1097,8 @@
                 return;
             }
 
-            const dockerStateMap = {
-                'running':    { cls: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  label: 'Запущен' },
-                'restarting': { cls: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500',   label: 'Перезапуск' },
-                'paused':     { cls: 'bg-yellow-100 text-yellow-700',dot: 'bg-yellow-500', label: 'Приостановлен' },
-                'exited':     { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
-                'dead':       { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
-                'not_found':  { cls: 'bg-slate-100 text-slate-500',  dot: 'bg-slate-300',  label: 'Не найден' },
-                'unconfigured':{ cls: 'bg-slate-100 text-slate-400', dot: 'bg-slate-200',  label: 'Не настроен' },
-                'error':      { cls: 'bg-orange-100 text-orange-700',dot: 'bg-orange-400', label: 'Ошибка' }
-            };
-
             const rows = data.map(svc => {
-                const stateInfo = dockerStateMap[svc.state] ||
+                const stateInfo = remoteStateMap[svc.state] ||
                     { cls: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', label: svc.state };
 
                 const badge = `<span class="px-2 py-1 ${stateInfo.cls} text-xs rounded-md font-medium inline-flex items-center gap-1">
@@ -1201,20 +1185,15 @@
             }
         }
 
-        function initRemoteServers() {
-            switchRemoteTab('navigator');
-        }
-
         // Инициализация
         checkAuth();
         initS3Menu();
-        loadServices();
-        initRemoteServers();
+        switchTab(activeTab);
 
-        // Авто-обновление каждые 30 секунд
+        // Авто-обновление каждые 30 секунд — только активная вкладка
         refreshInterval = setInterval(() => {
-            loadServices();
-            loadRemoteContainers(activeRemoteTab);
+            if (activeTab === 'barkfluff') loadServices();
+            else loadRemoteContainers(activeTab);
         }, 30000);
     </script>
 </body>
