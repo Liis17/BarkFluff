@@ -10,6 +10,8 @@ namespace Barkfluff.AdminPanel.Services;
 
 public record RemoteContainerInfo(string Label, string ServiceName, string ComposePath, string WorkDir);
 
+public record RemoteServerInfoDto(string Host, int Port, string Username, string Password);
+
 public class RemoteContainerStatusDto
 {
     public string Label { get; set; } = string.Empty;
@@ -255,6 +257,12 @@ public class RemoteDockerService
         }
 
         return dto;
+    }
+
+    public RemoteServerInfoDto GetServerInfo(string server)
+    {
+        var config = GetServerConfig(server);
+        return new RemoteServerInfoDto(config.Host, config.Port, config.Username, config.Password);
     }
 
     private RemoteServerSettings GetServerConfig(string server) => server switch

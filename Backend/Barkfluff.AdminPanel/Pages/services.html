@@ -344,6 +344,29 @@
 
                     <!-- Navigator panel -->
                     <div id="panel-navigator" class="server-panel hidden">
+                        <!-- Server info -->
+                        <div class="mb-4 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">Host</span>
+                                <span class="font-mono text-slate-700" id="info-navigator-host">—</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">Port</span>
+                                <span class="font-mono text-slate-700" id="info-navigator-port">—</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">User</span>
+                                <span class="font-mono text-slate-700" id="info-navigator-user">—</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">Password</span>
+                                <span class="font-mono text-slate-700 tracking-widest" id="info-navigator-pass">—</span>
+                                <button onclick="togglePassword('navigator')" id="toggle-navigator-pass"
+                                    class="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors" title="Показать пароль" style="display:none">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
@@ -367,6 +390,29 @@
 
                     <!-- MSK panel -->
                     <div id="panel-msk" class="server-panel hidden">
+                        <!-- Server info -->
+                        <div class="mb-4 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">Host</span>
+                                <span class="font-mono text-slate-700" id="info-msk-host">—</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">Port</span>
+                                <span class="font-mono text-slate-700" id="info-msk-port">—</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">User</span>
+                                <span class="font-mono text-slate-700" id="info-msk-user">—</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-400 text-xs">Password</span>
+                                <span class="font-mono text-slate-700 tracking-widest" id="info-msk-pass">—</span>
+                                <button onclick="togglePassword('msk')" id="toggle-msk-pass"
+                                    class="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors" title="Показать пароль" style="display:none">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
@@ -1040,6 +1086,51 @@
 
         // ---- Единая система вкладок ----
 
+        const serverPasswords = {};
+
+        async function loadServerInfo(serverId) {
+            try {
+                const res = await fetch('/api/remote/' + serverId + '/config');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const info = await res.json();
+                serverPasswords[serverId] = info.password;
+
+                document.getElementById('info-' + serverId + '-host').textContent = info.host || '—';
+                document.getElementById('info-' + serverId + '-port').textContent = info.port || '22';
+                document.getElementById('info-' + serverId + '-user').textContent = info.username || '—';
+
+                const passEl = document.getElementById('info-' + serverId + '-pass');
+                passEl.textContent = info.password ? '•'.repeat(Math.min(info.password.length, 24)) : '—';
+                passEl.dataset.shown = 'false';
+
+                const toggleBtn = document.getElementById('toggle-' + serverId + '-pass');
+                if (toggleBtn) toggleBtn.style.display = info.password ? '' : 'none';
+                lucide.createIcons();
+            } catch (e) {
+                console.error('Server info error:', e);
+            }
+        }
+
+        function togglePassword(serverId) {
+            const passEl = document.getElementById('info-' + serverId + '-pass');
+            const btnEl = document.getElementById('toggle-' + serverId + '-pass');
+            const isShown = passEl.dataset.shown === 'true';
+
+            if (isShown) {
+                const pw = serverPasswords[serverId];
+                passEl.textContent = pw ? '•'.repeat(Math.min(pw.length, 24)) : '—';
+                passEl.dataset.shown = 'false';
+                btnEl.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5"></i>';
+                btnEl.title = 'Показать пароль';
+            } else {
+                passEl.textContent = serverPasswords[serverId] || '—';
+                passEl.dataset.shown = 'true';
+                btnEl.innerHTML = '<i data-lucide="eye-off" class="w-3.5 h-3.5"></i>';
+                btnEl.title = 'Скрыть пароль';
+            }
+            lucide.createIcons();
+        }
+
         const remoteStateMap = {
             'running':     { cls: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  label: 'Запущен' },
             'restarting':  { cls: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500',   label: 'Перезапуск' },
@@ -1064,7 +1155,10 @@
             document.getElementById('panel-' + tabId).classList.remove('hidden');
 
             if (tabId === 'barkfluff') loadServices();
-            else loadRemoteContainers(tabId);
+            else {
+                loadServerInfo(tabId);
+                loadRemoteContainers(tabId);
+            }
         }
 
         async function loadRemoteContainers(serverId) {
