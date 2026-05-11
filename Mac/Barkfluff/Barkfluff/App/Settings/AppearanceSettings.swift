@@ -70,6 +70,12 @@ final class AppearanceSettings {
         apply()
     }
 
+    /// Сброс к дефолтам и удаление значений из UserDefaults (вызывается при logout).
+    func reset() {
+        theme = .system
+        defaults.removeObject(forKey: Keys.theme)
+    }
+
     /// Источник истины для темы — `NSApplication.shared.appearance`.
     /// SwiftUI-модификатор `.preferredColorScheme(nil)` на macOS не сбрасывает форсированную
     /// тему на части AppKit-бэкэнда (NSWindow chrome, sidebar, NSVisualEffectView), поэтому

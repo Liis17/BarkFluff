@@ -180,6 +180,24 @@ public actor UserDefaultsTokenProvider: TokenProvider {
         userDefaults.removeObject(forKey: UDKeys.deviceId)
     }
 
+    /// Очистка для обычного logout: токены + device_id, host/port остаются.
+    public func purgeForLogout() {
+        ensureCacheLoaded()
+        let preservedHost = cache.serverHost
+        let preservedPort = cache.serverPort
+
+        cache = TokenCache(isLoaded: true)
+        cache.serverHost = preservedHost
+        cache.serverPort = preservedPort
+
+        userDefaults.removeObject(forKey: UDKeys.accessToken)
+        userDefaults.removeObject(forKey: UDKeys.accessTokenExpiresAt)
+        userDefaults.removeObject(forKey: UDKeys.refreshToken)
+        userDefaults.removeObject(forKey: UDKeys.refreshTokenExpiresAt)
+        userDefaults.removeObject(forKey: UDKeys.deviceId)
+        // serverHost / serverPort оставляем нетронутыми.
+    }
+
     // MARK: - Server Endpoint
 
     public var savedServerHost: String? {

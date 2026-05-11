@@ -163,7 +163,7 @@ struct ServerSelectionView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                TextField("beacon.example.com:7004", text: Bindable(viewModel).serverAddress)
+                TextField("beacon.servername.com:443", text: Bindable(viewModel).serverAddress)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.URL)
                     .autocapitalization(.none)
@@ -228,16 +228,10 @@ struct ServerCardView: View {
                             .lineLimit(1)
                     }
 
-                    HStack(spacing: 4) {
-                        Text(server.beaconAddress)
-                            .font(.caption)
-
-                        if server.accountsCount > 0 {
-                            Text("•")
-                            Text("\(server.accountsCount.formatted()) пользователей")
-                        }
-                    }
-                    .foregroundStyle(.tertiary)
+                    Text(locationLine)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -260,6 +254,14 @@ struct ServerCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1)
+    }
+
+    private var locationLine: String {
+        let handle = "@\(server.name)"
+        if server.location.isEmpty {
+            return handle
+        }
+        return "\(server.location) \(handle)"
     }
 
     private var serverColor: Color {

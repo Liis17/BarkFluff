@@ -74,7 +74,8 @@ extension RegistrationData {
     func isValid(for step: RegistrationStep) -> Bool {
         switch step {
         case .personalInfo:
-            return firstName.count >= 3 && lastName.count >= 3
+            // Фамилия опциональна — финальная валидация в NameValidator при попытке Next.
+            return firstName.count >= 3
 
         case .username:
             return username.count >= 3 && username.count <= 30 && isUsernameAvailable == true

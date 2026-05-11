@@ -82,6 +82,9 @@ final class UserProfilePanelViewModel {
 
     var userID: Int64? { user?.id }
 
+    /// ID текущего чата с пользователем (или ID группы).
+    var chatID: String { chat.id }
+
     var storageLimitGB: Int32? {
         guard let bytes = user?.storageLimitBytes, bytes > 0 else { return nil }
         return Int32(bytes / 1_073_741_824)

@@ -21,6 +21,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case activeSessions
     case aboutApp
     case aboutServer
+    case testing
 
     var id: String { rawValue }
 
@@ -37,6 +38,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .activeSessions: "Активные сессии"
         case .aboutApp: "О приложении"
         case .aboutServer: "О сервере"
+        case .testing: "Тестирование"
         }
     }
 
@@ -53,6 +55,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .activeSessions: "laptopcomputer.and.iphone"
         case .aboutApp: "app.badge.fill"
         case .aboutServer: "server.rack"
+        case .testing: "hammer.fill"
         }
     }
 
@@ -69,6 +72,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .activeSessions: .orange
         case .aboutApp: .mint
         case .aboutServer: .teal
+        case .testing: .yellow
         }
     }
 }

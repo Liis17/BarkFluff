@@ -65,6 +65,8 @@ struct SettingsCategoryView: View {
             AboutAppSettingsView()
         case .aboutServer:
             AboutServerSettingsView()
+        case .testing:
+            TestingSettingsView()
         }
     }
 }

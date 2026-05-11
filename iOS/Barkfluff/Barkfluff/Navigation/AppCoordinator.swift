@@ -182,7 +182,15 @@ final class AppCoordinator {
         chatNavigationPath = NavigationPath()
         profileNavigationPath = NavigationPath()
 
-        currentState = .serverSelection
+        // Если адрес сервера сохранён — восстанавливаем подключение к Beacon, чтобы
+        // login-флоу сразу имел готовые service endpoints, и уводим на логин того же сервера.
+        // Иначе — на экран выбора сервера.
+        if await container.serverDiscoveryService.currentServerEndpoint() != nil,
+           await container.serverDiscoveryService.tryReconnect() {
+            currentState = .authentication
+        } else {
+            currentState = .serverSelection
+        }
         authScreen = .login
     }
 }

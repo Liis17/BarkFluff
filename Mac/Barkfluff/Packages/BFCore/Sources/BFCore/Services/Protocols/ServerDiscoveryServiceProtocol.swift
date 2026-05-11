@@ -44,6 +44,7 @@ public struct NavigatorServer: Identifiable, Hashable, Sendable {
     public let description: String?
     public let accountsCount: Int64
     public let serverPublicName: String
+    public let location: String
 
     /// Отображаемое имя — публичное если задано, иначе внутреннее
     public var displayName: String {
@@ -62,7 +63,8 @@ public struct NavigatorServer: Identifiable, Hashable, Sendable {
         port: Int,
         description: String? = nil,
         accountsCount: Int64 = 0,
-        serverPublicName: String = ""
+        serverPublicName: String = "",
+        location: String = ""
     ) {
         self.id = id
         self.name = name
@@ -71,5 +73,6 @@ public struct NavigatorServer: Identifiable, Hashable, Sendable {
         self.description = description
         self.accountsCount = accountsCount
         self.serverPublicName = serverPublicName
+        self.location = location
     }
 }
