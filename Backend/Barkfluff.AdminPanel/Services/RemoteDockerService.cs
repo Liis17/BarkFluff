@@ -72,11 +72,16 @@ public class RemoteDockerService
         {
             try
             {
-                var cmd = $"cd {EscapeShell(container.WorkDir)} && docker compose -f {EscapeShell(container.ComposePath)} ps --format json {EscapeShell(container.ServiceName)} 2>/dev/null";
+                // Используем docker ps с фильтрацией по docker compose labels — стабильный NDJSON-формат,
+                // не зависит от версии docker compose и не путается с JSON-array выводом compose ps.
+                var cmd = $"docker ps --all" +
+                          $" --filter \"label=com.docker.compose.service={container.ServiceName}\"" +
+                          $" --filter \"label=com.docker.compose.project.working_dir={container.WorkDir}\"" +
+                          $" --format \"{{{{json .}}}}\"";
+
                 var (stdout, _, _) = await RunSshCommandAsync(serverConfig, cmd);
 
-                var dto = ParseComposePsOutput(stdout, container);
-                results.Add(dto);
+                results.Add(ParseDockerPsOutput(stdout, container));
             }
             catch (Exception ex)
             {
@@ -96,7 +101,8 @@ public class RemoteDockerService
 
     public async Task<ContainerActionResponseDto> StartAsync(string server, string serviceName)
     {
-        return await ExecuteComposeActionAsync(server, serviceName, "start");
+        // Используем "up -d" вместо "start" — работает и для остановленных и для удалённых контейнеров
+        return await ExecuteComposeActionAsync(server, serviceName, "up_d");
     }
 
     public async Task<ContainerActionResponseDto> StopAsync(string server, string serviceName)
@@ -121,9 +127,13 @@ public class RemoteDockerService
 
         try
         {
-            var cmd = $"cd {EscapeShell(container.WorkDir)}" +
-                      $" && docker compose -f {EscapeShell(container.ComposePath)} pull {EscapeShell(container.ServiceName)}" +
-                      $" && docker compose -f {EscapeShell(container.ComposePath)} up --force-recreate -d {EscapeShell(container.ServiceName)}" +
+            var workDir = EscapeShell(container.WorkDir);
+            var composePath = EscapeShell(container.ComposePath);
+            var service = EscapeShell(container.ServiceName);
+
+            var cmd = $"cd {workDir}" +
+                      $" && docker compose -f {composePath} pull {service}" +
+                      $" && docker compose -f {composePath} up --force-recreate -d {service}" +
                       $" && docker image prune -f";
 
             var (_, stderr, exit) = await RunSshCommandAsync(serverConfig, cmd);
@@ -153,14 +163,21 @@ public class RemoteDockerService
 
         try
         {
-            var cmd = $"cd {EscapeShell(container.WorkDir)} && docker compose -f {EscapeShell(container.ComposePath)} {action} {EscapeShell(container.ServiceName)}";
+            var workDir = EscapeShell(container.WorkDir);
+            var composePath = EscapeShell(container.ComposePath);
+            var service = EscapeShell(container.ServiceName);
+
+            // up_d → "up -d" (два аргумента для compose), остальные — одиночные глаголы
+            var composeArgs = action == "up_d" ? $"up -d {service}" : $"{action} {service}";
+            var cmd = $"cd {workDir} && docker compose -f {composePath} {composeArgs}";
+
             var (_, stderr, exit) = await RunSshCommandAsync(serverConfig, cmd);
 
             if (exit != 0)
                 return Fail($"Ошибка {action} {serviceName}", stderr);
 
             _logger.LogInformation("Действие {Action} над {ServiceName} на {Server} выполнено", action, serviceName, server);
-            return Ok($"Действие {action} над {serviceName} выполнено успешно");
+            return Ok($"Действие над {serviceName} выполнено успешно");
         }
         catch (Exception ex)
         {
@@ -171,10 +188,21 @@ public class RemoteDockerService
 
     private async Task<(string stdout, string stderr, int exit)> RunSshCommandAsync(RemoteServerSettings config, string command)
     {
-        var auth = new PasswordAuthenticationMethod(config.Username, config.Password);
-        var sshConnection = new Renci.SshNet.ConnectionInfo(config.Host, config.Port, config.Username, auth);
+        var passwordAuth = new PasswordAuthenticationMethod(config.Username, config.Password);
 
-        using var client = new SshClient(sshConnection);
+        // Keyboard-interactive как fallback — многие серверы (Ubuntu 22.04+) принимают только этот метод,
+        // даже если с виду это обычный пароль. Стандартный ssh-клиент пробует оба метода автоматически.
+        var kbdAuth = new KeyboardInteractiveAuthenticationMethod(config.Username);
+        kbdAuth.AuthenticationPrompt += (_, e) =>
+        {
+            foreach (var prompt in e.Prompts)
+                prompt.Response = config.Password;
+        };
+
+        var sshConn = new Renci.SshNet.ConnectionInfo(
+            config.Host, config.Port, config.Username, passwordAuth, kbdAuth);
+
+        using var client = new SshClient(sshConn);
 
         await Task.Run(() => client.Connect());
         try
@@ -188,7 +216,7 @@ public class RemoteDockerService
         }
     }
 
-    private RemoteContainerStatusDto ParseComposePsOutput(string output, RemoteContainerInfo container)
+    private RemoteContainerStatusDto ParseDockerPsOutput(string output, RemoteContainerInfo container)
     {
         var dto = new RemoteContainerStatusDto
         {
@@ -203,12 +231,12 @@ public class RemoteDockerService
 
         foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
+            var trimmed = line.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                continue;
+
             try
             {
-                var trimmed = line.Trim();
-                if (string.IsNullOrEmpty(trimmed))
-                    continue;
-
                 using var doc = JsonDocument.Parse(trimmed);
                 var root = doc.RootElement;
 
@@ -222,7 +250,7 @@ public class RemoteDockerService
             }
             catch
             {
-                // строка не JSON — пропускаем
+                // строка не является JSON-объектом — пропускаем
             }
         }
 
@@ -243,7 +271,6 @@ public class RemoteDockerService
         return list.FirstOrDefault(c => c.ServiceName == serviceName);
     }
 
-    // Экранирование одинарными кавычками для передачи в sh
     private static string EscapeShell(string value) => $"'{value.Replace("'", "'\\''")}'";
 
     private static ContainerActionResponseDto Ok(string message) =>
