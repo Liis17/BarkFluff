@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    restart: always
+    network_mode: host
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:rw
+      - ./certs:/etc/nginx/certs:rw
+      - ./site:/usr/share/nginx/html:rw
+      - ./auth:/etc/nginx/auth:rw
+networks:
+  net:
+    driver: bridge
