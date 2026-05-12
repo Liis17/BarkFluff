@@ -230,6 +230,26 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_TESTING_SECRET_CHATS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SECRET_CHATS, value).apply()
 
+    // --- Отложенная очистка APK обновления ---
+
+    /** Абсолютный путь к скачанному APK обновления, который нужно удалить после установки. */
+    var pendingUpdateApkPath: String?
+        get() = sharedPreferences.getString(KEY_PENDING_UPDATE_APK_PATH, null)
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_UPDATE_APK_PATH, value).apply()
+
+    /** DownloadManager ID последней загрузки обновления (для DownloadManager.remove). -1 = нет. */
+    var pendingUpdateDownloadId: Long
+        get() = sharedPreferences.getLong(KEY_PENDING_UPDATE_DOWNLOAD_ID, -1L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_UPDATE_DOWNLOAD_ID, value).apply()
+
+    /** Сбрасывает оба параметра отложенной очистки APK. */
+    fun clearPendingUpdate() {
+        sharedPreferences.edit()
+            .remove(KEY_PENDING_UPDATE_APK_PATH)
+            .remove(KEY_PENDING_UPDATE_DOWNLOAD_ID)
+            .apply()
+    }
+
     /**
      * Очищает все данные аккаунта при разлогине.
      * Сохраняет только адреса сервера (socket_*, server_name, server_description).
@@ -319,6 +339,10 @@ class GlobalParam(private val context: Context) {
         // Тестирование
         private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
         private const val KEY_TESTING_SECRET_CHATS = "testing_secret_chats_enabled"
+
+        // Отложенная очистка APK обновления
+        private const val KEY_PENDING_UPDATE_APK_PATH = "pending_update_apk_path"
+        private const val KEY_PENDING_UPDATE_DOWNLOAD_ID = "pending_update_download_id"
 
         /**
          * Генерирует уникальный ID устройства

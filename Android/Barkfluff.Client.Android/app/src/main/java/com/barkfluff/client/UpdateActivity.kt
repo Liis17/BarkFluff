@@ -386,6 +386,16 @@ class UpdateActivity : AppCompatActivity() {
                 destFile
             )
 
+            // Запоминаем, что после установки нужно почистить APK из Downloads.
+            // Делается ПЕРЕД startActivity: если процесс будет убит установщиком,
+            // следующий старт уже новой версии прочитает параметры и удалит файл.
+            val downloadFile = downloadFileName?.let {
+                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), it)
+            }
+            val gp = GlobalParam(this)
+            gp.pendingUpdateApkPath = downloadFile?.absolutePath
+            gp.pendingUpdateDownloadId = downloadId
+
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(contentUri, "application/vnd.android.package-archive")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
