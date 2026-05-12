@@ -1,11 +1,14 @@
 package com.barkfluff.client
 
 import android.app.Application
+import android.app.DownloadManager
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
@@ -15,6 +18,7 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.StickerCache
 import com.google.android.material.color.DynamicColors
+import java.io.File
 
 class BarkFluffApplication : Application() {
 
@@ -51,6 +55,8 @@ class BarkFluffApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Чистим APK обновления, оставшийся в Downloads после установки прошлой версии
+        cleanupPendingUpdate()
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
         NotificationHelper.createChannels(this)
@@ -91,5 +97,34 @@ class BarkFluffApplication : Application() {
         realtimeService.shutdown()
         grpcManager.shutdown()
         super.onTerminate()
+    }
+
+    private fun cleanupPendingUpdate() {
+        try {
+            val gp = GlobalParam(this)
+            val path = gp.pendingUpdateApkPath
+            val downloadId = gp.pendingUpdateDownloadId
+
+            if (path != null) {
+                runCatching { File(path).takeIf { it.exists() }?.delete() }
+            }
+
+            if (downloadId > 0) {
+                runCatching {
+                    val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+                    dm.remove(downloadId)
+                }
+            }
+
+            runCatching {
+                File(cacheDir, "update_pending.apk").takeIf { it.exists() }?.delete()
+            }
+
+            if (path != null || downloadId > 0) {
+                gp.clearPendingUpdate()
+            }
+        } catch (e: Exception) {
+            Log.w("BarkFluffApplication", "cleanupPendingUpdate failed", e)
+        }
     }
 }
