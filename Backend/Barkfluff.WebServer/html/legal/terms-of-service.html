@@ -1,691 +1,561 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Условия использования - BarkFluff</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Условия использования — Barkfluff</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-0: #14070a; --bg-1: #1c0d0a; --bg-2: #241310; --bg-3: #2d1914;
+      --line: rgba(255, 240, 220, 0.08);
+      --line-strong: rgba(255, 240, 220, 0.14);
+      --ink: #fef6ea; --ink-dim: #c9a893; --ink-mute: #8a6a5b;
+      --brand: #ff7a29; --brand-2: #e25a12; --brand-deep: #8a2e06;
+      --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      background: var(--bg-1); color: var(--ink);
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.65;
+    }
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
+        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
+        radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
+        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+    }
+    .bg-grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.22; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+    }
+    .page { position: relative; z-index: 2; }
+    .legal-page { max-width: 920px; margin: 0 auto; padding: 40px 32px 60px; }
 
-    <style>
-        :root {
-            --bg-dark: #0f172a;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --code-bg: rgba(15, 23, 42, 0.6);
-            --heading-color: #e2e8f0;
-            --link-color: #60a5fa;
-            --table-border: rgba(255, 255, 255, 0.1);
-            --table-bg: rgba(30, 41, 59, 0.3);
+    .legal-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
+    }
+    .brand-mark {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
+      color: var(--ink); text-decoration: none;
+    }
+    .brand-mark .glyph {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #ff8a3c, #c23f07);
+      display: grid; place-items: center; position: relative;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(255,122,41,0.5);
+    }
+    .brand-mark .glyph::before {
+      content: ""; position: absolute; inset: 0; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .brand-mark .glyph svg { width: 16px; height: 16px; fill: #fff; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 12px;
+      background: rgba(255,240,220,0.04); border: 1px solid var(--line-strong);
+      color: var(--ink-dim); text-decoration: none; font-size: 13px; font-weight: 600;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .back-link:hover { color: var(--ink); background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
+    .back-link svg { width: 14px; height: 14px; }
+
+    .legal-nav {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 6px;
+      background: rgba(10,5,6,0.5); border: 1px solid var(--line);
+      border-radius: 14px; margin-bottom: 28px;
+    }
+    .legal-nav a {
+      flex: 1 1 auto; min-width: 140px;
+      padding: 10px 14px; border-radius: 10px;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--ink-mute); text-decoration: none; text-align: center;
+      transition: background 0.2s, color 0.2s;
+    }
+    .legal-nav a:hover { color: var(--ink-dim); background: rgba(255,240,220,0.04); }
+    .legal-nav a.active {
+      color: #ffb47a;
+      background: rgba(255,122,41,0.12);
+      box-shadow: inset 0 0 0 1px rgba(255,122,41,0.25);
+    }
+
+    .legal-card {
+      background: linear-gradient(180deg, rgba(45,25,20,0.55), rgba(22,11,9,0.55));
+      border: 1px solid var(--line); border-radius: 24px;
+      padding: 40px 44px; box-shadow: var(--shadow-card); position: relative;
+    }
+    .legal-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: linear-gradient(135deg, rgba(255,122,41,0.18), transparent 35%, transparent 65%, rgba(255,122,41,0.08));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+
+    .legal-header { padding-bottom: 24px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .legal-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+      color: #ffb47a; padding: 5px 11px; border-radius: 999px;
+      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
+      margin-bottom: 16px;
+    }
+    .legal-title {
+      font-size: clamp(28px, 4vw, 40px); font-weight: 800;
+      line-height: 1.1; letter-spacing: -0.02em; color: var(--ink);
+    }
+    .legal-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px;
+      font-size: 12px; color: var(--ink-mute);
+    }
+    .legal-meta span {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,240,220,0.04); border: 1px solid var(--line);
+    }
+    .legal-meta b { color: var(--ink-dim); font-weight: 700; }
+
+    .legal-content { color: var(--ink-dim); font-size: 15px; line-height: 1.7; }
+    .legal-content h2 {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.01em;
+      color: var(--ink); margin: 36px 0 14px;
+    }
+    .legal-content h2:first-child { margin-top: 0; }
+    .legal-content h3 {
+      font-size: 17px; font-weight: 700; color: var(--ink); margin: 26px 0 10px;
+    }
+    .legal-content h4 {
+      font-size: 14px; font-weight: 700; color: #ffb47a; margin: 20px 0 8px;
+      letter-spacing: 0.01em;
+    }
+    .legal-content p { margin: 10px 0; }
+    .legal-content ul, .legal-content ol { margin: 10px 0; padding-left: 22px; }
+    .legal-content li { margin: 6px 0; }
+    .legal-content strong { color: var(--ink); font-weight: 700; }
+    .legal-content em { color: var(--ink-dim); font-style: italic; }
+    .legal-content a {
+      color: #ffb47a; text-decoration: none;
+      border-bottom: 1px dashed rgba(255,180,122,0.4);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .legal-content a:hover { color: #ffd1a8; border-bottom-color: #ffd1a8; }
+
+    .legal-content code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      background: rgba(0,0,0,0.45); padding: 2px 7px; border-radius: 6px;
+      color: #f4c48a; border: 1px solid var(--line);
+    }
+    .legal-content pre {
+      background: rgba(0,0,0,0.5); border: 1px solid var(--line);
+      border-radius: 12px; padding: 16px; overflow-x: auto; margin: 16px 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.55;
+      color: #f4c48a;
+    }
+    .legal-content pre code { background: transparent; padding: 0; border: none; color: inherit; font-size: inherit; }
+
+    .legal-content blockquote {
+      border-left: 3px solid var(--brand); padding: 14px 18px; margin: 18px 0;
+      background: rgba(255,122,41,0.06); border-radius: 0 12px 12px 0;
+      color: var(--ink-dim);
+    }
+    .legal-content blockquote p { margin: 6px 0; }
+    .legal-content blockquote strong { color: var(--ink); }
+
+    .legal-content table {
+      width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0;
+      background: rgba(10,5,6,0.45); border: 1px solid var(--line);
+      border-radius: 12px; overflow: hidden; font-size: 13.5px;
+    }
+    .legal-content th, .legal-content td {
+      padding: 12px 14px; text-align: left;
+      border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    .legal-content th {
+      background: rgba(255,122,41,0.08); color: var(--ink); font-weight: 700;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .legal-content tr:last-child td { border-bottom: none; }
+    .legal-content tr:hover td { background: rgba(255,240,220,0.025); }
+
+    .legal-footer {
+      margin-top: 28px; padding: 20px 4px;
+      display: flex; flex-wrap: wrap; gap: 14px;
+      align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--ink-mute);
+    }
+    .legal-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
+    .legal-footer-links a {
+      color: var(--ink-dim); text-decoration: none; transition: color 0.2s;
+    }
+    .legal-footer-links a:hover { color: var(--ink); }
+
+    @media (max-width: 700px) {
+      .legal-page { padding: 24px 16px 40px; }
+      .legal-card { padding: 24px 20px; border-radius: 18px; }
+      .legal-content { font-size: 14px; }
+      .legal-content h2 { font-size: 19px; }
+      .legal-content h3 { font-size: 15.5px; }
+      .legal-content table { font-size: 12.5px; }
+      .legal-content th, .legal-content td { padding: 10px 12px; }
+      .legal-content pre, .legal-content code { font-size: 12px; }
+      .legal-nav a { min-width: 0; padding: 9px 10px; font-size: 11.5px; }
+      .legal-meta { font-size: 11px; }
+    }
+    @supports (padding: max(0px)) {
+      @media (max-width: 700px) {
+        .legal-page {
+          padding-left: max(16px, env(safe-area-inset-left));
+          padding-right: max(16px, env(safe-area-inset-right));
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            min-height: 100vh;
-            overflow-x: hidden;
-            color: var(--text-main);
-            position: relative;
-            padding: 40px 20px;
-            line-height: 1.7;
-        }
-
-        .blobs {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        .blob {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.5;
-            animation: float 20s infinite alternate;
-        }
-
-        .b1 {
-            top: -10%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: #4f46e5;
-            animation-duration: 25s;
-        }
-
-        .b2 {
-            bottom: -10%;
-            right: -10%;
-            width: 40vw;
-            height: 40vw;
-            background: #0ea5e9;
-            animation-duration: 30s;
-            animation-delay: -5s;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(40px, -40px); }
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--card-border);
-            padding: 40px;
-            border-radius: 32px;
-            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
-            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 30px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .header h1 {
-            font-size: 32px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-
-        .header .meta {
-            color: var(--text-sub);
-            font-size: 13px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .header .meta span {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .nav-links a {
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .nav-links a.active {
-            color: var(--text-main);
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--primary);
-        }
-
-        .content {
-            color: var(--text-main);
-        }
-
-        .content h2 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--heading-color);
-            margin: 32px 0 16px 0;
-            letter-spacing: -0.5px;
-        }
-
-        .content h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--heading-color);
-            margin: 24px 0 12px 0;
-        }
-
-        .content h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin: 20px 0 10px 0;
-        }
-
-        .content p {
-            margin: 12px 0;
-            color: var(--text-sub);
-        }
-
-        .content ul, .content ol {
-            margin: 12px 0;
-            padding-left: 24px;
-            color: var(--text-sub);
-        }
-
-        .content li {
-            margin: 8px 0;
-        }
-
-        .content a {
-            color: var(--link-color);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .content a:hover {
-            color: var(--primary);
-            text-decoration: underline;
-        }
-
-        .content strong {
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: var(--table-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--table-border);
-        }
-
-        .content th, .content td {
-            padding: 14px 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--table-border);
-        }
-
-        .content th {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--text-main);
-            font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .content td {
-            color: var(--text-sub);
-            font-size: 14px;
-        }
-
-        .content tr:last-child td {
-            border-bottom: none;
-        }
-
-        .content tr:hover td {
-            background: rgba(255,255,255,0.03);
-        }
-
-        .content code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            background: var(--code-bg);
-            padding: 2px 8px;
-            border-radius: 6px;
-            color: #a5b4fc;
-            border: 1px solid var(--card-border);
-        }
-
-        .content pre {
-            background: var(--code-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px;
-            overflow-x: auto;
-            margin: 16px 0;
-        }
-
-        .content pre code {
-            background: transparent;
-            padding: 0;
-            border: none;
-            color: var(--text-sub);
-        }
-
-        .content blockquote {
-            border-left: 3px solid var(--primary);
-            padding-left: 16px;
-            margin: 16px 0;
-            color: var(--text-sub);
-            font-style: italic;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-            margin-bottom: 20px;
-        }
-
-        .back-link:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .back-link svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid var(--card-border);
-            color: var(--text-sub);
-            font-size: 13px;
-        }
-
-        .footer a {
-            color: var(--link-color);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            color: var(--primary);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 24px 20px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .content h2 {
-                font-size: 18px;
-            }
-
-            .nav-links {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-    </style>
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="blobs">
-        <div class="blob b1"></div>
-        <div class="blob b2"></div>
-    </div>
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+  <div class="bg-grain"></div>
 
-    <div class="container">
-        <a href="/" class="back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            На главную
+  <div class="page">
+    <div class="legal-page">
+
+      <header class="legal-topbar">
+        <a href="/" class="brand-mark">
+          <span class="glyph">
+            <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+          </span>
+          <span>barkfluff</span>
         </a>
+        <a href="/" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          На главную
+        </a>
+      </header>
 
-        <div class="nav-links">
-            <a href="/legal/privacy-policy">Политика конфиденциальности</a>
-            <a href="/legal/terms-of-service" class="active">Условия использования</a>
-            <a href="/legal/account-deletion">Удаление аккаунта</a>
-            <a href="/legal/encryption">Шифрование</a>
+      <nav class="legal-nav">
+        <a href="/legal/privacy-policy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service" class="active">Условия использования</a>
+        <a href="/legal/account-deletion">Удаление аккаунта</a>
+        <a href="/legal/encryption">Шифрование</a>
+      </nav>
+
+      <article class="legal-card">
+        <div class="legal-header">
+          <span class="legal-eyebrow">Юридическая информация</span>
+          <h1 class="legal-title">Пользовательское соглашение</h1>
+          <div class="legal-meta">
+            <span><b>Действует с</b>&nbsp;24 января 2026 г.</span>
+            <span><b>Обновлено</b>&nbsp;14 мая 2026 г.</span>
+          </div>
         </div>
 
-        <div class="header">
-            <h1>Пользовательское соглашение</h1>
-            <div class="meta">
-                <span>📅 Дата вступления в силу: 24 января 2026 г.</span>
-                <span>🔄 Последнее обновление: 21 июля 2026 г.</span>
-            </div>
+        <div class="legal-content">
+          <h2>1. Принятие условий</h2>
+          <p>Добро пожаловать в <strong>Barkfluff</strong> — кросс-платформенный мессенджер!</p>
+          <p>Настоящее Пользовательское соглашение (далее — «Соглашение») является юридически обязывающим договором между вами («Пользователь», «Вы») и Barkfluff («Мы», «Нас», «Наш»).</p>
+          <p><strong>Используя Barkfluff, вы соглашаетесь с условиями настоящего Соглашения.</strong></p>
+          <p>Если вы не согласны с какими-либо положениями, пожалуйста, не регистрируйтесь и не используйте Сервис.</p>
+
+          <h2>2. Определения</h2>
+          <ul>
+            <li><strong>Сервис</strong> — платформа Barkfluff, включая нативные клиенты (Windows WPF, Android, macOS, в разработке iOS и Linux Qt), веб-клиент, backend-микросервисы, портал документации и все связанные компоненты.</li>
+            <li><strong>Учётная запись</strong> — персональный аккаунт Пользователя, созданный при регистрации.</li>
+            <li><strong>Контент</strong> — любые данные, сообщения, файлы, изображения, медиа, загружаемые или отправляемые через Сервис.</li>
+            <li><strong>Мы / Нас / Наш</strong> — Barkfluff и его владельцы, операторы, разработчики.</li>
+            <li><strong>Вы / Пользователь</strong> — физическое или юридическое лицо, использующее Сервис.</li>
+          </ul>
+
+          <h2>3. Требования к использованию</h2>
+
+          <h3>3.1 Возрастные ограничения</h3>
+          <p>Для использования Barkfluff вы должны:</p>
+          <ul>
+            <li>Быть не младше <strong>13 лет</strong></li>
+            <li>Если вам от 13 до 18 лет — использовать Сервис только с разрешения родителя или опекуна</li>
+            <li>Соблюдать законодательство вашей страны относительно минимального возраста для регистрации в онлайн-сервисах</li>
+          </ul>
+          <p><strong>Мы оставляем за собой право запросить подтверждение возраста.</strong></p>
+
+          <h3>3.2 Регистрация аккаунта</h3>
+          <p>При создании учётной записи вы обязуетесь:</p>
+          <ul>
+            <li>Предоставлять <strong>точную и актуальную информацию</strong> (email, имя пользователя)</li>
+            <li><strong>Не выдавать себя</strong> за другое лицо или организацию</li>
+            <li><strong>Не создавать более одного аккаунта</strong> без нашего письменного разрешения (исключение: тестовые/рабочие аккаунты для легитимных целей)</li>
+            <li><strong>Защищать пароль</strong> и не передавать доступ к своему аккаунту третьим лицам</li>
+          </ul>
+          <p><strong>Вы несёте ответственность за все действия, совершённые через вашу учётную запись.</strong></p>
+
+          <h3>3.3 Безопасность аккаунта</h3>
+          <p>Вы обязуетесь:</p>
+          <ul>
+            <li>Использовать <strong>надёжный пароль</strong> (минимум 8 символов, комбинация букв, цифр и символов)</li>
+            <li>Включить <strong>двухфакторную аутентификацию (2FA)</strong>, если она доступна</li>
+            <li><strong>Немедленно уведомить нас</strong> о любом несанкционированном доступе к вашему аккаунту: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+          </ul>
+          <p>Мы не несём ответственности за убытки, возникшие вследствие компрометации вашего пароля или небрежного отношения к безопасности.</p>
+
+          <h2>4. Правила использования</h2>
+
+          <h3>4.1 Разрешённое использование</h3>
+          <p>Вы можете использовать Barkfluff для:</p>
+          <ul>
+            <li>Личной коммуникации с друзьями, семьёй, коллегами</li>
+            <li>Создания групповых чатов и обмена медиафайлами</li>
+            <li>Легальных бизнес-целей (корпоративное общение, проекты)</li>
+          </ul>
+
+          <h3>4.2 Запрещённое использование</h3>
+          <p><strong>Строго запрещается:</strong></p>
+
+          <h4>4.2.1 Незаконная деятельность</h4>
+          <ul>
+            <li>Использование Сервиса для совершения преступлений или нарушения законов</li>
+            <li>Распространение вредоносного ПО, вирусов, троянов</li>
+            <li>Фишинг, мошенничество, кража персональных данных</li>
+            <li>Распространение материалов, связанных с терроризмом или экстремизмом</li>
+          </ul>
+
+          <h4>4.2.2 Недопустимый контент</h4>
+          <ul>
+            <li><strong>Незаконный контент:</strong> детская порнография, материалы, нарушающие авторские права</li>
+            <li><strong>Насилие и угрозы:</strong> призывы к насилию, терроризму, самоубийству</li>
+            <li><strong>Дискриминация:</strong> контент, разжигающий ненависть по признаку расы, религии, пола, национальности, сексуальной ориентации</li>
+            <li><strong>Спам и реклама:</strong> массовая рассылка нежелательных сообщений без согласия получателей</li>
+            <li><strong>Сексуальный контент:</strong> порнография, сексуальные услуги (исключение: приватные чаты между совершеннолетними по взаимному согласию)</li>
+          </ul>
+
+          <h4>4.2.3 Нарушение работы Сервиса</h4>
+          <ul>
+            <li><strong>DDoS-атаки:</strong> попытки перегрузить серверы Barkfluff</li>
+            <li><strong>Эксплуатация уязвимостей:</strong> использование багов для получения несанкционированного доступа</li>
+            <li><strong>Автоматизация:</strong> использование ботов и скриптов для массовой рассылки сообщений (без нашего разрешения)</li>
+            <li><strong>Обратная разработка:</strong> декомпиляция и модификация клиентского приложения с целью создания клонов или нарушения работы</li>
+          </ul>
+
+          <h4>4.2.4 Нарушение прав других пользователей</h4>
+          <ul>
+            <li><strong>Харассмент:</strong> систематическое преследование, запугивание, оскорбления</li>
+            <li><strong>Доксинг:</strong> публикация личных данных других лиц без их согласия</li>
+            <li><strong>Выдача себя за другое лицо</strong> (impersonation)</li>
+            <li><strong>Кража аккаунтов:</strong> попытки получить доступ к чужим учётным записям</li>
+          </ul>
+
+          <h3>4.3 Последствия нарушений</h3>
+          <p>При нарушении правил мы можем:</p>
+          <ul>
+            <li><strong>Предупредить</strong> вас о недопустимом поведении</li>
+            <li><strong>Временно заблокировать</strong> аккаунт (от 24 часов до 30 дней)</li>
+            <li><strong>Навсегда удалить</strong> аккаунт без возможности восстановления</li>
+            <li><strong>Сообщить в правоохранительные органы</strong> о серьёзных нарушениях</li>
+          </ul>
+          <p><strong>Решение о блокировке принимается на наше усмотрение.</strong></p>
+
+          <h2>5. Права интеллектуальной собственности</h2>
+
+          <h3>5.1 Права на Сервис</h3>
+          <p>Все права на Barkfluff (код, дизайн, логотипы, товарные знаки) принадлежат нам или нашим лицензиарам.</p>
+          <p><strong>Вы НЕ можете:</strong></p>
+          <ul>
+            <li>Копировать, модифицировать или распространять исходный код Barkfluff без письменного разрешения</li>
+            <li>Использовать название «Barkfluff» или логотипы в коммерческих целях без лицензии</li>
+            <li>Создавать производные продукты на основе Barkfluff без нашего согласия</li>
+          </ul>
+          <p>Если отдельные компоненты распространяются под открытой лицензией, применяются условия соответствующей лицензии. Открытые .proto-контракты и примеры интеграции для собственных клиентов доступны на <a href="https://developers.barkfluff.com" target="_blank">developers.barkfluff.com</a>.</p>
+
+          <h3>5.2 Права на пользовательский контент</h3>
+          <p><strong>Вы сохраняете права</strong> на весь контент, который создаёте или загружаете в Barkfluff.</p>
+          <p>Загружая контент, вы предоставляете нам <strong>неисключительную, всемирную, бесплатную лицензию</strong> на:</p>
+          <ul>
+            <li>Хранение контента на наших серверах</li>
+            <li>Передачу контента другим пользователям (получателям сообщений)</li>
+            <li>Создание резервных копий для обеспечения работы Сервиса</li>
+            <li>Обработку контента для предоставления функций (превью, поиск, уведомления)</li>
+          </ul>
+          <p><strong>Эта лицензия действует до момента удаления контента.</strong></p>
+
+          <h3>5.3 Модерация контента</h3>
+          <p>Мы <strong>не модерируем контент проактивно</strong>, но оставляем за собой право:</p>
+          <ul>
+            <li>Удалять контент, нарушающий настоящее Соглашение или законодательство</li>
+            <li>Использовать автоматические фильтры для обнаружения запрещённого контента (спам, вредоносные ссылки)</li>
+            <li>Реагировать на жалобы пользователей</li>
+          </ul>
+          <p><strong>Мы не несём ответственности за пользовательский контент.</strong></p>
+
+          <h2>6. Конфиденциальность и защита данных</h2>
+          <p>Ваши персональные данные обрабатываются в соответствии с <a href="/legal/privacy-policy">Политикой конфиденциальности</a>.</p>
+          <p>Ключевые моменты:</p>
+          <ul>
+            <li>Мы <strong>не продаём</strong> ваши данные третьим лицам</li>
+            <li>Сообщения и файлы хранятся в <strong>зашифрованном виде</strong> (TDE в PostgreSQL, AES-256-GCM в Minio)</li>
+            <li>Все соединения защищены <strong>TLS 1.3</strong> поверх gRPC/HTTP/2</li>
+            <li>Вы имеете право на <strong>доступ, исправление, удаление и экспорт</strong> ваших данных (GDPR)</li>
+          </ul>
+          <p>Подробнее см. <a href="/legal/privacy-policy">Политику конфиденциальности</a> и <a href="/legal/encryption">«Шифрование»</a>.</p>
+
+          <h2>7. Ограничение ответственности</h2>
+
+          <h3>7.1 Доступность сервиса</h3>
+          <p><strong>Barkfluff предоставляется «как есть» (AS IS) без гарантий.</strong></p>
+          <p>Мы стремимся обеспечить стабильную работу Сервиса, но <strong>не гарантируем:</strong></p>
+          <ul>
+            <li><strong>Бесперебойную работу:</strong> возможны технические сбои, плановое обслуживание</li>
+            <li><strong>Отсутствие ошибок:</strong> ПО может содержать баги</li>
+            <li><strong>Абсолютную безопасность:</strong> риск взлома или утечки данных не может быть полностью исключён</li>
+          </ul>
+          <p><strong>Мы не несём ответственности за:</strong></p>
+          <ul>
+            <li>Потерю данных вследствие технических сбоев</li>
+            <li>Убытки, связанные с недоступностью Сервиса</li>
+            <li>Несанкционированный доступ к вашему аккаунту, если он произошёл по вашей вине</li>
+          </ul>
+
+          <h3>7.2 Ограничение убытков</h3>
+          <p><strong>Максимальная ответственность Barkfluff ограничена суммой, уплаченной вами за использование Сервиса за последние 12 месяцев</strong> (если Сервис платный).</p>
+          <p>Если Barkfluff бесплатен, наша ответственность ограничена <strong>$100 USD</strong> или эквивалентной суммой в вашей валюте.</p>
+          <p><strong>Мы НЕ несём ответственности за:</strong></p>
+          <ul>
+            <li>Косвенные, случайные, штрафные убытки</li>
+            <li>Упущенную выгоду, потерю данных, ущерб репутации</li>
+            <li>Действия третьих лиц (хакеры, спамеры)</li>
+          </ul>
+
+          <h3>7.3 Взаимодействие с другими пользователями</h3>
+          <p>Вы взаимодействуете с другими пользователями <strong>на свой риск.</strong></p>
+          <p>Barkfluff не может гарантировать:</p>
+          <ul>
+            <li>Достоверность информации, предоставленной другими пользователями</li>
+            <li>Безопасность встреч или транзакций, организованных через Сервис</li>
+          </ul>
+          <p><strong>Рекомендация:</strong> соблюдайте осторожность при общении с незнакомыми людьми.</p>
+
+          <h2>8. Изменение и прекращение Сервиса</h2>
+
+          <h3>8.1 Изменения в Сервисе</h3>
+          <ul>
+            <li>Изменять функциональность Barkfluff (добавлять, удалять, модифицировать функции)</li>
+            <li>Вводить ограничения (лимиты на размер файлов, количество сообщений)</li>
+            <li>Переводить Сервис на платную модель (с уведомлением не менее чем за 30 дней)</li>
+          </ul>
+          <p><strong>Уведомление:</strong> существенные изменения будут анонсированы через приложение или email.</p>
+
+          <h3>8.2 Прекращение работы Сервиса</h3>
+          <p>Мы можем <strong>временно или навсегда прекратить</strong> предоставление Barkfluff:</p>
+          <ul>
+            <li>По нашему усмотрению (с уведомлением за 30 дней, если возможно)</li>
+            <li>В случае форс-мажора</li>
+          </ul>
+          <p><strong>В случае закрытия Сервиса:</strong></p>
+          <ul>
+            <li>Мы предоставим возможность <strong>экспортировать ваши данные</strong> в течение 30 дней</li>
+            <li>Все данные будут <strong>удалены</strong> после закрытия</li>
+          </ul>
+
+          <h2>9. Изменение Соглашения</h2>
+
+          <h3>9.1 Уведомление об изменениях</h3>
+          <ul>
+            <li><strong>Существенные изменения:</strong> уведомление по email и/или через приложение не менее чем за 14 дней</li>
+            <li><strong>Незначительные изменения:</strong> обновление даты «Обновлено» в начале документа</li>
+          </ul>
+
+          <h3>9.2 Согласие с изменениями</h3>
+          <p>Продолжая использовать Barkfluff после вступления изменений в силу, вы соглашаетесь с обновлённым Соглашением.</p>
+          <p>Если вы не согласны с изменениями, вы обязаны <strong>прекратить использование Сервиса</strong> и удалить свой аккаунт.</p>
+
+          <h2>10. Урегулирование споров</h2>
+
+          <h3>10.1 Применимое право</h3>
+          <p>Настоящее Соглашение регулируется законодательством Российской Федерации.</p>
+
+          <h3>10.2 Досудебное урегулирование</h3>
+          <ul>
+            <li>Направьте претензию на email: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
+            <li>Срок рассмотрения претензии: 30 дней</li>
+          </ul>
+
+          <h3>10.3 Судебная юрисдикция</h3>
+          <p>В случае невозможности досудебного урегулирования споры подлежат рассмотрению в судах по месту нахождения ответчика.</p>
+
+          <h2>11. Прочие условия</h2>
+
+          <h3>11.1 Полнота соглашения</h3>
+          <p>Настоящее Соглашение вместе с <a href="/legal/privacy-policy">Политикой конфиденциальности</a> составляет полное соглашение между вами и Barkfluff относительно использования Сервиса.</p>
+
+          <h3>11.2 Недействительность отдельных положений</h3>
+          <p>Если какое-либо положение настоящего Соглашения будет признано недействительным или не подлежащим исполнению, остальные положения остаются в силе.</p>
+
+          <h3>11.3 Уступка прав</h3>
+          <p>Вы <strong>не можете передавать</strong> свои права и обязанности по настоящему Соглашению без нашего письменного согласия.</p>
+          <p>Мы можем передавать свои права и обязанности третьим лицам (например, в случае продажи Barkfluff другой компании) с уведомлением пользователей.</p>
+
+          <h3>11.4 Отказ от прав</h3>
+          <p>Наше нереагирование на нарушение какого-либо условия настоящего Соглашения не означает отказа от права требовать его соблюдения в будущем.</p>
+
+          <h3>11.5 Обратная связь</h3>
+          <p>Мы приветствуем предложения по улучшению Barkfluff. Отправляя нам идеи, вы:</p>
+          <ul>
+            <li>Предоставляете нам право <strong>использовать их без компенсации</strong></li>
+            <li>Подтверждаете, что идеи <strong>не являются конфиденциальными</strong></li>
+          </ul>
+
+          <h2>12. Контактная информация</h2>
+          <p><strong>По юридическим вопросам:</strong> <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></p>
+          <p><strong>Техническая поддержка:</strong> <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></p>
+          <p><strong>Вопросы безопасности:</strong> <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></p>
+          <p><strong>Официальный сайт:</strong> <a href="https://barkfluff.com">https://barkfluff.com</a></p>
+
+          <h2>13. Согласие с условиями</h2>
+          <p><strong>Регистрируясь или используя Barkfluff, вы подтверждаете, что:</strong></p>
+          <ul>
+            <li>Прочитали и поняли настоящее Пользовательское соглашение</li>
+            <li>Согласны соблюдать все условия и правила</li>
+            <li>Достигли возраста 13 лет или старше (или получили согласие родителей)</li>
+            <li>Обладаете право- и дееспособностью для заключения настоящего Соглашения</li>
+          </ul>
+          <p><strong>Если вы не согласны с какими-либо условиями, пожалуйста, не используйте Barkfluff.</strong></p>
+
+          <blockquote>
+            <p><em>Документ действителен с 24 января 2026 г.</em></p>
+            <p><strong>Используйте Barkfluff ответственно и уважайте других пользователей.</strong></p>
+          </blockquote>
         </div>
+      </article>
 
-        <div class="content">
-            <h2>1. Принятие условий</h2>
-            <p>Добро пожаловать в <strong>BarkFluff</strong> — платформу для обмена мгновенными сообщениями!</p>
-            <p>Настоящее Пользовательское соглашение (далее — "Соглашение") является юридически обязывающим договором между вами ("Пользователь", "Вы") и BarkFluff ("Мы", "Нас", "Наш").</p>
-            <p><strong>Используя BarkFluff, вы соглашаетесь с условиями настоящего Соглашения.</strong></p>
-            <p>Если вы не согласны с какими-либо положениями, пожалуйста, не регистрируйтесь и не используйте Сервис.</p>
-
-            <h2>2. Определения</h2>
-            <ul>
-                <li><strong>Сервис</strong> — платформа BarkFluff, включая desktop-клиент (WPF), мобильные приложения, backend-сервисы и все связанные компоненты</li>
-                <li><strong>Учетная запись</strong> — персональный аккаунт Пользователя, созданный при регистрации</li>
-                <li><strong>Контент</strong> — любые данные, сообщения, файлы, изображения, медиа, загружаемые или отправляемые через Сервис</li>
-                <li><strong>Мы/Нас/Наш</strong> — BarkFluff и его владельцы, операторы, разработчики</li>
-                <li><strong>Вы/Пользователь</strong> — физическое или юридическое лицо, использующее Сервис</li>
-            </ul>
-
-            <h2>3. Требования к использованию</h2>
-            
-            <h3>3.1 Возрастные ограничения</h3>
-            <p>Для использования BarkFluff вы должны:</p>
-            <ul>
-                <li>Быть не младше <strong>13 лет</strong></li>
-                <li>Если вам от 13 до 18 лет, использовать Сервис только с разрешения родителя или опекуна</li>
-                <li>Соблюдать законодательство вашей страны относительно минимального возраста для регистрации в онлайн-сервисах</li>
-            </ul>
-            <p><strong>Мы оставляем за собой право запросить подтверждение возраста.</strong></p>
-
-            <h3>3.2 Регистрация аккаунта</h3>
-            <p>При создании учетной записи вы обязуетесь:</p>
-            <ul>
-                <li>Предоставлять <strong>точную и актуальную информацию</strong> (email, имя пользователя)</li>
-                <li><strong>Не выдавать себя</strong> за другое лицо или организацию</li>
-                <li><strong>Не создавать более одного аккаунта</strong> без нашего письменного разрешения (исключение: тестовые/рабочие аккаунты для легитимных целей)</li>
-                <li><strong>Защищать пароль</strong> и не передавать доступ к своему аккаунту третьим лицам</li>
-            </ul>
-            <p><strong>Вы несете ответственность за все действия, совершенные через вашу учетную запись.</strong></p>
-
-            <h3>3.3 Безопасность аккаунта</h3>
-            <p>Вы обязуетесь:</p>
-            <ul>
-                <li>Использовать <strong>надежный пароль</strong> (минимум 8 символов, комбинация букв, цифр и символов)</li>
-                <li>Включить <strong>двухфакторную аутентификацию (2FA)</strong>, если это доступно</li>
-                <li><strong>Немедленно уведомить нас</strong> о любом несанкционированном доступе к вашему аккаунту (email: security@barkfluff.com)</li>
-            </ul>
-            <p>Мы не несем ответственности за убытки, возникшие вследствие компрометации вашего пароля или небрежного отношения к безопасности.</p>
-
-            <h2>4. Правила использования</h2>
-            
-            <h3>4.1 Разрешенное использование</h3>
-            <p>Вы можете использовать BarkFluff для:</p>
-            <ul>
-                <li>Личной коммуникации с друзьями, семьей, коллегами</li>
-                <li>Создания групповых чатов и обмена медиафайлами</li>
-                <li>Легальных бизнес-целей (корпоративное общение, проекты)</li>
-            </ul>
-
-            <h3>4.2 Запрещенное использование</h3>
-            <p><strong>Строго запрещается:</strong></p>
-
-            <h4>4.2.1 Незаконная деятельность</h4>
-            <ul>
-                <li>Использование Сервиса для совершения преступлений или нарушения законов</li>
-                <li>Распространение вредоносного ПО, вирусов, троянов</li>
-                <li>Фишинг, мошенничество, кража персональных данных</li>
-                <li>Распространение материалов, связанных с терроризмом или экстремизмом</li>
-            </ul>
-
-            <h4>4.2.2 Недопустимый контент</h4>
-            <ul>
-                <li><strong>Незаконный контент:</strong> детская порнография, материалы, нарушающие авторские права</li>
-                <li><strong>Насилие и угрозы:</strong> призывы к насилию, терроризму, самоубийству</li>
-                <li><strong>Дискриминация:</strong> контент, разжигающий ненависть по признаку расы, религии, пола, национальности, сексуальной ориентации</li>
-                <li><strong>Спам и реклама:</strong> массовая рассылка нежелательных сообщений без согласия получателей</li>
-                <li><strong>Сексуальный контент:</strong> порнография, сексуальные услуги (исключение: приватные чаты между совершеннолетними с взаимного согласия)</li>
-            </ul>
-
-            <h4>4.2.3 Нарушение работы Сервиса</h4>
-            <ul>
-                <li><strong>DDoS-атаки:</strong> попытки перегрузить серверы BarkFluff</li>
-                <li><strong>Эксплуатация уязвимостей:</strong> использование багов для получения несанкционированного доступа</li>
-                <li><strong>Автоматизация:</strong> использование ботов, скриптов для автоматической отправки сообщений (без нашего разрешения)</li>
-                <li><strong>Обратная разработка:</strong> декомпиляция, дизассемблирование клиентского приложения для модификации или создания клонов</li>
-            </ul>
-
-            <h4>4.2.4 Нарушение прав других пользователей</h4>
-            <ul>
-                <li><strong>Харассмент (домогательства):</strong> систематическое преследование, запугивание, оскорбления</li>
-                <li><strong>Доксинг:</strong> публикация личных данных других лиц без их согласия (адрес, номер телефона, документы)</li>
-                <li><strong>Выдача себя за другое лицо</strong> (impersonation)</li>
-                <li><strong>Кража аккаунтов:</strong> попытки получить доступ к чужим учетным записям</li>
-            </ul>
-
-            <h3>4.3 Последствия нарушений</h3>
-            <p>При нарушении правил мы можем:</p>
-            <ul>
-                <li><strong>Предупредить</strong> вас о недопустимом поведении</li>
-                <li><strong>Временно заблокировать</strong> аккаунт (от 24 часов до 30 дней)</li>
-                <li><strong>Навсегда удалить</strong> аккаунт без возможности восстановления</li>
-                <li><strong>Сообщить в правоохранительные органы</strong> о серьезных нарушениях (незаконный контент, угрозы)</li>
-            </ul>
-            <p><strong>Решение о блокировке принимается на наше усмотрение. Мы не обязаны предоставлять предварительное уведомление.</strong></p>
-
-            <h2>5. Права интеллектуальной собственности</h2>
-            
-            <h3>5.1 Права на Сервис</h3>
-            <p>Все права на BarkFluff (код, дизайн, логотипы, товарные знаки) принадлежат нам или нашим лицензиарам.</p>
-            <p><strong>Вы НЕ можете:</strong></p>
-            <ul>
-                <li>Копировать, модифицировать, распространять исходный код BarkFluff без письменного разрешения</li>
-                <li>Использовать название "BarkFluff" или логотипы для коммерческих целей без лицензии</li>
-                <li>Создавать производные продукты на основе BarkFluff без нашего согласия</li>
-            </ul>
-            <p><strong>Исключение:</strong> Если BarkFluff распространяется под открытой лицензией (Open Source), применяются условия этой лицензии.</p>
-
-            <h3>5.2 Права на пользовательский контент</h3>
-            <p><strong>Вы сохраняете права</strong> на весь контент, который создаете или загружаете в BarkFluff (сообщения, файлы, изображения).</p>
-            <p><strong>Предоставляемая лицензия:</strong><br>
-            Загружая контент в BarkFluff, вы предоставляете нам <strong>неисключительную, всемирную, бесплатную лицензию</strong> на:</p>
-            <ul>
-                <li>Хранение контента на наших серверах</li>
-                <li>Передачу контента другим пользователям (получателям сообщений)</li>
-                <li>Создание резервных копий для обеспечения работы Сервиса</li>
-                <li>Обработку контента для предоставления функций (превью изображений, поиск, уведомления)</li>
-            </ul>
-            <p><strong>Эта лицензия действует до момента удаления контента.</strong></p>
-
-            <h3>5.3 Модерация контента</h3>
-            <p>Мы <strong>НЕ модерируем контент проактивно</strong>, но оставляем за собой право:</p>
-            <ul>
-                <li>Удалять контент, нарушающий настоящее Соглашение или законодательство</li>
-                <li>Использовать автоматические фильтры для обнаружения запрещенного контента (спам, вредоносные ссылки)</li>
-                <li>Реагировать на жалобы пользователей</li>
-            </ul>
-            <p><strong>Мы не несем ответственности за пользовательский контент.</strong></p>
-
-            <h2>6. Конфиденциальность и защита данных</h2>
-            <p>Ваши персональные данные обрабатываются в соответствии с нашей <a href="/legal/privacy-policy">Политикой конфиденциальности</a>.</p>
-            <p>Ключевые моменты:</p>
-            <ul>
-                <li>Мы <strong>НЕ продаем</strong> ваши данные третьим лицам</li>
-                <li>Сообщения хранятся в <strong>зашифрованном виде</strong> (TDE в PostgreSQL, AES-256-GCM в Minio)</li>
-                <li>Все соединения защищены <strong>TLS 1.3</strong></li>
-                <li>Вы имеете право на <strong>доступ, исправление, удаление и экспорт</strong> ваших данных (GDPR)</li>
-            </ul>
-            <p>Подробнее см. <a href="/legal/privacy-policy">PRIVACY_POLICY.md</a> и <a href="/legal/encryption">ENCRYPTION.md</a>.</p>
-
-            <h2>7. Ограничение ответственности</h2>
-            
-            <h3>7.1 Доступность сервиса</h3>
-            <p><strong>BarkFluff предоставляется "КАК ЕСТЬ" (AS IS) без гарантий.</strong></p>
-            <p>Мы стремимся обеспечить стабильную работу Сервиса, но <strong>НЕ гарантируем:</strong></p>
-            <ul>
-                <li><strong>Бесперебойную работу:</strong> Возможны технические сбои, плановое обслуживание, аварии</li>
-                <li><strong>Отсутствие ошибок:</strong> ПО может содержать баги</li>
-                <li><strong>Абсолютную безопасность:</strong> Несмотря на меры защиты, риск взлома или утечки данных не может быть полностью исключен</li>
-            </ul>
-            <p><strong>Мы не несем ответственности за:</strong></p>
-            <ul>
-                <li>Потерю данных вследствие технических сбоев (рекомендуем делать резервные копии важных сообщений)</li>
-                <li>Убытки, связанные с недоступностью Сервиса</li>
-                <li>Несанкционированный доступ к вашему аккаунту (если он произошел по вашей вине)</li>
-            </ul>
-
-            <h3>7.2 Ограничение убытков</h3>
-            <p><strong>Максимальная ответственность BarkFluff ограничена суммой, уплаченной вами за использование Сервиса за последние 12 месяцев</strong> (если Сервис платный).</p>
-            <p>Если BarkFluff бесплатен, наша ответственность ограничена <strong>$100 USD</strong> или эквивалентной суммой в вашей валюте.</p>
-            <p><strong>Мы НЕ несем ответственности за:</strong></p>
-            <ul>
-                <li>Косвенные, случайные, штрафные убытки</li>
-                <li>Упущенную выгоду, потерю данных, ущерб репутации</li>
-                <li>Действия третьих лиц (хакеры, спамеры)</li>
-            </ul>
-
-            <h3>7.3 Взаимодействие с другими пользователями</h3>
-            <p>Вы взаимодействуете с другими пользователями <strong>на свой риск.</strong></p>
-            <p>BarkFluff не может гарантировать:</p>
-            <ul>
-                <li>Достоверность информации, предоставленной другими пользователями</li>
-                <li>Безопасность встреч или транзакций, организованных через Сервис</li>
-            </ul>
-            <p><strong>Рекомендация:</strong> Соблюдайте осторожность при общении с незнакомыми людьми.</p>
-
-            <h2>8. Изменение и прекращение предоставления Сервиса</h2>
-            
-            <h3>8.1 Изменения в Сервисе</h3>
-            <p>Мы можем:</p>
-            <ul>
-                <li>Изменять функциональность BarkFluff (добавлять, удалять, модифицировать функции)</li>
-                <li>Вводить ограничения (лимиты на размер файлов, количество сообщений)</li>
-                <li>Переводить Сервис на платную модель (с уведомлением не менее чем за 30 дней)</li>
-            </ul>
-            <p><strong>Уведомление:</strong> Существенные изменения будут анонсированы через приложение или email.</p>
-
-            <h3>8.2 Прекращение работы Сервиса</h3>
-            <p>Мы можем <strong>временно или навсегда прекратить</strong> предоставление BarkFluff:</p>
-            <ul>
-                <li>По нашему усмотрению (с уведомлением за 30 дней, если возможно)</li>
-                <li>В случае форс-мажора (стихийные бедствия, войны, технические катастрофы)</li>
-            </ul>
-            <p><strong>В случае закрытия Сервиса:</strong></p>
-            <ul>
-                <li>Мы предоставим возможность <strong>экспортировать ваши данные</strong> (в течение 30 дней)</li>
-                <li>Все данные будут <strong>удалены</strong> после закрытия</li>
-            </ul>
-
-            <h2>9. Изменение Соглашения</h2>
-            <p>Мы можем обновлять настоящее Соглашение время от времени.</p>
-
-            <h3>9.1 Уведомление об изменениях</h3>
-            <ul>
-                <li><strong>Существенные изменения:</strong> Уведомление по email и/или через приложение не менее чем за 14 дней</li>
-                <li><strong>Незначительные изменения:</strong> Обновление даты "Последнее обновление" в начале документа</li>
-            </ul>
-
-            <h3>9.2 Согласие с изменениями</h3>
-            <p>Продолжая использовать BarkFluff после вступления изменений в силу, вы соглашаетесь с обновленным Соглашением.</p>
-            <p>Если вы не согласны с изменениями, вы обязаны <strong>прекратить использование Сервиса</strong> и удалить свой аккаунт.</p>
-
-            <h2>10. Урегулирование споров</h2>
-            
-            <h3>10.1 Применимое право</h3>
-            <p>Настоящее Соглашение регулируется законодательством Российской Федерации.</p>
-
-            <h3>10.2 Досудебное урегулирование</h3>
-            <p>Перед обращением в суд стороны обязуются попытаться урегулировать спор путем переговоров:</p>
-            <ul>
-                <li>Направьте претензию на email: legal@barkfluff.com</li>
-                <li>Срок рассмотрения претензии: 30 дней</li>
-            </ul>
-
-            <h3>10.3 Судебная юрисдикция</h3>
-            <p>В случае невозможности досудебного урегулирования споры подлежат рассмотрению в судах по месту нахождения ответчика.</p>
-
-            <h2>11. Прочие условия</h2>
-            
-            <h3>11.1 Полнота соглашения</h3>
-            <p>Настоящее Соглашение вместе с <a href="/legal/privacy-policy">Политикой конфиденциальности</a> составляет полное соглашение между вами и BarkFluff относительно использования Сервиса.</p>
-
-            <h3>11.2 Недействительность отдельных положений</h3>
-            <p>Если какое-либо положение настоящего Соглашения будет признано недействительным или не подлежащим исполнению, остальные положения остаются в силе.</p>
-
-            <h3>11.3 Уступка прав</h3>
-            <p>Вы <strong>НЕ можете передавать</strong> свои права и обязанности по настоящему Соглашению без нашего письменного согласия.</p>
-            <p>Мы можем передавать свои права и обязанности третьим лицам (например, в случае продажи BarkFluff другой компании) с уведомлением пользователей.</p>
-
-            <h3>11.4 Отказ от прав</h3>
-            <p>Наше не реагирование на нарушение какого-либо условия настоящего Соглашения не означает отказа от права требовать его соблюдения в будущем.</p>
-
-            <h3>11.5 Обратная связь</h3>
-            <p>Мы приветствуем предложения по улучшению BarkFluff!</p>
-            <p><strong>Отправляя нам идеи, вы:</strong></p>
-            <ul>
-                <li>Предоставляете нам право <strong>использовать их без компенсации</strong></li>
-                <li>Подтверждаете, что идеи <strong>не являются конфиденциальными</strong></li>
-            </ul>
-
-            <h2>12. Контактная информация</h2>
-            <p><strong>По юридическим вопросам:</strong></p>
-            <ul>
-                <li>Email: legal@barkfluff.com</li>
-            </ul>
-            <p><strong>Техническая поддержка:</strong></p>
-            <ul>
-                <li>Email: support@barkfluff.com</li>
-            </ul>
-            <p><strong>Вопросы безопасности:</strong></p>
-            <ul>
-                <li>Email: security@barkfluff.com</li>
-            </ul>
-            <p><strong>Официальный сайт:</strong></p>
-            <ul>
-                <li>https://barkfluff.com</li>
-            </ul>
-
-            <h2>13. Благодарность</h2>
-            <p>Спасибо за выбор BarkFluff!</p>
-            <p>Мы ценим ваше доверие и обязуемся предоставлять качественный сервис для безопасного и удобного общения.</p>
-
-            <h2>14. Согласие с условиями</h2>
-            <p><strong>Регистрируясь или используя BarkFluff, вы подтверждаете, что:</strong></p>
-            <p>✅ Прочитали и поняли настоящее Пользовательское соглашение<br>
-            ✅ Согласны соблюдать все условия и правила<br>
-            ✅ Достигли возраста 13 лет или старше (или получили согласие родителей)<br>
-            ✅ Обладаете право- и дееспособностью для заключения настоящего Соглашения</p>
-            <p><strong>Если вы не согласны с какими-либо условиями, пожалуйста, не используйте BarkFluff.</strong></p>
-
-            <blockquote>
-                <p><em>Документ действителен с 24 января 2026 г.</em></p>
-                <p><strong>Используйте BarkFluff ответственно и уважайте других пользователей!</strong></p>
-            </blockquote>
+      <footer class="legal-footer">
+        <div>© 2026 Barkfluff</div>
+        <div class="legal-footer-links">
+          <a href="/">Главная</a>
+          <a href="/legal/privacy-policy">Конфиденциальность</a>
+          <a href="/legal/terms-of-service">Условия</a>
+          <a href="/legal/account-deletion">Удаление аккаунта</a>
+          <a href="/legal/encryption">Шифрование</a>
         </div>
+      </footer>
 
-        <div class="footer">
-            <p>© 2026 BarkFluff. Все права защищены.</p>
-            <p style="margin-top: 8px;">
-                <a href="/">Главная</a> • 
-                <a href="/legal/privacy-policy">Конфиденциальность</a> • 
-                <a href="/legal/terms-of-service">Условия</a>
-            </p>
-        </div>
     </div>
+  </div>
 </body>
 </html>
