@@ -20,7 +20,6 @@
     <None Remove="html\legal\ACCOUNT_DELETION.md" />
     <None Remove="html\legal\encryption.html" />
     <None Remove="html\legal\ENCRYPTION.md" />
-    <None Remove="html\legal\legal.html" />
     <None Remove="html\legal\privacy-policy.html" />
     <None Remove="html\legal\PRIVACY_POLICY.md" />
     <None Remove="html\legal\terms-of-service.html" />
@@ -62,9 +61,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\legal\ENCRYPTION.md">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="html\legal\legal.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\legal\privacy-policy.html">
