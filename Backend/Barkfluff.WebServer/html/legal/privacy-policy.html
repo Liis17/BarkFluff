@@ -1,845 +1,608 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Политика конфиденциальности - BarkFluff</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Политика конфиденциальности — Barkfluff</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-0: #14070a; --bg-1: #1c0d0a; --bg-2: #241310; --bg-3: #2d1914;
+      --line: rgba(255, 240, 220, 0.08);
+      --line-strong: rgba(255, 240, 220, 0.14);
+      --ink: #fef6ea; --ink-dim: #c9a893; --ink-mute: #8a6a5b;
+      --brand: #ff7a29; --brand-2: #e25a12; --brand-deep: #8a2e06;
+      --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      background: var(--bg-1); color: var(--ink);
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.65;
+    }
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
+        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
+        radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
+        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+    }
+    .bg-grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.22; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+    }
+    .page { position: relative; z-index: 2; }
+    .legal-page { max-width: 920px; margin: 0 auto; padding: 40px 32px 60px; }
 
-    <style>
-        :root {
-            --bg-dark: #0f172a;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --code-bg: rgba(15, 23, 42, 0.6);
-            --heading-color: #e2e8f0;
-            --link-color: #60a5fa;
-            --table-border: rgba(255, 255, 255, 0.1);
-            --table-bg: rgba(30, 41, 59, 0.3);
+    .legal-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
+    }
+    .brand-mark {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
+      color: var(--ink); text-decoration: none;
+    }
+    .brand-mark .glyph {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #ff8a3c, #c23f07);
+      display: grid; place-items: center; position: relative;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(255,122,41,0.5);
+    }
+    .brand-mark .glyph::before {
+      content: ""; position: absolute; inset: 0; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .brand-mark .glyph svg { width: 16px; height: 16px; fill: #fff; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 12px;
+      background: rgba(255,240,220,0.04); border: 1px solid var(--line-strong);
+      color: var(--ink-dim); text-decoration: none; font-size: 13px; font-weight: 600;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .back-link:hover { color: var(--ink); background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
+    .back-link svg { width: 14px; height: 14px; }
+
+    .legal-nav {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 6px;
+      background: rgba(10,5,6,0.5); border: 1px solid var(--line);
+      border-radius: 14px; margin-bottom: 28px;
+    }
+    .legal-nav a {
+      flex: 1 1 auto; min-width: 140px;
+      padding: 10px 14px; border-radius: 10px;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--ink-mute); text-decoration: none; text-align: center;
+      transition: background 0.2s, color 0.2s;
+    }
+    .legal-nav a:hover { color: var(--ink-dim); background: rgba(255,240,220,0.04); }
+    .legal-nav a.active {
+      color: #ffb47a;
+      background: rgba(255,122,41,0.12);
+      box-shadow: inset 0 0 0 1px rgba(255,122,41,0.25);
+    }
+
+    .legal-card {
+      background: linear-gradient(180deg, rgba(45,25,20,0.55), rgba(22,11,9,0.55));
+      border: 1px solid var(--line); border-radius: 24px;
+      padding: 40px 44px; box-shadow: var(--shadow-card); position: relative;
+    }
+    .legal-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: linear-gradient(135deg, rgba(255,122,41,0.18), transparent 35%, transparent 65%, rgba(255,122,41,0.08));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+
+    .legal-header { padding-bottom: 24px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .legal-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+      color: #ffb47a; padding: 5px 11px; border-radius: 999px;
+      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
+      margin-bottom: 16px;
+    }
+    .legal-title {
+      font-size: clamp(28px, 4vw, 40px); font-weight: 800;
+      line-height: 1.1; letter-spacing: -0.02em; color: var(--ink);
+    }
+    .legal-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px;
+      font-size: 12px; color: var(--ink-mute);
+    }
+    .legal-meta span {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,240,220,0.04); border: 1px solid var(--line);
+    }
+    .legal-meta b { color: var(--ink-dim); font-weight: 700; }
+
+    .legal-content { color: var(--ink-dim); font-size: 15px; line-height: 1.7; }
+    .legal-content h2 {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.01em;
+      color: var(--ink); margin: 36px 0 14px;
+    }
+    .legal-content h2:first-child { margin-top: 0; }
+    .legal-content h3 {
+      font-size: 17px; font-weight: 700; color: var(--ink); margin: 26px 0 10px;
+    }
+    .legal-content h4 {
+      font-size: 14px; font-weight: 700; color: #ffb47a; margin: 20px 0 8px;
+      letter-spacing: 0.01em;
+    }
+    .legal-content p { margin: 10px 0; }
+    .legal-content ul, .legal-content ol { margin: 10px 0; padding-left: 22px; }
+    .legal-content li { margin: 6px 0; }
+    .legal-content strong { color: var(--ink); font-weight: 700; }
+    .legal-content em { color: var(--ink-dim); font-style: italic; }
+    .legal-content a {
+      color: #ffb47a; text-decoration: none;
+      border-bottom: 1px dashed rgba(255,180,122,0.4);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .legal-content a:hover { color: #ffd1a8; border-bottom-color: #ffd1a8; }
+
+    .legal-content code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      background: rgba(0,0,0,0.45); padding: 2px 7px; border-radius: 6px;
+      color: #f4c48a; border: 1px solid var(--line);
+    }
+    .legal-content pre {
+      background: rgba(0,0,0,0.5); border: 1px solid var(--line);
+      border-radius: 12px; padding: 16px; overflow-x: auto; margin: 16px 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.55;
+      color: #f4c48a;
+    }
+    .legal-content pre code { background: transparent; padding: 0; border: none; color: inherit; font-size: inherit; }
+
+    .legal-content blockquote {
+      border-left: 3px solid var(--brand); padding: 14px 18px; margin: 18px 0;
+      background: rgba(255,122,41,0.06); border-radius: 0 12px 12px 0;
+      color: var(--ink-dim);
+    }
+    .legal-content blockquote p { margin: 6px 0; }
+    .legal-content blockquote strong { color: var(--ink); }
+
+    .legal-content table {
+      width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0;
+      background: rgba(10,5,6,0.45); border: 1px solid var(--line);
+      border-radius: 12px; overflow: hidden; font-size: 13.5px;
+    }
+    .legal-content th, .legal-content td {
+      padding: 12px 14px; text-align: left;
+      border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    .legal-content th {
+      background: rgba(255,122,41,0.08); color: var(--ink); font-weight: 700;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .legal-content tr:last-child td { border-bottom: none; }
+    .legal-content tr:hover td { background: rgba(255,240,220,0.025); }
+
+    .legal-footer {
+      margin-top: 28px; padding: 20px 4px;
+      display: flex; flex-wrap: wrap; gap: 14px;
+      align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--ink-mute);
+    }
+    .legal-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
+    .legal-footer-links a {
+      color: var(--ink-dim); text-decoration: none; transition: color 0.2s;
+    }
+    .legal-footer-links a:hover { color: var(--ink); }
+
+    @media (max-width: 700px) {
+      .legal-page { padding: 24px 16px 40px; }
+      .legal-card { padding: 24px 20px; border-radius: 18px; }
+      .legal-content { font-size: 14px; }
+      .legal-content h2 { font-size: 19px; }
+      .legal-content h3 { font-size: 15.5px; }
+      .legal-content table { font-size: 12.5px; }
+      .legal-content th, .legal-content td { padding: 10px 12px; }
+      .legal-content pre, .legal-content code { font-size: 12px; }
+      .legal-nav a { min-width: 0; padding: 9px 10px; font-size: 11.5px; }
+      .legal-meta { font-size: 11px; }
+    }
+    @supports (padding: max(0px)) {
+      @media (max-width: 700px) {
+        .legal-page {
+          padding-left: max(16px, env(safe-area-inset-left));
+          padding-right: max(16px, env(safe-area-inset-right));
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            min-height: 100vh;
-            overflow-x: hidden;
-            color: var(--text-main);
-            position: relative;
-            padding: 40px 20px;
-            line-height: 1.7;
-        }
-
-        .blobs {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        .blob {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.5;
-            animation: float 20s infinite alternate;
-        }
-
-        .b1 {
-            top: -10%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: #4f46e5;
-            animation-duration: 25s;
-        }
-
-        .b2 {
-            bottom: -10%;
-            right: -10%;
-            width: 40vw;
-            height: 40vw;
-            background: #0ea5e9;
-            animation-duration: 30s;
-            animation-delay: -5s;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(40px, -40px); }
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--card-border);
-            padding: 40px;
-            border-radius: 32px;
-            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
-            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 30px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .header h1 {
-            font-size: 32px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-
-        .header .meta {
-            color: var(--text-sub);
-            font-size: 13px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .header .meta span {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .nav-links a {
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .nav-links a.active {
-            color: var(--text-main);
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--primary);
-        }
-
-        .content {
-            color: var(--text-main);
-        }
-
-        .content h2 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--heading-color);
-            margin: 32px 0 16px 0;
-            letter-spacing: -0.5px;
-        }
-
-        .content h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--heading-color);
-            margin: 24px 0 12px 0;
-        }
-
-        .content h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin: 20px 0 10px 0;
-        }
-
-        .content p {
-            margin: 12px 0;
-            color: var(--text-sub);
-        }
-
-        .content ul, .content ol {
-            margin: 12px 0;
-            padding-left: 24px;
-            color: var(--text-sub);
-        }
-
-        .content li {
-            margin: 8px 0;
-        }
-
-        .content a {
-            color: var(--link-color);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .content a:hover {
-            color: var(--primary);
-            text-decoration: underline;
-        }
-
-        .content strong {
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: var(--table-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--table-border);
-        }
-
-        .content th, .content td {
-            padding: 14px 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--table-border);
-        }
-
-        .content th {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--text-main);
-            font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .content td {
-            color: var(--text-sub);
-            font-size: 14px;
-        }
-
-        .content tr:last-child td {
-            border-bottom: none;
-        }
-
-        .content tr:hover td {
-            background: rgba(255,255,255,0.03);
-        }
-
-        .content code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            background: var(--code-bg);
-            padding: 2px 8px;
-            border-radius: 6px;
-            color: #a5b4fc;
-            border: 1px solid var(--card-border);
-        }
-
-        .content pre {
-            background: var(--code-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px;
-            overflow-x: auto;
-            margin: 16px 0;
-        }
-
-        .content pre code {
-            background: transparent;
-            padding: 0;
-            border: none;
-            color: var(--text-sub);
-        }
-
-        .content blockquote {
-            border-left: 3px solid var(--primary);
-            padding-left: 16px;
-            margin: 16px 0;
-            color: var(--text-sub);
-            font-style: italic;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-            margin-bottom: 20px;
-        }
-
-        .back-link:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .back-link svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid var(--card-border);
-            color: var(--text-sub);
-            font-size: 13px;
-        }
-
-        .footer a {
-            color: var(--link-color);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            color: var(--primary);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 24px 20px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .content h2 {
-                font-size: 18px;
-            }
-
-            .nav-links {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-    </style>
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="blobs">
-        <div class="blob b1"></div>
-        <div class="blob b2"></div>
-    </div>
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+  <div class="bg-grain"></div>
 
-    <div class="container">
-        <a href="/" class="back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            На главную
+  <div class="page">
+    <div class="legal-page">
+
+      <header class="legal-topbar">
+        <a href="/" class="brand-mark">
+          <span class="glyph">
+            <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+          </span>
+          <span>barkfluff</span>
         </a>
+        <a href="/" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          На главную
+        </a>
+      </header>
 
-        <div class="nav-links">
-            <a href="/legal/privacy-policy" class="active">Политика конфиденциальности</a>
-            <a href="/legal/terms-of-service">Условия использования</a>
-            <a href="/legal/account-deletion">Удаление аккаунта</a>
-            <a href="/legal/encryption">Шифрование</a>
+      <nav class="legal-nav">
+        <a href="/legal/privacy-policy" class="active">Конфиденциальность</a>
+        <a href="/legal/terms-of-service">Условия использования</a>
+        <a href="/legal/account-deletion">Удаление аккаунта</a>
+        <a href="/legal/encryption">Шифрование</a>
+      </nav>
+
+      <article class="legal-card">
+        <div class="legal-header">
+          <span class="legal-eyebrow">Юридическая информация</span>
+          <h1 class="legal-title">Политика конфиденциальности</h1>
+          <div class="legal-meta">
+            <span><b>Действует с</b>&nbsp;24 января 2026 г.</span>
+            <span><b>Обновлено</b>&nbsp;14 мая 2026 г.</span>
+          </div>
         </div>
 
-        <div class="header">
-            <h1>Политика конфиденциальности</h1>
-            <div class="meta">
-                <span>📅 Дата вступления в силу: 24 января 2026 г.</span>
-                <span>🔄 Последнее обновление: 21 июля 2026 г.</span>
-            </div>
+        <div class="legal-content">
+          <h2>1. Введение</h2>
+          <p>Добро пожаловать в <strong>Barkfluff</strong>!</p>
+          <p>Мы уважаем вашу конфиденциальность и стремимся защищать ваши персональные данные. Настоящая Политика конфиденциальности описывает, какие данные мы собираем, как мы их используем, храним и защищаем при использовании платформы Barkfluff (далее — «Сервис»).</p>
+          <p>Используя Barkfluff, вы соглашаетесь с условиями настоящей Политики. Если вы не согласны с какими-либо положениями, пожалуйста, не используйте Сервис.</p>
+
+          <h2>2. Собираемые данные</h2>
+
+          <h3>2.1 Данные учётной записи</h3>
+          <p>При регистрации и использовании Сервиса мы собираем следующую информацию:</p>
+          <table>
+            <thead>
+              <tr><th>Данные</th><th>Назначение</th><th>Хранение</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Email</strong></td><td>Аутентификация, восстановление доступа, отправка важных уведомлений</td><td>PostgreSQL (Identity)</td></tr>
+              <tr><td><strong>Имя пользователя (Username)</strong></td><td>Вход в систему, отображение в интерфейсе</td><td>PostgreSQL (Identity)</td></tr>
+              <tr><td><strong>Хеш пароля</strong></td><td>Безопасная аутентификация (пароль в открытом виде никогда не хранится)</td><td>PostgreSQL (Identity)</td></tr>
+              <tr><td><strong>Имя и Фамилия</strong></td><td>Отображение в профиле пользователя</td><td>PostgreSQL (Users)</td></tr>
+              <tr><td><strong>Био (описание профиля)</strong></td><td>Информация о пользователе</td><td>PostgreSQL (Users)</td></tr>
+              <tr><td><strong>Аватар</strong></td><td>Изображение профиля пользователя</td><td>Объектное хранилище Minio + метаданные в PostgreSQL</td></tr>
+              <tr><td><strong>Постер профиля</strong></td><td>Горизонтальная обложка профиля (3:1)</td><td>Объектное хранилище Minio + метаданные в PostgreSQL</td></tr>
+            </tbody>
+          </table>
+          <p><strong>Удаление:</strong> все данные учётной записи удаляются при удалении аккаунта (см. раздел 7).</p>
+
+          <h3>2.2 Метаданные устройства</h3>
+          <p>Для обеспечения безопасности и функциональности мы собираем следующие метаданные:</p>
+          <table>
+            <thead>
+              <tr><th>Данные</th><th>Назначение</th><th>Хранение</th><th>Срок</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Device ID</strong></td><td>Идентификация устройства, управление сессиями, привязка refresh-токена</td><td>PostgreSQL (Identity.RefreshTokens, Users.UserDevices)</td><td>До выхода из системы или удаления аккаунта</td></tr>
+              <tr><td><strong>Название устройства (OriginalName / CustomName)</strong></td><td>Отображение в списке активных сессий</td><td>PostgreSQL (Users.UserDevices)</td><td>До удаления устройства или аккаунта</td></tr>
+              <tr><td><strong>Операционная система</strong></td><td>Совместимость, статистика</td><td>PostgreSQL (Users.UserDevices)</td><td>До удаления устройства или аккаунта</td></tr>
+              <tr><td><strong>Название приложения (AppName)</strong></td><td>Идентификация клиента (Android, WPF, macOS, Web и т.д.)</td><td>PostgreSQL (Users.UserDevices)</td><td>До удаления устройства или аккаунта</td></tr>
+              <tr><td><strong>Версия приложения (AppVersion)</strong></td><td>Совместимость, поддержка, статистика</td><td>PostgreSQL (Users.UserDevices)</td><td>До удаления устройства или аккаунта</td></tr>
+              <tr><td><strong>Местоположение устройства (Location)</strong></td><td>Отображение в списке активных сессий</td><td>PostgreSQL (Users.UserDevices)</td><td>До удаления устройства или аккаунта</td></tr>
+              <tr><td><strong>Push-токен (Firebase / APNs)</strong></td><td>Доставка push-уведомлений (через CloudMessaging)</td><td>PostgreSQL (Users.UserDevices)</td><td>До отзыва разрешения или удаления аккаунта</td></tr>
+            </tbody>
+          </table>
+          <p><strong>Примечание:</strong> IP-адрес передаётся как технический заголовок при каждом запросе (<code>x-ip</code>), однако <strong>не сохраняется</strong> в базе данных. Он используется исключительно для обработки текущего запроса.</p>
+
+          <h3>2.3 Данные сообщений</h3>
+          <table>
+            <thead>
+              <tr><th>Данные</th><th>Назначение</th><th>Хранение</th><th>Срок</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Текст сообщений</strong></td><td>Коммуникация между пользователями</td><td>PostgreSQL (Messages), TDE на уровне хранилища</td><td>До удаления пользователем</td></tr>
+              <tr><td><strong>Вложения</strong></td><td>Обмен медиафайлами</td><td>Minio (SSE AES-256-GCM) + метаданные в PostgreSQL</td><td>До удаления сообщения или отдельного запроса</td></tr>
+              <tr><td><strong>Время отправки</strong></td><td>Хронология сообщений</td><td>PostgreSQL (Messages)</td><td>До удаления сообщения</td></tr>
+              <tr><td><strong>Read receipts (статусы прочтения)</strong></td><td>Уведомление о доставке и прочтении</td><td>PostgreSQL (Messages.MessageReadReceipts)</td><td>До удаления сообщения</td></tr>
+            </tbody>
+          </table>
+
+          <h4>2.3.1 Удаление сообщений</h4>
+          <ul>
+            <li><strong>Soft Delete:</strong> сообщение помечается как удалённое и физически остаётся в базе в течение 30 дней.</li>
+            <li><strong>Hard Delete:</strong> через 30 дней после soft-delete сообщение окончательно удаляется из всех систем.</li>
+            <li><strong>Групповые чаты:</strong> при удалении аккаунта ваши сообщения в группах сохраняются для непрерывности истории, но поле отправителя заменяется на <code>[Удалённый пользователь]</code>.</li>
+          </ul>
+          <p><strong>Важно:</strong> все сообщения хранятся в зашифрованном виде на уровне базы данных (Transparent Data Encryption).</p>
+
+          <h3>2.4 Данные активности</h3>
+          <table>
+            <thead>
+              <tr><th>Данные</th><th>Назначение</th><th>Хранение</th><th>Срок</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Онлайн-статус</strong></td><td>Отображение статуса «в сети»</td><td>In-memory кеш (ConcurrentDictionary) в Onliner-сервисе + периодическое сохранение в PostgreSQL (Onliner.UsersOnlineStatuses)</td><td>До выхода из системы или истечения тайм-аута активности</td></tr>
+              <tr><td><strong>Last Seen</strong></td><td>Отображение «был(а) в сети X минут назад»</td><td>In-memory кеш Onliner + PostgreSQL</td><td>До удаления аккаунта</td></tr>
+            </tbody>
+          </table>
+
+          <h2>3. Цели использования данных</h2>
+
+          <h3>3.1 Предоставление сервиса</h3>
+          <ul>
+            <li>Регистрация и аутентификация пользователей</li>
+            <li>Доставка сообщений и медиафайлов</li>
+            <li>Синхронизация данных между устройствами</li>
+            <li>Отображение профилей пользователей</li>
+            <li>Функции чата (приватные и групповые сообщения)</li>
+          </ul>
+
+          <h3>3.2 Безопасность</h3>
+          <ul>
+            <li>Защита от несанкционированного доступа</li>
+            <li>Обнаружение подозрительной активности</li>
+            <li>Двухфакторная аутентификация (2FA)</li>
+            <li>Управление активными сессиями</li>
+            <li>Аудит безопасности</li>
+          </ul>
+
+          <h3>3.3 Улучшение продукта</h3>
+          <ul>
+            <li>Совместимость с различными устройствами и ОС</li>
+            <li>Оптимизация производительности</li>
+            <li>Исправление ошибок и разработка новых функций</li>
+          </ul>
+
+          <h3>3.4 Соблюдение законодательства</h3>
+          <ul>
+            <li>Выполнение юридических обязательств</li>
+            <li>Защита прав и безопасности пользователей</li>
+            <li>Предотвращение мошенничества и незаконной деятельности</li>
+          </ul>
+
+          <h2>4. Шифрование и защита данных</h2>
+
+          <h3>4.1 Шифрование в состоянии покоя (at rest)</h3>
+          <ul>
+            <li><strong>PostgreSQL:</strong> данные зашифрованы Transparent Data Encryption (TDE) на уровне хранилища</li>
+            <li><strong>Minio:</strong> файлы зашифрованы Server-Side Encryption (SSE) алгоритмом AES-256-GCM</li>
+            <li><strong>Локальное хранилище клиентов:</strong> чувствительные настройки и токены шифруются на устройстве (детали по платформам — см. <a href="/legal/encryption">раздел «Шифрование»</a>)</li>
+          </ul>
+
+          <h3>4.2 Шифрование при передаче (in transit)</h3>
+          <ul>
+            <li><strong>TLS 1.3</strong> для всех соединений между клиентами и серверами</li>
+            <li><strong>gRPC поверх HTTP/2</strong> — бинарный протокол поверх HTTPS</li>
+            <li><strong>RabbitMQ:</strong> внутренние соединения между микросервисами также защищены TLS</li>
+          </ul>
+
+          <h3>4.3 End-to-End шифрование (E2EE)</h3>
+          <p><strong>Текущий статус:</strong> End-to-End шифрование <strong>не реализовано</strong>.</p>
+          <p>Сервер имеет техническую возможность доступа к содержимому сообщений для обеспечения функциональности (поиск, синхронизация между устройствами, модерация). Мы применяем строгие меры безопасности и контроля доступа для защиты ваших данных.</p>
+          <p><strong>Примечание:</strong> мы рассматриваем возможность добавления опционального E2EE для приватных чатов в будущих версиях.</p>
+          <p>Подробнее — в документе <a href="/legal/encryption">«Шифрование»</a>.</p>
+
+          <h2>5. Передача данных третьим лицам</h2>
+
+          <h3>5.1 Общая политика</h3>
+          <p>Мы <strong>НЕ продаём, не сдаём в аренду и не передаём</strong> ваши персональные данные третьим лицам в коммерческих целях.</p>
+
+          <h3>5.2 Исключения</h3>
+
+          <h4>5.2.1 По требованию закона</h4>
+          <ul>
+            <li>Судебные решения, предписания правоохранительных органов</li>
+            <li>Запросы государственных органов в соответствии с действующим законодательством</li>
+            <li>Защита прав и безопасности Barkfluff и других пользователей</li>
+          </ul>
+
+          <h4>5.2.2 Поставщики услуг</h4>
+          <ul>
+            <li><strong>Инфраструктура хостинга:</strong> серверы могут размещаться у облачных провайдеров и в частных дата-центрах с гарантиями конфиденциальности.</li>
+            <li><strong>SMTP-сервисы:</strong> сервис Notification отправляет email-уведомления (восстановление пароля, 2FA-коды). Передаются email-адрес и текст уведомления.</li>
+            <li><strong>Firebase Cloud Messaging (Google):</strong> сервис CloudMessaging доставляет push-уведомления на Android-устройства. Передаются FCM-токен устройства, идентификатор чата, имя отправителя и предпросмотр сообщения. Данные обрабатываются Google в соответствии с <a href="https://policies.google.com/privacy" target="_blank">политикой Google</a>. Push-уведомления отправляются <strong>только</strong> при наличии разрешения приложения.</li>
+            <li><strong>Apple Push Notification service (Apple):</strong> для будущих iOS/macOS клиентов аналогично используется APNs. Передаётся минимальный набор данных, необходимый для доставки.</li>
+            <li><strong>Telegram Bot API:</strong> сообщения, отправленные через форму поддержки на сайте, пересылаются боту Telegram для обработки администратором. Данные обрабатываются Telegram в соответствии с их политикой.</li>
+          </ul>
+          <p>Все сторонние поставщики имеют доступ только к минимально необходимым данным.</p>
+
+          <h3>5.3 Международная передача данных</h3>
+          <p>Данные могут обрабатываться на серверах, расположенных в разных странах. При международной передаче мы обеспечиваем соответствующий уровень защиты согласно требованиям GDPR и других применимых норм.</p>
+
+          <h2>6. Права пользователей</h2>
+          <p>В соответствии с GDPR и другими законами о защите данных, вы имеете следующие права:</p>
+
+          <h3>6.1 Право на доступ</h3>
+          <p>Вы можете запросить копию всех ваших персональных данных, хранящихся в системе.</p>
+          <p><strong>Как запросить:</strong></p>
+          <ul>
+            <li>Используйте функцию экспорта данных в клиентском приложении</li>
+            <li>Или отправьте запрос на email: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+          </ul>
+          <p><strong>Формат экспорта:</strong> JSON-файл, содержащий данные профиля, ваши сообщения, список загруженных файлов (со ссылками для скачивания) и историю входов.</p>
+
+          <h3>6.2 Право на исправление</h3>
+          <p>Вы можете в любое время обновить или исправить свои данные:</p>
+          <ul>
+            <li>Имя, фамилию, био, аватар, постер — через настройки профиля</li>
+            <li>Email — через функцию смены email с подтверждением</li>
+            <li>Пароль — через функцию смены пароля</li>
+          </ul>
+
+          <h3>6.3 Право на удаление</h3>
+          <p>Вы можете удалить свой аккаунт полностью. См. раздел 7 и страницу <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</p>
+
+          <h3>6.4 Право на переносимость данных</h3>
+          <p>Экспорт данных (раздел 6.1) предоставляется в структурированном машиночитаемом формате (JSON), который можно импортировать в другие системы.</p>
+
+          <h3>6.5 Право на возражение и ограничение обработки</h3>
+          <p>Вы можете возразить против обработки ваших данных в маркетинговых целях. Barkfluff не использует данные для маркетинга без явного согласия. Вы также можете запросить временное ограничение обработки в отдельных ситуациях (например, при оспаривании точности данных).</p>
+          <p><strong>Для реализации прав обращайтесь:</strong></p>
+          <ul>
+            <li>Email: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+            <li>Время ответа: не более 30 дней</li>
+          </ul>
+
+          <h2>7. Удаление аккаунта и данных</h2>
+
+          <h3>7.1 Процесс удаления</h3>
+
+          <h4>Этап 1: Soft Delete — 30 дней</h4>
+          <ul>
+            <li>Аккаунт помечается как <code>IsDeleted = true</code></li>
+            <li>Вход в систему заблокирован</li>
+            <li>Профиль и данные не отображаются другим пользователям</li>
+            <li><strong>Возможно восстановление:</strong> обратитесь в поддержку в течение 30 дней</li>
+          </ul>
+
+          <h4>Этап 2: Hard Delete — после 30 дней</h4>
+          <ul>
+            <li>Удаление записи из <code>Identity.Users</code></li>
+            <li>Удаление профиля (<code>Users.UserProfiles</code>) и устройств (<code>Users.UserDevices</code>)</li>
+            <li>Удаление всех refresh-токенов</li>
+            <li>Удаление личных файлов (аватары, личные вложения) из Minio</li>
+            <li>Сообщения в групповых чатах сохраняются с меткой <code>[Удалённый пользователь]</code></li>
+          </ul>
+
+          <h3>7.2 Сохранение сообщений</h3>
+          <p><strong>Почему сообщения в групповых чатах сохраняются?</strong></p>
+          <ul>
+            <li>Удаление всех ваших сообщений нарушит целостность истории общения других участников</li>
+            <li>В некоторых юрисдикциях законодательство требует хранения коммуникаций</li>
+          </ul>
+          <p><strong>Опция полного удаления:</strong> вы можете запросить удаление всех своих сообщений (включая групповые чаты) через службу поддержки: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></p>
+          <p>Подробнее см. <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</p>
+
+          <h2>8. Логирование и аудит</h2>
+          <p>Для безопасности мы ведём журналы следующих событий:</p>
+
+          <h3>8.1 События безопасности</h3>
+          <ul>
+            <li>Успешные и неудачные попытки входа (Device ID, время)</li>
+            <li>Изменение пароля</li>
+            <li>Включение/отключение 2FA</li>
+            <li>Создание и удаление аккаунта</li>
+            <li>Доступ к чувствительным функциям (экспорт данных, удаление аккаунта)</li>
+          </ul>
+
+          <h3>8.2 Формат хранения</h3>
+          <ul>
+            <li>Журналы хранятся в защищённой инфраструктуре логирования (Serilog → Seq), а критичные события — также в PostgreSQL</li>
+            <li>Используются структурированные ServiceMetrics-логи для метрик и аудита</li>
+          </ul>
+
+          <h3>8.3 Срок хранения</h3>
+          <ul>
+            <li><strong>Журналы безопасности:</strong> 180 дней</li>
+            <li><strong>Журналы системных ошибок:</strong> 90 дней</li>
+            <li>После истечения срока журналы автоматически удаляются</li>
+          </ul>
+
+          <h2>9. Локальное хранение и токены</h2>
+
+          <h3>9.1 Использование cookies</h3>
+          <p>Нативные клиенты Barkfluff (Windows WPF, Android, macOS, будущий iOS, Linux Qt) общаются с серверами через gRPC и <strong>не используют</strong> традиционные веб-cookies. Веб-клиент использует cookies только в технических целях (сессия, безопасность) — без рекламных или аналитических трекеров.</p>
+
+          <h3>9.2 Токены аутентификации</h3>
+          <ul>
+            <li><strong>Access Token (JWT):</strong> срок действия 15 минут, передаётся в заголовке <code>x-auth-token</code></li>
+            <li><strong>Refresh Token:</strong> срок действия 30 дней, привязан к Device ID</li>
+          </ul>
+          <p>Токены хранятся локально на устройстве в зашифрованном виде. Алгоритмы и пути хранения для каждой платформы — см. <a href="/legal/encryption">«Шифрование»</a>.</p>
+
+          <h3>9.3 Локальное кеширование</h3>
+          <p>Клиентские приложения кешируют сообщения и профили локально (LiteDB / SQLite в зависимости от платформы) для офлайн-доступа. Эти данные хранятся исключительно на вашем устройстве и не передаются третьим лицам.</p>
+
+          <h2>10. Безопасность детей (COPPA)</h2>
+          <p>Barkfluff не предназначен для использования детьми младше 13 лет.</p>
+          <ul>
+            <li>Мы сознательно не собираем персональные данные детей младше 13 лет</li>
+            <li>При регистрации пользователь подтверждает, что ему исполнилось 13 лет</li>
+            <li>Если нам станет известно, что мы собрали данные ребёнка младше 13 лет, мы немедленно удалим такой аккаунт</li>
+          </ul>
+          <p>Если вы родитель или опекун и обнаружили, что ваш ребёнок зарегистрировался на платформе, свяжитесь с нами: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></p>
+
+          <h2>11. Изменения в Политике</h2>
+
+          <h3>11.1 Уведомление об изменениях</h3>
+          <ul>
+            <li><strong>Существенные изменения:</strong> уведомление по email и/или через приложение</li>
+            <li><strong>Незначительные изменения:</strong> обновление даты «Обновлено» в начале документа</li>
+          </ul>
+
+          <h3>11.2 Согласие с изменениями</h3>
+          <p>Продолжая использовать Barkfluff после вступления изменений в силу, вы соглашаетесь с обновлённой Политикой.</p>
+
+          <h2>12. Контактная информация</h2>
+          <p><strong>По вопросам конфиденциальности:</strong></p>
+          <ul>
+            <li>Email: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+            <li>Время ответа: до 30 дней</li>
+          </ul>
+          <p><strong>Техническая поддержка:</strong></p>
+          <ul>
+            <li>Email: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+            <li>Telegram: <a href="https://t.me/barkfluff?direct" target="_blank">@barkfluff</a></li>
+          </ul>
+          <p><strong>Официальный сайт:</strong> <a href="https://barkfluff.com">https://barkfluff.com</a></p>
+
+          <h2>13. Соответствие законодательству</h2>
+          <ul>
+            <li><strong>GDPR</strong> — Европейский регламент о защите данных</li>
+            <li><strong>CCPA</strong> — California Consumer Privacy Act</li>
+            <li><strong>ФЗ-152</strong> «О персональных данных» (Российская Федерация)</li>
+            <li>Другие применимые законы и нормативные акты</li>
+          </ul>
+
+          <h2>14. Согласие</h2>
+          <p>Используя Barkfluff, вы подтверждаете, что:</p>
+          <ul>
+            <li>Прочитали и поняли настоящую Политику конфиденциальности</li>
+            <li>Согласны с условиями сбора, использования и хранения ваших данных</li>
+            <li>Достигли возраста 13 лет или старше</li>
+          </ul>
+          <p>Если вы не согласны с какими-либо положениями, пожалуйста, прекратите использование Сервиса.</p>
+
+          <blockquote>
+            <p><strong>Спасибо, что выбираете Barkfluff!</strong></p>
+            <p>Мы ценим ваше доверие и обязуемся защищать вашу конфиденциальность.</p>
+          </blockquote>
+          <p><em>Документ действителен с 24 января 2026 г.</em></p>
         </div>
+      </article>
 
-        <div class="content">
-            <h2>1. Введение</h2>
-            <p>Добро пожаловать в <strong>BarkFluff</strong>!</p>
-            <p>Мы уважаем вашу конфиденциальность и стремимся защищать ваши персональные данные. Настоящая Политика конфиденциальности описывает, какие данные мы собираем, как мы их используем, храним и защищаем при использовании платформы BarkFluff (далее — "Сервис").</p>
-            <p>Используя BarkFluff, вы соглашаетесь с условиями настоящей Политики конфиденциальности. Если вы не согласны с какими-либо положениями, пожалуйста, не используйте наш Сервис.</p>
-
-            <h2>2. Собираемые данные</h2>
-            
-            <h3>2.1 Данные учетной записи</h3>
-            <p>При регистрации и использовании Сервиса мы собираем следующую информацию:</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Данные</th>
-                        <th>Назначение</th>
-                        <th>Хранение</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Email</strong></td>
-                        <td>Аутентификация, восстановление доступа, отправка важных уведомлений</td>
-                        <td>База данных PostgreSQL (Identity Service)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Имя пользователя (Username)</strong></td>
-                        <td>Вход в систему, отображение в интерфейсе</td>
-                        <td>База данных PostgreSQL (Identity Service)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Хеш пароля</strong></td>
-                        <td>Безопасная аутентификация (пароль в открытом виде никогда не хранится)</td>
-                        <td>База данных PostgreSQL (Identity Service)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Имя и Фамилия</strong></td>
-                        <td>Отображение в профиле пользователя</td>
-                        <td>База данных PostgreSQL (Users Service)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Био (описание профиля)</strong></td>
-                        <td>Информация о пользователе</td>
-                        <td>База данных PostgreSQL (Users Service)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Аватар</strong></td>
-                        <td>Изображение профиля пользователя</td>
-                        <td>Объектное хранилище Minio + метаданные в PostgreSQL</td>
-                    </tr>
-                </tbody>
-            </table>
-            <p><strong>Удаление:</strong> Все данные учетной записи удаляются при удалении аккаунта (см. раздел 7).</p>
-
-            <h3>2.2 Метаданные устройства</h3>
-            <p>Для обеспечения безопасности и улучшения функциональности мы собираем следующие метаданные:</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Данные</th>
-                        <th>Назначение</th>
-                        <th>Хранение</th>
-                        <th>Срок хранения</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Уникальный ID устройства (Device ID)</strong></td>
-                        <td>Идентификация устройства, управление сессиями, привязка токенов обновления</td>
-                        <td>База данных PostgreSQL (Identity.RefreshTokens + Users.UserDevices)</td>
-                        <td>До выхода из системы или удаления аккаунта</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Название устройства (OriginalName / CustomName)</strong></td>
-                        <td>Отображение в списке активных сессий (например, "iPhone Ивана")</td>
-                        <td>База данных PostgreSQL (Users.UserDevices)</td>
-                        <td>До удаления устройства или аккаунта</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Операционная система</strong></td>
-                        <td>Обеспечение совместимости, статистика</td>
-                        <td>База данных PostgreSQL (Users.UserDevices)</td>
-                        <td>До удаления устройства или аккаунта</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Название приложения (AppName)</strong></td>
-                        <td>Идентификация клиента (Android, WPF, iOS и т.д.)</td>
-                        <td>База данных PostgreSQL (Users.UserDevices)</td>
-                        <td>До удаления устройства или аккаунта</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Местоположение устройства (Location)</strong></td>
-                        <td>Отображение в списке активных сессий для удобства пользователя</td>
-                        <td>База данных PostgreSQL (Users.UserDevices)</td>
-                        <td>До удаления устройства или аккаунта</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Firebase Device Token</strong></td>
-                        <td>Доставка push-уведомлений на Android-устройства (через Firebase Cloud Messaging)</td>
-                        <td>База данных PostgreSQL (Users.UserDevices)</td>
-                        <td>До отзыва разрешения или удаления аккаунта</td>
-                    </tr>
-                </tbody>
-            </table>
-            <p><strong>Примечание:</strong> IP-адрес передаётся как технический заголовок при каждом запросе (<code>x-ip</code>), однако <strong>не сохраняется</strong> в базе данных. Он используется исключительно для обработки текущего запроса и не хранится на сервере.</p>
-
-            <h3>2.3 Данные сообщений</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Данные</th>
-                        <th>Назначение</th>
-                        <th>Хранение</th>
-                        <th>Срок хранения</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Текст сообщений</strong></td>
-                        <td>Коммуникация между пользователями</td>
-                        <td>База данных PostgreSQL (Messages Service), зашифровано на уровне хранилища (TDE)</td>
-                        <td>До удаления пользователем</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Вложения (файлы, изображения, медиа)</strong></td>
-                        <td>Обмен медиафайлами</td>
-                        <td>Объектное хранилище Minio (зашифровано AES-256-GCM) + метаданные в PostgreSQL</td>
-                        <td>До удаления сообщения или по отдельному запросу</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Время отправки</strong></td>
-                        <td>Сортировка и отображение хронологии сообщений</td>
-                        <td>База данных PostgreSQL (Messages Service)</td>
-                        <td>До удаления сообщения</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Статусы прочтения</strong></td>
-                        <td>Уведомление о доставке и прочтении сообщений</td>
-                        <td>База данных PostgreSQL (MessageReadReceipts)</td>
-                        <td>До удаления сообщения</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h4>2.3.1 Удаление сообщений</h4>
-            <ul>
-                <li><strong>Soft Delete (мягкое удаление):</strong> При удалении сообщения оно помечается как удаленное, но физически остается в базе данных в течение 30 дней.</li>
-                <li><strong>Hard Delete (жесткое удаление):</strong> Через 30 дней после мягкого удаления сообщение окончательно удаляется из всех систем.</li>
-                <li><strong>Групповые чаты:</strong> При удалении аккаунта ваши сообщения в групповых чатах сохраняются для обеспечения непрерывности истории общения других участников, однако поле отправителя заменяется на <code>[Удаленный пользователь]</code>.</li>
-            </ul>
-            <p><strong>Важно:</strong> Все сообщения хранятся в зашифрованном виде на уровне базы данных (Transparent Data Encryption).</p>
-
-            <h3>2.4 Данные активности</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Данные</th>
-                        <th>Назначение</th>
-                        <th>Хранение</th>
-                        <th>Срок хранения</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Онлайн-статус</strong></td>
-                        <td>Отображение статуса "в сети"</td>
-                        <td>In-memory кеш (ConcurrentDictionary) в Onliner-сервисе + периодическое сохранение в PostgreSQL (Onliner.UsersOnlineStatuses) каждые 10 минут</td>
-                        <td>До выхода из системы или до истечения тайм-аута активности</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Время последнего посещения (Last Seen)</strong></td>
-                        <td>Отображение "был(а) в сети X минут назад"</td>
-                        <td>In-memory кеш в Onliner-сервисе + PostgreSQL (Onliner.UsersOnlineStatuses)</td>
-                        <td>Обновляется при каждом выходе из сети; хранится до удаления аккаунта</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h2>3. Цели использования данных</h2>
-            <p>Мы используем собранные данные для следующих целей:</p>
-            
-            <h3>3.1 Предоставление сервиса</h3>
-            <ul>
-                <li>Обработка регистрации и аутентификации пользователей</li>
-                <li>Доставка сообщений и медиафайлов</li>
-                <li>Синхронизация данных между устройствами</li>
-                <li>Отображение профилей пользователей</li>
-                <li>Предоставление функций чата (групповые/приватные сообщения)</li>
-            </ul>
-
-            <h3>3.2 Безопасность</h3>
-            <ul>
-                <li>Защита от несанкционированного доступа</li>
-                <li>Обнаружение подозрительной активности</li>
-                <li>Двухфакторная аутентификация (2FA)</li>
-                <li>Управление активными сессиями</li>
-                <li>Аудит безопасности</li>
-            </ul>
-
-            <h3>3.3 Улучшение пользовательского опыта</h3>
-            <ul>
-                <li>Обеспечение совместимости с различными устройствами и ОС</li>
-                <li>Оптимизация производительности</li>
-                <li>Исправление ошибок</li>
-                <li>Разработка новых функций</li>
-            </ul>
-
-            <h3>3.4 Соблюдение законодательства</h3>
-            <ul>
-                <li>Выполнение юридических обязательств</li>
-                <li>Защита прав и безопасности пользователей</li>
-                <li>Предотвращение мошенничества и незаконной деятельности</li>
-            </ul>
-
-            <h2>4. Шифрование и защита данных</h2>
-            <p>Мы применяем современные методы шифрования для защиты ваших данных:</p>
-
-            <h3>4.1 Шифрование в состоянии покоя (at rest)</h3>
-            <ul>
-                <li><strong>База данных PostgreSQL:</strong> Все данные зашифрованы с использованием Transparent Data Encryption (TDE) на уровне хранилища</li>
-                <li><strong>Файловое хранилище Minio:</strong> Все файлы зашифрованы с использованием Server-Side Encryption (SSE) алгоритмом AES-256-GCM</li>
-                <li><strong>Локальное хранилище клиента:</strong> Настройки пользователя (GlobalParam.json) зашифрованы с использованием AES-256-CBC с ключом, производным от PIN-кода пользователя (PBKDF2)</li>
-            </ul>
-
-            <h3>4.2 Шифрование при передаче (in transit)</h3>
-            <ul>
-                <li><strong>TLS 1.3:</strong> Все соединения между клиентом и сервером защищены протоколом TLS 1.3</li>
-                <li><strong>gRPC/HTTP/2:</strong> Используется бинарный протокол gRPC поверх HTTPS</li>
-                <li><strong>RabbitMQ:</strong> Внутренние соединения между микросервисами также защищены TLS</li>
-            </ul>
-
-            <h3>4.3 End-to-End шифрование (E2EE)</h3>
-            <p><strong>Текущий статус:</strong> End-to-End шифрование в настоящее время <strong>не реализовано</strong>.</p>
-            <p>Это означает, что сервер имеет техническую возможность доступа к содержимому сообщений для обеспечения функциональности (поиск, синхронизация между устройствами, модерация контента). Однако мы применяем строгие меры безопасности и контроля доступа, чтобы защитить ваши данные.</p>
-            <p><strong>Примечание:</strong> Мы рассматриваем возможность добавления опционального E2EE для приватных чатов в будущих версиях.</p>
-            <p>Подробнее о шифровании см. в документе <a href="/legal/encryption">ENCRYPTION.md</a>.</p>
-
-            <h2>5. Передача данных третьим лицам</h2>
-            
-            <h3>5.1 Общая политика</h3>
-            <p>Мы <strong>НЕ продаем, не сдаем в аренду и не передаем</strong> ваши персональные данные третьим лицам в коммерческих целях.</p>
-
-            <h3>5.2 Исключения</h3>
-            <p>Мы можем раскрыть ваши данные в следующих случаях:</p>
-
-            <h4>5.2.1 По требованию закона</h4>
-            <ul>
-                <li>Судебные решения, предписания правоохранительных органов</li>
-                <li>Запросы государственных органов в соответствии с действующим законодательством</li>
-                <li>Защита прав и безопасности BarkFluff и других пользователей</li>
-            </ul>
-
-            <h4>5.2.2 Поставщики услуг</h4>
-            <ul>
-                <li><strong>Инфраструктура хостинга:</strong> Серверы могут размещаться у облачных провайдеров (AWS, Google Cloud, частные дата-центры) с гарантиями конфиденциальности</li>
-                <li><strong>Email-сервисы:</strong> Для отправки уведомлений (восстановление пароля, 2FA коды) используются SMTP-сервисы. Передаются: email-адрес и текст уведомления</li>
-                <li><strong>Firebase Cloud Messaging (Google):</strong> Для доставки push-уведомлений на Android-устройства. Сервис получает FCM-токен устройства, идентификатор чата, имя отправителя и предпросмотр сообщения. Данные обрабатываются Google в соответствии с <a href="https://policies.google.com/privacy" target="_blank">политикой конфиденциальности Google</a>. Push-уведомления отправляются <strong>только</strong> при наличии разрешения приложения</li>
-                <li><strong>Telegram Bot:</strong> Для уведомлений чата поддержки — сообщения, отправленные через форму поддержки на сайте, пересылаются боту Telegram для обработки администратором. Данные обрабатываются Telegram в соответствии с их политикой конфиденциальности</li>
-            </ul>
-            <p>Все сторонние поставщики имеют доступ только к минимально необходимым данным.</p>
-
-            <h3>5.3 Международная передача данных</h3>
-            <p>Данные могут обрабатываться на серверах, расположенных в разных странах. При международной передаче мы обеспечиваем соответствующий уровень защиты в соответствии с требованиями GDPR и других применимых норм.</p>
-
-            <h2>6. Права пользователей</h2>
-            <p>В соответствии с GDPR и другими законами о защите данных, вы имеете следующие права:</p>
-
-            <h3>6.1 Право на доступ (Right to Access)</h3>
-            <p>Вы можете запросить копию всех ваших персональных данных, хранящихся в системе.</p>
-            <p><strong>Как запросить:</strong></p>
-            <ul>
-                <li>Используйте API метод <code>ExportUserData</code> в клиентском приложении</li>
-                <li>Или отправьте запрос на email: privacy@barkfluff.com</li>
-            </ul>
-            <p><strong>Формат экспорта:</strong> JSON-файл, содержащий:</p>
-            <ul>
-                <li>Данные профиля</li>
-                <li>Все ваши сообщения</li>
-                <li>Список загруженных файлов (с ссылками для скачивания)</li>
-                <li>История входов</li>
-            </ul>
-
-            <h3>6.2 Право на исправление (Right to Rectification)</h3>
-            <p>Вы можете в любое время обновить или исправить свои данные:</p>
-            <ul>
-                <li>Имя, фамилию, био, аватар — через настройки профиля</li>
-                <li>Email — через функцию смены email с подтверждением</li>
-                <li>Пароль — через функцию смены пароля</li>
-            </ul>
-
-            <h3>6.3 Право на удаление (Right to Erasure / "Right to be Forgotten")</h3>
-            <p>Вы можете удалить свой аккаунт полностью. См. раздел 7 и документ <a href="/legal/account-deletion">ACCOUNT_DELETION.md</a>.</p>
-
-            <h3>6.4 Право на переносимость данных (Right to Data Portability)</h3>
-            <p>Экспорт данных (раздел 6.1) предоставляется в структурированном машиночитаемом формате (JSON), который можно импортировать в другие системы.</p>
-
-            <h3>6.5 Право на возражение (Right to Object)</h3>
-            <p>Вы можете возразить против обработки ваших данных в маркетинговых целях. BarkFluff не использует данные для маркетинга без явного согласия.</p>
-
-            <h3>6.6 Право на ограничение обработки (Right to Restriction)</h3>
-            <p>Вы можете запросить временное ограничение обработки ваших данных в определенных ситуациях (например, при оспаривании точности данных).</p>
-            <p><strong>Для реализации прав обращайтесь:</strong></p>
-            <ul>
-                <li>Email: privacy@barkfluff.com</li>
-                <li>Время ответа: не более 30 дней</li>
-            </ul>
-
-            <h2>7. Удаление аккаунта и данных</h2>
-            
-            <h3>7.1 Процесс удаления</h3>
-            
-            <h4>Этап 1: Мягкое удаление (Soft Delete) — 30 дней</h4>
-            <ul>
-                <li>Аккаунт помечается как <code>IsDeleted = true</code></li>
-                <li>Вход в систему заблокирован</li>
-                <li>Ваш профиль и данные не отображаются другим пользователям</li>
-                <li><strong>Возможно восстановление:</strong> Обратитесь в службу поддержки в течение 30 дней для восстановления аккаунта</li>
-            </ul>
-
-            <h4>Этап 2: Жесткое удаление (Hard Delete) — после 30 дней</h4>
-            <p>Окончательное удаление данных:</p>
-            <ul>
-                <li>✅ Удаление записи из базы данных пользователей (Identity.Users)</li>
-                <li>✅ Удаление профиля (Users.UserProfiles)</li>
-                <li>✅ Удаление всех сессий</li>
-                <li>✅ Удаление личных файлов (аватары, личные вложения)</li>
-                <li>⚠️ <strong>Сообщения в групповых чатах:</strong> Сохраняются с меткой <code>[Удаленный пользователь]</code> для сохранения истории других участников</li>
-            </ul>
-
-            <h3>7.2 Сохранение сообщений</h3>
-            <p><strong>Почему сообщения в групповых чатах сохраняются?</strong></p>
-            <ul>
-                <li>Удаление всех ваших сообщений нарушит целостность истории общения других участников</li>
-                <li>В некоторых юрисдикциях законодательство требует хранения коммуникаций</li>
-            </ul>
-            <p><strong>Опция полного удаления:</strong> Вы можете запросить удаление всех своих сообщений (включая групповые чаты) через службу поддержки: privacy@barkfluff.com</p>
-            <p>Подробнее см. <a href="/legal/account-deletion">ACCOUNT_DELETION.md</a>.</p>
-
-            <h2>8. Логирование и аудит</h2>
-            <p>Для обеспечения безопасности мы ведем журналы следующих событий:</p>
-
-            <h3>8.1 События безопасности</h3>
-            <ul>
-                <li>Успешные и неудачные попытки входа (IP, Device ID, время)</li>
-                <li>Изменение пароля</li>
-                <li>Включение/отключение двухфакторной аутентификации (2FA)</li>
-                <li>Создание и удаление аккаунта</li>
-                <li>Доступ к чувствительным функциям (экспорт данных, удаление аккаунта)</li>
-            </ul>
-
-            <h3>8.2 Формат хранения</h3>
-            <ul>
-                <li>Журналы хранятся в защищенной базе данных PostgreSQL или файлах на сервере</li>
-                <li>Используется библиотека Serilog для структурированного логирования</li>
-            </ul>
-
-            <h3>8.3 Срок хранения</h3>
-            <ul>
-                <li><strong>Журналы безопасности:</strong> 180 дней</li>
-                <li><strong>Журналы системных ошибок:</strong> 90 дней</li>
-                <li>После истечения срока журналы автоматически удаляются</li>
-            </ul>
-
-            <h2>9. Файлы cookie и технологии отслеживания</h2>
-            
-            <h3>9.1 Использование cookies</h3>
-            <p>BarkFluff — это desktop-приложение на базе WPF, которое использует gRPC для связи с сервером. Мы <strong>НЕ используем</strong> традиционные веб-cookies.</p>
-
-            <h3>9.2 Токены аутентификации</h3>
-            <p>Для поддержания сессий используются:</p>
-            <ul>
-                <li><strong>Access Token (JWT):</strong> Срок действия 15 минут</li>
-                <li><strong>Refresh Token:</strong> Срок действия 30 дней, привязан к Device ID</li>
-            </ul>
-            <p>Токены хранятся локально на устройстве в зашифрованном виде (AES-256-CBC).</p>
-
-            <h3>9.3 Локальное кеширование</h3>
-            <p>Клиентское приложение может кешировать сообщения и профили локально (LiteDB) для обеспечения офлайн-доступа. Эти данные хранятся исключительно на вашем устройстве и не передаются третьим лицам.</p>
-
-            <h2>10. Безопасность детей (COPPA Compliance)</h2>
-            <p>BarkFluff не предназначен для использования детьми младше 13 лет.</p>
-            <ul>
-                <li>Мы сознательно не собираем персональные данные детей младше 13 лет</li>
-                <li>При регистрации пользователь должен подтвердить, что ему исполнилось 13 лет</li>
-                <li>Если нам станет известно, что мы собрали данные ребенка младше 13 лет, мы немедленно удалим такой аккаунт</li>
-            </ul>
-            <p>Если вы являетесь родителем или опекуном и обнаружили, что ваш ребенок зарегистрировался на платформе, свяжитесь с нами: privacy@barkfluff.com</p>
-
-            <h2>11. Изменения в Политике конфиденциальности</h2>
-            <p>Мы можем обновлять настоящую Политику конфиденциальности время от времени.</p>
-
-            <h3>11.1 Уведомление об изменениях</h3>
-            <ul>
-                <li><strong>Значительные изменения:</strong> Уведомление по email и/или через приложение</li>
-                <li><strong>Незначительные изменения:</strong> Обновление даты "Последнее обновление" в начале документа</li>
-            </ul>
-
-            <h3>11.2 История изменений</h3>
-            <ul>
-                <li>Все версии Политики конфиденциальности доступны по запросу</li>
-                <li>Архив доступен на: https://github.com/YourOrg/BarkFluff/docs/legal/</li>
-            </ul>
-
-            <h3>11.3 Согласие с изменениями</h3>
-            <p>Продолжая использовать BarkFluff после вступления изменений в силу, вы соглашаетесь с обновленной Политикой.</p>
-
-            <h2>12. Контактная информация</h2>
-            <p>Если у вас есть вопросы, замечания или запросы относительно настоящей Политики конфиденциальности:</p>
-            <p><strong>По вопросам конфиденциальности:</strong></p>
-            <ul>
-                <li>Email: privacy@barkfluff.com</li>
-                <li>Время ответа: до 30 дней</li>
-            </ul>
-            <p><strong>Техническая поддержка:</strong></p>
-            <ul>
-                <li>Email: support@barkfluff.com</li>
-            </ul>
-            <p><strong>Официальный сайт:</strong></p>
-            <ul>
-                <li>https://barkfluff.com</li>
-            </ul>
-
-            <h2>13. Соответствие законодательству</h2>
-            <p>Настоящая Политика конфиденциальности разработана в соответствии с:</p>
-            <ul>
-                <li><strong>GDPR (General Data Protection Regulation)</strong> — Европейский регламент о защите данных</li>
-                <li><strong>CCPA (California Consumer Privacy Act)</strong> — Закон Калифорнии о конфиденциальности потребителей</li>
-                <li><strong>Федеральный закон РФ № 152-ФЗ "О персональных данных"</strong></li>
-                <li>Другие применимые законы и нормативные акты</li>
-            </ul>
-
-            <h2>14. Согласие</h2>
-            <p>Используя BarkFluff, вы подтверждаете, что:</p>
-            <ul>
-                <li>Прочитали и поняли настоящую Политику конфиденциальности</li>
-                <li>Согласны с условиями сбора, использования и хранения ваших данных</li>
-                <li>Достигли возраста 13 лет или старше</li>
-            </ul>
-            <p>Если вы не согласны с какими-либо положениями, пожалуйста, прекратите использование Сервиса.</p>
-
-            <blockquote>
-                <p><strong>Спасибо за использование BarkFluff!</strong></p>
-                <p>Мы ценим ваше доверие и обязуемся защищать вашу конфиденциальность.</p>
-            </blockquote>
-            <p><em>Документ действителен с 24 января 2026 г.</em></p>
+      <footer class="legal-footer">
+        <div>© 2026 Barkfluff</div>
+        <div class="legal-footer-links">
+          <a href="/">Главная</a>
+          <a href="/legal/privacy-policy">Конфиденциальность</a>
+          <a href="/legal/terms-of-service">Условия</a>
+          <a href="/legal/account-deletion">Удаление аккаунта</a>
+          <a href="/legal/encryption">Шифрование</a>
         </div>
+      </footer>
 
-        <div class="footer">
-            <p>© 2026 BarkFluff. Все права защищены.</p>
-            <p style="margin-top: 8px;">
-                <a href="/">Главная</a> • 
-                <a href="/legal/privacy-policy">Конфиденциальность</a> • 
-                <a href="/legal/terms-of-service">Условия</a>
-            </p>
-        </div>
     </div>
+  </div>
 </body>
 </html>

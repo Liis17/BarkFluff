@@ -1,685 +1,592 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Шифрование - BarkFluff</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Шифрование — Barkfluff</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-0: #14070a; --bg-1: #1c0d0a; --bg-2: #241310; --bg-3: #2d1914;
+      --line: rgba(255, 240, 220, 0.08);
+      --line-strong: rgba(255, 240, 220, 0.14);
+      --ink: #fef6ea; --ink-dim: #c9a893; --ink-mute: #8a6a5b;
+      --brand: #ff7a29; --brand-2: #e25a12; --brand-deep: #8a2e06;
+      --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      background: var(--bg-1); color: var(--ink);
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.65;
+    }
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
+        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
+        radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
+        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+    }
+    .bg-grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.22; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+    }
+    .page { position: relative; z-index: 2; }
+    .legal-page { max-width: 920px; margin: 0 auto; padding: 40px 32px 60px; }
 
-    <style>
-        :root {
-            --bg-dark: #0f172a;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --code-bg: rgba(15, 23, 42, 0.6);
-            --heading-color: #e2e8f0;
-            --link-color: #60a5fa;
-            --table-border: rgba(255, 255, 255, 0.1);
-            --table-bg: rgba(30, 41, 59, 0.3);
+    .legal-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
+    }
+    .brand-mark {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
+      color: var(--ink); text-decoration: none;
+    }
+    .brand-mark .glyph {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #ff8a3c, #c23f07);
+      display: grid; place-items: center; position: relative;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(255,122,41,0.5);
+    }
+    .brand-mark .glyph::before {
+      content: ""; position: absolute; inset: 0; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .brand-mark .glyph svg { width: 16px; height: 16px; fill: #fff; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 12px;
+      background: rgba(255,240,220,0.04); border: 1px solid var(--line-strong);
+      color: var(--ink-dim); text-decoration: none; font-size: 13px; font-weight: 600;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .back-link:hover { color: var(--ink); background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
+    .back-link svg { width: 14px; height: 14px; }
+
+    .legal-nav {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 6px;
+      background: rgba(10,5,6,0.5); border: 1px solid var(--line);
+      border-radius: 14px; margin-bottom: 28px;
+    }
+    .legal-nav a {
+      flex: 1 1 auto; min-width: 140px;
+      padding: 10px 14px; border-radius: 10px;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--ink-mute); text-decoration: none; text-align: center;
+      transition: background 0.2s, color 0.2s;
+    }
+    .legal-nav a:hover { color: var(--ink-dim); background: rgba(255,240,220,0.04); }
+    .legal-nav a.active {
+      color: #ffb47a;
+      background: rgba(255,122,41,0.12);
+      box-shadow: inset 0 0 0 1px rgba(255,122,41,0.25);
+    }
+
+    .legal-card {
+      background: linear-gradient(180deg, rgba(45,25,20,0.55), rgba(22,11,9,0.55));
+      border: 1px solid var(--line); border-radius: 24px;
+      padding: 40px 44px; box-shadow: var(--shadow-card); position: relative;
+    }
+    .legal-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: linear-gradient(135deg, rgba(255,122,41,0.18), transparent 35%, transparent 65%, rgba(255,122,41,0.08));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+
+    .legal-header { padding-bottom: 24px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .legal-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+      color: #ffb47a; padding: 5px 11px; border-radius: 999px;
+      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
+      margin-bottom: 16px;
+    }
+    .legal-title {
+      font-size: clamp(28px, 4vw, 40px); font-weight: 800;
+      line-height: 1.1; letter-spacing: -0.02em; color: var(--ink);
+    }
+    .legal-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px;
+      font-size: 12px; color: var(--ink-mute);
+    }
+    .legal-meta span {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,240,220,0.04); border: 1px solid var(--line);
+    }
+    .legal-meta b { color: var(--ink-dim); font-weight: 700; }
+
+    .legal-content { color: var(--ink-dim); font-size: 15px; line-height: 1.7; }
+    .legal-content h2 {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.01em;
+      color: var(--ink); margin: 36px 0 14px;
+    }
+    .legal-content h2:first-child { margin-top: 0; }
+    .legal-content h3 {
+      font-size: 17px; font-weight: 700; color: var(--ink); margin: 26px 0 10px;
+    }
+    .legal-content h4 {
+      font-size: 14px; font-weight: 700; color: #ffb47a; margin: 20px 0 8px;
+      letter-spacing: 0.01em;
+    }
+    .legal-content p { margin: 10px 0; }
+    .legal-content ul, .legal-content ol { margin: 10px 0; padding-left: 22px; }
+    .legal-content li { margin: 6px 0; }
+    .legal-content strong { color: var(--ink); font-weight: 700; }
+    .legal-content em { color: var(--ink-dim); font-style: italic; }
+    .legal-content a {
+      color: #ffb47a; text-decoration: none;
+      border-bottom: 1px dashed rgba(255,180,122,0.4);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .legal-content a:hover { color: #ffd1a8; border-bottom-color: #ffd1a8; }
+
+    .legal-content code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      background: rgba(0,0,0,0.45); padding: 2px 7px; border-radius: 6px;
+      color: #f4c48a; border: 1px solid var(--line);
+    }
+    .legal-content pre {
+      background: rgba(0,0,0,0.5); border: 1px solid var(--line);
+      border-radius: 12px; padding: 16px; overflow-x: auto; margin: 16px 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.55;
+      color: #f4c48a;
+    }
+    .legal-content pre code { background: transparent; padding: 0; border: none; color: inherit; font-size: inherit; }
+
+    .legal-content blockquote {
+      border-left: 3px solid var(--brand); padding: 14px 18px; margin: 18px 0;
+      background: rgba(255,122,41,0.06); border-radius: 0 12px 12px 0;
+      color: var(--ink-dim);
+    }
+    .legal-content blockquote p { margin: 6px 0; }
+    .legal-content blockquote strong { color: var(--ink); }
+
+    .legal-content table {
+      width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0;
+      background: rgba(10,5,6,0.45); border: 1px solid var(--line);
+      border-radius: 12px; overflow: hidden; font-size: 13.5px;
+    }
+    .legal-content th, .legal-content td {
+      padding: 12px 14px; text-align: left;
+      border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    .legal-content th {
+      background: rgba(255,122,41,0.08); color: var(--ink); font-weight: 700;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .legal-content tr:last-child td { border-bottom: none; }
+    .legal-content tr:hover td { background: rgba(255,240,220,0.025); }
+
+    .legal-footer {
+      margin-top: 28px; padding: 20px 4px;
+      display: flex; flex-wrap: wrap; gap: 14px;
+      align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--ink-mute);
+    }
+    .legal-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
+    .legal-footer-links a {
+      color: var(--ink-dim); text-decoration: none; transition: color 0.2s;
+    }
+    .legal-footer-links a:hover { color: var(--ink); }
+
+    @media (max-width: 700px) {
+      .legal-page { padding: 24px 16px 40px; }
+      .legal-card { padding: 24px 20px; border-radius: 18px; }
+      .legal-content { font-size: 14px; }
+      .legal-content h2 { font-size: 19px; }
+      .legal-content h3 { font-size: 15.5px; }
+      .legal-content table { font-size: 12.5px; }
+      .legal-content th, .legal-content td { padding: 10px 12px; }
+      .legal-content pre, .legal-content code { font-size: 12px; }
+      .legal-nav a { min-width: 0; padding: 9px 10px; font-size: 11.5px; }
+      .legal-meta { font-size: 11px; }
+    }
+    @supports (padding: max(0px)) {
+      @media (max-width: 700px) {
+        .legal-page {
+          padding-left: max(16px, env(safe-area-inset-left));
+          padding-right: max(16px, env(safe-area-inset-right));
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            min-height: 100vh;
-            overflow-x: hidden;
-            color: var(--text-main);
-            position: relative;
-            padding: 40px 20px;
-            line-height: 1.7;
-        }
-
-        .blobs {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        .blob {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.5;
-            animation: float 20s infinite alternate;
-        }
-
-        .b1 {
-            top: -10%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: #4f46e5;
-            animation-duration: 25s;
-        }
-
-        .b2 {
-            bottom: -10%;
-            right: -10%;
-            width: 40vw;
-            height: 40vw;
-            background: #0ea5e9;
-            animation-duration: 30s;
-            animation-delay: -5s;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(40px, -40px); }
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--card-border);
-            padding: 40px;
-            border-radius: 32px;
-            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
-            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 30px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .header h1 {
-            font-size: 32px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-
-        .header .meta {
-            color: var(--text-sub);
-            font-size: 13px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .header .meta span {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .nav-links a {
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .nav-links a.active {
-            color: var(--text-main);
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--primary);
-        }
-
-        .content {
-            color: var(--text-main);
-        }
-
-        .content h2 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--heading-color);
-            margin: 32px 0 16px 0;
-            letter-spacing: -0.5px;
-        }
-
-        .content h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--heading-color);
-            margin: 24px 0 12px 0;
-        }
-
-        .content h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin: 20px 0 10px 0;
-        }
-
-        .content p {
-            margin: 12px 0;
-            color: var(--text-sub);
-        }
-
-        .content ul, .content ol {
-            margin: 12px 0;
-            padding-left: 24px;
-            color: var(--text-sub);
-        }
-
-        .content li {
-            margin: 8px 0;
-        }
-
-        .content a {
-            color: var(--link-color);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .content a:hover {
-            color: var(--primary);
-            text-decoration: underline;
-        }
-
-        .content strong {
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: var(--table-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--table-border);
-        }
-
-        .content th, .content td {
-            padding: 14px 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--table-border);
-        }
-
-        .content th {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--text-main);
-            font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .content td {
-            color: var(--text-sub);
-            font-size: 14px;
-        }
-
-        .content tr:last-child td {
-            border-bottom: none;
-        }
-
-        .content tr:hover td {
-            background: rgba(255,255,255,0.03);
-        }
-
-        .content code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            background: var(--code-bg);
-            padding: 2px 8px;
-            border-radius: 6px;
-            color: #a5b4fc;
-            border: 1px solid var(--card-border);
-        }
-
-        .content pre {
-            background: var(--code-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px;
-            overflow-x: auto;
-            margin: 16px 0;
-        }
-
-        .content pre code {
-            background: transparent;
-            padding: 0;
-            border: none;
-            color: var(--text-sub);
-        }
-
-        .content blockquote {
-            border-left: 3px solid var(--primary);
-            padding-left: 16px;
-            margin: 16px 0;
-            color: var(--text-sub);
-            font-style: italic;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-            margin-bottom: 20px;
-        }
-
-        .back-link:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .back-link svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid var(--card-border);
-            color: var(--text-sub);
-            font-size: 13px;
-        }
-
-        .footer a {
-            color: var(--link-color);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            color: var(--primary);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 24px 20px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .content h2 {
-                font-size: 18px;
-            }
-
-            .nav-links {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-    </style>
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="blobs">
-        <div class="blob b1"></div>
-        <div class="blob b2"></div>
-    </div>
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+  <div class="bg-grain"></div>
 
-    <div class="container">
-        <a href="/" class="back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            На главную
+  <div class="page">
+    <div class="legal-page">
+
+      <header class="legal-topbar">
+        <a href="/" class="brand-mark">
+          <span class="glyph">
+            <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+          </span>
+          <span>barkfluff</span>
         </a>
+        <a href="/" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          На главную
+        </a>
+      </header>
 
-        <div class="nav-links">
-            <a href="/legal/privacy-policy">Политика конфиденциальности</a>
-            <a href="/legal/terms-of-service">Условия использования</a>
-            <a href="/legal/account-deletion">Удаление аккаунта</a>
-            <a href="/legal/encryption" class="active">Шифрование</a>
+      <nav class="legal-nav">
+        <a href="/legal/privacy-policy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service">Условия использования</a>
+        <a href="/legal/account-deletion">Удаление аккаунта</a>
+        <a href="/legal/encryption" class="active">Шифрование</a>
+      </nav>
+
+      <article class="legal-card">
+        <div class="legal-header">
+          <span class="legal-eyebrow">Техническая документация</span>
+          <h1 class="legal-title">Техническое описание шифрования</h1>
+          <div class="legal-meta">
+            <span><b>Действует с</b>&nbsp;24 января 2026 г.</span>
+            <span><b>Обновлено</b>&nbsp;14 мая 2026 г.</span>
+          </div>
         </div>
 
-        <div class="header">
-            <h1>Техническое описание шифрования</h1>
-            <div class="meta">
-                <span>📅 Дата вступления в силу: 24 января 2026 г.</span>
-                <span>🔄 Последнее обновление: 21 июля 2026 г.</span>
-            </div>
+        <div class="legal-content">
+          <h2>1. Введение</h2>
+          <p>Безопасность и конфиденциальность пользовательских данных — приоритет Barkfluff. Настоящий документ предоставляет детальное техническое описание методов шифрования, применяемых на всех уровнях системы.</p>
+
+          <h3>1.1 Уровни защиты</h3>
+          <p>Barkfluff применяет <strong>многоуровневую защиту</strong>:</p>
+          <ol>
+            <li><strong>Шифрование в состоянии покоя (Encryption at Rest)</strong> — защита данных, хранящихся на серверах</li>
+            <li><strong>Шифрование при передаче (Encryption in Transit)</strong> — защита данных при передаче по сети</li>
+            <li><strong>Шифрование на стороне клиента (Client-Side Encryption)</strong> — защита данных на устройстве пользователя</li>
+            <li><strong>Контроль доступа (Access Control)</strong> — ограничение доступа к данным на уровне приложения</li>
+          </ol>
+          <p><strong>Примечание:</strong> End-to-End шифрование (E2EE) в настоящее время <strong>не реализовано</strong>, но рассматривается на будущее.</p>
+
+          <h2>2. Шифрование в состоянии покоя</h2>
+
+          <h3>2.1 База данных PostgreSQL</h3>
+
+          <h4>2.1.1 Transparent Data Encryption (TDE)</h4>
+          <p><strong>Метод:</strong> все данные в PostgreSQL защищены на уровне хранилища с использованием TDE.</p>
+          <ul>
+            <li>Данные автоматически шифруются при записи на диск</li>
+            <li>Данные автоматически расшифровываются при чтении (прозрачно для приложения)</li>
+            <li>Шифрование происходит на уровне <strong>страниц базы данных</strong> (8&nbsp;КБ блоки)</li>
+          </ul>
+          <p><strong>Алгоритм:</strong> AES-256 (CBC или XTS).</p>
+          <p><strong>Управление ключами:</strong></p>
+          <ul>
+            <li>Мастер-ключ хранится в <strong>защищённом хранилище ключей</strong> (KMS)</li>
+            <li>Ключи шифрования регулярно ротируются</li>
+          </ul>
+
+          <p><strong>Что защищено:</strong></p>
+          <ul>
+            <li>Все таблицы во всех микросервисах (Identity, Users, Messages, Files, Onliner, FastAuth, Notification, Updates и др.)</li>
+            <li>Хеши паролей (bcrypt с cost factor 12)</li>
+            <li>Refresh Tokens (зашифрованы AES-256 перед сохранением)</li>
+            <li>Сообщения (текст, метаданные)</li>
+            <li>Журналы безопасности</li>
+          </ul>
+
+          <h4>2.1.2 Шифрование на уровне столбцов</h4>
+          <p>Для особо чувствительных данных применяется <strong>дополнительное шифрование на уровне столбцов</strong>:</p>
+          <ul>
+            <li><code>Identity.Users.PasswordHash</code> — хеш пароля (bcrypt + AES-256)</li>
+            <li><code>Identity.RefreshTokens.Token</code> — токены обновления (AES-256-GCM)</li>
+            <li><code>Identity.TwoFactorSecrets.Secret</code> — секреты 2FA (AES-256-GCM)</li>
+          </ul>
+
+          <h3>2.2 Файловое хранилище Minio (S3-compatible)</h3>
+
+          <h4>2.2.1 Server-Side Encryption (SSE)</h4>
+          <p><strong>Метод:</strong> все файлы автоматически шифруются на стороне сервера при загрузке.</p>
+          <ul>
+            <li><strong>Алгоритм:</strong> AES-256-GCM (Galois/Counter Mode)</li>
+            <li><strong>Аутентичное шифрование</strong> — защита от подделки данных</li>
+          </ul>
+          <p><strong>Режим:</strong> SSE-S3 (Minio управляет ключами) или SSE-KMS (ключи во внешнем KMS).</p>
+
+          <p><strong>Что защищено:</strong></p>
+          <ul>
+            <li>Аватары и постеры пользователей</li>
+            <li>Вложения в сообщениях (изображения, видео, документы)</li>
+            <li>Превью файлов (thumbnails)</li>
+            <li>Дистрибутивы клиентских приложений (через ClientStorage)</li>
+          </ul>
+
+          <h3>2.3 Кеш Redis</h3>
+          <p><strong>Назначение:</strong> Redis используется в сервисе Messages для <strong>кеширования метаданных чатов</strong> — это технический кеш без персональных сообщений.</p>
+          <p><strong>Что хранится в Redis:</strong></p>
+          <ul>
+            <li>Имена чатов (<code>chat_name_{chatId}_{userId}</code>) — отображаемые названия для списка чатов</li>
+            <li>Аватары чатов (<code>chat_image_{chatId}_{userId}</code>) — URL превью изображений чатов</li>
+          </ul>
+          <p><strong>Что НЕ хранится в Redis:</strong> содержимое сообщений, онлайн-статусы пользователей.</p>
+          <p><strong>Защита:</strong></p>
+          <ul>
+            <li>Шифрование <strong>TLS</strong> для соединений между сервисами и Redis</li>
+            <li>Аутентификация по паролю</li>
+            <li>Изоляция сети: Redis недоступен извне, только из внутренней сети Docker</li>
+          </ul>
+
+          <h3>2.4 Шифрование на стороне клиента</h3>
+          <p>Каждый клиент Barkfluff хранит локально access/refresh-токены, Device ID и часть пользовательских настроек. Чувствительные данные шифруются с использованием стандартных платформенных хранилищ:</p>
+
+          <table>
+            <thead>
+              <tr><th>Платформа</th><th>Хранение</th><th>Шифрование</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Windows (WPF)</strong></td>
+                <td><code>%AppData%\BarkFluff\GlobalParam.json</code> + локальный кеш сообщений (LiteDB)</td>
+                <td>AES-256-CBC, ключ — производный от PIN-кода (PBKDF2). При отсутствии PIN — DPAPI на уровне пользователя ОС</td>
+              </tr>
+              <tr>
+                <td><strong>Android (Kotlin)</strong></td>
+                <td>EncryptedSharedPreferences + локальный кеш в защищённой области приложения</td>
+                <td>Android Keystore (AES-256-GCM, ключи изолированы в системном хранилище)</td>
+              </tr>
+              <tr>
+                <td><strong>macOS (SwiftUI)</strong></td>
+                <td>Keychain + sandbox-каталог приложения</td>
+                <td>Apple Keychain Services (AES-256-GCM, защита Secure Enclave при наличии)</td>
+              </tr>
+              <tr>
+                <td><strong>iOS (в разработке)</strong></td>
+                <td>Keychain + sandbox-каталог приложения</td>
+                <td>Apple Keychain Services + Data Protection (AES-256-GCM)</td>
+              </tr>
+              <tr>
+                <td><strong>Linux Qt (в разработке)</strong></td>
+                <td>Конфигурационные файлы пользователя + Secret Service (libsecret)</td>
+                <td>Хранение секретов через системный keyring (gnome-keyring / KWallet)</td>
+              </tr>
+              <tr>
+                <td><strong>Web</strong></td>
+                <td>Память вкладки + защищённые cookies</td>
+                <td>HTTPS-only / SameSite-cookies, без долговременного хранения refresh-токена в localStorage</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>3. Шифрование при передаче</h2>
+
+          <h3>3.1 gRPC / HTTP/2 с TLS 1.3</h3>
+          <p>Все соединения между клиентом и сервером защищены протоколом <strong>TLS 1.3</strong>.</p>
+          <p><strong>Преимущества TLS 1.3:</strong></p>
+          <ul>
+            <li>Более быстрое рукопожатие (0-RTT и 1-RTT)</li>
+            <li>Удаление устаревших алгоритмов (RC4, MD5, SHA-1, DES)</li>
+            <li>Perfect Forward Secrecy</li>
+          </ul>
+          <p><strong>Поддерживаемые cipher suites:</strong></p>
+          <ul>
+            <li><code>TLS_AES_256_GCM_SHA384</code> (рекомендуется)</li>
+            <li><code>TLS_CHACHA20_POLY1305_SHA256</code></li>
+            <li><code>TLS_AES_128_GCM_SHA256</code></li>
+          </ul>
+          <p>Веб-клиент работает через <strong>gRPC-Web</strong>-прокси (сервис BarkFluff.Web на порту 7016) с тем же TLS-конвейером.</p>
+
+          <h3>3.2 RabbitMQ с TLS</h3>
+          <p>Внутренние асинхронные события между микросервисами доставляются через RabbitMQ (MassTransit). Соединения защищены TLS, доступ к брокеру изолирован внутренней сетью Docker.</p>
+
+          <h3>3.3 Внутренние gRPC-вызовы</h3>
+          <p>Межсервисные gRPC-вызовы используют клиентские интерсепторы (<code>JwtClientInterceptor</code>, <code>ExceptionClientInterceptor</code>) и сервисные JWT-токены (<code>TokenType.Service</code>) для авторизации.</p>
+
+          <h2>4. End-to-End шифрование (E2EE)</h2>
+
+          <h3>4.1 Текущий статус</h3>
+          <p><strong>End-to-End шифрование в настоящее время не реализовано.</strong> Это означает:</p>
+          <ul>
+            <li>Сервер имеет <strong>техническую возможность</strong> доступа к содержимому сообщений</li>
+            <li>Сообщения защищены <strong>на уровне хранилища</strong> (TDE, AES-256-GCM)</li>
+            <li>Сообщения защищены <strong>при передаче</strong> (TLS 1.3)</li>
+            <li>Применяется <strong>строгий контроль доступа</strong></li>
+          </ul>
+
+          <h3>4.2 Планируемая реализация E2EE</h3>
+          <p><strong>Архитектура E2EE для приватных чатов (предварительная):</strong></p>
+
+          <h4>4.2.1 Генерация ключей</h4>
+          <ol>
+            <li>Клиент генерирует пару ключей (Public/Private) с использованием <strong>Curve25519</strong> (ECDH)</li>
+            <li>Public Key отправляется на сервер и хранится в базе данных</li>
+            <li>Private Key хранится <strong>только на устройстве</strong> клиента (зашифрованный с помощью PIN-кода)</li>
+          </ol>
+          <p><strong>Алгоритмы:</strong></p>
+          <ul>
+            <li>Обмен ключами: X25519 (ECDH)</li>
+            <li>Симметричное шифрование: AES-256-GCM</li>
+            <li>Подпись сообщений: Ed25519</li>
+          </ul>
+
+          <h4>4.2.2 Отправка сообщения</h4>
+          <ol>
+            <li>Клиент A запрашивает Public Key пользователя B с сервера</li>
+            <li>Клиент A выполняет ECDH с Public Key пользователя B и своим Private Key → получает Shared Secret</li>
+            <li>Из Shared Secret выводится симметричный ключ AES-256 (через HKDF)</li>
+            <li>Клиент A шифрует сообщение AES-256-GCM</li>
+            <li>Клиент A отправляет зашифрованное сообщение</li>
+          </ol>
+
+          <h4>4.2.3 Компромиссы E2EE</h4>
+          <ul>
+            <li>Невозможен поиск по содержимому на сервере (только на клиенте)</li>
+            <li>Сложная синхронизация между устройствами (требуется экспорт ключей)</li>
+            <li>Невозможно восстановить сообщения при потере Private Key</li>
+            <li>Усложнение модерации запрещённого контента</li>
+          </ul>
+
+          <h2>5. Управление ключами (Key Management)</h2>
+
+          <h3>5.1 Хранение мастер-ключей</h3>
+          <p>Для production мастер-ключи хранятся в <strong>KMS</strong>:</p>
+          <ul>
+            <li><strong>AWS KMS</strong> (если развёртывание на AWS)</li>
+            <li><strong>Google Cloud KMS</strong> (если развёртывание на GCP)</li>
+            <li><strong>HashiCorp Vault</strong> (для on-premise развёртываний)</li>
+          </ul>
+
+          <h3>5.2 Ротация ключей</h3>
+          <ul>
+            <li><strong>Мастер-ключи БД:</strong> каждые 90 дней</li>
+            <li><strong>TLS-сертификаты:</strong> каждые 90 дней (автоматически с Let's Encrypt)</li>
+            <li><strong>JWT Secret:</strong> каждые 180 дней</li>
+            <li><strong>Refresh Tokens:</strong> автоматически при каждом обновлении Access Token</li>
+          </ul>
+
+          <h2>6. Аутентификация и авторизация</h2>
+
+          <h3>6.1 XAuth и заголовки</h3>
+          <p>Все микросервисы используют общую систему <code>XAuth</code> из <code>BarkFluff.GrpcServer</code>. Каждый запрос содержит обязательные metadata-заголовки (Base64):</p>
+          <ul>
+            <li><code>x-auth-token</code> — JWT (нестандартный заголовок вместо <code>Authorization</code>)</li>
+            <li><code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code></li>
+            <li><code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code></li>
+          </ul>
+          <p>Политики авторизации:</p>
+          <ul>
+            <li><code>TokenType.User</code> — User или Service токен</li>
+            <li><code>TokenType.Service</code> — только Service токен (для межсервисных вызовов)</li>
+          </ul>
+
+          <h3>6.2 JWT (JSON Web Tokens)</h3>
+          <ul>
+            <li><strong>Алгоритм подписи:</strong> HMAC-SHA256 (симметричный) или RS256 (асимметричный)</li>
+            <li><strong>Срок действия Access Token:</strong> 15 минут</li>
+            <li><strong>Длина секретного ключа:</strong> 256 бит</li>
+            <li><strong>Секретный ключ</strong> хранится в Configuration-сервисе</li>
+          </ul>
+
+          <h3>6.3 Refresh Tokens</h3>
+          <ul>
+            <li><strong>Формат:</strong> UUID v4 (128 бит энтропии)</li>
+            <li><strong>Хранение:</strong> <code>Identity.RefreshTokens</code> в PostgreSQL, привязаны к Device ID</li>
+            <li><strong>Срок действия:</strong> 30 дней</li>
+          </ul>
+
+          <h3>6.4 QR-авторизация (FastAuth)</h3>
+          <p>Сервис FastAuth позволяет авторизовать новое устройство, отсканировав QR-код в уже залогиненном клиенте. Обмен короткоживущими одноразовыми кодами проходит по тому же TLS-каналу и не раскрывает refresh-токен.</p>
+
+          <h2>7. Защита от атак</h2>
+
+          <h3>7.1 Защита от Man-in-the-Middle (MITM)</h3>
+          <ul>
+            <li>TLS 1.3 с проверкой сертификатов</li>
+            <li>HSTS (HTTP Strict Transport Security)</li>
+            <li>Certificate Transparency</li>
+          </ul>
+
+          <h3>7.2 Защита от Replay-атак</h3>
+          <ul>
+            <li><strong>Nonce:</strong> каждое сообщение содержит уникальный идентификатор</li>
+            <li><strong>Timestamp:</strong> сообщения старше 5 минут отклоняются</li>
+            <li><strong>GCM-режим</strong> AES автоматически защищает от повторной отправки</li>
+          </ul>
+
+          <h3>7.3 Защита от Brute-Force</h3>
+          <p><strong>На пароли:</strong></p>
+          <ul>
+            <li>bcrypt с cost factor 12 (генерация хеша занимает ~250&nbsp;мс)</li>
+            <li>Rate Limiting: максимум 5 попыток входа за 15 минут</li>
+          </ul>
+          <p><strong>На 2FA-коды:</strong></p>
+          <ul>
+            <li>TOTP: коды меняются каждые 30 секунд</li>
+            <li>Rate Limiting: максимум 3 неверных попытки</li>
+          </ul>
+
+          <h2>8. Соответствие стандартам</h2>
+
+          <h3>8.1 GDPR</h3>
+          <ul>
+            <li>Шифрование данных at rest и in transit</li>
+            <li>Псевдонимизация: <code>UserId</code> используется вместо реальных имён в логах</li>
+            <li>Право на удаление: безопасное удаление ключей шифрования</li>
+          </ul>
+
+          <h3>8.2 FIPS 140-2</h3>
+          <p>Алгоритмы, соответствующие FIPS 140-2:</p>
+          <ul>
+            <li>AES-256 (FIPS approved)</li>
+            <li>SHA-256, SHA-384 (FIPS approved)</li>
+            <li>HMAC-SHA256 (FIPS approved)</li>
+            <li>RSA-2048 (FIPS approved)</li>
+          </ul>
+
+          <h2>9. Контактная информация</h2>
+          <p><strong>По вопросам безопасности:</strong> <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></p>
+          <p><strong>Responsible Disclosure Policy.</strong> Если вы обнаружили уязвимость в Barkfluff, пожалуйста, свяжитесь с нами <strong>до публичного раскрытия</strong>. Мы обязуемся:</p>
+          <ul>
+            <li>Ответить в течение <strong>48 часов</strong></li>
+            <li>Выпустить исправление в течение <strong>30 дней</strong></li>
+            <li>Публично поблагодарить исследователя (с его согласия)</li>
+          </ul>
+
+          <blockquote>
+            <p><strong>Спасибо, что выбираете Barkfluff!</strong></p>
+            <p>Мы постоянно улучшаем меры безопасности и приветствуем обратную связь от сообщества.</p>
+          </blockquote>
+          <p><em>Документ действителен с 24 января 2026 г.</em></p>
         </div>
+      </article>
 
-        <div class="content">
-            <h2>1. Введение</h2>
-            <p>Безопасность и конфиденциальность пользовательских данных являются приоритетом для BarkFluff. Настоящий документ предоставляет детальное техническое описание методов шифрования, применяемых на всех уровнях системы.</p>
-
-            <h3>1.1 Уровни защиты</h3>
-            <p>BarkFluff применяет <strong>многоуровневую систему защиты</strong>:</p>
-            <ol>
-                <li><strong>Шифрование в состоянии покоя (Encryption at Rest)</strong> — защита данных, хранящихся на серверах</li>
-                <li><strong>Шифрование при передаче (Encryption in Transit)</strong> — защита данных при передаче по сети</li>
-                <li><strong>Шифрование на стороне клиента (Client-Side Encryption)</strong> — защита данных на устройстве пользователя</li>
-                <li><strong>Контроль доступа (Access Control)</strong> — ограничение доступа к данным на уровне приложения</li>
-            </ol>
-            <p><strong>Примечание:</strong> End-to-End шифрование (E2EE) в настоящее время <strong>НЕ реализовано</strong>, но планируется в будущих версиях.</p>
-
-            <h2>2. Шифрование в состоянии покоя (Encryption at Rest)</h2>
-            
-            <h3>2.1 База данных PostgreSQL</h3>
-            
-            <h4>2.1.1 Transparent Data Encryption (TDE)</h4>
-            <p><strong>Метод:</strong> Все данные в PostgreSQL защищены на уровне хранилища с использованием TDE.</p>
-            <p><strong>Описание:</strong></p>
-            <ul>
-                <li>Данные автоматически шифруются при записи на диск</li>
-                <li>Данные автоматически расшифровываются при чтении (прозрачно для приложения)</li>
-                <li>Шифрование происходит на уровне <strong>страниц базы данных</strong> (8 КБ блоки)</li>
-            </ul>
-            <p><strong>Алгоритм:</strong></p>
-            <ul>
-                <li><strong>AES-256</strong> (Advanced Encryption Standard, 256-bit key)</li>
-                <li>Режим: <strong>CBC (Cipher Block Chaining)</strong> или <strong>XTS</strong></li>
-            </ul>
-            <p><strong>Управление ключами:</strong></p>
-            <ul>
-                <li>Мастер-ключ хранится в <strong>защищенном хранилище ключей</strong> (KMS)</li>
-                <li>Ключи шифрования регулярно ротируются (рекомендуется каждые 90 дней)</li>
-            </ul>
-
-            <p><strong>Что защищено:</strong></p>
-            <ul>
-                <li>✅ Все таблицы во всех микросервисах (Identity, Users, Messages, Files)</li>
-                <li>✅ Пароли (хеши): bcrypt с cost factor 12</li>
-                <li>✅ Refresh Tokens (зашифрованы AES-256 перед сохранением)</li>
-                <li>✅ Сообщения (текст, метаданные)</li>
-                <li>✅ Журналы безопасности (логи аутентификации, IP-адреса)</li>
-            </ul>
-
-            <h4>2.1.2 Шифрование на уровне столбцов</h4>
-            <p>Для особо чувствительных данных применяется <strong>дополнительное шифрование на уровне столбцов</strong>:</p>
-            <p><strong>Защищенные поля:</strong></p>
-            <ul>
-                <li><code>Identity.Users.PasswordHash</code> — хеш пароля (bcrypt + AES-256)</li>
-                <li><code>Identity.Sessions.RefreshToken</code> — токены обновления (AES-256-GCM)</li>
-                <li><code>Users.TwoFactorSecrets.Secret</code> — секреты 2FA (AES-256-GCM)</li>
-            </ul>
-
-            <h3>2.2 Файловое хранилище Minio (S3-compatible)</h3>
-            
-            <h4>2.2.1 Server-Side Encryption (SSE)</h4>
-            <p><strong>Метод:</strong> Все файлы автоматически шифруются на стороне сервера при загрузке.</p>
-            <p><strong>Алгоритм:</strong></p>
-            <ul>
-                <li><strong>AES-256-GCM</strong> (Galois/Counter Mode)</li>
-                <li><strong>Аутентичное шифрование</strong> — защита от подделки данных</li>
-            </ul>
-            <p><strong>Режим шифрования:</strong></p>
-            <ul>
-                <li><strong>SSE-S3</strong> (Minio управляет ключами) или</li>
-                <li><strong>SSE-KMS</strong> (ключи хранятся в внешнем KMS)</li>
-            </ul>
-
-            <p><strong>Что защищено:</strong></p>
-            <ul>
-                <li>✅ Аватары пользователей</li>
-                <li>✅ Вложения в сообщениях (изображения, видео, документы)</li>
-                <li>✅ Превью файлов (thumbnails)</li>
-            </ul>
-
-            <h3>2.3 Кеш Redis</h3>
-            <p><strong>Назначение:</strong> Redis используется в сервисе Messages для <strong>кеширования метаданных чатов</strong> (имена и изображения чатов) — это технический кеш без персональных сообщений.</p>
-            <p><strong>Что хранится в Redis:</strong></p>
-            <ul>
-                <li>Имена чатов (<code>chat_name_{chatId}_{userId}</code>) — отображаемые названия для списка чатов</li>
-                <li>Аватары чатов (<code>chat_image_{chatId}_{userId}</code>) — URL превью изображений чатов</li>
-            </ul>
-            <p><strong>Что НЕ хранится в Redis:</strong> содержимое сообщений, онлайн-статусы пользователей</p>
-            <p><strong>Защита:</strong></p>
-            <ul>
-                <li><strong>Шифрование TLS</strong> для соединений между сервисами и Redis</li>
-                <li><strong>Аутентификация:</strong> Redis защищен паролем</li>
-                <li><strong>Изоляция сети:</strong> Redis недоступен извне, только из внутренней сети Docker</li>
-            </ul>
-
-            <h3>2.4 Шифрование на стороне клиента</h3>
-            
-            <h4>2.4.1 Локальное хранилище настроек (GlobalParam.json)</h4>
-            <p><strong>Файл:</strong> <code>%AppData%\BarkFluff\GlobalParam.json</code> (Windows)</p>
-            <p><strong>Содержимое:</strong></p>
-            <ul>
-                <li>Настройки приложения (тема, язык)</li>
-                <li>Access Token (JWT, срок действия 15 минут)</li>
-                <li>Refresh Token (срок действия 30 дней)</li>
-                <li>Device ID (UUID)</li>
-            </ul>
-            <p><strong>Шифрование:</strong></p>
-            <ul>
-                <li><strong>Алгоритм:</strong> AES-256-CBC</li>
-                <li><strong>Ключ:</strong> Производный от PIN-кода пользователя (если установлен) с использованием <strong>PBKDF2</strong></li>
-            </ul>
-
-            <h2>3. Шифрование при передаче (Encryption in Transit)</h2>
-            
-            <h3>3.1 gRPC / HTTP/2 с TLS 1.3</h3>
-            
-            <h4>3.1.1 Описание</h4>
-            <p>Все соединения между клиентом и сервером защищены протоколом <strong>TLS 1.3</strong> (Transport Layer Security).</p>
-            <p><strong>Преимущества TLS 1.3:</strong></p>
-            <ul>
-                <li><strong>Более быстрое рукопожатие</strong> (0-RTT и 1-RTT)</li>
-                <li><strong>Удаление устаревших алгоритмов</strong> (RC4, MD5, SHA-1, DES)</li>
-                <li><strong>Perfect Forward Secrecy</strong> (невозможно расшифровать прошлые сессии даже при компрометации ключа сервера)</li>
-            </ul>
-            <p><strong>Поддерживаемые cipher suites:</strong></p>
-            <ul>
-                <li><code>TLS_AES_256_GCM_SHA384</code> (рекомендуется)</li>
-                <li><code>TLS_CHACHA20_POLY1305_SHA256</code></li>
-                <li><code>TLS_AES_128_GCM_SHA256</code></li>
-            </ul>
-
-            <h3>3.2 RabbitMQ с TLS</h3>
-            <p>Внутренние соединения между микросервисами через RabbitMQ также защищены TLS.</p>
-
-            <h2>4. End-to-End шифрование (E2EE)</h2>
-            
-            <h3>4.1 Текущий статус</h3>
-            <p><strong>End-to-End шифрование в настоящее время НЕ реализовано.</strong></p>
-            <p>Это означает, что:</p>
-            <ul>
-                <li>❌ Сервер имеет <strong>техническую возможность</strong> доступа к содержимому сообщений</li>
-                <li>✅ Сообщения защищены <strong>на уровне хранилища</strong> (TDE, AES-256-GCM)</li>
-                <li>✅ Сообщения защищены <strong>при передаче</strong> (TLS 1.3)</li>
-                <li>✅ Применяется <strong>строгий контроль доступа</strong></li>
-            </ul>
-
-            <h3>4.2 Планируемая реализация E2EE</h3>
-            <p><strong>Архитектура E2EE для приватных чатов:</strong></p>
-            
-            <h4>4.2.1 Генерация ключей</h4>
-            <p><strong>При регистрации:</strong></p>
-            <ol>
-                <li>Клиент генерирует пару ключей (Public/Private) с использованием <strong>Curve25519</strong> (ECDH)</li>
-                <li><strong>Public Key</strong> отправляется на сервер и хранится в базе данных</li>
-                <li><strong>Private Key</strong> хранится <strong>только на устройстве</strong> клиента (зашифрованный с помощью PIN-кода)</li>
-            </ol>
-            <p><strong>Алгоритмы:</strong></p>
-            <ul>
-                <li><strong>Обмен ключами:</strong> X25519 (Elliptic Curve Diffie-Hellman)</li>
-                <li><strong>Симметричное шифрование:</strong> AES-256-GCM</li>
-                <li><strong>Подпись сообщений:</strong> Ed25519</li>
-            </ul>
-
-            <h4>4.2.2 Отправка сообщения</h4>
-            <ol>
-                <li>Клиент A запрашивает <strong>Public Key</strong> пользователя B с сервера</li>
-                <li>Клиент A выполняет <strong>ECDH</strong> с Public Key пользователя B и своим Private Key → получает <strong>Shared Secret</strong></li>
-                <li>Из Shared Secret выводится <strong>симметричный ключ AES-256</strong> (с использованием HKDF)</li>
-                <li>Клиент A шифрует сообщение с помощью AES-256-GCM</li>
-                <li>Клиент A отправляет зашифрованное сообщение</li>
-            </ol>
-
-            <h4>4.2.3 Недостатки E2EE</h4>
-            <p><strong>Проблемы:</strong></p>
-            <ul>
-                <li>❌ <strong>Невозможен поиск по содержимому</strong> на сервере (только на клиенте)</li>
-                <li>❌ <strong>Сложная синхронизация</strong> между устройствами (требуется экспорт ключей)</li>
-                <li>❌ <strong>Невозможно восстановить сообщения</strong> при потере Private Key</li>
-                <li>❌ <strong>Усложнение модерации контента</strong></li>
-            </ul>
-
-            <h2>5. Управление ключами (Key Management)</h2>
-            
-            <h3>5.1 Хранение мастер-ключей</h3>
-            <p><strong>Для Production:</strong></p>
-            <ul>
-                <li>Мастер-ключи хранятся в <strong>KMS (Key Management Service)</strong>:</li>
-                <li><strong>AWS KMS</strong> (если развертывание на AWS)</li>
-                <li><strong>Google Cloud KMS</strong> (если развертывание на GCP)</li>
-                <li><strong>HashiCorp Vault</strong> (для on-premise развертываний)</li>
-            </ul>
-
-            <h3>5.2 Ротация ключей</h3>
-            <p><strong>Периодичность:</strong></p>
-            <ul>
-                <li><strong>Мастер-ключи БД:</strong> Каждые 90 дней</li>
-                <li><strong>TLS-сертификаты:</strong> Каждые 90 дней (автоматически с Let's Encrypt)</li>
-                <li><strong>JWT Secret:</strong> Каждые 180 дней</li>
-                <li><strong>Refresh Tokens:</strong> Автоматически при каждом обновлении Access Token</li>
-            </ul>
-
-            <h2>6. Аутентификация и авторизация</h2>
-            
-            <h3>6.1 JWT (JSON Web Tokens)</h3>
-            <p><strong>Алгоритм подписи:</strong> HMAC-SHA256 (симметричный) или RS256 (асимметричный)</p>
-            <p><strong>Срок действия Access Token:</strong> 15 минут</p>
-            <p><strong>Секретный ключ:</strong></p>
-            <ul>
-                <li>Хранится в Configuration Service</li>
-                <li>Длина: <strong>256 бит</strong> (32 символа)</li>
-            </ul>
-
-            <h3>6.2 Refresh Tokens</h3>
-            <p><strong>Формат:</strong> UUID v4 (случайная строка, 128 бит энтропии)</p>
-            <p><strong>Хранение:</strong></p>
-            <ul>
-                <li>Токены хранятся в <code>Identity.RefreshTokens</code> в базе данных PostgreSQL</li>
-                <li>Привязаны к Device ID для защиты от кражи</li>
-            </ul>
-            <p><strong>Срок действия:</strong> 30 дней</p>
-
-            <h2>7. Защита от атак</h2>
-            
-            <h3>7.1 Защита от Man-in-the-Middle (MITM)</h3>
-            <p><strong>Методы:</strong></p>
-            <ul>
-                <li>✅ <strong>TLS 1.3</strong> с проверкой сертификатов</li>
-                <li>✅ <strong>HSTS</strong> (HTTP Strict Transport Security)</li>
-                <li>✅ <strong>Certificate Transparency</strong></li>
-            </ul>
-
-            <h3>7.2 Защита от Replay Attacks</h3>
-            <p><strong>Решения:</strong></p>
-            <ul>
-                <li>✅ <strong>Nonce (Number Once):</strong> Каждое сообщение содержит уникальный идентификатор</li>
-                <li>✅ <strong>Timestamp:</strong> Сообщения старше 5 минут отклоняются</li>
-                <li>✅ <strong>GCM Mode:</strong> AES-GCM автоматически защищает от повторной отправки</li>
-            </ul>
-
-            <h3>7.3 Защита от Brute-Force атак</h3>
-            <p><strong>На пароли:</strong></p>
-            <ul>
-                <li>✅ <strong>bcrypt</strong> с cost factor 12 (генерация хеша занимает ~250 мс)</li>
-                <li>✅ <strong>Rate Limiting:</strong> Максимум 5 попыток входа за 15 минут</li>
-            </ul>
-            <p><strong>На 2FA коды:</strong></p>
-            <ul>
-                <li>✅ <strong>TOTP:</strong> Коды меняются каждые 30 секунд</li>
-                <li>✅ <strong>Rate Limiting:</strong> Максимум 3 неверных попытки</li>
-            </ul>
-
-            <h2>8. Соответствие стандартам</h2>
-            
-            <h3>8.1 Соответствие GDPR</h3>
-            <ul>
-                <li>✅ <strong>Шифрование данных</strong> (at rest и in transit)</li>
-                <li>✅ <strong>Псевдонимизация:</strong> UserId используется вместо реальных имен в логах</li>
-                <li>✅ <strong>Право на удаление:</strong> Безопасное удаление ключей шифрования</li>
-            </ul>
-
-            <h3>8.2 Соответствие FIPS 140-2</h3>
-            <p><strong>Алгоритмы, соответствующие FIPS 140-2:</strong></p>
-            <ul>
-                <li>✅ AES-256 (FIPS approved)</li>
-                <li>✅ SHA-256, SHA-384 (FIPS approved)</li>
-                <li>✅ HMAC-SHA256 (FIPS approved)</li>
-                <li>✅ RSA-2048 (FIPS approved)</li>
-            </ul>
-
-            <h2>9. Контактная информация</h2>
-            <p><strong>По вопросам безопасности:</strong></p>
-            <ul>
-                <li>Email: security@barkfluff.com</li>
-            </ul>
-            <p><strong>Responsible Disclosure Policy:</strong><br>
-            Если вы обнаружили уязвимость в BarkFluff, пожалуйста, свяжитесь с нами <strong>до публичного раскрытия</strong>. Мы обязуемся:</p>
-            <ul>
-                <li>Ответить в течение <strong>48 часов</strong></li>
-                <li>Выпустить исправление в течение <strong>30 дней</strong></li>
-                <li>Публично поблагодарить исследователя (с его согласия)</li>
-            </ul>
-
-            <blockquote>
-                <p><strong>Спасибо за использование BarkFluff!</strong></p>
-                <p>Мы постоянно улучшаем наши меры безопасности и приветствуем обратную связь от сообщества.</p>
-            </blockquote>
-            <p><em>Документ действителен с 24 января 2026 г.</em></p>
+      <footer class="legal-footer">
+        <div>© 2026 Barkfluff</div>
+        <div class="legal-footer-links">
+          <a href="/">Главная</a>
+          <a href="/legal/privacy-policy">Конфиденциальность</a>
+          <a href="/legal/terms-of-service">Условия</a>
+          <a href="/legal/account-deletion">Удаление аккаунта</a>
+          <a href="/legal/encryption">Шифрование</a>
         </div>
+      </footer>
 
-        <div class="footer">
-            <p>© 2026 BarkFluff. Все права защищены.</p>
-            <p style="margin-top: 8px;">
-                <a href="/">Главная</a> • 
-                <a href="/legal/privacy-policy">Конфиденциальность</a> • 
-                <a href="/legal/terms-of-service">Условия</a>
-            </p>
-        </div>
     </div>
+  </div>
 </body>
 </html>
