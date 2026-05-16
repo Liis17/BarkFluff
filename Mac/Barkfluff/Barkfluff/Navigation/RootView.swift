@@ -39,19 +39,16 @@ struct RootView: View {
 
             await coordinator.onAppLaunch(
                 serverDiscovery: container.serverDiscoveryService,
-                authService: container.authService
+                authService: container.authService,
+                tokenProvider: container.tokenProvider
             )
         }
         .onChange(of: coordinator.currentState) { _, newState in
-            if newState == .main {
-                Task {
-                    await container.loadCurrentUser()
-                    await container.notificationService.start(
-                        coordinator: coordinator,
-                        currentUserID: container.currentUserID
-                    )
-                }
-            } else {
+            // `loadCurrentUser` и `notificationService.start` требуют живого
+            // соединения и валидного токена — они дёргаются из `ChatListView.task`
+            // после `waitForConnectionReady()`. Здесь только глушим уведомления
+            // при выходе из `.main`.
+            if newState != .main {
                 Task { await container.notificationService.stop() }
             }
         }

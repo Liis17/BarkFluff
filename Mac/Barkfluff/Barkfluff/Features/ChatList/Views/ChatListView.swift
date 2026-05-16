@@ -44,13 +44,30 @@ struct ChatListView: View {
                 viewModel = vm
                 // Устанавливаем ссылку в координатор для уведомлений о прочтении
                 coordinator.chatListViewModel = vm
-                // Параллельно: выгрузка текущего пользователя (нужна для онлайн-статусов)
-                // и загрузка чатов (сразу из кэша + revalidate с сервера).
-                async let userLoad: Void = container.loadCurrentUser()
-                async let chatsLoad: Void = vm.loadChats()
+                // Ждём пока сетевой слой готов (beacon endpoints + refresh access-токена).
+                // До этого `listChats`/`track`/`getCurrentUser` упадут с «Messages
+                // не настроено», а онлайн-статусы будут пустые. Пока ждём —
+                // `isLoading=true` и UI показывает ChatRowPlaceholderView.
+                vm.isLoading = true
+                let ready = await coordinator.waitForConnectionReady()
+                guard ready else {
+                    vm.isLoading = false
+                    return
+                }
+
+                // Connection готов — параллельно: чаты, папки, профиль.
                 async let foldersLoad: Void = vm.loadFolders()
-                _ = await (userLoad, chatsLoad, foldersLoad)
+                async let chatsLoad: Void = vm.loadChats()
+                async let userLoad: Void = container.loadCurrentUser()
+                _ = await (foldersLoad, chatsLoad, userLoad)
+
                 await vm.startListeningForUpdates()
+
+                // Системные уведомления — после loadCurrentUser, нужен currentUserID.
+                await container.notificationService.start(
+                    coordinator: coordinator,
+                    currentUserID: container.currentUserID
+                )
             }
         }
         .onChange(of: excludeFolderChatsFromAll) { _, newValue in
@@ -74,6 +91,25 @@ struct ChatListView: View {
             )
 
             chatListContentInner(viewModel: viewModel)
+        }
+    }
+
+    @ViewBuilder
+    private func topInset(viewModel: ChatListViewModel) -> some View {
+        VStack(spacing: Theme.Spacing.xs) {
+            if viewModel.isOffline && !viewModel.chats.isEmpty {
+                ErrorBannerView(
+                    message: "Нет соединения. Показаны сохранённые чаты.",
+                    onRetry: { Task { await viewModel.revalidateChats() } }
+                )
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.top, Theme.Spacing.xs)
+                .transition(.opacity)
+            }
+            if viewModel.isRefreshing && !viewModel.chats.isEmpty {
+                RefreshingIndicatorView()
+                    .transition(.opacity)
+            }
         }
     }
 
@@ -145,12 +181,10 @@ struct ChatListView: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .top, spacing: 0) {
-            if viewModel.isRefreshing && !viewModel.chats.isEmpty {
-                RefreshingIndicatorView()
-                    .transition(.opacity)
-            }
+            topInset(viewModel: viewModel)
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.isRefreshing)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isOffline)
         .searchable(text: Binding(
             get: { viewModel.searchText },
             set: { newValue in

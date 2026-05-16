@@ -91,6 +91,7 @@ final class RegisterViewModel {
     }
 
     func completeRegistration() {
+        coordinator.isConnectionReady = true
         coordinator.currentState = .main
     }
 

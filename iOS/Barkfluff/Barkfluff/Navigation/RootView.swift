@@ -43,30 +43,18 @@ struct RootView: View {
         .task {
             await coordinator.onAppLaunch(
                 serverDiscovery: container.serverDiscoveryService,
-                authService: container.authService
+                authService: container.authService,
+                tokenProvider: container.tokenProvider
             )
-        }
-        .onChange(of: coordinator.currentState) { _, newState in
-            // Загружаем данные пользователя при переходе в main
-            if newState == .main {
-                Task {
-                    await container.loadCurrentUser()
-                }
-            }
         }
     }
 
-    /// Splash виден на cold start и пока в `.main` не загружена первая партия чатов.
-    /// На `.serverSelection` / `.authentication` сплеш не показываем.
+    /// Splash виден только пока `AppCoordinator.onAppLaunch` определяет, куда
+    /// маршрутизировать (cold start, состояние `.loading`). Как только мы попали
+    /// в `.main`, сплеш снимается — пользователь видит `MainTabView` с пустым
+    /// `ChatListView` и крутилкой/плейсхолдерами вместо чёрного сплеша.
     private var showSplash: Bool {
-        switch coordinator.currentState {
-        case .loading:
-            return true
-        case .main:
-            return !coordinator.isInitialChatsLoaded
-        case .serverSelection, .authentication:
-            return false
-        }
+        coordinator.currentState == .loading
     }
 }
 

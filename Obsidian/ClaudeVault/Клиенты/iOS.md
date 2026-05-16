@@ -50,6 +50,29 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 | `NSApplication.shared.appearance` | `.preferredColorScheme()` через `AppearanceSettings.colorScheme` |
 | Sandbox entitlements | `INFOPLIST_KEY_NS*UsageDescription` build settings (Photo Library, Camera, Microphone) |
 
+## Стартовый флоу (stale-first + connection gate)
+
+`AppCoordinator.onAppLaunch(serverDiscovery:, authService:, tokenProvider:)`:
+
+- Нет `savedServerHost` → `.serverSelection`.
+- Нет `hasRefreshToken` (юзер не залогинен) → синхронный `tryReconnect` (нужны endpoints для login) → `.authentication` или `.serverSelection`.
+- **Есть `hasRefreshToken`** → **сразу `.main`**, без ожидания сети. UI показывает `MainTabView` с пустым `ChatListView` (плейсхолдеры/крутилка). В фоне `Task`: `tryReconnect` → `tryRestoreSession`. Исходы: OK — `coordinator.isConnectionReady = true`; refresh-токен невалиден — `handleSessionExpired()`; нет сети — `isConnectionReady` остаётся `false`, ChatListView показывает крутилку до 30 сек таймаута.
+
+**Connection gate**. `AppCoordinator.isConnectionReady: Bool` — инвариант «endpoints в `ConnectionManager` есть И валидный access-токен». Без этого `listChats`/`onlineStatusService.track`/`getCurrentUser` падают с «Messages не настроено» и пользователи показываются онлайн-по-дефолту. `coordinator.waitForConnectionReady(timeout:)` — polling каждые 100 мс с таймаутом 30 сек. Выставляется в `true`: онлайн-фон после `tryRestoreSession`, `LoginViewModel.login`, `RegisterViewModel.completeRegistration`. Сбрасывается в `false`: `handleSessionExpired`, `performLocalWipe`.
+
+`ChatListView.task` (порядок):
+1. `vm.isLoading = true` — чтобы UI показывал `ChatRowPlaceholderView`.
+2. `await coordinator.waitForConnectionReady()` — ждём сетевую готовность.
+3. Параллельно `vm.loadFolders()` / `vm.loadChats()` / `container.loadCurrentUser()`.
+4. `coordinator.isInitialChatsLoaded = true`.
+5. `vm.startListeningForUpdates()` — подписки UpdatesStream.
+
+`ChatListViewModel.loadChats()` — неблокирующий: показывает кеш и стартует фоновую ревалидацию через `revalidateTask` (метод `performRevalidate` грузит все страницы). Публичный `revalidateChats()` (await-able) — для pull-to-refresh, `.reconnected`, нового чата, удаления. `loadFolders()` тоже разнесён: кеш мгновенно, refresh в фоне.
+
+Флаг `ChatListViewModel.isOffline` — ставится в `performRevalidate()` если ревалидация упала, но кеш есть. Рисует `ErrorBannerView` в `.safeAreaInset(.top)` с кнопкой dismiss.
+
+`RootView`: `SplashView` теперь только на `currentState == .loading` (короткий cold-start момент). На `.main` сразу `MainTabView` — крутилка живёт в `ChatListView`. `loadCurrentUser` убран из `RootView.onChange` и перенесён в `ChatListView.task` (после gate). На Mac аналогично, плюс `notificationService.start` тоже после gate.
+
 ## Иконка приложения и сплеш-скрин
 
 **Иконка** (`Assets.xcassets/AppIcon.appiconset/`): один файл `AppIcon.png` (1024×1024, заимствован у macOS — `Mac/.../AppIcon.appiconset/icon-ios-1024x1024.png`). Формат iOS 17+ single-size — iOS сама рендерит все промежуточные размеры. В `Contents.json` три слота (universal / dark / tinted) указывают на тот же PNG, отдельных variants нет.

@@ -64,6 +64,29 @@ Views → ViewModels → Services → Repositories → gRPC
 - Кеш медиа на диске: `MediaCacheManager`, типизация — `CachedFileType`, статистика — `CacheStats`, парсинг ключей S3 — `S3URLParser`
 - `TokenRefreshCoordinator` — автоматический рефреш через `AuthInterceptor`
 
+## Стартовый флоу (stale-first + connection gate)
+
+`AppCoordinator.onAppLaunch(serverDiscovery:, authService:, tokenProvider:)`:
+
+- Нет `savedServerHost` → `.serverSelection`.
+- Нет `hasRefreshToken` → синхронный `tryReconnect` → `.authentication` или `.serverSelection`.
+- **Есть `hasRefreshToken`** → **сразу `.main`**. UI показывает `MainSplitView` с `ChatListView` (плейсхолдеры/крутилка). В фоне `Task`: `tryReconnect` → `tryRestoreSession`. OK — `coordinator.isConnectionReady = true`; refresh-токен невалиден → `handleSessionExpired()`.
+
+**Connection gate**. `isConnectionReady: Bool` — инвариант «endpoints есть И access-токен валиден». Без этого `listChats`/`onlineStatusService.track`/`getCurrentUser`/`notificationService.start` падают с «Messages не настроено» и онлайн-статусы поломаны. `waitForConnectionReady(timeout: .seconds(30))` — polling каждые 100 мс. Выставляется в `true`: фон после `tryRestoreSession`, `LoginViewModel.login`, `RegisterViewModel.completeRegistration`, FastAuth `onAuthenticated`. Сбрасывается: `handleSessionExpired`, `performLocalWipe`.
+
+`ChatListView.task` (порядок):
+1. `vm.isLoading = true` → `ChatRowPlaceholderView` в списке.
+2. `await coordinator.waitForConnectionReady()`.
+3. Параллельно `loadFolders` / `loadChats` / `loadCurrentUser`.
+4. `vm.startListeningForUpdates()`.
+5. `notificationService.start(...)` (нужен `currentUserID`).
+
+`RootView.onChange` — только `notificationService.stop()` при выходе из `.main`. Стартовая `loadCurrentUser`/`notificationService.start` живут в `ChatListView.task` после gate.
+
+`ChatListViewModel.loadChats()` неблокирующий: показывает кеш и запускает фоновый `revalidateTask`. `revalidateChats()` (await-able) — для pull-to-refresh, `.reconnected`, нового чата, удаления последнего сообщения. `loadFolders()` — то же: кеш мгновенно, refresh в фоне.
+
+Флаг `isOffline` рисует `ErrorBannerView` (с `onRetry: { revalidateChats() }`) в `.safeAreaInset(.top)` поверх списка.
+
 ## Паттерн: logout — wipe всего, кроме адреса сервера
 
 Logout строится по «server-first, fail-loud» схеме: если серверный шаг упал, локальные данные **не трогаются**, чтобы пользователь мог повторить или сознательно выйти принудительно.

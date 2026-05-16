@@ -52,6 +52,7 @@ struct LoginView: View {
                 vm.onAuthenticated = {
                     Task { @MainActor in
                         await containerRef.loadCurrentUser()
+                        coordinatorRef.isConnectionReady = true
                         coordinatorRef.currentState = .main
                     }
                 }

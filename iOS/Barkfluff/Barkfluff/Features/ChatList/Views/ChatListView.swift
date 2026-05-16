@@ -44,14 +44,27 @@ struct ChatListView: View {
                 viewModel = vm
                 coordinator.chatListViewModel = vm
 
-                // Параллельно: текущий пользователь (для онлайн-статусов),
-                // папки (для табов сверху), чаты (для основного списка).
-                // Папки маленькие — табы появляются почти мгновенно из кеша,
-                // не дожидаясь сетевой подгрузки чатов.
-                async let userLoad: Void = container.loadCurrentUser()
+                // Ждём пока сетевой слой будет готов (beacon endpoints +
+                // refresh access-токена). До этого `listChats`/`track`/`getCurrentUser`
+                // упадут с «Messages не настроено», а пользователи будут показаны
+                // как онлайн по дефолту. Пока ждём — `isLoading=true` и UI показывает
+                // ChatRowPlaceholderView с крутилкой.
+                vm.isLoading = true
+                let ready = await coordinator.waitForConnectionReady()
+                guard ready else {
+                    // Соединение не появилось за 30 сек — VM сама покажет ошибку
+                    // при первой попытке loadChats. Снимаем сплеш, чтобы юзер
+                    // увидел экран.
+                    vm.isLoading = false
+                    coordinator.isInitialChatsLoaded = true
+                    return
+                }
+
+                // Connection готов — параллельно: чаты, папки, профиль.
                 async let foldersLoad: Void = vm.loadFolders()
                 async let chatsLoad: Void = vm.loadChats()
-                _ = await (userLoad, foldersLoad, chatsLoad)
+                async let userLoad: Void = container.loadCurrentUser()
+                _ = await (foldersLoad, chatsLoad, userLoad)
 
                 // Первая загрузка завершена (даже при ошибке — иначе сплеш повиснет;
                 // ошибка отобразится плашкой в списке чатов).
@@ -148,8 +161,18 @@ struct ChatListView: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                if viewModel.isRefreshing {
-                    RefreshingIndicatorView()
+                VStack(spacing: Theme.Spacing.xs) {
+                    if viewModel.isOffline && !viewModel.chats.isEmpty {
+                        ErrorBannerView(
+                            message: "Нет соединения. Показаны сохранённые чаты.",
+                            onDismiss: { viewModel.isOffline = false }
+                        )
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.top, Theme.Spacing.xs)
+                    }
+                    if viewModel.isRefreshing {
+                        RefreshingIndicatorView()
+                    }
                 }
             }
             .refreshable {
