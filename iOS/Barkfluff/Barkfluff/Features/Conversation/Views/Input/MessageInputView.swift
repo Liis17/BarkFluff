@@ -58,31 +58,7 @@ struct MessageInputView: View {
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, Theme.Spacing.sm)
         }
-        .background {
-            VStack(spacing: 0) {
-                // Плавный градиент сверху для размытия контента
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .mask(
-                        LinearGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: .black.opacity(0), location: 0),
-                                .init(color: .black.opacity(0.3), location: 0.3),
-                                .init(color: .black.opacity(0.7), location: 0.6),
-                                .init(color: .black.opacity(0.95), location: 0.85),
-                                .init(color: .black, location: 1.0)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(height: 50)
-
-                // Сплошной material под полем ввода
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-            }
-        }
+        .background(Color.clear)
         .animation(.spring(duration: 0.3), value: selectedAttachments.count)
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItems, maxSelectionCount: 10, matching: .any(of: [.images, .videos]))
         .onChange(of: selectedPhotoItems) { _, newItems in

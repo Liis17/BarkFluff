@@ -68,6 +68,11 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string AppTheme { get; set; } = "system";
 
         /// <summary>
+        /// Язык интерфейса (зеркало LanguageRegistryHelper): "system" | "ru" | "en".
+        /// </summary>
+        public string AppLanguage { get; set; } = "system";
+
+        /// <summary>
         /// Звук уведомлений (отдельно от NotificationMode).
         /// </summary>
         public bool NotificationSoundEnabled { get; set; } = true;

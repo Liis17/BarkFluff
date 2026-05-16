@@ -11,6 +11,7 @@ struct SessionsView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel = SettingsViewModel()
     @State private var showTerminateAllConfirm = false
+    @State private var showFastAuthScanner = false
 
     var body: some View {
         List {
@@ -26,6 +27,27 @@ struct SessionsView: View {
                 Section {
                     Text(err).foregroundStyle(.red).font(.footnote)
                 }
+            }
+
+            Section {
+                Button {
+                    showFastAuthScanner = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        Text("Подключить устройство по QR")
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
             }
 
             Section {
@@ -58,6 +80,14 @@ struct SessionsView: View {
         }
         .refreshable {
             await viewModel.loadSessions()
+        }
+        .navigationDestination(isPresented: $showFastAuthScanner) {
+            FastAuthScannerView(isPresented: $showFastAuthScanner)
+        }
+        .onChange(of: showFastAuthScanner) { _, isPresented in
+            if !isPresented {
+                Task { await viewModel.loadSessions() }
+            }
         }
         .confirmationDialog(
             "Завершить все остальные сессии?",

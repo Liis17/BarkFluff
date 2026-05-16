@@ -78,10 +78,68 @@ public actor FastAuthRepository: FastAuthRepositoryProtocol {
         }
     }
 
-    // MARK: - Не используется на macOS (мобильный сценарий, заглушки)
+    // MARK: - ScanFastAuth / Accept / Reject (User token, мобильный сканер)
+
+    public func scanFastAuth(fastAuthID: String) async throws -> ScanFastAuthInfo {
+        var request = Barkfluff_Fast_Auth_ScanFastAuthRequest()
+        request.fastAuthID = fastAuthID
+        let req = request
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .fastauth) { client in
+                let fastAuthClient = Barkfluff_Fast_Auth_FastAuthApi.Client(wrapping: client)
+                let response = try await fastAuthClient.scanFastAuth(req)
+                return ScanFastAuthInfo(
+                    fastAuthID: fastAuthID,
+                    deviceName: response.deviceName,
+                    operationSystem: response.operationSystem,
+                    appName: response.appName,
+                    appVersion: response.appVersion,
+                    ipAddress: response.ipAddress,
+                    confirmationCode: response.confirmationCode,
+                    expiresAt: Self.timestampToDate(response.expiresAt, hasValue: response.hasExpiresAt)
+                )
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func acceptFastAuth(fastAuthID: String, confirmationCode: String) async throws {
+        var request = Barkfluff_Fast_Auth_AcceptFastAuthRequest()
+        request.fastAuthID = fastAuthID
+        request.confirmationCode = confirmationCode
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .fastauth) { client in
+                let fastAuthClient = Barkfluff_Fast_Auth_FastAuthApi.Client(wrapping: client)
+                _ = try await fastAuthClient.acceptFastAuth(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func rejectFastAuth(fastAuthID: String, confirmationCode: String) async throws {
+        var request = Barkfluff_Fast_Auth_RejectFastAuthRequest()
+        request.fastAuthID = fastAuthID
+        request.confirmationCode = confirmationCode
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .fastauth) { client in
+                let fastAuthClient = Barkfluff_Fast_Auth_FastAuthApi.Client(wrapping: client)
+                _ = try await fastAuthClient.rejectFastAuth(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    // MARK: - Не используется (заглушки)
 
     public func checkFastAuth(fastAuthID: String) async throws -> FastAuthStatus { throw BFNetworkingError.unknown("Not implemented") }
-    public func acceptFastAuth(fastAuthID: String) async throws {}
     public func subscribeFastAuthRequests() async throws -> AsyncThrowingStream<FastAuthRequest, Error> { return AsyncThrowingStream { _ in } }
     public func connectDevice(deviceToken: String) async throws {}
     public func acceptConnectDevice(deviceID: String) async throws {}

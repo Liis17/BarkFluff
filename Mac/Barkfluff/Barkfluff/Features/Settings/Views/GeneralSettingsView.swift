@@ -14,10 +14,10 @@ struct GeneralSettingsView: View {
         @Bindable var appearance = container.appearanceSettings
 
         Form {
-            Section("Внешний вид") {
-                Picker("Тема", selection: $appearance.theme) {
+            Section("settings.general.appearance.section") {
+                Picker("settings.general.theme.label", selection: $appearance.theme) {
                     ForEach(AppTheme.allCases) { theme in
-                        Text(theme.title).tag(theme)
+                        Text(theme.titleKey).tag(theme)
                     }
                 }
                 .pickerStyle(.menu)

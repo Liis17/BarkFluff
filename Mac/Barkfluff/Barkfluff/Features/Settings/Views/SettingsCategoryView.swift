@@ -22,6 +22,8 @@ struct SettingsCategoryView: View {
             )
         case .general:
             GeneralSettingsView()
+        case .language:
+            LanguageSettingsView()
         case .notifications:
             NotificationsSettingsView()
         case .security:

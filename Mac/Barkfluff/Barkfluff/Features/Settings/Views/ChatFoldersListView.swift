@@ -17,12 +17,12 @@ struct ChatFoldersListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Папки чатов").font(.title2.weight(.semibold))
+                Text("settings.chat_folders.title").font(.title2.weight(.semibold))
                 Spacer()
                 Button {
                     isCreating = true
                 } label: {
-                    Label("Новая папка", systemImage: "plus")
+                    Label("settings.chat_folders.new", systemImage: "plus")
                 }
                 .keyboardShortcut("n", modifiers: [.command])
             }
@@ -47,7 +47,7 @@ struct ChatFoldersListView: View {
                     Image(systemName: "folder.badge.questionmark")
                         .font(.largeTitle)
                         .foregroundStyle(.secondary)
-                    Text("Пока нет папок. Создайте первую папку, чтобы группировать чаты.")
+                    Text("settings.chat_folders.empty")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -63,9 +63,9 @@ struct ChatFoldersListView: View {
                                 editingFolder = folder
                             }
                             .contextMenu {
-                                Button("Редактировать") { editingFolder = folder }
+                                Button("common.edit") { editingFolder = folder }
                                 Divider()
-                                Button("Удалить", role: .destructive) {
+                                Button("common.delete", role: .destructive) {
                                     Task { await viewModel.delete(folderID: folder.id) }
                                 }
                             }
@@ -120,9 +120,9 @@ private struct FolderRow: View {
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(folder.name.isEmpty ? "Без названия" : folder.name)
+                Text(folder.name.isEmpty ? String(localized: "settings.chat_folders.untitled") : folder.name)
                     .font(.body)
-                Text("Чатов: \(folder.chatIDs.count)")
+                Text("settings.chat_folders.chats_count \(folder.chatIDs.count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

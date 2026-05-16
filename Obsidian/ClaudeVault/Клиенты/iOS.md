@@ -1,6 +1,6 @@
 # BarkFluff iOS
 
-SwiftUI приложение для iOS. iOS-версия macOS-клиента — функциональный паритет с mac (за вычетом FastAuth и push-уведомлений, отложенных в этой итерации).
+SwiftUI приложение для iOS. iOS-версия macOS-клиента — функциональный паритет с mac (за вычетом push-уведомлений, отложенных в этой итерации).
 
 Расположение: `iOS/Barkfluff/`
 
@@ -49,6 +49,29 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 | `.fileImporter` для аватара (sandbox) | `PhotosPicker` (`PhotosPickerItem.loadTransferable(type: Data.self)`) |
 | `NSApplication.shared.appearance` | `.preferredColorScheme()` через `AppearanceSettings.colorScheme` |
 | Sandbox entitlements | `INFOPLIST_KEY_NS*UsageDescription` build settings (Photo Library, Camera, Microphone) |
+
+## Стартовый флоу (stale-first + connection gate)
+
+`AppCoordinator.onAppLaunch(serverDiscovery:, authService:, tokenProvider:)`:
+
+- Нет `savedServerHost` → `.serverSelection`.
+- Нет `hasRefreshToken` (юзер не залогинен) → синхронный `tryReconnect` (нужны endpoints для login) → `.authentication` или `.serverSelection`.
+- **Есть `hasRefreshToken`** → **сразу `.main`**, без ожидания сети. UI показывает `MainTabView` с пустым `ChatListView` (плейсхолдеры/крутилка). В фоне `Task`: `tryReconnect` → `tryRestoreSession`. Исходы: OK — `coordinator.isConnectionReady = true`; refresh-токен невалиден — `handleSessionExpired()`; нет сети — `isConnectionReady` остаётся `false`, ChatListView показывает крутилку до 30 сек таймаута.
+
+**Connection gate**. `AppCoordinator.isConnectionReady: Bool` — инвариант «endpoints в `ConnectionManager` есть И валидный access-токен». Без этого `listChats`/`onlineStatusService.track`/`getCurrentUser` падают с «Messages не настроено» и пользователи показываются онлайн-по-дефолту. `coordinator.waitForConnectionReady(timeout:)` — polling каждые 100 мс с таймаутом 30 сек. Выставляется в `true`: онлайн-фон после `tryRestoreSession`, `LoginViewModel.login`, `RegisterViewModel.completeRegistration`. Сбрасывается в `false`: `handleSessionExpired`, `performLocalWipe`.
+
+`ChatListView.task` (порядок):
+1. `vm.isLoading = true` — чтобы UI показывал `ChatRowPlaceholderView`.
+2. `await coordinator.waitForConnectionReady()` — ждём сетевую готовность.
+3. Параллельно `vm.loadFolders()` / `vm.loadChats()` / `container.loadCurrentUser()`.
+4. `coordinator.isInitialChatsLoaded = true`.
+5. `vm.startListeningForUpdates()` — подписки UpdatesStream.
+
+`ChatListViewModel.loadChats()` — неблокирующий: показывает кеш и стартует фоновую ревалидацию через `revalidateTask` (метод `performRevalidate` грузит все страницы). Публичный `revalidateChats()` (await-able) — для pull-to-refresh, `.reconnected`, нового чата, удаления. `loadFolders()` тоже разнесён: кеш мгновенно, refresh в фоне.
+
+Флаг `ChatListViewModel.isOffline` — ставится в `performRevalidate()` если ревалидация упала, но кеш есть. Рисует `ErrorBannerView` в `.safeAreaInset(.top)` с кнопкой dismiss.
+
+`RootView`: `SplashView` теперь только на `currentState == .loading` (короткий cold-start момент). На `.main` сразу `MainTabView` — крутилка живёт в `ChatListView`. `loadCurrentUser` убран из `RootView.onChange` и перенесён в `ChatListView.task` (после gate). На Mac аналогично, плюс `notificationService.start` тоже после gate.
 
 ## Иконка приложения и сплеш-скрин
 
@@ -192,9 +215,33 @@ iOS-специфика:
 - `ChatListViewModel.folders/selectedFolderID/excludeFolderChatsFromAll` + `loadFolders()`, `selectFolder(_:)`, `unreadCount(for:)`. Метод `applyFilter()` учитывает выбранную папку и флаг «исключать чаты папок из «Все чаты»».
 - Персонализация: два `@AppStorage` ключа `folders.compact` (компактные табы — только иконки) и `folders.excludeFromAll`. Тогглы в `PersonalizationSettingsView`.
 
+## FastAuth — сканер QR (паритет с Android)
+
+iOS-клиент выступает в роли **сканера**: авторизованный пользователь сканирует QR-код с экрана логина нового устройства (web/macOS/WPF), получает его метаданные и подтверждает/отклоняет вход. Генерация QR на iOS не реализована — для входа в новый аккаунт нужна другая платформа.
+
+**Точка входа**: `Настройки → Активные сессии → «Подключить устройство по QR»` (NavigationLink в `Features/Settings/Views/SessionsView.swift`).
+
+**Файлы фичи** (`Features/FastAuth/`):
+- `ViewModels/FastAuthScannerViewModel.swift` — `@Observable @MainActor`, FSM `FastAuthScannerPhase` (`.requestingPermission`/`.scanning`/`.processing`/`.needsPermission`/`.failed`), `requestPermissionAndStart()`, `handleQRDetected(_:)` (вызывает `fastAuthService.scan(fastAuthID:)`), `resetToScanning()`.
+- `Views/QRCameraPreview.swift` — `UIViewControllerRepresentable` поверх `AVCaptureSession` + `AVCaptureMetadataOutput([.qr])`. `Coordinator` дебаунсит повторные срабатывания (1.5 с), `session.startRunning()` — только в фоновой `sessionQueue`. Старт/стоп управляется параметром `isActive`.
+- `Views/FastAuthScannerView.swift` — `ZStack` (превью камеры + полупрозрачный `ScannerOverlay` с RoundedRectangle-окном + хинт-капсула). `.alert` с «Открыть настройки» (`UIApplication.openSettingsURLString`) при `.needsPermission`. `.navigationDestination(item: $vm.scannedInfo)` пушит экран подтверждения.
+- `Views/FastAuthConfirmView.swift` — List с метаданными (`deviceName`, `operationSystem`, `appName`/`appVersion`, `ipAddress`) и кнопками Accept/Reject; после успеха вызывает `dismiss()` (возврат в SessionsView, pull-to-refresh обновит список сессий).
+
+**Permission**: `INFOPLIST_KEY_NSCameraUsageDescription` в build settings iOS-таргета.
+
+**Контракт (через общие пакеты)**:
+- `BFCore.ScanFastAuthInfo` — доменная модель в `Packages/BFCore/Sources/BFCore/Models/ScanFastAuthInfo.swift`.
+- `BFCore.FastAuthServiceProtocol` — `func scan(fastAuthID:) async throws -> ScanFastAuthInfo`, `func accept(fastAuthID:, confirmationCode:)`, `func reject(fastAuthID:, confirmationCode:)`.
+- `BFNetworking.FastAuthRepository` — реализация через `connectionManager.withAuthorizedClient(for: .fastauth)` (RPC требуют User token), маппинг ошибок через `GRPCErrorMapper.map`.
+
+**Пайплайн** (полный аналог Android из [[Backend/FastAuth]]):
+1. Новое устройство анонимно дёргает `GenerateFastAuthToken` → получает QR + `fast_auth_id`, подписывается на `SubscribeFastAuthResult`.
+2. iOS-сканер распознаёт QR → `scanFastAuth(fastAuthID)` → получает device_name/OS/app/IP/**confirmation_code**.
+3. Пользователь видит `FastAuthConfirmView` и жмёт Accept/Reject → `AcceptFastAuth(fastAuthID, confirmationCode)` или `RejectFastAuth(...)`.
+4. Стрим на новом устройстве отдаёт `ACCEPTED` (с access/refresh токенами) или `REJECTED`.
+
 ## Что вне scope текущей итерации
 
-- **FastAuth (QR-авторизация)** — пропущено.
 - **NotificationService / push-уведомления** — отложено.
 - **Полноэкранные просмотрщики медиа** (отдельные `MediaViewerView`/`ImageViewerView`/`VideoPlayerView` как у macOS) — пока используется упрощённый viewer внутри ConversationView.
 - **EmojiPickerView**, **GIFAttachmentView**, **MediaPreviewCard/FilePreviewCard/SendButton** — VMs готовы, UI пока стандартный.

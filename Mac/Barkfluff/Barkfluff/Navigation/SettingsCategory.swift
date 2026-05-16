@@ -12,6 +12,7 @@ import SwiftUI
 enum SettingsCategory: String, CaseIterable, Identifiable {
     case editProfile
     case general
+    case language
     case notifications
     case security
     case privacy
@@ -25,20 +26,23 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    /// Локализованное название — `LocalizedStringKey` для реактивности к смене языка.
+    /// Возврат `String` через `String(localized:)` замораживает значение в момент вычисления.
+    var title: LocalizedStringKey {
         switch self {
-        case .editProfile: "Мой профиль"
-        case .general: "Общие"
-        case .notifications: "Уведомления и звук"
-        case .security: "Безопасность"
-        case .privacy: "Приватность"
-        case .personalization: "Персонализация"
-        case .chatFolders: "Папки чатов"
-        case .cloud: "Облако"
-        case .cache: "Кеш"
-        case .activeSessions: "Активные сессии"
-        case .aboutApp: "О приложении"
-        case .aboutServer: "О сервере"
+        case .editProfile: "settings.category.edit_profile"
+        case .general: "settings.category.general"
+        case .language: "settings.category.language"
+        case .notifications: "settings.category.notifications"
+        case .security: "settings.category.security"
+        case .privacy: "settings.category.privacy"
+        case .personalization: "settings.category.personalization"
+        case .chatFolders: "settings.category.chat_folders"
+        case .cloud: "settings.category.cloud"
+        case .cache: "settings.category.cache"
+        case .activeSessions: "settings.category.active_sessions"
+        case .aboutApp: "settings.category.about_app"
+        case .aboutServer: "settings.category.about_server"
         }
     }
 
@@ -46,6 +50,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .editProfile: "person.crop.circle.fill"
         case .general: "gear"
+        case .language: "globe"
         case .notifications: "bell.fill"
         case .security: "lock.fill"
         case .privacy: "eye.slash.fill"
@@ -63,6 +68,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .editProfile: .blue
         case .general: .gray
+        case .language: .purple
         case .notifications: .red
         case .security: .green
         case .privacy: .cyan

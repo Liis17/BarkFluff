@@ -37,6 +37,7 @@ final class LoginViewModel {
                 password: password,
                 otpCode: otp
             )
+            coordinator.isConnectionReady = true
             coordinator.currentState = .main
         } catch let error as BFError where error == .otpRequired {
             needsOTP = true
