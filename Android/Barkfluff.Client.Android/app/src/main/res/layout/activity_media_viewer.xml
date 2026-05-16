@@ -36,7 +36,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_arrow_back"
-            android:contentDescription="Назад"
+            android:contentDescription="@string/cd_back"
             app:tint="@android:color/white" />
 
         <View
@@ -50,7 +50,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_more_vert"
-            android:contentDescription="Ещё"
+            android:contentDescription="@string/cd_more"
             app:tint="@android:color/white" />
 
     </LinearLayout>
@@ -73,7 +73,7 @@
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_play_arrow"
-            android:contentDescription="Плей/Пауза"
+            android:contentDescription="@string/cd_play_pause"
             android:scaleType="center"
             app:tint="@android:color/white" />
 

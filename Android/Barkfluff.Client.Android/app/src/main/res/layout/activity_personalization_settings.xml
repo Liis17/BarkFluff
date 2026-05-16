@@ -22,7 +22,7 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             app:navigationIconTint="?attr/colorOnSurface"
-            app:title="Персонализация"
+            app:title="@string/personalization_settings_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="?attr/colorOnSurface" />
 
@@ -52,7 +52,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_marginBottom="8dp"
-                android:text="Постер профиля"
+                android:text="@string/personalization_profile_poster"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
 
@@ -162,7 +162,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
-                        android:text="Установить новый постер"
+                        android:text="@string/personalization_set_new_poster"
                         app:icon="@drawable/ic_palette" />
 
                 </LinearLayout>
@@ -233,7 +233,7 @@
                                 android:layout_height="wrap_content"
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="8dp"
-                                android:text="Привет! Как дела? 👋"
+                                android:text="@string/personalization_chat_preview_1"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnSurface" />
                         </com.google.android.material.card.MaterialCardView>
@@ -254,7 +254,7 @@
                                 android:layout_height="wrap_content"
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="8dp"
-                                android:text="Отлично! А у тебя?"
+                                android:text="@string/personalization_chat_preview_2"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnPrimaryContainer" />
                         </com.google.android.material.card.MaterialCardView>
@@ -274,7 +274,7 @@
                                 android:layout_height="wrap_content"
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="8dp"
-                                android:text="Тоже хорошо, спасибо 😊"
+                                android:text="@string/personalization_chat_preview_3"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnSurface" />
                         </com.google.android.material.card.MaterialCardView>
@@ -295,7 +295,7 @@
                                 android:layout_height="wrap_content"
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="8dp"
-                                android:text="Встретимся сегодня? 🕐"
+                                android:text="@string/personalization_chat_preview_4"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnPrimaryContainer" />
                         </com.google.android.material.card.MaterialCardView>
@@ -314,7 +314,7 @@
                                 android:layout_height="wrap_content"
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="8dp"
-                                android:text="Да, конечно! В 18:00? 😄"
+                                android:text="@string/personalization_chat_preview_5"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnSurface" />
                         </com.google.android.material.card.MaterialCardView>
@@ -338,7 +338,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_marginBottom="8dp"
-                android:text="Настройки отображения"
+                android:text="@string/personalization_display_settings"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
 
@@ -370,7 +370,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Закругление сообщений"
+                            android:text="@string/personalization_message_corner_radius"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorOnSurface" />
 
@@ -411,7 +411,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Размыть фон"
+                            android:text="@string/personalization_blur_background"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorOnSurface" />
 
@@ -442,7 +442,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Сила размытия"
+                                android:text="@string/personalization_blur_strength"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -486,7 +486,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Затемнение фона"
+                            android:text="@string/personalization_dim_background"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorOnSurface" />
 
@@ -526,7 +526,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_marginBottom="8dp"
-                android:text="Папки"
+                android:text="@string/personalization_folders"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
 
@@ -562,14 +562,14 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Компактные папки"
+                                android:text="@string/personalization_compact_folders"
                                 android:textAppearance="?attr/textAppearanceBodyLarge"
                                 android:textColor="?attr/colorOnSurface" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Показывать только иконку"
+                                android:text="@string/personalization_compact_folders_subtitle"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -606,14 +606,14 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Убирать чаты из «Все чаты»"
+                                android:text="@string/personalization_exclude_from_all"
                                 android:textAppearance="?attr/textAppearanceBodyLarge"
                                 android:textColor="?attr/colorOnSurface" />
 
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="Если чат входит в папку, он не будет показан во вкладке «Все чаты»"
+                                android:text="@string/personalization_exclude_from_all_subtitle"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -644,7 +644,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_marginBottom="8dp"
-                android:text="Фон чатов"
+                android:text="@string/personalization_chat_background"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
 
@@ -682,7 +682,7 @@
                         style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:text="Добавить фон"
+                        android:text="@string/personalization_add_background"
                         android:textAllCaps="false"
                         app:icon="@drawable/ic_add"
                         app:iconGravity="textStart"

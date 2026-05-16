@@ -181,7 +181,8 @@
       "Bash(ANDROID_HOME=\"/c/Users/daske/AppData/Local/Android/Sdk\" ANDROID_SDK_ROOT=\"/c/Users/daske/AppData/Local/Android/Sdk\" ./gradlew assembleDebug)",
       "Bash(ANDROID_HOME=\"/c/Users/daske/AppData/Local/Android/Sdk\" ANDROID_SDK_ROOT=\"/c/Users/daske/AppData/Local/Android/Sdk\" ./gradlew --stop)",
       "Bash(dotnet --version)",
-      "Bash(dotnet --list-sdks)"
+      "Bash(dotnet --list-sdks)",
+      "Bash(./gradlew lintDebug)"
     ],
     "deny": [],
     "ask": []

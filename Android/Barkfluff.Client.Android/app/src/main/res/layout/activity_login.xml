@@ -50,7 +50,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
-                android:text="Добро пожаловать"
+                android:text="@string/login_welcome"
                 android:textAppearance="?attr/textAppearanceHeadlineMedium"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -60,7 +60,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="32dp"
-                android:text="Войдите в свой аккаунт"
+                android:text="@string/login_subtitle"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -95,7 +95,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
-                            android:hint="Имя пользователя или email"
+                            android:hint="@string/hint_username_or_email"
                             app:boxCornerRadiusBottomEnd="16dp"
                             app:boxCornerRadiusBottomStart="16dp"
                             app:boxCornerRadiusTopEnd="16dp"
@@ -120,7 +120,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
-                            android:hint="Пароль"
+                            android:hint="@string/hint_password"
                             app:boxCornerRadiusBottomEnd="16dp"
                             app:boxCornerRadiusBottomStart="16dp"
                             app:boxCornerRadiusTopEnd="16dp"
@@ -146,7 +146,7 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="end"
                             android:layout_marginBottom="8dp"
-                            android:text="Забыли пароль?"
+                            android:text="@string/forgot_password"
                             android:textAllCaps="false" />
 
                     </LinearLayout>
@@ -163,7 +163,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
-                            android:text="Двухфакторная аутентификация"
+                            android:text="@string/otp_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
                             android:textColor="?attr/colorOnSurface" />
 
@@ -171,7 +171,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="24dp"
-                            android:text="Введите код из приложения-аутентификатора"
+                            android:text="@string/otp_subtitle"
                             android:textAppearance="?attr/textAppearanceBodyMedium"
                             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -326,7 +326,7 @@
                             android:id="@+id/loginButton"
                             android:layout_width="match_parent"
                             android:layout_height="64dp"
-                            android:text="Войти"
+                            android:text="@string/btn_login"
                             android:textAllCaps="false"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
                             app:cornerRadius="32dp" />
@@ -352,7 +352,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Изменить подключение к серверу"
+                android:text="@string/btn_change_server"
                 android:textAllCaps="false" />
 
             <!-- Разделитель -->
@@ -367,7 +367,7 @@
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
-                android:text="Создать новый аккаунт"
+                android:text="@string/btn_create_account"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:cornerRadius="32dp"
@@ -385,7 +385,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:padding="16dp"
-        android:text="2025 BarkFluff. Никакие права не защищены."
+        android:text="@string/footer_text"
         android:textAppearance="?attr/textAppearanceLabelSmall"
         android:textColor="?attr/colorOnSurfaceVariant"
         app:layout_constraintBottom_toBottomOf="parent"

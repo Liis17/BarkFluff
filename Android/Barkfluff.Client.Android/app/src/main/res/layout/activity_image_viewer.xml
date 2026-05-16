@@ -32,7 +32,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Закрыть"
+            android:contentDescription="@string/cd_close"
             android:src="@drawable/ic_close"
             app:tint="@android:color/white" />
 
@@ -59,7 +59,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Ещё"
+            android:contentDescription="@string/cd_more"
             android:src="@drawable/ic_more_vert"
             app:tint="@android:color/white" />
 

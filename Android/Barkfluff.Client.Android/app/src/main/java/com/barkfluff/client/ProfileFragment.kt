@@ -79,6 +79,9 @@ class ProfileFragment : Fragment() {
         binding.itemNotifications.setOnClickListener {
             startActivity(Intent(requireContext(), NotificationSettingsActivity::class.java))
         }
+        binding.itemLanguage.setOnClickListener {
+            startActivity(Intent(requireContext(), LanguageSettingsActivity::class.java))
+        }
         binding.itemUpdate.setOnClickListener {
             startActivity(Intent(requireContext(), UpdateActivity::class.java))
         }
@@ -90,21 +93,21 @@ class ProfileFragment : Fragment() {
         }
         binding.buttonLogout.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Выход")
-                .setMessage("Вы уверены, что хотите выйти из аккаунта?")
-                .setPositiveButton("Выйти") { _, _ ->
+                .setTitle(R.string.logout_dialog_title)
+                .setMessage(R.string.logout_dialog_message)
+                .setPositiveButton(R.string.logout_dialog_confirm) { _, _ ->
                     lifecycleScope.launch {
                         LogoutHelper.performFullLogout(requireContext(), grpcManager)
                     }
                 }
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show()
         }
     }
 
     private fun updateUI() {
         val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
-        binding.textFullName.text = fullName.ifEmpty { "Пользователь" }
+        binding.textFullName.text = fullName.ifEmpty { getString(R.string.profile_user_placeholder) }
         binding.textUsername.text = if (globalParam.userName.isNotEmpty()) "@${globalParam.userName}" else ""
         binding.textAppVersion.text = "BarkFluff ${GlobalParam.getAppVersion(requireContext())}"
 

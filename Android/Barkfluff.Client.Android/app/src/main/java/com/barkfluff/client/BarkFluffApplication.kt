@@ -16,6 +16,7 @@ import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.LocaleManager
 import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.widget.WidgetRefreshWorker
 import com.google.android.material.color.DynamicColors
@@ -62,6 +63,9 @@ class BarkFluffApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Применяем выбранный язык приложения до создания UI.
+        // Для "system" сбрасывается override → используется системная локаль.
+        LocaleManager.apply(GlobalParam(this).appLanguage)
         // Чистим APK обновления, оставшийся в Downloads после установки прошлой версии
         cleanupPendingUpdate()
         // Apply Material You dynamic colors system-wide (Android 12+)

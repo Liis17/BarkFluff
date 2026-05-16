@@ -27,7 +27,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Подключение к серверу"
+                android:text="@string/server_title"
                 android:textAppearance="?attr/textAppearanceHeadlineLarge"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -38,7 +38,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="24dp"
-                android:text="Выберите публичный сервер"
+                android:text="@string/server_subtitle"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -47,7 +47,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:text="Публичные серверы"
+                android:text="@string/server_public"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorPrimary" />
 
@@ -82,7 +82,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:text="Подключиться к другому серверу"
+                android:text="@string/server_custom"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -115,7 +115,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
                 android:layout_marginBottom="24dp"
-                android:text="Подключиться"
+                android:text="@string/btn_connect"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:cornerRadius="32dp"
@@ -143,7 +143,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера."
+            android:text="@string/server_help_hint"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="?attr/colorOnSurfaceVariant" />
 

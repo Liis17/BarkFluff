@@ -20,7 +20,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/bg_circle_btn"
-        android:contentDescription="Назад"
+        android:contentDescription="@string/cd_back"
         android:padding="12dp"
         android:src="@drawable/ic_arrow_back"
         android:elevation="4dp"
@@ -36,7 +36,7 @@
         android:layout_marginEnd="8dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/bg_circle_btn"
-        android:contentDescription="Дополнительное меню"
+        android:contentDescription="@string/cd_more_menu"
         android:padding="12dp"
         android:rotation="90"
         android:src="@drawable/ic_more_vert"
@@ -219,7 +219,7 @@
                 android:layout_height="20dp"
                 android:layout_marginEnd="10dp"
                 android:src="@drawable/ic_pin"
-                android:contentDescription="Закреплено"
+                android:contentDescription="@string/cd_pinned"
                 app:tint="?attr/colorPrimary" />
 
             <LinearLayout
@@ -254,7 +254,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Все закреплённые"
+                android:contentDescription="@string/cd_all_pinned"
                 android:src="@drawable/ic_menu_hamburger"
                 app:tint="?attr/colorOnSurface" />
 
@@ -283,7 +283,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="12dp"
         android:layout_marginBottom="8dp"
-        android:contentDescription="Прокрутить вниз"
+        android:contentDescription="@string/cd_scroll_down"
         android:visibility="gone"
         android:elevation="6dp"
         app:fabSize="mini"
@@ -341,7 +341,7 @@
                     android:layout_height="wrap_content"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:text="Редактирование сообщения"
+                    android:text="@string/chat_editing_message"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorPrimary"
                     android:textStyle="bold" />
@@ -363,7 +363,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Отменить редактирование"
+                android:contentDescription="@string/cd_cancel_edit"
                 android:padding="4dp"
                 android:src="@drawable/ic_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
@@ -442,7 +442,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Отменить ответ"
+                android:contentDescription="@string/cd_cancel_reply"
                 android:padding="4dp"
                 android:src="@drawable/ic_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
@@ -503,7 +503,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Очистить вложения"
+                android:contentDescription="@string/cd_clear_attachments"
                 android:padding="4dp"
                 android:src="@drawable/ic_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
@@ -525,7 +525,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/bg_circle_btn"
-        android:contentDescription="Прикрепить файл"
+        android:contentDescription="@string/cd_attach_file"
         android:padding="12dp"
         android:rotation="45"
         android:elevation="4dp"
@@ -542,7 +542,7 @@
         android:layout_marginEnd="4dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/bg_circle_btn"
-        android:contentDescription="Стикеры"
+        android:contentDescription="@string/cd_stickers"
         android:padding="12dp"
         android:elevation="4dp"
         android:src="@drawable/ic_sticker"
@@ -558,7 +558,7 @@
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/bg_circle_btn"
-        android:contentDescription="Отправить"
+        android:contentDescription="@string/cd_send"
         android:padding="12dp"
         android:elevation="4dp"
         android:src="@drawable/ic_send_filled"
@@ -590,7 +590,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@null"
-            android:hint="Сообщение"
+            android:hint="@string/chat_message_hint"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="4"
             android:gravity="center_vertical"
@@ -665,7 +665,7 @@
             android:layout_height="260dp"
             android:layout_gravity="center"
             android:scaleType="fitCenter"
-            android:contentDescription="Предпросмотр стикера" />
+            android:contentDescription="@string/cd_sticker_preview" />
 
     </FrameLayout>
 

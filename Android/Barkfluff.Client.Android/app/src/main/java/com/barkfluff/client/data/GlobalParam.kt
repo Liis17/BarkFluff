@@ -218,6 +218,11 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, value).apply()
 
+    /** Язык приложения: "system" (по умолчанию) — использовать локаль устройства, "ru" / "en" — переопределение. */
+    var appLanguage: String
+        get() = sharedPreferences.getString(KEY_APP_LANGUAGE, LANGUAGE_SYSTEM) ?: LANGUAGE_SYSTEM
+        set(value) = sharedPreferences.edit().putString(KEY_APP_LANGUAGE, value).apply()
+
     // --- Тестирование (dev/QA-флаги) ---
 
     /** Показывать UserId/ChatId в карточке профиля собеседника. */
@@ -267,11 +272,12 @@ class GlobalParam(private val context: Context) {
         val fastAuth = socketFastAuth
         val serverNameVal = serverName
         val serverDescVal = serverDescription
+        val language = appLanguage
 
         // Полная очистка sharedPreferences
         sharedPreferences.edit().clear().apply()
 
-        // Восстанавливаем только адреса сервера
+        // Восстанавливаем только адреса сервера и выбранный язык приложения
         sharedPreferences.edit().apply {
             if (beacon.isNotBlank()) putString(KEY_SOCKET_BEACON, beacon)
             if (users.isNotBlank()) putString(KEY_SOCKET_USERS, users)
@@ -283,6 +289,7 @@ class GlobalParam(private val context: Context) {
             if (fastAuth.isNotBlank()) putString(KEY_SOCKET_FAST_AUTH, fastAuth)
             if (serverNameVal.isNotBlank()) putString(KEY_SERVER_NAME, serverNameVal)
             if (serverDescVal.isNotBlank()) putString(KEY_SERVER_DESCRIPTION, serverDescVal)
+            putString(KEY_APP_LANGUAGE, language)
         }.apply()
 
         // Полная очистка зашифрованных настроек (токены)
@@ -343,6 +350,12 @@ class GlobalParam(private val context: Context) {
         // Отложенная очистка APK обновления
         private const val KEY_PENDING_UPDATE_APK_PATH = "pending_update_apk_path"
         private const val KEY_PENDING_UPDATE_DOWNLOAD_ID = "pending_update_download_id"
+
+        // Язык приложения
+        private const val KEY_APP_LANGUAGE = "app_language"
+        const val LANGUAGE_SYSTEM = "system"
+        const val LANGUAGE_RU = "ru"
+        const val LANGUAGE_EN = "en"
 
         /**
          * Генерирует уникальный ID устройства

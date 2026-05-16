@@ -73,7 +73,7 @@
             android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_download"
-            android:contentDescription="Скачать файл"
+            android:contentDescription="@string/cd_download_file"
             android:scaleType="center"
             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -84,7 +84,7 @@
             android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_open"
-            android:contentDescription="Открыть файл"
+            android:contentDescription="@string/cd_open_file"
             android:scaleType="center"
             android:visibility="gone"
             app:tint="?attr/colorOnSurfaceVariant" />
