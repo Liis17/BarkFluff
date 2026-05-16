@@ -280,6 +280,7 @@ public class Program
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
         app.MapGet("/stickers", async context => await ServeHtmlFile(context, "stickers.html"));
         app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
+        app.MapGet("/notifications", async context => await ServeHtmlFile(context, "notifications.html"));
         app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, "s3-storage.html"));
         app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, "s3-browser.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));

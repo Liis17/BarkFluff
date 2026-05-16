@@ -28,6 +28,7 @@
     <None Remove="Pages\updating.html" />
     <None Remove="Pages\s3-browser.html" />
     <None Remove="Pages\users.html" />
+    <None Remove="Pages\notifications.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -95,6 +96,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\users.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\notifications.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
