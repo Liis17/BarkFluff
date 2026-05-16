@@ -143,6 +143,9 @@ dependencies {
     // foreground/background приложения и переподключения RealtimeService.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 
+    // WorkManager — периодическое обновление App Widget'ов когда приложение убито.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // gRPC dependencies
     implementation("io.grpc:grpc-okhttp:1.60.0")
     implementation("io.grpc:grpc-protobuf-lite:1.60.0")

@@ -17,8 +17,15 @@ import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.StickerCache
+import com.barkfluff.client.widget.WidgetRefreshWorker
 import com.google.android.material.color.DynamicColors
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class BarkFluffApplication : Application() {
 
@@ -78,6 +85,9 @@ class BarkFluffApplication : Application() {
         // Инициализируем кэш стикеров
         StickerCache.init(this)
 
+        // Periodic refresh App Widget'ов раз в 30 минут — fallback когда приложение убито
+        scheduleWidgetRefreshWorker()
+
         // Подписываемся на lifecycle всего приложения (foreground/background)
         // resume() вызывается когда ЛЮБАЯ activity приложения выходит на передний план
         // pause() вызывается когда ВСЕ activity приложения уходят в фон
@@ -97,6 +107,24 @@ class BarkFluffApplication : Application() {
         realtimeService.shutdown()
         grpcManager.shutdown()
         super.onTerminate()
+    }
+
+    private fun scheduleWidgetRefreshWorker() {
+        try {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+            val request = PeriodicWorkRequestBuilder<WidgetRefreshWorker>(30, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build()
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "widget-refresh",
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
+            )
+        } catch (e: Exception) {
+            Log.w("BarkFluffApplication", "Failed to schedule widget refresh worker", e)
+        }
     }
 
     private fun cleanupPendingUpdate() {

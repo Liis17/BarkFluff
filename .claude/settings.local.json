@@ -177,7 +177,9 @@
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -configuration Debug build)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -configuration Debug build)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' -configuration Debug build)",
-      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'generic/platform=iOS Simulator' -configuration Debug build)"
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'generic/platform=iOS Simulator' -configuration Debug build)",
+      "Bash(ANDROID_HOME=\"/c/Users/daske/AppData/Local/Android/Sdk\" ANDROID_SDK_ROOT=\"/c/Users/daske/AppData/Local/Android/Sdk\" ./gradlew assembleDebug)",
+      "Bash(ANDROID_HOME=\"/c/Users/daske/AppData/Local/Android/Sdk\" ANDROID_SDK_ROOT=\"/c/Users/daske/AppData/Local/Android/Sdk\" ./gradlew --stop)"
     ],
     "deny": [],
     "ask": []
