@@ -15,6 +15,7 @@
 - `ReadReceiptEvent` — подтверждение прочтения (ChatId, MessageId, ReadBy, IsLastMessage, ReadAt)
 - `PushNotificationEvent` — данные для push-уведомления (отправитель, чат, превью)
 - `DismissPushEvent` — отзыв push (когда сообщение прочитано/удалено)
+- `AdminBroadcastNotificationEvent` — админ-рассылка push (Title, Body, ImageUrl, TargetDeviceIds). Публикуется из [[Backend/AdminPanel|AdminPanel]] страницы «Уведомления», потребляется [[Backend/CloudMessaging|CloudMessaging]] (очередь `admin-broadcast-handler`).
 
 События приватных чатов (E2E через passphrase, user-scope):
 - `NewEncryptedMessageEvent` — новое шифрованное сообщение (ChatId, ChatMembers, Message как proto-bytes)

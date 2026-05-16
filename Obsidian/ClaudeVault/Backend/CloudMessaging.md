@@ -1,7 +1,7 @@
 # Barkfluff.CloudMessaging
 
 Background Worker для push-уведомлений через Firebase Cloud Messaging.
-**Нет gRPC API** — потребляет `PushNotificationEvent` и `DismissPushEvent` из RabbitMQ.
+**Нет gRPC API** — потребляет `PushNotificationEvent`, `DismissPushEvent` и `AdminBroadcastNotificationEvent` из RabbitMQ.
 
 Расположение: `Backend/Barkfluff.CloudMessaging/`
 
@@ -18,10 +18,14 @@ docker-compose -f Backend/docker-compose-dev.yml up -d cloudmessaging
 
 Компоненты:
 
-1. **Program.cs** — startup: загрузка конфигурации (`ServiceId.CloudMessaging`), регистрация gRPC-клиентов (Users, Messages) и MassTransit consumers (`PushNotificationConsumer`, `DismissPushConsumer`).
+1. **Program.cs** — startup: загрузка конфигурации (`ServiceId.CloudMessaging`), регистрация gRPC-клиентов (Users, Messages) и MassTransit consumers (`PushNotificationConsumer`, `DismissPushConsumer`, `AdminBroadcastConsumer`).
 2. **PushNotificationConsumer** — MassTransit consumer для `PushNotificationEvent`. Параллельно запрашивает данные отправителя (Users) и чата (Messages), рассылает push **батчем** на все устройства одним запросом к FCM. При ошибке логирует и не пробрасывает — сообщение считается обработанным (без MassTransit retry).
 3. **DismissPushConsumer** — MassTransit consumer для `DismissPushEvent`. Берёт FCM-токены пользователя через `Users.GetDevicesWithFirebaseTokensAsync` и отправляет data-only команду `dismiss_chat_notifications`, чтобы клиенты убрали нотификацию чата на остальных устройствах. Best-effort, без retry.
-4. **FirebaseService** — singleton над Firebase Admin SDK. Отправляет **data-only** сообщения (без `Notification` блока) — Android-клиент сам строит уведомления. Методы `SendNotificationBatchAsync` и `SendDismissBatchAsync` используют `SendEachForMulticastAsync` (один HTTP-запрос на до 500 токенов), обрабатывают `Unregistered`-ошибки для последующей очистки токенов.
+4. **AdminBroadcastConsumer** — MassTransit consumer для `AdminBroadcastNotificationEvent` (рассылка от админ-панели). Если `TargetDeviceIds` пуст — запрашивает все FCM-токены через `Users.GetAllDevicesWithFirebaseTokensAsync`, иначе — `Users.GetDevicesWithFirebaseTokensByDeviceIdsAsync`. Шлёт через `FirebaseService.SendAdminBroadcastBatchAsync` (с native Notification-блоком). Best-effort, без retry.
+5. **FirebaseService** — singleton над Firebase Admin SDK.
+   - `SendNotificationBatchAsync` / `SendDismissBatchAsync` — **data-only** сообщения (без `Notification` блока), Android-клиент сам рисует уведомления.
+   - `SendAdminBroadcastBatchAsync` — **native Notification-блок** (title/body/imageUrl) для админ-рассылок, чтобы Android-система показала уведомление без вовлечения клиентского кода. Чанкование по 500 токенов (FCM лимит на multicast).
+   Все методы используют `SendEachForMulticastAsync` и обрабатывают `Unregistered`-ошибки для последующей очистки токенов.
 
 ## Event Flow
 
@@ -40,6 +44,16 @@ Updates (DismissPushPublisher) → DismissPushEvent → RabbitMQ
   → DismissPushConsumer
   → Users.GetDevicesWithFirebaseTokens(userId)
   → FirebaseService.SendDismissBatchAsync(tokens, chatId)
+```
+
+```
+AdminPanel (POST /api/notifications/broadcast/*) → AdminBroadcastNotificationEvent → RabbitMQ
+  → admin-broadcast-handler queue
+  → AdminBroadcastConsumer
+  → Users.GetAllDevicesWithFirebaseTokens()   ← если TargetDeviceIds пуст
+    или
+    Users.GetDevicesWithFirebaseTokensByDeviceIds(deviceIds)
+  → FirebaseService.SendAdminBroadcastBatchAsync(tokens, title, body, imageUrl)
 ```
 
 > ⚠️ Задержки отправки **нет** — обработка немедленная после получения события из очереди.
@@ -72,6 +86,16 @@ Updates (DismissPushPublisher) → DismissPushEvent → RabbitMQ
 | Ключ | Значение |
 |------|---------|
 | `chat_id` | ID чата, нотификацию которого нужно убрать |
+
+### `type = "admin_broadcast"` (админ-рассылка)
+
+В отличие от остальных push, **включает блок `Notification`** (title/body/imageUrl) — Android-система отображает уведомление сама, без участия клиентского кода. Триггерится из AdminPanel-страницы «Уведомления».
+
+| Ключ | Значение |
+|------|---------|
+| `type` | `"admin_broadcast"` (маркер для возможной кастомизации в будущем) |
+
+Поля native-блока FCM: `Notification.Title`, `Notification.Body`, `Notification.ImageUrl`, `AndroidConfig.Priority = High`, `AndroidNotification.ImageUrl` (для BigPictureStyle).
 
 ## Конфигурация
 

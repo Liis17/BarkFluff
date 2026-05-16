@@ -253,6 +253,114 @@ public class FirebaseService
         }
     }
 
+    /// <summary>
+    /// Отправляет произвольное push-уведомление с native Notification-блоком
+    /// (title/body/imageUrl) — Android-система отображает уведомление сама,
+    /// без участия клиентского кода. Используется для админ-рассылок.
+    /// FCM ограничивает SendEachForMulticast 500 токенами на запрос, поэтому
+    /// рассылка чанкуется.
+    /// </summary>
+    public async Task<(int Success, int Failure)> SendAdminBroadcastBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string title,
+        string body,
+        string? imageUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping admin broadcast");
+            return (0, 0);
+        }
+
+        if (fcmTokens.Count == 0)
+            return (0, 0);
+
+        var normalizedImageUrl = string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl;
+        var totalSuccess = 0;
+        var totalFailure = 0;
+
+        foreach (var chunk in fcmTokens.Chunk(500))
+        {
+            var multicastMessage = new MulticastMessage
+            {
+                Tokens = chunk,
+                Notification = new Notification
+                {
+                    Title = title,
+                    Body = body,
+                    ImageUrl = normalizedImageUrl
+                },
+                Android = new AndroidConfig
+                {
+                    Priority = Priority.High,
+                    Notification = new AndroidNotification
+                    {
+                        ImageUrl = normalizedImageUrl
+                    }
+                },
+                Data = new Dictionary<string, string>
+                {
+                    ["type"] = "admin_broadcast"
+                }
+            };
+
+            try
+            {
+                var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+                totalSuccess += response.SuccessCount;
+                totalFailure += response.FailureCount;
+
+                if (response.FailureCount > 0)
+                {
+                    var unregisteredTokens = new List<string>();
+                    for (var i = 0; i < response.Responses.Count; i++)
+                    {
+                        var resp = response.Responses[i];
+                        if (resp.IsSuccess)
+                            continue;
+
+                        var token = chunk[i];
+                        var ex = resp.Exception;
+
+                        if (ex?.MessagingErrorCode == MessagingErrorCode.Unregistered)
+                        {
+                            unregisteredTokens.Add(token);
+                        }
+                        else
+                        {
+                            _logger.LogError(
+                                ex,
+                                "Ошибка отправки admin-broadcast push. Token: {TokenPrefix}...",
+                                token[..Math.Min(10, token.Length)]);
+                        }
+                    }
+
+                    if (unregisteredTokens.Count > 0)
+                    {
+                        _logger.LogWarning(
+                            "Невалидные FCM-токены при admin-broadcast ({Count}): требуется очистка в БД",
+                            unregisteredTokens.Count);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Неожиданная ошибка при батч-отправке admin-broadcast push");
+                totalFailure += chunk.Length;
+            }
+        }
+
+        _logger.LogInformation(
+            "Admin broadcast отправлен. Title: {Title}, Total: {Total}, Success: {Success}, Failure: {Failure}",
+            title,
+            fcmTokens.Count,
+            totalSuccess,
+            totalFailure);
+
+        return (totalSuccess, totalFailure);
+    }
+
     private static string TruncateMessage(string? text, int maxLength)
     {
         if (string.IsNullOrEmpty(text))

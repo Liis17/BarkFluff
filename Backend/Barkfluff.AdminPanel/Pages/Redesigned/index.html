@@ -79,6 +79,15 @@
           <span class="nav-pill mono">2.4k</span>
         </a>
 
+        <div class="nav-group-label"><span>Engagement</span></div>
+
+        <a class="nav-item" data-screen="notifications" href="#notifications">
+          <span class="nav-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          </span>
+          <span class="nav-label">Уведомления</span>
+        </a>
+
         <div class="nav-group-label"><span>Storage</span></div>
 
         <a class="nav-item nav-item-parent expanded" data-screen="s3-storage" href="#s3-storage">
@@ -175,6 +184,7 @@
       <section class="screen" data-screen-id="badges"    id="screen-badges"></section>
       <section class="screen" data-screen-id="stickers"  id="screen-stickers"></section>
       <section class="screen" data-screen-id="users"     id="screen-users"></section>
+      <section class="screen" data-screen-id="notifications" id="screen-notifications"></section>
       <section class="screen" data-screen-id="s3-storage" id="screen-s3-storage"></section>
       <section class="screen" data-screen-id="s3-browser" id="screen-s3-browser"></section>
     </main>
@@ -220,6 +230,7 @@
   <script src="screen-logs.js"></script>
   <script src="screen-s3.js"></script>
   <script src="screen-content.js"></script>
+  <script src="screen-notifications.js"></script>
 
   <!-- bootstrap -->
   <script>
@@ -236,6 +247,7 @@
       ScreenBadges.render();
       ScreenStickers.render();
       ScreenUsers.render();
+      ScreenNotifications.render();
 
       const authData = await App.checkAuth();
       if (!authData) {
