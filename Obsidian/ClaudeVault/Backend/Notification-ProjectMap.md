@@ -73,7 +73,7 @@
 | Файл | Описание |
 |------|----------|
 | `SECURITY_AUDIT.md` | Аудит безопасности (март 2026). Зафиксированы: 1 критическая (отключена проверка SSL — CWE-295), 2 высоких, 2 средних уязвимости. |
-| `BarkFluff.Notification.csproj` | `net9.0`, зависимости: `MassTransit.RabbitMQ 8.5.2`, `Microsoft.AspNetCore.OpenApi 9.0.8`, проекты `BarkFluff.Shared.Queue`, `BarkFluff.GrpcServer`. |
+| `BarkFluff.Notification.csproj` | `net10.0`, зависимости: `MassTransit.RabbitMQ 8.5.2`, `Microsoft.AspNetCore.OpenApi 10.0.1`, проекты `BarkFluff.Shared.Queue`, `BarkFluff.GrpcServer`. |
 
 ---
 

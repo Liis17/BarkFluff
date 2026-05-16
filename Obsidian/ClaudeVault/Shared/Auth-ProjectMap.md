@@ -3,7 +3,7 @@
 Shared-библиотека gRPC client interceptors для передачи обязательных metadata-заголовков при межсервисных вызовах.
 
 **Расположение:** `Shared/BarkFluff.Shared.Auth/`
-**Target Framework:** `net9.0`
+**Target Framework:** `net10.0`
 **Зависимости:** `Grpc.Core.Api 2.71.0`
 
 ---
@@ -12,7 +12,7 @@ Shared-библиотека gRPC client interceptors для передачи о�
 
 | Файл | Класс | Назначение |
 |------|-------|-----------|
-| `BarkFluff.Shared.Auth.csproj` | — | Файл проекта. net9.0, Nullable enable, зависимость Grpc.Core.Api |
+| `BarkFluff.Shared.Auth.csproj` | — | Файл проекта. net10.0, Nullable enable, зависимость Grpc.Core.Api |
 | `MetadataKeys.cs` | `MetadataKeys` | Константы имён gRPC metadata-заголовков: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip-address`, `x-os-name`, `x-app-name`, `x-app-version` |
 | `JwtClientInterceptor.cs` | `JwtClientInterceptor` | Добавляет `x-auth-token` — JWT-токен **без Base64**, передаётся как plain string |
 | `XDeviceIdInterceptor.cs` | `XDeviceIdInterceptor` | Добавляет `x-device-id` — уникальный идентификатор устройства (Base64) |

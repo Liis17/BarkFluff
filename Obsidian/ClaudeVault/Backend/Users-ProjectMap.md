@@ -1,7 +1,7 @@
 # BarkFluff.Users — Карта проекта
 
 Расположение: `Backend/BarkFluff.Users/`
-Порт: **7001** | .NET 9 | PostgreSQL (EF Core + Migrations) | MassTransit (RabbitMQ)
+Порт: **7001** | .NET 10 | PostgreSQL (EF Core + Migrations) | MassTransit (RabbitMQ)
 
 ← [[Backend/Users]]
 
