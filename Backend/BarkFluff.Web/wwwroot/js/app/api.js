@@ -98,6 +98,7 @@
             username: u.getUsername(),
             profilePicture: u.getProfilePicture(),
             profilePicturePreview: u.getProfilePicturePreview(),
+            profilePosterFileId: u.getProfilePosterFileId ? u.getProfilePosterFileId() : '',
             bio: u.getBio(),
             registrationDate: tsToMs(u.getRegistrationDate()),
             badges: u.getBadgesList().map(function (b) {
