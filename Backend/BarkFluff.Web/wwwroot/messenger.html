@@ -526,6 +526,35 @@
         .chat-header-status { font-size: 12px; color: var(--text-sub); }
         .chat-header-status.online { color: var(--online-color); }
 
+        .messages-area-wrap {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .messages-bg-layer {
+            position: absolute;
+            inset: 0;
+            background-image: var(--chat-bg-image, none);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(var(--chat-bg-blur, 0px));
+            pointer-events: none;
+            z-index: 0;
+        }
+        .messages-bg-dim {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, var(--chat-bg-dim-alpha, 0));
+            pointer-events: none;
+            z-index: 0;
+            transition: background 0.15s;
+        }
+
         .messages-area {
             flex: 1;
             overflow-y: auto;
@@ -534,6 +563,9 @@
             flex-direction: column;
             scrollbar-width: thin;
             scrollbar-color: var(--scrollbar) transparent;
+            position: relative;
+            z-index: 1;
+            background: transparent;
         }
 
         .messages-inner {
@@ -579,13 +611,13 @@
 
         .msg-bubble.incoming {
             background: var(--msg-in-bg);
-            border-radius: 16px 16px 16px 4px;
+            border-radius: var(--msg-bubble-radius, 16px) var(--msg-bubble-radius, 16px) var(--msg-bubble-radius, 16px) 4px;
         }
 
         .msg-bubble.outgoing {
             background: var(--msg-out-bg);
             color: var(--msg-out-text);
-            border-radius: 16px 16px 4px 16px;
+            border-radius: var(--msg-bubble-radius, 16px) var(--msg-bubble-radius, 16px) 4px var(--msg-bubble-radius, 16px);
             padding: 4px 12px;
         }
 
@@ -1103,6 +1135,16 @@
 
         .profile-close:hover { background: rgba(0, 0, 0, 0.05); }
 
+        .profile-poster {
+            width: 100%;
+            aspect-ratio: 3 / 1;
+            background-size: cover;
+            background-position: center;
+            background-color: var(--card-border);
+            display: none;
+        }
+        .profile-poster.visible { display: block; }
+
         .profile-header {
             padding: 32px 24px 20px;
             display: flex;
@@ -1110,6 +1152,12 @@
             align-items: center;
             gap: 12px;
             border-bottom: 1px solid var(--card-border);
+        }
+        .profile-poster.visible + .profile-header { padding-top: 0; }
+        .profile-poster.visible + .profile-header .profile-avatar {
+            margin-top: -56px;
+            border: 4px solid var(--profile-bg);
+            box-sizing: content-box;
         }
 
         .profile-avatar {
@@ -1605,6 +1653,534 @@
         }
 
         .sd-avatar-hint { font-size: 12px; color: var(--text-sub); }
+
+        /* === Toggle row (label + switch) === */
+        .sd-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sd-toggle-row:last-child { border-bottom: none; }
+        .sd-toggle-info { flex: 1; min-width: 0; }
+        .sd-toggle-title { font-size: 14px; font-weight: 500; color: var(--text-main); }
+        .sd-toggle-desc { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+
+        .sd-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.18);
+            border-radius: 11px;
+            cursor: pointer;
+            transition: background 0.18s;
+            border: none;
+            padding: 0;
+        }
+        .sd-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.18s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+        .sd-switch.on { background: var(--primary); }
+        .sd-switch.on::after { transform: translateX(18px); }
+        .sd-switch:disabled { opacity: 0.5; cursor: default; }
+
+        /* === Segmented control (radio-group) === */
+        .sd-segmented {
+            display: flex;
+            gap: 6px;
+            background: var(--input-bg);
+            padding: 4px;
+            border-radius: 10px;
+        }
+        .sd-segmented-option {
+            flex: 1;
+            padding: 8px 10px;
+            background: none;
+            border: none;
+            border-radius: 7px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .sd-segmented-option:hover { color: var(--text-main); }
+        .sd-segmented-option.active {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        /* === Poster uploader (3:1 banner) === */
+        .sd-poster-uploader {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3 / 1;
+            border-radius: 12px;
+            background: var(--input-bg);
+            border: 2px dashed var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: border-color 0.18s;
+        }
+        .sd-poster-uploader:hover { border-color: var(--primary); }
+        .sd-poster-uploader.has-image { border-style: solid; }
+        .sd-poster-uploader img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .sd-poster-placeholder {
+            color: var(--text-sub);
+            font-size: 13px;
+            text-align: center;
+            padding: 12px;
+        }
+        .sd-poster-remove {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.55);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sd-poster-remove:hover { background: rgba(220, 38, 38, 0.85); }
+
+        /* === Chat backgrounds grid === */
+        .sd-bg-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .sd-bg-card {
+            position: relative;
+            aspect-ratio: 9 / 16;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+        }
+        .sd-bg-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sd-bg-card-add {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-size: 28px;
+            border: 2px dashed var(--card-border);
+            transition: border-color 0.18s, color 0.18s;
+        }
+        .sd-bg-card-add:hover { border-color: var(--primary); color: var(--primary); }
+        .sd-bg-card-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sd-bg-card-remove:hover { background: rgba(220, 38, 38, 0.85); }
+
+        /* === Personalization: profile preview === */
+        .sd-profile-preview {
+            margin: 16px 20px 0;
+            border-radius: 14px;
+            overflow: hidden;
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            padding-bottom: 16px;
+        }
+        .sd-profile-preview-poster {
+            width: 100%;
+            aspect-ratio: 3 / 1;
+            background-size: cover;
+            background-position: center;
+            background-color: var(--card-border);
+            background-image: linear-gradient(135deg, rgba(140, 53, 28, 0.55), rgba(200, 126, 91, 0.45));
+        }
+        .sd-profile-preview-poster.has-image { background-image: var(--preview-poster-image, none); }
+        .sd-profile-preview-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: -44px;
+        }
+        .sd-profile-preview-avatar {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            color: white;
+            font-size: 30px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 4px solid var(--input-bg);
+            box-sizing: content-box;
+        }
+        .sd-profile-preview-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .sd-profile-preview-name {
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+        }
+        .sd-profile-preview-username {
+            font-size: 13px;
+            color: var(--primary);
+            text-align: center;
+            margin-top: 2px;
+        }
+        .sd-poster-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px 0;
+        }
+        .sd-poster-actions .sd-btn { flex: 1; }
+        .sd-btn-secondary {
+            background: var(--input-bg);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .sd-btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+        .sd-btn-danger {
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--error);
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .sd-btn-danger:hover { background: rgba(220, 38, 38, 0.14); }
+
+        /* === Personalization: chat preview === */
+        .sd-chat-preview {
+            position: relative;
+            margin: 16px 20px 0;
+            height: 210px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: var(--msg-in-bg);
+            border: 1px solid var(--card-border);
+        }
+        .sd-chat-preview-bg {
+            position: absolute;
+            inset: 0;
+            background-image: var(--preview-bg-image, none);
+            background-size: cover;
+            background-position: center;
+            filter: blur(var(--preview-bg-blur, 0px));
+        }
+        .sd-chat-preview-dim {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, var(--preview-bg-dim, 0));
+            transition: background 0.15s;
+        }
+        .sd-chat-preview-msgs {
+            position: relative;
+            z-index: 1;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            height: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .sd-preview-msg {
+            max-width: 70%;
+            padding: 6px 10px;
+            font-size: 12px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        .sd-preview-msg.incoming {
+            align-self: flex-start;
+            background: var(--msg-in-bg);
+            color: var(--text-main);
+            border-radius: var(--preview-radius, 16px) var(--preview-radius, 16px) var(--preview-radius, 16px) 4px;
+        }
+        .sd-preview-msg.outgoing {
+            align-self: flex-end;
+            background: var(--msg-out-bg);
+            color: var(--msg-out-text);
+            border-radius: var(--preview-radius, 16px) var(--preview-radius, 16px) 4px var(--preview-radius, 16px);
+        }
+
+        /* === Personalization: sliders + toggle === */
+        .sd-slider-row {
+            padding: 12px 20px 0;
+        }
+        .sd-slider-row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+        .sd-slider-value {
+            color: var(--primary);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .sd-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 4px;
+            background: var(--card-border);
+            outline: none;
+        }
+        .sd-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+        }
+        .sd-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+        }
+        .sd-slider:disabled { opacity: 0.45; }
+
+        .sd-section-heading {
+            padding: 18px 20px 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-sub);
+            font-weight: 600;
+        }
+
+        /* === Personalization: bg-grid card selection === */
+        .sd-bg-card { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+        .sd-bg-card:hover { transform: translateY(-1px); }
+        .sd-bg-card.active {
+            outline: 3px solid var(--primary);
+            outline-offset: -3px;
+        }
+        .sd-bg-card.none-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--input-bg);
+            color: var(--text-sub);
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            padding: 8px;
+        }
+
+        /* === Poster crop modal === */
+        .sd-crop-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 250;
+            background: rgba(0, 0, 0, 0.78);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+        .sd-crop-overlay.visible { display: flex; }
+        .sd-crop-dialog {
+            background: var(--bg);
+            border-radius: 14px;
+            max-width: 720px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sd-crop-header {
+            padding: 14px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sd-crop-stage {
+            position: relative;
+            flex: 1;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+            min-height: 320px;
+        }
+        .sd-crop-image {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+            pointer-events: none;
+            user-select: none;
+        }
+        .sd-crop-frame {
+            position: absolute;
+            border: 2px solid white;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+            cursor: move;
+            box-sizing: border-box;
+        }
+        .sd-crop-frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px);
+            background-size: 33.333% 33.333%;
+            pointer-events: none;
+        }
+        .sd-crop-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .sd-crop-handle.tl { top: -7px; left: -7px; cursor: nwse-resize; }
+        .sd-crop-handle.tr { top: -7px; right: -7px; cursor: nesw-resize; }
+        .sd-crop-handle.bl { bottom: -7px; left: -7px; cursor: nesw-resize; }
+        .sd-crop-handle.br { bottom: -7px; right: -7px; cursor: nwse-resize; }
+        .sd-crop-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            padding: 12px 18px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        /* === About rows === */
+        .sd-about-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 13px;
+        }
+        .sd-about-row:last-child { border-bottom: none; }
+        .sd-about-label { color: var(--text-sub); }
+        .sd-about-value {
+            color: var(--text-main);
+            font-family: 'Menlo', 'SF Mono', monospace;
+            font-size: 12px;
+            text-align: right;
+            word-break: break-all;
+        }
+
+        /* === Session item rename input === */
+        .session-rename-input {
+            margin-top: 8px;
+            display: flex;
+            gap: 6px;
+        }
+        .session-rename-input input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1.5px solid var(--card-border);
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            background: var(--input-bg);
+            color: var(--text-main);
+        }
+        .session-rename-input input:focus { outline: none; border-color: var(--primary); }
+        .session-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .session-rename {
+            background: rgba(140, 53, 28, 0.07);
+            border: none;
+            border-radius: 8px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .session-rename:hover { background: rgba(140, 53, 28, 0.14); }
+        .sessions-terminate-all {
+            margin: 12px 20px 0;
+            padding: 10px;
+            background: rgba(220, 38, 38, 0.06);
+            border: none;
+            border-radius: 10px;
+            color: var(--error);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: calc(100% - 40px);
+        }
+        .sessions-terminate-all:hover { background: rgba(220, 38, 38, 0.12); }
 
         /* === LOGOUT CONFIRM DIALOG === */
 
@@ -2725,8 +3301,12 @@
             </div>
 
             <div class="loading-messages" id="loadingMessages">Загрузка...</div>
-            <div class="messages-area" id="messagesArea">
-                <div class="messages-inner" id="messagesInner"></div>
+            <div class="messages-area-wrap">
+                <div class="messages-bg-layer" id="messagesBgLayer"></div>
+                <div class="messages-bg-dim" id="messagesBgDim"></div>
+                <div class="messages-area" id="messagesArea">
+                    <div class="messages-inner" id="messagesInner"></div>
+                </div>
             </div>
             <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" title="К последнему сообщению">&#8595;</button>
 
@@ -2804,6 +3384,7 @@
     <div class="profile-overlay" id="profileOverlay">
         <div class="profile-panel">
             <button class="profile-close" id="profileClose">&times;</button>
+            <div class="profile-poster" id="profilePoster"></div>
             <div class="profile-header">
                 <div class="profile-avatar" id="profileAvatar"></div>
                 <div class="profile-name" id="profileName"></div>
@@ -2924,6 +3505,26 @@
         </div>
     </div>
 
+    <!-- Profile poster crop dialog -->
+    <div class="sd-crop-overlay" id="posterCropOverlay">
+        <div class="sd-crop-dialog">
+            <div class="sd-crop-header">Обрезка постера — соотношение 3:1</div>
+            <div class="sd-crop-stage" id="posterCropStage">
+                <img class="sd-crop-image" id="posterCropImage" alt="">
+                <div class="sd-crop-frame" id="posterCropFrame">
+                    <div class="sd-crop-handle tl" data-handle="tl"></div>
+                    <div class="sd-crop-handle tr" data-handle="tr"></div>
+                    <div class="sd-crop-handle bl" data-handle="bl"></div>
+                    <div class="sd-crop-handle br" data-handle="br"></div>
+                </div>
+            </div>
+            <div class="sd-crop-actions">
+                <button class="sd-btn-secondary" id="posterCropCancel">Отмена</button>
+                <button class="sd-btn sd-btn-primary" id="posterCropSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Mobile responsive navigation -->
     <script>
     (function () {
@@ -3009,15 +3610,16 @@
     <script src="/js/app/metadata.js"></script>
     <script src="/js/app/clients.js"></script>
     <script src="/js/app/utils.js"></script>
-    <script src="/js/app/api.js?v=folders-pins-2"></script>
+    <script src="/js/app/api.js?v=personalization-2"></script>
     <script src="/js/app/files.js"></script>
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
-    <script src="/js/app/settings.js"></script>
+    <script src="/js/app/personalization.js?v=personalization-2"></script>
+    <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
-    <script src="/js/app/main.js?v=folders-pins-1"></script>
+    <script src="/js/app/main.js?v=personalization-2"></script>
     <script>
     /* Inject theme picker into settings dialog */
     (function () {
