@@ -32,7 +32,9 @@ npm run dev       # → http://localhost:5173
 - Auth flow через `IdentityApi.Auth` с транспортом `createGrpcWebTransport` (`Content-Type: application/grpc-web+proto`)
 - Типизированный клиент: `createClient(IdentityApi, identityTransport)` из `src/gen/identity_api_connect`
 - OTP ошибка детектируется через `ConnectError.metadata.get('x-error-code')`
-- Токен JWT хранится в `AuthContext`, передаётся во все API-вызовы через заголовок `x-auth-token`
+- Токен JWT хранится в `AuthContext` + персистится в `localStorage` под ключом **`barkfluff_dev_auth`** (JSON с `accessToken`/`refreshToken`/`accessTokenExpiration`/`refreshTokenExpiration`). При старте App.tsx проверяет expiration и автоматически очищает просроченные токены.
+- `deviceId` (UUID) генерируется один раз и сохраняется в `localStorage` под ключом **`barkfluff_device_id`** — используется для `x-device-id` header в gRPC-метаданных.
+- Передаётся во все API-вызовы через заголовок `x-auth-token` (plaintext, без base64)
 
 ### API клиент (`src/api/client.ts`)
 

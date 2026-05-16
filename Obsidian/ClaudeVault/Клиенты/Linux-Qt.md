@@ -10,12 +10,14 @@
 
 | Компонент | Технология |
 |-----------|------------|
-| GUI Framework | Qt 6 (Widgets, Network, Svg, Concurrent, Multimedia) |
+| GUI Framework | Qt 6 (Widgets, Network, Svg, Concurrent, Multimedia, MultimediaWidgets, DBus) |
 | Language | C++20 |
 | Build System | CMake 3.20+ |
 | RPC | gRPC + Protobuf |
 | Encryption | OpenSSL |
 | Optional | KDE Frameworks 6 (KConfig) |
+
+> `Qt6::DBus` — для интеграции с системными уведомлениями freedesktop. `MultimediaWidgets` — для встроенного видео-плеера.
 
 ## Сборка
 

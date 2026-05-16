@@ -48,7 +48,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - TTL: 9999 дней
 
 **`AuthUserProperty`** — настройки 2FA пользователя:
-- `OtpEnabled` (TOTP), `EmailOtpEnabled`, `OtpSecret` (Base32), `LastEmailAuthCode`
+- `OtpEnabled` (TOTP), `EmailOtpEnabled`, `OtpSecret` (Base32), `LastEmailAuthCode`, `SelectedOtpType` (выбранный по умолчанию метод 2FA)
 
 **`ConfirmationCode`** — код подтверждения регистрации (TTL 6 часов)
 
@@ -86,6 +86,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `GetActiveSessionsServer` | `UserId` | Список сессий по userId |
 | `RemoveActiveSessionServer` | `UserId`, `DeviceId` | Удалить сессию по userId + deviceId |
 | `CreateSessionForUserServer` | `UserId`, `DeviceId`, `DeviceName`, `OperationSystem`, `AppName`, `IpAddress` | Выпустить пару `access_token`+`refresh_token` для пользователя из другого сервиса (например [[Backend/FastAuth]] после Accept). Регистрирует устройство в Users + отправляет email-уведомление `SuccessfulLogin`. |
+| `ForceSetPasswordServer` | `UserId`, `NewPassword` | Принудительная смена пароля администратором (без OldPassword). Хеширует BCrypt, обновляет `UserPassword`, отправляет уведомление `PasswordChangedByAdmin`. Вызывается из AdminPanel. |
 
 ## Обязательные заголовки (XAuth) для большинства эндпоинтов
 
@@ -164,7 +165,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `SuccessfulLogin` | Успешный вход |
 | `ConfirmationOtpEmail` | Включение Email 2FA |
 | `ResetPassword` | Запрос сброса пароля |
-| `PasswordChanged` | Пароль изменён |
+| `PasswordChanged` | Пароль изменён пользователем |
+| `PasswordChangedByAdmin` | Принудительная смена пароля через `ForceSetPasswordServer` (AdminPanel) |
 
 ## Внешние зависимости
 
@@ -196,7 +198,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - **Сброс пароля**: `password_reset_requests`, `password_reset_user_not_found`, `password_reset_initiated_email`/`_authenticator`, `password_resets_confirmed`, `password_reset_confirmation_failed[_not_found|_already_used|_expired]`
 - **Изменение пароля**: `password_changes`, `password_changes_initial`, `password_change_failed_invalid_old`
 - **Сессии/logout**: `session_removal_attempts`, `sessions_removed`, `session_removal_failed_not_found`, `logouts`, `sessions_created`, `sessions_revoked`, `session_revocations_received`
-- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`
+- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`, `server_force_password_changes` (ForceSetPasswordServer)
+- **RabbitMQ**: `rabbitmq_events_consumed` (инкрементируется `SessionRevokedConsumer`)
 - **LocationClient**: `geolocation_requests`, `geolocation_success`, `geolocation_errors`
 - **Gauge**: `service_started_unix` (для uptime)
 

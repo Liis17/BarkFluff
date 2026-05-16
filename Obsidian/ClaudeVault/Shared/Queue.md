@@ -33,8 +33,12 @@
 
 - `Notification` (abstract) — базовый: TransportId, ServiceId, OwnerId, CreatedAt, Type, Payload
 - `EmailNotification : Notification` — добавляет Title и Address
-- `NotificationType` — enum типов (ConfirmationRegistration, ResetPassword, FailedLogin, ...)
+- `NotificationType` — enum: `Unknown=0`, `ConfirmationRegistration=1`, `ConfirmationOtpEmail=2`, `ConfirmationAuth=3`, `ResetPassword=4`, `FailedLogin=5`, `SuccessfulRegistration=6`, `SuccessfulLogin=7`, `PasswordChanged=8`, `TwoFactorMethodChanged=9`, **`PasswordChangedByAdmin=10`** (новый, см. [[Backend/Notification]] и `ForceSetPasswordServer` в [[Backend/Identity]])
 - `TransportId` — транспорт доставки (Email=1)
+
+## Namespace: `BarkFluff.Shared.Queue.Identity`
+
+- `SessionRevokedEvent` — отзыв сессии: `UserId`, `DeviceId`, `AccessTokenExpiresAt`. Публикуется [[Backend/Identity]] при revoke сессии, потребляется всеми сервисами с XAuth ([[Backend/Onliner]], [[Backend/Messages]], ...) для invalidation `TokenRevocationCache`.
 
 ## Namespace: `BarkFluff.Shared.Queue.Users`
 

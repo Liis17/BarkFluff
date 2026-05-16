@@ -41,8 +41,6 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `identity.conf` | `identity.barkfluff.com` → [[Identity]] | 7000 | gRPC |
 | `users.conf` | `users.barkfluff.com` → [[Users]] | 7001 | gRPC |
 | `beacon.conf` | `beacon.barkfluff.com` → [[Beacon]] | 7002 | gRPC |
-| `configuration.conf` | `configuration.barkfluff.com` → [[Configuration]] | 7003 | gRPC |
-| `notification.conf` | `notification.barkfluff.com` → [[Notification]] | 7004 | gRPC |
 | `files.conf` | `files.barkfluff.com` → [[Files]] | 7005 (gRPC) + 7006 (HTTP `/web/`) | gRPC + HTTP |
 | `messages.conf` | `messages.barkfluff.com` → [[Messages]] | 7007 | gRPC |
 | `fast-auth.conf` | `fast-auth.barkfluff.com` → [[FastAuth]] | 7008 | gRPC |
@@ -51,7 +49,8 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `web.conf` | `web.barkfluff.com` → [[Web]] | 7016 | HTTP (YARP proxy) |
 | `admin-panel.conf` | `panel.barkfluff.com` → [[AdminPanel]] | 51888 | HTTP |
 | `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 | HTTP (gRPC-Web) |
-| `minio.conf` | `minio.barkfluff.com` (Console :9001) + `s3.barkfluff.com` / `minio-api.barkfluff.com` (S3 API :9000) | 9001 / 9000 | HTTP + WebSocket |
+
+> ⚠️ Сервисы [[Configuration]] (порт 7003) и [[Notification]] (порт 7004) — **внутренние**, отдельных nginx-конфигов нет (наружу не публикуются). MinIO/S3 проксируется напрямую через провайдера (HostKey S3 в проде; в dev — Docker-сеть без nginx), `minio.conf` тоже нет.
 
 ---
 
@@ -84,12 +83,7 @@ Catch-all server block. Слушает `:80` и `:443 ssl` с `default_server`. 
 - `/api/files/upload/` — увеличенный `client_max_body_size 512m`, таймауты 600s (YARP пробрасывает загрузку файлов)
 - `/` — стандартный proxy_pass на [[Web]] `:7016`
 
-### `minio.conf`
-- `minio.barkfluff.com` → MinIO Console `:9001` (HTTP + WebSocket upgrade, `chunked_transfer_encoding off`)
-- `minio-api.barkfluff.com` / `s3.barkfluff.com` → MinIO S3 API `:9000` (`proxy_set_header Connection ""` для keep-alive)
-- `client_max_body_size 0` (без ограничений), `proxy_buffering off`
-
-### Остальные сервисы (identity, users, beacon, configuration, notification, messages, fast-auth, onliner, updates)
+### Остальные сервисы (identity, users, beacon, messages, fast-auth, onliner, updates)
 Единообразная структура:
 - HTTP → HTTPS 301
 - `listen 443 ssl http2`, `include 01-ssl-params.conf`
@@ -111,8 +105,6 @@ HTTP-сервисы (не gRPC), используют `proxy_pass`:
 | `identity.barkfluff.com` | [[Identity]] |
 | `users.barkfluff.com` | [[Users]] |
 | `beacon.barkfluff.com` | [[Beacon]] |
-| `configuration.barkfluff.com` | [[Configuration]] |
-| `notification.barkfluff.com` | [[Notification]] |
 | `files.barkfluff.com` | [[Files]] |
 | `messages.barkfluff.com` | [[Messages]] |
 | `fast-auth.barkfluff.com` | [[FastAuth]] |
@@ -121,8 +113,6 @@ HTTP-сервисы (не gRPC), используют `proxy_pass`:
 | `web.barkfluff.com` | [[Web]] |
 | `panel.barkfluff.com` | [[AdminPanel]] |
 | `developers.barkfluff.com` | [[Developers]] |
-| `minio.barkfluff.com` | MinIO Console |
-| `s3.barkfluff.com` / `minio-api.barkfluff.com` | MinIO S3 API |
 | `storage.barkfluff.com` | [[ClientStorage]] |
 | `barkfluff.com` / `api.barkfluff.com` | [[WebServer]] (single-server) |
 

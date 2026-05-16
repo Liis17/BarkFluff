@@ -404,7 +404,8 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 - `gradle/libs.versions.toml` — все версии зависимостей
 - `app/src/main/proto/` — 11 proto файлов
 - `app/src/main/java/com/barkfluff/client/` — все исходники
-- `PROJECT_MAP.md` — полная карта Android-проекта
+- `docs/` — `CACHING_SYSTEM.md`, `MATERIAL3_MIGRATION.md`, `MATERIAL3_REPORT.md`, `material_you_3_guide.md`
+- Полная карта проекта — в Obsidian: [[Android-ProjectMap]] + [[Android-FileIndex]] (отдельного `PROJECT_MAP.md` в репозитории нет)
 
 ## Сборка
 
