@@ -42,6 +42,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<PushNotificationConsumer>();
     x.AddConsumer<DismissPushConsumer>();
+    x.AddConsumer<AdminBroadcastConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -59,6 +60,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("dismiss-push-handler", e =>
         {
             e.ConfigureConsumer<DismissPushConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("admin-broadcast-handler", e =>
+        {
+            e.ConfigureConsumer<AdminBroadcastConsumer>(context);
         });
     });
 });

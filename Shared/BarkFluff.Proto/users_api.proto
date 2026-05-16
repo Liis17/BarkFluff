@@ -192,6 +192,12 @@ service UsersServerApi {
   // Получить устройства с Firebase токенами
   rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
 
+  // Получить устройства с Firebase токенами по списку DeviceId (для админ-рассылки)
+  rpc GetDevicesWithFirebaseTokensByDeviceIds(GetDevicesWithFirebaseTokensByDeviceIdsRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить ВСЕ устройства с Firebase токенами (для админ-рассылки на всех)
+  rpc GetAllDevicesWithFirebaseTokens(GetAllDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
   // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
   rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
 
@@ -622,6 +628,13 @@ message SetFirebaseTokenResponse { }
 
 message GetDevicesWithFirebaseTokensRequest {
   repeated int64 user_ids = 1; // идентификаторы пользователей
+}
+
+message GetDevicesWithFirebaseTokensByDeviceIdsRequest {
+  repeated string device_ids = 1; // идентификаторы устройств (Guid в string-форме)
+}
+
+message GetAllDevicesWithFirebaseTokensRequest {
 }
 
 message GetDevicesWithFirebaseTokensResponse {

@@ -14,7 +14,9 @@ using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.Devices.DeleteUserDevice;
+using BarkFluff.Users.Features.Devices.GetAllDevicesWithFirebaseTokens;
 using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokens;
+using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokensByDeviceIds;
 using BarkFluff.Users.Features.Devices.GetUserDevices;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.ExportData;
@@ -444,6 +446,31 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(query);
+    }
+
+    public override Task<GetDevicesWithFirebaseTokensResponse> GetDevicesWithFirebaseTokensByDeviceIds(GetDevicesWithFirebaseTokensByDeviceIdsRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("device_lookups_by_device_id");
+
+        var deviceIds = new List<Guid>(request.DeviceIds.Count);
+        foreach (var raw in request.DeviceIds)
+        {
+            if (Guid.TryParse(raw, out var id))
+                deviceIds.Add(id);
+        }
+
+        var query = new GetDevicesWithFirebaseTokensByDeviceIdsQuery
+        {
+            DeviceIds = deviceIds
+        };
+
+        return _mediator.Send(query);
+    }
+
+    public override Task<GetDevicesWithFirebaseTokensResponse> GetAllDevicesWithFirebaseTokens(GetAllDevicesWithFirebaseTokensRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("device_lookups_all");
+        return _mediator.Send(new GetAllDevicesWithFirebaseTokensQuery());
     }
 
     public override Task<UpdateProfileServerResponse> UpdateProfileServer(UpdateProfileServerRequest request, ServerCallContext context)

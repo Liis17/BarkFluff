@@ -12,6 +12,8 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Identity;
 
+using MassTransit;
+
 namespace Barkfluff.AdminPanel;
 
 public class Program
@@ -103,6 +105,19 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7010");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["ConfigurationService:Token"] ?? string.Empty));
+
+        // MassTransit RabbitMQ — для публикации админских событий (push-рассылки и т.п.)
+        builder.Services.AddMassTransit(x =>
+        {
+            x.UsingRabbitMq((ctx, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? throw new InvalidOperationException("RabbitMQ:Host not configured"), "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"] ?? throw new InvalidOperationException("RabbitMQ:Username not configured"));
+                    h.Password(builder.Configuration["RabbitMQ:Password"] ?? throw new InvalidOperationException("RabbitMQ:Password not configured"));
+                });
+            });
+        });
 
         // Configure and validate TelegramSettings
         builder.Services.AddOptions<TelegramSettings>()
@@ -218,6 +233,9 @@ public class Program
 
         // Map Remote Docker Endpoints
         app.MapRemoteDockerEndpoints();
+
+        // Map Notifications Endpoints (push-рассылки)
+        app.MapNotificationsEndpoints();
 
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions

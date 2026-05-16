@@ -57,6 +57,10 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 - `MetricsCollectorService` — фоновый сбор метрик (IHostedService)
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
+### MassTransit (RabbitMQ publisher)
+
+AdminPanel зарегистрирован как **publisher** в MassTransit (без consumers), чтобы публиковать админские RabbitMQ-события — например `AdminBroadcastNotificationEvent` (страница «Уведомления»). Конфигурация `RabbitMQ:Host/Username/Password` приходит из Configuration service. Используется через `IPublishEndpoint` в endpoint-методах.
+
 ### Endpoint Groups
 
 Каждый файл в `Endpoints/` — extension method `Map{Name}Endpoints()`. Добавление: создать метод в существующем файле или новый файл + вызов в `Program.cs`.
@@ -82,6 +86,21 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 | `restarting.html` | Заглушка на время перезагрузки |
 | `updating.html` | Заглушка на время обновления |
 | `Redesigned/` | Новая SPA-версия (`/v2`) — index.html + app.js + screen-*.js + styles.css |
+
+### SPA-экраны (Pages/Redesigned)
+
+| `data-screen` | Группа | Файл | Назначение |
+|---------------|--------|------|-----------|
+| `login` | Auth | `screen-login.js` | Telegram-вход |
+| `dashboard` | Observability | `screen-dashboard.js` | KPI, трафик |
+| `services` | Observability | `screen-services.js` | Docker-сервисы |
+| `logs` | Observability | `screen-logs.js` | Логи Seq |
+| `badges` | Content | `screen-content.js` | Бейджи |
+| `stickers` | Content | `screen-content.js` | Стикерпаки |
+| `users` | Content | `screen-content.js` | Пользователи |
+| `notifications` | Engagement | `screen-notifications.js` | Рассылка push на Android (forму + Android-preview) |
+| `s3-storage` | Storage | `screen-s3.js` | Конфигурация бакетов |
+| `s3-browser` | Storage | `screen-s3.js` | Файлы в бакете |
 
 ### Параллельная UI v2 (Redesigned)
 
@@ -126,5 +145,18 @@ Auth внутри SPA: на старте `App.checkAuth()` дёргает `/api/
 - `LiteDB 5.0.21` — embedded NoSQL
 - `Telegram.Bot 22.0.2`
 - `AWSSDK.S3`
+- `MassTransit.RabbitMQ 8.5.2` — publisher для админских событий
 - [[Backend/GrpcServer]] — LoadConfiguration
 - [[Shared/Auth]] — JwtClientInterceptor
+- [[Shared/Queue]] — события RabbitMQ (`AdminBroadcastNotificationEvent`)
+
+## REST API: Notifications
+
+`Endpoints/NotificationsEndpoints.cs` — публикует `AdminBroadcastNotificationEvent` через `IPublishEndpoint`. Потребитель — [[Backend/CloudMessaging|CloudMessaging]] (`admin-broadcast-handler` очередь).
+
+| Метод | Путь | Тело | Ответ |
+|-------|------|------|-------|
+| POST | `/api/notifications/broadcast/all` | `{ title, body, imageUrl?, confirm: true }` | `{ enqueued: true }` |
+| POST | `/api/notifications/broadcast/devices` | `{ title, body, imageUrl?, deviceIds: string[] }` | `{ enqueued: true, deviceCount }` |
+
+`deviceIds` — Guid из `UserDevices.Id`. Без `confirm=true` — `/all` отклоняется с 400.
