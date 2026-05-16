@@ -32,11 +32,11 @@ struct EditChatFolderView: View {
 
     var body: some View {
         Form {
-            Section("Название") {
-                TextField("Например, Работа", text: $viewModel.name)
+            Section("settings.chat_folders.name.section") {
+                TextField("settings.chat_folders.name.placeholder", text: $viewModel.name)
             }
 
-            Section("Иконка") {
+            Section("settings.chat_folders.icon.section") {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
                     ForEach(folderIcons, id: \.self) { emoji in
                         Button {
@@ -60,13 +60,15 @@ struct EditChatFolderView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Чаты в папке") {
+            Section("settings.chat_folders.chats.section") {
                 HStack {
-                    Text("Включённые чаты")
+                    Text("settings.chat_folders.chats.included")
                     Spacer()
-                    Text(viewModel.selectedChatIDs.isEmpty ? "Нет" : "\(viewModel.selectedChatIDs.count)")
+                    Text(viewModel.selectedChatIDs.isEmpty
+                         ? String(localized: "common.none")
+                         : "\(viewModel.selectedChatIDs.count)")
                         .foregroundStyle(.secondary)
-                    Button("Изменить…") {
+                    Button("settings.chat_folders.chats.change") {
                         showChatPicker = true
                     }
                 }
@@ -79,23 +81,25 @@ struct EditChatFolderView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(viewModel.isCreating ? "Новая папка" : "Папка")
+        .navigationTitle(viewModel.isCreating
+                         ? Text("settings.chat_folders.new")
+                         : Text("settings.chat_folders.edit"))
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Отмена") {
+                Button("common.cancel") {
                     onClose(false)
                     dismiss()
                 }
             }
             if !viewModel.isCreating {
                 ToolbarItem(placement: .destructiveAction) {
-                    Button("Удалить", role: .destructive) {
+                    Button("common.delete", role: .destructive) {
                         showDeleteConfirm = true
                     }
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Сохранить") {
+                Button("common.save") {
                     Task {
                         if await viewModel.save() {
                             onClose(true)
@@ -117,10 +121,10 @@ struct EditChatFolderView: View {
             .frame(minWidth: 420, minHeight: 480)
         }
         .confirmationDialog(
-            "Удалить папку?",
+            "settings.chat_folders.delete_confirm.title",
             isPresented: $showDeleteConfirm
         ) {
-            Button("Удалить", role: .destructive) {
+            Button("common.delete", role: .destructive) {
                 Task {
                     if await viewModel.delete() {
                         onClose(true)
@@ -128,9 +132,9 @@ struct EditChatFolderView: View {
                     }
                 }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         } message: {
-            Text("Чаты не будут удалены, только сама папка.")
+            Text("settings.chat_folders.delete_confirm.message")
         }
     }
 }

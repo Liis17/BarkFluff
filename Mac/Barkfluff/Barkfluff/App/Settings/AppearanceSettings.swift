@@ -20,11 +20,12 @@ enum AppTheme: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// Локализованное название для отображения в UI.
-    var title: String {
+    /// `LocalizedStringKey` — реактивно к смене `environment(\.locale)`.
+    var titleKey: LocalizedStringKey {
         switch self {
-        case .system: return "Системная"
-        case .light:  return "Светлая"
-        case .dark:   return "Тёмная"
+        case .system: return "enum.theme.system"
+        case .light:  return "enum.theme.light"
+        case .dark:   return "enum.theme.dark"
         }
     }
 

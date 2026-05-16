@@ -1,0 +1,33 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!--  Settings: general  -->
+    <system:String x:Key="L_Settings_Title">Settings</system:String>
+    <system:String x:Key="L_Settings_Default">Settings</system:String>
+
+    <!--  Settings: sidebar (categories)  -->
+    <system:String x:Key="L_Settings_Sidebar_Profile">Profile</system:String>
+    <system:String x:Key="L_Settings_Sidebar_General">General</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Notifications">Notifications and Sound</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Language">Language</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Security">Security</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Privacy">Privacy</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Personalization">Personalization</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Cloud">Cloud</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Cache">Cache</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Sessions">Active Sessions</system:String>
+    <system:String x:Key="L_Settings_Sidebar_AboutApp">About App</system:String>
+    <system:String x:Key="L_Settings_Sidebar_AboutServer">About Server</system:String>
+
+    <!--  Settings: Language page  -->
+    <system:String x:Key="L_Settings_Language_Page_Title">Language</system:String>
+    <system:String x:Key="L_Settings_Language_Header">INTERFACE LANGUAGE</system:String>
+    <system:String x:Key="L_Settings_Language_Group_Title">App language</system:String>
+    <system:String x:Key="L_Settings_Language_Option_System">System</system:String>
+    <system:String x:Key="L_Settings_Language_Option_Russian">Russian</system:String>
+    <system:String x:Key="L_Settings_Language_Option_English">English</system:String>
+    <system:String x:Key="L_Settings_Language_Hint">When set to “System”, the app follows the Windows language. If the Windows language is neither Russian nor English, English is used.</system:String>
+
+</ResourceDictionary>

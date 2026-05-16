@@ -95,6 +95,11 @@ final class DependencyContainer {
     /// Локальные настройки внешнего вида (тема приложения).
     let appearanceSettings: AppearanceSettings
 
+    // MARK: - Localization
+
+    /// Локальные настройки языка интерфейса.
+    let localizationSettings: LocalizationSettings
+
     // MARK: - Stickers
 
     /// Список недавно использованных стикеров (UserDefaults).
@@ -288,6 +293,9 @@ final class DependencyContainer {
         // Appearance (тема приложения)
         self.appearanceSettings = AppearanceSettings()
 
+        // Localization (язык интерфейса)
+        self.localizationSettings = LocalizationSettings()
+
         // Stickers
         self.recentStickersStore = RecentStickersStore()
 
@@ -349,6 +357,7 @@ final class DependencyContainer {
         await MainActor.run {
             personalizationSettings.reset()
             appearanceSettings.reset()
+            localizationSettings.reset()
         }
 
         // 6. Закрываем gRPC-соединения (эндпоинты будут перевыбраны через beacon при логине)

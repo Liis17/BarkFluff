@@ -74,6 +74,7 @@ namespace BarkFluff.Client.WPF
 
             base.OnStartup(e);
 
+            LanguageLoader();
             ThemeLoader();
 
             // Проверяем регистрацию (используем ваш ProtocolHelper)
@@ -541,6 +542,33 @@ namespace BarkFluff.Client.WPF
                 ? "Resources/Styles/Themes/DarkTheme.xaml"
                 : "Resources/Styles/Themes/LightTheme.xaml";
             dicts.Add(new ResourceDictionary { Source = new Uri(path, UriKind.Relative) });
+        }
+
+        /// <summary>
+        /// Подменяет словарь локализованных строк в <see cref="Application.Resources"/>.
+        /// Вызывается из <see cref="LanguageManager.Apply"/> и из <see cref="LanguageLoader"/> на старте.
+        /// </summary>
+        public static void ApplyLanguage(string effectiveLang)
+        {
+            var dicts = Application.Current.Resources.MergedDictionaries;
+            var existing = dicts.FirstOrDefault(d =>
+                d.Source?.OriginalString.Contains("/Localization/") == true);
+            if (existing != null)
+                dicts.Remove(existing);
+
+            string path = $"Resources/Localization/Strings.{effectiveLang}.xaml";
+            dicts.Add(new ResourceDictionary { Source = new Uri(path, UriKind.Relative) });
+        }
+
+        /// <summary>
+        /// Резолвит сохранённый выбор языка (реестр) с учётом значения "system"
+        /// (берётся <see cref="System.Globalization.CultureInfo.CurrentUICulture"/> с fallback на en)
+        /// и применяет результат через <see cref="LanguageManager.Apply"/>.
+        /// </summary>
+        private void LanguageLoader()
+        {
+            var stored = LanguageRegistryHelper.GetLanguage();
+            LanguageManager.Instance.Apply(stored);
         }
     }
 }

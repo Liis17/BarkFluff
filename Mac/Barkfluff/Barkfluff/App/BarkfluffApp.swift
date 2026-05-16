@@ -18,6 +18,7 @@ struct BarkfluffApp: App {
             RootView()
                 .environment(coordinator)
                 .environment(container)
+                .environment(\.locale, container.localizationSettings.appliedLocale)
         }
         .windowStyle(.automatic)
         .windowToolbarStyle(.unified)
@@ -26,16 +27,17 @@ struct BarkfluffApp: App {
             SettingsView()
                 .environment(container)
                 .environment(coordinator)
+                .environment(\.locale, container.localizationSettings.appliedLocale)
         }
         .commands {
             // Keyboard shortcuts для навигации по сайдбару
             CommandGroup(after: .sidebar) {
-                Button("Чаты") {
+                Button("commands.chats") {
                     coordinator.activeTab = .chats
                 }
                 .keyboardShortcut("1", modifiers: .command)
 
-                Button("Профиль") {
+                Button("commands.profile") {
                     coordinator.activeTab = .profile
                 }
                 .keyboardShortcut("2", modifiers: .command)
