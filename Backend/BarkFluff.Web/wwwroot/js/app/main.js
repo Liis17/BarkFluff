@@ -238,10 +238,21 @@
                             handleOnlineStatus(s.userId, s.status, s.lastSeen);
                         }
                     }).catch(function () {});
+                    // Заголовок вкладки и favicon — «Чат с @username» + аватар собеседника
+                    getUser(peerId).then(function (peer) {
+                        if (chatId !== currentChatId || !peer) return;
+                        var label = peer.username
+                            ? 'Чат с @' + peer.username
+                            : 'Чат с ' + (((peer.firstName || '') + ' ' + (peer.lastName || '')).trim() || 'пользователем');
+                        var fav = peer.profilePicturePreview || peer.profilePicture || info.picture || null;
+                        setChatTabContext(label, fav);
+                    }).catch(function () {});
                 }
             } else {
                 chatHeaderStatus.textContent = (info.membersId ? info.membersId.length : 0) + ' участников';
                 chatHeaderStatus.classList.remove('online');
+                // Для группового чата — сбрасываем кастомный контекст вкладки
+                resetChatTabContext();
             }
 
             var fromId = info.firstUnreadMessageId || 0;
@@ -295,10 +306,12 @@
                         lastDate = msgDate;
                         var sep = document.createElement('div');
                         sep.className = 'msg-date-separator';
+                        sep.dataset.date = msgDate;
                         sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                         messagesInner.appendChild(sep);
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts).then(function (el) {
+                        el.dataset.date = msgDate;
                         messagesInner.appendChild(el);
                     });
                 });
@@ -320,8 +333,10 @@
 
         return p.then(function () {
             var msgDate = u.formatDate(msg.sentAt);
-            var lastGroup = messagesInner.lastElementChild;
-            var lastMsgDate = lastGroup && lastGroup.dataset && lastGroup.dataset.date;
+            var lastMsgDate = null;
+            for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
+                if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
+            }
             if (msgDate !== lastMsgDate) {
                 var sep = document.createElement('div');
                 sep.className = 'msg-date-separator';
@@ -579,7 +594,31 @@
 
     // ========== TITLE UNREAD BADGE ==========
 
-    var baseTitle = 'BarkFluff — Мессенджер';
+    var defaultBaseTitle = 'BarkFluff — Мессенджер';
+    var baseTitle = defaultBaseTitle;
+
+    var faviconEl = document.getElementById('favicon');
+    var defaultFaviconHref = faviconEl ? faviconEl.getAttribute('href') : '/favicon.ico';
+
+    function setFavicon(href) {
+        if (!faviconEl) return;
+        faviconEl.setAttribute('href', href || defaultFaviconHref);
+        // Snapshot type — для произвольных URL не указываем MIME, иначе SVG/PNG не отрендерится
+        if (href) faviconEl.removeAttribute('type');
+        else faviconEl.setAttribute('type', 'image/x-icon');
+    }
+
+    function resetChatTabContext() {
+        baseTitle = defaultBaseTitle;
+        setFavicon(null);
+        updateTitleBadge();
+    }
+
+    function setChatTabContext(title, faviconHref) {
+        baseTitle = title || defaultBaseTitle;
+        setFavicon(faviconHref || null);
+        updateTitleBadge();
+    }
 
     function updateTitleBadge() {
         var total = 0;
@@ -1392,7 +1431,7 @@
         var isOutgoing = msgEl.classList.contains('outgoing');
         contextMenuTarget = { messageId: msgId, isOutgoing: isOutgoing };
 
-        var msgObj = messages.find(function (m) { return m.id === msgId; });
+        var msgObj = messages.find(function (m) { return Number(m.id) === Number(msgId); });
         var isSystem = msgObj && (msgObj.type === 2 || msgObj.type === 'SYSTEM');
         var canModify = isOutgoing && !isSystem;
         var editBtn = msgContextMenu.querySelector('button[data-act="edit"]');
@@ -1599,18 +1638,19 @@
             if (!btn || !contextMenuTarget) return;
             var act = btn.dataset.act;
             var msgId = contextMenuTarget.messageId;
-            var msg = messages.find(function (m) { return m.id === msgId; });
+            var isOutgoing = contextMenuTarget.isOutgoing;
+            var msg = messages.find(function (m) { return Number(m.id) === Number(msgId); });
             closeContextMenu();
             if (act === 'reply') {
                 if (msg) setPendingReply(msg);
             } else if (act === 'forward') {
                 openForwardModal(resolveForwardSourceId(msg, msgId));
             } else if (act === 'edit') {
-                if (msg && contextMenuTarget && contextMenuTarget.isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
+                if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     setPendingEdit(msg);
                 }
             } else if (act === 'delete') {
-                if (msg && contextMenuTarget && contextMenuTarget.isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
+                if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     requestDelete(msg.id);
                 }
             } else if (act === 'pin') {

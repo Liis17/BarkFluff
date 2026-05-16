@@ -91,6 +91,14 @@ docker-compose -f docker-compose-dev.yml up web
 - `applyMessageEdit/applyMessageDelete` обновляют локальный `messages[]`, перерендеривают bubble (через `BF.messages.buildMessageElement`) или удаляют DOM-узел; обновляют `chat.lastMessage` в чат-листе.
 - Realtime: подписки `BF.realtime.on('message_edited' | 'message_deleted', ...)` зеркалируют изменения с других устройств.
 - Во время `pendingEdit` attach-flow (`sendMessageWithFiles`) заблокирован, чтобы drop/paste не отправил новое сообщение поверх правки.
+- В обработчике клика по `#msgContextMenu` `isOutgoing` снимается из `contextMenuTarget` **до** `closeContextMenu()` (иначе `contextMenuTarget = null` обнуляется и условия для edit/delete всегда падают). Сопоставление сообщения — `Number(m.id) === Number(msgId)`, чтобы пережить возможное расхождение типов int64.
+
+## Контекст вкладки браузера (`main.js`)
+
+`baseTitle` и `<link id="favicon">` динамически меняются при открытии чата:
+- **Приватный чат** — после `getChatInfo` вызывается `getUser(peerId)` → `setChatTabContext('Чат с @' + username, peer.profilePicturePreview || peer.profilePicture)`. Это меняет `document.title` (через `updateTitleBadge`, который сохраняет префикс `(N)` для непрочитанных) и favicon.
+- **Групповой чат / нет собеседника** — `resetChatTabContext()` возвращает дефолтный заголовок «BarkFluff — Мессенджер» и `/favicon.ico`.
+- Гонка между быстрым переключением чатов решается проверкой `chatId !== currentChatId` в callback'е `getUser`.
 
 Механизмы: exponential backoff (2с → 30с), page-visibility reconnection, keep-alive ping каждые 3с, tab title badge `(N)`, Browser Notification API, scroll-based mark-as-read.
 
