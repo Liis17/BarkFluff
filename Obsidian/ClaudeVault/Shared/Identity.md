@@ -3,7 +3,7 @@
 Разделяемая библиотека с общими типами идентификации. Используется всеми микросервисами.
 
 Расположение: `Shared/BarkFluff.Shared.Identity/`
-Target framework: `net9.0`, без внешних зависимостей.
+Target framework: `net10.0`, без внешних зависимостей.
 
 > 📋 Подробная карта файлов → [[Shared/Identity-ProjectMap]]
 

@@ -53,7 +53,7 @@ RUN cp gen-index.js gen/index.js && \
 
 # Final stage: runtime image with pre-built .NET output from runner + JS bundle from proto-build
 # Web остаётся на Alpine: healthcheck требует wget (busybox), которого нет в chiseled
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 COPY --from=proto-build /protobuild/bundle/barkfluff.bundle.js /app/wwwroot/js/proto/barkfluff.bundle.js
 COPY publish/ .

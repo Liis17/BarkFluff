@@ -1,6 +1,6 @@
 # BarkFluff.Shared.Queue
 
-Разделяемая библиотека (.NET 9.0) с типами событий для RabbitMQ (MassTransit). Только POCO-классы, без логики.
+Разделяемая библиотека (.NET 10.0) с типами событий для RabbitMQ (MassTransit). Только POCO-классы, без логики.
 
 Расположение: `Shared/BarkFluff.Shared.Queue/`
 
