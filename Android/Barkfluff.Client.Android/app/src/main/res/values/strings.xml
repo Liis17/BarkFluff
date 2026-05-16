@@ -3,7 +3,9 @@
     <string name="app_name">Barkfluff</string>
 
     <!-- Share intent (системное «Поделиться») -->
-    <string name="share_pick_chat_title">Отправить в…</string>
+    <string name="share_pick_chat_title">Куда отправить?</string>
+    <string name="share_pick_chat_subtitle">Через Barkfluff</string>
+    <string name="share_preview_label">Что отправить</string>
     <string name="share_no_chats">Нет доступных чатов</string>
     <string name="share_not_authorized">Войдите в Barkfluff, чтобы делиться сюда</string>
     <string name="share_empty">Нечего отправить</string>
