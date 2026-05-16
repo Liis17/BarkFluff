@@ -1,7 +1,7 @@
 # BarkFluff.Shared.Identity — Карта проекта
 
 Расположение: `Shared/BarkFluff.Shared.Identity/`
-Target framework: `net9.0`
+Target framework: `net10.0`
 Зависимости: нет (zero-dependency библиотека)
 
 ---
@@ -15,7 +15,7 @@ Target framework: `net9.0`
 ## Файлы проекта
 
 ### `BarkFluff.Shared.Identity.csproj`
-Файл проекта. net9.0, Nullable enable, ImplicitUsings enable. Никаких NuGet-зависимостей.
+Файл проекта. net10.0, Nullable enable, ImplicitUsings enable. Никаких NuGet-зависимостей.
 
 ---
 

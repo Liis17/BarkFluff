@@ -4,7 +4,7 @@
 
 
 Автономный микросервис для хранения и раздачи клиентских дистрибутивов BarkFluff (Windows, Android, macOS, iOS).
-REST API на ASP.NET 9.0, файлы в S3/Minio, метаданные в SQLite.
+REST API на ASP.NET Core 10.0, файлы в S3/Minio, метаданные в SQLite.
 
 **Не входит** в основную микросервисную инфраструктуру — нет gRPC, нет MassTransit, нет XAuth, нет Configuration service. Работает изолированно.
 
