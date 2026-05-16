@@ -17,8 +17,8 @@ docker-compose -f docker-compose-dev.yml up web
 
 Три функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
-2. **gRPC-Web прокси** — `Grpc.AspNetCore.Web` конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам
-3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис
+2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP.
+3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**)
 
 ## YARP Routes
 
@@ -58,11 +58,10 @@ docker-compose -f docker-compose-dev.yml up web
 - `settings.js` — многоэкранная панель настроек (профиль, 2FA, сессии, пароль)
 - `main.js` — bootstrap мессенджера
 
-**Дополнительные страницы:**
-- `mobile.html` — мобильная версия интерфейса
-
 **Proto bundle** (`wwwroot/js/proto/barkfluff.bundle.js`):
 Генерируется через `scripts/generate-proto.ps1` (или `.sh`). Требует: protoc, protoc-gen-grpc-web, Node.js (esbuild).
+
+> `wwwroot/` содержит только `index.html`, `messenger.html`, `favicon.ico` и каталог `js/`. Отдельной мобильной страницы (`mobile.html`) нет — мобильный режим реализуется адаптивной вёрсткой основных страниц.
 
 ## Аутентификация (gRPC-Web)
 
@@ -141,6 +140,6 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 
 ## Зависимости
 
-- `Grpc.AspNetCore.Web`
-- `Yarp.ReverseProxy`
+- `Yarp.ReverseProxy` 2.2.0 — единственный NuGet-пакет
 - [[Backend/GrpcServer]] — Serilog, MetricsCollector, LoadConfiguration
+- Кастомный `GrpcWebResponseStream` в `Program.cs` — base64-обёртка для server-streaming через gRPC-Web (без `Grpc.AspNetCore.Web`, который несовместим с YARP)

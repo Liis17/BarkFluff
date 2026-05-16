@@ -22,13 +22,15 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 **FilesApiService** (`TokenType.User`) — клиентский API:
 - `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`
-- Стикеры: `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
+- Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`
 
-**FilesServerApiService** (`TokenType.Service`) — серверный API:
+**FilesServerApiService** (`TokenType.Service`) — серверный API (включает админ-операции для [[Backend/AdminPanel]]):
 - `GetFileData` / `GetFilesData` — метаданные файлов
 - `UploadBadgeImage` — загрузка PNG бейджей (байты напрямую, без сжатия)
 - `UploadAvatarServer` — аватар от имени пользователя
+- `UploadPosterServer` — постер профиля (UserProfilePoster) от имени пользователя для админ-панели
 - `GetUserStorageInfoServer` — хранилище по userId
+- Стикеры (управление): `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
 
 ### REST-контроллер
 
