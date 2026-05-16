@@ -81,6 +81,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | `badges.html` | CRUD бейджей |
 | `stickers.html` | Управление стикерпаками |
 | `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
+| `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
 | `s3-storage.html` | Конфигурация S3/Minio бакетов |
 | `s3-browser.html` | Браузер S3-объектов с presigned URL |
 | `restarting.html` | Заглушка на время перезагрузки |
