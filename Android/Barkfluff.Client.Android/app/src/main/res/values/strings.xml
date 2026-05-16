@@ -130,4 +130,21 @@
     <string name="btn_back">Назад</string>
     <string name="btn_done">Готово</string>
     <string name="loading">Загрузка…</string>
+
+    <!-- Widget -->
+    <string name="widget_pinned_chats_label">Закреплённые чаты</string>
+    <string name="widget_empty_title">Нет закреплённых чатов</string>
+    <string name="widget_login_required">Войдите в приложение</string>
+    <string name="widget_settings_title">Виджеты</string>
+    <string name="widget_configure_title">Настройка виджета</string>
+    <string name="widget_name_hint">Название виджета</string>
+    <string name="widget_chats_hint">Чаты (до 3)</string>
+    <string name="widget_max_chats_reached">Можно выбрать максимум 3 чата</string>
+    <string name="widget_no_chats_selected">Выберите хотя бы 1 чат</string>
+    <string name="widget_btn_save">Сохранить</string>
+    <string name="widget_btn_pick_chats">Выбрать чаты</string>
+    <string name="widget_empty_state">Виджеты ещё не созданы.\nЧтобы добавить виджет, удерживайте палец на рабочем столе и выберите BarkFluff → Закреплённые чаты.</string>
+    <string name="widget_not_placed">Не размещён на рабочем столе</string>
+    <string name="widget_chats_count">%d из 3 чатов</string>
+    <string name="widget_default_name">Закреплённые чаты</string>
 </resources>
