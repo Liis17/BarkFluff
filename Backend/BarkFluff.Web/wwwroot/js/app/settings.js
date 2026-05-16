@@ -17,6 +17,23 @@
     var OTP_AUTHENTICATOR = 1;
     var OTP_EMAIL = 2;
 
+    // ProfileFieldVisibility enum values (mirrors proto)
+    var VIS_ALL = 0;
+    var VIS_FRIENDS = 1;
+    var VIS_NONE = 2;
+    var VIS_OPTIONS = [
+        { value: VIS_ALL, label: 'Все' },
+        { value: VIS_FRIENDS, label: 'Друзья' },
+        { value: VIS_NONE, label: 'Никто' }
+    ];
+
+    // UploadFileType enum values used here
+    var FT_MESSAGE_ATTACHMENT_IMAGE = 2;
+    var FT_USER_PROFILE_POSTER = 10;
+
+    // Web app version (shown in About)
+    var WEB_VERSION = '1.0';
+
     // Error code for wrong old password
     var ERR_WRONG_OLD_PASSWORD = 'A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04';
 
@@ -73,13 +90,17 @@
     function showView(name) {
         backBtn.classList.toggle('visible', viewStack.length > 0);
         switch (name) {
-            case 'main':      renderMain(); break;
-            case 'profile':   renderProfile(); break;
-            case 'name':      renderName(); break;
-            case 'bio':       renderBio(); break;
-            case 'password':  renderPassword(); break;
-            case 'twofa':     renderTwoFA(); break;
-            case 'sessions':  renderSessions(); break;
+            case 'main':            renderMain(); break;
+            case 'profile':         renderProfile(); break;
+            case 'name':            renderName(); break;
+            case 'bio':             renderBio(); break;
+            case 'password':        renderPassword(); break;
+            case 'twofa':           renderTwoFA(); break;
+            case 'sessions':        renderSessions(); break;
+            case 'privacy':         renderPrivacy(); break;
+            case 'notifications':   renderNotifications(); break;
+            case 'personalization': renderPersonalization(); break;
+            case 'about':           renderAbout(); break;
         }
     }
 
@@ -132,6 +153,64 @@
             if (d && d.user) currentUser = d.user;
             return currentUser;
         });
+    }
+
+    function makeToggleRow(title, desc, initial, onChange) {
+        var row = document.createElement('div');
+        row.className = 'sd-toggle-row';
+        var info = document.createElement('div');
+        info.className = 'sd-toggle-info';
+        var t = document.createElement('div');
+        t.className = 'sd-toggle-title';
+        t.textContent = title;
+        info.appendChild(t);
+        if (desc) {
+            var d = document.createElement('div');
+            d.className = 'sd-toggle-desc';
+            d.textContent = desc;
+            info.appendChild(d);
+        }
+        var sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'sd-switch' + (initial ? ' on' : '');
+        sw.setAttribute('aria-pressed', initial ? 'true' : 'false');
+        sw.addEventListener('click', function () {
+            var next = !sw.classList.contains('on');
+            sw.classList.toggle('on', next);
+            sw.setAttribute('aria-pressed', next ? 'true' : 'false');
+            if (onChange) onChange(next, sw);
+        });
+        row.appendChild(info);
+        row.appendChild(sw);
+        return { row: row, getValue: function () { return sw.classList.contains('on'); }, setValue: function (v) {
+            sw.classList.toggle('on', !!v);
+            sw.setAttribute('aria-pressed', v ? 'true' : 'false');
+        }, setDisabled: function (v) { sw.disabled = !!v; } };
+    }
+
+    function makeSegmented(options, initial, onChange) {
+        var wrap = document.createElement('div');
+        wrap.className = 'sd-segmented';
+        var current = initial;
+        var btns = [];
+        options.forEach(function (opt) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sd-segmented-option' + (opt.value === initial ? ' active' : '');
+            b.textContent = opt.label;
+            b.addEventListener('click', function () {
+                if (current === opt.value) return;
+                current = opt.value;
+                btns.forEach(function (x) {
+                    x.classList.toggle('active', x.dataset.val === String(opt.value));
+                });
+                if (onChange) onChange(opt.value);
+            });
+            b.dataset.val = String(opt.value);
+            btns.push(b);
+            wrap.appendChild(b);
+        });
+        return { el: wrap, getValue: function () { return current; } };
     }
 
     function renderAvatarEl(user, className) {
@@ -193,6 +272,13 @@
         ]);
         body.appendChild(secAccount);
 
+        // Section: Privacy & notifications
+        var secPrivacy = makeSection('Конфиденциальность', [
+            { icon: '🛡️', label: 'Приватность', view: 'privacy' },
+            { icon: '🔔', label: 'Уведомления', view: 'notifications' }
+        ]);
+        body.appendChild(secPrivacy);
+
         // Section: Security
         var secSecurity = makeSection('Безопасность', [
             { icon: '🔒', label: 'Пароль', view: 'password' },
@@ -200,11 +286,23 @@
         ]);
         body.appendChild(secSecurity);
 
+        // Section: Personalization
+        var secPers = makeSection('Персонализация', [
+            { icon: '🎨', label: 'Фон чата и постер', view: 'personalization' }
+        ]);
+        body.appendChild(secPers);
+
         // Section: Devices
         var secDevices = makeSection('Устройства', [
             { icon: '📱', label: 'Активные сессии', view: 'sessions' }
         ]);
         body.appendChild(secDevices);
+
+        // Section: About
+        var secAbout = makeSection('О приложении', [
+            { icon: 'ℹ️', label: 'О BarkFluff', view: 'about' }
+        ]);
+        body.appendChild(secAbout);
 
         // Logout button with SVG icon
         var logoutBtn = document.createElement('button');
@@ -669,53 +767,471 @@
                 body.innerHTML = '<div class="sd-hint" style="padding:20px">Нет активных сессий</div>';
                 return;
             }
-            sessions.forEach(function (s) {
-                var isCurrent = s.deviceId && currentDeviceId && s.deviceId === currentDeviceId;
-                var item = document.createElement('div');
-                item.className = 'session-item' + (isCurrent ? ' current' : '');
 
-                var info = document.createElement('div');
-                info.className = 'session-info';
+            var otherSessions = sessions.filter(function (s) {
+                return !(s.deviceId && currentDeviceId && s.deviceId === currentDeviceId);
+            });
 
-                var name = document.createElement('div');
-                name.className = 'session-name';
-                name.textContent = s.customName || s.originalName || s.appName || 'Устройство';
-
-                var meta = document.createElement('div');
-                meta.className = 'session-meta';
-                var parts = [];
-                if (s.operationSystem) parts.push(s.operationSystem);
-                if (s.location) parts.push(s.location);
-                if (s.createdAt) parts.push('с ' + new Date(s.createdAt).toLocaleDateString('ru'));
-                meta.textContent = parts.join(' · ');
-
-                info.appendChild(name);
-                info.appendChild(meta);
-                item.appendChild(info);
-
-                if (isCurrent) {
-                    var badge = document.createElement('span');
-                    badge.style.cssText = 'font-size:11px;color:var(--primary);font-weight:600;flex-shrink:0;';
-                    badge.textContent = 'Это устройство';
-                    item.appendChild(badge);
-                } else {
-                    var termBtn = document.createElement('button');
-                    termBtn.className = 'session-terminate';
-                    termBtn.textContent = 'Завершить';
-                    termBtn.addEventListener('click', function () {
-                        termBtn.disabled = true;
-                        BF.api.removeActiveSession(s.deviceId).then(function () {
-                            item.parentNode && item.parentNode.removeChild(item);
-                        }).catch(function () { termBtn.disabled = false; });
+            if (otherSessions.length > 0) {
+                var termAllBtn = document.createElement('button');
+                termAllBtn.className = 'sessions-terminate-all';
+                termAllBtn.textContent = 'Завершить все остальные сессии (' + otherSessions.length + ')';
+                termAllBtn.addEventListener('click', function () {
+                    if (!window.confirm('Завершить ' + otherSessions.length + ' остальных сессий? Они будут разлогинены.')) return;
+                    termAllBtn.disabled = true;
+                    var p = Promise.resolve();
+                    otherSessions.forEach(function (s) {
+                        p = p.then(function () { return BF.api.removeActiveSession(s.deviceId).catch(function () {}); });
                     });
-                    item.appendChild(termBtn);
-                }
+                    p.then(function () { renderSessions(); });
+                });
+                body.appendChild(termAllBtn);
+            }
 
-                body.appendChild(item);
+            sessions.forEach(function (s) { body.appendChild(buildSessionItem(s, currentDeviceId)); });
+        }).catch(function () {
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
+        });
+    }
+
+    function buildSessionItem(s, currentDeviceId) {
+        var isCurrent = s.deviceId && currentDeviceId && s.deviceId === currentDeviceId;
+        var item = document.createElement('div');
+        item.className = 'session-item' + (isCurrent ? ' current' : '');
+
+        var info = document.createElement('div');
+        info.className = 'session-info';
+
+        var name = document.createElement('div');
+        name.className = 'session-name';
+        name.textContent = s.customName || s.originalName || s.appName || 'Устройство';
+
+        var meta = document.createElement('div');
+        meta.className = 'session-meta';
+        var parts = [];
+        if (s.operationSystem) parts.push(s.operationSystem);
+        if (s.location) parts.push(s.location);
+        if (s.createdAt) parts.push('с ' + new Date(s.createdAt).toLocaleDateString('ru'));
+        meta.textContent = parts.join(' · ');
+
+        info.appendChild(name);
+        info.appendChild(meta);
+        item.appendChild(info);
+
+        if (isCurrent) {
+            var badge = document.createElement('span');
+            badge.style.cssText = 'font-size:11px;color:var(--primary);font-weight:600;flex-shrink:0;';
+            badge.textContent = 'Это устройство';
+            item.appendChild(badge);
+            return item;
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'session-actions';
+
+        var renameBtn = document.createElement('button');
+        renameBtn.className = 'session-rename';
+        renameBtn.textContent = 'Переименовать';
+        renameBtn.addEventListener('click', function () {
+            if (item.querySelector('.session-rename-input')) return;
+            var box = document.createElement('div');
+            box.className = 'session-rename-input';
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.maxLength = 64;
+            input.value = s.customName || s.originalName || '';
+            input.placeholder = 'Имя устройства';
+            var ok = document.createElement('button');
+            ok.className = 'session-rename';
+            ok.textContent = 'OK';
+            ok.addEventListener('click', function () {
+                var newName = input.value.trim();
+                ok.disabled = true;
+                BF.api.renameDevice(s.deviceId, newName).then(function () {
+                    s.customName = newName;
+                    name.textContent = newName || s.originalName || s.appName || 'Устройство';
+                    info.removeChild(box);
+                }).catch(function () { ok.disabled = false; });
+            });
+            box.appendChild(input);
+            box.appendChild(ok);
+            info.appendChild(box);
+            input.focus();
+            input.select();
+        });
+
+        var termBtn = document.createElement('button');
+        termBtn.className = 'session-terminate';
+        termBtn.textContent = 'Завершить';
+        termBtn.addEventListener('click', function () {
+            termBtn.disabled = true;
+            BF.api.removeActiveSession(s.deviceId).then(function () {
+                item.parentNode && item.parentNode.removeChild(item);
+            }).catch(function () { termBtn.disabled = false; });
+        });
+
+        actions.appendChild(renameBtn);
+        actions.appendChild(termBtn);
+        item.appendChild(actions);
+        return item;
+    }
+
+    // --- Privacy ---
+    function renderPrivacy() {
+        titleEl.textContent = 'Приватность';
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">Загрузка…</div>';
+
+        BF.api.getPrivacySettings().then(function (data) {
+            var s = data.settings || {
+                profileVisibleOnSite: true, avatarVisibility: VIS_ALL,
+                bioVisibility: VIS_ALL, emailVisibility: VIS_NONE,
+                searchVisible: true, onlineVisibility: VIS_ALL
+            };
+            body.innerHTML = '';
+
+            var togglesSec = document.createElement('div');
+            togglesSec.className = 'sd-section';
+            var profileToggle = makeToggleRow(
+                'Профиль виден на сайте',
+                'Страница barkfluff.com/' + (currentUser && currentUser.username ? currentUser.username : 'username') + ' доступна другим',
+                s.profileVisibleOnSite, null
+            );
+            var searchToggle = makeToggleRow(
+                'Показывать в поиске',
+                'Другие пользователи смогут находить вас по имени',
+                s.searchVisible, null
+            );
+            togglesSec.appendChild(profileToggle.row);
+            togglesSec.appendChild(searchToggle.row);
+            body.appendChild(togglesSec);
+
+            var segments = [
+                { key: 'avatarVisibility', label: 'Видимость аватара' },
+                { key: 'bioVisibility',    label: 'Видимость описания' },
+                { key: 'emailVisibility',  label: 'Видимость email' },
+                { key: 'onlineVisibility', label: 'Видимость онлайн-статуса' }
+            ];
+            var segCtrls = {};
+            segments.forEach(function (seg) {
+                var field = document.createElement('div');
+                field.className = 'sd-field';
+                field.style.padding = '12px 20px 0';
+                var lbl = document.createElement('div');
+                lbl.className = 'sd-label';
+                lbl.textContent = seg.label;
+                field.appendChild(lbl);
+                var ctrl = makeSegmented(VIS_OPTIONS, s[seg.key], null);
+                segCtrls[seg.key] = ctrl;
+                field.appendChild(ctrl.el);
+                body.appendChild(field);
+            });
+
+            var hint = document.createElement('div');
+            hint.className = 'sd-hint';
+            hint.style.padding = '12px 20px 0';
+            hint.textContent = 'На данный момент «Друзья» трактуется как «Никто» — система отношений в разработке.';
+            body.appendChild(hint);
+
+            var btnWrap = document.createElement('div');
+            btnWrap.style.padding = '16px 20px 20px';
+            var saveBtn = makeSaveBtn();
+            btnWrap.appendChild(saveBtn);
+            body.appendChild(btnWrap);
+
+            saveBtn.addEventListener('click', function () {
+                saveBtn.disabled = true;
+                BF.api.updatePrivacySettings({
+                    profileVisibleOnSite: profileToggle.getValue(),
+                    searchVisible: searchToggle.getValue(),
+                    avatarVisibility: segCtrls.avatarVisibility.getValue(),
+                    bioVisibility: segCtrls.bioVisibility.getValue(),
+                    emailVisibility: segCtrls.emailVisibility.getValue(),
+                    onlineVisibility: segCtrls.onlineVisibility.getValue()
+                }).then(function () {
+                    saveBtn.disabled = false;
+                    var ok = document.createElement('div');
+                    ok.className = 'sd-hint';
+                    ok.style.padding = '6px 20px 0';
+                    ok.textContent = 'Сохранено';
+                    btnWrap.appendChild(ok);
+                    setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
+                }).catch(function () {
+                    saveBtn.disabled = false;
+                    var err = document.createElement('div');
+                    err.className = 'sd-hint error';
+                    err.style.padding = '6px 20px 0';
+                    err.textContent = 'Ошибка сохранения';
+                    btnWrap.appendChild(err);
+                    setTimeout(function () { if (err.parentNode) err.parentNode.removeChild(err); }, 3000);
+                });
             });
         }).catch(function () {
             body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
         });
+    }
+
+    // --- Notifications ---
+    function renderNotifications() {
+        titleEl.textContent = 'Уведомления';
+        body.innerHTML = '';
+
+        var deviceId = BF.device ? BF.device.getDeviceId() : null;
+        var storageKey = 'bf_notif_push_' + (deviceId || 'default');
+        var stored = localStorage.getItem(storageKey);
+        var initial = stored === null ? true : stored === '1';
+
+        var sec = document.createElement('div');
+        sec.className = 'sd-section';
+        var toggle = makeToggleRow(
+            'Push-уведомления',
+            'Получать уведомления на это устройство (этот браузер)',
+            initial,
+            function (next, swEl) {
+                swEl.disabled = true;
+                BF.api.setNotificationsEnabled(next).then(function () {
+                    localStorage.setItem(storageKey, next ? '1' : '0');
+                    swEl.disabled = false;
+                }).catch(function () {
+                    toggle.setValue(!next);
+                    swEl.disabled = false;
+                });
+            }
+        );
+        sec.appendChild(toggle.row);
+        body.appendChild(sec);
+
+        var hint = document.createElement('div');
+        hint.className = 'sd-hint';
+        hint.style.padding = '12px 20px';
+        hint.textContent = 'Управляет уведомлениями только для текущего устройства. Чтобы изменить настройки для других устройств, войдите в аккаунт на них.';
+        body.appendChild(hint);
+    }
+
+    // --- Personalization (poster + chat backgrounds) ---
+    function renderPersonalization() {
+        titleEl.textContent = 'Фон чата и постер';
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">Загрузка…</div>';
+
+        BF.api.getPersonalization().then(function (data) {
+            var pers = (data && data.personalization) || { profilePosterFileId: '', chatBackgroundFileIds: [] };
+            body.innerHTML = '';
+            renderPersonalizationContent(pers);
+        }).catch(function () {
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
+        });
+    }
+
+    function renderPersonalizationContent(pers) {
+        // --- Poster block ---
+        var posterField = document.createElement('div');
+        posterField.className = 'sd-field';
+        posterField.style.padding = '16px 20px 0';
+
+        var posterLbl = document.createElement('div');
+        posterLbl.className = 'sd-label';
+        posterLbl.textContent = 'Постер профиля';
+        posterField.appendChild(posterLbl);
+
+        var posterEl = document.createElement('div');
+        posterEl.className = 'sd-poster-uploader';
+        posterField.appendChild(posterEl);
+
+        var posterStatus = document.createElement('div');
+        posterStatus.className = 'sd-hint';
+        posterStatus.style.marginTop = '6px';
+        posterField.appendChild(posterStatus);
+
+        var posterInput = document.createElement('input');
+        posterInput.type = 'file';
+        posterInput.accept = 'image/*';
+        posterInput.style.display = 'none';
+        posterField.appendChild(posterInput);
+
+        body.appendChild(posterField);
+
+        function paintPoster(fileId) {
+            posterEl.innerHTML = '';
+            if (fileId) {
+                posterEl.classList.add('has-image');
+                var img = document.createElement('img');
+                img.alt = '';
+                posterEl.appendChild(img);
+                BF.files.getFileUrls([fileId]).then(function (urls) {
+                    var u = urls && urls[0];
+                    if (u) img.src = u.previewUrl || u.url;
+                });
+                var rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'sd-poster-remove';
+                rm.textContent = '×';
+                rm.title = 'Удалить постер';
+                rm.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    rm.disabled = true;
+                    BF.api.setProfilePoster('').then(function () {
+                        pers.profilePosterFileId = '';
+                        paintPoster('');
+                    }).catch(function () { rm.disabled = false; });
+                });
+                posterEl.appendChild(rm);
+            } else {
+                posterEl.classList.remove('has-image');
+                var ph = document.createElement('div');
+                ph.className = 'sd-poster-placeholder';
+                ph.textContent = 'Нажмите чтобы загрузить постер (соотношение 3:1)';
+                posterEl.appendChild(ph);
+            }
+        }
+
+        posterEl.addEventListener('click', function () { posterInput.click(); });
+        posterInput.addEventListener('change', function () {
+            var f = posterInput.files[0];
+            if (!f) return;
+            posterStatus.textContent = 'Загрузка…';
+            posterStatus.className = 'sd-hint';
+            BF.files.uploadFile(f, FT_USER_PROFILE_POSTER).then(function (fileId) {
+                return BF.api.setProfilePoster(fileId).then(function () {
+                    pers.profilePosterFileId = fileId;
+                    paintPoster(fileId);
+                    posterStatus.textContent = 'Постер обновлён';
+                    setTimeout(function () { posterStatus.textContent = ''; }, 2000);
+                });
+            }).catch(function () {
+                posterStatus.textContent = 'Ошибка загрузки';
+                posterStatus.className = 'sd-hint error';
+            });
+            posterInput.value = '';
+        });
+
+        paintPoster(pers.profilePosterFileId);
+
+        // --- Chat backgrounds block ---
+        var bgField = document.createElement('div');
+        bgField.className = 'sd-field';
+        bgField.style.padding = '20px 20px 24px';
+
+        var bgLbl = document.createElement('div');
+        bgLbl.className = 'sd-label';
+        bgLbl.textContent = 'Фоны чата';
+        bgField.appendChild(bgLbl);
+
+        var grid = document.createElement('div');
+        grid.className = 'sd-bg-grid';
+        bgField.appendChild(grid);
+
+        var bgStatus = document.createElement('div');
+        bgStatus.className = 'sd-hint';
+        bgStatus.style.marginTop = '8px';
+        bgField.appendChild(bgStatus);
+
+        var bgInput = document.createElement('input');
+        bgInput.type = 'file';
+        bgInput.accept = 'image/*';
+        bgInput.style.display = 'none';
+        bgField.appendChild(bgInput);
+
+        body.appendChild(bgField);
+
+        function rerenderGrid() {
+            grid.innerHTML = '';
+            var ids = pers.chatBackgroundFileIds || [];
+            ids.forEach(function (fid) {
+                var card = document.createElement('div');
+                card.className = 'sd-bg-card';
+                var img = document.createElement('img');
+                img.alt = '';
+                card.appendChild(img);
+                BF.files.getFileUrls([fid]).then(function (urls) {
+                    var u = urls && urls[0];
+                    if (u) img.src = u.previewUrl || u.url;
+                });
+                var rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'sd-bg-card-remove';
+                rm.textContent = '×';
+                rm.addEventListener('click', function () {
+                    rm.disabled = true;
+                    var nextIds = ids.filter(function (x) { return x !== fid; });
+                    BF.api.updatePersonalization({
+                        profilePosterFileId: pers.profilePosterFileId || '',
+                        chatBackgroundFileIds: nextIds
+                    }).then(function () {
+                        pers.chatBackgroundFileIds = nextIds;
+                        rerenderGrid();
+                    }).catch(function () { rm.disabled = false; });
+                });
+                card.appendChild(rm);
+                grid.appendChild(card);
+            });
+
+            var add = document.createElement('div');
+            add.className = 'sd-bg-card sd-bg-card-add';
+            add.textContent = '+';
+            add.addEventListener('click', function () { bgInput.click(); });
+            grid.appendChild(add);
+        }
+
+        bgInput.addEventListener('change', function () {
+            var f = bgInput.files[0];
+            if (!f) return;
+            bgStatus.textContent = 'Загрузка…';
+            bgStatus.className = 'sd-hint';
+            BF.files.uploadFile(f, FT_MESSAGE_ATTACHMENT_IMAGE).then(function (fileId) {
+                var nextIds = (pers.chatBackgroundFileIds || []).concat([fileId]);
+                return BF.api.updatePersonalization({
+                    profilePosterFileId: pers.profilePosterFileId || '',
+                    chatBackgroundFileIds: nextIds
+                }).then(function () {
+                    pers.chatBackgroundFileIds = nextIds;
+                    rerenderGrid();
+                    bgStatus.textContent = 'Фон добавлен';
+                    setTimeout(function () { bgStatus.textContent = ''; }, 2000);
+                });
+            }).catch(function () {
+                bgStatus.textContent = 'Ошибка загрузки';
+                bgStatus.className = 'sd-hint error';
+            });
+            bgInput.value = '';
+        });
+
+        rerenderGrid();
+    }
+
+    // --- About ---
+    function renderAbout() {
+        titleEl.textContent = 'О BarkFluff';
+        body.innerHTML = '';
+
+        var dev = window.BF && BF.device ? BF.device : null;
+        var rows = [
+            { label: 'Версия веб-клиента', value: WEB_VERSION },
+            { label: 'Браузер', value: dev ? dev.browserName : '—' },
+            { label: 'ОС', value: dev ? dev.osName : '—' },
+            { label: 'Device ID', value: dev ? dev.getDeviceId() : '—' },
+            { label: 'Сервер', value: window.location.origin }
+        ];
+
+        rows.forEach(function (r) {
+            var row = document.createElement('div');
+            row.className = 'sd-about-row';
+            var l = document.createElement('div');
+            l.className = 'sd-about-label';
+            l.textContent = r.label;
+            var v = document.createElement('div');
+            v.className = 'sd-about-value';
+            v.textContent = r.value || '—';
+            row.appendChild(l);
+            row.appendChild(v);
+            body.appendChild(row);
+        });
+
+        var link = document.createElement('a');
+        link.href = 'https://barkfluff.com';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'barkfluff.com';
+        link.style.cssText = 'display:block;text-align:center;padding:18px;color:var(--primary);font-size:14px;font-weight:600;text-decoration:none;';
+        body.appendChild(link);
     }
 
     window.BF.settings = {
