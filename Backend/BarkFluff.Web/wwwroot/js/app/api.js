@@ -98,6 +98,7 @@
             username: u.getUsername(),
             profilePicture: u.getProfilePicture(),
             profilePicturePreview: u.getProfilePicturePreview(),
+            profilePosterFileId: u.getProfilePosterFileId ? u.getProfilePosterFileId() : '',
             bio: u.getBio(),
             registrationDate: tsToMs(u.getRegistrationDate()),
             badges: u.getBadgesList().map(function (b) {
@@ -439,6 +440,87 @@
         return c().authCall(identity().setPassword.bind(identity()), req);
     }
 
+    // --- User devices / notifications (UsersApi) ---
+
+    function renameDevice(deviceId, customName) {
+        var req = new (usrPb().RenameDeviceRequest)();
+        req.setDeviceId(deviceId);
+        req.setCustomName(customName || '');
+        return c().authCall(users().renameDevice.bind(users()), req);
+    }
+
+    function setNotificationsEnabled(enabled) {
+        var req = new (usrPb().SetNotificationsEnabledRequest)();
+        req.setEnabled(!!enabled);
+        return c().authCall(users().setNotificationsEnabled.bind(users()), req);
+    }
+
+    // --- Privacy (UsersApi) ---
+
+    function mapPrivacySettings(s) {
+        if (!s) return null;
+        return {
+            profileVisibleOnSite: s.getProfileVisibleOnSite(),
+            avatarVisibility: s.getAvatarVisibility(),
+            bioVisibility: s.getBioVisibility(),
+            emailVisibility: s.getEmailVisibility(),
+            searchVisible: s.getSearchVisible(),
+            onlineVisibility: s.getOnlineVisibility()
+        };
+    }
+
+    function getPrivacySettings() {
+        var req = new (usrPb().GetPrivacySettingsRequest)();
+        return c().authCall(users().getPrivacySettings.bind(users()), req).then(function (resp) {
+            return { settings: mapPrivacySettings(resp.getSettings()) };
+        });
+    }
+
+    function updatePrivacySettings(settings) {
+        var req = new (usrPb().UpdatePrivacySettingsRequest)();
+        var s = new (usrPb().PrivacySettings)();
+        s.setProfileVisibleOnSite(!!settings.profileVisibleOnSite);
+        s.setAvatarVisibility(settings.avatarVisibility || 0);
+        s.setBioVisibility(settings.bioVisibility || 0);
+        s.setEmailVisibility(settings.emailVisibility || 0);
+        s.setSearchVisible(!!settings.searchVisible);
+        s.setOnlineVisibility(settings.onlineVisibility || 0);
+        req.setSettings(s);
+        return c().authCall(users().updatePrivacySettings.bind(users()), req);
+    }
+
+    // --- Personalization (UsersApi) ---
+
+    function mapPersonalization(p) {
+        if (!p) return null;
+        return {
+            profilePosterFileId: p.getProfilePosterFileId(),
+            chatBackgroundFileIds: p.getChatBackgroundFileIdsList()
+        };
+    }
+
+    function getPersonalization() {
+        var req = new (usrPb().GetPersonalizationRequest)();
+        return c().authCall(users().getPersonalization.bind(users()), req).then(function (resp) {
+            return { personalization: mapPersonalization(resp.getPersonalization()) };
+        });
+    }
+
+    function updatePersonalization(personalization) {
+        var req = new (usrPb().UpdatePersonalizationRequest)();
+        var p = new (usrPb().UserPersonalizationData)();
+        p.setProfilePosterFileId(personalization.profilePosterFileId || '');
+        p.setChatBackgroundFileIdsList(personalization.chatBackgroundFileIds || []);
+        req.setPersonalization(p);
+        return c().authCall(users().updatePersonalization.bind(users()), req);
+    }
+
+    function setProfilePoster(fileId) {
+        var req = new (usrPb().SetProfilePosterRequest)();
+        req.setProfilePosterFileId(fileId || '');
+        return c().authCall(users().setProfilePoster.bind(users()), req);
+    }
+
     // --- Chat Folders (UsersApi) ---
 
     function mapChatFolder(f) {
@@ -627,6 +709,14 @@
         confirmOtpVerification: confirmOtpVerification,
         disableOtpVerification: disableOtpVerification,
         setPassword: setPassword,
+        // User devices / notifications / privacy / personalization
+        renameDevice: renameDevice,
+        setNotificationsEnabled: setNotificationsEnabled,
+        getPrivacySettings: getPrivacySettings,
+        updatePrivacySettings: updatePrivacySettings,
+        getPersonalization: getPersonalization,
+        updatePersonalization: updatePersonalization,
+        setProfilePoster: setProfilePoster,
         // Chat Folders
         getChatFolders: getChatFolders,
         createChatFolder: createChatFolder,

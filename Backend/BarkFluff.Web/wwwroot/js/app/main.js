@@ -107,6 +107,7 @@
     // Profile elements
     var profileOverlay = $('#profileOverlay');
     var profileClose = $('#profileClose');
+    var profilePoster = $('#profilePoster');
     var profileAvatar = $('#profileAvatar');
     var profileName = $('#profileName');
     var profileUsername = $('#profileUsername');
@@ -982,6 +983,21 @@
         BF.api.getUser(userId).then(function (d) {
             if (!d || !d.user) return;
             var user = d.user;
+
+            if (profilePoster) {
+                profilePoster.classList.remove('visible');
+                profilePoster.style.backgroundImage = '';
+                if (user.profilePosterFileId) {
+                    BF.files.getFileUrls([user.profilePosterFileId]).then(function (urls) {
+                        var u = urls && urls[0];
+                        var url = u && (u.url || u.previewUrl);
+                        if (url) {
+                            profilePoster.style.backgroundImage = 'url("' + url + '")';
+                            profilePoster.classList.add('visible');
+                        }
+                    });
+                }
+            }
 
             var initial = (user.firstName || user.username || '?')[0].toUpperCase();
             if (user.profilePicture) {
@@ -1968,5 +1984,7 @@
     }
 
     BF.realtime.startAll();
+
+    if (BF.personalization && BF.personalization.init) BF.personalization.init();
 
 })();
