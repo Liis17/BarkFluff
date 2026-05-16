@@ -18,28 +18,28 @@ permissions:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
-  #  1. Проверка наличия .NET 9.0 SDK на раннере
+  #  1. Проверка наличия .NET 10.0 SDK на раннере
   # ═══════════════════════════════════════════════════════════════
   check-dotnet:
-    name: "🔍 Проверка .NET 9.0 SDK"
+    name: "🔍 Проверка .NET 10.0 SDK"
     runs-on: self-hosted
     steps:
-      - name: "Проверка наличия .NET 9.0 SDK"
+      - name: "Проверка наличия .NET 10.0 SDK"
         id: check
         run: |
-          if ! dotnet --list-sdks 2>/dev/null | grep -q "^9\."; then
+          if ! dotnet --list-sdks 2>/dev/null | grep -q "^10\."; then
             echo "missing=true" >> "$GITHUB_OUTPUT"
           else
             echo "missing=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: "\u274C .NET 9.0 SDK не установлен — уведомление в Telegram"
+      - name: "\u274C .NET 10.0 SDK не установлен — уведомление в Telegram"
         if: steps.check.outputs.missing == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           TG_MESSAGE: |
-            ❌ *Сборка невозможна: .NET 9.0 SDK не установлен на раннере*
+            ❌ *Сборка невозможна: .NET 10.0 SDK не установлен на раннере*
 
             🐳 *BarkFluff.Notification*
             📌 Ветка: `${{ github.ref_name }}`

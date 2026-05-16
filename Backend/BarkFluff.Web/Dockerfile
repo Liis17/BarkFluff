@@ -49,7 +49,7 @@ RUN cp gen-index.js gen/index.js && \
         --target=es2020 \
         --log-level=warning
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Backend/BarkFluff.Web/BarkFluff.Web.csproj", "Backend/BarkFluff.Web/"]
@@ -67,7 +67,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "BarkFluff.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # Web остаётся на Alpine: healthcheck требует wget (busybox), которого нет в chiseled
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 RUN mkdir -p /app/logs && chown $APP_UID /app/logs

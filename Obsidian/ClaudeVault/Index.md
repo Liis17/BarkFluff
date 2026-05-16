@@ -1,7 +1,7 @@
 # BarkFluff — База знаний
 
 Распределённая платформа обмена сообщениями в реальном времени.
-**Backend**: .NET 9, gRPC, RabbitMQ, PostgreSQL, Redis, Minio.
+**Backend**: .NET 10, gRPC, RabbitMQ, PostgreSQL, Redis, Minio.
 
 ---
 

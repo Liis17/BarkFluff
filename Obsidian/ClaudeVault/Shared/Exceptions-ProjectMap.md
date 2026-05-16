@@ -9,7 +9,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `BarkFluff.Shared.Exceptions.csproj` | Проект библиотеки, target: `net9.0`, Nullable enable |
+| `BarkFluff.Shared.Exceptions.csproj` | Проект библиотеки, target: `net10.0`, Nullable enable |
 | `BaseGrpcException.cs` | Базовый класс всех исключений. Содержит `ErrorCode` (GUID-строка) и `ErrorMessage`. По умолчанию ErrorCode = `BDF4009D-24D0-4E0C-A10C-AEF33E0D0022`, ErrorMessage = "Неизвестная ошибка" |
 
 ---

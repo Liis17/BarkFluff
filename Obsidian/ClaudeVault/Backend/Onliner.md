@@ -53,7 +53,7 @@ Client → SetOnlineStatus (gRPC)
 
 Полный реестр + объяснение схемы — в файле памяти `project_onliner_metrics.md`. Краткий список:
 
-- **gRPC counters:** `get_online_status_requests`, `get_online_status_user_ids_total`, `set_online_status_requests` (heartbeat), `subscribe_requests`, `change_users_in_subscription_requests`
+- **gRPC counters:** `get_online_status_requests`, `get_online_status_user_ids_total` (кумулятивная сумма всех запрошенных user_ids — `_metrics.Add`, не Increment), `set_online_status_requests` (heartbeat), `subscribe_requests`, `change_users_in_subscription_requests`
 - **Подписки:** `subscriptions_registered`, `subscriptions_disconnected`, `subscriptions_hidden_by_privacy`, gauges `active_subscriptions`, `tracked_unique_users`
 - **Storage:** gauges `online_users_count`, `storage_total_count`; counters `status_changes.online`, `status_changes.offline`
 - **Notifier:** `status_notifications_sent`, `status_notification_errors`
