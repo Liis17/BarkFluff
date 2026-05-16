@@ -11,6 +11,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.widget.WidgetUpdater
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.coroutines.coroutineContext
@@ -236,6 +237,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
             }
             Log.v(TAG, "New message: id=$msgId, chatId=${event.chatId}")
             _newMessages.emit(event)
+            WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
         }
     }
 
@@ -249,6 +251,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
             val uid = globalParam.userId
             if (uid > 0 && event.newReadByList.contains(uid)) {
                 NotificationHelper.dismissForChat(context, event.chatId)
+                WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
             }
         }
     }
@@ -260,6 +263,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeMessagesEdited(request).collect { event ->
             Log.d(TAG, "Message edited received: chatId=${event.chatId}, msgId=${event.message.id}")
             _messageEdited.emit(event)
+            WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
         }
     }
 
@@ -270,6 +274,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeMessagesDeleted(request).collect { event ->
             Log.d(TAG, "Message deleted received: chatId=${event.chatId}, msgId=${event.messageId}")
             _messageDeleted.emit(event)
+            WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
         }
     }
 

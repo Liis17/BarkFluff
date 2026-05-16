@@ -81,4 +81,11 @@
     <color name="on_warning">#E65100</color>
     <color name="warning_container">#F57C00</color>
     <color name="on_warning_container">#FFE0B2</color>
+
+    <!-- Widget colors — Material You dark theme -->
+    <color name="widget_background_color">@android:color/system_neutral1_900</color>
+    <color name="widget_text_primary">@android:color/system_neutral1_50</color>
+    <color name="widget_text_secondary">@android:color/system_neutral2_200</color>
+    <color name="widget_accent_color">@android:color/system_accent1_300</color>
+    <color name="widget_accent_text">@android:color/system_neutral1_900</color>
 </resources>

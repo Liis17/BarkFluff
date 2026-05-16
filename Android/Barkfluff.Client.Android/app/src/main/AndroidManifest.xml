@@ -291,6 +291,35 @@
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".WidgetsSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.PinnedChatsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_pinned_chats_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.barkfluff.client.widget.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pinned_chats_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".notifications.MarkAsReadReceiver"
             android:exported="false" />

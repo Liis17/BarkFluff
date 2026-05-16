@@ -323,6 +323,49 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 `AccountSettingsActivity` в карточке полей профиля содержит `itemBio` под `itemUsername` (разделитель `MaterialDivider`). Текущее значение читается из `globalParam.description` и отображается в `textBio` (placeholder «Не указано» при пустой строке). По клику — `showEditDialog("О себе", …, allowEmpty = true)` → `grpcManager.changeBio(newValue)` (`GrpcManager.kt:1674`). При успехе значение сохраняется в `globalParam.description` (тот же бэкенд-поле, что наполняется из `getCurrentUserData().bio` в `SplashActivity`/`LoginActivity`/`RegisterActivity`).
 
+## App Widget «Закреплённые чаты»
+
+Нативный App Widget для рабочего стола Android: до 3 строк с аватаром, именем чата, текстом последнего сообщения и бейджем непрочитанных. Тап по строке открывает `ChatActivity` соответствующего чата, тап по заголовку — `MainActivity`. Кнопка refresh в углу триггерит немедленное обновление.
+
+Пользователь может создавать **несколько** виджетов одновременно (каждый со своим именем и своей подборкой 1-3 чатов). Управление — через пункт **«Виджеты»** в `ProfileFragment` (`itemWidgets`, иконка `ic_widgets`, между блоками Персонализация и Папки чатов) → `WidgetsSettingsActivity`. Создание нового виджета — стандартный Android-флоу: long-press на рабочем столе → BarkFluff → «Закреплённые чаты», автоматически открывается `WidgetConfigureActivity`.
+
+### Компоненты `com/barkfluff/client/widget/`
+
+- `WidgetConfig.kt` — data class `{ name: String, chatIds: List<String> }`, константа `MAX_CHATS = 3`.
+- `WidgetRepository.kt` — singleton поверх `SharedPreferences("barkfluff_widgets")`. Ключ `widget_<appWidgetId>` → JSON. Методы: `getConfig`, `saveConfig`, `deleteConfig`, `listAllConfigs`, `findAppWidgetIdsForChat(chatId)`, `placedAppWidgetIds(context)`.
+- `WidgetRenderer.kt` — строит `RemoteViews` по конфигу + снимку `List<ChatData>`. Аватары грузит синхронно через `AvatarLoader.getImageLoader(context).execute()` → `Bitmap` → круглая маска через `BitmapShader` → `setImageViewBitmap`. При отсутствии fileId или ошибке — placeholder-Bitmap с цветным кругом и инициалами (палитра из `AvatarLoader.PLACEHOLDER_COLORS`). **Важно**: include одного и того же layout трижды внутри RemoteViews не работает (RemoteViews адресует view по id и находит только первое вхождение), поэтому строки собираются через `views.removeAllViews(R.id.widgetRowsContainer)` + `views.addView(..., rowViews)` с отдельным `RemoteViews(R.layout.widget_chat_row)` на каждую строку.
+- `WidgetUpdater.kt` — единая точка обновления:
+  - `refreshWidget(context, appWidgetId)` — synchronous suspend под mutex.
+  - `refreshAllWidgets(context)` — для всех размещённых.
+  - `scheduleRefreshForChat(context, chatId)` — дебаунсит 500мс через `ConcurrentHashMap<Int, Job>`, ранний return если ни один виджет не содержит `chatId`. Используется из realtime-стримов.
+  - In-memory кеш `getChats()` на 10 секунд (`CACHE_TTL_MS`) — чтобы шторм real-time событий не дёргал gRPC по разу на каждый виджет.
+  - Если `messagesClient == null` (виджет работает в фоне без активного приложения) — переинициализирует через `grpcManager.createMessagesClient(globalParam.socketMessages, …)`.
+  - Если `accessToken` пуст — виджет рендерится в режиме «Войдите в приложение».
+- `PinnedChatsWidgetProvider.kt` — `AppWidgetProvider`. `onUpdate` → корутинами вызывает `refreshWidget` для каждого id. `onDeleted` → `WidgetRepository.deleteConfig` для каждого id. `onReceive` ловит кастомный `ACTION_REFRESH = "com.barkfluff.client.widget.ACTION_REFRESH"` (от кнопки refresh в виджете), использует `goAsync()` чтобы не убить процесс пока корутина грузит данные.
+- `WidgetRefreshWorker.kt` — `CoroutineWorker`. Periodic WorkManager job `widget-refresh` раз в 30 минут с `NetworkType.CONNECTED`. Регистрируется в `BarkFluffApplication.onCreate()` через `enqueueUniquePeriodicWork(... KEEP ...)`. Fallback на случай killed-app (когда `RealtimeService` не работает).
+- `WidgetConfigureActivity.kt` — Activity с `ACTION_APPWIDGET_CONFIGURE` в манifest'е. Поля: `nameInput` (max 48 символов, дефолт «Закреплённые чаты»), `pickChatsButton` (переиспользует `FolderChatPickerActivity` с `EXTRA_INITIAL_SELECTED`, обрезает результат до 3 + Toast при переборе), `selectedChatsRecyclerView` (показывает выбранные + крестик «удалить»). По умолчанию `setResult(RESULT_CANCELED)` — Android удаляет widget если пользователь не дошёл до «Сохранить». При сохранении: `WidgetRepository.saveConfig` → `WidgetUpdater.refreshWidget` → `setResult(RESULT_OK, intentWithAppWidgetId)` + `finish()`. В edit-mode (флаг `EXTRA_EDIT_MODE=true` от `WidgetsSettingsActivity`) `setResult` пропускается.
+
+### `WidgetsSettingsActivity.kt`
+
+Экран «Виджеты» в настройках. `RecyclerView` со списком конфигов из `WidgetRepository.listAllConfigs()`. Тап по строке открывает `WidgetConfigureActivity` с `EXTRA_APPWIDGET_ID` + `EXTRA_EDIT_MODE=true`. На `onResume` чистит «висячие» конфиги — id, которых нет в `placedAppWidgetIds()` (на случай если `onDeleted` не успел сработать). Под списком — карточка-подсказка как добавить виджет с рабочего стола.
+
+### Интеграция в `RealtimeService`
+
+`WidgetUpdater.scheduleRefreshForChat(context, event.chatId)` вызывается из 4 collector'ов: `collectNewMessages`, `collectMessagesRead` (только когда читал сам пользователь), `collectMessagesEdited`, `collectMessagesDeleted`. Дебаунс 500мс внутри `WidgetUpdater` гасит штормы; если виджетов с этим chatId нет — мгновенный return без gRPC.
+
+### Resources
+
+- Layouts: `widget_pinned_chats.xml` (root), `widget_chat_row.xml` (одна строка). `activity_widget_configure.xml`, `activity_widgets_settings.xml`, `item_widget_config.xml`, `item_widget_selected_chat.xml`.
+- Drawables: `widget_background.xml` (rounded rect r=24dp), `widget_unread_badge.xml` (rounded rect r=12dp), `widget_row_ripple.xml`, `ic_widgets.xml`, `ic_refresh.xml`.
+- Widget metadata: `res/xml/pinned_chats_widget_info.xml` — `minWidth=250dp`, `minHeight=180dp`, `configure=...WidgetConfigureActivity`, `updatePeriodMillis="0"` (обновляемся через WorkManager + RealtimeService, без системного таймера).
+- Цвета: `widget_background_color`, `widget_text_primary`, `widget_text_secondary`, `widget_accent_color`, `widget_accent_text` — все через Material You system tokens (`@android:color/system_neutral1_*`, `system_accent1_*`), вариант для dark в `values-night/colors.xml`. `?attr/colorPrimary` в RemoteViews не резолвится корректно — поэтому в widget layouts всегда `@color/widget_*`.
+- Manifest: `<receiver .widget.PinnedChatsWidgetProvider>` с двумя action — `APPWIDGET_UPDATE` и `com.barkfluff.client.widget.ACTION_REFRESH`. `<activity .widget.WidgetConfigureActivity>` exported=true с `APPWIDGET_CONFIGURE`. `<activity .WidgetsSettingsActivity>` exported=false.
+- Зависимость: `androidx.work:work-runtime-ktx:2.9.1` (WorkManager) добавлена в `app/build.gradle.kts`.
+
+### Передача chatId в ChatActivity
+
+`WidgetRenderer.openChatPendingIntent` использует `Intent(context, ChatActivity::class.java).putExtra("chat_id", chatId).putExtra("chat_title", title)` с `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TOP`. requestCode = `appWidgetId * 10 + rowIndex + 1` — уникальный для каждой PendingIntent, иначе несколько строк / виджетов схлопывались бы в один Intent. Расширения ChatActivity: `EXTRA_CHAT_ID = "chat_id"` и `EXTRA_CHAT_TITLE = "chat_title"`.
+
 ## gRPC Коды ошибок (из x-error-code trailer)
 
 | Исключение | ErrorCode |
