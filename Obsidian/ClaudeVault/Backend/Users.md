@@ -119,6 +119,8 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `UpdateStorageLimit(userId, storageLimit_gb)` | Обновить лимит хранилища | 1–250 ГБ |
 | `SetProfilePictureServer(userId, url, previewUrl)` | Установить аватарку через URL | Для AdminPanel; не требует FileId |
 | `GetDevicesWithFirebaseTokens(userIds[])` | Получить FCM-токены устройств | Для CloudMessaging/push-уведомлений |
+| `GetDevicesWithFirebaseTokensByDeviceIds(deviceIds[])` | Получить FCM-токены по списку DeviceId | Для админ-рассылки (точечной) |
+| `GetAllDevicesWithFirebaseTokens()` | Получить FCM-токены **всех** устройств с включёнными уведомлениями | Для админ-рассылки (broadcast) |
 
 ## Приватность
 

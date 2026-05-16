@@ -160,6 +160,7 @@
     "badges":     "Badges",
     "stickers":   "Stickers",
     "users":      "Users",
+    "notifications": "Notifications",
     "s3-storage": "S3 Storage",
     "s3-browser": "S3 Browser",
   };
@@ -171,6 +172,7 @@
     "badges":     ["Content", "Бейджи"],
     "stickers":   ["Content", "Стикеры"],
     "users":      ["Content", "Юзеры"],
+    "notifications": ["Engagement", "Уведомления"],
     "s3-storage": ["Storage", "S3 buckets"],
     "s3-browser": ["Storage", "S3 browser"],
   };
@@ -233,6 +235,7 @@
     { kind: "go", label: "Перейти: Бейджи",        hint: "",         route: "badges" },
     { kind: "go", label: "Перейти: Стикеры",       hint: "",         route: "stickers" },
     { kind: "go", label: "Перейти: Юзеры",         hint: "G U",      route: "users" },
+    { kind: "go", label: "Перейти: Уведомления",   hint: "G N",      route: "notifications" },
     { kind: "bucket", label: "Бакет: profile-pictures",  route: "s3-browser/profile-pictures" },
     { kind: "bucket", label: "Бакет: message-images",    route: "s3-browser/message-images" },
     { kind: "bucket", label: "Бакет: message-videos",    route: "s3-browser/message-videos" },
@@ -391,6 +394,7 @@
           if (k === "l") go("logs");
           if (k === "b") go("s3-storage");
           if (k === "u") go("users");
+          if (k === "n") go("notifications");
           App._gPressed = false;
         }
       }

@@ -100,6 +100,22 @@ public class DevicesStorage(UsersContext context)
             .ToListAsync();
     }
 
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokensByDeviceIds(List<Guid> deviceIds)
+    {
+        return await context.UserDevices
+            .Where(d => deviceIds.Contains(d.Id) && d.FirebaseDeviceToken != null && d.NotificationsEnabled)
+            .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
+            .ToListAsync();
+    }
+
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetAllDevicesWithFirebaseTokens()
+    {
+        return await context.UserDevices
+            .Where(d => d.FirebaseDeviceToken != null && d.NotificationsEnabled)
+            .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
+            .ToListAsync();
+    }
+
     public async Task SetNotificationsEnabled(Guid deviceId, long userId, bool enabled)
     {
         var device = await context.UserDevices
