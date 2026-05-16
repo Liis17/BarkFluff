@@ -9,6 +9,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
@@ -77,13 +80,29 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
         binding.sheetTitle.text = getString(R.string.share_send_to, chatTitle)
         bindPreview(p)
         binding.sendButton.setOnClickListener { onSendClicked() }
+
+        applyWindowInsets()
+    }
+
+    private fun applyWindowInsets() {
+        val baseBottom = binding.sheetRoot.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.sheetRoot) { v, insets ->
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            v.updatePadding(bottom = baseBottom + maxOf(ime, nav))
+            insets
+        }
     }
 
     private fun bindPreview(p: SharePayload) {
         when (p) {
             is SharePayload.Text -> {
                 binding.textField.setText(p.text)
-                binding.textField.hint = null
+                // Для расшаренного текста плейсхолдер «Добавить подпись…» не нужен —
+                // оставляем содержимое голым, а hint у TextInputLayout прячем.
+                binding.captionInputLayout.hint = null
+                // Подпись «Что отправить» скрываем — превью совпадает с самим текстом.
+                binding.sheetSubtitle.visibility = View.GONE
             }
             is SharePayload.SingleFile -> bindSingleFile(p)
             is SharePayload.MultipleFiles -> bindMultiple(p)
