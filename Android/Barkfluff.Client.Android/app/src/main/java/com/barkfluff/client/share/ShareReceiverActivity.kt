@@ -8,6 +8,9 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.BarkFluffApplication
@@ -54,7 +57,25 @@ class ShareReceiverActivity : AppCompatActivity() {
 
         binding.toolbar.setNavigationOnClickListener { finish() }
 
+        applyWindowInsets()
+
         handleShareIntent(intent)
+    }
+
+    private fun applyWindowInsets() {
+        // Тема edge-to-edge: тулбар должен «съехать» под статус-бар, а нижний край списка —
+        // учесть жесто-навигацию.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.appBar) { v, insets ->
+            val top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
+            v.updatePadding(top = top)
+            insets
+        }
+        val basePaddingBottom = binding.chatsRecyclerView.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.chatsRecyclerView) { v, insets ->
+            val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            v.updatePadding(bottom = basePaddingBottom + bottom)
+            insets
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
