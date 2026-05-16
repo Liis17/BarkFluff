@@ -374,6 +374,31 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | NotValidOtpCodeException | `803B632C-4457-4B05-9435-9C3DD0F41E00` |
 | InvalidLoginOrPasswordException | `21BFB9B5-C377-45D1-9B15-6B7F3432B397` |
 
+## Системное «Поделиться» (Share Intent)
+
+Клиент зарегистрирован как получатель `ACTION_SEND` / `ACTION_SEND_MULTIPLE`. В системном Share Sheet пользователь может выбрать Barkfluff и переслать в любой чат текст/ссылку, одно или несколько изображений/видео/аудио/файлов.
+
+- **Activity**: `share/ShareReceiverActivity.kt` — экспортированная (`android:exported=true`) с `launchMode=singleTask`, `excludeFromRecents=true`, `taskAffinity=""`. Intent-filters в `AndroidManifest.xml` покрывают `text/*`, `image/*`, `video/*`, `audio/*`, `application/*`, `*/*`.
+- **Авторизация**: при отсутствии `refreshToken` / `socketUsers` / `socketMessages` — Toast `share_not_authorized` и `finish()`. Pending-share-payload **не** сохраняется (по решению UX).
+- **Парсинг**: `parseSend` / `parseSendMultiple` достают `EXTRA_STREAM` (один Uri или ArrayList) и `EXTRA_TEXT` / `EXTRA_SUBJECT`; для каждого Uri резолвится MIME через `contentResolver.getType`, делается `takePersistableUriPermission` под try/catch. Результат — `SharePayload` (`Text` / `SingleFile` / `MultipleFiles`).
+- **UI выбора чата**: `activity_share_receiver.xml` — `MaterialToolbar` + `RecyclerView` с переиспользованным `ChatAdapter` (тот же, что в `ChatsFragment`). Чаты грузятся через `grpcManager.getChats()` после `ensureTokenValid` + `initAllClients`. Display-title для ЛС резолвится через `getUserData` (как в `ChatsFragment.resolveDisplayItem`).
+- **Подтверждение**: клик по чату открывает `share/ShareConfirmBottomSheet.kt` (`BottomSheetDialogFragment`) с превью контента + полем подписи + кнопкой «Отправить».
+  - `SharePayload.Text` → текст в EditText (редактируется), без превью изображения, отправляется как `SendJob(text=..., attachments=[])`.
+  - `SharePayload.SingleFile`: image → Coil `imageView.load(uri)`; video → `contentResolver.loadThumbnail(uri, Size(512,512))` (API 29+); прочее → иконка + имя/размер (`OpenableColumns.DISPLAY_NAME` / `SIZE`).
+  - `SharePayload.MultipleFiles` → горизонтальный `RecyclerView` миниатюр (`item_share_preview_thumb.xml`).
+- **Постановка в очередь**: MIME → `AttachmentSpec`: `image/*` → `RawImage(uri)`, `video/*` → `Video(EditedVideoSpec(uri))`, остальное → `Document(uri)`. Дальше — обычный `MediaSendService.enqueue(ctx, SendJob(...))`, и SendJob проходит существующий конвейер (compress/upload/sendMessage) без изменений.
+- **После отправки**: Toast `share_sent_toast`, `dismissAllowingStateLoss()`, `activity.finish()` — задача live в foreground-сервисе и без открытого UI.
+- **Payload через Activity**: `SharePayload` содержит `Uri`-списки и не парселится — bottom-sheet читает его через `(activity as ShareReceiverActivity).payload`.
+
+Связанные файлы:
+- `share/SharePayload.kt`
+- `share/ShareReceiverActivity.kt`
+- `share/ShareConfirmBottomSheet.kt`
+- `res/layout/activity_share_receiver.xml`
+- `res/layout/sheet_share_confirm.xml`
+- `res/layout/item_share_preview_thumb.xml`
+- `res/values/strings.xml` — ключи `share_*`
+
 ## Файловая структура
 
 - `gradle/libs.versions.toml` — все версии зависимостей
