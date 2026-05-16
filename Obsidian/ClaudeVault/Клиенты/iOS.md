@@ -120,6 +120,14 @@ PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPick
 
 `MessageBubbleView` показывает long-press меню: Изменить / Ответить / Переслать / Копировать текст / Скопировать изображение / Сохранить (изображения) / Сохранить (документы) / Удалить. Все действия проксируются в `ConversationViewModel` (edit/reply/delete/sendSticker), а медиа-действия — в `MediaActions` (UIPasteboard / PHPhotoLibrary / share sheet).
 
+## Стикеры
+
+`Features/Conversation/Views/Stickers/` — полноценный стикер-пикер:
+- `StickerPickerView` + `StickerPickerViewModel` — `@Observable`, грузит паки через `FileService.listStickerPacks` / `getStickerPack`, локально кеширует.
+- `StickerPackTabsView` — горизонтальные табы паков + вкладка «Недавние» (`RecentStickersStore` хранит последние использованные).
+- `StickersGridView` — `LazyVGrid` со стикерами; тап шлёт `MessageAttachmentType.sticker`.
+Пикер открывается из `MessageInputView` (кнопка эмодзи/стикеров).
+
 ## Структура
 
 ```

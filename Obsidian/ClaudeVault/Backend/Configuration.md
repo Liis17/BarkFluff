@@ -31,9 +31,9 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 
 - `Domain/ConfigurationItem` — единственная сущность: Section, Key, Value, ServiceId, EditedAt/By/From
 - `Infrastructure/ConfigurationStorage` — read/upsert конфигураций + CRUD reserved names
-- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings`, `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, базы данных (Identity, Users, Files, Messages, Onliner). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
+- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings` (с `Http1Port` для Files), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles` (ExpiresAt 60 мин), `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, базы данных (Identity, Users, Files, Messages, Onliner). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
 - `Infrastructure/ConfigurationContext` — EF Core DbContext, один DbSet: `Configurations`
-- `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды
+- `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды; инструментирован `MetricsCollector` (счётчики запросов, ошибок, длительность)
 
 ## Миграции
 

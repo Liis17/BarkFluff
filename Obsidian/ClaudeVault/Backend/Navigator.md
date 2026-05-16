@@ -31,14 +31,20 @@ NAVIGATOR_PORT=7010 dotnet run
 - Очистка throttle-записей: ленивая, при каждой `RegisterServer` удаляются записи старше throttle-периода
 - `GetServers()` — синхронный метод (возвращает `List<ServerInfo>`)
 
+## Domain/ServerInfo
+
+Поля: `Id` (long, ключ), `CreatedAt` (DateTime), `AddedBy` (string — UserId или "Anonymous"), `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex`, `ColorMainHex`, `ColorHardHex`, `AccountsCount`.
+
+В proto `ServerInfo` адрес маяка передаётся как `beacon_uri: ServiceEndpoint` (а не отдельные host/port), плюс поле `accounts_count`.
+
 ## Валидация при регистрации
 
 `RegisterServerCommandHandler` проверяет:
-- `BeaconHost` — не пустой, длина ≤ 253, формат hostname (RFC 1123) или IP
+- `BeaconHost` — не пустой, длина ≤ 2048, валидируется через `Uri.TryCreate` + `Uri.CheckHostName`
 - `BeaconPort` — 1..65535
 - `Name` — не пустой, длина ≤ 64
-- `Description` — не пустой, длина ≤ 512
-- `ServerPublicName` — не пустой, длина ≤ 64
+- `Description` — обязателен, длина ≤ 512
+- `ServerPublicName` — обязателен, длина ≤ 64
 - `Location` — длина ≤ 128
 - HEX-цвета (`ColorLiteHex`/`ColorMainHex`/`ColorHardHex`) — формат `^#?[0-9A-Fa-f]{6}$` если не пусто
 

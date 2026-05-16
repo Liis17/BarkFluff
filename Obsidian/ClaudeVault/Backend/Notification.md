@@ -42,6 +42,7 @@ RabbitMQ: notifications-email-handler
 | SuccessfulRegistration | `successful_registration.html` |
 | SuccessfulLogin | `successful_login.html` |
 | PasswordChanged | `password_changed.html` |
+| PasswordChangedByAdmin | `password_changed_by_admin.html` |
 | TwoFactorMethodChanged | `two_factor_method_changed.html` |
 
 ## Добавление нового типа уведомления

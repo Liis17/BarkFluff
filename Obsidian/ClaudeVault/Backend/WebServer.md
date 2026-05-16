@@ -1,6 +1,6 @@
 # Barkfluff.WebServer
 
-Публичный HTTP-сервер. Порт: **64641** (.NET 9, ASP.NET Core MVC).
+Публичный HTTP-сервер. Порт: **64641** (.NET 10, ASP.NET Core MVC).
 Раздаёт HTML-страницы, статику и файлы, предоставляет REST API профилей, версий клиентов и чат поддержки через Telegram-бота.
 
 Расположение: `Backend/Barkfluff.WebServer/`

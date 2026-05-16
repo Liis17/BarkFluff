@@ -15,7 +15,7 @@ dotnet build Barkfluff.Developers.csproj
 ## Особенности
 
 - Принимает **gRPC-Web** напрямую (не через [[Backend/Web]] YARP-прокси)
-- Kestrel: `HttpProtocols.Http1AndHttp2` (обязательно для gRPC-Web)
+- Kestrel: `HttpProtocols.Http2` — gRPC-Web термируется на nginx (через `developers.conf`), backend получает уже HTTP/2 gRPC
 - Все методы защищены `[Authorize(Policy = nameof(TokenType.User))]`
 - Фронтенд: React + Vite + TypeScript (`Frontend/Developers/`) — см. [[Клиенты/Developers-Web]]
 
@@ -29,8 +29,8 @@ dotnet build Barkfluff.Developers.csproj
 
 - `Domain/` — `DocumentationSection`, `ProtoMetadata`, `ErrorCodeEntry`
 - `Features/` — MediatR команды/запросы (CQRS):
-  - `GetSections`, `GetSectionByKey`, `GetProtoFiles`, `GetProtoFileContent`, `GetErrorCodes`
-  - `CreateSection`, `UpdateSection`, `DeleteSection` (CRUD для секций)
+  - **Exposed via gRPC** (5 методов): `GetSections`, `GetSectionByKey`, `GetProtoFiles`, `GetProtoFileContent`, `GetErrorCodes`
+  - **Внутренние** (используются только `SeedData`/админ-флоу, не в proto): `CreateSection`, `UpdateSection`, `DeleteSection`
 - `Host/` — `DevelopersApiService` (gRPC)
 - `Persistence/` — `DevelopersContext` (PostgreSQL), `DocumentationStorage`, `ProtoMetadataStorage`
 - `Infrastructure/` — `ErrorCodeSeeder`, `ProtoFileProvider`, `SeedData`
