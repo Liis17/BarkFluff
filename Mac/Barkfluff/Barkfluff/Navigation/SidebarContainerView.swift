@@ -17,10 +17,10 @@ struct SidebarContainerView: View {
             switch coordinator.activeTab {
             case .chats:
                 ChatListView()
-                    .navigationTitle("Чаты")
+                    .navigationTitle("navigation.title.chats")
             case .profile:
                 ProfileSidebarView()
-                    .navigationTitle("Настройки")
+                    .navigationTitle("navigation.title.settings")
             }
 
             Divider()

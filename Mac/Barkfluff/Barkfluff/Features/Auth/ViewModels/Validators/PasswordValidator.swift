@@ -15,13 +15,14 @@ enum PasswordStrength: Int, Comparable {
     case strong = 4
     case veryStrong = 5
 
-    var label: String {
+    /// Локализуемый ярлык уровня силы пароля
+    var label: LocalizedStringResource {
         switch self {
-        case .veryWeak: return "Очень слабый"
-        case .weak: return "Слабый"
-        case .medium: return "Средний"
-        case .strong: return "Надёжный"
-        case .veryStrong: return "Очень надёжный"
+        case .veryWeak: return LocalizedStringResource("auth.validation.password.strength.very_weak")
+        case .weak: return LocalizedStringResource("auth.validation.password.strength.weak")
+        case .medium: return LocalizedStringResource("auth.validation.password.strength.medium")
+        case .strong: return LocalizedStringResource("auth.validation.password.strength.strong")
+        case .veryStrong: return LocalizedStringResource("auth.validation.password.strength.very_strong")
         }
     }
 
@@ -47,11 +48,11 @@ enum PasswordStrength: Int, Comparable {
 /// Результат валидации пароля
 struct PasswordValidationResult {
     let isValid: Bool
-    let error: String?
+    let error: LocalizedStringResource?
     let strength: PasswordStrength
     let score: Int // 0-100
 
-    static func invalid(_ error: String, strength: PasswordStrength = .veryWeak, score: Int = 0) -> PasswordValidationResult {
+    static func invalid(_ error: LocalizedStringResource, strength: PasswordStrength = .veryWeak, score: Int = 0) -> PasswordValidationResult {
         PasswordValidationResult(isValid: false, error: error, strength: strength, score: score)
     }
 
@@ -112,21 +113,21 @@ enum PasswordValidator {
     /// Валидация пароля
     static func validate(_ password: String) -> PasswordValidationResult {
         if password.isEmpty {
-            return .invalid("Введите пароль")
+            return .invalid(LocalizedStringResource("auth.validation.password.empty"))
         }
 
         if password.count < minLength {
-            return .invalid("Минимум \(minLength) символов", score: 0)
+            return .invalid(LocalizedStringResource("auth.validation.password.too_short \(minLength)"), score: 0)
         }
 
         if password.count > maxLength {
-            return .invalid("Максимум \(maxLength) символов", score: 0)
+            return .invalid(LocalizedStringResource("auth.validation.password.too_long \(maxLength)"), score: 0)
         }
 
         let (strength, score) = calculateStrength(password)
 
         if score < minScore {
-            return .invalid("Пароль слишком слабый (score: \(score)/\(minScore))", strength: strength, score: score)
+            return .invalid(LocalizedStringResource("auth.validation.password.too_weak \(score) \(minScore)"), strength: strength, score: score)
         }
 
         return .valid(strength: strength, score: score)
@@ -135,11 +136,11 @@ enum PasswordValidator {
     /// Валидация подтверждения пароля
     static func validateConfirmation(_ password: String, confirmation: String) -> PasswordValidationResult {
         if confirmation.isEmpty {
-            return .invalid("Подтвердите пароль")
+            return .invalid(LocalizedStringResource("auth.validation.password.confirm_empty"))
         }
 
         if password != confirmation {
-            return .invalid("Пароли не совпадают")
+            return .invalid(LocalizedStringResource("auth.validation.password.mismatch"))
         }
 
         return validate(password)

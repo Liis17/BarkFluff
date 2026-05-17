@@ -43,7 +43,7 @@ struct AudioAttachmentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Имя файла или "Голосовое сообщение"
                     Text(attachment.type == .audio && attachment.fileName.hasPrefix("voice_")
-                         ? "Голосовое сообщение"
+                         ? String(localized: "conversation.audio.voice_message")
                          : attachment.fileName)
                         .font(.subheadline)
                         .fontWeight(.medium)

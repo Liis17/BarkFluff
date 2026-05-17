@@ -19,7 +19,7 @@ final class ServerSelectionViewModel {
         case loading
         case loaded([NavigatorServer])
         case empty
-        case error(String)
+        case error(LocalizedStringResource)
     }
 
     var serverListState: ServerListState = .loading
@@ -39,7 +39,7 @@ final class ServerSelectionViewModel {
     // MARK: - General
 
     var isLoading = false
-    var errorMessage: String?
+    var errorMessage: LocalizedStringResource?
 
     // MARK: - Computed
 
@@ -71,7 +71,7 @@ final class ServerSelectionViewModel {
                 serverListState = .loaded(servers)
             }
         } catch {
-            serverListState = .error("Не удалось загрузить список серверов")
+            serverListState = .error(LocalizedStringResource("auth.server_selection.load_error"))
             isManualSectionExpanded = true
         }
     }
@@ -87,7 +87,9 @@ final class ServerSelectionViewModel {
             coordinator.currentState = .authentication
             coordinator.authScreen = .login
         } catch {
-            errorMessage = "Не удалось подключиться к \(server.displayName): \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource(
+                "auth.server_selection.connect_failed \(server.displayName) \(error.localizedDescription)"
+            )
         }
 
         connectingServerID = nil
@@ -108,7 +110,8 @@ final class ServerSelectionViewModel {
             coordinator.currentState = .authentication
             coordinator.authScreen = .login
         } catch {
-            errorMessage = error.localizedDescription
+            // Сообщение об ошибке приходит из сервиса — оборачиваем как есть.
+            errorMessage = LocalizedStringResource(stringLiteral: error.localizedDescription)
         }
 
         isLoading = false

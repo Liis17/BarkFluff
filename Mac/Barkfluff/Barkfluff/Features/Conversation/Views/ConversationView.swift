@@ -294,7 +294,7 @@ struct ConversationView: View {
             return .ignored
         }
         .confirmationDialog(
-            "Удалить сообщение?",
+            "conversation.delete.title",
             isPresented: Binding(
                 get: { pendingDeleteMessageID != nil },
                 set: { if !$0 { pendingDeleteMessageID = nil } }
@@ -302,15 +302,15 @@ struct ConversationView: View {
             titleVisibility: .visible,
             presenting: pendingDeleteMessageID
         ) { messageID in
-            Button("Удалить", role: .destructive) {
+            Button("conversation.delete.button", role: .destructive) {
                 pendingDeleteMessageID = nil
                 Task { await viewModel?.deleteMessage(messageID: messageID) }
             }
-            Button("Отмена", role: .cancel) {
+            Button("common.cancel", role: .cancel) {
                 pendingDeleteMessageID = nil
             }
         } message: { _ in
-            Text("Сообщение будет удалено у всех участников чата.")
+            Text("conversation.delete.message")
         }
         // Глобальная обработка Cmd+V для вставки файлов из буфера обмена
         .onPasteCommand(of: [.image, .fileURL, .png, .jpeg, .tiff]) { providers in
@@ -428,11 +428,13 @@ struct ConversationView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.messages.isEmpty {
             ContentUnavailableView(
-                viewModel.isNewConversation ? "Новый диалог" : "Нет сообщений",
+                viewModel.isNewConversation
+                    ? LocalizedStringKey("conversation.empty.new.title")
+                    : LocalizedStringKey("conversation.empty.no_messages.title"),
                 systemImage: "bubble.left.and.bubble.right",
                 description: Text(viewModel.isNewConversation
-                    ? "Напишите первое сообщение!"
-                    : "Начните диалог!")
+                    ? "conversation.empty.new.description"
+                    : "conversation.empty.no_messages.description")
             )
         } else {
             MessagesListView(

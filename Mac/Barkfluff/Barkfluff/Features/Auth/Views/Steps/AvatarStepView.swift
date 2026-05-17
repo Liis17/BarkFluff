@@ -19,7 +19,7 @@ struct AvatarStepView: View {
     let userService: UserServiceProtocol
 
     @State private var isUploading = false
-    @State private var uploadError: String?
+    @State private var uploadError: LocalizedStringResource?
     @State private var showFilePicker = false
     @State private var pendingImage: NSImage?
     @State private var showCropper: Bool = false
@@ -58,7 +58,9 @@ struct AvatarStepView: View {
             VStack(spacing: Theme.Spacing.sm) {
                 Button(action: { showFilePicker = true }) {
                     Label(
-                        data.avatarImage == nil ? "Выбрать фото" : "Изменить фото",
+                        data.avatarImage == nil
+                            ? LocalizedStringKey("auth.register.step.avatar.choose")
+                            : LocalizedStringKey("auth.register.step.avatar.change"),
                         systemImage: "photo"
                     )
                 }
@@ -66,7 +68,7 @@ struct AvatarStepView: View {
                 .disabled(isUploading)
 
                 if data.avatarImage != nil {
-                    Button("Удалить", role: .destructive) {
+                    Button("auth.register.step.avatar.remove", role: .destructive) {
                         data.avatarImage = nil
                         data.avatarData = nil
                         data.avatarFileID = nil
@@ -82,7 +84,7 @@ struct AvatarStepView: View {
                     .foregroundStyle(.red)
             }
 
-            Text("Вы можете пропустить этот шаг и добавить аватар позже")
+            Text("auth.register.step.avatar.hint")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -118,15 +120,15 @@ struct AvatarStepView: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             await loadImageForCropping(from: url)
-        case .failure(let error):
-            uploadError = error.localizedDescription
+        case .failure:
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.load_photo")
         }
     }
 
     private func loadImageForCropping(from url: URL) async {
         uploadError = nil
         guard url.startAccessingSecurityScopedResource() else {
-            uploadError = "Нет доступа к файлу"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.no_access")
             return
         }
         defer { url.stopAccessingSecurityScopedResource() }
@@ -134,7 +136,7 @@ struct AvatarStepView: View {
         do {
             let imageData = try Data(contentsOf: url)
             guard let nsImage = NSImage(data: imageData) else {
-                uploadError = "Не удалось прочитать изображение"
+                uploadError = LocalizedStringResource("auth.register.step.avatar.error.load")
                 return
             }
             await MainActor.run {
@@ -142,7 +144,7 @@ struct AvatarStepView: View {
                 showCropper = true
             }
         } catch {
-            uploadError = "Не удалось прочитать файл: \(error.localizedDescription)"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.load_photo")
         }
     }
 
@@ -155,7 +157,7 @@ struct AvatarStepView: View {
         }
 
         guard let compressedData = image.jpegData(compressionQuality: 0.85) else {
-            uploadError = "Ошибка обработки изображения"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.process")
             return
         }
 
@@ -174,7 +176,7 @@ struct AvatarStepView: View {
                 data.avatarImage = Image(nsImage: image)
             }
         } catch {
-            uploadError = "Не удалось загрузить фото: \(error.localizedDescription)"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.upload")
         }
     }
 }

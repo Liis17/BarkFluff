@@ -12,7 +12,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Конфиденциальность" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Privacy_Title}" />
 
             <!-- Загрузка / ошибка -->
             <TextBlock
@@ -20,7 +20,7 @@
                 Foreground="{DynamicResource DescriptionText}"
                 FontSize="12"
                 Margin="0,4,0,8"
-                Text="Загрузка настроек..." />
+                Text="{DynamicResource L_Settings_Privacy_LoadingSettings}" />
 
             <!-- Группа: Профиль -->
             <TextBlock
@@ -28,7 +28,7 @@
                 FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
                 Margin="2,8,0,4"
-                Text="ПРОФИЛЬ" />
+                Text="{DynamicResource L_Settings_Privacy_Group_Profile}" />
 
             <!-- Публичная страница на сайте -->
             <Border
@@ -42,9 +42,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Публичная страница" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Privacy_PublicPage_Title}" />
                         <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="Показывать ваш профиль на barkfluff.com/username" />
+                                   Text="{DynamicResource L_Settings_Privacy_PublicPage_Description}" />
                     </StackPanel>
                     <ui:ToggleSwitch
                         x:Name="ProfileVisibleSwitch"
@@ -67,9 +67,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Видимость в поиске" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Privacy_SearchVisible_Title}" />
                         <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="Показывать вас в результатах поиска пользователей" />
+                                   Text="{DynamicResource L_Settings_Privacy_SearchVisible_Description}" />
                     </StackPanel>
                     <ui:ToggleSwitch
                         x:Name="SearchVisibleSwitch"
@@ -86,7 +86,7 @@
                 FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
                 Margin="2,12,0,4"
-                Text="КТО ВИДИТ" />
+                Text="{DynamicResource L_Settings_Privacy_Group_WhoSees}" />
 
             <!-- Онлайн-статус -->
             <Border
@@ -100,9 +100,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Онлайн-статус" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Privacy_Online_Title}" />
                         <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="Кто видит, когда вы в сети" />
+                                   Text="{DynamicResource L_Settings_Privacy_Online_Description}" />
                     </StackPanel>
                     <ComboBox
                         x:Name="OnlineVisibilityCombo"
@@ -110,9 +110,9 @@
                         Width="130"
                         VerticalAlignment="Center"
                         SelectionChanged="OnlineVisibilityCombo_SelectionChanged">
-                        <ComboBoxItem Tag="0" Content="Все" />
-                        <ComboBoxItem Tag="1" Content="Друзья" />
-                        <ComboBoxItem Tag="2" Content="Никто" />
+                        <ComboBoxItem Tag="0" Content="{DynamicResource L_Settings_Privacy_Visibility_All}" />
+                        <ComboBoxItem Tag="1" Content="{DynamicResource L_Settings_Privacy_Visibility_Friends}" />
+                        <ComboBoxItem Tag="2" Content="{DynamicResource L_Settings_Privacy_Visibility_Nobody}" />
                     </ComboBox>
                 </Grid>
             </Border>
@@ -129,9 +129,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фото профиля" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Privacy_Avatar_Title}" />
                         <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="Кто видит ваш аватар" />
+                                   Text="{DynamicResource L_Settings_Privacy_Avatar_Description}" />
                     </StackPanel>
                     <ComboBox
                         x:Name="AvatarVisibilityCombo"
@@ -139,9 +139,9 @@
                         Width="130"
                         VerticalAlignment="Center"
                         SelectionChanged="AvatarVisibilityCombo_SelectionChanged">
-                        <ComboBoxItem Tag="0" Content="Все" />
-                        <ComboBoxItem Tag="1" Content="Друзья" />
-                        <ComboBoxItem Tag="2" Content="Никто" />
+                        <ComboBoxItem Tag="0" Content="{DynamicResource L_Settings_Privacy_Visibility_All}" />
+                        <ComboBoxItem Tag="1" Content="{DynamicResource L_Settings_Privacy_Visibility_Friends}" />
+                        <ComboBoxItem Tag="2" Content="{DynamicResource L_Settings_Privacy_Visibility_Nobody}" />
                     </ComboBox>
                 </Grid>
             </Border>
@@ -158,9 +158,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="О себе (био)" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Privacy_Bio_Title}" />
                         <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="Кто видит описание вашего профиля" />
+                                   Text="{DynamicResource L_Settings_Privacy_Bio_Description}" />
                     </StackPanel>
                     <ComboBox
                         x:Name="BioVisibilityCombo"
@@ -168,9 +168,9 @@
                         Width="130"
                         VerticalAlignment="Center"
                         SelectionChanged="BioVisibilityCombo_SelectionChanged">
-                        <ComboBoxItem Tag="0" Content="Все" />
-                        <ComboBoxItem Tag="1" Content="Друзья" />
-                        <ComboBoxItem Tag="2" Content="Никто" />
+                        <ComboBoxItem Tag="0" Content="{DynamicResource L_Settings_Privacy_Visibility_All}" />
+                        <ComboBoxItem Tag="1" Content="{DynamicResource L_Settings_Privacy_Visibility_Friends}" />
+                        <ComboBoxItem Tag="2" Content="{DynamicResource L_Settings_Privacy_Visibility_Nobody}" />
                     </ComboBox>
                 </Grid>
             </Border>
@@ -187,9 +187,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Адрес почты" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Privacy_Email_Title}" />
                         <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="Кто видит ваш email-адрес" />
+                                   Text="{DynamicResource L_Settings_Privacy_Email_Description}" />
                     </StackPanel>
                     <ComboBox
                         x:Name="EmailVisibilityCombo"
@@ -197,9 +197,9 @@
                         Width="130"
                         VerticalAlignment="Center"
                         SelectionChanged="EmailVisibilityCombo_SelectionChanged">
-                        <ComboBoxItem Tag="0" Content="Все" />
-                        <ComboBoxItem Tag="1" Content="Друзья" />
-                        <ComboBoxItem Tag="2" Content="Никто" />
+                        <ComboBoxItem Tag="0" Content="{DynamicResource L_Settings_Privacy_Visibility_All}" />
+                        <ComboBoxItem Tag="1" Content="{DynamicResource L_Settings_Privacy_Visibility_Friends}" />
+                        <ComboBoxItem Tag="2" Content="{DynamicResource L_Settings_Privacy_Visibility_Nobody}" />
                     </ComboBox>
                 </Grid>
             </Border>

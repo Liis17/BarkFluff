@@ -18,7 +18,7 @@ struct DragDropOverlay: View {
                     .font(.largeTitle)
                     .foregroundStyle(.secondary)
 
-                Text("Перетащите файлы сюда")
+                Text("conversation.drag_drop.title")
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }

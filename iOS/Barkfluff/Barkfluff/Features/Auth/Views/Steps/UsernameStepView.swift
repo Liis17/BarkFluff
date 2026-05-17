@@ -12,7 +12,7 @@ struct UsernameStepView: View {
     @Bindable var data: RegistrationData
     let userService: UserServiceProtocol
 
-    @State private var validationError: String?
+    @State private var validationError: LocalizedStringResource?
     @State private var isChecking = false
     @State private var isAvailable: Bool?
     @State private var debounceTask: Task<Void, Never>?
@@ -22,12 +22,12 @@ struct UsernameStepView: View {
         VStack(spacing: 12) {
             // Поле ввода
             VStack(alignment: .leading, spacing: 4) {
-                Text("Имя пользователя")
+                Text("auth.register.step.username.label")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: 8) {
-                    TextField("@username", text: $data.username)
+                    TextField("auth.register.step.username.placeholder", text: $data.username)
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.username)
                         .autocapitalization(.none)
@@ -58,7 +58,7 @@ struct UsernameStepView: View {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if isAvailable == true {
-                Text("Имя доступно")
+                Text("auth.register.step.username.available")
                     .font(.caption)
                     .foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,9 +66,9 @@ struct UsernameStepView: View {
 
             // Подсказка
             VStack(alignment: .leading, spacing: 4) {
-                requirementRow("3-30 символов", isMet: data.username.count >= 3 && data.username.count <= 30)
-                requirementRow("Буквы, цифры, _ и -", isMet: isValidFormat)
-                requirementRow("Не начинается с цифры", isMet: !data.username.isEmpty && !data.username.first!.isNumber)
+                requirementRow("auth.register.step.username.req.length", isMet: data.username.count >= 3 && data.username.count <= 30)
+                requirementRow("auth.register.step.username.req.chars", isMet: isValidFormat)
+                requirementRow("auth.register.step.username.req.no_digit_start", isMet: !data.username.isEmpty && !data.username.first!.isNumber)
             }
             .font(.caption)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,11 +84,11 @@ struct UsernameStepView: View {
     // MARK: - Requirement Row
 
     @ViewBuilder
-    private func requirementRow(_ text: String, isMet: Bool) -> some View {
+    private func requirementRow(_ key: LocalizedStringKey, isMet: Bool) -> some View {
         HStack(spacing: 4) {
             Image(systemName: isMet ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 12))
-            Text(text)
+            Text(key)
         }
         .foregroundStyle(isMet ? .green : .secondary)
     }
@@ -113,22 +113,22 @@ struct UsernameStepView: View {
         }
 
         if newValue.count < 3 {
-            validationError = "Минимум 3 символа"
+            validationError = LocalizedStringResource("auth.validation.username.too_short \(3)")
             return
         }
 
         if newValue.count > 30 {
-            validationError = "Максимум 30 символов"
+            validationError = LocalizedStringResource("auth.validation.username.too_long \(30)")
             return
         }
 
         if !isValidFormat {
-            validationError = "Только буквы, цифры, _ и -"
+            validationError = LocalizedStringResource("auth.validation.username.invalid_chars")
             return
         }
 
         if newValue.first?.isNumber == true {
-            validationError = "Не должен начинаться с цифры"
+            validationError = LocalizedStringResource("auth.validation.username.starts_with_digit")
             return
         }
 
@@ -149,7 +149,7 @@ struct UsernameStepView: View {
             isAvailable = !exists
             data.isUsernameAvailable = !exists
             if exists {
-                validationError = "Это имя уже занято"
+                validationError = LocalizedStringResource("auth.register.step.username.taken")
             }
         } catch {
             isAvailable = true

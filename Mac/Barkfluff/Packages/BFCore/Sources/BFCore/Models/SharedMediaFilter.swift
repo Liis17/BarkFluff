@@ -9,11 +9,18 @@ import Foundation
 
 /// Фильтр для отображения общего медиа
 public enum SharedMediaFilter: String, CaseIterable, Sendable {
-    case media = "Медиа"
-    case documents = "Файлы"
+    case media
+    case documents
 
-    public var displayName: String {
-        rawValue
+    /// Локализованное название (использует системную локаль).
+    public var displayName: String { displayName(in: .current) }
+
+    /// Локализованное название с явной локалью (для реактивного UI).
+    public func displayName(in locale: Locale) -> String {
+        switch self {
+        case .media:     return String(localized: "bfcore.shared_media.filter.media", bundle: .module, locale: locale)
+        case .documents: return String(localized: "bfcore.shared_media.filter.documents", bundle: .module, locale: locale)
+        }
     }
 
     public var systemImage: String {

@@ -240,6 +240,38 @@ iOS-клиент выступает в роли **сканера**: автори
 3. Пользователь видит `FastAuthConfirmView` и жмёт Accept/Reject → `AcceptFastAuth(fastAuthID, confirmationCode)` или `RejectFastAuth(...)`.
 4. Стрим на новом устройстве отдаёт `ACCEPTED` (с access/refresh токенами) или `REJECTED`.
 
+## Локализация (RU / EN)
+
+Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Localizable.xcstrings` (sourceLanguage = `ru`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`.
+
+**Инфраструктура:**
+- `App/Settings/LocalizationSettings.swift` — `@Observable @MainActor`, перечисление `AppLanguage { system, ru, en }`, computed `appliedLocale: Locale` (fallback `en`), сохранение в UserDefaults (`localization.language`).
+- `App/DI/DependencyContainer.swift` — `let localizationSettings: LocalizationSettings`, сбрасывается в `reset()`.
+- `App/BarkfluffApp.swift` — `.environment(\.locale, container.localizationSettings.appliedLocale)` на корневом `WindowGroup`. Чтение `container.localizationSettings.appliedLocale` внутри `body` делает корень реактивным: при смене языка `@Observable` уведомляет SwiftUI → весь tree пере-резолвит `LocalizedStringKey`.
+- `Navigation/SettingsCategory.swift` — `case language` + `title: LocalizedStringKey` (НЕ `String`, иначе значение замораживается). Категория показывается в Профиле, экран `Features/Settings/Views/LanguageSettingsView.swift` — `Picker` по `AppLanguage.allCases`.
+- `Barkfluff.xcodeproj/project.pbxproj` — в `knownRegions` добавлены `ru` и `en`.
+
+**Конвенция ключей:** `<area>.<screen>.<element>` snake_case через точку. Примеры: `auth.login.submit`, `settings.general.theme.label`, `enum.theme.system`. Plurals — нативно в xcstrings (`%lld` placeholder + `one/few/many/other` для русского, `one/other` для английского).
+
+**Типы строк в коде:**
+- `Text("key")`, `Button("key")`, `TextField("key", text:)`, `.navigationTitle("key")`, `Label("key", systemImage:)` — параметр имеет тип `LocalizedStringKey`. Используется напрямую через строковый литерал.
+- `LocalizedStringResource?` — для error/state-полей во ViewModel и валидаторах (`error: LocalizedStringResource?`, `errorMessage: LocalizedStringResource?`). В SwiftUI `Text(resource)` рендерится через текущую environment-локаль.
+- `enum.titleKey: LocalizedStringKey` — для перечислений типа `AppTheme`, `ProfileFieldVisibility`. `String(localized: "key")` из computed property **запрещён** — фиксирует значение в момент вычисления, не реактивен.
+- `String(localized: "key")` — только когда нужна именно `String` (передача в не-SwiftUI API).
+
+**BFCore (общий с macOS):**
+- Каталог: `Packages/BFCore/Sources/BFCore/Resources/Localizable.xcstrings`, `resources: [.process("Resources")]` в `Package.swift`. Внутри пакета — `String(localized: "key", bundle: .module, locale: …)`.
+- Каждый enum/struct с локализованным `displayName: String` отдаёт системную локаль по умолчанию, плюс имеет **locale-aware overload** `displayName(in locale: Locale) -> String`. Тот же паттерн для `OnlineStatus.displayText(in:)`, `AttachmentType.previewText(fileName:in:)`, `BFError.errorDescription(in:)`/`recoverySuggestion(in:)`, `MediaCacheError.errorDescription(in:)`.
+- `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive` принимают `locale: Locale = .current` — внутри собирают локаль-специфичный `DateFormatter`.
+- `ErrorLocalizer.localize(_:locale:)` / `recoverySuggestion(for:locale:)` — locale-aware.
+- Plurals для last-seen (`bfcore.online.last_seen_minutes/_hours/_days %lld`) — native xcstrings plural variants для русского (one/few/many) и английского (one/other).
+
+**Реактивность во вьюхах:** компонент, отображающий BFCore-данные, инжектит `@Environment(\.locale) private var locale` и передаёт его в API: `status.displayText(in: locale)`, `role.displayName(in: locale)`, `DateFormatterHelper.formatForChatList(date, locale: locale)`, `ReplyPreviewView.makeSnippet(message, locale: locale)`. Без `in: locale` API остаётся бэкап-вариантом на `.current` (для логов, нотификаций, edge-кейсов).
+
+**Валидаторы** (`Features/Auth/ViewModels/Validators/`): `error: LocalizedStringResource?` вместо `error: String?`. `PasswordStrength.label: LocalizedStringResource`. Это позволяет валидации мгновенно перерисовываться при смене языка без re-validate.
+
+**Hardcoded `Locale(identifier: "ru_RU")` запрещены** — заменены на `@Environment(\.locale)` (`ProfileInfoSection.swift`, `ConversationView.swift`, `MessageGrouper.swift`).
+
 ## Что вне scope текущей итерации
 
 - **NotificationService / push-уведомления** — отложено.

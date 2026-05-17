@@ -85,13 +85,13 @@ struct MessageInputView: View {
             Button {
                 showPhotoPicker = true
             } label: {
-                Label("Фото или видео", systemImage: "photo.on.rectangle")
+                Label("conversation.attach.photo_or_video", systemImage: "photo.on.rectangle")
             }
 
             Button {
                 showDocumentPicker = true
             } label: {
-                Label("Файл", systemImage: "doc")
+                Label("conversation.attach.file", systemImage: "doc")
             }
 
             // Camera (if available)
@@ -102,7 +102,7 @@ struct MessageInputView: View {
             Button {
                 // Camera action handled separately
             } label: {
-                Label("Камера", systemImage: "camera")
+                Label("conversation.attach.camera", systemImage: "camera")
             }
             #endif
         } label: {
@@ -124,14 +124,14 @@ struct MessageInputView: View {
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Стикеры")
+        .accessibilityLabel(Text("conversation.input.stickers"))
     }
 
     // MARK: - Text Field
 
     private var textFieldView: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-            TextField("Сообщение...", text: $text, axis: .vertical)
+            TextField("conversation.input.placeholder", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .focused($isTextFieldFocused)

@@ -21,9 +21,9 @@ struct UserSearchView: View {
             List {
                 if searchQuery.isEmpty {
                     ContentUnavailableView(
-                        "Поиск пользователей",
+                        "user_search.idle.title",
                         systemImage: "person.magnifyingglass",
-                        description: Text("Введите имя или username для поиска")
+                        description: Text("user_search.idle.description")
                     )
                 } else if isLoading {
                     HStack {
@@ -33,9 +33,9 @@ struct UserSearchView: View {
                     }
                 } else if users.isEmpty {
                     ContentUnavailableView(
-                        "Ничего не найдено",
+                        "user_search.empty.title",
                         systemImage: "person.slash",
-                        description: Text("Попробуйте изменить запрос")
+                        description: Text("user_search.empty.description")
                     )
                 } else {
                     ForEach(users) { user in
@@ -49,16 +49,16 @@ struct UserSearchView: View {
                     }
                 }
             }
-            .searchable(text: $searchQuery, prompt: "Имя или username")
+            .searchable(text: $searchQuery, prompt: Text("user_search.prompt"))
             .onChange(of: searchQuery) { _, newValue in
                 Task {
                     await searchUsers(query: newValue)
                 }
             }
-            .navigationTitle("Поиск")
+            .navigationTitle("user_search.title")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button("common.cancel") {
                         dismiss()
                     }
                 }

@@ -414,6 +414,41 @@ Mac-специфика:
 - `ChatListViewModel.folders/selectedFolderID/excludeFolderChatsFromAll` + `loadFolders()`, `selectFolder(_:)`, `unreadCount(for:)`. Метод `applyFilter()` учитывает выбранную папку и флаг исключения чатов папок из «Все чаты».
 - Персонализация: два `@AppStorage` ключа `folders.compact` и `folders.excludeFromAll`. Тогглы в `PersonalizationSettingsView`.
 
+## Локализация (RU / EN)
+
+Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Resources/Localizable.xcstrings` (sourceLanguage = `ru`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`. Реализация общая с [[Клиенты/iOS]].
+
+**Инфраструктура:**
+- `App/Settings/LocalizationSettings.swift` — `@Observable @MainActor`, `enum AppLanguage { system, ru, en }`, computed `appliedLocale: Locale`, persist через UserDefaults (`localization.language`).
+- `App/DI/DependencyContainer.swift` — `let localizationSettings: LocalizationSettings`, сбрасывается в `reset()`.
+- `App/BarkfluffApp.swift` — `.environment(\.locale, container.localizationSettings.appliedLocale)` на **обеих сценах** (`WindowGroup` и `Settings`). Чтение computed из `body` делает корень реактивным к смене языка через `@Observable`.
+- Команды (`CommandGroup(after: .sidebar)`) — кнопки `"commands.chats"` / `"commands.profile"` с `keyboardShortcut`.
+- `Navigation/SettingsCategory.swift` — `case language` + `title: LocalizedStringKey`. Экран `Features/Settings/Views/LanguageSettingsView.swift` — `Picker` по `AppLanguage.allCases`.
+- `Barkfluff.xcodeproj/project.pbxproj` — `knownRegions` содержит `ru` и `en`.
+
+**Конвенция ключей:** `<area>.<screen>.<element>` snake_case через точку. iOS и macOS используют **одни и те же** ключи там, где экраны совпадают (`auth.login.*`, `conversation.*`, `chat_list.*`, `settings.*`). Mac-only screens (NSOpenPanel, viewers) — собственные ключи в том же неймспейсе.
+
+**Типы строк:**
+- `Text("key")` / `Button("key")` / `.help("key")` (Mac tooltip) / `.navigationTitle("key")` — `LocalizedStringKey` литерал.
+- `LocalizedStringResource?` — для error/state-полей в ViewModel и валидаторах (`errorMessage: LocalizedStringResource?`). `PasswordStrength.label: LocalizedStringResource`.
+- `enum.titleKey: LocalizedStringKey` — для перечислений (`AppTheme`, `NotificationMode`, `ProfileFieldVisibility`, `SettingsCategory`). `String(localized:)` из computed property **запрещён** — замораживает значение.
+- `String(localized: "key")` — только для не-SwiftUI API (NSOpenPanel.message, имена файлов при сохранении).
+
+**BFCore (общий пакет с iOS):**
+- Каталог: `Packages/BFCore/Sources/BFCore/Resources/Localizable.xcstrings`, объявлен через `resources: [.process("Resources")]` в `Package.swift`. Внутри пакета — `String(localized: "key", bundle: .module, locale: …)`. `Bundle.module` **обязателен**, иначе runtime вернёт ключ.
+- Locale-aware overloads везде, где enum/struct отдаёт user-facing строку:
+  - `OnlineStatus.displayText(in: Locale)`, `displayText` (default `.current`)
+  - `AttachmentType.displayName(in:)`, `previewText(fileName:in:)`
+  - `ChatMemberRole.displayName(in:)`, `FastAuthStatus.displayName(in:)`, `DeviceType.displayName(in:)`, `SharedMediaFilter.displayName(in:)`
+  - `BFError.errorDescription(in:)` / `recoverySuggestion(in:)`, `MediaCacheError.errorDescription(in:)`
+  - `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive(_: locale:)` — внутри собирают локаль-специфичный `DateFormatter`
+  - `ErrorLocalizer.localize(_:locale:)` / `recoverySuggestion(for:locale:)`
+- Plurals для last-seen (`bfcore.online.last_seen_minutes/_hours/_days %lld`) — native xcstrings plural variants. RU: one/few/many; EN: one/other.
+
+**Реактивность во вьюхах:** компоненты инжектят `@Environment(\.locale) private var locale` и пробрасывают в API: `status.displayText(in: locale)`, `DateFormatterHelper.formatForChatList(date, locale: locale)`, `ReplyPreviewView.makeSnippet(message, locale: locale)`, `MessageGrouper.formatDateSeparator(_:locale:)`. Дефолт `.current` — для логов и notification center, где SwiftUI environment недоступен.
+
+**Hardcoded `Locale(identifier: "ru_RU")` запрещены** — заменены на `@Environment(\.locale)` (`Conversation/Helpers/MessageGrouper.swift`, `Features/UserProfile/Views/ProfileInfoSection.swift`).
+
 ## Code Conventions
 
 - Комментарии на русском

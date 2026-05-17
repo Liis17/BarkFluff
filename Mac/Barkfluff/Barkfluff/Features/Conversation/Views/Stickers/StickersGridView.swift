@@ -43,7 +43,7 @@ struct StickersGridView: View {
             Image(systemName: "face.dashed")
                 .font(.system(size: 28))
                 .foregroundStyle(.secondary)
-            Text("Стикеров нет")
+            Text("conversation.stickers.empty")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

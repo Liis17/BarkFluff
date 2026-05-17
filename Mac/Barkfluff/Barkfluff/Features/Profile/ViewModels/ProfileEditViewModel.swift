@@ -216,7 +216,7 @@ final class ProfileEditViewModel {
             guard let fileURL = urls.first else { return }
 
             guard fileURL.startAccessingSecurityScopedResource() else {
-                errorMessage = "Нет доступа к файлу"
+                errorMessage = String(localized: "profile.edit.error.no_file_access")
                 showError = true
                 return
             }
@@ -225,7 +225,7 @@ final class ProfileEditViewModel {
             do {
                 let data = try Data(contentsOf: fileURL)
                 guard let image = NSImage(data: data) else {
-                    errorMessage = "Не удалось прочитать изображение"
+                    errorMessage = String(localized: "profile.edit.error.read_image")
                     showError = true
                     return
                 }
@@ -251,7 +251,7 @@ final class ProfileEditViewModel {
         }
 
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            errorMessage = "Ошибка обработки изображения"
+            errorMessage = String(localized: "profile.edit.error.process_image")
             showError = true
             return
         }

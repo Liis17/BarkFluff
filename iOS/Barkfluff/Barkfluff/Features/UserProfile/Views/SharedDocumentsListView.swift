@@ -23,7 +23,7 @@ struct SharedDocumentsListView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(item.fileName.isEmpty ? "Документ" : item.fileName)
+                        Text(item.fileName.isEmpty ? String(localized: "user_profile.shared_docs.untitled") : item.fileName)
                             .font(.body)
                             .lineLimit(1)
                         Text(item.formattedSize)

@@ -1,0 +1,516 @@
+{
+  "sourceLanguage" : "ru",
+  "strings" : {
+    "bfcore.attachment.audio" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Аудио" } }
+      }
+    },
+    "bfcore.attachment.document" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Document" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Документ" } }
+      }
+    },
+    "bfcore.attachment.forwarded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Forwarded" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Пересланное" } }
+      }
+    },
+    "bfcore.attachment.image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Image" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Изображение" } }
+      }
+    },
+    "bfcore.attachment.preview.audio" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "🎵 Audio" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "🎵 Аудио" } }
+      }
+    },
+    "bfcore.attachment.preview.document" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Document" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Документ" } }
+      }
+    },
+    "bfcore.attachment.preview.document_named %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "📎 %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "📎 %@" } }
+      }
+    },
+    "bfcore.attachment.preview.forwarded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "↪ Forwarded" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "↪ Пересланное" } }
+      }
+    },
+    "bfcore.attachment.preview.image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "📷 Photo" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "📷 Фото" } }
+      }
+    },
+    "bfcore.attachment.preview.sticker" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sticker" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Стикер" } }
+      }
+    },
+    "bfcore.attachment.preview.video" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "📹 Video" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "📹 Видео" } }
+      }
+    },
+    "bfcore.attachment.preview.voice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "🎤 Voice message" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "🎤 Голосовое" } }
+      }
+    },
+    "bfcore.attachment.sticker" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sticker" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Стикер" } }
+      }
+    },
+    "bfcore.attachment.video" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Видео" } }
+      }
+    },
+    "bfcore.attachment.voice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Voice message" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Голосовое" } }
+      }
+    },
+    "bfcore.cache.error.download_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File download failed" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ошибка скачивания файла" } }
+      }
+    },
+    "bfcore.cache.error.file_missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File not found in cache" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Файл не найден в кеше" } }
+      }
+    },
+    "bfcore.cache.error.invalid_url" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid URL" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Некорректный URL" } }
+      }
+    },
+    "bfcore.chat_role.admin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Admin" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Администратор" } }
+      }
+    },
+    "bfcore.chat_role.member" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Member" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Участник" } }
+      }
+    },
+    "bfcore.chat_role.owner" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Owner" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Владелец" } }
+      }
+    },
+    "bfcore.date.today_at %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today at %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сегодня, %@" } }
+      }
+    },
+    "bfcore.date.yesterday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yesterday" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вчера" } }
+      }
+    },
+    "bfcore.date.yesterday_at %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yesterday at %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вчера, %@" } }
+      }
+    },
+    "bfcore.device.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Неизвестно" } }
+      }
+    },
+    "bfcore.error.account_not_confirmed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account not confirmed. Please check your email" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Аккаунт не подтверждён. Проверьте почту" } }
+      }
+    },
+    "bfcore.error.cancelled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Operation cancelled" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Операция отменена" } }
+      }
+    },
+    "bfcore.error.chat_not_found %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chat not found: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Чат не найден: %@" } }
+      }
+    },
+    "bfcore.error.connection_failed %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connection error: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ошибка соединения: %@" } }
+      }
+    },
+    "bfcore.error.email_exists %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Email already in use: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Email уже используется: %@" } }
+      }
+    },
+    "bfcore.error.file_not_supported %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File type not supported: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Файл не поддерживается: %@" } }
+      }
+    },
+    "bfcore.error.file_too_large %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File too large: %1$@. Maximum size: %2$@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Файл слишком большой: %1$@. Максимальный размер: %2$@" } }
+      }
+    },
+    "bfcore.error.invalid_confirmation_code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid confirmation code" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Неверный код подтверждения" } }
+      }
+    },
+    "bfcore.error.invalid_credentials" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid username or password" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Неверное имя пользователя или пароль" } }
+      }
+    },
+    "bfcore.error.invalid_otp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid two-factor authentication code" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Неверный код двухфакторной аутентификации" } }
+      }
+    },
+    "bfcore.error.network %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Network error: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ошибка сети: %@" } }
+      }
+    },
+    "bfcore.error.no_access_to_chat %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No access to chat: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Нет доступа к чату: %@" } }
+      }
+    },
+    "bfcore.error.otp_required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Two-factor authentication code required" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Требуется код двухфакторной аутентификации" } }
+      }
+    },
+    "bfcore.error.server_unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Server unavailable" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сервер недоступен" } }
+      }
+    },
+    "bfcore.error.session_expired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Session expired. Please sign in again" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сессия истекла. Пожалуйста, войдите снова" } }
+      }
+    },
+    "bfcore.error.timeout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Request timed out" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Превышено время ожидания" } }
+      }
+    },
+    "bfcore.error.unauthorized" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Authorization required" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Требуется авторизация" } }
+      }
+    },
+    "bfcore.error.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown error" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Неизвестная ошибка" } }
+      }
+    },
+    "bfcore.error.unknown_with_message %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Error: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ошибка: %@" } }
+      }
+    },
+    "bfcore.error.user_not_found %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "User not found: %lld" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Пользователь не найден: %lld" } }
+      }
+    },
+    "bfcore.error.username_exists %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Username already taken: %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Имя пользователя уже занято: %@" } }
+      }
+    },
+    "bfcore.fast_auth.status.accepted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Accepted" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Принято" } }
+      }
+    },
+    "bfcore.fast_auth.status.expired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Expired" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Истекло" } }
+      }
+    },
+    "bfcore.fast_auth.status.pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pending" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ожидание" } }
+      }
+    },
+    "bfcore.fast_auth.status.rejected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rejected" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Отклонено" } }
+      }
+    },
+    "bfcore.online.online" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Online" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В сети" } }
+      }
+    },
+    "bfcore.online.last_seen_unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Last seen a long time ago" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) давно" } }
+      }
+    },
+    "bfcore.online.last_seen_just_now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Last seen just now" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) только что" } }
+      }
+    },
+    "bfcore.online.last_seen_minutes %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %lld minute ago" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %lld minutes ago" } }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld минуту назад" } },
+              "few" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld минуты назад" } },
+              "many" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld минут назад" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld минут назад" } }
+            }
+          }
+        }
+      }
+    },
+    "bfcore.online.last_seen_hours %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %lld hour ago" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %lld hours ago" } }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld час назад" } },
+              "few" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld часа назад" } },
+              "many" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld часов назад" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld часов назад" } }
+            }
+          }
+        }
+      }
+    },
+    "bfcore.online.last_seen_days %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %lld day ago" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %lld days ago" } }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld день назад" } },
+              "few" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld дня назад" } },
+              "many" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld дней назад" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %lld дней назад" } }
+            }
+          }
+        }
+      }
+    },
+    "bfcore.online.last_seen_date %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Last seen %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Был(а) %@" } }
+      }
+    },
+    "bfcore.recovery.check_credentials" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Check your username and password" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Проверьте имя пользователя и пароль" } }
+      }
+    },
+    "bfcore.recovery.check_internet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Check your internet connection and try again" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Проверьте подключение к интернету и попробуйте снова" } }
+      }
+    },
+    "bfcore.recovery.choose_different_username" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a different username" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выберите другое имя пользователя" } }
+      }
+    },
+    "bfcore.recovery.enter_otp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter the code from your authenticator app" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Введите код из приложения-аутентификатора" } }
+      }
+    },
+    "bfcore.recovery.sign_in_again" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in again" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Войдите в аккаунт снова" } }
+      }
+    },
+    "bfcore.recovery.try_later" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please try again later" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Попробуйте позже" } }
+      }
+    },
+    "bfcore.recovery.use_different_email" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use a different email" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Используйте другой email" } }
+      }
+    },
+    "bfcore.shared_media.filter.documents" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Files" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Файлы" } }
+      }
+    },
+    "bfcore.shared_media.filter.media" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Media" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Медиа" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

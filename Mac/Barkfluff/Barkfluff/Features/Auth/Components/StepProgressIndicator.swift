@@ -103,7 +103,7 @@ struct VerticalStepProgressIndicator: View {
                 .foregroundStyle(isCurrent ? .primary : .secondary)
 
             if step.isOptional && !isCompleted && !isCurrent {
-                Text("(опционально)")
+                Text("auth.register.step.optional_suffix")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -136,11 +136,11 @@ struct RegistrationProgressBar: View {
 
             // Текст прогресса
             HStack {
-                Text("Шаг \(currentStep.rawValue) из 9")
+                Text("auth.register.progress.step \(currentStep.rawValue) \(RegistrationStep.allCases.count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(currentStep.progress * 100))%")
+                Text(verbatim: "\(Int(currentStep.progress * 100))%")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

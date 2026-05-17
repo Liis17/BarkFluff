@@ -99,7 +99,7 @@ struct ChatListView: View {
         VStack(spacing: Theme.Spacing.xs) {
             if viewModel.isOffline && !viewModel.chats.isEmpty {
                 ErrorBannerView(
-                    message: "Нет соединения. Показаны сохранённые чаты.",
+                    message: LocalizedStringResource("chat_list.offline_banner"),
                     onRetry: { Task { await viewModel.revalidateChats() } }
                 )
                 .padding(.horizontal, Theme.Spacing.md)
@@ -127,7 +127,7 @@ struct ChatListView: View {
         )) {
             // Search results section
             if !viewModel.searchResults.isEmpty {
-                Section("Пользователи") {
+                Section("chat_list.search.section.users") {
                     ForEach(viewModel.searchResults) { user in
                         Button {
                             Task {
@@ -145,19 +145,19 @@ struct ChatListView: View {
             }
 
             // Chats section
-            Section("Сообщения") {
+            Section("chat_list.section.messages") {
                 if viewModel.isLoading && viewModel.chats.isEmpty {
                     ForEach(0..<5, id: \.self) { _ in
                         ChatRowPlaceholderView()
                     }
                 } else if viewModel.chats.isEmpty && !viewModel.isLoading {
                     if viewModel.searchText.isEmpty {
-                        Text("Нет чатов")
+                        Text("chat_list.empty.title")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, Theme.Spacing.xl)
                     } else {
-                        Text("Ничего не найдено")
+                        Text("user_search.empty.title")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, Theme.Spacing.xl)
@@ -191,7 +191,7 @@ struct ChatListView: View {
                 viewModel.searchText = newValue
                 viewModel.onSearchTextChanged()
             }
-        ), placement: .sidebar, prompt: "Поиск")
+        ), placement: .sidebar, prompt: Text("chat_list.search.prompt"))
         .overlay {
             if let error = viewModel.errorMessage, viewModel.chats.isEmpty {
                 VStack(spacing: Theme.Spacing.md) {
@@ -204,7 +204,7 @@ struct ChatListView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
-                    Button("Повторить") {
+                    Button("common.retry") {
                         Task { await viewModel.refresh() }
                     }
                     .buttonStyle(.bordered)

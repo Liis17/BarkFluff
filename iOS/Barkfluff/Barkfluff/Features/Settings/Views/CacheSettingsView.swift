@@ -14,7 +14,7 @@ struct CacheSettingsView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("Всего использовано") {
+                LabeledContent("settings.cache.section.total_inline") {
                     Text(formatBytes(viewModel.stats.totalBytes))
                         .foregroundStyle(.secondary)
                 }
@@ -22,7 +22,7 @@ struct CacheSettingsView: View {
 
             let nonEmptyTypes = viewModel.displayedTypes.filter { (viewModel.stats.bytesByType[$0] ?? 0) > 0 }
             if !nonEmptyTypes.isEmpty {
-                Section("По типам") {
+                Section("settings.cache.section.by_type") {
                     ForEach(nonEmptyTypes, id: \.self) { type in
                         let bytes = viewModel.stats.bytesByType[type] ?? 0
                         HStack {
@@ -53,12 +53,12 @@ struct CacheSettingsView: View {
                 Button(role: .destructive) {
                     showClearAllConfirm = true
                 } label: {
-                    Text("Очистить весь кеш")
+                    Text("settings.cache.clear_all")
                 }
                 .disabled(viewModel.isClearing || viewModel.stats.totalBytes == 0)
             }
         }
-        .navigationTitle("Кеш")
+        .navigationTitle("settings.category.cache")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container
@@ -68,16 +68,16 @@ struct CacheSettingsView: View {
             await viewModel.refreshStats()
         }
         .confirmationDialog(
-            "Очистить весь кеш?",
+            "settings.cache.clear_confirm.title",
             isPresented: $showClearAllConfirm,
             titleVisibility: .visible
         ) {
-            Button("Очистить", role: .destructive) {
+            Button("settings.cache.clear", role: .destructive) {
                 Task { await viewModel.clearAll() }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         } message: {
-            Text("Будут удалены все локальные копии медиа, локальная БД сообщений и чатов. Сами сообщения на сервере не пострадают.")
+            Text("settings.cache.clear_confirm.message")
         }
     }
 

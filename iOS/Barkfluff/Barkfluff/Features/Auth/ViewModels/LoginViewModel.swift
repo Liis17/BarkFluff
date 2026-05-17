@@ -15,7 +15,7 @@ final class LoginViewModel {
     var password = ""
     var otpCode = ""
     var isLoading = false
-    var errorMessage: String?
+    var errorMessage: LocalizedStringResource?
     var needsOTP = false
 
     private let authService: AuthServiceProtocol
@@ -43,7 +43,9 @@ final class LoginViewModel {
             needsOTP = true
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            // Сообщения об ошибках логина приходят из BFError.localizedDescription —
+            // оборачиваем как verbatim, чтобы не пытаться искать ключ в каталоге.
+            errorMessage = LocalizedStringResource(stringLiteral: error.localizedDescription)
         }
 
         isLoading = false

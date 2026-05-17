@@ -29,7 +29,7 @@ struct MainTabView: View {
                     }
             }
             .tabItem {
-                Label("Чаты", systemImage: "message")
+                Label("navigation.tab.chats", systemImage: "message")
             }
             .tag(AppCoordinator.Tab.chats)
 
@@ -41,7 +41,7 @@ struct MainTabView: View {
                     }
             }
             .tabItem {
-                Label("Профиль", systemImage: "person")
+                Label("navigation.tab.profile", systemImage: "person")
             }
             .tag(AppCoordinator.Tab.profile)
         }

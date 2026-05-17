@@ -24,7 +24,7 @@ final class RegisterViewModel {
     var isLoading = false
 
     /// Сообщение об ошибке
-    var errorMessage: String?
+    var errorMessage: LocalizedStringResource?
 
     /// Валидность текущего шага (для UI)
     var isCurrentStepValid: Bool = false
@@ -170,12 +170,12 @@ final class RegisterViewModel {
         do {
             let exists = try await userService.checkUsernameExists(username: data.username)
             if exists {
-                errorMessage = "Это имя пользователя уже занято"
+                errorMessage = LocalizedStringResource("auth.register.step.username.taken")
                 return false
             }
             return true
         } catch {
-            errorMessage = "Не удалось проверить имя: \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource("auth.errors.username_check_failed \(error.localizedDescription)")
             return false
         }
     }
@@ -191,7 +191,7 @@ final class RegisterViewModel {
         do {
             let exists = try await userService.checkEmailExists(email: data.email)
             if exists {
-                errorMessage = "Этот email уже зарегистрирован"
+                errorMessage = LocalizedStringResource("auth.register.step.email.taken")
                 return false
             }
         } catch {
@@ -212,7 +212,7 @@ final class RegisterViewModel {
             data.codeID = codeID
             return true
         } catch {
-            errorMessage = "Не удалось создать аккаунт: \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource("auth.errors.register_failed \(error.localizedDescription)")
             return false
         }
     }
@@ -225,7 +225,7 @@ final class RegisterViewModel {
         }
 
         if !result.strength.isAcceptable {
-            errorMessage = "Пароль слишком слабый"
+            errorMessage = LocalizedStringResource("auth.validation.password.too_weak_short")
             return false
         }
 
@@ -238,7 +238,7 @@ final class RegisterViewModel {
             passwordSaved = true
             return true
         } catch {
-            errorMessage = "Не удалось сохранить пароль: \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource("auth.errors.password_save_failed \(error.localizedDescription)")
             return false
         }
     }

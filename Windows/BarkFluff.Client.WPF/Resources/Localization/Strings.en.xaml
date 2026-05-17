@@ -30,4 +30,236 @@
     <system:String x:Key="L_Settings_Language_Option_English">English</system:String>
     <system:String x:Key="L_Settings_Language_Hint">When set to “System”, the app follows the Windows language. If the Windows language is neither Russian nor English, English is used.</system:String>
 
+    <!--  Common  -->
+    <system:String x:Key="L_Common_Save">Save</system:String>
+    <system:String x:Key="L_Common_Cancel">Cancel</system:String>
+    <system:String x:Key="L_Common_Delete">Delete</system:String>
+    <system:String x:Key="L_Common_Yes">Yes</system:String>
+    <system:String x:Key="L_Common_No">No</system:String>
+    <system:String x:Key="L_Common_OK">OK</system:String>
+    <system:String x:Key="L_Common_Loading">Loading...</system:String>
+    <system:String x:Key="L_Common_Saving">Saving...</system:String>
+    <system:String x:Key="L_Common_Uploading">Uploading...</system:String>
+    <system:String x:Key="L_Common_Removing">Removing...</system:String>
+    <system:String x:Key="L_Common_Unknown">Unknown</system:String>
+    <system:String x:Key="L_Common_NotSet">—</system:String>
+    <system:String x:Key="L_Common_Error_Prefix">Error: </system:String>
+
+    <!--  Settings: Profile  -->
+    <system:String x:Key="L_Settings_Profile_Title">Profile</system:String>
+    <system:String x:Key="L_Settings_Profile_ChangeAvatar">Change</system:String>
+    <system:String x:Key="L_Settings_Profile_FirstName_Label">First name</system:String>
+    <system:String x:Key="L_Settings_Profile_FirstName_Placeholder">First name</system:String>
+    <system:String x:Key="L_Settings_Profile_LastName_Label">Last name</system:String>
+    <system:String x:Key="L_Settings_Profile_LastName_Placeholder">Last name</system:String>
+    <system:String x:Key="L_Settings_Profile_Username_Label">Username</system:String>
+    <system:String x:Key="L_Settings_Profile_Username_Placeholder">username</system:String>
+    <system:String x:Key="L_Settings_Profile_Bio_Label">Bio</system:String>
+    <system:String x:Key="L_Settings_Profile_Bio_Placeholder">About yourself</system:String>
+    <system:String x:Key="L_Settings_Profile_NameUpdated">Name updated</system:String>
+    <system:String x:Key="L_Settings_Profile_UsernameUpdated">Username updated</system:String>
+    <system:String x:Key="L_Settings_Profile_BioUpdated">Bio updated</system:String>
+    <system:String x:Key="L_Settings_Profile_AvatarUpdated">Avatar updated</system:String>
+    <system:String x:Key="L_Settings_Profile_UploadingAvatar">Uploading avatar...</system:String>
+    <system:String x:Key="L_Settings_Profile_AvatarDialog_Title">Choose avatar</system:String>
+    <system:String x:Key="L_Settings_Profile_AvatarDialog_Filter">Images|*.jpg;*.jpeg;*.png;*.bmp</system:String>
+
+    <!--  Settings: General  -->
+    <system:String x:Key="L_Settings_General_AppearanceHeader">APPEARANCE</system:String>
+    <system:String x:Key="L_Settings_General_Theme_Title">App theme</system:String>
+    <system:String x:Key="L_Settings_General_Theme_Light">Light</system:String>
+    <system:String x:Key="L_Settings_General_Theme_Dark">Dark</system:String>
+    <system:String x:Key="L_Settings_General_Theme_System">System</system:String>
+
+    <!--  Settings: Notifications  -->
+    <system:String x:Key="L_Settings_Notifications_Title">Notifications and Sound</system:String>
+    <system:String x:Key="L_Settings_Notifications_Description">Choose what information to show in new message notifications</system:String>
+    <system:String x:Key="L_Settings_Notifications_Sound_Title">Notification sound</system:String>
+    <system:String x:Key="L_Settings_Notifications_Sound_Description">Play a sound for new messages</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_Disabled_Title">Disabled</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_Disabled_Description">Notifications will not be shown</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_HiddenContent_Title">Hidden content</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_HiddenContent_Description">Only "You have a new message"</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_SenderOnly_Title">Sender only</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_SenderOnly_Description">Sender name without message text</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullTextNoPreview_Title">Text without preview</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullTextNoPreview_Description">Name and message text, no images</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullWithPreview_Title">Full with preview</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullWithPreview_Description">Name, text and image previews</system:String>
+
+    <!--  Settings: Security  -->
+    <system:String x:Key="L_Settings_Security_Title">Security</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Title">Change password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Step1_Hint">A confirmation code will be sent to your email to change the password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Step2_Hint">Enter the 6-digit code sent to your email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Step3_Hint">Enter a new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_SendCode">Send code to email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CodePlaceholder">6-digit code from the email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_ConfirmCode">Confirm code</system:String>
+    <system:String x:Key="L_Settings_Security_Password_SaveNew">Save new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_SendingCode">Sending code...</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CodeSent">Code sent to your email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CheckingCode">Checking code...</system:String>
+    <system:String x:Key="L_Settings_Security_Password_EnterCode">Enter the confirmation code</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CodeConfirmed">Code confirmed. Enter the new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_EnterNew">Enter a new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Mismatch">Passwords do not match</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Changed">Password changed successfully</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Title">Two-factor authentication</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_DefaultHint">Click to set up 2FA</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Enabled">Enabled</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disabled">Disabled</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_OtpPlaceholder">Enter the code from the app</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Setup">Set up</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Confirm">Confirm</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disable">Disable 2FA</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_LoadingQr">Getting QR code...</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_QrError">Failed to display QR code</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_ScanHint">Scan the QR code and enter the confirmation code</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_ManualKey">Or enter the key manually: {0}</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_EnterOtp">Enter the code from the app</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Checking">Checking...</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Configured">2FA configured successfully</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disabling">Disabling 2FA...</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disabled_Status">2FA disabled</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Title">Access code (PIN)</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Description">PIN code for quick app sign-in</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Save">Save PIN</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Removed">PIN code removed</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Saved">PIN code saved</system:String>
+
+    <!--  Settings: Privacy  -->
+    <system:String x:Key="L_Settings_Privacy_Title">Privacy</system:String>
+    <system:String x:Key="L_Settings_Privacy_LoadingSettings">Loading settings...</system:String>
+    <system:String x:Key="L_Settings_Privacy_LoadError">Failed to load settings: {0}</system:String>
+    <system:String x:Key="L_Settings_Privacy_SaveError">Save error: {0}</system:String>
+    <system:String x:Key="L_Settings_Privacy_Group_Profile">PROFILE</system:String>
+    <system:String x:Key="L_Settings_Privacy_PublicPage_Title">Public page</system:String>
+    <system:String x:Key="L_Settings_Privacy_PublicPage_Description">Show your profile at barkfluff.com/username</system:String>
+    <system:String x:Key="L_Settings_Privacy_SearchVisible_Title">Visible in search</system:String>
+    <system:String x:Key="L_Settings_Privacy_SearchVisible_Description">Show you in user search results</system:String>
+    <system:String x:Key="L_Settings_Privacy_Group_WhoSees">WHO CAN SEE</system:String>
+    <system:String x:Key="L_Settings_Privacy_Online_Title">Online status</system:String>
+    <system:String x:Key="L_Settings_Privacy_Online_Description">Who can see when you are online</system:String>
+    <system:String x:Key="L_Settings_Privacy_Avatar_Title">Profile photo</system:String>
+    <system:String x:Key="L_Settings_Privacy_Avatar_Description">Who can see your avatar</system:String>
+    <system:String x:Key="L_Settings_Privacy_Bio_Title">Bio</system:String>
+    <system:String x:Key="L_Settings_Privacy_Bio_Description">Who can see your profile description</system:String>
+    <system:String x:Key="L_Settings_Privacy_Email_Title">Email address</system:String>
+    <system:String x:Key="L_Settings_Privacy_Email_Description">Who can see your email</system:String>
+    <system:String x:Key="L_Settings_Privacy_Visibility_All">Everyone</system:String>
+    <system:String x:Key="L_Settings_Privacy_Visibility_Friends">Friends</system:String>
+    <system:String x:Key="L_Settings_Privacy_Visibility_Nobody">Nobody</system:String>
+
+    <!--  Settings: Personalization  -->
+    <system:String x:Key="L_Settings_Personalization_Title">Personalization</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Header">PROFILE POSTER</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Title">Poster</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Empty">Poster is not set</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Change">Change poster</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Dialog_Title">Select profile poster</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Dialog_Filter">Images (*.jpg;*.jpeg;*.png;*.webp)|*.jpg;*.jpeg;*.png;*.webp|All files (*.*)|*.*</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_LinkError">Failed to get URL: {0}</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_UploadError">Upload error: {0}</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_SaveError">Save error: {0}</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_Header">MESSAGE APPEARANCE</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_Title">Bubble corner radius</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_PreviewIncoming">Hi! 👋</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_PreviewOutgoing">How are you? 😊</system:String>
+    <system:String x:Key="L_Settings_Personalization_Background_Header">CHAT BACKGROUND</system:String>
+    <system:String x:Key="L_Settings_Personalization_Blur_Title">Background blur</system:String>
+    <system:String x:Key="L_Settings_Personalization_Blur_Description">Blurs the selected chat background image</system:String>
+    <system:String x:Key="L_Settings_Personalization_Blur_Radius">Blur radius</system:String>
+    <system:String x:Key="L_Settings_Personalization_Background_Dim">Background dim</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_Header">BACKGROUND IMAGES</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_Title">Background images</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_AddDialog_Title">Select background image</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_AddButton">＋  Add background</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_DeleteMenu">Delete background</system:String>
+
+    <!--  Settings: Cloud  -->
+    <system:String x:Key="L_Settings_Cloud_Title">Cloud</system:String>
+    <system:String x:Key="L_Settings_Cloud_Usage_Title">Storage usage</system:String>
+    <system:String x:Key="L_Settings_Cloud_Usage_OfTotal">{0} of {1}</system:String>
+    <system:String x:Key="L_Settings_Cloud_Usage_Percent">{0:F1}% used</system:String>
+    <system:String x:Key="L_Settings_Cloud_LoadError">Failed to load data</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Images">Photos</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Videos">Videos</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Documents">Documents</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Audio">Audio</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Voice">Voice</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Gif">GIF</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Stickers">Stickers</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Avatars">Avatars</system:String>
+
+    <!--  Settings: Cache  -->
+    <system:String x:Key="L_Settings_Cache_Title">Cache</system:String>
+    <system:String x:Key="L_Settings_Cache_Counting">Calculating...</system:String>
+    <system:String x:Key="L_Settings_Cache_DiskUsage_Title">Disk usage</system:String>
+    <system:String x:Key="L_Settings_Cache_Legend_App">Application</system:String>
+    <system:String x:Key="L_Settings_Cache_Legend_FileCache">File cache</system:String>
+    <system:String x:Key="L_Settings_Cache_Legend_Database">Database</system:String>
+    <system:String x:Key="L_Settings_Cache_ByTypes_Header">BY TYPE</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Avatars">Avatars</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Images">Images</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Videos">Videos</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Gif">GIF</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Documents">Documents</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Audio">Audio</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Messages">Messages</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Chats">Chats</system:String>
+    <system:String x:Key="L_Settings_Cache_MessagesRecords">{0} · {1} records</system:String>
+    <system:String x:Key="L_Settings_Cache_ChatsRecords">{0} · {1} chats</system:String>
+    <system:String x:Key="L_Settings_Cache_TotalUsage">Cache: {0}  ·  App: {1}</system:String>
+    <system:String x:Key="L_Settings_Cache_Menu_Clear">Clear</system:String>
+    <system:String x:Key="L_Settings_Cache_ClearAll">Clear entire cache</system:String>
+    <system:String x:Key="L_Settings_Cache_Cleared_All">Entire cache cleared</system:String>
+    <system:String x:Key="L_Settings_Cache_Cleared_Tag">"{0}" cache cleared</system:String>
+
+    <!--  Settings: Sessions  -->
+    <system:String x:Key="L_Settings_Sessions_Title">Active sessions</system:String>
+    <system:String x:Key="L_Settings_Sessions_CurrentDevice">Current device</system:String>
+    <system:String x:Key="L_Settings_Sessions_OtherSessions">Other sessions</system:String>
+    <system:String x:Key="L_Settings_Sessions_TerminateAll">Terminate all others</system:String>
+    <system:String x:Key="L_Settings_Sessions_Terminate">Terminate</system:String>
+    <system:String x:Key="L_Settings_Sessions_Now">Now</system:String>
+    <system:String x:Key="L_Settings_Sessions_CurrentInfo">{0} · {1}</system:String>
+    <system:String x:Key="L_Settings_Sessions_DetailFormat">{0} · {1}</system:String>
+    <system:String x:Key="L_Settings_Sessions_LoadError">Load error: {0}</system:String>
+    <system:String x:Key="L_Settings_Sessions_SessionTerminated">Session terminated</system:String>
+    <system:String x:Key="L_Settings_Sessions_AllTerminated">All sessions terminated</system:String>
+
+    <!--  Settings: AboutApp  -->
+    <system:String x:Key="L_Settings_AboutApp_Title">About app</system:String>
+    <system:String x:Key="L_Settings_AboutApp_AppHeader">APPLICATION</system:String>
+    <system:String x:Key="L_Settings_AboutApp_AppName">BarkFluff Desktop</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Version_Placeholder">Version: ...</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Dotnet_Placeholder">.NET: ...</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Version_Format">Version: {0} {1} ({2})</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Dotnet_Format">.NET: {0}</system:String>
+    <system:String x:Key="L_Settings_AboutApp_SystemHeader">SYSTEM</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Os">Operating system</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Os_BuildFormat">{0} {1} (build {2})</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Cpu">Processor</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Ram">Memory</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Ram_Format">{0:F1} GB</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Architecture">Architecture</system:String>
+
+    <!--  Settings: AboutServer  -->
+    <system:String x:Key="L_Settings_AboutServer_Title">About server</system:String>
+    <system:String x:Key="L_Settings_AboutServer_InfoHeader">SERVER INFO</system:String>
+    <system:String x:Key="L_Settings_AboutServer_NoConnection">No connection</system:String>
+    <system:String x:Key="L_Settings_AboutServer_ConnectionHeader">CONNECTION</system:String>
+    <system:String x:Key="L_Settings_AboutServer_PingButton">Check connection</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Connecting">Connecting...</system:String>
+    <system:String x:Key="L_Settings_AboutServer_PingSuccess">Connection established · {0} ms  ·  {1}</system:String>
+    <system:String x:Key="L_Settings_AboutServer_PingException">Exception: {0}</system:String>
+    <system:String x:Key="L_Settings_AboutServer_ServicesHeader">MICROSERVICES</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_NoData">no data</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Healthy">Healthy</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Degraded">Degraded</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Unhealthy">Unavailable</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Offline">Offline</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Unknown">Unknown</system:String>
+
 </ResourceDictionary>

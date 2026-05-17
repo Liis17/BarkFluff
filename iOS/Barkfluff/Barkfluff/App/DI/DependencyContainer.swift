@@ -93,6 +93,11 @@ final class DependencyContainer {
     /// Локальные настройки внешнего вида (тема приложения).
     let appearanceSettings: AppearanceSettings
 
+    // MARK: - Localization
+
+    /// Локальные настройки языка интерфейса.
+    let localizationSettings: LocalizationSettings
+
     // MARK: - Developer
 
     /// Локальные отладочные флаги (показ ID пользователей/чатов в профиле).
@@ -284,6 +289,9 @@ final class DependencyContainer {
         // Appearance (тема приложения)
         self.appearanceSettings = AppearanceSettings()
 
+        // Localization (язык интерфейса)
+        self.localizationSettings = LocalizationSettings()
+
         // Developer (отладочные флаги)
         self.developerSettings = DeveloperSettings()
 
@@ -349,6 +357,7 @@ final class DependencyContainer {
         await MainActor.run {
             personalizationSettings.reset()
             appearanceSettings.reset()
+            localizationSettings.reset()
             developerSettings.reset()
         }
 

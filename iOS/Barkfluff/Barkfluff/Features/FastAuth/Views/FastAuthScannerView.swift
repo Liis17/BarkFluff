@@ -48,7 +48,7 @@ struct FastAuthScannerView: View {
                 }
             }
         }
-        .navigationTitle("Сканирование QR")
+        .navigationTitle("auth.fast_auth.scanner.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task {
@@ -65,15 +65,15 @@ struct FastAuthScannerView: View {
                 onReturnToScanning: { viewModel.resetToScanning() }
             )
         }
-        .alert("Нет доступа к камере", isPresented: $showOpenSettingsAlert) {
-            Button("Открыть настройки") {
+        .alert("auth.fast_auth.scanner.permission_alert.title", isPresented: $showOpenSettingsAlert) {
+            Button("auth.fast_auth.scanner.open_settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         } message: {
-            Text("Чтобы сканировать QR-код, разрешите доступ к камере в Настройках iOS.")
+            Text("auth.fast_auth.scanner.permission_alert.message")
         }
     }
 }

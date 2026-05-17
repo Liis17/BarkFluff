@@ -59,10 +59,10 @@ struct ServerSelectionView: View {
                 .font(.system(size: 44))
                 .foregroundStyle(.blue)
 
-            Text("BarkFluff")
+            Text(verbatim: "BarkFluff")
                 .font(.system(size: 24, weight: .bold))
 
-            Text("Выберите сервер для подключения")
+            Text("auth.server_selection.subtitle")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -76,7 +76,7 @@ struct ServerSelectionView: View {
         case .loading:
             VStack(spacing: 12) {
                 ProgressView()
-                Text("Поиск серверов...")
+                Text("auth.server_selection.searching")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -103,10 +103,10 @@ struct ServerSelectionView: View {
                     .font(.system(size: 36))
                     .foregroundStyle(.tertiary)
 
-                Text("Серверы не найдены")
+                Text("auth.server_selection.empty.title")
                     .font(.headline)
 
-                Text("Введите адрес сервера вручную")
+                Text("auth.server_selection.empty.hint")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -124,7 +124,7 @@ struct ServerSelectionView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                Button("Попробовать снова") {
+                Button("common.retry") {
                     Task { await viewModel.loadServers() }
                 }
                 .buttonStyle(.bordered)
@@ -144,7 +144,7 @@ struct ServerSelectionView: View {
                 Rectangle()
                     .fill(.secondary.opacity(0.3))
                     .frame(height: 1)
-                Text("или")
+                Text("common.or")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Rectangle()
@@ -152,18 +152,18 @@ struct ServerSelectionView: View {
                     .frame(height: 1)
             }
 
-            Text("Подключиться вручную")
+            Text("auth.server_selection.manual.title")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // Поле ввода адреса
             VStack(alignment: .leading, spacing: 4) {
-                Text("Адрес сервера")
+                Text("auth.server_selection.manual.address")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                TextField("beacon.servername.com:443", text: Bindable(viewModel).serverAddress)
+                TextField("auth.server_selection.manual.placeholder", text: Bindable(viewModel).serverAddress)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.URL)
                     .autocapitalization(.none)
@@ -184,7 +184,7 @@ struct ServerSelectionView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Text("Подключиться")
+                    Text("auth.server_selection.connect")
                 }
             }
             .buttonStyle(.borderedProminent)

@@ -21,16 +21,16 @@ struct FastAuthConfirmView: View {
     let onReturnToScanning: () -> Void
 
     @State private var isProcessing = false
-    @State private var errorMessage: String?
+    @State private var errorMessage: LocalizedStringResource?
 
     var body: some View {
         List {
-            Section("Новое устройство") {
-                row("Имя", info.deviceName)
-                row("ОС", info.operationSystem)
-                row("Приложение", "\(info.appName) \(info.appVersion)".trimmingCharacters(in: .whitespaces))
+            Section("auth.fast_auth.confirm.section.device") {
+                row("auth.fast_auth.confirm.field.name", info.deviceName)
+                row("auth.fast_auth.confirm.field.os", info.operationSystem)
+                row("auth.fast_auth.confirm.field.app", "\(info.appName) \(info.appVersion)".trimmingCharacters(in: .whitespaces))
                 if !info.ipAddress.isEmpty {
-                    row("IP-адрес", info.ipAddress)
+                    row("auth.fast_auth.confirm.field.ip", info.ipAddress)
                 }
             }
 
@@ -48,7 +48,7 @@ struct FastAuthConfirmView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Text("Подтвердить вход")
+                        Text("auth.fast_auth.confirm.accept")
                             .fontWeight(.semibold)
                         Spacer()
                     }
@@ -60,14 +60,14 @@ struct FastAuthConfirmView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Text("Отклонить")
+                        Text("auth.fast_auth.confirm.reject")
                         Spacer()
                     }
                 }
                 .disabled(isProcessing)
             }
         }
-        .navigationTitle("Подтверждение входа")
+        .navigationTitle("auth.fast_auth.confirm.title")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
             if isProcessing {
@@ -80,11 +80,11 @@ struct FastAuthConfirmView: View {
     }
 
     @ViewBuilder
-    private func row(_ title: String, _ value: String) -> some View {
+    private func row(_ titleKey: LocalizedStringKey, _ value: String) -> some View {
         HStack {
-            Text(title).foregroundStyle(.secondary)
+            Text(titleKey).foregroundStyle(.secondary)
             Spacer()
-            Text(value.isEmpty ? "—" : value)
+            Text(verbatim: value.isEmpty ? "—" : value)
                 .multilineTextAlignment(.trailing)
         }
     }
@@ -101,7 +101,7 @@ struct FastAuthConfirmView: View {
             // Закрываем весь FastAuth-флоу (и сам Confirm, и Scanner с активной камерой).
             isFlowPresented = false
         } catch {
-            errorMessage = "Не удалось подтвердить: \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource("auth.fast_auth.confirm.error.accept \(error.localizedDescription)")
         }
     }
 
@@ -118,7 +118,7 @@ struct FastAuthConfirmView: View {
             onReturnToScanning()
             dismiss()
         } catch {
-            errorMessage = "Не удалось отклонить: \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource("auth.fast_auth.confirm.error.reject \(error.localizedDescription)")
         }
     }
 }

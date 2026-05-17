@@ -68,6 +68,7 @@ struct UserProfilePanelView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 24, height: 24)
                 }
+                .accessibilityLabel(Text("user_profile.close"))
             }
         }
         .task {

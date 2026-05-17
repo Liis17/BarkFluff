@@ -20,7 +20,7 @@ struct ProfileActionsSection: View {
             if !chat.isGroupChat {
                 // DM: Отправить сообщение (фокус на поле ввода)
                 ProfileActionButton(
-                    title: "Отправить сообщение",
+                    titleKey: "user_profile.action.send_message",
                     icon: "message.fill",
                     color: .accentColor
                 ) {
@@ -36,7 +36,7 @@ struct ProfileActionsSection: View {
 
 /// Кнопка действия в профиле
 struct ProfileActionButton: View {
-    let title: String
+    let titleKey: LocalizedStringKey
     let icon: String
     var color: Color = .primary
     var isDestructive: Bool = false
@@ -52,7 +52,7 @@ struct ProfileActionButton: View {
                     .foregroundStyle(isDestructive ? .red : color)
                     .frame(width: 24, height: 24)
 
-                Text(title)
+                Text(titleKey)
                     .font(.body)
                     .foregroundStyle(isDestructive ? .red : .primary)
 

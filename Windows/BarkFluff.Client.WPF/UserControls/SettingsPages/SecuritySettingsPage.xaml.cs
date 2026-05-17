@@ -9,7 +9,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     /// </summary>
     public partial class SecuritySettingsPage : BaseSettingsPage
     {
-        public override string Title => "Безопасность";
+        public override string TitleKey => "L_Settings_Security_Title";
 
         private string? _resetId;
 
@@ -32,7 +32,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
                 if (authEnabled)
                 {
-                    TwoFaStatusText.Text = "Включена";
+                    TwoFaStatusText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_TwoFa_Enabled");
                     SetupTwoFaButton.Visibility = Visibility.Collapsed;
                     ConfirmTwoFaButton.Visibility = Visibility.Collapsed;
                     QrImage.Visibility = Visibility.Collapsed;
@@ -41,7 +41,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 }
                 else
                 {
-                    TwoFaStatusText.Text = "Отключена";
+                    TwoFaStatusText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_TwoFa_Disabled");
                     SetupTwoFaButton.Visibility = Visibility.Visible;
                     DisableTwoFaButton.Visibility = Visibility.Collapsed;
                 }
@@ -59,7 +59,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var gp = App.GParam;
             if (gp == null) return;
 
-            StatusText.Text = "Отправка кода...";
+            StatusText.Text = L("L_Settings_Security_Password_SendingCode");
 
             var (error, resetId) = await App.ServerCommunication.ResetPassword(
                 gp.Email ?? "", gp.UserName ?? "", gp);
@@ -69,12 +69,12 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 _resetId = resetId;
                 PasswordStep1.Visibility = Visibility.Collapsed;
                 PasswordStep2.Visibility = Visibility.Visible;
-                PasswordStepText.Text = "Введите 6-значный код, отправленный на вашу почту";
-                StatusText.Text = "Код отправлен на почту";
+                PasswordStepText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_Password_Step2_Hint");
+                StatusText.Text = L("L_Settings_Security_Password_CodeSent");
             }
             else
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
             }
         }
 
@@ -83,11 +83,11 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var code = ResetCodeBox.Text?.Trim();
             if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(_resetId))
             {
-                StatusText.Text = "Введите код подтверждения";
+                StatusText.Text = L("L_Settings_Security_Password_EnterCode");
                 return;
             }
 
-            StatusText.Text = "Проверка кода...";
+            StatusText.Text = L("L_Settings_Security_Password_CheckingCode");
             var (error, refreshToken) = await App.ServerCommunication.ConfirmResetCode(
                 _resetId, code, App.GParam);
 
@@ -95,12 +95,12 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             {
                 PasswordStep2.Visibility = Visibility.Collapsed;
                 PasswordStep3.Visibility = Visibility.Visible;
-                PasswordStepText.Text = "Введите новый пароль";
-                StatusText.Text = "Код подтверждён. Введите новый пароль";
+                PasswordStepText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_Password_Step3_Hint");
+                StatusText.Text = L("L_Settings_Security_Password_CodeConfirmed");
             }
             else
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
             }
         }
 
@@ -111,32 +111,32 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             if (string.IsNullOrEmpty(newPass))
             {
-                StatusText.Text = "Введите новый пароль";
+                StatusText.Text = L("L_Settings_Security_Password_EnterNew");
                 return;
             }
 
             if (newPass != confirmPass)
             {
-                StatusText.Text = "Пароли не совпадают";
+                StatusText.Text = L("L_Settings_Security_Password_Mismatch");
                 return;
             }
 
-            StatusText.Text = "Сохранение...";
+            StatusText.Text = L("L_Common_Saving");
             var error = await App.ServerCommunication.SetPassword(newPass, App.GParam);
             if (error.IsSuccess)
             {
-                StatusText.Text = "Пароль успешно изменён";
+                StatusText.Text = L("L_Settings_Security_Password_Changed");
                 NewPasswordBox.Clear();
                 ConfirmPasswordBox.Clear();
                 // Вернуть на шаг 1
                 PasswordStep3.Visibility = Visibility.Collapsed;
                 PasswordStep1.Visibility = Visibility.Visible;
-                PasswordStepText.Text = "Для смены пароля на вашу почту будет отправлен код подтверждения";
+                PasswordStepText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_Password_Step1_Hint");
                 _resetId = null;
             }
             else
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
             }
         }
 
@@ -146,11 +146,11 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
         private async void SetupTwoFa_Click(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Получение QR-кода...";
+            StatusText.Text = L("L_Settings_Security_TwoFa_LoadingQr");
             var (error, qrBase64, justCode) = await App.ServerCommunication.OtpReceipt(App.GParam);
             if (!error.IsSuccess)
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
                 return;
             }
 
@@ -170,7 +170,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 }
                 catch
                 {
-                    StatusText.Text = "Не удалось отобразить QR-код";
+                    StatusText.Text = L("L_Settings_Security_TwoFa_QrError");
                     return;
                 }
             }
@@ -178,11 +178,12 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             OtpCodeBox.Visibility = Visibility.Visible;
             ConfirmTwoFaButton.Visibility = Visibility.Visible;
             SetupTwoFaButton.Visibility = Visibility.Collapsed;
-            StatusText.Text = "Отсканируйте QR-код и введите код подтверждения";
+            StatusText.Text = L("L_Settings_Security_TwoFa_ScanHint");
 
             if (!string.IsNullOrEmpty(justCode))
             {
-                TwoFaStatusText.Text = $"Или введите ключ вручную: {justCode}";
+                var fmt = L("L_Settings_Security_TwoFa_ManualKey");
+                TwoFaStatusText.Text = string.Format(fmt, justCode);
             }
         }
 
@@ -191,45 +192,45 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var code = OtpCodeBox.Text?.Trim();
             if (string.IsNullOrEmpty(code))
             {
-                StatusText.Text = "Введите код из приложения";
+                StatusText.Text = L("L_Settings_Security_TwoFa_EnterOtp");
                 return;
             }
 
-            StatusText.Text = "Проверка...";
+            StatusText.Text = L("L_Settings_Security_TwoFa_Checking");
             var error = await App.ServerCommunication.OtpAccept(App.GParam, code);
             if (error.IsSuccess)
             {
-                StatusText.Text = "2FA успешно настроена";
+                StatusText.Text = L("L_Settings_Security_TwoFa_Configured");
                 QrImage.Visibility = Visibility.Collapsed;
                 OtpCodeBox.Visibility = Visibility.Collapsed;
                 ConfirmTwoFaButton.Visibility = Visibility.Collapsed;
                 SetupTwoFaButton.Visibility = Visibility.Collapsed;
                 DisableTwoFaButton.Visibility = Visibility.Visible;
-                TwoFaStatusText.Text = "Включена";
+                TwoFaStatusText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_TwoFa_Enabled");
             }
             else
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
             }
         }
 
         private async void DisableTwoFa_Click(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Отключение 2FA...";
+            StatusText.Text = L("L_Settings_Security_TwoFa_Disabling");
             DisableTwoFaButton.IsEnabled = false;
             try
             {
                 var error = await App.ServerCommunication.OtpDisable(App.GParam);
                 if (error.IsSuccess)
                 {
-                    StatusText.Text = "2FA отключена";
+                    StatusText.Text = L("L_Settings_Security_TwoFa_Disabled_Status");
                     DisableTwoFaButton.Visibility = Visibility.Collapsed;
                     SetupTwoFaButton.Visibility = Visibility.Visible;
-                    TwoFaStatusText.Text = "Отключена";
+                    TwoFaStatusText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "L_Settings_Security_TwoFa_Disabled");
                 }
                 else
                 {
-                    StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                    StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
                 }
             }
             finally
@@ -250,15 +251,18 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             if (string.IsNullOrEmpty(pin))
             {
                 App.GParam.AppPass = string.Empty;
-                StatusText.Text = "PIN-код удалён";
+                StatusText.Text = L("L_Settings_Security_Pin_Removed");
                 return;
             }
 
             App.GParam.AppPass = pin;
             App.SaveGlobalParam();
-            StatusText.Text = "PIN-код сохранён";
+            StatusText.Text = L("L_Settings_Security_Pin_Saved");
         }
 
         #endregion
+
+        private static string L(string key)
+            => Application.Current?.TryFindResource(key) as string ?? key;
     }
 }

@@ -16,13 +16,13 @@ struct ForwardChatPickerView: View {
     var body: some View {
         NavigationStack {
             ContentUnavailableView(
-                "Переслать сообщение",
+                "conversation.forward.title",
                 systemImage: "arrowshape.turn.up.right.fill",
-                description: Text("Экран будет реализован в Разделе 7")
+                description: Text("conversation.forward.placeholder_description")
             )
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Отмена") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }
