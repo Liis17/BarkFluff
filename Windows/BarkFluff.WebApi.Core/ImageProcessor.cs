@@ -6,18 +6,6 @@ using System.Drawing.Imaging;
 
 namespace BarkFluff.WebApi.Core
 {
-    /// <summary>
-    /// Provides image processing utilities for optimizing images before upload.
-    /// 
-    /// Uses ImageSharp as the primary image processing library with fallback to System.Drawing.Common.
-    /// ImageSharp provides:
-    /// - Full WebP support (and other modern formats)
-    /// - Cross-platform compatibility
-    /// - Modern, safe API
-    /// - Better performance
-    /// 
-    /// System.Drawing.Common is kept as fallback for legacy formats if needed.
-    /// </summary>
     public static class ImageProcessor
     {
         private const int JPEG_QUALITY = 90;
