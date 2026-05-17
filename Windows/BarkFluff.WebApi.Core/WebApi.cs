@@ -274,8 +274,8 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Реалтайм обновления (делегирование к UpdateManager)
-        public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam) => await UpdateManager.JustUpdate(globalParam);
-        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam) => await UpdateManager.SubscribeToReadReceipts(globalParam);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.JustUpdate(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToReadReceipts(globalParam, ct);
         #endregion
 
         #region FastAuth (делегирование к FastAuthManager)
@@ -293,8 +293,8 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Работа с онлайн-статусами (делегирование к OnlinerManager)
-        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.UserOnlineStatus>? stream)> SubscribeToOnlineStatus(List<long> userIds, GlobalParam globalParam)
-            => await OnlinerManager.SubscribeToOnlineStatus(userIds, globalParam);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.UserOnlineStatus>? stream)> SubscribeToOnlineStatus(List<long> userIds, GlobalParam globalParam, CancellationToken ct = default)
+            => await OnlinerManager.SubscribeToOnlineStatus(userIds, globalParam, ct);
 
         public async Task<ErrorReturner> SetOnlineStatus(GlobalParam globalParam)
             => await OnlinerManager.SetOnlineStatus(globalParam);

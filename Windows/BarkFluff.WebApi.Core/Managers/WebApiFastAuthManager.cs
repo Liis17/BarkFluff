@@ -38,8 +38,11 @@ namespace BarkFluff.WebApi.Core.Managers
 
             try
             {
+                // CT в сам streaming-call: без него Cancel() на CTS не закроет стрим — он
+                // продолжит висеть на сокете до тайм-аута сервера.
                 var call = _webApi.FastAuthAC.SubscribeFastAuthResult(
-                    new SubscribeFastAuthResultRequest { FastAuthId = fastAuthId });
+                    new SubscribeFastAuthResultRequest { FastAuthId = fastAuthId },
+                    headers: null, deadline: null, cancellationToken: ct);
 
                 async IAsyncEnumerable<FastAuthResult> GetStream()
                 {

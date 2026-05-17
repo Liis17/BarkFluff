@@ -22,24 +22,20 @@ namespace BarkFluff.WebApi.Core.Managers
         /// </summary>
         public async Task<(ErrorReturner error, IAsyncEnumerable<UserOnlineStatus>? stream)> SubscribeToOnlineStatus(
             List<long> userIds,
-            GlobalParam globalParam)
+            GlobalParam globalParam,
+            CancellationToken ct = default)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    // Подготовка заголовков с токеном
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
                     var request = new SubscribeToOnlineStatusRequest();
                     request.UserIds.AddRange(userIds);
 
-                    // Вызов метода подписки с заголовками
-                    var response = OnlinerAC!.SubscribeToOnlineStatus(request, headers);
+                    // CT прокидывается в сам streaming-call и в MoveNext, иначе стрим невозможно
+                    // отменить — он висит на сокете до тайм-аута сервера, дублируя соединения
+                    // при каждом TokenRefreshed/переподключении.
+                    var response = OnlinerAC!.SubscribeToOnlineStatus(request, headers: null, deadline: null, cancellationToken: ct);
 
                     // Создаём IAsyncEnumerable для стрима
                     async IAsyncEnumerable<UserOnlineStatus> GetStatusStream()
@@ -51,7 +47,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                             try
                             {
-                                hasNext = await response.ResponseStream.MoveNext(CancellationToken.None);
+                                hasNext = await response.ResponseStream.MoveNext(ct);
                                 if (!hasNext)
                                 {
                                     yield break; // Стрим завершён
@@ -59,6 +55,10 @@ namespace BarkFluff.WebApi.Core.Managers
                                 statusUpdate = response.ResponseStream.Current;
                             }
                             catch (RpcException)
+                            {
+                                yield break;
+                            }
+                            catch (OperationCanceledException)
                             {
                                 yield break;
                             }
