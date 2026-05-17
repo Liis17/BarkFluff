@@ -94,7 +94,9 @@ namespace BarkFluff.WebApi.Core
 
                         var encoder = new JpegEncoder
                         {
-                            Quality = quality
+                            Quality = quality,
+                            ColorType = JpegEncodingColor.YCbCrRatio420,
+                            Interleaved = true
                         };
 
                         image.Save(outputPath, encoder);

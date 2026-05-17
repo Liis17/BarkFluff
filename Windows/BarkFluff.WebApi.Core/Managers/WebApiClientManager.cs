@@ -1,5 +1,6 @@
 using BarkFluff.WebApi.Core.MessengerData;
 
+using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
@@ -150,12 +151,18 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.UpdatesChannel = GrpcChannel.ForAddress(_gParam.SocketUpdates);
                 _webApi.OnlinerChannel = GrpcChannel.ForAddress(_gParam.SocketOnliner);
 
-                var identityInvoker = _webApi.IdentityChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var userInvoker = _webApi.UserChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var filesInvoker = _webApi.FilesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var messageInvoker = _webApi.MessagesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var updatesInvoker = _webApi.UpdatesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var onlinerInvoker = _webApi.OnlinerChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var interceptors = new Interceptor[]
+                {
+                    deviceInterceptor, deviceIdInterceptor, jwtInterceptor,
+                    osInterceptor, appInterceptor, errorInterceptor, ipInterceptor
+                };
+
+                var identityInvoker = BuildInvoker(_webApi.IdentityChannel, interceptors);
+                var userInvoker = BuildInvoker(_webApi.UserChannel, interceptors);
+                var filesInvoker = BuildInvoker(_webApi.FilesChannel, interceptors);
+                var messageInvoker = BuildInvoker(_webApi.MessagesChannel, interceptors);
+                var updatesInvoker = BuildInvoker(_webApi.UpdatesChannel, interceptors);
+                var onlinerInvoker = BuildInvoker(_webApi.OnlinerChannel, interceptors);
 
                 _webApi.IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
                 _webApi.UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
@@ -190,13 +197,11 @@ namespace BarkFluff.WebApi.Core.Managers
                 var ipInterceptor = new Shared.Auth.XIpClientInterceptor(ip);
                 var errorInterceptor = new Shared.Exceptions.Interceptors.ExceptionClientInterceptor();
 
-                var invoker = _webApi.FastAuthChannel
-                    .Intercept(deviceInterceptor)
-                    .Intercept(deviceIdInterceptor)
-                    .Intercept(osInterceptor)
-                    .Intercept(appInterceptor)
-                    .Intercept(ipInterceptor)
-                    .Intercept(errorInterceptor);
+                var invoker = BuildInvoker(_webApi.FastAuthChannel, new Interceptor[]
+                {
+                    deviceInterceptor, deviceIdInterceptor, osInterceptor,
+                    appInterceptor, ipInterceptor, errorInterceptor
+                });
 
                 _webApi.FastAuthAC = new Proto.FastAuth.FastAuthApi.FastAuthApiClient(invoker);
                 return new ErrorReturner(true);
@@ -212,6 +217,14 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi.FastAuthAC = null;
             _webApi.FastAuthChannel?.Dispose();
             _webApi.FastAuthChannel = null;
+        }
+
+        private static CallInvoker BuildInvoker(GrpcChannel channel, Interceptor[] interceptors)
+        {
+            CallInvoker invoker = channel.CreateCallInvoker();
+            foreach (var i in interceptors)
+                invoker = invoker.Intercept(i);
+            return invoker;
         }
     }
 }

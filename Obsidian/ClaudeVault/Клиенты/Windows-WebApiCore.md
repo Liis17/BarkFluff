@@ -76,6 +76,18 @@ public async Task<ErrorReturner> MethodName(params..., GlobalParam globalParam)
 
 В `WebApiClientManager` подключаются interceptors из [[Shared/Auth]]: JWT, device ID, IP, OS, app version в metadata.
 
+Все каналы создаются через общую фабрику `BuildInvoker(channel, Interceptor[])` — она проходит по массиву интерсепторов в порядке объявления и собирает `CallInvoker`. Это избавляет от 6 идентичных цепочек `.Intercept(...).Intercept(...)...` на каждый канал. Для FastAuth используется свой более короткий массив (без JWT).
+
+## Безопасность загрузки файлов
+
+- `WebApiFileManager.UploadFileAsync` использует `SanitizeFileName(name, ext)`: убирает управляющие символы, заменяет всё кроме `\w.-` на `_`, обрезает имя до 100 символов (с сохранением расширения), фолбэкает на `file{ext}` для полностью «съеденных» имён.
+- `Debug.WriteLine` в файловом менеджере не печатает реальные пути, имена файлов, S3 upload URL и тела ошибок сервера — это PII/секреты.
+- Email/username сравниваются через `ToLowerInvariant()` (а не `ToLower()`) — иначе в турецкой локали `İ → i̇` и сервер видит другой логин.
+
+## Сжатие изображений
+
+`ImageProcessor` для конвертации через ImageSharp использует `JpegEncoder { Quality=90, ColorType=YCbCrRatio420, Interleaved=true }` — субсэмплинг 4:2:0 экономит ~30% размера на типовых аватарках/фото без заметной потери качества.
+
 ## Авто-обновление токена (проактивный механизм)
 
 `WebApiTokenManager` содержит фоновый `PeriodicTimer` (тик каждые 30 сек), который следит за временем жизни access-токена.

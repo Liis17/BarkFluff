@@ -67,7 +67,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var getUser = await UsersAC!.CheckExistEmailAsync(new Proto.Users.CheckExistEmailRequest { Email = email.ToLower() });
+                    var getUser = await UsersAC!.CheckExistEmailAsync(new Proto.Users.CheckExistEmailRequest { Email = email.ToLowerInvariant() });
                     return (new ErrorReturner(true), getUser.Exist);
                 }, globalParam);
             }
@@ -90,7 +90,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var getUser = await UsersAC!.CheckExistUsernameAsync(new Proto.Users.CheckExistUsernameRequest { Username = username.ToLower() });
+                    var getUser = await UsersAC!.CheckExistUsernameAsync(new Proto.Users.CheckExistUsernameRequest { Username = username.ToLowerInvariant() });
                     return (new ErrorReturner(true), getUser.Exist);
                 }, globalParam);
             }
