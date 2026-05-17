@@ -5,8 +5,6 @@
 **Ветка:** `dev`  
 **Статус:** 🔴 Требует срочных исправлений
 
-
-
 ---
 
 ## 🔴 Безопасность
@@ -52,8 +50,6 @@ if (config.Section == "RabbitMQ")
 
 ---
 
-
-
 ### BUG-03 — `UpdateConfigurationAsync` не обновляет `ServiceId` при upsert и молча создаёт дубли
 
 **Описание:**  
@@ -90,27 +86,15 @@ if (!Enum.IsDefined(typeof(ServiceId), request.ServiceId))
     };
 ```
 
----
 
-## 🟡 Оптимизация
+
+## 
 
 --- 
 
 ### 
 
-### OPT-03 — `ConfigurationStorage` зарегистрирован как `Transient` — создаётся новый экземпляр на каждый запрос
-
-**Описание:**  
-В `Program.cs` `ConfigurationStorage` зарегистрирован через `AddTransient`. Сам класс stateless и не хранит ресурсы, но это лишнее выделение памяти на каждый gRPC-вызов. `Scoped` — правильный lifecycle для зависимости от `DbContext` (который `Scoped`).
-
-**Путь к файлу:** `Backend\BarkFluff.Configuration\Program.cs` : 67
-
-```csharp
-// ❌ Transient для класса, зависящего от Scoped DbContext
-builder.Services.AddTransient<ConfigurationStorage>();
-```
-
-**Вариант решения:**
+### ---
 
 ```csharp
 // ✅ Scoped — соответствует lifecycle DbContext
@@ -119,7 +103,7 @@ builder.Services.AddScoped<ConfigurationStorage>();
 
 ---
 
-### OPT-04 — `emptyConfigs.Any()` вместо `emptyConfigs.Count == 0` (незначительно, но паттерн)
+### O
 
 **Описание:**  
 В `PopulateDefaultsAsync` используется `!emptyConfigs.Any()` для проверки пустого списка. Для `List<T>` более эффективно сравнение с `.Count`, т.к. `.Any()` использует итератор.
