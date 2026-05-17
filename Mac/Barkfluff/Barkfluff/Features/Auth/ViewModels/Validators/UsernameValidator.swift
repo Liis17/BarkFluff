@@ -10,14 +10,18 @@ import Foundation
 /// Результат валидации username
 struct UsernameValidationResult {
     let isValid: Bool
-    let error: String?
+    let error: LocalizedStringResource?
     let isAvailable: Bool? // nil = не проверено, true = доступен, false = занят
 
     static let valid = UsernameValidationResult(isValid: true, error: nil, isAvailable: nil)
-    static func invalid(_ error: String) -> UsernameValidationResult {
+    static func invalid(_ error: LocalizedStringResource) -> UsernameValidationResult {
         UsernameValidationResult(isValid: false, error: error, isAvailable: nil)
     }
-    static let unavailable = UsernameValidationResult(isValid: false, error: "Это имя уже занято", isAvailable: false)
+    static let unavailable = UsernameValidationResult(
+        isValid: false,
+        error: LocalizedStringResource("auth.validation.username.taken"),
+        isAvailable: false
+    )
     static let available = UsernameValidationResult(isValid: true, error: nil, isAvailable: true)
 }
 
@@ -33,27 +37,27 @@ enum UsernameValidator {
         let trimmed = username.trimmingCharacters(in: .whitespaces)
 
         if trimmed.isEmpty {
-            return .invalid("Введите имя пользователя")
+            return .invalid(LocalizedStringResource("auth.validation.username.empty"))
         }
 
         if trimmed.count < minLength {
-            return .invalid("Минимум \(minLength) символа")
+            return .invalid(LocalizedStringResource("auth.validation.username.too_short \(minLength)"))
         }
 
         if trimmed.count > maxLength {
-            return .invalid("Максимум \(maxLength) символов")
+            return .invalid(LocalizedStringResource("auth.validation.username.too_long \(maxLength)"))
         }
 
         // Проверка на допустимые символы: a-zA-Z0-9_-
         let allowedPattern = "^[a-zA-Z0-9_\\-]+$"
         let predicate = NSPredicate(format: "SELF MATCHES %@", allowedPattern)
         if !predicate.evaluate(with: trimmed) {
-            return .invalid("Только буквы, цифры, _ и -")
+            return .invalid(LocalizedStringResource("auth.validation.username.invalid_chars"))
         }
 
         // Проверка что не начинается с цифры
         if trimmed.first?.isNumber == true {
-            return .invalid("Не должен начинаться с цифры")
+            return .invalid(LocalizedStringResource("auth.validation.username.starts_with_digit"))
         }
 
         return .valid

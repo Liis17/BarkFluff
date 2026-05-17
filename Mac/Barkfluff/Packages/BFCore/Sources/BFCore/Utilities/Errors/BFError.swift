@@ -80,79 +80,86 @@ public enum BFError: Error, LocalizedError, Sendable {
     /// Ошибка с underlying error
     case underlying(Error, String?)
 
-    // MARK: - LocalizedError
+    // MARK: - LocalizedError (системная локаль)
 
-    public var errorDescription: String? {
+    public var errorDescription: String? { errorDescription(in: .current) }
+    public var recoverySuggestion: String? { recoverySuggestion(in: .current) }
+
+    // MARK: - Locale-aware версии
+
+    /// Описание ошибки с явной локалью (для реактивного UI).
+    public func errorDescription(in locale: Locale) -> String? {
         switch self {
         // Сетевые
         case .connectionFailed(let error):
-            return "Ошибка соединения: \(error.localizedDescription)"
+            return String(localized: "bfcore.error.connection_failed \(error.localizedDescription)", bundle: .module, locale: locale)
         case .timeout:
-            return "Превышено время ожидания"
+            return String(localized: "bfcore.error.timeout", bundle: .module, locale: locale)
         case .serverUnavailable:
-            return "Сервер недоступен"
+            return String(localized: "bfcore.error.server_unavailable", bundle: .module, locale: locale)
         case .networkError(let message):
-            return "Ошибка сети: \(message)"
+            return String(localized: "bfcore.error.network \(message)", bundle: .module, locale: locale)
 
         // Аутентификация
         case .unauthorized:
-            return "Требуется авторизация"
+            return String(localized: "bfcore.error.unauthorized", bundle: .module, locale: locale)
         case .sessionExpired:
-            return "Сессия истекла. Пожалуйста, войдите снова"
+            return String(localized: "bfcore.error.session_expired", bundle: .module, locale: locale)
         case .invalidCredentials:
-            return "Неверное имя пользователя или пароль"
+            return String(localized: "bfcore.error.invalid_credentials", bundle: .module, locale: locale)
         case .accountNotConfirmed:
-            return "Аккаунт не подтверждён. Проверьте почту"
+            return String(localized: "bfcore.error.account_not_confirmed", bundle: .module, locale: locale)
         case .otpRequired:
-            return "Требуется код двухфакторной аутентификации"
+            return String(localized: "bfcore.error.otp_required", bundle: .module, locale: locale)
         case .invalidOTP:
-            return "Неверный код двухфакторной аутентификации"
+            return String(localized: "bfcore.error.invalid_otp", bundle: .module, locale: locale)
 
         // Бизнес-логика
         case .chatNotFound(let chatID):
-            return "Чат не найден: \(chatID)"
+            return String(localized: "bfcore.error.chat_not_found \(chatID)", bundle: .module, locale: locale)
         case .userNotFound(let userID):
-            return "Пользователь не найден: \(userID)"
+            return String(localized: "bfcore.error.user_not_found \(userID)", bundle: .module, locale: locale)
         case .fileNotSupported(let fileName):
-            return "Файл не поддерживается: \(fileName)"
+            return String(localized: "bfcore.error.file_not_supported \(fileName)", bundle: .module, locale: locale)
         case .fileTooLarge(let fileName, let maxSize):
             let maxSizeFormatted = ByteCountFormatter.string(fromByteCount: maxSize, countStyle: .file)
-            return "Файл слишком большой: \(fileName). Максимальный размер: \(maxSizeFormatted)"
+            return String(localized: "bfcore.error.file_too_large \(fileName) \(maxSizeFormatted)", bundle: .module, locale: locale)
         case .noAccessToChat(let chatID):
-            return "Нет доступа к чату: \(chatID)"
+            return String(localized: "bfcore.error.no_access_to_chat \(chatID)", bundle: .module, locale: locale)
         case .usernameAlreadyExists(let username):
-            return "Имя пользователя уже занято: \(username)"
+            return String(localized: "bfcore.error.username_exists \(username)", bundle: .module, locale: locale)
         case .emailAlreadyExists(let email):
-            return "Email уже используется: \(email)"
+            return String(localized: "bfcore.error.email_exists \(email)", bundle: .module, locale: locale)
         case .invalidConfirmationCode:
-            return "Неверный код подтверждения"
+            return String(localized: "bfcore.error.invalid_confirmation_code", bundle: .module, locale: locale)
         case .cancelled:
-            return "Операция отменена"
+            return String(localized: "bfcore.error.cancelled", bundle: .module, locale: locale)
 
         // Общие
         case .unknown(let message):
-            return "Ошибка: \(message)"
+            return String(localized: "bfcore.error.unknown_with_message \(message)", bundle: .module, locale: locale)
         case .underlying(let error, let message):
             return message ?? error.localizedDescription
         }
     }
 
-    public var recoverySuggestion: String? {
+    /// Подсказка по исправлению с явной локалью.
+    public func recoverySuggestion(in locale: Locale) -> String? {
         switch self {
         case .connectionFailed, .serverUnavailable, .networkError:
-            return "Проверьте подключение к интернету и попробуйте снова"
+            return String(localized: "bfcore.recovery.check_internet", bundle: .module, locale: locale)
         case .timeout:
-            return "Попробуйте позже"
+            return String(localized: "bfcore.recovery.try_later", bundle: .module, locale: locale)
         case .unauthorized, .sessionExpired:
-            return "Войдите в аккаунт снова"
+            return String(localized: "bfcore.recovery.sign_in_again", bundle: .module, locale: locale)
         case .invalidCredentials:
-            return "Проверьте имя пользователя и пароль"
+            return String(localized: "bfcore.recovery.check_credentials", bundle: .module, locale: locale)
         case .otpRequired:
-            return "Введите код из приложения-аутентификатора"
+            return String(localized: "bfcore.recovery.enter_otp", bundle: .module, locale: locale)
         case .usernameAlreadyExists:
-            return "Выберите другое имя пользователя"
+            return String(localized: "bfcore.recovery.choose_different_username", bundle: .module, locale: locale)
         case .emailAlreadyExists:
-            return "Используйте другой email"
+            return String(localized: "bfcore.recovery.use_different_email", bundle: .module, locale: locale)
         default:
             return nil
         }

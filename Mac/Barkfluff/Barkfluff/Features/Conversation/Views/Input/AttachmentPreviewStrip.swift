@@ -45,13 +45,13 @@ struct AttachmentPreviewStrip: View {
             Button {
                 onPickMedia()
             } label: {
-                Label("Фото или видео", systemImage: "photo.on.rectangle")
+                Label("conversation.attach.photo_or_video", systemImage: "photo.on.rectangle")
             }
 
             Button {
                 onPickDocument()
             } label: {
-                Label("Файл", systemImage: "doc")
+                Label("conversation.attach.file", systemImage: "doc")
             }
         } label: {
             RoundedRectangle(cornerRadius: 8)

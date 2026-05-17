@@ -170,7 +170,7 @@ struct RegisterView: View {
             // Кнопка "Назад"
             if viewModel.currentStep != .personalInfo && viewModel.currentStep != .completion {
                 Button(action: { viewModel.goToPreviousStep() }) {
-                    Label("Назад", systemImage: "chevron.left")
+                    Label("common.back", systemImage: "chevron.left")
                 }
                 .buttonStyle(.bordered)
             }
@@ -179,7 +179,7 @@ struct RegisterView: View {
 
             // Кнопка "Пропустить" (для опциональных шагов)
             if viewModel.currentStep.isOptional && viewModel.currentStep != .completion {
-                Button("Пропустить") {
+                Button("common.skip") {
                     viewModel.skipCurrentStep()
                 }
                 .buttonStyle(.plain)
@@ -208,14 +208,14 @@ struct RegisterView: View {
         .frame(width: 340)
     }
 
-    private func nextButtonTitle(for step: RegistrationStep) -> String {
+    private func nextButtonTitle(for step: RegistrationStep) -> LocalizedStringKey {
         switch step {
         case .twoFA:
-            return "Завершить"
+            return "auth.register.finish"
         case .confirmEmail:
-            return "Подтвердить"
+            return "auth.register.confirm"
         default:
-            return "Далее"
+            return "auth.register.next"
         }
     }
 
@@ -239,11 +239,17 @@ struct RegisterView: View {
     @ViewBuilder
     private func loginLink(_ viewModel: RegisterViewModel) -> some View {
         if viewModel.currentStep == .personalInfo {
-            Button("Уже есть аккаунт? Войти") {
+            Button {
                 viewModel.goToLogin()
+            } label: {
+                Text("auth.register.have_account.prefix")
+                    .foregroundStyle(.secondary)
+                +
+                Text("auth.register.have_account.action")
+                    .foregroundStyle(Color.accentColor)
+                    .fontWeight(.medium)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
         }
     }
 }

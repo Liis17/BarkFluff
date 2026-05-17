@@ -18,6 +18,7 @@ struct BarkfluffApp: App {
             RootView()
                 .environment(coordinator)
                 .environment(container)
+                .environment(\.locale, container.localizationSettings.appliedLocale)
         }
     }
 }

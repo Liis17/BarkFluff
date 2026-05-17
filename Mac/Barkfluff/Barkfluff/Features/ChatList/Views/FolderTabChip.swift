@@ -69,7 +69,7 @@ struct ChatFolderTabsBar: View {
                 HStack(spacing: 6) {
                     FolderTabChip(
                         icon: "",
-                        title: "Все чаты",
+                        title: String(localized: "chat_list.folder.all"),
                         unreadCount: allChatsUnread,
                         isSelected: selectedFolderID == nil,
                         compact: compact,
@@ -78,7 +78,7 @@ struct ChatFolderTabsBar: View {
                     ForEach(folders) { folder in
                         FolderTabChip(
                             icon: folder.icon,
-                            title: folder.name.isEmpty ? "Папка" : folder.name,
+                            title: folder.name.isEmpty ? String(localized: "chat_list.folder.untitled") : folder.name,
                             unreadCount: unreadByFolder(folder),
                             isSelected: selectedFolderID == folder.id,
                             compact: compact,

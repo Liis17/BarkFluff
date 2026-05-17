@@ -47,7 +47,7 @@ struct StickerPackTabsView: View {
                 )
         }
         .buttonStyle(.plain)
-        .help("Недавние")
+        .help("conversation.stickers.recent_tooltip")
     }
 
     private func packTab(_ pack: StickerPack) -> some View {

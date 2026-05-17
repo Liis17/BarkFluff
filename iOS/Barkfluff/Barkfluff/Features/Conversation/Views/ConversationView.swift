@@ -24,6 +24,8 @@ struct ConversationView: View {
     @State private var scrollPosition = ScrollPositionManager()
     @State private var selectedAttachments: [SelectedAttachment] = []
 
+    @Environment(\.locale) private var locale
+
     // Для просмотра медиа
     @State private var selectedMediaAttachment: MessageAttachment?
     @State private var allMediaInMessage: [MessageAttachment] = []
@@ -117,7 +119,7 @@ struct ConversationView: View {
                 VStack(spacing: 8) {
                     if let editing = viewModel.editingMessage {
                         EditPreviewView(
-                            snippet: ReplyPreviewView.makeSnippet(editing),
+                            snippet: ReplyPreviewView.makeSnippet(editing, locale: locale),
                             onCancel: {
                                 viewModel.cancelEdit()
                                 messageText = ""
@@ -126,8 +128,8 @@ struct ConversationView: View {
                         .padding(.horizontal, 8)
                     } else if let reply = viewModel.pendingReply {
                         ReplyPreviewView(
-                            authorName: reply.senderName ?? "Неизвестный",
-                            snippet: ReplyPreviewView.makeSnippet(reply),
+                            authorName: reply.senderName ?? String(localized: "common.unknown_user"),
+                            snippet: ReplyPreviewView.makeSnippet(reply, locale: locale),
                             onCancel: { viewModel.clearPendingReply() }
                         )
                         .padding(.horizontal, 8)
@@ -154,24 +156,24 @@ struct ConversationView: View {
             }
         }
         .confirmationDialog(
-            "Удалить сообщение?",
+            "conversation.delete.title",
             isPresented: Binding(
                 get: { deleteCandidateID != nil },
                 set: { if !$0 { deleteCandidateID = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Удалить", role: .destructive) {
+            Button("conversation.delete.button", role: .destructive) {
                 if let id = deleteCandidateID {
                     Task { await viewModel?.deleteMessage(messageID: id) }
                 }
                 deleteCandidateID = nil
             }
-            Button("Отмена", role: .cancel) {
+            Button("common.cancel", role: .cancel) {
                 deleteCandidateID = nil
             }
         } message: {
-            Text("Сообщение будет удалено для всех участников чата.")
+            Text("conversation.delete.message")
         }
         .task {
             if viewModel == nil {
@@ -234,13 +236,19 @@ struct ConversationView: View {
         if let status = viewModel?.otherUserOnlineStatus {
             switch status {
             case .online:
-                Text("онлайн")
+                Text("conversation.status.online")
                     .font(.caption2)
                     .foregroundStyle(.green)
             case .offline(let lastSeen):
-                Text(lastSeen.map { "был(а) \(formatLastSeen($0))" } ?? "не в сети")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if let lastSeen {
+                    Text("conversation.status.last_seen \(formatLastSeen(lastSeen))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("conversation.status.offline")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             case .unknown:
                 EmptyView()
             }
@@ -252,13 +260,14 @@ struct ConversationView: View {
 
         if calendar.isDateInToday(date) {
             let formatter = DateFormatter()
+            formatter.locale = locale
             formatter.dateFormat = "HH:mm"
-            return "в \(formatter.string(from: date))"
+            return String(localized: "conversation.status.last_seen.today \(formatter.string(from: date))")
         } else if calendar.isDateInYesterday(date) {
-            return "вчера"
+            return String(localized: "conversation.status.last_seen.yesterday")
         } else {
             let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "ru_RU")
+            formatter.locale = locale
             formatter.dateFormat = "d MMM"
             return formatter.string(from: date)
         }
@@ -273,11 +282,13 @@ struct ConversationView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.messages.isEmpty {
             ContentUnavailableView(
-                viewModel.isNewConversation ? "Новый диалог" : "Нет сообщений",
+                viewModel.isNewConversation
+                    ? LocalizedStringKey("conversation.empty.new.title")
+                    : LocalizedStringKey("conversation.empty.no_messages.title"),
                 systemImage: "bubble.left.and.bubble.right",
                 description: Text(viewModel.isNewConversation
-                    ? "Напишите первое сообщение!"
-                    : "Начните диалог!")
+                    ? "conversation.empty.new.description"
+                    : "conversation.empty.no_messages.description")
             )
         } else {
             MessagesListView(
@@ -514,7 +525,7 @@ struct MediaItemView: View {
                 Image(systemName: "photo")
                     .font(.system(size: 48))
                     .foregroundStyle(.white.opacity(0.7))
-                Text("Не удалось загрузить")
+                Text("conversation.media.load_failed")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
             }

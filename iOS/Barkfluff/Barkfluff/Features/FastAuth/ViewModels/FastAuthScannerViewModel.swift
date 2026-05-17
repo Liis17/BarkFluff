@@ -15,7 +15,21 @@ enum FastAuthScannerPhase: Equatable {
     case scanning
     case processing
     case needsPermission
-    case failed(String)
+    case failed(LocalizedStringResource)
+
+    static func == (lhs: FastAuthScannerPhase, rhs: FastAuthScannerPhase) -> Bool {
+        switch (lhs, rhs) {
+        case (.requestingPermission, .requestingPermission),
+             (.scanning, .scanning),
+             (.processing, .processing),
+             (.needsPermission, .needsPermission):
+            return true
+        case (.failed(let lhsMessage), .failed(let rhsMessage)):
+            return String(localized: lhsMessage) == String(localized: rhsMessage)
+        default:
+            return false
+        }
+    }
 }
 
 @Observable
@@ -27,12 +41,12 @@ final class FastAuthScannerViewModel {
 
     private var fastAuthService: FastAuthServiceProtocol?
 
-    var hintText: String {
+    var hintText: LocalizedStringResource {
         switch phase {
-        case .requestingPermission: return "Запрашиваем доступ к камере…"
-        case .scanning: return "Наведите камеру на QR-код"
-        case .processing: return "Проверяем QR-код…"
-        case .needsPermission: return "Нет доступа к камере"
+        case .requestingPermission: return LocalizedStringResource("auth.fast_auth.scanner.hint.requesting")
+        case .scanning: return LocalizedStringResource("auth.fast_auth.scanner.hint.scanning")
+        case .processing: return LocalizedStringResource("auth.fast_auth.scanner.hint.processing")
+        case .needsPermission: return LocalizedStringResource("auth.fast_auth.scanner.hint.no_permission")
         case .failed(let message): return message
         }
     }
@@ -65,7 +79,7 @@ final class FastAuthScannerViewModel {
     func handleQRDetected(_ raw: String) {
         guard case .scanning = phase else { return }
         guard let service = fastAuthService else {
-            phase = .failed("Сервис не инициализирован")
+            phase = .failed(LocalizedStringResource("auth.fast_auth.scanner.error.service_not_ready"))
             return
         }
         phase = .processing
@@ -76,7 +90,7 @@ final class FastAuthScannerViewModel {
                 self.scannedInfo = info
             } catch {
                 guard let self else { return }
-                self.phase = .failed("Неверный QR-код или сессия истекла")
+                self.phase = .failed(LocalizedStringResource("auth.fast_auth.scanner.error.invalid_qr"))
                 try? await Task.sleep(for: .seconds(2))
                 if case .failed = self.phase {
                     self.phase = .scanning

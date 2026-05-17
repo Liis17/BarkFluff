@@ -16,21 +16,21 @@ struct CreateGroupChatView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Название группы") {
-                    TextField("Введите название", text: $title)
+                Section("group_chat.create.name_section") {
+                    TextField("group_chat.create.name_placeholder", text: $title)
                 }
 
-                Section("Участники") {
-                    TextField("Поиск пользователей", text: $searchQuery)
+                Section("group_chat.members.title") {
+                    TextField("group_chat.create.search_placeholder_users", text: $searchQuery)
                         .textFieldStyle(.roundedBorder)
 
                     // TODO: Показать список пользователей для выбора
-                    Text("Выберите участников для группы")
+                    Text("group_chat.create.select_members_hint")
                         .foregroundStyle(.secondary)
                 }
 
                 Section {
-                    Button("Создать группу") {
+                    Button("group_chat.create.create_button") {
                         // TODO: Реализовать создание группы
                         dismiss()
                     }
@@ -38,10 +38,10 @@ struct CreateGroupChatView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Новая группа")
+            .navigationTitle("group_chat.create.title")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button("common.cancel") {
                         dismiss()
                     }
                 }

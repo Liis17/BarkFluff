@@ -14,16 +14,16 @@ struct TestingSettingsView: View {
         @Bindable var dev = container.developerSettings
 
         Form {
-            Section("Отладка") {
-                Toggle("Показывать ID пользователей", isOn: $dev.showUserIDs)
-                Toggle("Показывать ID чатов", isOn: $dev.showChatIDs)
+            Section("settings.testing.section") {
+                Toggle("settings.testing.show_user_ids", isOn: $dev.showUserIDs)
+                Toggle("settings.testing.show_chat_ids", isOn: $dev.showChatIDs)
             }
 
             Section {} footer: {
-                Text("Локальные настройки только для этого устройства. Не отправляются на сервер.")
+                Text("settings.testing.footer")
             }
         }
-        .navigationTitle("Тестирование")
+        .navigationTitle("settings.category.testing")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

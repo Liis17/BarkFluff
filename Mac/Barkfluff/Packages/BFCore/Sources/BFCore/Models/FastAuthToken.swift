@@ -43,12 +43,16 @@ public enum FastAuthStatus: String, Sendable, Codable {
     case rejected
     case expired
 
-    public var displayName: String {
+    /// Локализованное название статуса (системная локаль).
+    public var displayName: String { displayName(in: .current) }
+
+    /// Локализованное название статуса с явной локалью.
+    public func displayName(in locale: Locale) -> String {
         switch self {
-        case .pending: return "Ожидание"
-        case .accepted: return "Принято"
-        case .rejected: return "Отклонено"
-        case .expired: return "Истекло"
+        case .pending:  return String(localized: "bfcore.fast_auth.status.pending", bundle: .module, locale: locale)
+        case .accepted: return String(localized: "bfcore.fast_auth.status.accepted", bundle: .module, locale: locale)
+        case .rejected: return String(localized: "bfcore.fast_auth.status.rejected", bundle: .module, locale: locale)
+        case .expired:  return String(localized: "bfcore.fast_auth.status.expired", bundle: .module, locale: locale)
         }
     }
 }

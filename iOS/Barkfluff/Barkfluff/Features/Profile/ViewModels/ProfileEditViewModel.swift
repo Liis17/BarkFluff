@@ -213,7 +213,7 @@ final class ProfileEditViewModel {
         do {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data) else {
-                errorMessage = "Не удалось прочитать выбранное изображение"
+                errorMessage = String(localized: "profile.edit.error.read_image")
                 showError = true
                 return
             }
@@ -235,7 +235,7 @@ final class ProfileEditViewModel {
         }
 
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            errorMessage = "Ошибка обработки изображения"
+            errorMessage = String(localized: "profile.edit.error.process_image")
             showError = true
             return
         }

@@ -21,51 +21,51 @@ enum RegistrationStep: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
-    /// Заголовок шага
+    /// Ключ заголовка шага (для локализации)
     var title: String {
         switch self {
         case .personalInfo:
-            return "Создание аккаунта"
+            return "auth.register.step.personal_info.title"
         case .username:
-            return "Выберите имя"
+            return "auth.register.step.username.title"
         case .email:
-            return "Ваш email"
+            return "auth.register.step.email.title"
         case .confirmEmail:
-            return "Подтверждение"
+            return "auth.register.step.confirm_email.title"
         case .password:
-            return "Пароль"
+            return "auth.register.step.password.title"
         case .avatar:
-            return "Фото профиля"
+            return "auth.register.step.avatar.title"
         case .bio:
-            return "О себе"
+            return "auth.register.step.bio.title"
         case .twoFA:
-            return "Безопасность"
+            return "auth.register.step.two_fa.title"
         case .completion:
-            return "Готово!"
+            return "auth.register.step.completion.header"
         }
     }
 
-    /// Подзаголовок шага
+    /// Ключ подзаголовка шага (для локализации)
     var subtitle: String {
         switch self {
         case .personalInfo:
-            return "Как вас зовут?"
+            return "auth.register.step.personal_info.subtitle"
         case .username:
-            return "Уникальное имя для вашего аккаунта"
+            return "auth.register.step.username.subtitle"
         case .email:
-            return "Для подтверждения и восстановления"
+            return "auth.register.step.email.subtitle"
         case .confirmEmail:
-            return "Введите код из письма"
+            return "auth.register.step.confirm_email.subtitle"
         case .password:
-            return "Надёжный пароль для защиты"
+            return "auth.register.step.password.subtitle"
         case .avatar:
-            return "Добавьте фото (необязательно)"
+            return "auth.register.step.avatar.subtitle"
         case .bio:
-            return "Расскажите о себе (необязательно)"
+            return "auth.register.step.bio.subtitle"
         case .twoFA:
-            return "Двухфакторная аутентификация"
+            return "auth.register.step.two_fa.subtitle"
         case .completion:
-            return "Добро пожаловать!"
+            return "auth.register.step.completion.subtitle_header"
         }
     }
 

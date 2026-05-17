@@ -43,7 +43,7 @@ struct EmojiPickerView: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Найти эмодзи...", text: $searchText)
+            TextField("conversation.emoji.search_placeholder", text: $searchText)
                 .textFieldStyle(.plain)
         }
         .padding(.horizontal, 12)
@@ -72,7 +72,7 @@ struct EmojiPickerView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .help(category.rawValue)
+                    .help(category.displayName)
                 }
             }
         }

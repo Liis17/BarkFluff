@@ -25,7 +25,7 @@ struct ChatListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("Чаты")
+        .navigationTitle("chat_list.title")
         .task {
             if viewModel == nil {
                 let vm = ChatListViewModel(
@@ -96,7 +96,7 @@ struct ChatListView: View {
 
             List {
                 if !viewModel.searchResults.isEmpty {
-                    Section("Пользователи") {
+                    Section("chat_list.search.section.users") {
                         ForEach(viewModel.searchResults) { user in
                             Button {
                                 Task {
@@ -137,9 +137,9 @@ struct ChatListView: View {
                 if !viewModel.isLoading && viewModel.chats.isEmpty
                     && viewModel.searchText.isEmpty && viewModel.errorMessage == nil {
                     ContentUnavailableView(
-                        "Нет чатов",
+                        "chat_list.empty.title",
                         systemImage: "message",
-                        description: Text("Начните диалог или создайте группу")
+                        description: Text("chat_list.empty.description")
                     )
                 } else if let error = viewModel.errorMessage, viewModel.chats.isEmpty {
                     VStack(spacing: Theme.Spacing.md) {
@@ -152,7 +152,7 @@ struct ChatListView: View {
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
 
-                        Button("Повторить") {
+                        Button("common.retry") {
                             Task { await viewModel.refresh() }
                         }
                         .buttonStyle(.bordered)
@@ -164,7 +164,7 @@ struct ChatListView: View {
                 VStack(spacing: Theme.Spacing.xs) {
                     if viewModel.isOffline && !viewModel.chats.isEmpty {
                         ErrorBannerView(
-                            message: "Нет соединения. Показаны сохранённые чаты.",
+                            message: String(localized: "chat_list.offline_banner"),
                             onDismiss: { viewModel.isOffline = false }
                         )
                         .padding(.horizontal, Theme.Spacing.md)
@@ -187,7 +187,7 @@ struct ChatListView: View {
                     viewModel.onSearchTextChanged()
                 }
             ),
-            prompt: "Поиск"
+            prompt: Text("chat_list.search.prompt")
         )
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -195,12 +195,12 @@ struct ChatListView: View {
                     Button {
                         coordinator.presentedSheet = .userSearch
                     } label: {
-                        Label("Новый чат", systemImage: "person.crop.circle.badge.plus")
+                        Label("chat_list.menu.new_chat", systemImage: "person.crop.circle.badge.plus")
                     }
                     Button {
                         coordinator.presentedSheet = .createGroupChat
                     } label: {
-                        Label("Новая группа", systemImage: "person.3.fill")
+                        Label("chat_list.menu.new_group", systemImage: "person.3.fill")
                     }
                 } label: {
                     Image(systemName: "square.and.pencil")

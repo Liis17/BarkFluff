@@ -11,7 +11,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
     public partial class GeneralSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Общие";
+        public override string TitleKey => "L_Settings_Sidebar_General";
 
         private static readonly SolidColorBrush AccentBrush      = new(Color.FromRgb(0xDF, 0x50, 0x00));
         private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);

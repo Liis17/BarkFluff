@@ -13,13 +13,13 @@
         <StackPanel Margin="24,16,24,24">
 
             <!-- Заголовок -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="О сервере" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_AboutServer_Title}" />
 
             <!-- Блок: информация о сервере -->
             <TextBlock
                 FontSize="11" FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
-                Margin="2,8,0,4" Text="ИНФОРМАЦИЯ О СЕРВЕРЕ" />
+                Margin="2,8,0,4" Text="{DynamicResource L_Settings_AboutServer_InfoHeader}" />
 
             <Border
                 Padding="16"
@@ -68,7 +68,7 @@
             <TextBlock
                 FontSize="11" FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
-                Margin="2,12,0,4" Text="СОЕДИНЕНИЕ" />
+                Margin="2,12,0,4" Text="{DynamicResource L_Settings_AboutServer_ConnectionHeader}" />
 
             <Border
                 Padding="16"
@@ -78,7 +78,7 @@
                 <StackPanel>
                     <Button
                         x:Name="PingButton"
-                        Content="Проверить соединение"
+                        Content="{DynamicResource L_Settings_AboutServer_PingButton}"
                         HorizontalAlignment="Stretch"
                         Click="PingButton_Click"
                         Style="{DynamicResource DefaultButtonStyle}" />
@@ -97,7 +97,7 @@
             <TextBlock
                 FontSize="11" FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
-                Margin="2,12,0,4" Text="МИКРОСЕРВИСЫ" />
+                Margin="2,12,0,4" Text="{DynamicResource L_Settings_AboutServer_ServicesHeader}" />
 
             <Border
                 Padding="16"

@@ -126,12 +126,12 @@ enum AttachmentError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .accessDenied:
-            return "Нет доступа к файлу"
+            return String(localized: "conversation.errors.file_access_denied")
         case .fileTooLarge(let max):
             let formatter = ByteCountFormatter()
-            return "Файл слишком большой. Максимум: \(formatter.string(fromByteCount: max))"
+            return String(localized: "conversation.errors.file_too_large \(formatter.string(fromByteCount: max))")
         case .imageConversionFailed:
-            return "Не удалось обработать изображение"
+            return String(localized: "conversation.errors.image_conversion_failed")
         }
     }
 }

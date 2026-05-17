@@ -24,7 +24,7 @@ struct UserProfilePanelView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(chat.isGroupChat ? "Информация о группе" : "Профиль")
+        .navigationTitle(chat.isGroupChat ? Text("user_profile.title.group") : Text("user_profile.title.user"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if viewModel == nil {

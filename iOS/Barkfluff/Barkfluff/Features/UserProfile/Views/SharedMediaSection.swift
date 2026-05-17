@@ -14,15 +14,15 @@ struct SharedMediaSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Общий контент")
+                Text("user_profile.shared_media.title")
                     .font(.headline)
                 Spacer()
             }
             .padding(.horizontal, 16)
 
-            Picker("Тип", selection: $viewModel.selectedMediaFilter) {
-                Text("Медиа").tag(SharedMediaFilter.media)
-                Text("Документы").tag(SharedMediaFilter.documents)
+            Picker("user_profile.shared_media.picker.type", selection: $viewModel.selectedMediaFilter) {
+                Text("user_profile.shared_media.filter.media").tag(SharedMediaFilter.media)
+                Text("user_profile.shared_media.filter.documents").tag(SharedMediaFilter.documents)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -39,11 +39,11 @@ struct SharedMediaSection: View {
                 }
             } else if currentItems.isEmpty {
                 ContentUnavailableView(
-                    "Пусто",
+                    "user_profile.shared_media.empty.title",
                     systemImage: viewModel.selectedMediaFilter == .media ? "photo" : "doc",
                     description: Text(viewModel.selectedMediaFilter == .media
-                        ? "В этом чате пока нет общих фото и видео"
-                        : "В этом чате пока нет общих документов")
+                        ? "user_profile.shared_media.empty.media"
+                        : "user_profile.shared_media.empty.documents")
                 )
                 .frame(height: 200)
             } else {
@@ -57,7 +57,7 @@ struct SharedMediaSection: View {
                 }
 
                 if viewModel.hasMoreMedia {
-                    Button("Загрузить ещё") {
+                    Button("user_profile.shared_media.load_more") {
                         Task { await viewModel.loadMoreSharedMedia() }
                     }
                     .font(.callout)

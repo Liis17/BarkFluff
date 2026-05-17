@@ -12,7 +12,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Безопасность" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Security_Title}" />
 
             <!-- Смена пароля -->
             <Border
@@ -23,7 +23,7 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <ui:SymbolIcon Foreground="#FFC58C39" Symbol="LockClosed32" Margin="0,0,8,0" />
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Смена пароля" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Security_Password_Title}" />
                     </StackPanel>
 
                     <TextBlock
@@ -32,7 +32,7 @@
                         FontSize="12"
                         Margin="0,0,0,8"
                         TextWrapping="Wrap"
-                        Text="Для смены пароля на вашу почту будет отправлен код подтверждения" />
+                        Text="{DynamicResource L_Settings_Security_Password_Step1_Hint}" />
 
                     <!-- Шаг 1: Запрос кода -->
                     <StackPanel x:Name="PasswordStep1" Visibility="Visible">
@@ -40,7 +40,7 @@
                             Click="RequestPasswordReset_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Отправить код на почту" />
+                            Content="{DynamicResource L_Settings_Security_Password_SendCode}" />
                     </StackPanel>
 
                     <!-- Шаг 2: Ввод кода -->
@@ -50,13 +50,13 @@
                             Margin="0,4"
                             FontSize="14"
                             MaxLength="6"
-                            PlaceholderText="6-значный код из письма" />
+                            PlaceholderText="{DynamicResource L_Settings_Security_Password_CodePlaceholder}" />
                         <ui:Button
                             Margin="0,8,0,0"
                             Click="ConfirmResetCode_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Подтвердить код" />
+                            Content="{DynamicResource L_Settings_Security_Password_ConfirmCode}" />
                     </StackPanel>
 
                     <!-- Шаг 3: Новый пароль -->
@@ -76,7 +76,7 @@
                             Click="SetNewPassword_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Сохранить новый пароль" />
+                            Content="{DynamicResource L_Settings_Security_Password_SaveNew}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -90,13 +90,13 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <ui:SymbolIcon Foreground="#FFC58C39" Symbol="Shield24" Margin="0,0,8,0" />
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Двухфакторная аутентификация" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Security_TwoFa_Title}" />
                     </StackPanel>
                     <TextBlock
                         x:Name="TwoFaStatusText"
                         Foreground="{DynamicResource DescriptionText}"
                         FontSize="12"
-                        Text="Нажмите для настройки 2FA" />
+                        Text="{DynamicResource L_Settings_Security_TwoFa_DefaultHint}" />
                     <Image
                         x:Name="QrImage"
                         Width="200"
@@ -107,7 +107,7 @@
                         x:Name="OtpCodeBox"
                         Margin="0,4"
                         FontSize="14"
-                        PlaceholderText="Введите код из приложения"
+                        PlaceholderText="{DynamicResource L_Settings_Security_TwoFa_OtpPlaceholder}"
                         Visibility="Collapsed" />
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                         <ui:Button
@@ -115,14 +115,14 @@
                             Click="SetupTwoFa_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Настроить" />
+                            Content="{DynamicResource L_Settings_Security_TwoFa_Setup}" />
                         <ui:Button
                             x:Name="ConfirmTwoFaButton"
                             Margin="8,0,0,0"
                             Click="ConfirmTwoFa_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Подтвердить"
+                            Content="{DynamicResource L_Settings_Security_TwoFa_Confirm}"
                             Visibility="Collapsed" />
                         <ui:Button
                             x:Name="DisableTwoFaButton"
@@ -131,7 +131,7 @@
                             Cursor="Hand"
                             Background="#df5000"
                             Foreground="White"
-                            Content="Отключить 2FA"
+                            Content="{DynamicResource L_Settings_Security_TwoFa_Disable}"
                             Visibility="Collapsed" />
                     </StackPanel>
                 </StackPanel>
@@ -146,9 +146,9 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <ui:SymbolIcon Foreground="#FFC58C39" Symbol="Calculator24" Margin="0,0,8,0" />
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Код доступа (PIN)" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Security_Pin_Title}" />
                     </StackPanel>
-                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="PIN-код для быстрого входа в приложение" />
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="{DynamicResource L_Settings_Security_Pin_Description}" />
                     <PasswordBox
                         x:Name="PinBox"
                         Margin="0,8,0,0"
@@ -161,7 +161,7 @@
                         Click="SavePin_Click"
                         Cursor="Hand"
                         Style="{DynamicResource Win11Default}"
-                        Content="Сохранить PIN" />
+                        Content="{DynamicResource L_Settings_Security_Pin_Save}" />
                 </StackPanel>
             </Border>
 

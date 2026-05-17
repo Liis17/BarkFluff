@@ -20,7 +20,7 @@ struct ProfileCardView: View {
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(container.currentUser?.displayName ?? "Пользователь")
+                Text(container.currentUser?.displayName ?? String(localized: "profile.card.fallback_name"))
                     .font(.headline)
                     .lineLimit(1)
 

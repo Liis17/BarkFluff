@@ -39,7 +39,7 @@ struct SessionsView: View {
                             .foregroundStyle(.white)
                             .frame(width: 30, height: 30)
                             .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        Text("Подключить устройство по QR")
+                        Text("settings.sessions.connect_qr")
                             .foregroundStyle(.primary)
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -67,12 +67,12 @@ struct SessionsView: View {
                     Button(role: .destructive) {
                         showTerminateAllConfirm = true
                     } label: {
-                        Text("Завершить все остальные сессии")
+                        Text("settings.sessions.terminate_all_others")
                     }
                 }
             }
         }
-        .navigationTitle("Активные сессии")
+        .navigationTitle("settings.category.active_sessions")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container
@@ -90,14 +90,14 @@ struct SessionsView: View {
             }
         }
         .confirmationDialog(
-            "Завершить все остальные сессии?",
+            "settings.sessions.terminate_all_others.confirm_title",
             isPresented: $showTerminateAllConfirm,
             titleVisibility: .visible
         ) {
-            Button("Завершить", role: .destructive) {
+            Button("settings.sessions.terminate_all_others.confirm", role: .destructive) {
                 Task { await viewModel.terminateAllOtherSessions() }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         }
     }
 }
@@ -111,10 +111,12 @@ private struct SessionRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(session.displayName.isEmpty ? "Устройство" : session.displayName)
+                    Text(session.displayName.isEmpty
+                         ? String(localized: "settings.sessions.device_default")
+                         : session.displayName)
                         .font(.body)
                     if isCurrent {
-                        Text("Текущая")
+                        Text("settings.sessions.current_short")
                             .font(.caption2)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)

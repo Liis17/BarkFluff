@@ -13,7 +13,7 @@ struct UsernameStepView: View {
     @Bindable var data: RegistrationData
     let userService: UserServiceProtocol
 
-    @State private var validationError: String?
+    @State private var validationError: LocalizedStringResource?
     @State private var isChecking = false
     @State private var isAvailable: Bool?
     @State private var debounceTask: Task<Void, Never>?
@@ -33,7 +33,7 @@ struct UsernameStepView: View {
             // Поле ввода в glass-контейнере
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 HStack(spacing: Theme.Spacing.sm) {
-                    TextField("Имя пользователя", text: $data.username)
+                    TextField("auth.register.step.username.label", text: $data.username)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
                         .focused($isFieldFocused)
@@ -61,13 +61,13 @@ struct UsernameStepView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 } else if isAvailable == true {
-                    Text("Имя доступно")
+                    Text("auth.register.step.username.available")
                         .font(.caption)
                         .foregroundStyle(.green)
                 }
 
                 // Подсказка
-                Text("3-30 символов: буквы, цифры, _ и -")
+                Text("auth.register.step.username.hint")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -116,7 +116,7 @@ struct UsernameStepView: View {
             isAvailable = !exists
             data.isUsernameAvailable = !exists
             if exists {
-                validationError = "Это имя уже занято"
+                validationError = LocalizedStringResource("auth.register.step.username.taken")
             }
         } catch {
             // Если сервер недоступен, разрешаем продолжить

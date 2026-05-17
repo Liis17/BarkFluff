@@ -25,7 +25,7 @@ struct EditPreviewView: View {
                 .foregroundStyle(Color.accentColor)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("Редактирование сообщения")
+                Text("conversation.edit.title")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Color.accentColor)
@@ -47,7 +47,7 @@ struct EditPreviewView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Отменить редактирование")
+            .accessibilityLabel(Text("conversation.edit.cancel_a11y"))
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)

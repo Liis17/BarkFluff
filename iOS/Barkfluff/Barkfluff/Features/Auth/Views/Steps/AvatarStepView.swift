@@ -17,7 +17,7 @@ struct AvatarStepView: View {
     let userService: UserServiceProtocol
 
     @State private var isUploading = false
-    @State private var uploadError: String?
+    @State private var uploadError: LocalizedStringResource?
     @State private var selectedItem: PhotosPickerItem?
     @State private var pendingImage: UIImage?
     @State private var showCropper: Bool = false
@@ -41,7 +41,7 @@ struct AvatarStepView: View {
                                 Image(systemName: "person.fill")
                                     .font(.system(size: 40))
                                     .foregroundStyle(.tertiary)
-                                Text("Добавить фото")
+                                Text("auth.register.step.avatar.add")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -66,13 +66,13 @@ struct AvatarStepView: View {
                     matching: .images,
                     photoLibrary: .shared()
                 ) {
-                    Text(data.avatarImage == nil ? "Выбрать фото" : "Изменить фото")
+                    Text(data.avatarImage == nil ? "auth.register.step.avatar.choose" : "auth.register.step.avatar.change")
                 }
                 .buttonStyle(.bordered)
                 .disabled(isUploading)
 
                 if data.avatarImage != nil {
-                    Button("Удалить фото", role: .destructive) {
+                    Button("auth.register.step.avatar.remove", role: .destructive) {
                         removeAvatar()
                     }
                     .buttonStyle(.plain)
@@ -88,7 +88,7 @@ struct AvatarStepView: View {
             }
 
             // Подсказка
-            Text("Не обязательно — можно добавить позже в настройках")
+            Text("auth.register.step.avatar.hint")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -126,7 +126,7 @@ struct AvatarStepView: View {
         do {
             guard let imageData = try await item.loadTransferable(type: Data.self),
                   let uiImage = UIImage(data: imageData) else {
-                uploadError = "Не удалось загрузить изображение"
+                uploadError = LocalizedStringResource("auth.register.step.avatar.error.load")
                 return
             }
 
@@ -135,7 +135,7 @@ struct AvatarStepView: View {
                 showCropper = true
             }
         } catch {
-            uploadError = "Не удалось загрузить фото"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.load_photo")
         }
     }
 
@@ -149,7 +149,7 @@ struct AvatarStepView: View {
         }
 
         guard let compressedData = image.jpegData(compressionQuality: 0.85) else {
-            uploadError = "Ошибка обработки изображения"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.process")
             return
         }
 
@@ -168,7 +168,7 @@ struct AvatarStepView: View {
                 data.avatarImage = Image(uiImage: image)
             }
         } catch {
-            uploadError = "Не удалось загрузить фото"
+            uploadError = LocalizedStringResource("auth.register.step.avatar.error.upload")
         }
     }
 
