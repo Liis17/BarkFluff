@@ -244,8 +244,8 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats)> GetChats(GlobalParam globalParam) => await MessageManager.GetChats(globalParam);
         public async Task<(ErrorReturner error, ChatInfo chatInfo)> GetChatInfo(GlobalParam globalParam, string chatId) => await MessageManager.GetChatInfo(globalParam, chatId);
         public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter) => await MessageManager.SendMessage(globalParam, options, letter);
-        public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds) => await MessageManager.CreateGroupChat(globalParam, chatName, userIds);
-        public async Task<(bool, string?)> CreateChat(GlobalParam globalParam, string userId) => await MessageManager.CreateChat(globalParam, userId);
+        public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds) => await MessageManager.CreateGroupChat(globalParam, chatName, userIds); // исправить не использовать в таком виде
+        public async Task<(bool, string?)> CreateChat(GlobalParam globalParam, string userId) => await MessageManager.CreateChat(globalParam, userId); // исправить не использовать в таком виде
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessages(GlobalParam globalParam, string chatId, long fromMessageId) => await MessageManager.GetMessages(globalParam, chatId, fromMessageId);
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesWithOffset(GlobalParam globalParam, string chatId, long fromMessageId, int offsetBefore, int offsetAfter) => await MessageManager.GetMessagesWithOffset(globalParam, chatId, fromMessageId, offsetBefore, offsetAfter);
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId) => await MessageManager.MarkMessageAsRead(globalParam, messageId);
