@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using BarkFluff.Client.WPF.Services.App;
 
 namespace BarkFluff.Client.WPF.Validators
 {
@@ -23,7 +24,7 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (string.IsNullOrWhiteSpace(email))
             {
-                errorMessage = "Email не может быть пустым";
+                errorMessage = L.Str("L_Val_Email_Empty");
                 return false;
             }
 
@@ -31,13 +32,13 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (trimmedEmail.Length > MaxLength)
             {
-                errorMessage = $"Email слишком длинный (максимум {MaxLength} символов)";
+                errorMessage = L.F("L_Val_Email_TooLongFull", MaxLength);
                 return false;
             }
 
             if (!EmailPattern.IsMatch(trimmedEmail))
             {
-                errorMessage = "Введите корректный адрес электронной почты";
+                errorMessage = L.Str("L_Val_Email_Invalid");
                 return false;
             }
 
@@ -51,27 +52,27 @@ namespace BarkFluff.Client.WPF.Validators
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                return new ValidationResult(false, "Введите email", ValidationState.Empty);
+                return new ValidationResult(false, L.Str("L_Val_Email_Enter"), ValidationState.Empty);
             }
 
             var trimmedEmail = email.Trim();
 
             if (trimmedEmail.Length > MaxLength)
             {
-                return new ValidationResult(false, "Email слишком длинный", ValidationState.TooLong);
+                return new ValidationResult(false, L.Str("L_Val_Email_TooLong"), ValidationState.TooLong);
             }
 
             if (!trimmedEmail.Contains('@'))
             {
-                return new ValidationResult(false, "Требуется символ @", ValidationState.InvalidCharacters);
+                return new ValidationResult(false, L.Str("L_Val_Email_NeedAt"), ValidationState.InvalidCharacters);
             }
 
             if (!EmailPattern.IsMatch(trimmedEmail))
             {
-                return new ValidationResult(false, "Некорректный формат email", ValidationState.InvalidCharacters);
+                return new ValidationResult(false, L.Str("L_Val_Email_BadFormat"), ValidationState.InvalidCharacters);
             }
 
-            return new ValidationResult(true, "Email корректен", ValidationState.Valid);
+            return new ValidationResult(true, L.Str("L_Val_Email_Valid"), ValidationState.Valid);
         }
 
         /// <summary>

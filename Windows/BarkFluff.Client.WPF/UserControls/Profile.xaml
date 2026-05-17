@@ -102,7 +102,7 @@
                             FontSize="24"
                             FontWeight="SemiBold"
                             Foreground="White"
-                            Text="Имя пользователя"
+                            Text="{DynamicResource L_Profile_Username}"
                             TextAlignment="Center" />
 
                         <!--  Онлайн статус  -->
@@ -125,7 +125,7 @@
                                 FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="13"
                                 Foreground="#80FFFFFF"
-                                Text="Был(а) недавно" />
+                                Text="{DynamicResource L_Profile_WasRecently}" />
                         </StackPanel>
 
                         <!--  Баджи  -->
@@ -262,7 +262,7 @@
                                         FontFamily="{DynamicResource AdwaitaSans}"
                                         FontSize="12"
                                         Foreground="#60FFFFFF"
-                                        Text="О себе" />
+                                        Text="{DynamicResource L_Profile_About}" />
                                     <TextBlock
                                         x:Name="DescriptionTextBlock"
                                         FontFamily="{DynamicResource AdwaitaSans}"
@@ -294,7 +294,7 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="12"
                                     Foreground="#60FFFFFF"
-                                    Text="Имя пользователя" />
+                                    Text="{DynamicResource L_Profile_Username}" />
                                 <TextBlock
                                     x:Name="UsernameInfoTextBlock"
                                     FontFamily="{DynamicResource AdwaitaSans}"
@@ -325,7 +325,7 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="12"
                                     Foreground="#60FFFFFF"
-                                    Text="ID пользователя" />
+                                    Text="{DynamicResource L_Profile_UserId}" />
                                 <TextBlock
                                     x:Name="UserIdTextBlock"
                                     FontFamily="{DynamicResource AdwaitaSans}"
@@ -386,7 +386,7 @@
                                         FontFamily="{DynamicResource AdwaitaSans}"
                                         FontSize="12"
                                         Foreground="#60FFFFFF"
-                                        Text="Дата регистрации" />
+                                        Text="{DynamicResource L_Profile_RegistrationDate}" />
                                     <TextBlock
                                         x:Name="RegistrationDateTextBlock"
                                         FontFamily="{DynamicResource AdwaitaSans}"
@@ -436,7 +436,7 @@
                                         <TextBlock
                                             FontFamily="{DynamicResource AdwaitaSans}"
                                             FontSize="13"
-                                            Text="Фото" />
+                                            Text="{DynamicResource L_Profile_Tab_Photos}" />
                                     </StackPanel>
                                 </RadioButton>
                                 <RadioButton
@@ -452,7 +452,7 @@
                                         <TextBlock
                                             FontFamily="{DynamicResource AdwaitaSans}"
                                             FontSize="13"
-                                            Text="Видео" />
+                                            Text="{DynamicResource L_Profile_Tab_Videos}" />
                                     </StackPanel>
                                 </RadioButton>
                                 <RadioButton
@@ -468,7 +468,7 @@
                                         <TextBlock
                                             FontFamily="{DynamicResource AdwaitaSans}"
                                             FontSize="13"
-                                            Text="Файлы" />
+                                            Text="{DynamicResource L_Profile_Tab_Files}" />
                                     </StackPanel>
                                 </RadioButton>
                                 <RadioButton
@@ -484,7 +484,7 @@
                                         <TextBlock
                                             FontFamily="{DynamicResource AdwaitaSans}"
                                             FontSize="13"
-                                            Text="Голос" />
+                                            Text="{DynamicResource L_Profile_Tab_Voice}" />
                                     </StackPanel>
                                 </RadioButton>
                             </StackPanel>
@@ -511,7 +511,7 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="13"
                                     Foreground="#60FFFFFF"
-                                    Text="Нет изображений" />
+                                    Text="{DynamicResource L_Profile_Empty_Images}" />
                             </StackPanel>
 
                             <!--  Videos  -->
@@ -530,7 +530,7 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="13"
                                     Foreground="#60FFFFFF"
-                                    Text="Нет видео" />
+                                    Text="{DynamicResource L_Profile_Empty_Videos}" />
                             </StackPanel>
 
                             <!--  Files  -->
@@ -549,7 +549,7 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="13"
                                     Foreground="#60FFFFFF"
-                                    Text="Нет файлов" />
+                                    Text="{DynamicResource L_Profile_Empty_Files}" />
                             </StackPanel>
 
                             <!--  Voice  -->
@@ -568,7 +568,7 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="13"
                                     Foreground="#60FFFFFF"
-                                    Text="Нет голосовых сообщений" />
+                                    Text="{DynamicResource L_Profile_Empty_Voice}" />
                             </StackPanel>
                         </Grid>
                     </Grid>

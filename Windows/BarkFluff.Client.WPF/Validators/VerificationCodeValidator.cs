@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using BarkFluff.Client.WPF.Services.App;
 
 namespace BarkFluff.Client.WPF.Validators
 {
@@ -19,7 +20,7 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (string.IsNullOrWhiteSpace(code))
             {
-                errorMessage = "Введите код подтверждения";
+                errorMessage = L.Str("L_Val_VC_EnterConfirmation");
                 return false;
             }
 
@@ -27,13 +28,13 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (trimmedCode.Length != CodeLength)
             {
-                errorMessage = $"Код должен содержать ровно {CodeLength} цифр";
+                errorMessage = L.F("L_Val_VC_MustBeDigits", CodeLength);
                 return false;
             }
 
             if (!DigitsOnlyPattern.IsMatch(trimmedCode))
             {
-                errorMessage = "Код должен содержать только цифры";
+                errorMessage = L.Str("L_Val_VC_OnlyDigitsFull");
                 return false;
             }
 
@@ -47,7 +48,7 @@ namespace BarkFluff.Client.WPF.Validators
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                return new ValidationResult(false, "Введите 6-значный код", ValidationState.Empty);
+                return new ValidationResult(false, L.Str("L_Val_VC_EnterCode"), ValidationState.Empty);
             }
 
             var trimmedCode = code.Trim();
@@ -55,20 +56,20 @@ namespace BarkFluff.Client.WPF.Validators
             // Check for non-digit characters
             if (!Regex.IsMatch(trimmedCode, @"^\d*$"))
             {
-                return new ValidationResult(false, "Только цифры", ValidationState.InvalidCharacters);
+                return new ValidationResult(false, L.Str("L_Val_VC_OnlyDigits"), ValidationState.InvalidCharacters);
             }
 
             if (trimmedCode.Length < CodeLength)
             {
-                return new ValidationResult(false, $"Введите еще {CodeLength - trimmedCode.Length} цифр", ValidationState.TooShort);
+                return new ValidationResult(false, L.F("L_Val_VC_NeedMore", CodeLength - trimmedCode.Length), ValidationState.TooShort);
             }
 
             if (trimmedCode.Length > CodeLength)
             {
-                return new ValidationResult(false, "Слишком много цифр", ValidationState.TooLong);
+                return new ValidationResult(false, L.Str("L_Val_VC_TooMany"), ValidationState.TooLong);
             }
 
-            return new ValidationResult(true, "Код введен", ValidationState.Valid);
+            return new ValidationResult(true, L.Str("L_Val_VC_Valid"), ValidationState.Valid);
         }
 
         /// <summary>

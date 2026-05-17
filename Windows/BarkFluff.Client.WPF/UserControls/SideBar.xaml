@@ -76,27 +76,27 @@
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Archive20"
                         Click="SidebarButtonClick"
-                        Content="Архив"
+                        Content="{DynamicResource L_Sidebar_Archive}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Bookmark20"
                         Click="OpenFavorites"
-                        Content="Избранное"
+                        Content="{DynamicResource L_Sidebar_Favorites}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="PersonCircle20"
                         Click="SidebarButtonClick"
-                        Content="Мой профиль"
+                        Content="{DynamicResource L_Sidebar_MyProfile}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Edit20"
                         Click="SidebarButtonClick"
-                        Content="Статус"
+                        Content="{DynamicResource L_Sidebar_Status}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Badge20"
                         Click="SidebarButtonClick"
-                        Content="Значки"
+                        Content="{DynamicResource L_Sidebar_Badges}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Border
                         Height="1"
@@ -106,27 +106,27 @@
                     <Button
                         extensions:SidebarExtensions.IconSymbol="People20"
                         Click="SidebarButtonClick"
-                        Content="Создать группу"
+                        Content="{DynamicResource L_Sidebar_CreateGroup}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Megaphone20"
                         Click="SidebarButtonClick"
-                        Content="Создать канал"
+                        Content="{DynamicResource L_Sidebar_CreateChannel}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="ChatMultiple20"
                         Click="SidebarButtonClick"
-                        Content="Чаты"
+                        Content="{DynamicResource L_Sidebar_Chats}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Person20"
                         Click="SidebarButtonClick"
-                        Content="Контакты"
+                        Content="{DynamicResource L_Sidebar_Contacts}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Call20"
                         Click="SidebarButtonClick"
-                        Content="Звонки"
+                        Content="{DynamicResource L_Sidebar_Calls}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Border
                         Height="1"
@@ -137,7 +137,7 @@
                         x:Name="DebugMenuButton"
                         extensions:SidebarExtensions.IconSymbol="Bug20"
                         Click="OpenDebugMenuButtonClick"
-                        Content="Отладка"
+                        Content="{DynamicResource L_Sidebar_Debug}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Border
                         x:Name="DebugBorder"
@@ -148,17 +148,17 @@
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Settings20"
                         Click="OpenSettingsButtonClick"
-                        Content="Настройки"
+                        Content="{DynamicResource L_Sidebar_Settings}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="Star16"
                         Click="SidebarButtonClick"
-                        Content="Возможности Barkfluff"
+                        Content="{DynamicResource L_Sidebar_Features}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
                         extensions:SidebarExtensions.IconSymbol="QuestionCircle28"
                         Click="SidebarButtonClick"
-                        Content="Помощь"
+                        Content="{DynamicResource L_Sidebar_Help}"
                         Style="{DynamicResource SidebarMenuButtonStyle}" />
                 </StackPanel>
             </StackPanel>

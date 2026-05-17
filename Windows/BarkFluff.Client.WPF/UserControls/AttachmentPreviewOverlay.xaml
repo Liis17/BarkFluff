@@ -59,7 +59,7 @@
                     FontSize="16"
                     FontWeight="SemiBold"
                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                    Text="Предпросмотр вложений" />
+                    Text="{DynamicResource L_AttachmentPreview_Title}" />
 
                 <!--  Кнопка добавления вложений  -->
                 <ui:Button
@@ -179,14 +179,14 @@
                         Appearance="Primary"
                         Click="SendButton_Click"
                         CornerRadius="6"
-                        ToolTip="Отправить">
+                        ToolTip="{DynamicResource L_AttachmentPreview_Send}">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Margin="0,0,6,0" FontSize="16" Symbol="Send24" />
                             <TextBlock
                                 VerticalAlignment="Center"
                                 FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="13"
-                                Text="Отправить" />
+                                Text="{DynamicResource L_AttachmentPreview_Send}" />
                         </StackPanel>
                     </ui:Button>
                 </Grid>
@@ -207,7 +207,7 @@
                                     Margin="0,0,6,0"
                                     FontSize="14"
                                     Symbol="ArrowExportUp24" />
-                                <TextBlock Text="Отправить без сжатия" />
+                                <TextBlock Text="{DynamicResource L_AttachmentPreview_SendNoCompression}" />
                             </StackPanel>
                         </CheckBox.Content>
                     </CheckBox>
@@ -223,7 +223,7 @@
                                     Margin="0,0,6,0"
                                     FontSize="14"
                                     Symbol="SplitHorizontal24" />
-                                <TextBlock Text="Отправить без группировки" />
+                                <TextBlock Text="{DynamicResource L_AttachmentPreview_SendNoGrouping}" />
                             </StackPanel>
                         </CheckBox.Content>
                     </CheckBox>

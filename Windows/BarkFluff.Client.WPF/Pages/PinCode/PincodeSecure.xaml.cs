@@ -1,4 +1,5 @@
 ﻿using BarkFluff.Client.WPF.Debugs;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
@@ -82,16 +83,16 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                         }
                         if (attempts == 0)
                         {
-                            helper.Text = "Попытки исчерпаны. Помянем";
+                            helper.Text = L.Str("L_Pin_Helper_NoAttempts");
                             RemoveSettings(sender, e);
                         }
                         else if (attempts == 1)
                         {
-                            helper.Text = "Последняя попытка ввести правильный код\nПри неудаче последует сброс...";
+                            helper.Text = L.Str("L_Pin_Helper_LastAttempt").Replace("\\n", "\n");
                         }
                         else if (attempts == 2)
                         {
-                            helper.Text = "Это PIN код можно отключить в настройках";
+                            helper.Text = L.Str("L_Pin_Helper_DisableHint");
                         }
                     }
                 }

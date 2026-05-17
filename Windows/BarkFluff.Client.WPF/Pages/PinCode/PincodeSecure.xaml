@@ -83,7 +83,7 @@
             <TextBlock
                 Margin="0,8,0,0"
                 Style="{DynamicResource DescriptionTextStyle}"
-                Text="Вход в приложение" />
+                Text="{DynamicResource L_Pin_Enter_Title}" />
         </StackPanel>
 
         <!--  Основной контент с пинкодом  -->
@@ -96,7 +96,7 @@
             <TextBlock
                 Margin="0,0,0,20"
                 Style="{DynamicResource TitleTextStyle}"
-                Text="Код доступа" />
+                Text="{DynamicResource L_Pin_Enter_Subtitle}" />
 
             <!--  Карточка в стиле SetupPages  -->
             <Border Style="{DynamicResource MainStyleBorder}">
@@ -151,7 +151,7 @@
                         <TextBlock
                             Margin="0,0,15,0"
                             Style="{DynamicResource DescriptionTextStyle}"
-                            Text="Попытки:" />
+                            Text="{DynamicResource L_Pin_Attempts_Label}" />
 
                         <!--  Индикаторы  -->
                         <Border
@@ -200,7 +200,7 @@
             <TextBlock
                 Margin="0,0,0,10"
                 Style="{DynamicResource DescriptionTextStyle}"
-                Text="Забыли код доступа?" />
+                Text="{DynamicResource L_Pin_Forgot}" />
 
             <ui:Button
                 HorizontalAlignment="Center"
@@ -211,7 +211,7 @@
                         Filled="False"
                         Style="{DynamicResource RequiredButtonIconStyle}"
                         Symbol="Delete24" />
-                    <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Сбросить приложение и выйти" />
+                    <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="{DynamicResource L_Pin_ResetApp}" />
                 </StackPanel>
             </ui:Button>
 
@@ -225,7 +225,7 @@
                         Filled="False"
                         Style="{DynamicResource AdaptiveButtonIconStyle}"
                         Symbol="Bug24" />
-                    <TextBlock Style="{DynamicResource AdaptiveButtonTextStyle}" Text="Окно отладки" />
+                    <TextBlock Style="{DynamicResource AdaptiveButtonTextStyle}" Text="{DynamicResource L_Pin_DebugWindow}" />
                 </StackPanel>
             </ui:Button>
         </StackPanel>

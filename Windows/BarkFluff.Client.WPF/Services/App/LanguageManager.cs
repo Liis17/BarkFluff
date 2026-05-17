@@ -4,6 +4,26 @@ using System.Windows;
 namespace BarkFluff.Client.WPF.Services.App
 {
     /// <summary>
+    /// Хелперы для получения локализованных строк из C#.
+    /// </summary>
+    public static class L
+    {
+        /// <summary>Возвращает локализованную строку по ключу из текущего ResourceDictionary.</summary>
+        public static string Str(string key)
+        {
+            var res = Application.Current?.TryFindResource(key);
+            return res as string ?? key;
+        }
+
+        /// <summary>Локализованная строка с форматированием (string.Format(L_..., args)).</summary>
+        public static string F(string key, params object[] args)
+        {
+            return string.Format(Str(key), args);
+        }
+    }
+
+
+    /// <summary>
     /// Сервис управления языком интерфейса. Хранит текущий эффективный язык
     /// и публикует событие <see cref="LanguageChanged"/>, на которое подписывается
     /// C# код-бихайнд для обновления строк, прочитанных через <see cref="FrameworkElement.FindResource"/>.

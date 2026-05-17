@@ -262,4 +262,395 @@
     <system:String x:Key="L_Settings_AboutServer_Status_Offline">Офлайн</system:String>
     <system:String x:Key="L_Settings_AboutServer_Status_Unknown">Неизвестно</system:String>
 
+    <!--  Common: дополнительные  -->
+    <system:String x:Key="L_Common_Copyright">2025 BarkFluff. Никакие права не защищены.</system:String>
+    <system:String x:Key="L_Common_BackToLogin">Вернуться к входу</system:String>
+    <system:String x:Key="L_Common_Continue">Продолжить</system:String>
+    <system:String x:Key="L_Common_Next">Далее</system:String>
+    <system:String x:Key="L_Common_Skip">Пропустить</system:String>
+    <system:String x:Key="L_Common_Confirm">Подтвердить</system:String>
+    <system:String x:Key="L_Common_Send">Отправить</system:String>
+    <system:String x:Key="L_Common_Connect">Подключиться</system:String>
+    <system:String x:Key="L_Common_Connecting">Подключение...</system:String>
+    <system:String x:Key="L_Common_Search">Поиск</system:String>
+
+    <!--  Password rules (общие подсказки)  -->
+    <system:String x:Key="L_Password_StartTyping">Начните вводить пароль</system:String>
+    <system:String x:Key="L_Password_Rule_MinLength">○ Минимум 8 символов</system:String>
+    <system:String x:Key="L_Password_Rule_Uppercase">○ Заглавные буквы</system:String>
+    <system:String x:Key="L_Password_Rule_Lowercase">○ Строчные буквы</system:String>
+    <system:String x:Key="L_Password_Rule_Digits">○ Цифры</system:String>
+    <system:String x:Key="L_Password_Rule_Special">○ Специальные символы</system:String>
+    <system:String x:Key="L_Password_Recommendation_Title">Рекомендации к паролю:</system:String>
+    <system:String x:Key="L_Password_Recommendation_Mix">• Используйте комбинацию букв разного регистра</system:String>
+    <system:String x:Key="L_Password_Recommendation_AddDigits">• Добавьте цифры и специальные символы</system:String>
+    <system:String x:Key="L_Password_Recommendation_NoPersonal">• Не используйте личные данные в пароле</system:String>
+    <system:String x:Key="L_Password_Recommendation_MinLen">• Минимальная длина пароля 8 символов</system:String>
+
+    <!--  Welcome  -->
+    <system:String x:Key="L_Welcome_Subtitle">Мессенджер для твоей стаи</system:String>
+    <system:String x:Key="L_Welcome_Description">Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен</system:String>
+    <system:String x:Key="L_Welcome_StartButton">Начать</system:String>
+    <system:String x:Key="L_Welcome_Footer_About">О проекте</system:String>
+    <system:String x:Key="L_Welcome_Footer_Privacy">Политика конфиденциальности</system:String>
+    <system:String x:Key="L_Welcome_Footer_Help">Справка</system:String>
+
+    <!--  SelectServer  -->
+    <system:String x:Key="L_SelectServer_Title">Подключение к серверу</system:String>
+    <system:String x:Key="L_SelectServer_Subtitle">Выберите публичный сервер</system:String>
+    <system:String x:Key="L_SelectServer_PublicServers">Публичные серверы</system:String>
+    <system:String x:Key="L_SelectServer_AnotherServer">Подключиться к другому серверу</system:String>
+    <system:String x:Key="L_SelectServer_OwnServer_Question">Хотите развернуть собственный сервер? </system:String>
+    <system:String x:Key="L_SelectServer_OwnServer_Learn">Узнайте больше</system:String>
+    <system:String x:Key="L_SelectServer_Issues">Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера.</system:String>
+    <system:String x:Key="L_ServerItem_DefaultName">Название сервера</system:String>
+    <system:String x:Key="L_ServerItem_DefaultDescription">Описание сервера</system:String>
+    <system:String x:Key="L_ServerItem_DefaultLocation">Локация и публичное имя</system:String>
+
+    <!--  Login  -->
+    <system:String x:Key="L_Login_Title">Добро пожаловать</system:String>
+    <system:String x:Key="L_Login_Subtitle">Войдите в свой аккаунт</system:String>
+    <system:String x:Key="L_Login_EmailOrUsername">Почта или username</system:String>
+    <system:String x:Key="L_Login_Password">Пароль</system:String>
+    <system:String x:Key="L_Login_ForgotPassword">Забыли пароль?</system:String>
+    <system:String x:Key="L_Login_OtpHeader">Введите код подтверждения</system:String>
+    <system:String x:Key="L_Login_OtpHint">Введите 6-значный код подтверждения</system:String>
+    <system:String x:Key="L_Login_SignInButton">Войти</system:String>
+    <system:String x:Key="L_Login_ChangeServer">Изменить подключение к серверу</system:String>
+    <system:String x:Key="L_Login_NoAccount">Еще нет аккаунта?</system:String>
+    <system:String x:Key="L_Login_CreateAccount">Создать новый аккаунт</system:String>
+
+    <!--  CreateAccount  -->
+    <system:String x:Key="L_CreateAccount_Title">Создание нового аккаунта</system:String>
+    <system:String x:Key="L_CreateAccount_StepFormat">Шаг {0} из {1}</system:String>
+    <system:String x:Key="L_CreateAccount_StepFormat_19">Шаг 1 из 9</system:String>
+    <system:String x:Key="L_CreateAccount_Personal_Title">Личная информация</system:String>
+    <system:String x:Key="L_CreateAccount_FirstName_Label">Имя *</system:String>
+    <system:String x:Key="L_CreateAccount_FirstName_Placeholder">Апогея</system:String>
+    <system:String x:Key="L_CreateAccount_LastName_Label">Фамилия</system:String>
+    <system:String x:Key="L_CreateAccount_LastName_Placeholder">Тайнигейпиратовна</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint1">• Имя может содержать любые символы</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint2">• Минимально может быть 3 символа</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint3">• Длина имени и фамилии ограничена 40 символами</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint4">• Фамилия может отсутствовать</system:String>
+    <system:String x:Key="L_CreateAccount_Username_Title">Имя пользователя</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Label">Логин *</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint1">• Логин может содержать:</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint2">- Символы латинского алфавита</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint3">- Цифры</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint4">- Нижнее подчеркивание ( _ ) и тире ( - )</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint5">• Логин ограничен 30 символами</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint6">• Логин будет преобразован в нижний регистр</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Title">Электронная почта</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Label">Почта *</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Hint1">• Почта может использоваться для 2FA</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Hint2">• Почта будет использоваться для сброса пароля</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Hint3">• На почту будут отправляться уведомления о входе</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Title">Подтверждение почты</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Label">Код подтверждения *</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Hint1">• Сообщение отправлено на вашу почту</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Hint2">• Проверьте папку со спамом</system:String>
+    <system:String x:Key="L_CreateAccount_Password_Title">Создание пароля</system:String>
+    <system:String x:Key="L_CreateAccount_Password_Label">Пароль *</system:String>
+    <system:String x:Key="L_CreateAccount_Password_Placeholder">Введите пароль</system:String>
+    <system:String x:Key="L_CreateAccount_PasswordConfirm_Label">Подтвердите пароль *</system:String>
+    <system:String x:Key="L_CreateAccount_PasswordConfirm_Placeholder">Повторите пароль</system:String>
+    <system:String x:Key="L_CreateAccount_Avatar_Title">Фото профиля</system:String>
+    <system:String x:Key="L_CreateAccount_Avatar_Hint">Загрузите фото профиля</system:String>
+    <system:String x:Key="L_CreateAccount_Profile_Title">Настройка профиля</system:String>
+    <system:String x:Key="L_CreateAccount_Next">Далее</system:String>
+    <system:String x:Key="L_CreateAccount_Submit">Создать аккаунт</system:String>
+
+    <!--  TwoFA  -->
+    <system:String x:Key="L_TwoFA_Title">Двухфакторная аутентификация</system:String>
+    <system:String x:Key="L_TwoFA_Intro">Повысьте безопасность своего аккаунта с помощью Google Authenticator. Хотите включить двухфакторную аутентификацию?</system:String>
+    <system:String x:Key="L_TwoFA_NoThanks">Нет, спасибо</system:String>
+    <system:String x:Key="L_TwoFA_YesEnable">Да, включить</system:String>
+    <system:String x:Key="L_TwoFA_Description">Двухфакторная аутентификация значительно повышает безопасность Вашего аккаунта. Для настройки установите приложение Google Authenticator на свой телефон и отсканируйте QR-код.</system:String>
+    <system:String x:Key="L_TwoFA_Subtitle">Повысьте безопасность своего аккаунта с помощью Google Authenticator</system:String>
+    <system:String x:Key="L_TwoFA_ScanQrTitle">Отсканируйте QR-код</system:String>
+    <system:String x:Key="L_TwoFA_QrPlaceholder">QR КОД</system:String>
+    <system:String x:Key="L_TwoFA_OrManualKey">или введите ключ вручную</system:String>
+    <system:String x:Key="L_TwoFA_EnterCode_Title">Введите код из приложения</system:String>
+    <system:String x:Key="L_TwoFA_Skip">Пропустить</system:String>
+    <system:String x:Key="L_TwoFA_Connect">Подключить</system:String>
+
+    <!--  CompletionRegistration  -->
+    <system:String x:Key="L_Completion_Welcome">Добро пожаловать!</system:String>
+    <system:String x:Key="L_Completion_Success">Регистрация успешно завершена</system:String>
+    <system:String x:Key="L_Completion_Configuring">Настраиваем ваш аккаунт...</system:String>
+    <system:String x:Key="L_Completion_FewSeconds">Это займёт всего несколько секунд</system:String>
+
+    <!--  PasswordReset  -->
+    <system:String x:Key="L_PasswordReset_Title">Восстановление пароля</system:String>
+    <system:String x:Key="L_PasswordReset_Subtitle">Следуйте инструкциям для сброса пароля</system:String>
+    <system:String x:Key="L_PasswordReset_Step1_Label">Введите email или имя пользователя</system:String>
+    <system:String x:Key="L_PasswordReset_Step1_Button">Отправить код</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Label">Введите код подтверждения</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Hint">Мы отправили 6-значный код на ваш email</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Button">Подтвердить код</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Resend">Отправить код повторно</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_Title">Создайте новый пароль</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_New_Label">Новый пароль</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_Confirm_Label">Подтвердите пароль</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_Button">Сохранить новый пароль</system:String>
+    <system:String x:Key="L_PasswordReset_Step4_Title">Пароль успешно изменен!</system:String>
+    <system:String x:Key="L_PasswordReset_Step4_Hint">Теперь вы можете войти с новым паролем</system:String>
+    <system:String x:Key="L_PasswordReset_Step4_Button">Вернуться к входу</system:String>
+    <system:String x:Key="L_PasswordReset_BackToLogin">Вернуться к входу</system:String>
+
+    <!--  PinCode: Pincode (вход)  -->
+    <system:String x:Key="L_Pin_Enter_Title">Вход в приложение</system:String>
+    <system:String x:Key="L_Pin_Enter_Subtitle">Код доступа</system:String>
+    <system:String x:Key="L_Pin_Attempts_Label">Попытки:</system:String>
+    <system:String x:Key="L_Pin_Forgot">Забыли код доступа?</system:String>
+    <system:String x:Key="L_Pin_ResetApp">Сбросить приложение и выйти</system:String>
+    <system:String x:Key="L_Pin_DebugWindow">Окно отладки</system:String>
+
+    <!--  PinCode: Create  -->
+    <system:String x:Key="L_PinCreate_Title">Создание кода доступа</system:String>
+    <system:String x:Key="L_PinCreate_Hint">Введите четырехзначный пин-код и подтвердите его</system:String>
+    <system:String x:Key="L_PinCreate_StepCreate">Придумайте</system:String>
+    <system:String x:Key="L_PinCreate_StepConfirm">Подтвердите</system:String>
+    <system:String x:Key="L_PinCreate_EnterCombination">Введите комбинацию</system:String>
+    <system:String x:Key="L_PinCreate_RepeatCombination">Повторите комбинацию</system:String>
+    <system:String x:Key="L_PinCreate_Tips_Title">Советы по безопасности:</system:String>
+    <system:String x:Key="L_PinCreate_Tip_Simple">• Не используйте простые комбинации (1111, 1234)</system:String>
+    <system:String x:Key="L_PinCreate_Tip_Memorable">• Используйте комбинацию, которую легко запомнить</system:String>
+    <system:String x:Key="L_PinCreate_Continue">Продолжить</system:String>
+
+    <!--  SideBar  -->
+    <system:String x:Key="L_Sidebar_Archive">Архив</system:String>
+    <system:String x:Key="L_Sidebar_Favorites">Избранное</system:String>
+    <system:String x:Key="L_Sidebar_MyProfile">Мой профиль</system:String>
+    <system:String x:Key="L_Sidebar_Status">Статус</system:String>
+    <system:String x:Key="L_Sidebar_Badges">Значки</system:String>
+    <system:String x:Key="L_Sidebar_CreateGroup">Создать группу</system:String>
+    <system:String x:Key="L_Sidebar_CreateChannel">Создать канал</system:String>
+    <system:String x:Key="L_Sidebar_Chats">Чаты</system:String>
+    <system:String x:Key="L_Sidebar_Contacts">Контакты</system:String>
+    <system:String x:Key="L_Sidebar_Calls">Звонки</system:String>
+    <system:String x:Key="L_Sidebar_Debug">Отладка</system:String>
+    <system:String x:Key="L_Sidebar_Settings">Настройки</system:String>
+    <system:String x:Key="L_Sidebar_Features">Возможности Barkfluff</system:String>
+    <system:String x:Key="L_Sidebar_Help">Помощь</system:String>
+
+    <!--  MessengerPage  -->
+    <system:String x:Key="L_Messenger_Tooltip_SideMenu">Открыть боковое меню</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_MyProfile">Открыть мой профиль</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_UpdateAvailable">Доступно обновление</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_ConnectionIssues">Проблемы с соединением</system:String>
+    <system:String x:Key="L_Messenger_Search_Placeholder">Поиск</system:String>
+    <system:String x:Key="L_Messenger_Search_Hint">Поиск чатов...</system:String>
+    <system:String x:Key="L_Messenger_Search_Results">Результаты поиска</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_OpenProfile">Открыть профиль</system:String>
+    <system:String x:Key="L_Messenger_Unknown">Неизвестно</system:String>
+    <system:String x:Key="L_Messenger_DragDrop_Release">Отпустите для добавления</system:String>
+    <system:String x:Key="L_Messenger_DragDrop_WillAdd">Файлы будут добавлены к сообщению</system:String>
+    <system:String x:Key="L_Messenger_Input_Placeholder">Сообщение</system:String>
+
+    <!--  UserControls: Profile  -->
+    <system:String x:Key="L_Profile_Username">Имя пользователя</system:String>
+    <system:String x:Key="L_Profile_WasRecently">Был(а) недавно</system:String>
+    <system:String x:Key="L_Profile_About">О себе</system:String>
+    <system:String x:Key="L_Profile_UserId">ID пользователя</system:String>
+    <system:String x:Key="L_Profile_RegistrationDate">Дата регистрации</system:String>
+    <system:String x:Key="L_Profile_Tab_Photos">Фото</system:String>
+    <system:String x:Key="L_Profile_Tab_Videos">Видео</system:String>
+    <system:String x:Key="L_Profile_Tab_Files">Файлы</system:String>
+    <system:String x:Key="L_Profile_Tab_Voice">Голос</system:String>
+    <system:String x:Key="L_Profile_Empty_Images">Нет изображений</system:String>
+    <system:String x:Key="L_Profile_Empty_Videos">Нет видео</system:String>
+    <system:String x:Key="L_Profile_Empty_Files">Нет файлов</system:String>
+    <system:String x:Key="L_Profile_Empty_Voice">Нет голосовых сообщений</system:String>
+
+    <!--  UserControls: ProfileShare  -->
+    <system:String x:Key="L_ProfileShare_FailedTitle">Не удалось поделиться профилем</system:String>
+    <system:String x:Key="L_ProfileShare_NoUsername">У вас не установлен username. Задайте его в настройках профиля.</system:String>
+
+    <!--  UserControls: AttachmentPreviewOverlay  -->
+    <system:String x:Key="L_AttachmentPreview_Title">Предпросмотр вложений</system:String>
+    <system:String x:Key="L_AttachmentPreview_Send">Отправить</system:String>
+    <system:String x:Key="L_AttachmentPreview_SendNoCompression">Отправить без сжатия</system:String>
+    <system:String x:Key="L_AttachmentPreview_SendNoGrouping">Отправить без группировки</system:String>
+
+    <!--  UserControls: ChatItem (drag&drop overlay)  -->
+    <system:String x:Key="L_ChatItem_DropTitle">Отправить в этот чат</system:String>
+    <system:String x:Key="L_ChatItem_DropHint">Отпустите файл чтобы отправить его в этот чат</system:String>
+
+    <!--  UserControls: MessageBubble (контекстное меню)  -->
+    <system:String x:Key="L_MessageBubble_Reply">Ответить</system:String>
+    <system:String x:Key="L_MessageBubble_Forward">Переслать</system:String>
+    <system:String x:Key="L_MessageBubble_Copy">Копировать</system:String>
+    <system:String x:Key="L_MessageBubble_SelectText">Выделить текст</system:String>
+    <system:String x:Key="L_MessageBubble_Pin">Закрепить</system:String>
+    <system:String x:Key="L_MessageBubble_AddToFavorites">Добавить в избранное</system:String>
+    <system:String x:Key="L_MessageBubble_Edit">Изменить</system:String>
+    <system:String x:Key="L_MessageBubble_Delete">Удалить</system:String>
+    <system:String x:Key="L_MessageBubble_Edited">изменено</system:String>
+
+    <!--  UserControls: StickerPicker  -->
+    <system:String x:Key="L_StickerPicker_Loading">Загрузка стикеров...</system:String>
+    <system:String x:Key="L_StickerPicker_Empty">Стикеры не найдены</system:String>
+
+    <!--  UserControls: UnreadSeparator  -->
+    <system:String x:Key="L_UnreadSeparator_Text">Непрочитанные сообщения</system:String>
+
+    <!--  UserControls: PreviewUser  -->
+    <system:String x:Key="L_PreviewUser_Loading">Загрузка...</system:String>
+    <system:String x:Key="L_PreviewUser_Description">Расскажите немного о себе для других пользователей</system:String>
+    <system:String x:Key="L_PreviewUser_BioPlaceholder">О себе, работе, хобби... или оставьте пустым</system:String>
+    <system:String x:Key="L_PreviewUser_Save">Сохранить</system:String>
+    <system:String x:Key="L_PreviewUser_Footer">Информация о себе будет видна другим пользователям. Вы можете изменить её в любое время в настройках.</system:String>
+
+    <!--  UserControls: VideoEditor  -->
+    <system:String x:Key="L_VideoEditor_Title">Редактор видео</system:String>
+    <system:String x:Key="L_VideoEditor_LoadingMeta">Загрузка метаданных...</system:String>
+    <system:String x:Key="L_VideoEditor_Quality">Качество (битрейт)</system:String>
+    <system:String x:Key="L_VideoEditor_Resolution">Разрешение</system:String>
+    <system:String x:Key="L_VideoEditor_Info">Информация о видео</system:String>
+    <system:String x:Key="L_VideoEditor_Processing">Обработка видео... 0%</system:String>
+    <system:String x:Key="L_VideoEditor_Cancel">Отмена</system:String>
+    <system:String x:Key="L_VideoEditor_Save">Сохранить</system:String>
+
+    <!--  UserControls: VideoPlayer  -->
+    <system:String x:Key="L_VideoPlayer_Menu_ToggleLoop">Включить/выключить повтор</system:String>
+    <system:String x:Key="L_VideoPlayer_Menu_OpenInExplorer">Открыть папку с видео</system:String>
+    <system:String x:Key="L_VideoPlayer_Menu_CopyPath">Скопировать путь</system:String>
+    <system:String x:Key="L_VideoPlayer_Menu_CopyFrame">Скопировать текущий кадр</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Close">Закрыть (Esc)</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_PlayPause">Воспроизведение/Пауза (Пробел)</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Loop">Повтор</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Sound">Звук</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Prev">Предыдущее (←)</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Next">Следующее (→)</system:String>
+    <system:String x:Key="L_VideoPlayer_Loading">Загрузка видео...</system:String>
+
+    <!--  UserControls: ImageViewer  -->
+    <system:String x:Key="L_ImageViewer_Menu_Save">Сохранить</system:String>
+    <system:String x:Key="L_ImageViewer_Menu_Copy">Копировать в буфер</system:String>
+    <system:String x:Key="L_ImageViewer_Menu_OpenInExplorer">Открыть на диске</system:String>
+    <system:String x:Key="L_ImageViewer_Tooltip_Close">Закрыть (Esc)</system:String>
+    <system:String x:Key="L_ImageViewer_Tooltip_Prev">Предыдущее (←)</system:String>
+    <system:String x:Key="L_ImageViewer_Tooltip_Next">Следующее (→)</system:String>
+    <system:String x:Key="L_ImageViewer_LoadingFull">Загрузка полной версии...</system:String>
+
+    <!--  UserControls: CropImage  -->
+    <system:String x:Key="L_CropImage_SelectAvatar">Выбрать аватар</system:String>
+    <system:String x:Key="L_CropImage_OrDrop">или перетащите файл сюда</system:String>
+    <system:String x:Key="L_CropImage_Crop">Обрезать</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_PickFile">Выбрать картинку для аватара в проводнике</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_Apply">Выбрать текущий вариант аватара и применить его для профиля</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_Reset">Вернуть картинку в исходное состояние</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_PickOther">Выбрать другую картинку</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_Cancel">Отменить и вернуться к выбору файла</system:String>
+
+    <!--  UserControls: PostUpdateMessage  -->
+    <system:String x:Key="L_PostUpdate_Title">Приложение обновлено </system:String>
+
+    <!--  UserControls: UploadingAttachmentItem  -->
+    <system:String x:Key="L_UploadingAttachment_Error">Ошибка загрузки. Нажмите для повтора</system:String>
+
+    <!--  Validators: VerificationCode (короткие)  -->
+    <system:String x:Key="L_Val_VC_EnterCode">Введите 6-значный код</system:String>
+    <system:String x:Key="L_Val_VC_OnlyDigits">Только цифры</system:String>
+    <system:String x:Key="L_Val_VC_NeedMore">Введите еще {0} цифр</system:String>
+    <system:String x:Key="L_Val_VC_TooMany">Слишком много цифр</system:String>
+    <system:String x:Key="L_Val_VC_Valid">Код введен</system:String>
+    <!--  Validators: VerificationCode (полные)  -->
+    <system:String x:Key="L_Val_VC_EnterConfirmation">Введите код подтверждения</system:String>
+    <system:String x:Key="L_Val_VC_MustBeDigits">Код должен содержать ровно {0} цифр</system:String>
+    <system:String x:Key="L_Val_VC_OnlyDigitsFull">Код должен содержать только цифры</system:String>
+
+    <!--  Validators: Email  -->
+    <system:String x:Key="L_Val_Email_Empty">Email не может быть пустым</system:String>
+    <system:String x:Key="L_Val_Email_TooLongFull">Email слишком длинный (максимум {0} символов)</system:String>
+    <system:String x:Key="L_Val_Email_Invalid">Введите корректный адрес электронной почты</system:String>
+    <system:String x:Key="L_Val_Email_Enter">Введите email</system:String>
+    <system:String x:Key="L_Val_Email_TooLong">Email слишком длинный</system:String>
+    <system:String x:Key="L_Val_Email_NeedAt">Требуется символ @</system:String>
+    <system:String x:Key="L_Val_Email_BadFormat">Некорректный формат email</system:String>
+    <system:String x:Key="L_Val_Email_Valid">Email корректен</system:String>
+
+    <!--  Validators: Username  -->
+    <system:String x:Key="L_Val_User_Empty">Логин не может быть пустым</system:String>
+    <system:String x:Key="L_Val_User_LengthFull">Логин должен быть от {0} до {1} символов</system:String>
+    <system:String x:Key="L_Val_User_BadStartFull">Логин не может начинаться с цифры, тире или нижнего подчеркивания</system:String>
+    <system:String x:Key="L_Val_User_NoBotFull">Логин не должен содержать 'bot'</system:String>
+    <system:String x:Key="L_Val_User_BadCharsFull">Логин содержит недопустимые символы. Разрешены: a-z, A-Z, 0-9, _, -</system:String>
+    <system:String x:Key="L_Val_User_Enter">Введите логин</system:String>
+    <system:String x:Key="L_Val_User_Min">Минимум {0} символа</system:String>
+    <system:String x:Key="L_Val_User_Max">Максимум {0} символов</system:String>
+    <system:String x:Key="L_Val_User_BadStart">Нельзя начинать с цифры, - или _</system:String>
+    <system:String x:Key="L_Val_User_NoBot">Нельзя использовать 'bot'</system:String>
+    <system:String x:Key="L_Val_User_BadChars">Недопустимые символы</system:String>
+    <system:String x:Key="L_Val_User_Valid">Логин доступен для проверки</system:String>
+
+    <!--  Validators: PersonalInfo  -->
+    <system:String x:Key="L_Val_Pers_FirstNameEmpty">Имя не может быть пустым</system:String>
+    <system:String x:Key="L_Val_Pers_FirstNameMin">Имя должно содержать минимум {0} символа</system:String>
+    <system:String x:Key="L_Val_Pers_FirstNameMax">Имя не должно превышать {0} символов</system:String>
+    <system:String x:Key="L_Val_Pers_LastNameMax">Фамилия не должна превышать {0} символов</system:String>
+
+    <!--  Validators: Password  -->
+    <system:String x:Key="L_Val_Pwd_Empty">Пароль не может быть пустым</system:String>
+    <system:String x:Key="L_Val_Pwd_MinFull">Пароль должен содержать минимум {0} символов</system:String>
+    <system:String x:Key="L_Val_Pwd_NoSpaces">Пароль не должен содержать пробелы</system:String>
+    <system:String x:Key="L_Val_Pwd_TooSimpleFull">Пароль слишком простой. Добавьте буквы разного регистра, цифры и специальные символы</system:String>
+    <system:String x:Key="L_Val_Pwd_Mismatch">Пароли не совпадают</system:String>
+    <system:String x:Key="L_Val_Pwd_Enter">Введите пароль</system:String>
+    <system:String x:Key="L_Val_Pwd_Min">Минимум {0} символов</system:String>
+    <system:String x:Key="L_Val_Pwd_Spaces">Пробелы недопустимы</system:String>
+    <system:String x:Key="L_Val_Pwd_TooSimple">Пароль слишком простой</system:String>
+    <system:String x:Key="L_Val_Pwd_Valid">Пароль подходит</system:String>
+
+    <!--  CreateAccount динамические  -->
+    <system:String x:Key="L_CA_FirstName_Valid">✓ Имя корректно</system:String>
+    <system:String x:Key="L_CA_LastName_Valid">✓ Фамилия корректна</system:String>
+    <system:String x:Key="L_CA_Pwd_Match">✓ Пароли совпадают</system:String>
+    <system:String x:Key="L_CA_Pwd_Mismatch">✗ Пароли не совпадают</system:String>
+    <system:String x:Key="L_CA_Email_CodeSent">● Код отправлен на {0}</system:String>
+    <system:String x:Key="L_CA_Attempts_Remaining">• Осталось попыток: {0}</system:String>
+    <system:String x:Key="L_CA_Attempts_LimitExceeded">• Превышен лимит попыток. Подождите.</system:String>
+
+    <!--  Password requirements (короткие — без ○ префикса, используется при апдейте через FindResource)  -->
+    <system:String x:Key="L_PwdReq_MinLength">Минимум 8 символов</system:String>
+    <system:String x:Key="L_PwdReq_Uppercase">Заглавные буквы</system:String>
+    <system:String x:Key="L_PwdReq_Lowercase">Строчные буквы</system:String>
+    <system:String x:Key="L_PwdReq_Digits">Цифры</system:String>
+    <system:String x:Key="L_PwdReq_Special">Специальные символы</system:String>
+
+    <!--  PinCode (помощник)  -->
+    <system:String x:Key="L_Pin_Helper_NoAttempts">Попытки исчерпаны. Помянем</system:String>
+    <system:String x:Key="L_Pin_Helper_LastAttempt">Последняя попытка ввести правильный код\nПри неудаче последует сброс...</system:String>
+    <system:String x:Key="L_Pin_Helper_DisableHint">Это PIN код можно отключить в настройках</system:String>
+
+    <!--  Profile (динамика)  -->
+    <system:String x:Key="L_Profile_Online">В сети</system:String>
+    <system:String x:Key="L_Profile_WasLongAgo">Был(а) давно</system:String>
+    <system:String x:Key="L_Profile_WasAt">Был(а) в {0}</system:String>
+    <system:String x:Key="L_Profile_WasYesterday">Был(а) вчера в {0}</system:String>
+    <system:String x:Key="L_Profile_WasDay">Был(а) в {0} в {1}</system:String>
+    <system:String x:Key="L_Profile_WasDate">Был(а) {0} в {1}</system:String>
+    <system:String x:Key="L_Profile_Unknown">Неизвестно</system:String>
+
+    <!--  ChatItem  -->
+    <system:String x:Key="L_ChatItem_Favorites">Избранное</system:String>
+    <system:String x:Key="L_ChatItem_BadDate">Неверный формат даты</system:String>
+
+    <!--  AttachmentPreview динамика  -->
+    <system:String x:Key="L_AP_SendPhotos">Отправить {0} фото</system:String>
+    <system:String x:Key="L_AP_SendFiles">Отправить {0} {1}</system:String>
+    <system:String x:Key="L_AP_File_1">файл</system:String>
+    <system:String x:Key="L_AP_File_Few">файла</system:String>
+    <system:String x:Key="L_AP_File_Many">файлов</system:String>
+    <system:String x:Key="L_AP_ClipboardImage">Изображение из буфера обмена</system:String>
+
+    <!--  AudioMessageContent  -->
+    <system:String x:Key="L_Audio_Loading">Загрузка...</system:String>
+
+    <!--  MessageBubble  -->
+    <system:String x:Key="L_MB_DefaultSendError">Ошибка отправки сообщения</system:String>
+    <system:String x:Key="L_MB_VoiceSoon">🎤 Голосовое сообщение (скоро)</system:String>
+
 </ResourceDictionary>

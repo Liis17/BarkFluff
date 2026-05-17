@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.Services.App.Caching;
+﻿using BarkFluff.Client.WPF.Services.App;
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.UserControls.MessageContent;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
@@ -20,7 +21,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private const int MIN_TEXT_WIDTH = 150;
         private const int IMAGE_MAX_WIDTH = 400;
         private const int IMAGE_MAX_HEIGHT = 300;
-        private const string DEFAULT_SEND_ERROR = "Ошибка отправки сообщения";
+        private static string DefaultSendError => L.Str("L_MB_DefaultSendError");
 
         // Status indicator opacity values
         private const double STATUS_READ_OPACITY = 1.0;
@@ -435,7 +436,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             var voicePlaceholder = new TextBlock
             {
-                Text = "\U0001F3A4 Голосовое сообщение (скоро)",
+                Text = L.Str("L_MB_VoiceSoon"),
                 FontFamily = (System.Windows.Media.FontFamily)FindResource("AdwaitaSans"),
                 FontSize = 13,
                 Foreground = new System.Windows.Media.SolidColorBrush(
@@ -488,7 +489,7 @@ namespace BarkFluff.Client.WPF.UserControls
             var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
             if (!response.error.IsSuccess)
             {
-                var errorMsg = response.error.ErrorMessage ?? DEFAULT_SEND_ERROR;
+                var errorMsg = response.error.ErrorMessage ?? DefaultSendError;
                 var msgType = new Services.Erida.MessageType
                 {
                     Type = Services.Erida.MessageType.MessageTypeEnum.Error

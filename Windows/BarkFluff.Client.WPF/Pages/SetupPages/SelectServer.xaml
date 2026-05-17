@@ -41,13 +41,13 @@
                 <TextBlock
                     Margin="0,0,0,5"
                     Style="{DynamicResource TitleTextStyle}"
-                    Text="Подключение к серверу" />
+                    Text="{DynamicResource L_SelectServer_Title}" />
 
                 <!--  Подзаголовок  -->
                 <TextBlock
                     Margin="0,0,0,40"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Выберите публичный сервер" />
+                    Text="{DynamicResource L_SelectServer_Subtitle}" />
 
                 <!--  Публичные серверы  -->
                 <TextBlock
@@ -55,7 +55,7 @@
                     HorizontalAlignment="Left"
                     Foreground="{DynamicResource TitleText}"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Публичные серверы" />
+                    Text="{DynamicResource L_SelectServer_PublicServers}" />
 
                 <StackPanel x:Name="ServerList" Margin="0,0,0,30" />
 
@@ -69,7 +69,7 @@
                 <TextBlock
                     Margin="0,0,0,15"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Подключиться к другому серверу" />
+                    Text="{DynamicResource L_SelectServer_AnotherServer}" />
 
                 <ui:TextBox
                     x:Name="ServerAddressTextBox"
@@ -86,7 +86,7 @@
                         Style="{DynamicResource RequiredButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Подключиться" />
+                                <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="{DynamicResource L_Common_Connect}" />
                                 <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                             </StackPanel>
                         </ui:Button.Content>
@@ -113,12 +113,12 @@
                             FontSize="16"
                             Foreground="{DynamicResource TextIcon}"
                             Symbol="Server20" />
-                        <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="Хотите развернуть собственный сервер? " />
+                        <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="{DynamicResource L_SelectServer_OwnServer_Question}" />
                         <TextBlock
                             Foreground="{DynamicResource TextHyperlink}"
                             MouseUp="TextBlock_MouseUp"
                             Style="{DynamicResource DescriptionTextStyle}"
-                            Text="Узнайте больше" />
+                            Text="{DynamicResource L_SelectServer_OwnServer_Learn}" />
 
                     </StackPanel>
                 </Border>
@@ -126,7 +126,7 @@
                 <TextBlock
                     Margin="100,0,100,0"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера." />
+                    Text="{DynamicResource L_SelectServer_Issues}" />
             </StackPanel>
         </Grid>
     </ScrollViewer>
