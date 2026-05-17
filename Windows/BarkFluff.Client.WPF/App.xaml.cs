@@ -187,13 +187,6 @@ namespace BarkFluff.Client.WPF
             Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(targetPath) ?? string.Empty, "datas"));
             string filePath = Path.Combine(Path.GetDirectoryName(targetPath), "datas", "GlobalParam.json");
 
-#if (DEBUG)
-            if (Debugger.IsAttached)
-            {
-                // Увеличивает версию если в дебаге под отладкой
-                IncrementVersion();
-            }
-#endif
             MessengerWindow = new MainWindow();
             MessengerWindow.Show();
             WindowStateService.Initialize(MessengerWindow);
@@ -384,27 +377,6 @@ namespace BarkFluff.Client.WPF
                 App.MessagerTask.Value = task;
             });
         }
-        private void IncrementVersion()
-        {
-            var versionParts = AppVersion.Version.Split('.');
-            int buildNumber = int.Parse(versionParts[3]);
-            buildNumber++;
-            versionParts[3] = buildNumber.ToString();
-            AppVersion.Version = string.Join(".", versionParts);
-
-            var versionFile = "K:\\source\\BarkFluff\\Windows\\BarkFluff.Client.WPF\\Services\\App\\AppVersion.cs";
-            var lines = System.IO.File.ReadAllLines(versionFile);
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i].Contains("public static string Version"))
-                {
-                    lines[i] = $"        public static string Version {{ get; set; }} = \"{AppVersion.Version}\";";
-                    break;
-                }
-            }
-            System.IO.File.WriteAllLines(versionFile, lines);
-        }
-
         /// <summary>
         /// Метод для обновления API клиента.
         /// </summary>

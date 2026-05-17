@@ -98,6 +98,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Автоподнятие версии
+        id: bump
+        run: |
+          VERSION_FILE="Windows/BarkFluff.Client.WPF/Services/App/AppVersion.cs"
+
+          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffwindows/beta/version" || echo "")
+
+          if [ -n "$RESPONSE" ]; then
+            SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
+          fi
+
+          if [ -z "$SERVER_VERSION" ]; then
+            SERVER_VERSION=$(grep -oP 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"\K[^"]+' "$VERSION_FILE" || echo "0.0.0.0")
+          fi
+
+          # Стрипаем любой нечисловой суффикс (например " beta")
+          SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oP '^\d+(\.\d+){0,3}' | head -1)
+          [ -z "$SERVER_VERSION" ] && SERVER_VERSION="0.0.0.0"
+
+          # Нормализация до четырёх частей
+          DOTS=$(echo "$SERVER_VERSION" | tr -cd '.' | wc -c | tr -d ' ')
+          if [ "$DOTS" = "0" ]; then SERVER_VERSION="${SERVER_VERSION}.0.0.0"; fi
+          if [ "$DOTS" = "1" ]; then SERVER_VERSION="${SERVER_VERSION}.0.0"; fi
+          if [ "$DOTS" = "2" ]; then SERVER_VERSION="${SERVER_VERSION}.0"; fi
+
+          echo "Server version: $SERVER_VERSION"
+
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
+            MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
+            PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
+            BUILD=$(echo "$SERVER_VERSION" | cut -d. -f4)
+            BUILD=$((BUILD + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+          else
+            NEW_VERSION="$SERVER_VERSION"
+          fi
+
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i -E "s/(public static string Version \{ get; set; \} = \")[^\"]+(\";)/\1${NEW_VERSION}\2/" "$VERSION_FILE"
+
       - name: Restore dependencies
         env:
           EnableWindowsTargeting: true
@@ -119,11 +162,10 @@ jobs:
           files: publish/
           dest: wpf-build.zip
 
-      - name: Get version and tag
+      - name: Get tag
         id: meta
         run: |
-          VERSION=$(grep -oP 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"\K[^"]+' Windows/BarkFluff.Client.WPF/Services/App/AppVersion.cs || echo "0.0.0")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=${{ steps.bump.outputs.version }}" >> "$GITHUB_OUTPUT"
 
           COMMIT_HASH=$(git rev-parse --short HEAD)
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
