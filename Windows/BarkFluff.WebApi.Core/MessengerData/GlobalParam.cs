@@ -132,6 +132,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         private static readonly byte[] FileMagicV3 = [0x42, 0x46, 0x56, 0x33];
         private const int HeaderSize = 4 + SaltSize + NonceSize + TagSize;
 
+        [System.Text.Json.Serialization.JsonIgnore]
         public string AppPass { get; set; } = string.Empty;
         #endregion
 
