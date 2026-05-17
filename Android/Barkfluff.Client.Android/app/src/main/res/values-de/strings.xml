@@ -1,0 +1,500 @@
+<resources>
+    <!-- App name -->
+    <string name="app_name">Barkfluff</string>
+
+    <!-- Share intent -->
+    <string name="share_pick_chat_title">Wohin senden?</string>
+    <string name="share_pick_chat_subtitle">Über Barkfluff</string>
+    <string name="share_preview_label">Was senden</string>
+    <string name="share_no_chats">Keine verfügbaren Chats</string>
+    <string name="share_not_authorized">Melde dich bei Barkfluff an, um hier zu teilen</string>
+    <string name="share_empty">Nichts zu senden</string>
+    <string name="share_send_to">Senden an %1$s</string>
+    <string name="share_caption_hint">Beschriftung hinzufügen…</string>
+    <string name="share_btn_send">Senden</string>
+    <string name="share_sent_toast">An %1$s gesendet</string>
+    <string name="share_file_count">%1$d Dateien</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">Ein Messenger für dein Rudel</string>
+    <string name="welcome_description">Chatte mit Freunden, teile Momente und bleibe in Verbindung mit denen, die dir wichtig sind</string>
+    <string name="btn_start">Loslegen</string>
+    <string name="btn_learn_more">Mehr erfahren</string>
+    <string name="menu_about">Über</string>
+    <string name="menu_privacy">Datenschutz</string>
+    <string name="menu_help">Hilfe</string>
+
+    <!-- Login Screen -->
+    <string name="login_welcome">Willkommen</string>
+    <string name="login_subtitle">Melde dich bei deinem Konto an</string>
+    <string name="hint_username_or_email">Benutzername oder E-Mail</string>
+    <string name="hint_password">Passwort</string>
+    <string name="forgot_password">Passwort vergessen?</string>
+    <string name="btn_login">Anmelden</string>
+    <string name="btn_change_server">Serververbindung ändern</string>
+    <string name="btn_create_account">Neues Konto erstellen</string>
+    <string name="footer_text">2025 BarkFluff. Keine Rechte vorbehalten.</string>
+
+    <!-- 2FA / OTP -->
+    <string name="otp_title">Zwei-Faktor-Authentifizierung</string>
+    <string name="otp_subtitle">Gib den Code aus deiner Authenticator-App ein</string>
+    <string name="btn_confirm">Bestätigen</string>
+
+    <!-- Select Server -->
+    <string name="server_title">Serververbindung</string>
+    <string name="server_subtitle">Wähle einen öffentlichen Server</string>
+    <string name="server_public">Öffentliche Server</string>
+    <string name="server_custom">Mit anderem Server verbinden</string>
+    <string name="hint_server_address">https://myserver.com:443</string>
+    <string name="btn_connect">Verbinden</string>
+    <string name="self_hosted_title">Eigener Server</string>
+    <string name="self_hosted_description">Betreibe deinen eigenen BarkFluff-Server</string>
+    <string name="btn_learn_more_server">Mehr erfahren</string>
+    <string name="server_help_hint">Verbindungsprobleme? Schau in unsere Server-Setup-Anleitung.</string>
+    <string name="server_item_name_placeholder">Servername</string>
+    <string name="server_item_description_placeholder">Serverbeschreibung</string>
+    <string name="server_item_location_placeholder">Standort • @publicname</string>
+
+    <!-- Registration Steps -->
+    <string name="register_step_1">Persönliche Daten</string>
+    <string name="register_step_2">Benutzername</string>
+    <string name="register_step_3">E-Mail</string>
+    <string name="register_step_4">E-Mail-Bestätigung</string>
+    <string name="register_step_5">Passwort erstellen</string>
+    <string name="register_step_6">Profilbild</string>
+    <string name="register_step_7">Über dich</string>
+    <string name="register_step_8">Zwei-Faktor-Authentifizierung</string>
+    <string name="register_step_9">Fertig</string>
+
+    <string name="register_title">Neues Konto erstellen</string>
+    <string name="register_step_indicator">Schritt 1 von 9</string>
+
+    <string name="register_step1_subtitle">Erzähl uns etwas über dich</string>
+    <string name="hint_first_name_required">Vorname *</string>
+    <string name="hint_last_name">Nachname</string>
+    <string name="register_first_name_hint">Der Vorname darf beliebige Zeichen enthalten</string>
+    <string name="register_first_name_length">Mindestens 3, höchstens 40 Zeichen</string>
+    <string name="register_last_name_hint">Nachname ist optional</string>
+
+    <string name="register_step2_subtitle">Wähle einen einzigartigen Anmeldenamen</string>
+    <string name="hint_login_required">Anmeldename *</string>
+    <string name="register_login_rules">Der Anmeldename darf enthalten:</string>
+    <string name="register_login_rule_latin">Lateinische Buchstaben (a–z)</string>
+    <string name="register_login_rule_digits">Ziffern (0–9)</string>
+    <string name="register_login_rule_symbols">Unterstrich (_) und Bindestrich (-)</string>
+    <string name="register_login_max_length">Maximal 30 Zeichen</string>
+    <string name="register_login_lowercase">Wird in Kleinbuchstaben umgewandelt</string>
+
+    <string name="register_step3_subtitle">Zur Bestätigung und Kontowiederherstellung</string>
+    <string name="hint_email_required">E-Mail *</string>
+    <string name="register_email_for_2fa">Für die Zwei-Faktor-Authentifizierung</string>
+    <string name="register_email_for_reset">Für das Zurücksetzen des Passworts</string>
+    <string name="register_email_for_login_alerts">Für Anmeldebenachrichtigungen</string>
+
+    <string name="register_step4_subtitle">Wir haben einen Bestätigungscode an deine E-Mail gesendet</string>
+    <string name="hint_verify_code_required">Bestätigungscode *</string>
+    <string name="register_check_inbox">Sieh im Posteingang nach</string>
+    <string name="register_check_spam">Sieh im Spam-Ordner nach</string>
+
+    <string name="register_step5_subtitle">Erstelle ein starkes Passwort</string>
+    <string name="hint_password_required">Passwort *</string>
+    <string name="hint_password_confirm_required">Passwort bestätigen *</string>
+    <string name="register_password_start_typing">Beginne, dein Passwort einzugeben</string>
+    <string name="register_password_requirements">Passwortanforderungen:</string>
+    <string name="register_password_req_length">○ Mindestens 8 Zeichen</string>
+    <string name="register_password_req_upper">○ Großbuchstaben</string>
+    <string name="register_password_req_lower">○ Kleinbuchstaben</string>
+    <string name="register_password_req_digit">○ Ziffern</string>
+    <string name="register_password_req_special">○ Sonderzeichen</string>
+    <string name="register_password_case_hint">Verwende eine Mischung aus Groß- und Kleinbuchstaben</string>
+    <string name="register_password_digits_hint">Füge Ziffern und Sonderzeichen hinzu</string>
+
+    <string name="register_step6_subtitle">Foto hinzufügen oder Schritt überspringen</string>
+    <string name="register_pick_photo_from_gallery">Foto aus Galerie auswählen</string>
+    <string name="register_skip_step">Diesen Schritt überspringen</string>
+    <string name="register_photo_visibility_hint">Dein Foto ist für andere Nutzer sichtbar</string>
+
+    <string name="register_step7_title">Profileinrichtung</string>
+    <string name="register_step7_subtitle">Erzähl uns von dir</string>
+    <string name="register_full_name_placeholder">Vorname Nachname</string>
+    <string name="hint_bio">Über dich</string>
+    <string name="register_bio_max">Maximal 200 Zeichen</string>
+    <string name="register_bio_optional">Kann leer bleiben</string>
+
+    <string name="register_step8_subtitle">Schütze dein Konto</string>
+    <string name="register_2fa_protects">2FA schützt dein Konto vor unbefugtem Zugriff</string>
+    <string name="register_2fa_authenticator_code">Code zum Hinzufügen in den Authenticator:</string>
+    <string name="register_2fa_copy_code">Code kopieren</string>
+    <string name="register_2fa_open_google_authenticator">Google Authenticator öffnen</string>
+    <string name="hint_otp_six_digits">Gib den 6-stelligen Code aus der App ein</string>
+
+    <string name="register_step9_title">Konto erstellt!</string>
+    <string name="register_step9_subtitle">Dein Konto wurde erfolgreich erstellt.\nWillkommen!</string>
+    <string name="register_start_messaging">Loslegen mit dem Chatten</string>
+
+    <!-- Reset password -->
+    <string name="reset_password_title">Passwort zurücksetzen</string>
+    <string name="reset_password_subtitle">Folge den Anweisungen, um dein Passwort zurückzusetzen</string>
+    <string name="reset_enter_email_or_login">E-Mail oder Benutzername eingeben</string>
+    <string name="reset_send_code">Code senden</string>
+    <string name="reset_enter_verify_code">Bestätigungscode eingeben</string>
+    <string name="reset_we_sent_code">Wir haben einen 6-stelligen Code an deine E-Mail gesendet</string>
+    <string name="reset_confirm_code">Code bestätigen</string>
+    <string name="reset_resend_code">Code erneut senden</string>
+    <string name="reset_create_new_password">Neues Passwort erstellen</string>
+    <string name="hint_new_password">Neues Passwort</string>
+    <string name="hint_confirm_password">Passwort bestätigen</string>
+    <string name="reset_save_new_password">Neues Passwort speichern</string>
+    <string name="reset_password_success">Passwort erfolgreich geändert!</string>
+    <string name="reset_password_success_subtitle">Du kannst dich jetzt mit dem neuen Passwort anmelden</string>
+    <string name="reset_back_to_login">Zurück zur Anmeldung</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_search_hint">Chats durchsuchen</string>
+    <string name="chat_empty_title">Hier ist es noch leer</string>
+    <string name="chat_empty_description">Beginne ein Gespräch, indem du einen Nutzer suchst</string>
+    <string name="btn_new_chat">Neuer Chat</string>
+    <string name="connecting">Verbindung…</string>
+    <string name="chat_message_hint">Nachricht</string>
+    <string name="chat_message_edited">bearbeitet</string>
+    <string name="chat_editing_message">Nachricht bearbeiten</string>
+
+    <!-- Chat content descriptions -->
+    <string name="cd_back">Zurück</string>
+    <string name="cd_more_menu">Weitere Optionen</string>
+    <string name="cd_pinned">Angeheftet</string>
+    <string name="cd_all_pinned">Alle Angehefteten</string>
+    <string name="cd_scroll_down">Nach unten scrollen</string>
+    <string name="cd_cancel_edit">Bearbeitung abbrechen</string>
+    <string name="cd_cancel_reply">Antwort abbrechen</string>
+    <string name="cd_clear_attachments">Anhänge entfernen</string>
+    <string name="cd_attach_file">Datei anhängen</string>
+    <string name="cd_stickers">Sticker</string>
+    <string name="cd_send">Senden</string>
+    <string name="cd_sticker_preview">Sticker-Vorschau</string>
+    <string name="cd_close">Schließen</string>
+    <string name="cd_more">Mehr</string>
+    <string name="cd_play_pause">Wiedergabe/Pause</string>
+    <string name="cd_search">Suche</string>
+    <string name="cd_create_hidden_chat">Versteckten Chat erstellen</string>
+    <string name="cd_play">Abspielen</string>
+    <string name="cd_download">Herunterladen</string>
+    <string name="cd_download_file">Datei herunterladen</string>
+    <string name="cd_open_file">Datei öffnen</string>
+    <string name="cd_attachment">Anhang</string>
+    <string name="cd_remove_background">Hintergrund entfernen</string>
+    <string name="cd_play_video">Video abspielen</string>
+    <string name="cd_download_video">Video herunterladen</string>
+    <string name="cd_read_status">Lesestatus</string>
+
+    <!-- Encrypted / private chat -->
+    <string name="private_chat_title">Privater Chat</string>
+    <string name="private_chat_description">Passphrase-basierte Verschlüsselung. Der Chat ist auf allen deinen Geräten verfügbar.</string>
+    <string name="encrypted_chat_type">Chat-Typ</string>
+    <string name="encrypted_chat_type_private">Privat</string>
+    <string name="encrypted_chat_type_secret">Geheim</string>
+    <string name="encrypted_chat_peer">Gegenüber</string>
+    <string name="encrypted_chat_peer_device">Gerät des Gegenübers</string>
+    <string name="encrypted_chat_create">Chat erstellen</string>
+    <string name="encrypted_chat_new_title">Neuer verschlüsselter Chat</string>
+    <string name="hint_peer_user_id">Benutzer-ID</string>
+    <string name="hint_passphrase">Passphrase</string>
+    <string name="encrypted_chat_passphrase_helper">Mindestens 6 Zeichen. Teile die Passphrase über einen sicheren Kanal</string>
+    <string name="encrypted_chat_initial_helper">Wird zusammen mit der Einladung gesendet</string>
+    <string name="hint_first_message">Erste Nachricht</string>
+    <string name="hint_encrypted_message">Verschlüsselte Nachricht</string>
+    <string name="hint_secret_message">Geheime Nachricht</string>
+
+    <!-- Drawer Menu -->
+    <string name="drawer_favorites">Favoriten</string>
+    <string name="drawer_archive">Archiv</string>
+    <string name="drawer_contacts">Kontakte</string>
+    <string name="drawer_calls">Anrufe</string>
+    <string name="drawer_create_group">Gruppe erstellen</string>
+    <string name="drawer_create_channel">Kanal erstellen</string>
+    <string name="drawer_settings">Einstellungen</string>
+    <string name="drawer_help">Hilfe</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Kontakte</string>
+    <string name="contacts_in_development">Bereich in Entwicklung</string>
+
+    <!-- Search -->
+    <string name="search_users_hint">Nutzer suchen</string>
+    <string name="search_nothing_found">Nichts gefunden</string>
+    <string name="search_try_different">Versuche eine andere Suchanfrage</string>
+    <string name="search_users_title">Nutzer suchen</string>
+    <string name="search_users_hint_long">Gib Vorname, Nachname oder Benutzername ein (mindestens 3 Zeichen)</string>
+
+    <!-- Image Picker -->
+    <string name="select_photos">Fotos auswählen</string>
+    <string name="options">Optionen</string>
+    <string name="send">Senden</string>
+    <string name="camera">Kamera</string>
+    <string name="permission_required">Berechtigung erforderlich</string>
+    <string name="permission_required_description">Für den Zugriff auf Fotos wird der Speicherzugriff benötigt</string>
+    <string name="grant_permission">Erlauben</string>
+    <string name="no_photos">Keine Fotos</string>
+    <string name="no_photos_description">Auf dem Gerät wurden keine Fotos gefunden</string>
+    <string name="send_as_file">Als Datei senden</string>
+    <string name="send_as_file_description">Bilder werden ohne Komprimierung gesendet</string>
+    <string name="send_separately">Einzeln senden</string>
+    <string name="send_separately_description">Jedes Bild als eigene Nachricht</string>
+    <string name="selected_count">Ausgewählt: %1$d/%2$d</string>
+    <string name="send_photos">%1$d Fotos senden</string>
+    <string name="max_selection_reached">Maximal %1$d Bilder</string>
+
+    <!-- Plurals for photos -->
+    <plurals name="photos_selected">
+        <item quantity="one">%d Foto ausgewählt</item>
+        <item quantity="other">%d Fotos ausgewählt</item>
+    </plurals>
+
+    <!-- Plurals for media counts -->
+    <plurals name="photos_count">
+        <item quantity="one">%d Foto</item>
+        <item quantity="other">%d Fotos</item>
+    </plurals>
+
+    <plurals name="videos_count">
+        <item quantity="one">%d Video</item>
+        <item quantity="other">%d Videos</item>
+    </plurals>
+
+    <plurals name="files_count">
+        <item quantity="one">%d Datei</item>
+        <item quantity="other">%d Dateien</item>
+    </plurals>
+
+    <!-- Paste attachments -->
+    <string name="attached_photos_count">Angehängte Fotos: %d</string>
+    <string name="attached_files_count">Angehängte Dateien: %d</string>
+    <string name="attached_mixed_count">Angehängt: %1$d Fotos, %2$d Dateien</string>
+    <string name="file_button">Datei</string>
+    <string name="gallery_button">Galerie</string>
+    <string name="select_media">Medien auswählen</string>
+    <string name="add_caption_hint">Beschriftung hinzufügen…</string>
+    <string name="compress_to_480p">Auf 480p komprimieren</string>
+
+    <!-- Common -->
+    <string name="btn_skip">Überspringen</string>
+    <string name="btn_next">Weiter</string>
+    <string name="btn_back">Zurück</string>
+    <string name="btn_done">Fertig</string>
+    <string name="btn_save">Speichern</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="btn_delete">Löschen</string>
+    <string name="loading">Lädt…</string>
+    <string name="loading_dots">Lädt...</string>
+    <string name="error">Fehler</string>
+
+    <!-- Widget -->
+    <string name="widget_pinned_chats_label">Angeheftete Chats</string>
+    <string name="widget_empty_title">Keine angehefteten Chats</string>
+    <string name="widget_login_required">Melde dich in der App an</string>
+    <string name="widget_settings_title">Widgets</string>
+    <string name="widget_configure_title">Widget einrichten</string>
+    <string name="widget_name_hint">Widget-Name</string>
+    <string name="widget_chats_hint">Chats (bis zu 3)</string>
+    <string name="widget_max_chats_reached">Du kannst höchstens 3 Chats auswählen</string>
+    <string name="widget_no_chats_selected">Wähle mindestens 1 Chat aus</string>
+    <string name="widget_btn_save">Speichern</string>
+    <string name="widget_btn_pick_chats">Chats auswählen</string>
+    <string name="widget_empty_state">Noch keine Widgets.\nUm ein Widget hinzuzufügen, halte den Homescreen gedrückt und wähle BarkFluff → Angeheftete Chats.</string>
+    <string name="widget_not_placed">Nicht auf dem Homescreen platziert</string>
+    <string name="widget_chats_count">%d von 3 Chats</string>
+    <string name="widget_default_name">Angeheftete Chats</string>
+
+    <!-- Profile Fragment items / sections -->
+    <string name="profile_title">Profil</string>
+    <string name="profile_user_placeholder">Nutzer</string>
+    <string name="profile_section_account_security">Konto und Sicherheit</string>
+    <string name="profile_section_personalization">Personalisierung</string>
+    <string name="profile_section_application">Anwendung</string>
+    <string name="profile_section_other">Sonstiges</string>
+    <string name="profile_item_account">Konto</string>
+    <string name="profile_item_security">Sicherheit</string>
+    <string name="profile_item_privacy">Privatsphäre</string>
+    <string name="profile_item_personalization">Personalisierung</string>
+    <string name="profile_item_chat_folders">Chat-Ordner</string>
+    <string name="profile_item_storage">Daten und Cache</string>
+    <string name="profile_item_devices">Geräte</string>
+    <string name="profile_item_notifications">Benachrichtigungen</string>
+    <string name="profile_item_update">Update</string>
+    <string name="profile_item_about">Über</string>
+    <string name="profile_item_testing">Test</string>
+    <string name="profile_btn_logout">Abmelden</string>
+    <string name="logout_dialog_title">Abmelden</string>
+    <string name="logout_dialog_message">Möchtest du dich wirklich abmelden?</string>
+    <string name="logout_dialog_confirm">Abmelden</string>
+
+    <!-- Account Settings -->
+    <string name="account_settings_title">Konto</string>
+    <string name="account_change_photo">Foto ändern</string>
+    <string name="account_first_name">Vorname</string>
+    <string name="account_last_name">Nachname</string>
+    <string name="account_username">Benutzername</string>
+    <string name="account_bio">Über dich</string>
+
+    <!-- Security Settings -->
+    <string name="security_settings_title">Sicherheit</string>
+    <string name="security_change_password">Passwort ändern</string>
+    <string name="security_2fa_app">2FA per App</string>
+    <string name="security_2fa_email">2FA per E-Mail</string>
+
+    <!-- Privacy Settings -->
+    <string name="privacy_settings_title">Privatsphäre</string>
+    <string name="privacy_section_profile">Profil</string>
+    <string name="privacy_profile_on_site">Profil auf der Website</string>
+    <string name="privacy_profile_on_site_subtitle">Seite barkfluff.com/{username}</string>
+    <string name="privacy_avatar_visibility">Avatar-Sichtbarkeit</string>
+    <string name="privacy_description_visibility">Bio-Sichtbarkeit</string>
+    <string name="privacy_email_visibility">E-Mail-Sichtbarkeit</string>
+    <string name="privacy_section_search_online">Suche und Online-Status</string>
+    <string name="privacy_search_visibility">Sichtbarkeit in der Suche</string>
+    <string name="privacy_online_visibility">Online-Sichtbarkeit</string>
+
+    <!-- Personalization Settings -->
+    <string name="personalization_settings_title">Personalisierung</string>
+    <string name="personalization_profile_poster">Profil-Poster</string>
+    <string name="personalization_set_new_poster">Neues Poster festlegen</string>
+    <string name="personalization_chat_preview_1">Hi! Wie geht\'s? 👋</string>
+    <string name="personalization_chat_preview_2">Gut! Und dir?</string>
+    <string name="personalization_chat_preview_3">Auch gut, danke 😊</string>
+    <string name="personalization_chat_preview_4">Treffen wir uns heute? 🕐</string>
+    <string name="personalization_chat_preview_5">Klar! Um 18:00? 😄</string>
+    <string name="personalization_display_settings">Anzeigeeinstellungen</string>
+    <string name="personalization_message_corner_radius">Nachrichten-Eckenradius</string>
+    <string name="personalization_blur_background">Hintergrund weichzeichnen</string>
+    <string name="personalization_blur_strength">Weichzeichnen-Stärke</string>
+    <string name="personalization_dim_background">Hintergrund abdunkeln</string>
+    <string name="personalization_folders">Ordner</string>
+    <string name="personalization_compact_folders">Kompakte Ordner</string>
+    <string name="personalization_compact_folders_subtitle">Nur Symbol anzeigen</string>
+    <string name="personalization_exclude_from_all">Chats aus „Alle Chats“ ausblenden</string>
+    <string name="personalization_exclude_from_all_subtitle">Wenn ein Chat in einem Ordner liegt, wird er nicht im Tab „Alle Chats“ angezeigt</string>
+    <string name="personalization_chat_background">Chat-Hintergrund</string>
+    <string name="personalization_add_background">Hintergrund hinzufügen</string>
+    <string name="personalization_no_background">Ohne Hintergrund</string>
+
+    <!-- Notification Settings -->
+    <string name="notification_settings_title">Benachrichtigungen</string>
+    <string name="notification_receive_push">Push-Benachrichtigungen empfangen</string>
+    <string name="notification_disable_hint">Das Deaktivieren der Benachrichtigungen schaltet die Firebase-Push-Zustellung nur auf diesem Gerät aus. Andere Geräte erhalten weiterhin Benachrichtigungen.</string>
+
+    <!-- Chat Folders Settings -->
+    <string name="chat_folders_settings_title">Chat-Ordner</string>
+    <string name="chat_folders_empty_title">Noch keine Ordner</string>
+    <string name="chat_folders_empty_subtitle">Erstelle einen Ordner, um schnell zwischen Chat-Gruppen zu wechseln</string>
+    <string name="chat_folders_new_folder">Neuer Ordner</string>
+    <string name="folder_edit_title">Ordner</string>
+    <string name="folder_chat_picker_title">Chats im Ordner</string>
+    <string name="folder_name_hint">Ordnername</string>
+    <string name="folder_icon">Symbol</string>
+    <string name="folder_manage_chats">Chats verwalten</string>
+    <string name="folder_delete">Ordner löschen</string>
+    <string name="folder_save">Speichern</string>
+
+    <!-- Storage Settings -->
+    <string name="storage_settings_title">Daten und Cache</string>
+    <string name="storage_server_storage">Server-Speicher</string>
+    <string name="storage_app_cache">App-Cache</string>
+    <string name="storage_clear_cache">Cache leeren</string>
+
+    <!-- Devices -->
+    <string name="devices_title">Geräte</string>
+    <string name="devices_hint">Du kannst dich auf einem anderen Gerät anmelden, indem du in der BarkFluff-App einen QR-Code scannst</string>
+    <string name="devices_connect">Gerät verbinden</string>
+    <string name="devices_this_device">Dieses Gerät</string>
+    <string name="devices_terminate_others">Alle anderen Sitzungen beenden</string>
+    <string name="devices_other_devices">Andere Geräte</string>
+    <string name="device_section_app">App</string>
+    <string name="device_section_os">Betriebssystem</string>
+    <string name="device_section_location">Standort</string>
+    <string name="device_rename">Gerät umbenennen</string>
+    <string name="device_terminate_session">Sitzung beenden</string>
+    <string name="device_id_label">Geräte-ID</string>
+
+    <!-- QR Scanner -->
+    <string name="qr_scanner_title">QR-Code scannen</string>
+    <string name="qr_scanner_hint">Richte die Kamera auf den QR-Code</string>
+
+    <!-- Fast Auth Confirm -->
+    <string name="fast_auth_title">Neues Gerät</string>
+    <string name="fast_auth_ip">IP-Adresse</string>
+    <string name="fast_auth_hint">Ein neues Gerät versucht, sich an deinem Konto anzumelden. Prüfe die Geräteinformationen und bestätige oder lehne die Anfrage ab.</string>
+    <string name="fast_auth_device">Gerät</string>
+    <string name="fast_auth_os">Betriebssystem</string>
+    <string name="fast_auth_application">App</string>
+    <string name="fast_auth_confirm">Anmeldung bestätigen</string>
+    <string name="fast_auth_reject">Ablehnen</string>
+
+    <!-- Update -->
+    <string name="update_settings_title">Update</string>
+    <string name="update_current_version">Aktuelle Version</string>
+    <string name="update_btn_update">Aktualisieren</string>
+    <string name="update_downloading">Update wird heruntergeladen...</string>
+    <string name="update_check">Nach Updates suchen</string>
+    <string name="update_install_problem">Probleme bei der Installation?</string>
+    <string name="update_install_problem_hint">Wenn der Installer einen Fehler ausgibt, lade die APK von der Website herunter und installiere sie manuell.</string>
+    <string name="update_open_site">barkfluff.com öffnen</string>
+
+    <!-- About -->
+    <string name="about_settings_title">Über</string>
+    <string name="about_name">Name</string>
+    <string name="about_version">Version</string>
+    <string name="about_device">Gerät</string>
+    <string name="about_os">Betriebssystem</string>
+    <string name="about_microservices">Server-Microservices</string>
+
+    <!-- Testing -->
+    <string name="testing_settings_title">Test</string>
+    <string name="testing_section_params">Parameter</string>
+    <string name="testing_show_ids">IDs im Profil anzeigen</string>
+    <string name="testing_show_ids_subtitle">UserId und ChatId unter dem Online-Status</string>
+    <string name="testing_secret_chats">Versteckte Chats</string>
+    <string name="testing_secret_chats_subtitle">Schaltfläche zum Erstellen privater und geheimer Chats</string>
+
+    <!-- Pinned messages -->
+    <string name="pinned_empty">Keine angehefteten Nachrichten</string>
+    <string name="pinned_title">Angeheftete Nachrichten</string>
+    <string name="search_title">Suche</string>
+
+    <!-- Forward -->
+    <string name="forward_title">Weiterleiten an...</string>
+    <string name="forward_btn">Weiterleiten</string>
+    <string name="forward_caption_hint">Kommentar hinzufügen...</string>
+
+    <!-- User profile / chat profile -->
+    <string name="media_files">Medien</string>
+    <string name="media_tab_photos">Fotos</string>
+    <string name="media_tab_videos">Videos</string>
+    <string name="media_tab_files">Dateien</string>
+    <string name="media_no_attachments">Keine Anhänge</string>
+
+    <!-- Sticker empty -->
+    <string name="stickers_empty">Keine Sticker</string>
+    <string name="stickers_empty_subtitle">Noch keine Sticker-Pakete hinzugefügt</string>
+
+    <!-- Message actions popup -->
+    <string name="msg_action_reply">Antworten</string>
+    <string name="msg_action_copy_text">Text kopieren</string>
+    <string name="msg_action_copy_image">Bild kopieren</string>
+    <string name="msg_action_save_image">Bild speichern</string>
+    <string name="msg_action_save_to_downloads">In Downloads speichern</string>
+    <string name="msg_action_edit">Bearbeiten</string>
+    <string name="msg_action_delete">Löschen</string>
+    <string name="msg_action_forward">Weiterleiten</string>
+    <string name="msg_action_pin">Anheften</string>
+
+    <!-- Language Settings -->
+    <string name="language_settings_title">Sprache</string>
+    <string name="language_section_title">App-Sprache</string>
+    <string name="language_option_system">🌐  System</string>
+    <string name="language_option_ru">🇷🇺  Русский</string>
+    <string name="language_option_en">🇬🇧  English</string>
+    <string name="language_option_de">🇩🇪  Deutsch</string>
+    <string name="language_option_es">🇪🇸  Español</string>
+    <string name="language_option_zh">🇨🇳  中文</string>
+    <string name="language_settings_hint">„System“ verwendet die Gerätesprache. Die gewählte Sprache wird sofort angewendet.</string>
+</resources>

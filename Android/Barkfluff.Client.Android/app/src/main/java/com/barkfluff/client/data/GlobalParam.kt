@@ -218,7 +218,7 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, value).apply()
 
-    /** Язык приложения: "system" (по умолчанию) — использовать локаль устройства, "ru" / "en" — переопределение. */
+    /** Язык приложения: "system" (по умолчанию) — использовать локаль устройства, "ru" / "en" / "de" / "es" / "zh-CN" — переопределение. */
     var appLanguage: String
         get() = sharedPreferences.getString(KEY_APP_LANGUAGE, LANGUAGE_SYSTEM) ?: LANGUAGE_SYSTEM
         set(value) = sharedPreferences.edit().putString(KEY_APP_LANGUAGE, value).apply()
@@ -356,6 +356,9 @@ class GlobalParam(private val context: Context) {
         const val LANGUAGE_SYSTEM = "system"
         const val LANGUAGE_RU = "ru"
         const val LANGUAGE_EN = "en"
+        const val LANGUAGE_DE = "de"
+        const val LANGUAGE_ES = "es"
+        const val LANGUAGE_ZH = "zh-CN"
 
         /**
          * Генерирует уникальный ID устройства

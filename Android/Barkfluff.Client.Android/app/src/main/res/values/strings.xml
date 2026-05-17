@@ -498,8 +498,11 @@
     <!-- Language Settings -->
     <string name="language_settings_title">Язык</string>
     <string name="language_section_title">Язык приложения</string>
-    <string name="language_option_system">Системный</string>
-    <string name="language_option_ru">Русский</string>
-    <string name="language_option_en">English</string>
+    <string name="language_option_system">🌐  Системный</string>
+    <string name="language_option_ru">🇷🇺  Русский</string>
+    <string name="language_option_en">🇬🇧  English</string>
+    <string name="language_option_de">🇩🇪  Deutsch</string>
+    <string name="language_option_es">🇪🇸  Español</string>
+    <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">«Системный» использует язык устройства. Выбор языка применяется сразу.</string>
 </resources>

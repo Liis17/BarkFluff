@@ -399,6 +399,19 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 - `res/layout/item_share_preview_thumb.xml`
 - `res/values/strings.xml` — ключи `share_*`
 
+## Локализация
+
+Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `attachBaseContext`/`BaseActivity`).
+
+- Поддержанные языки: **ru**, **en**, **de**, **es**, **zh-CN** + «Системный» (сбрасывает override).
+- Ресурсы: `res/values/strings.xml` (ru, default) + `values-en/`, `values-de/`, `values-es/`, `values-zh-rCN/`.
+- `res/xml/locales_config.xml` перечисляет все 5 локалей; `AndroidManifest.xml` ссылается через `android:localeConfig="@xml/locales_config"`.
+- `utils/LocaleManager.kt` — `apply(language)` маппит `GlobalParam.LANGUAGE_*` константы в `LocaleListCompat`; `"system"` → `getEmptyLocaleList()`.
+- Хранение: `GlobalParam.appLanguage` (обычный `SharedPreferences`, ключ `app_language`, сохраняется при `clearUserData()` — это настройка устройства, не аккаунта).
+- Применяется при старте: `BarkFluffApplication.onCreate()` вызывает `LocaleManager.apply(GlobalParam(this).appLanguage)`.
+- UI: `LanguageSettingsActivity` (`activity_language_settings.xml`) — карточка с `RadioGroup` из 6 пунктов. Каждая строка содержит **флаг-эмодзи + нативное имя языка** (🌐 Системный, 🇷🇺 Русский, 🇬🇧 English, 🇩🇪 Deutsch, 🇪🇸 Español, 🇨🇳 中文). Открывается из `ProfileFragment` → пункт «Язык».
+- При смене языка AppCompat сам пересоздаёт Activity-стек через `recreate()`.
+
 ## Файловая структура
 
 - `gradle/libs.versions.toml` — все версии зависимостей

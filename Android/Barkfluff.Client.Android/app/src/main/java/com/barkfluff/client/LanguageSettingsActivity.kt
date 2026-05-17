@@ -25,6 +25,9 @@ class LanguageSettingsActivity : AppCompatActivity() {
         val checkedId = when (globalParam.appLanguage) {
             GlobalParam.LANGUAGE_RU -> R.id.radioRussian
             GlobalParam.LANGUAGE_EN -> R.id.radioEnglish
+            GlobalParam.LANGUAGE_DE -> R.id.radioGerman
+            GlobalParam.LANGUAGE_ES -> R.id.radioSpanish
+            GlobalParam.LANGUAGE_ZH -> R.id.radioChinese
             else -> R.id.radioSystem
         }
         binding.languageRadioGroup.check(checkedId)
@@ -33,6 +36,9 @@ class LanguageSettingsActivity : AppCompatActivity() {
             val newLanguage = when (id) {
                 R.id.radioRussian -> GlobalParam.LANGUAGE_RU
                 R.id.radioEnglish -> GlobalParam.LANGUAGE_EN
+                R.id.radioGerman -> GlobalParam.LANGUAGE_DE
+                R.id.radioSpanish -> GlobalParam.LANGUAGE_ES
+                R.id.radioChinese -> GlobalParam.LANGUAGE_ZH
                 else -> GlobalParam.LANGUAGE_SYSTEM
             }
             if (newLanguage == globalParam.appLanguage) return@setOnCheckedChangeListener

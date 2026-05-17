@@ -490,8 +490,11 @@
     <!-- Language Settings -->
     <string name="language_settings_title">Language</string>
     <string name="language_section_title">App language</string>
-    <string name="language_option_system">System</string>
-    <string name="language_option_ru">Русский</string>
-    <string name="language_option_en">English</string>
+    <string name="language_option_system">🌐  System</string>
+    <string name="language_option_ru">🇷🇺  Русский</string>
+    <string name="language_option_en">🇬🇧  English</string>
+    <string name="language_option_de">🇩🇪  Deutsch</string>
+    <string name="language_option_es">🇪🇸  Español</string>
+    <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">“System” uses your device language. The selected language is applied immediately.</string>
 </resources>
