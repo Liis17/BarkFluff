@@ -10,6 +10,7 @@ import BFCore
 
 struct SharedMediaSection: View {
     @Bindable var viewModel: UserProfilePanelViewModel
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -21,8 +22,9 @@ struct SharedMediaSection: View {
             .padding(.horizontal, 16)
 
             Picker("user_profile.shared_media.picker.type", selection: $viewModel.selectedMediaFilter) {
-                Text("user_profile.shared_media.filter.media").tag(SharedMediaFilter.media)
-                Text("user_profile.shared_media.filter.documents").tag(SharedMediaFilter.documents)
+                ForEach(SharedMediaFilter.allCases, id: \.self) { filter in
+                    Text(filter.displayName(in: locale)).tag(filter)
+                }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)

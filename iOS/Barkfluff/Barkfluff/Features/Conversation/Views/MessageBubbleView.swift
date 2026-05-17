@@ -91,6 +91,24 @@ struct MessageBubbleView: View {
     }
 
     var body: some View {
+        if message.isSystem {
+            systemMessageView
+        } else {
+            regularMessageView
+        }
+    }
+
+    private var systemMessageView: some View {
+        Text(message.content.text)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.vertical, Theme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var regularMessageView: some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.xxs) {
             if isOwn {
                 Spacer(minLength: 0)
@@ -233,14 +251,7 @@ struct MessageBubbleView: View {
 
     @ViewBuilder
     private var bubbleContent: some View {
-        if message.isSystem {
-            Text(message.content.text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.Spacing.lg)
-                .padding(.vertical, Theme.Spacing.md)
-        } else if isOwn {
+        if isOwn {
             let showTail = groupInfo.isLastInGroup
             let padding = isMediaOnly ? CGFloat(2) : Theme.Spacing.md
             let verticalPadding = isMediaOnly ? CGFloat(2) : Theme.Spacing.sm
