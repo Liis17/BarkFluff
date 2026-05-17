@@ -19,9 +19,9 @@ namespace BarkFluff.WebApi.Core.Managers
 
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     // Подготовка заголовков с токеном (предполагается, что токен в globalParam)
                     var headers = new Metadata();
@@ -64,25 +64,25 @@ namespace BarkFluff.WebApi.Core.Managers
                         }
                     }
 
-                    return (new ErrorReturner(true, ""), GetMessageStream());
-                }
-                catch (RpcException)
-                {
-                    return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-                }
-                catch (Exception)
-                {
-                    return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
-                }
-            }, globalParam);
+                    return ((ErrorReturner, IAsyncEnumerable<NewMessageEvent>?))(new ErrorReturner(true, ""), GetMessageStream());
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+            }
         }
 
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(
             GlobalParam globalParam)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     // Подготовка заголовков с токеном
                     var headers = new Metadata();
@@ -126,17 +126,17 @@ namespace BarkFluff.WebApi.Core.Managers
                         }
                     }
 
-                    return (new ErrorReturner(true, ""), GetReadReceiptStream());
-                }
-                catch (RpcException)
-                {
-                    return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-                }
-                catch (Exception)
-                {
-                    return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
-                }
-            }, globalParam);
+                    return ((ErrorReturner, IAsyncEnumerable<MessageReadEvent>?))(new ErrorReturner(true, ""), GetReadReceiptStream());
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+            }
         }
     }
 }

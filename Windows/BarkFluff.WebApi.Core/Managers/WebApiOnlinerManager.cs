@@ -24,9 +24,9 @@ namespace BarkFluff.WebApi.Core.Managers
             List<long> userIds,
             GlobalParam globalParam)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     // Подготовка заголовков с токеном
                     var headers = new Metadata();
@@ -71,17 +71,17 @@ namespace BarkFluff.WebApi.Core.Managers
                         }
                     }
 
-                    return (new ErrorReturner(true, ""), GetStatusStream());
-                }
-                catch (RpcException)
-                {
-                    return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-                }
-                catch (Exception)
-                {
-                    return (new ErrorReturner(false, "Ошибка подключения к сервису онлайна"), null);
-                }
-            }, globalParam);
+                    return ((ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?))(new ErrorReturner(true, ""), GetStatusStream());
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к сервису онлайна"), null);
+            }
         }
 
         /// <summary>
@@ -89,23 +89,23 @@ namespace BarkFluff.WebApi.Core.Managers
         /// </summary>
         public async Task<ErrorReturner> SetOnlineStatus(GlobalParam globalParam)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var request = new SetOnlineStatusRequest();
                     await OnlinerAC!.SetOnlineStatusAsync(request);
                     return new ErrorReturner(true);
-                }
-                catch (RpcException)
-                {
-                    return new ErrorReturner(false, "Ошибка аутентификации при установке статуса");
-                }
-                catch (Exception)
-                {
-                    return new ErrorReturner(false, "Ошибка установки статуса онлайна");
-                }
-            }, globalParam);
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return new ErrorReturner(false, "Ошибка аутентификации при установке статуса");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка установки статуса онлайна");
+            }
         }
 
         /// <summary>
@@ -115,25 +115,25 @@ namespace BarkFluff.WebApi.Core.Managers
             List<long> userIds,
             GlobalParam globalParam)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var request = new GetOnlineStatusRequest();
                     request.UserIds.AddRange(userIds);
 
                     var response = await OnlinerAC!.GetOnlineStatusAsync(request);
-                    return (new ErrorReturner(true), response);
-                }
-                catch (RpcException)
-                {
-                    return (new ErrorReturner(false, "Ошибка аутентификации при получении статусов"), null);
-                }
-                catch (Exception)
-                {
-                    return (new ErrorReturner(false, "Ошибка получения статусов онлайна"), null);
-                }
-            }, globalParam);
+                    return ((ErrorReturner, GetOnlineStatusResponse?))(new ErrorReturner(true), response);
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации при получении статусов"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения статусов онлайна"), null);
+            }
         }
 
         /// <summary>
@@ -141,29 +141,29 @@ namespace BarkFluff.WebApi.Core.Managers
         /// </summary>
         public async Task<ErrorReturner> ChangeUsersInSubscription(List<long> userIds, GlobalParam globalParam)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var request = new ChangeUsersInSubscriptionRequest();
                     request.UserIds.AddRange(userIds);
 
                     await OnlinerAC!.ChangeUsersInSubscriptionAsync(request);
                     return new ErrorReturner(true);
-                }
-                catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
-                {
-                    return new ErrorReturner(false, "Нет активной подписки для изменения списка пользователей");
-                }
-                catch (RpcException)
-                {
-                    return new ErrorReturner(false, "Ошибка аутентификации при изменении списка");
-                }
-                catch (Exception)
-                {
-                    return new ErrorReturner(false, "Ошибка изменения списка отслеживаемых пользователей");
-                }
-            }, globalParam);
+                }, globalParam);
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
+            {
+                return new ErrorReturner(false, "Нет активной подписки для изменения списка пользователей");
+            }
+            catch (RpcException)
+            {
+                return new ErrorReturner(false, "Ошибка аутентификации при изменении списка");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения списка отслеживаемых пользователей");
+            }
         }
     }
 }
