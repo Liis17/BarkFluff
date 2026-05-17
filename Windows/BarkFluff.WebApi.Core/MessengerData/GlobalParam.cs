@@ -116,9 +116,15 @@ namespace BarkFluff.WebApi.Core.MessengerData
 
         #endregion
         #region Сохранение/загрузка настроек
-        private const int SaltSize = 16; // 128 бит
-        private const int KeySize = 32;  // 256 бит
+        private const int SaltSize = 16;   // 128 бит
+        private const int KeySize = 32;    // 256 бит
+        private const int NonceSize = 12;  // 96 бит — рекомендуемая длина для AES-GCM
+        private const int TagSize = 16;    // 128 бит — длина аутентификационного тэга
         private const int Iterations = 100_000;
+
+        // "BFV2" — маркер формата AES-GCM. Старый CBC-формат не поддерживается.
+        private static readonly byte[] FileMagic = [0x42, 0x46, 0x56, 0x32];
+        private const int HeaderSize = 4 + SaltSize + NonceSize + TagSize;
 
         public string AppPass { get; set; } = string.Empty;
         #endregion
@@ -126,50 +132,63 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public static void Save(GlobalParam param, string filePath, string userPin)
         {
             var salt = RandomNumberGenerator.GetBytes(SaltSize);
-
+            var nonce = RandomNumberGenerator.GetBytes(NonceSize);
             var key = DeriveKeyFromPin(userPin, salt);
 
             var json = JsonSerializer.Serialize(param);
             var plainBytes = Encoding.UTF8.GetBytes(json);
+            var ciphertext = new byte[plainBytes.Length];
+            var tag = new byte[TagSize];
 
-            using var aes = Aes.Create();
-            aes.Key = key;
-            aes.GenerateIV();
-            var iv = aes.IV;
-
-            using var encryptor = aes.CreateEncryptor();
-            var encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+            try
+            {
+                using var aes = new AesGcm(key, TagSize);
+                aes.Encrypt(nonce, plainBytes, ciphertext, tag);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
+                CryptographicOperations.ZeroMemory(plainBytes);
+            }
 
             using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            fs.Write(salt, 0, salt.Length);
-            fs.Write(iv, 0, iv.Length);
-            fs.Write(encryptedBytes, 0, encryptedBytes.Length);
+            fs.Write(FileMagic);
+            fs.Write(salt);
+            fs.Write(nonce);
+            fs.Write(tag);
+            fs.Write(ciphertext);
         }
 
         public static GlobalParam Load(string filePath, string userPin)
         {
             var allBytes = File.ReadAllBytes(filePath);
+            if (allBytes.Length < HeaderSize)
+                throw new CryptographicException("Файл GlobalParam слишком короткий или повреждён.");
+            if (!allBytes.AsSpan(0, FileMagic.Length).SequenceEqual(FileMagic))
+                throw new CryptographicException("Неподдерживаемый формат файла GlobalParam (ожидается BFV2).");
 
-            var salt = new byte[SaltSize];
-            Array.Copy(allBytes, 0, salt, 0, SaltSize);
-
-            var iv = new byte[16];
-            Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
-
-            var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
-            Array.Copy(allBytes, SaltSize + iv.Length, encryptedBytes, 0, encryptedBytes.Length);
+            var span = allBytes.AsSpan(FileMagic.Length);
+            var salt = span[..SaltSize].ToArray();
+            var nonce = span.Slice(SaltSize, NonceSize).ToArray();
+            var tag = span.Slice(SaltSize + NonceSize, TagSize).ToArray();
+            var ciphertext = span[(SaltSize + NonceSize + TagSize)..].ToArray();
 
             var key = DeriveKeyFromPin(userPin, salt);
+            var plainBytes = new byte[ciphertext.Length];
 
-            using var aes = Aes.Create();
-            aes.Key = key;
-            aes.IV = iv;
+            try
+            {
+                using var aes = new AesGcm(key, TagSize);
+                aes.Decrypt(nonce, ciphertext, tag, plainBytes);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
+            }
 
-            using var decryptor = aes.CreateDecryptor();
-            var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
-
-            var json = Encoding.UTF8.GetString(decryptedBytes);
-            return JsonSerializer.Deserialize<GlobalParam>(json);
+            var json = Encoding.UTF8.GetString(plainBytes);
+            return JsonSerializer.Deserialize<GlobalParam>(json)
+                   ?? throw new CryptographicException("Не удалось десериализовать GlobalParam.");
         }
 
         private static byte[] DeriveKeyFromPin(string pin, byte[] salt)
@@ -183,31 +202,37 @@ namespace BarkFluff.WebApi.Core.MessengerData
             try
             {
                 var allBytes = File.ReadAllBytes(filePath);
+                if (allBytes.Length < HeaderSize)
+                    return false;
+                if (!allBytes.AsSpan(0, FileMagic.Length).SequenceEqual(FileMagic))
+                    return false;
 
-                var salt = new byte[SaltSize];
-                Array.Copy(allBytes, 0, salt, 0, SaltSize);
-
-                var iv = new byte[16];
-                Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
-
-                var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
-                Array.Copy(allBytes, SaltSize + iv.Length, encryptedBytes, 0, encryptedBytes.Length);
+                var span = allBytes.AsSpan(FileMagic.Length);
+                var salt = span[..SaltSize].ToArray();
+                var nonce = span.Slice(SaltSize, NonceSize).ToArray();
+                var tag = span.Slice(SaltSize + NonceSize, TagSize).ToArray();
+                var ciphertext = span[(SaltSize + NonceSize + TagSize)..].ToArray();
 
                 var key = DeriveKeyFromPin(userPin, salt);
+                var plainBytes = new byte[ciphertext.Length];
 
-                using var aes = Aes.Create();
-                aes.Key = key;
-                aes.IV = iv;
-
-                using var decryptor = aes.CreateDecryptor();
-                var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
-
-                var json = Encoding.UTF8.GetString(decryptedBytes);
-                JsonSerializer.Deserialize<GlobalParam>(json);
+                try
+                {
+                    using var aes = new AesGcm(key, TagSize);
+                    aes.Decrypt(nonce, ciphertext, tag, plainBytes);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(key);
+                }
 
                 return true;
             }
-            catch (Exception)
+            catch (CryptographicException)
+            {
+                return false;
+            }
+            catch (IOException)
             {
                 return false;
             }
