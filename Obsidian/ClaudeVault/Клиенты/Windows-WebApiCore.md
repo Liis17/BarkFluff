@@ -39,7 +39,7 @@ WebApi (IDisposable, фасад)
 |-------|----------|
 | `WebApi` | Фасад, 9 gRPC каналов + 9 API клиентов (включая анонимный FastAuth) |
 | `WebApiBase` | Абстрактный базовый, доступ ко всем gRPC клиентам |
-| `GlobalParam` | Состояние (токены, URL, профиль), AES-256-CBC / PBKDF2 |
+| `GlobalParam` | Состояние (токены, URL, профиль), AES-256-GCM; KDF PBKDF2-SHA512 × 600k (формат BFV3); чтение legacy BFV2 (PBKDF2-SHA256 × 100k) для миграции; пин-код произвольной длины и состава (цифры, буквы, символы) |
 | `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode)` |
 | `ImageProcessor` | JPEG, WebP, resize через SixLabors.ImageSharp |
 

@@ -120,10 +120,16 @@ namespace BarkFluff.WebApi.Core.MessengerData
         private const int KeySize = 32;    // 256 бит
         private const int NonceSize = 12;  // 96 бит — рекомендуемая длина для AES-GCM
         private const int TagSize = 16;    // 128 бит — длина аутентификационного тэга
-        private const int Iterations = 100_000;
 
-        // "BFV2" — маркер формата AES-GCM. Старый CBC-формат не поддерживается.
-        private static readonly byte[] FileMagic = [0x42, 0x46, 0x56, 0x32];
+        // Унаследованный формат: PBKDF2-SHA256, 100k итераций. Читаем для миграции старых файлов.
+        private const int LegacyIterationsV2 = 100_000;
+
+        // Текущий формат: PBKDF2-SHA512, 600k итераций (OWASP 2023+).
+        private const int IterationsV3 = 600_000;
+
+        // "BFV2" — старый формат (PBKDF2-SHA256-100k), "BFV3" — текущий (PBKDF2-SHA512-600k).
+        private static readonly byte[] FileMagicV2 = [0x42, 0x46, 0x56, 0x32];
+        private static readonly byte[] FileMagicV3 = [0x42, 0x46, 0x56, 0x33];
         private const int HeaderSize = 4 + SaltSize + NonceSize + TagSize;
 
         public string AppPass { get; set; } = string.Empty;
@@ -133,7 +139,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         {
             var salt = RandomNumberGenerator.GetBytes(SaltSize);
             var nonce = RandomNumberGenerator.GetBytes(NonceSize);
-            var key = DeriveKeyFromPin(userPin, salt);
+            var key = DeriveKeyV3(userPin, salt);
 
             var json = JsonSerializer.Serialize(param);
             var plainBytes = Encoding.UTF8.GetBytes(json);
@@ -152,7 +158,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
             }
 
             using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            fs.Write(FileMagic);
+            fs.Write(FileMagicV3);
             fs.Write(salt);
             fs.Write(nonce);
             fs.Write(tag);
@@ -164,16 +170,20 @@ namespace BarkFluff.WebApi.Core.MessengerData
             var allBytes = File.ReadAllBytes(filePath);
             if (allBytes.Length < HeaderSize)
                 throw new CryptographicException("Файл GlobalParam слишком короткий или повреждён.");
-            if (!allBytes.AsSpan(0, FileMagic.Length).SequenceEqual(FileMagic))
-                throw new CryptographicException("Неподдерживаемый формат файла GlobalParam (ожидается BFV2).");
 
-            var span = allBytes.AsSpan(FileMagic.Length);
+            var magic = allBytes.AsSpan(0, FileMagicV3.Length);
+            bool isV3 = magic.SequenceEqual(FileMagicV3);
+            bool isV2 = magic.SequenceEqual(FileMagicV2);
+            if (!isV3 && !isV2)
+                throw new CryptographicException("Неподдерживаемый формат файла GlobalParam (ожидается BFV2 или BFV3).");
+
+            var span = allBytes.AsSpan(FileMagicV3.Length);
             var salt = span[..SaltSize].ToArray();
             var nonce = span.Slice(SaltSize, NonceSize).ToArray();
             var tag = span.Slice(SaltSize + NonceSize, TagSize).ToArray();
             var ciphertext = span[(SaltSize + NonceSize + TagSize)..].ToArray();
 
-            var key = DeriveKeyFromPin(userPin, salt);
+            var key = isV3 ? DeriveKeyV3(userPin, salt) : DeriveKeyV2Legacy(userPin, salt);
             var plainBytes = new byte[ciphertext.Length];
 
             try
@@ -186,15 +196,39 @@ namespace BarkFluff.WebApi.Core.MessengerData
                 CryptographicOperations.ZeroMemory(key);
             }
 
-            var json = Encoding.UTF8.GetString(plainBytes);
-            return JsonSerializer.Deserialize<GlobalParam>(json)
-                   ?? throw new CryptographicException("Не удалось десериализовать GlobalParam.");
+            try
+            {
+                var json = Encoding.UTF8.GetString(plainBytes);
+                if (string.IsNullOrWhiteSpace(json))
+                    throw new CryptographicException("GlobalParam расшифрован, но содержимое пустое.");
+
+                GlobalParam? deserialized;
+                try
+                {
+                    deserialized = JsonSerializer.Deserialize<GlobalParam>(json);
+                }
+                catch (JsonException ex)
+                {
+                    throw new CryptographicException("Не удалось разобрать JSON GlobalParam.", ex);
+                }
+
+                return deserialized
+                       ?? throw new CryptographicException("Не удалось десериализовать GlobalParam: получен null.");
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(plainBytes);
+            }
         }
 
-        private static byte[] DeriveKeyFromPin(string pin, byte[] salt)
+        private static byte[] DeriveKeyV3(string pin, byte[] salt)
         {
-            using var rfc2898 = new Rfc2898DeriveBytes(pin, salt, Iterations, HashAlgorithmName.SHA256);
-            return rfc2898.GetBytes(KeySize);
+            return Rfc2898DeriveBytes.Pbkdf2(pin, salt, IterationsV3, HashAlgorithmName.SHA512, KeySize);
+        }
+
+        private static byte[] DeriveKeyV2Legacy(string pin, byte[] salt)
+        {
+            return Rfc2898DeriveBytes.Pbkdf2(pin, salt, LegacyIterationsV2, HashAlgorithmName.SHA256, KeySize);
         }
 
         public static bool VerifyPassword(string filePath, string userPin)
@@ -204,16 +238,20 @@ namespace BarkFluff.WebApi.Core.MessengerData
                 var allBytes = File.ReadAllBytes(filePath);
                 if (allBytes.Length < HeaderSize)
                     return false;
-                if (!allBytes.AsSpan(0, FileMagic.Length).SequenceEqual(FileMagic))
+
+                var magic = allBytes.AsSpan(0, FileMagicV3.Length);
+                bool isV3 = magic.SequenceEqual(FileMagicV3);
+                bool isV2 = magic.SequenceEqual(FileMagicV2);
+                if (!isV3 && !isV2)
                     return false;
 
-                var span = allBytes.AsSpan(FileMagic.Length);
+                var span = allBytes.AsSpan(FileMagicV3.Length);
                 var salt = span[..SaltSize].ToArray();
                 var nonce = span.Slice(SaltSize, NonceSize).ToArray();
                 var tag = span.Slice(SaltSize + NonceSize, TagSize).ToArray();
                 var ciphertext = span[(SaltSize + NonceSize + TagSize)..].ToArray();
 
-                var key = DeriveKeyFromPin(userPin, salt);
+                var key = isV3 ? DeriveKeyV3(userPin, salt) : DeriveKeyV2Legacy(userPin, salt);
                 var plainBytes = new byte[ciphertext.Length];
 
                 try
@@ -224,6 +262,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
                 finally
                 {
                     CryptographicOperations.ZeroMemory(key);
+                    CryptographicOperations.ZeroMemory(plainBytes);
                 }
 
                 return true;

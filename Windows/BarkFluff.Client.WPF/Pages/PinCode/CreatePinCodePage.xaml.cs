@@ -1,7 +1,6 @@
 ﻿using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -81,8 +80,20 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            Regex regex = new Regex("[^0-9]+");
-            e.Handled = regex.IsMatch(e.Text);
+            if (string.IsNullOrEmpty(e.Text))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            foreach (var ch in e.Text)
+            {
+                if (char.IsControl(ch) || char.IsWhiteSpace(ch))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
         }
 
         private void FirstPinBox_PreviewKeyDown(object sender, KeyEventArgs e)
