@@ -18,7 +18,8 @@ struct LanguageSettingsView: View {
             Section {
                 Picker("settings.language.picker", selection: $loc.language) {
                     ForEach(AppLanguage.allCases) { lang in
-                        Text(lang.titleKey).tag(lang)
+                        (Text(verbatim: lang.flagEmoji + "  ") + Text(lang.titleKey))
+                            .tag(lang)
                     }
                 }
                 .pickerStyle(.menu)
