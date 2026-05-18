@@ -101,11 +101,11 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/nextButton"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="@dimen/button_height_default"
                 android:text="@string/btn_next"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
-                app:cornerRadius="28dp" />
+                app:cornerRadius="@dimen/shape_corner_full" />
         </LinearLayout>
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -127,11 +127,27 @@ class MediaSendService : Service() {
         val total = job.attachments.size.coerceAtLeast(1)
         val fileIds = mutableListOf<String>()
 
+        // Локальные IDs оптимистичных сообщений в ChatActivity. Если sendSeparately — каждый attachment
+        // имеет свой localId; иначе все аплоады обновляют единый localId (первый из списка).
+        fun localIdForAttachment(attachIdx: Int): String? = when {
+            job.localIds.isEmpty() -> null
+            job.sendSeparately -> job.localIds.getOrNull(attachIdx)
+            else -> job.localIds.firstOrNull()
+        }
+
         for ((idx, att) in job.attachments.withIndex()) {
             val pos = "${idx + 1}/$total"
+            val localId = localIdForAttachment(idx)
             updateNotification(titleBase, "Подготовка $pos...", 0, indeterminate = true)
-            val (bytes, type, fileName, mime) = prepareAttachment(att, job, titleBase, pos)
-                ?: continue
+            if (localId != null) {
+                uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.PREPARING))
+            }
+            val prepared = prepareAttachment(att, job, titleBase, pos)
+            if (prepared == null) {
+                if (localId != null) uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.FAILED))
+                continue
+            }
+            val (bytes, type, fileName, mime) = prepared
 
             updateNotification(titleBase, "Загрузка $pos: 0%", 0, indeterminate = false)
             val uploadResult = repo.uploadFile(
@@ -141,6 +157,9 @@ class MediaSendService : Service() {
                 mimeType = mime,
                 onProgress = { pct ->
                     updateNotification(titleBase, "Загрузка $pos: $pct%", pct, indeterminate = false)
+                    if (localId != null) {
+                        uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.UPLOADING, pct))
+                    }
                 }
             )
 
@@ -149,6 +168,7 @@ class MediaSendService : Service() {
                 fileIds.add(fid)
             } else {
                 Log.e(TAG, "uploadFile failed for attachment $idx in job ${job.jobId}")
+                if (localId != null) uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.FAILED))
             }
         }
 
@@ -160,10 +180,28 @@ class MediaSendService : Service() {
         if (job.sendSeparately && fileIds.size > 1) {
             for ((idx, fid) in fileIds.withIndex()) {
                 val text = if (idx == 0) job.text else ""
-                repo.sendMessage(job.chatId, text, listOf(fid), job.replyId)
+                val localId = localIdForAttachment(idx)
+                if (localId != null) {
+                    uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.SENDING))
+                }
+                val r = repo.sendMessage(job.chatId, text, listOf(fid), job.replyId)
+                val state = if (r.isSuccess) UploadState.SENT else UploadState.FAILED
+                val mid = r.getOrNull()?.id ?: 0L
+                if (localId != null) {
+                    uploadEvents.tryEmit(UploadEvent(job.chatId, localId, state, serverMessageId = mid))
+                }
             }
         } else {
-            repo.sendMessage(job.chatId, job.text, fileIds, job.replyId)
+            val localId = localIdForAttachment(0)
+            if (localId != null) {
+                uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.SENDING))
+            }
+            val r = repo.sendMessage(job.chatId, job.text, fileIds, job.replyId)
+            val state = if (r.isSuccess) UploadState.SENT else UploadState.FAILED
+            val mid = r.getOrNull()?.id ?: 0L
+            if (localId != null) {
+                uploadEvents.tryEmit(UploadEvent(job.chatId, localId, state, serverMessageId = mid))
+            }
         }
     }
 
@@ -388,6 +426,13 @@ class MediaSendService : Service() {
         // потому что parcelize'ить SendJob (с byte[] и URIs) дороже и хрупче.
         private val pendingJobs: MutableMap<String, SendJob> = mutableMapOf()
 
+        /**
+         * Глобальная шина прогресса аплоада медиа в чат — ChatActivity подписывается
+         * чтобы рендерить inline-прогресс на оптимистичных сообщениях.
+         */
+        val uploadEvents: kotlinx.coroutines.flow.MutableSharedFlow<UploadEvent> =
+            kotlinx.coroutines.flow.MutableSharedFlow(extraBufferCapacity = 64)
+
         @Synchronized
         fun enqueue(context: Context, job: SendJob) {
             pendingJobs[job.jobId] = job
@@ -402,3 +447,15 @@ class MediaSendService : Service() {
         }
     }
 }
+
+enum class UploadState { PREPARING, UPLOADING, SENDING, SENT, FAILED }
+
+data class UploadEvent(
+    val chatId: String,
+    val localId: String,
+    val state: UploadState,
+    /** 0..100, для UPLOADING. Для других состояний игнорируется. */
+    val progress: Int = 0,
+    /** Реальный messageId с сервера — заполняется в state=SENT. 0 если неизвестен. */
+    val serverMessageId: Long = 0L
+)

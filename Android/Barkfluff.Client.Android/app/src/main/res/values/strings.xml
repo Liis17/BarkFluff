@@ -175,6 +175,12 @@
     <string name="cd_close">Закрыть</string>
     <string name="cd_more">Ещё</string>
     <string name="cd_play_pause">Плей/Пауза</string>
+    <string name="cd_crop">Обрезать</string>
+    <string name="cd_rotate">Повернуть</string>
+    <string name="cd_flip">Отразить</string>
+    <string name="cd_draw">Рисование</string>
+    <string name="cd_undo">Отменить</string>
+    <string name="cd_apply">Применить</string>
     <string name="cd_search">Поиск</string>
     <string name="cd_create_hidden_chat">Создать скрытый чат</string>
     <string name="cd_play">Воспроизвести</string>

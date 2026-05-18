@@ -16,13 +16,13 @@
         app:use_controller="false"
         app:resize_mode="fit" />
 
-    <!-- Верхняя панель -->
+    <!-- Верхняя панель — M3 scrim 32% -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="#80000000"
+        android:background="@drawable/bg_viewer_scrim"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="4dp"
@@ -30,28 +30,28 @@
         android:paddingTop="4dp"
         android:paddingBottom="4dp">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/backButton"
+            style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_arrow_back"
             android:contentDescription="@string/cd_back"
-            app:tint="@android:color/white" />
+            app:icon="@drawable/ic_arrow_back"
+            app:iconTint="@android:color/white" />
 
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/moreButton"
+            style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_more_vert"
             android:contentDescription="@string/cd_more"
-            app:tint="@android:color/white" />
+            app:icon="@drawable/ic_more_vert"
+            app:iconTint="@android:color/white" />
 
     </LinearLayout>
 
@@ -61,21 +61,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="#80000000"
+        android:background="@drawable/bg_viewer_scrim"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingHorizontal="8dp"
         android:paddingVertical="8dp">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/playPauseButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_play_arrow"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:contentDescription="@string/cd_play_pause"
-            android:scaleType="center"
-            app:tint="@android:color/white" />
+            app:icon="@drawable/ic_play_arrow"
+            app:iconTint="@android:color/white" />
 
         <SeekBar
             android:id="@+id/videoSeekBar"
@@ -90,9 +89,9 @@
             android:id="@+id/timeText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:text="0:00 / 0:00" />
+            android:text="0:00 / 0:00"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@android:color/white" />
 
     </LinearLayout>
 

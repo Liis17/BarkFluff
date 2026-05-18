@@ -61,16 +61,17 @@
 
     </LinearLayout>
 
-    <!-- Контейнер для кнопок -->
+    <!-- Контейнер для кнопок — 48dp touch target (M3 / WCAG минимум).
+         Визуальный размер иконки сохраняется 24dp через scaleType=center. -->
     <FrameLayout
-        android:layout_width="36dp"
-        android:layout_height="36dp">
+        android:layout_width="48dp"
+        android:layout_height="48dp">
 
         <!-- Кнопка скачать -->
         <ImageButton
             android:id="@+id/docDownloadButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_download"
             android:contentDescription="@string/cd_download_file"
@@ -80,8 +81,8 @@
         <!-- Кнопка открыть (показывается после скачивания) -->
         <ImageButton
             android:id="@+id/docOpenButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_open"
             android:contentDescription="@string/cd_open_file"

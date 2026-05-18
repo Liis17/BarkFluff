@@ -47,6 +47,7 @@ import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
+import com.barkfluff.client.utils.applySpringPress
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowInsetsCompat
@@ -612,6 +613,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessageInput() {
+        binding.sendButton.applySpringPress()
         binding.sendButton.setOnClickListener {
             when {
                 pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
@@ -955,6 +957,47 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
+        // Генерим localId на каждое будущее сообщение и добавляем оптимистичные items в чат —
+        // пользователь сразу видит карточки с прогрессом аплоада (M3 Expressive inline feedback).
+        val localIds: List<String> = if (result.sendSeparately) {
+            attachments.map { java.util.UUID.randomUUID().toString() }
+        } else {
+            listOf(java.util.UUID.randomUUID().toString())
+        }
+
+        if (result.sendSeparately) {
+            attachments.forEachIndexed { idx, _ ->
+                val captionForFirst = if (idx == 0) result.captionText else ""
+                addOptimisticMessage(
+                    MessageItem(
+                        messageId = -(System.nanoTime() + idx),
+                        senderId = currentUserId,
+                        text = captionForFirst,
+                        timestamp = System.currentTimeMillis(),
+                        attachments = emptyList(),
+                        readStatus = ReadStatus.SENDING,
+                        type = MessageType.MESSAGE,
+                        localId = localIds[idx],
+                        uploadProgress = 0
+                    )
+                )
+            }
+        } else {
+            addOptimisticMessage(
+                MessageItem(
+                    messageId = -System.nanoTime(),
+                    senderId = currentUserId,
+                    text = result.captionText,
+                    timestamp = System.currentTimeMillis(),
+                    attachments = emptyList(),
+                    readStatus = ReadStatus.SENDING,
+                    type = MessageType.MESSAGE,
+                    localId = localIds[0],
+                    uploadProgress = 0
+                )
+            )
+        }
+
         val job = com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
@@ -962,7 +1005,8 @@ class ChatActivity : AppCompatActivity() {
             attachments = attachments,
             replyId = pendingReplyMessageId,
             sendSeparately = result.sendSeparately,
-            sendAsFile = result.sendAsFile
+            sendAsFile = result.sendAsFile,
+            localIds = localIds
         )
         com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
         clearPendingReply()
@@ -1191,6 +1235,23 @@ class ChatActivity : AppCompatActivity() {
 
         Log.d(TAG, "sendMessage: text='$messageText', fileIds=$fileIds, replyId=$replyId")
 
+        // Оптимистично добавляем сообщение в чат сразу со статусом SENDING (M3 Expressive feedback).
+        // Освобождаем поле ввода и reply-bar моментально — пользователь не ждёт сетевого ответа.
+        val localId = java.util.UUID.randomUUID().toString()
+        val optimisticItem = MessageItem(
+            messageId = -System.nanoTime(),
+            senderId = currentUserId,
+            text = messageText,
+            timestamp = System.currentTimeMillis(),
+            attachments = emptyList(),
+            readStatus = ReadStatus.SENDING,
+            type = MessageType.MESSAGE,
+            localId = localId
+        )
+        addOptimisticMessage(optimisticItem)
+        binding.messageEditText.text?.clear()
+        clearPendingReply()
+
         lifecycleScope.launch {
             try {
                 val result = chatRepository.sendMessage(
@@ -1201,10 +1262,14 @@ class ChatActivity : AppCompatActivity() {
                 )
 
                 if (result.isSuccess) {
-                    binding.messageEditText.text?.clear()
-                    clearPendingReply()
-                    // Не закрываем клавиатуру и не забираем фокус — пользователь может продолжать печатать
+                    val real = result.getOrNull()
+                    if (real != null) {
+                        replaceOptimisticByLocalId(localId, toMessageItem(real).copy(readStatus = ReadStatus.SENT))
+                    } else {
+                        updateOptimisticStatus(localId, ReadStatus.SENT)
+                    }
                 } else {
+                    updateOptimisticStatus(localId, ReadStatus.FAILED)
                     Toast.makeText(
                         this@ChatActivity,
                         "Ошибка отправки: ${result.exceptionOrNull()?.message}",
@@ -1213,12 +1278,77 @@ class ChatActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending message", e)
+                updateOptimisticStatus(localId, ReadStatus.FAILED)
                 Toast.makeText(
                     this@ChatActivity,
                     "Ошибка отправки: ${e.message}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
+        }
+    }
+
+    /** Добавляет оптимистичный item (со статусом SENDING) в конец списка и скроллит вниз. */
+    private fun addOptimisticMessage(item: MessageItem) {
+        val currentList = messageAdapter.currentList
+            .filter { it.type != MessageType.FOOTER }
+            .toMutableList()
+        currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }
+
+        val msgDate = startOfDay(item.timestamp)
+        val lastItem = currentList.lastOrNull()
+        if (lastItem == null || (lastItem.type != MessageType.MESSAGE && lastItem.type != MessageType.SYSTEM) || startOfDay(lastItem.timestamp) != msgDate) {
+            currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
+        }
+        currentList.add(item)
+        messageAdapter.submitList(currentList) {
+            val lastIdx = messageAdapter.itemCount - 1
+            if (lastIdx >= 0) binding.messagesRecyclerView.scrollToPosition(lastIdx)
+        }
+    }
+
+    /** Заменяет оптимистичный item (по localId) на серверный с указанным статусом. */
+    private fun replaceOptimisticByLocalId(localId: String, replacement: MessageItem) {
+        val currentList = messageAdapter.currentList.toMutableList()
+        val idx = currentList.indexOfFirst { it.localId == localId }
+        if (idx >= 0) {
+            currentList[idx] = replacement.copy(localId = localId)
+            messageAdapter.submitList(currentList)
+        }
+    }
+
+    /** Обновляет статус оптимистичного item (SENDING→SENT/FAILED), не подменяя сам item. */
+    private fun updateOptimisticStatus(localId: String, status: ReadStatus) {
+        val currentList = messageAdapter.currentList.toMutableList()
+        val idx = currentList.indexOfFirst { it.localId == localId }
+        if (idx >= 0) {
+            currentList[idx] = currentList[idx].copy(readStatus = status)
+            messageAdapter.submitList(currentList)
+        }
+    }
+
+    /** Обновляет inline-прогресс аплоада медиа на оптимистичном сообщении (0..100). */
+    private fun updateOptimisticUploadProgress(localId: String, progress: Int) {
+        val currentList = messageAdapter.currentList.toMutableList()
+        val idx = currentList.indexOfFirst { it.localId == localId }
+        if (idx >= 0) {
+            currentList[idx] = currentList[idx].copy(uploadProgress = progress.coerceIn(0, 100))
+            messageAdapter.submitList(currentList)
+        }
+    }
+
+    /** Сбрасывает uploadProgress (аплоад завершён). Если serverMessageId != 0 — заменяет messageId оптимистичного item. */
+    private fun clearOptimisticUploadProgress(localId: String, serverMessageId: Long) {
+        val currentList = messageAdapter.currentList.toMutableList()
+        val idx = currentList.indexOfFirst { it.localId == localId }
+        if (idx >= 0) {
+            val item = currentList[idx]
+            currentList[idx] = item.copy(
+                uploadProgress = null,
+                messageId = if (serverMessageId != 0L) serverMessageId else item.messageId,
+                readStatus = if (item.readStatus == ReadStatus.SENDING || item.readStatus == ReadStatus.FAILED) ReadStatus.SENT else item.readStatus
+            )
+            messageAdapter.submitList(currentList)
         }
     }
 
@@ -2114,6 +2244,34 @@ class ChatActivity : AppCompatActivity() {
                 if (event.chatId == chatId) {
                     val msg = event.message
                     addNewMessage(msg)
+                }
+            }
+        }
+
+        // Подписка на прогресс аплоада медиа — обновляем uploadProgress и статус
+        // оптимистичных сообщений в реальном времени.
+        lifecycleScope.launch {
+            com.barkfluff.client.send.MediaSendService.uploadEvents.collect { event ->
+                if (event.chatId != chatId) return@collect
+                when (event.state) {
+                    com.barkfluff.client.send.UploadState.PREPARING -> {
+                        updateOptimisticUploadProgress(event.localId, 0)
+                    }
+                    com.barkfluff.client.send.UploadState.UPLOADING -> {
+                        updateOptimisticUploadProgress(event.localId, event.progress)
+                    }
+                    com.barkfluff.client.send.UploadState.SENDING -> {
+                        updateOptimisticUploadProgress(event.localId, 100)
+                    }
+                    com.barkfluff.client.send.UploadState.SENT -> {
+                        // Снимаем прогресс — финальный item придёт через realtime newMessages
+                        // (либо оптимистичный заменится по messageId, либо останется как SENT).
+                        clearOptimisticUploadProgress(event.localId, event.serverMessageId)
+                    }
+                    com.barkfluff.client.send.UploadState.FAILED -> {
+                        updateOptimisticStatus(event.localId, ReadStatus.FAILED)
+                        clearOptimisticUploadProgress(event.localId, 0L)
+                    }
                 }
             }
         }

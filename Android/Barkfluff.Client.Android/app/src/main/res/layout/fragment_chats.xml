@@ -65,32 +65,30 @@
                 android:maxLines="1"
                 tools:text="Иван Иванов" />
 
-            <!-- Кнопка поиска справа -->
-            <ImageButton
+            <!-- Кнопка поиска (M3 IconButton) -->
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/searchButton"
+                style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_gravity="center_vertical|end"
                 android:layout_marginEnd="4dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_search"
-                android:padding="12dp"
-                android:src="@drawable/ic_search"
-                app:tint="?attr/colorOnSurface" />
+                app:icon="@drawable/ic_search"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
 
-            <!-- Кнопка создания E2E чата (приватный/секретный) -->
-            <ImageButton
+            <!-- Кнопка создания E2E чата (M3 IconButton) -->
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/encryptedChatButton"
+                style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_gravity="center_vertical|end"
                 android:layout_marginEnd="52dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_create_hidden_chat"
-                android:padding="12dp"
-                android:src="@drawable/ic_hood"
                 android:visibility="gone"
-                app:tint="?attr/colorOnSurface" />
+                app:icon="@drawable/ic_hood"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.appbar.MaterialToolbar>
 
@@ -174,11 +172,12 @@
     <!-- Индикатор загрузки -->
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/loadingIndicator"
-        android:layout_width="10dp"
-        android:layout_height="182dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:indeterminate="true"
         android:visibility="visible"
         app:indicatorColor="?attr/colorPrimary"
+        app:indicatorSize="40dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

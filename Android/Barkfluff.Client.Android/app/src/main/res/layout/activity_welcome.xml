@@ -24,14 +24,14 @@
             android:paddingTop="80dp"
             android:paddingBottom="32dp">
 
-            <!-- Logo с увеличенным радиусом -->
+            <!-- Logo с увеличенным радиусом — M3 Expressive extra-extra-large (48dp) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/logoCard"
                 android:layout_width="140dp"
                 android:layout_height="140dp"
                 android:layout_marginBottom="32dp"
                 app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                app:cardCornerRadius="35dp"
+                app:cardCornerRadius="@dimen/shape_corner_extra_extra_large"
                 app:cardElevation="0dp"
                 app:strokeColor="?attr/colorOutline"
                 app:strokeWidth="2dp">
@@ -46,24 +46,25 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Заголовок с Emphasized типографикой -->
+            <!-- Hero-заголовок: M3 Expressive Emphasized typography (увеличенный вес).
+                 Guidelines §12: «Display + Headline — отличные кандидаты для Emphasized». -->
             <TextView
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
                 android:text="@string/app_name"
-                android:textAppearance="?attr/textAppearanceDisplayMedium"
+                android:textAppearance="@style/TextAppearance.Material3.DisplayMedium.Emphasized"
                 android:textColor="?attr/colorOnSurface" />
 
-            <!-- Подзаголовок -->
+            <!-- Подзаголовок — также Emphasized для бренд-консистентности -->
             <TextView
                 android:id="@+id/subtitleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:text="@string/welcome_title"
-                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall.Emphasized"
                 android:textColor="?attr/colorPrimary" />
 
             <!-- Описание -->
@@ -77,7 +78,7 @@
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Основная кнопка с морфингом -->
+            <!-- Основная кнопка — M3 Expressive pill (64dp) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/startButton"
                 android:layout_width="match_parent"
@@ -86,23 +87,23 @@
                 android:text="@string/btn_start"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
-                app:cornerRadius="32dp"
+                app:cornerRadius="@dimen/shape_corner_full"
                 app:icon="@android:drawable/ic_media_play"
                 app:iconGravity="textEnd"
                 app:iconPadding="12dp"
                 app:iconTint="?attr/colorOnPrimary" />
 
-            <!-- Вторичная кнопка -->
+            <!-- Вторичная кнопка — Tonal, 56dp pill -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/learnMoreButton"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="@dimen/button_height_default"
                 android:layout_marginBottom="48dp"
                 android:text="@string/btn_learn_more"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
-                app:cornerRadius="28dp" />
+                app:cornerRadius="@dimen/shape_corner_full" />
 
             <!-- Футер с ссылками -->
             <LinearLayout

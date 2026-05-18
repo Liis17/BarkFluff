@@ -86,7 +86,7 @@
                 android:textAppearance="?attr/textAppearanceTitleSmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Поле ввода адреса с увеличенным радиусом -->
+            <!-- Поле ввода адреса — M3 medium corner (12dp) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/serverAddressInputLayout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -94,10 +94,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="beacon.servername.com:443"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusBottomEnd="@dimen/shape_corner_medium"
+                app:boxCornerRadiusBottomStart="@dimen/shape_corner_medium"
+                app:boxCornerRadiusTopEnd="@dimen/shape_corner_medium"
+                app:boxCornerRadiusTopStart="@dimen/shape_corner_medium"
                 app:startIconDrawable="@drawable/ic_location">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -109,16 +109,16 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Кнопка подключения с морфингом -->
+            <!-- Кнопка подключения — M3 Expressive pill -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/connectButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="@dimen/button_height_default"
                 android:layout_marginBottom="24dp"
                 android:text="@string/btn_connect"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
-                app:cornerRadius="32dp"
+                app:cornerRadius="@dimen/shape_corner_full"
                 app:icon="@android:drawable/ic_media_play"
                 app:iconGravity="textEnd"
                 app:iconPadding="12dp" />

@@ -185,12 +185,12 @@
 
     </LinearLayout>
 
-    <!-- Индикатор загрузки -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <!-- Индикатор загрузки (M3 Expressive LoadingIndicator с морфингом) -->
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingIndicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:indeterminate="true"
+        android:layout_marginTop="16dp"
         android:visibility="gone"
         app:indicatorColor="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"

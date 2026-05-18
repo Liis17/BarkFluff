@@ -123,6 +123,50 @@ class MessageAdapter(
         }
     }
 
+    /** Резолвит цветной theme-атрибут (?attr/colorPrimary и т.п.) в int color. */
+    private fun resolveThemeColor(ctx: Context, attr: Int): Int {
+        val tv = android.util.TypedValue()
+        ctx.theme.resolveAttribute(attr, tv, true)
+        return tv.data
+    }
+
+    /**
+     * Применяет иконку статуса доставки к ImageView. Маппинг ReadStatus → drawable + tint
+     * соответствует M3 Expressive feedback (часы → одна галочка → две → две filled primary).
+     * FAILED перекрывает текущий tint на colorError.
+     */
+    private fun applyDeliveryStatusIcon(view: ImageView, status: ReadStatus) {
+        val ctx = view.context
+        when (status) {
+            ReadStatus.NONE -> view.visibility = View.GONE
+            ReadStatus.SENDING -> {
+                view.setImageResource(R.drawable.ic_status_sending)
+                view.imageTintList = null
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.SENT -> {
+                view.setImageResource(R.drawable.ic_status_sent)
+                view.imageTintList = null
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.DELIVERED -> {
+                view.setImageResource(R.drawable.ic_status_delivered)
+                view.imageTintList = null
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.READ -> {
+                view.setImageResource(R.drawable.ic_status_read)
+                view.imageTintList = ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorPrimary))
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.FAILED -> {
+                view.setImageResource(R.drawable.ic_status_error)
+                view.imageTintList = ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorError))
+                view.visibility = View.VISIBLE
+            }
+        }
+    }
+
     /** Переопределяем submitList — footer всегда в конце списка. */
     override fun submitList(list: List<MessageItem>?) {
         val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
@@ -240,17 +284,7 @@ class MessageAdapter(
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
-                when (item.readStatus) {
-                    ReadStatus.READ -> {
-                        binding.stickerReadStatusImageView.setImageResource(R.drawable.ic_double_check)
-                        binding.stickerReadStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.SENT -> {
-                        binding.stickerReadStatusImageView.setImageResource(R.drawable.ic_check)
-                        binding.stickerReadStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.NONE -> binding.stickerReadStatusImageView.visibility = View.GONE
-                }
+                applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
@@ -271,17 +305,7 @@ class MessageAdapter(
                 binding.timeTextView.text = formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
-                when (item.readStatus) {
-                    ReadStatus.READ -> {
-                        binding.readStatusImageView.setImageResource(R.drawable.ic_double_check)
-                        binding.readStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.SENT -> {
-                        binding.readStatusImageView.setImageResource(R.drawable.ic_check)
-                        binding.readStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.NONE -> binding.readStatusImageView.visibility = View.GONE
-                }
+                applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
 
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -301,6 +325,23 @@ class MessageAdapter(
                     }
                     binding.attachmentsContainer.visibility = View.GONE
                     binding.attachmentsContainer.removeAllViews()
+                }
+
+                // Inline upload progress overlay (M3 Expressive feedback) — рендерится
+                // поверх attachmentsContainer пока активен upload.
+                val progress = item.uploadProgress
+                if (progress != null) {
+                    binding.uploadProgressOverlay.visibility = View.VISIBLE
+                    binding.uploadProgressBar.progress = progress
+                    binding.uploadProgressLabel.text = "$progress%"
+                    binding.uploadProgressOverlay.layoutParams = binding.uploadProgressOverlay.layoutParams.also {
+                        it.width = if (binding.attachmentsContainer.visibility == View.VISIBLE)
+                            binding.attachmentsContainer.layoutParams.width
+                        else ViewGroup.LayoutParams.MATCH_PARENT
+                        it.height = ViewGroup.LayoutParams.MATCH_PARENT
+                    }
+                } else {
+                    binding.uploadProgressOverlay.visibility = View.GONE
                 }
             }
         }
@@ -1462,7 +1503,11 @@ data class MessageItem(
     val readStatus: ReadStatus = ReadStatus.NONE,
     val type: MessageType = MessageType.MESSAGE,
     val dateText: String = "",
-    val isEdited: Boolean = false
+    val isEdited: Boolean = false,
+    /** Локальный clientMessageId оптимистичных сообщений (для трекинга SENDING→SENT перехода). null для серверных. */
+    val localId: String? = null,
+    /** Прогресс загрузки медиа 0..100. null если не идёт upload. */
+    val uploadProgress: Int? = null
 ) {
     companion object {
         fun createDateSeparator(dateText: String) = MessageItem(
@@ -1478,4 +1523,13 @@ data class MessageItem(
     }
 }
 
-enum class ReadStatus { NONE, SENT, READ }
+/**
+ * Статус доставки/прочтения исходящего сообщения. Расширен под M3 Expressive feedback:
+ * - NONE — для входящих и системных
+ * - SENDING — оптимистичный item, отправка в процессе (часы)
+ * - SENT — отправлено на сервер, ACK получен (одна галочка)
+ * - DELIVERED — доставлено получателю (двойная outline)
+ * - READ — прочитано получателем (двойная filled, primary tint)
+ * - FAILED — ошибка при отправке (восклицательный знак, tap to retry)
+ */
+enum class ReadStatus { NONE, SENDING, SENT, DELIVERED, READ, FAILED }

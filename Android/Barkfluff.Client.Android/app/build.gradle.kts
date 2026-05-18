@@ -204,5 +204,9 @@ dependencies {
     // ненужных native libs (Linux x86_64, macOS, Windows) — НЕ добавлять.
     implementation(libs.libsignal.android)
     implementation(libs.argon2kt)
+
+    // androidx.dynamicanimation — настоящий spring physics (SpringAnimation) для M3 Expressive
+    // motion. Использовать через extension View.applySpringPress() в utils/SpringPress.kt.
+    implementation(libs.androidx.dynamic.animation)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

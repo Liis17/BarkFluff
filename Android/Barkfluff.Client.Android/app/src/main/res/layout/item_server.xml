@@ -9,7 +9,7 @@
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-    app:cardCornerRadius="20dp"
+    app:cardCornerRadius="@dimen/shape_corner_large"
     app:cardElevation="0dp"
     app:strokeColor="?attr/colorOutline"
     app:strokeWidth="1dp">
@@ -20,12 +20,12 @@
         android:orientation="horizontal"
         android:padding="16dp">
 
-        <!-- Цветовой индикатор сервера с увеличенным радиусом -->
+        <!-- Цветовой индикатор сервера -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="6dp"
             android:layout_height="match_parent"
             android:layout_marginEnd="16dp"
-            app:cardBackgroundColor="#FF6B35"
+            app:cardBackgroundColor="?attr/colorPrimary"
             app:cardCornerRadius="3dp"
             app:cardElevation="0dp">
 

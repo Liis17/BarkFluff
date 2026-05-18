@@ -132,8 +132,7 @@
                         android:text="@string/chat_message_edited"
                         android:textAppearance="?attr/textAppearanceLabelSmall"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textStyle="italic"
-                        android:alpha="0.6"
+                        android:alpha="0.7"
                         android:visibility="gone"
                         tools:visibility="visible" />
 

@@ -146,9 +146,9 @@ class ChatAdapter(
             if (lastMsg != null && lastMsg.senderId == currentUserId) {
                 val readByOthers = lastMsg.readBy.any { it != currentUserId }
                 if (readByOthers) {
-                    binding.readStatus.setImageResource(R.drawable.ic_double_check)
+                    binding.readStatus.setImageResource(R.drawable.ic_status_read)
                 } else {
-                    binding.readStatus.setImageResource(R.drawable.ic_check)
+                    binding.readStatus.setImageResource(R.drawable.ic_status_sent)
                 }
                 binding.readStatus.visibility = View.VISIBLE
             } else {

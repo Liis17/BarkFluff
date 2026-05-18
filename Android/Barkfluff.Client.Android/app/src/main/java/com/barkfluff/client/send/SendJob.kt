@@ -40,7 +40,13 @@ data class SendJob(
     /** Если true — каждое вложение уходит отдельным сообщением (caption только в первом). */
     val sendSeparately: Boolean = false,
     /** Если true — все вложения отправляются как DOCUMENT (без сжатия и без VIDEO/IMAGE-преобразования). */
-    val sendAsFile: Boolean = false
+    val sendAsFile: Boolean = false,
+    /**
+     * Список localId — по одному на сообщение, которое будет создано (для оптимистичного UI чата).
+     * Если sendSeparately=true → один localId на каждое attachment; иначе — один на job.
+     * Пустой список = ChatActivity не подписан на оптимистичный UI (например, fast-forward без открытого чата).
+     */
+    val localIds: List<String> = emptyList()
 )
 
 /**

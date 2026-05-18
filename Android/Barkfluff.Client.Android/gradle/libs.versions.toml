@@ -14,6 +14,7 @@ recyclerview = "1.4.0"
 fragment = "1.8.9"
 libsignal = "0.86.16"
 argon2kt = "1.6.0"
+dynamicAnimation = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,7 @@ androidx-fragment = { group = "androidx.fragment", name = "fragment", version.re
 libsignal-android = { group = "org.signal", name = "libsignal-android", version.ref = "libsignal" }
 libsignal-client = { group = "org.signal", name = "libsignal-client", version.ref = "libsignal" }
 argon2kt = { group = "com.lambdapioneer.argon2kt", name = "argon2kt", version.ref = "argon2kt" }
+androidx-dynamic-animation = { group = "androidx.dynamicanimation", name = "dynamicanimation", version.ref = "dynamicAnimation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
