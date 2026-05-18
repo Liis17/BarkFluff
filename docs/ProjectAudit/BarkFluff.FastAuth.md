@@ -1,8 +1,36 @@
 # Аудит проекта: BarkFluff.FastAuth
 
-> **Дата:** 2026-03-04  
-> **Статус сервиса:** 🟡 В разработке — продакшен-развёртывание возможно с устранением критических проблем  
-> **Аудитор:** GitHub Copilot — автоматический анализ кода
+> **Первичный аудит:** 2026-03-04
+> **Ревизия:** 2026-05-18
+> **Статус сервиса:** 🔴 Большинство проблем исходного аудита актуально, найдены новые
+> **Аудитор:** GitHub Copilot + Claude Opus 4.7 (ревизия)
+
+---
+
+## Статус ранее найденных проблем
+
+| ID      | Статус        | Комментарий                                                                                  |
+| ------- | ------------- | -------------------------------------------------------------------------------------------- |
+| SEC-01  | ❌ Актуально  | `[AllowAnonymous]` на `SubscribeFastAuthResult` остаётся (`FastAuthApiService.cs:32-44`)     |
+| SEC-02  | ❌ Актуально  | Rate limiting не добавлен                                                                    |
+| SEC-03  | ❌ Актуально  | Токены пишутся в Channel без очистки                                                         |
+| SEC-04  | ❌ Актуально  | Нет валидации длины DeviceName/OS/App/IP                                                     |
+| SEC-05  | ❌ Актуально  | TOCTOU-проверки `session.Status` остались                                                    |
+| BUG-01  | ❌ Актуально  | `DetachSubscriber` не реализован — клиент не может переподключиться                          |
+| BUG-02  | ⚠️ Частично   | Метрика частично переработана, но Decrement не используется                                  |
+| BUG-03  | ❌ Актуально  | `QRCodeGenerator` пересоздаётся на каждый вызов                                              |
+| BUG-04  | ❌ Актуально  | Нет лимита `MaxSessions` в `FastAuthSessionsManager`                                         |
+| BUG-05  | ❌ Актуально  | `FinalRetention = 30s` единый для всех сессий                                                |
+| OPT-01  | ❌ Актуально  | `Snapshot().ToList()` копирует весь словарь                                                  |
+| OPT-02  | ❌ Актуально  | QR-генерация синхронная CPU-bound                                                            |
+| OPT-03  | ❌ Актуально  | `Session.Id` хранится как `string`                                                           |
+| MISC-01 | ⚠️ Частично   | Handler зарегистрирован как `Scoped`, мог бы быть `Singleton`                                |
+| MISC-02 | ❌ Актуально  | Опечатка `XAppInfoIsRequiedException`                                                        |
+| MISC-03 | ❌ Актуально  | `IpAddress` не пишется в логи `AcceptFastAuth`                                               |
+| MISC-04 | ❌ Актуально  | `OperationSystem` (грамматическая ошибка) в proto-контракте                                  |
+| MISC-05 | ✅ Исправлено | TODO добавлен в `GetFastAuthInfo`                                                            |
+
+**Итого:** 15 актуально, 2 частично, 1 закрыто. См. [новые проблемы](#-новые-проблемы-ревизия-2026-05-18).
 
 ---
 
@@ -800,6 +828,124 @@ throw new RpcException(new Status(StatusCode.Unimplemented, "GetFastAuthInfo is 
 
 ---
 
+## 🆕 Новые проблемы (ревизия 2026-05-18)
+
+---
+
+### NEW-SEC-01 — IP Spoofing через `X-Forwarded-For`
+
+**Описание:**
+В `RequestContextInterceptor.ResolveIpAddress` приоритет отдан заголовку `X-Forwarded-For` без валидации источника. Если сервис доступен из недоверенной сети (или Nginx не очищает заголовок) — IP подделывается.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Infrastructure\RequestContextInterceptor.cs` : 80–86
+
+**Вариант решения:**
+
+Доверять заголовку только если запрос пришёл с известного proxy (через `ForwardedHeadersOptions.KnownProxies`). В остальных случаях — игнорировать заголовок, использовать `RemoteIpAddress`.
+
+---
+
+### NEW-SEC-02 — Потенциальный log injection через `DeviceName` / `IpAddress`
+
+**Описание:**
+`DeviceName`, `OperationSystem`, `IpAddress` логируются в открытом виде через структурное логирование. Поля принимаются из клиентских заголовков без валидации (см. SEC-04). Управляющие символы (`\n`, `\r`, escape-последовательности) могут попасть в Seq/файловые логи и подделать соседние записи или сломать форматирование.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Features\GenerateFastAuthToken\GenerateFastAuthTokenCommandHandler.cs` : 47–50
+
+**Вариант решения:**
+
+Совместно с SEC-04 ввести whitelist символов: для `DeviceName` — `[A-Za-z0-9 .-_]`, для `IpAddress` — `IPAddress.TryParse` (отбрасывать если не парсится), для `AppVersion` — semver-regex.
+
+---
+
+### NEW-BUG-01 — Отсутствует идемпотентность `AcceptFastAuth`
+
+**Описание:**
+Если клиент отправит `Accept` дважды (двойной клик, retry при timeout), второй вызов выбросит `FastAuthInvalidStateException` (Status != Scanned). Клиент получит ошибку, хотя авторизация уже прошла.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Features\AcceptFastAuth\AcceptFastAuthCommandHandler.cs` : 63–66
+
+**Вариант решения:**
+
+Если сессия уже `Accepted`, `UserId` совпадает и `ConfirmationCode` тот же — возвращать success без повторной выдачи токенов (идемпотентность).
+
+---
+
+### NEW-BUG-02 — `Channel.Writer.TryComplete` может не вызваться
+
+**Описание:**
+В `FastAuthSession.TryAccept` / `TryReject` / `TryExpire` после `TryWrite` вызывается `TryComplete`. Если между `TryWrite` и `TryComplete` бросается исключение (например, OOM), `TryComplete` не вызовется — подписчик зависнет на `ReadAllAsync` до отмены токена.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Domain\FastAuthSession.cs` : 85, 101, 115
+
+**Вариант решения:**
+
+Обернуть финализацию в `try-finally`, либо завершать канал в конце метода через `using` или явный `finally`-блок.
+
+---
+
+### NEW-BUG-03 — Гонка между `Expire` и `Accept`
+
+**Описание:**
+Между внешними TOCTOU-проверками в `AcceptFastAuthCommandHandler` и `TryAccept()` под локом может произойти `Expire`. В результате клиент получит `FastAuthInvalidStateException` (так как `TryAccept` вернёт false для не-`Scanned` статуса) вместо более точного `FastAuthSessionExpiredException`. Это путает клиентскую логику ретраев.
+
+**Путь к файлу:**
+- `Backend\BarkFluff.FastAuth\Domain\FastAuthSession.cs` : 106–117
+- `Backend\BarkFluff.FastAuth\Features\AcceptFastAuth\AcceptFastAuthCommandHandler.cs` : 25–28
+
+**Вариант решения:**
+
+См. рекомендацию по SEC-05 — перенести всю валидацию в `TryAccept/TryReject` с расширенным `enum`-результатом (`Outcome.Expired`, `Outcome.WrongCode`, `Outcome.NotScanned`, ...).
+
+---
+
+### NEW-BUG-04 — `TryAttachSubscriber` + `TryExpire` не атомарны
+
+**Описание:**
+Поток A проходит `TryAttachSubscriber()` (вернувший true, `_hasSubscriber = true`), но перед входом в `ReadAllAsync` поток B вызывает `TryExpire()` — канал завершается. Подписчик получает пустой стрим без финального события.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Domain\FastAuthSession.cs` : 38–50, 106–117
+
+**Вариант решения:**
+
+`TryAttachSubscriber()` должен вернуть `Outcome` (`AlreadyHasSubscriber`, `AlreadyFinal`, `Ok`) и проверить `IsFinal` под тем же локом. Если сессия уже финализирована — выбросить ожидаемое исключение, не отдавая пустой стрим.
+
+---
+
+### NEW-PERF-01 — `Sweep()` сканирует все сессии каждые 30 секунд
+
+**Описание:**
+Дополняет OPT-01: даже без `ToList()` каждый `Sweep` итерирует все сессии, включая те, что ещё свежие. При 10K активных сессий это полный O(n) проход каждые 30 секунд только ради удаления единиц.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Infrastructure\FastAuthExpirationService.cs` : 40–42
+
+**Вариант решения:**
+
+Завести `PriorityQueue<string, DateTime>` (или `SortedSet`) с временем `ExpiresAt`. В `Sweep` снимать только головные элементы, у которых дедлайн прошёл.
+
+---
+
+### NEW-OPS-01 — `FastAuthExpirationService` без `try-catch` вокруг `Sweep`
+
+**Описание:**
+В `BackgroundService.ExecuteAsync` `Sweep()` вызывается напрямую внутри `while`-петли. Любое неперехваченное исключение из `Sweep` остановит весь сервис (`ExecuteAsync` завершится, background-task больше не возобновится). Также не используется `PeriodicTimer`, что упростило бы шатдаун.
+
+**Путь к файлу:** `Backend\BarkFluff.FastAuth\Infrastructure\FastAuthExpirationService.cs` : 16–33
+
+**Вариант решения:**
+
+```csharp
+// ✅ РЕШЕНИЕ: PeriodicTimer + try/catch внутри цикла
+using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+while (await timer.WaitForNextTickAsync(stoppingToken))
+{
+    try { Sweep(); }
+    catch (Exception ex) { logger.LogError(ex, "Sweep failed"); }
+}
+```
+
+---
+
 ## Сводная таблица проблем
 
 | ID      | Категория       | Проблема                                                 | Критичность    |
@@ -821,8 +967,17 @@ throw new RpcException(new Status(StatusCode.Unimplemented, "GetFastAuthInfo is 
 | MISC-02 | 🟡 Качество     | Опечатка: XAppInfoIsRequiedException                     | 🟢 Низкая      |
 | MISC-03 | 🟡 Качество     | IpAddress не пишется в лог при Accept                    | 🟢 Низкая      |
 | MISC-04 | 🟡 Качество     | Опечатка в имени поля: OperationSystem                   | 🟢 Низкая      |
-| MISC-05 | 🟡 Качество     | GetFastAuthInfo без TODO и спецификации                  | 🟢 Низкая      |
+| MISC-05    | 🟡 Качество     | GetFastAuthInfo без TODO и спецификации (✅ закрыто)     | 🟢 Низкая      |
+| NEW-SEC-01 | 🔴 Безопасность | IP spoofing через `X-Forwarded-For`                      | 🟠 Высокая     |
+| NEW-SEC-02 | 🔴 Безопасность | Log injection через DeviceName/IpAddress                 | 🟡 Средняя     |
+| NEW-BUG-01 | 🟠 Баг          | `AcceptFastAuth` не идемпотентен                         | 🟡 Средняя     |
+| NEW-BUG-02 | 🟠 Баг          | `Channel.TryComplete` не гарантирован                    | 🟠 Высокая     |
+| NEW-BUG-03 | 🟠 Баг          | Гонка `Expire`↔`Accept` приводит к неверной ошибке       | 🟡 Средняя     |
+| NEW-BUG-04 | 🟠 Баг          | `TryAttachSubscriber` + `TryExpire` не атомарны          | 🟠 Высокая     |
+| NEW-PERF-01| 🔵 Оптимизация  | `Sweep()` O(n) каждые 30s — нужен `PriorityQueue`        | 🟡 Средняя     |
+| NEW-OPS-01 | 🟡 Качество     | `Sweep` без `try/catch` — падает весь BackgroundService  | 🟠 Высокая     |
 
 ---
 
-*Аудит выполнен на основе статического анализа кода. Для полноты рекомендуется дополнить динамическим тестированием (нагрузочные тесты, penetration testing).*
+*Ревизия 2026-05-18: 15/18 проблем актуально, 2 частично, 1 закрыто. Добавлено 8 новых.*
+*Перед production обязательно: SEC-01 (авторизация стрима), SEC-02 (rate limit), BUG-04 (лимит сессий), NEW-SEC-01 (proxy trust), NEW-BUG-01..04 (lock-протокол).*

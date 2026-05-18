@@ -1,6 +1,7 @@
 # Аудит проекта: BarkFluff.Shared.Auth
 
 > **Дата аудита:** 2025  
+> **Последняя проверка:** 2026-05-18  
 > **Проект:** `Shared\BarkFluff.Shared.Auth`  
 > **Target Framework:** `net9.0`  
 > **Зависимости:** `Grpc.Core.Api 2.71.0`
@@ -36,6 +37,8 @@
 ---
 
 ### SEC-01 — Клиент самостоятельно передаёт собственный IP-адрес
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема / Описание**  
 `XIpClientInterceptor` позволяет клиентскому приложению указывать произвольный IP-адрес в метаданных gRPC-запроса. Сервер (`RequestContextInterceptor`) берёт этот IP с **наивысшим приоритетом** — выше `X-Forwarded-For` и реального `RemoteIpAddress`.
@@ -96,6 +99,8 @@ private string? ResolveIpAddress(HttpContext? httpContext)
 
 ### SEC-02 — JWT-токен передаётся в произвольном метаданных-заголовке, а не в стандартном Authorization
 
+> ⚠️ **Статус (2026-05-18):** Частично актуальна. Заголовок x-auth-token не изменён. Проверка пустого токена в JwtClientInterceptor по-прежнему отсутствует.
+
 **Проблема / Описание**  
 Токен передаётся под ключом `x-auth-token` через `JwtClientInterceptor`. Это нестандартный заголовок, который не совместим с ASP.NET Core Bearer-аутентификацией, промежуточным ПО (middleware), инструментами аудита и стандартными gRPC auth-фреймворками.
 
@@ -143,6 +148,8 @@ public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
 
 ### SEC-03 — Отсутствует валидация входных данных в конструкторах интерсепторов
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 Все интерсепторы принимают строковые параметры в конструкторах без какой-либо валидации. Передача `null` вызовет `NullReferenceException` или `ArgumentNullException` в рантайме при первом же запросе, а не в момент конфигурации.
 
@@ -181,6 +188,8 @@ public XDeviceClientInterceptor(string? deviceName)
 
 ### SEC-04 — Base64 — не шифрование: ложное ощущение защиты данных
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 Строковые значения (`deviceName`, `osName`, `appName`, `appVersion`, `deviceId`, `ip`) кодируются в Base64 перед отправкой. Base64 — это **кодирование**, а не **шифрование**. Любой наблюдатель трафика (даже без TLS) тривиально декодирует эти значения.
 
@@ -215,6 +224,8 @@ metadata.Add("x-device-name-bin", Encoding.UTF8.GetBytes(_deviceName)); // gRPC 
 
 ### SEC-05 — Серверный приоритет IP из клиентского метаданных выше X-Forwarded-For
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 > ⚠️ Связан с **SEC-01**. Описан отдельно т.к. касается серверной логики.
 
 **Путь к файлу:** `Backend\BarkFluff.GrpcServer\Tracker\RequestContextInterceptor.cs` : 65–75
@@ -228,6 +239,8 @@ metadata.Add("x-device-name-bin", Encoding.UTF8.GetBytes(_deviceName)); // gRPC 
 ---
 
 ### PERF-01 — Base64-кодирование выполняется на каждый вызов вместо кэширования
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема / Описание**  
 Значения `deviceName`, `osName`, `appName`, `appVersion`, `deviceId`, `ip` **не меняются** на протяжении жизни интерсептора (хранятся как `readonly` поля). Однако `Convert.ToBase64String(Encoding.UTF8.GetBytes(...))` выполняется заново при **каждом gRPC-вызове**, производя лишние аллокации строк и нагружая GC.
@@ -282,6 +295,8 @@ public class XAppClientInterceptor : Interceptor
 ---
 
 ### PERF-02 — Цепочка из 7 отдельных `.Intercept()` вместо одного составного интерсептора
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема / Описание**  
 В `WebApiClientManager` каждый канал оборачивается в **7 вложенных** вызовов `.Intercept()`, создавая глубокую цепочку делегирования. Каждый `Intercept` создаёт новый `InterceptingCallInvoker`. При 7 каналах это 49 объектов-обёрток, и каждый gRPC-вызов проходит через 7 уровней виртуальной диспетчеризации.
@@ -366,6 +381,8 @@ public class CompositeAuthInterceptor : Interceptor
 
 ### PERF-03 — `metadata.FirstOrDefault` с линейным поиском на сервере при каждом запросе
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 Метод `GetMetadataValue` на сервере использует `FirstOrDefault` с `StringComparison.OrdinalIgnoreCase` — O(n) поиск по списку метаданных. Вызывается 6 раз на каждый запрос (для каждого ключа), итого 6 × n итераций.
 
@@ -412,6 +429,8 @@ requestContext.DeviceId          = DecodeBase64(meta.GetValueOrDefault(MetadataK
 
 ### BUG-01 — Опечатка в переменной `osName` в `XDeviceIdInterceptor`
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 В `XDeviceIdInterceptor` локальная переменная, содержащая закодированный `deviceId`, названа `osName` — это явная опечатка, скопированная из другого интерсептора. Код работает корректно (значение всё равно добавляется под правильным ключом), но серьёзно вводит в заблуждение при чтении и поддержке.
 
@@ -434,6 +453,8 @@ metadata.Add(MetadataKeys.DeviceId, deviceId);
 ---
 
 ### BUG-02 — Только `AsyncUnaryCall` переопределён — стриминговые методы gRPC не получают метаданные
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема / Описание**  
 Все интерсепторы переопределяют **только** `AsyncUnaryCall`. Если в проекте используются или будут использоваться gRPC-стримы (`AsyncClientStreamingCall`, `AsyncServerStreamingCall`, `AsyncDuplexStreamingCall`), они **не получат** ни токена, ни device-метаданных. Это скрытая бомба при расширении API.
@@ -502,6 +523,8 @@ private ClientInterceptorContext<TRequest, TResponse> BuildContextWithAuth<TRequ
 
 ### BUG-03 — `MetadataKeys` — не `static`, можно создать экземпляр
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 Класс `MetadataKeys` содержит только `const` поля, но объявлен как обычный `class`. Это позволяет создать бессмысленный экземпляр `new MetadataKeys()`, что семантически некорректно для класса-контейнера констант.
 
@@ -537,6 +560,8 @@ public static class MetadataKeys
 ---
 
 ### BUG-04 — Отсутствует обработка исключений при декодировании Base64 на сервере
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема / Описание**  
 Метод `GetMetadataValue` на сервере вызывает `Convert.FromBase64String(base64)` без try/catch. Если клиент (или злоумышленник) передаст невалидный Base64 в любом из заголовков, сервер выбросит необработанное `FormatException`, которое всплывёт в gRPC-обработчике как Internal Server Error (код 13).
@@ -589,6 +614,8 @@ private string? GetMetadataValue(Metadata metadata, string key)
 ---
 
 ### ARCH-01 — Дублирование кода: 5 почти идентичных интерсепторов
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема / Описание**  
 `XDeviceClientInterceptor`, `XDeviceIdInterceptor`, `XIpClientInterceptor`, `XOsClientInterceptor`, `XAppClientInterceptor` — по сути один и тот же шаблон кода (Base64 + добавить в metadata), повторённый 5 раз. Любое изменение логики требует правки в 5 местах. Это классическое нарушение принципа DRY.
@@ -667,6 +694,8 @@ public class XIpClientInterceptor(string ip)
 
 ### ARCH-02 — Интерсепторы создаются через `new` вместо DI-контейнера
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 В `WebApiClientManager.AddInterceptor()` все 7 интерсепторов создаются через `new`. Это нарушает принцип инверсии зависимостей (DIP), делает невозможным unit-тестирование и мокирование, а также усложняет конфигурацию.
 
@@ -718,6 +747,8 @@ var authInterceptor = _authInterceptorFactory.Create(new AuthInterceptorOptions
 
 ### ARCH-03 — Несогласованное именование: `XDeviceIdInterceptor` vs `XDeviceClientInterceptor`
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема / Описание**  
 Часть интерсепторов называется `X*ClientInterceptor` (`XDeviceClientInterceptor`, `XAppClientInterceptor`, `XIpClientInterceptor`, `XOsClientInterceptor`), а один называется просто `XDeviceIdInterceptor` — без суффикса `Client`. Это нарушает консистентность именования в пространстве имён.
 
@@ -740,6 +771,75 @@ public class XDeviceIdClientInterceptor : Interceptor
 
 ---
 
+## 🆕 Новые проблемы (обнаружены 2026-05-18)
+
+---
+
+### NEW-SEC-01 — Токен JWT передаётся как обычный текстовый заголовок, не помечен как чувствительный
+
+**Файл:** `Shared\BarkFluff.Shared.Auth\JwtClientInterceptor.cs : 59`
+
+**Проблема:** `metadata.Add(MetadataKeys.Token, _token)` добавляет токен как обычный `Entry` (не `BinaryHeader`). gRPC-логгеры и middleware могут выводить заголовки в открытом виде. Нет пометки заголовка как чувствительного.
+
+**Варианты решения:** Использовать `Metadata.Entry` с суффиксом `-bin` либо явно исключить `x-auth-token` из логирования на уровне конфигурации канала.
+
+---
+
+### NEW-BUG-01 — Мутация разделяемого Metadata-объекта вместо клонирования
+
+**Файл:** Все 5 интерсепторов: `JwtClientInterceptor.cs:58`, `XAppClientInterceptor.cs:23-29`, `XDeviceClientInterceptor.cs`, `XDeviceIdInterceptor.cs`, `XIpClientInterceptor.cs`, `XOsClientInterceptor.cs`
+
+**Проблема:** `context.Options.Headers` — объект, переданный снаружи. Интерсептор вызывает `metadata.Add(...)` прямо на нём, мутируя чужой объект. При повторных или параллельных вызовах один и тот же `Metadata`-объект накапливает дубликаты заголовков, нарушая корректность и потокобезопасность.
+
+**Варианты решения:** Всегда создавать копию:
+```csharp
+var metadata = new Metadata();
+if (context.Options.Headers != null)
+    foreach (var e in context.Options.Headers) metadata.Add(e);
+```
+
+---
+
+### NEW-BUG-02 — Конструкторы не проверяют входные параметры на null (NRT)
+
+**Файл:** `JwtClientInterceptor.cs:10`, `XAppClientInterceptor.cs:13`, и все остальные интерсепторы
+
+**Проблема:** `.csproj` устанавливает `<Nullable>enable</Nullable>`, параметры объявлены как non-nullable `string`, но guard-checks отсутствуют. `NullReferenceException` возникнет внутри `Encoding.UTF8.GetBytes` на горячем пути при некорректном использовании через рефлексию или DI.
+
+**Варианты решения:** Добавить `ArgumentException.ThrowIfNullOrEmpty(token)` в каждый конструктор.
+
+---
+
+### NEW-PERF-01 — Аллокация `new Metadata()` и `new ClientInterceptorContext` на каждый RPC-вызов
+
+**Файл:** Все 5 интерсепторов кроме JWT
+
+**Проблема:** Поля интерсептора неизменны после конструктора — итоговый `Metadata`-объект с закодированными значениями можно создать один раз. Сейчас каждый вызов аллоцирует `Metadata`, два string (Base64), `ClientInterceptorContext`.
+
+**Варианты решения:** Вычислять Base64 и создавать `_cachedMetadata` в конструкторе; в `AsyncUnaryCall` клонировать и мёрджить с входящими заголовками.
+
+---
+
+### NEW-ARCH-01 — Все интерсепторы не помечены `sealed`
+
+**Файл:** Все `.cs`-файлы интерсепторов
+
+**Проблема:** Классы не помечены `sealed`. Наследование не предполагается и создаёт риск некорректного переопределения `AsyncUnaryCall` в подклассе без вызова `base`.
+
+**Варианты решения:** Добавить `sealed` ко всем пяти классам.
+
+---
+
+### NEW-ARCH-02 — Отсутствие поддержки Deadline / CancellationToken
+
+**Файл:** Все интерсепторы
+
+**Проблема:** Ни один интерсептор не инспектирует и не проставляет `context.Options.Deadline`. Если вызывающий код не задаёт deadline, все RPC уходят без таймаута. Интерсептор мог бы применять дефолтный deadline из конфигурации.
+
+**Варианты решения:** Принять `TimeSpan defaultTimeout` в базовом классе; в хелпере применять `context.Options.WithDeadline(DateTime.UtcNow + defaultTimeout)` если `Deadline == null`.
+
+---
+
 ## Сводная таблица
 
 | ID | Категория | Серьёзность | Краткое описание |
@@ -759,3 +859,9 @@ public class XDeviceIdClientInterceptor : Interceptor
 | ARCH-01 | 🔵 Архитектура | **Средняя** | DRY-нарушение: 5 одинаковых интерсепторов |
 | ARCH-02 | 🔵 Архитектура | **Средняя** | Создание через `new` вместо DI |
 | ARCH-03 | 🔵 Архитектура | **Низкая** | Несогласованное именование классов |
+| NEW-SEC-01 | 🔴 Безопасность | **Высокая** | JWT-токен не помечен как чувствительный, попадает в логи |
+| NEW-BUG-01 | 🟠 Баг | **Высокая** | Мутация разделяемого Metadata-объекта — дублирование заголовков при параллельных вызовах |
+| NEW-BUG-02 | 🟠 Баг | **Средняя** | Конструкторы не валидируют null, несмотря на `<Nullable>enable</Nullable>` |
+| NEW-PERF-01 | 🟡 Производительность | **Средняя** | Лишние аллокации `Metadata` и `ClientInterceptorContext` на каждый вызов |
+| NEW-ARCH-01 | 🔵 Архитектура | **Низкая** | Интерсепторы не помечены `sealed` — риск некорректного наследования |
+| NEW-ARCH-02 | 🔵 Архитектура | **Средняя** | Нет поддержки Deadline — все RPC уходят без таймаута |

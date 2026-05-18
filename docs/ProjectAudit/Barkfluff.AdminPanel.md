@@ -1,18 +1,52 @@
 # Аудит проекта: Barkfluff.AdminPanel
 
-> **Дата аудита:** 2025-07  
-> **Ветка:** `dev`  
-> **Путь к проекту:** `Backend/Barkfluff.AdminPanel/`  
-> **Аудитор:** GitHub Copilot (BarkfluffAgent)
+> **Первичный аудит:** 2025-07
+> **Ревизия:** 2026-05-18
+> **Ветка:** `dev`
+> **Путь к проекту:** `Backend/Barkfluff.AdminPanel/`
+> **Аудитор:** GitHub Copilot (BarkfluffAgent) + Claude Opus 4.7 (ревизия)
+> **Статус:** 🔴 Большинство проблем актуально, найдены новые
 
 ---
 
 ## Содержание
 
+- [Статус ранее найденных проблем](#статус-ранее-найденных-проблем)
 - [🔴 Безопасность](#-безопасность)
 - [🟡 Баги и недоработки](#-баги-и-недоработки)
 - [🔵 Производительность](#-производительность)
 - [⚪ Качество кода / Прочее](#-качество-кода--прочее)
+- [🆕 Новые проблемы (ревизия 2026-05-18)](#-новые-проблемы-ревизия-2026-05-18)
+- [Сводная таблица](#сводная-таблица)
+
+---
+
+## Статус ранее найденных проблем
+
+| ID      | Статус        | Комментарий                                                                 |
+| ------- | ------------- | --------------------------------------------------------------------------- |
+| SEC-01  | ❌ Актуально  | Реальный Telegram BotToken остаётся в `appsettings.json:10-11`              |
+| SEC-02  | ❌ Актуально  | Shell injection в `DockerService.cs:630` не исправлен                       |
+| SEC-03  | ❌ Актуально  | Rate limiting отсутствует                                                   |
+| SEC-04  | ❌ Актуально  | Cookie удаляется без флагов в `TokenAuthMiddleware.cs:86`                   |
+| SEC-05  | ⚠️ Частично   | `UseHttpsRedirection()` остаётся, TLS терминируется на Nginx — не критично |
+| SEC-06  | ⚠️ Частично   | Legacy-метод существует, но прямого пути вызова нет                         |
+| BUG-01  | ❌ Актуально  | `Timer` в `PendingAuthService` не освобождается                             |
+| BUG-02  | ❌ Актуально  | `Task.Run` без `CancellationToken`                                          |
+| BUG-03  | ❌ Актуально  | Двойной `FindById` в `TokenService.ValidateToken`                           |
+| BUG-04  | ❌ Актуально  | `token.IsExpired(3)` захардкожен                                            |
+| BUG-05  | ❌ Актуально  | `StopAsync` не ждёт `ReceiveAsync`                                          |
+| BUG-06  | ❌ Актуально  | `bool _initialized` без `volatile`                                          |
+| PERF-01 | ⚠️ Частично   | Частичное кэширование добавлено, полное покрытие отсутствует                |
+| PERF-02 | ❌ Актуально  | `Dictionary` создаётся локально                                             |
+| PERF-03 | ❌ Актуально  | `GetContainerStatusAsync` грузит весь список                                |
+| PERF-04 | ❌ Актуально  | Фиксированные `Task.Delay`                                                  |
+| CODE-01 | ❌ Актуально  | Nullable warnings в `ParseUserAgent`                                        |
+| CODE-02 | ❌ Актуально  | Несколько классов в одном файле                                             |
+| CODE-03 | ❌ Актуально  | Нет глобального exception handler                                           |
+| CODE-04 | ⚠️ Частично   | `[Obsolete]` свойство публичное, но не вызывается                           |
+
+**Итого:** 17 актуально, 3 частично, 0 исправлено. См. [новые проблемы](#-новые-проблемы-ревизия-2026-05-18).
 
 ---
 
@@ -844,6 +878,132 @@ internal List<long> AdminUserIds => ParsedAdmins.Select(a => a.TelegramUserId).T
 
 ---
 
+## 🆕 Новые проблемы (ревизия 2026-05-18)
+
+---
+
+### NEW-SEC-01 — Path Traversal в S3BrowserEndpoints
+
+**Описание:**
+Параметр `prefix` передаётся напрямую в `ListObjectsAsync` без валидации/нормализации. Атакующий-администратор может попытаться обойти ожидаемое префиксование (например, через `../` или абсолютный путь, либо через знак ` ` для обхода фильтров).
+
+**Файл:** `Backend/Barkfluff.AdminPanel/Endpoints/S3BrowserEndpoints.cs` : 45–47
+
+**Вариант решения:**
+- Жёсткий whitelist разрешённых корневых префиксов (бакеты сервиса).
+- Запрет символов `..`, ` `, `/` в начале.
+- Если эндпоинт сам по себе только для админов — добавить аудит-лог при подозрительных префиксах.
+
+---
+
+### NEW-SEC-02 — IP Spoofing через `X-Forwarded-For`
+
+**Описание:**
+В `Endpoints/AuthEndpoints.cs:204-209` IP пользователя резолвится из `X-Forwarded-For` без указания доверенных прокси через `ForwardedHeadersOptions.KnownProxies` / `KnownNetworks`. Если фронт не за Nginx или Nginx не очищает заголовок — IP подделывается.
+
+**Файл:** `Backend/Barkfluff.AdminPanel/Endpoints/AuthEndpoints.cs` : 204–209
+
+**Вариант решения:**
+
+```csharp
+// ✅ В Program.cs
+builder.Services.Configure<ForwardedHeadersOptions>(opts =>
+{
+    opts.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    opts.KnownProxies.Add(IPAddress.Parse("127.0.0.1")); // адрес Nginx
+});
+app.UseForwardedHeaders();
+```
+
+И использовать `HttpContext.Connection.RemoteIpAddress` вместо ручного парсинга заголовка.
+
+---
+
+### NEW-BUG-01 — `IndexOutOfRangeException` при парсинге callback-данных
+
+**Описание:**
+`data.Split(':')` в обработчике callback-кнопок Telegram не проверяет длину массива перед обращением к индексам. Некорректный callback (`auth:123` без action) приведёт к необработанному исключению в `UpdateHandler`.
+
+**Файл:** `Backend/Barkfluff.AdminPanel/Services/TelegramBotService.cs` : 328–332
+
+**Вариант решения:**
+
+```csharp
+// ✅ РЕШЕНИЕ: проверка длины перед обращением
+var parts = data.Split(':');
+if (parts.Length < 3)
+{
+    _logger.LogWarning("Некорректный callback data: {Data}", data);
+    return;
+}
+var action = parts[2];
+```
+
+---
+
+### NEW-BUG-02 — `HttpClientHandler` не диспоузится при исключении
+
+**Описание:**
+В `CreateBotClient` создаётся `new HttpClientHandler()` и передаётся в `new HttpClient(handler, disposeHandler: true)`. Если между созданием `handler` и созданием `HttpClient` бросается исключение, `handler` остаётся неосвобождённым.
+
+**Файл:** `Backend/Barkfluff.AdminPanel/Services/TelegramBotService.cs` : 58–68
+
+**Вариант решения:**
+
+```csharp
+// ✅ РЕШЕНИЕ: try/catch с явным Dispose
+HttpClientHandler? handler = null;
+try
+{
+    handler = new HttpClientHandler { /* ... */ };
+    return new HttpClient(handler, disposeHandler: true);
+}
+catch
+{
+    handler?.Dispose();
+    throw;
+}
+```
+
+---
+
+### NEW-CODE-01 — Нет валидации длины при rename токена
+
+**Описание:**
+`dto.Name` в эндпоинте переименования токена не имеет ограничения по длине. Можно сохранить строку в 10 МБ — она поместится в LiteDB и сломает UI/выдачу токенов.
+
+**Файл:** `Backend/Barkfluff.AdminPanel/Endpoints/AuthEndpoints.cs` : 118–159
+
+**Вариант решения:**
+
+Добавить `[StringLength(64)]` в DTO или проверку в эндпоинте:
+
+```csharp
+if (string.IsNullOrWhiteSpace(dto.Name) || dto.Name.Length > 64)
+    return Results.BadRequest("Name must be 1..64 chars");
+```
+
+---
+
+### NEW-CODE-02 — `GetIpAddress` может вернуть пустую строку
+
+**Описание:**
+`X-Forwarded-For` после `Split(',').FirstOrDefault()?.Trim()` может вернуть пустую строку (при заголовке `", "`), но дальше код трактует её как валидный IP. Тесно связано с [NEW-SEC-02](#new-sec-02--ip-spoofing-через-x-forwarded-for).
+
+**Файл:** `Backend/Barkfluff.AdminPanel/Endpoints/AuthEndpoints.cs` : 204–209
+
+**Вариант решения:**
+
+```csharp
+// ✅ РЕШЕНИЕ
+var ip = forwarded?.Split(',').FirstOrDefault()?.Trim();
+return string.IsNullOrWhiteSpace(ip)
+    ? context.Connection.RemoteIpAddress?.ToString() ?? "unknown"
+    : ip;
+```
+
+---
+
 ## Сводная таблица
 
 | ID | Категория | Серьёзность | Файл | Краткое описание |
@@ -868,7 +1028,13 @@ internal List<long> AdminUserIds => ParsedAdmins.Select(a => a.TelegramUserId).T
 | CODE-02 | ⚪ Качество | **Низкая** | `Program.cs:245` | Много классов в одном файле |
 | CODE-03 | ⚪ Качество | **Средняя** | `Program.cs:139` | Нет глобального exception handler |
 | CODE-04 | ⚪ Качество | **Низкая** | `Program.cs:265` | Публичное [Obsolete] свойство |
+| NEW-SEC-01 | 🔴 Безопасность | **Средняя** | `S3BrowserEndpoints.cs:45` | Path traversal через `prefix` |
+| NEW-SEC-02 | 🔴 Безопасность | **Средняя** | `AuthEndpoints.cs:204` | IP spoofing через `X-Forwarded-For` без trusted proxies |
+| NEW-BUG-01 | 🟡 Баг | **Средняя** | `TelegramBotService.cs:328` | `IndexOutOfRangeException` при парсинге callback |
+| NEW-BUG-02 | 🟡 Баг | **Низкая** | `TelegramBotService.cs:58` | `HttpClientHandler` не диспоузится при исключении |
+| NEW-CODE-01 | ⚪ Качество | **Низкая** | `AuthEndpoints.cs:118` | Нет валидации длины при rename токена |
+| NEW-CODE-02 | ⚪ Качество | **Низкая** | `AuthEndpoints.cs:204` | `GetIpAddress` может вернуть пустую строку |
 
 ---
 
-*Аудит охватывает все файлы проекта `Backend/Barkfluff.AdminPanel/`. Рекомендуется начать с SEC-01 и SEC-02 как наиболее критичных.*
+*Ревизия 2026-05-18: исходный аудит — 17/20 проблем актуально, 3 частично, 0 закрыто. Добавлено 6 новых проблем. Приоритет: SEC-01 (отозвать BotToken), SEC-02 (RCE), SEC-03/SEC-04 (rate limit + cookie flags), затем BUG-01..06 и новые SEC.*
