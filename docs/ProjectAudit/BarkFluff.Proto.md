@@ -1,6 +1,7 @@
 # Аудит проекта: BarkFluff.Proto
 
-> **Дата:** 2025-05-06
+> **Дата:** 2026-05-18
+> **Последняя проверка:** 2026-05-18
 > **Ревьюер:** GitHub Copilot (BarkfluffAgent)
 > **Область:** `Shared\BarkFluff.Proto\` — все `.proto`-файлы контрактов gRPC-сервисов
 > **Версия proto:** proto3
@@ -23,10 +24,12 @@
 
 ### SEC-01 — Токены доступа передаются в теле gRPC-сообщений (FastAuth)
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 В `FastAuthResult` поля `access_token` и `refresh_token` передаются как обычные `string`-поля внутри стримингового сообщения. Это означает, что токены видны в любом gRPC-логе, трейсе, middleware-слое перехвата или при дебаге трафика — даже если транспорт зашифрован (TLS).
 
-**Файл:** `Shared\BarkFluff.Proto\fast_auth_api.proto` : строки 57–65
+**Файл:** `Shared\BarkFluff.Proto\fast_auth_api.proto` : строки 58–65
 
 ```protobuf
 message FastAuthResult {
@@ -68,10 +71,12 @@ message AcceptedTokenPayload {
 
 ### SEC-02 — `GenerateTestTokenRequest` находится в production-контракте
 
+> ⚠️ **Статус (2026-05-18):** Частично актуальна. Сообщения GenerateTestTokenRequest/Response остаются в identity_api.proto:225-231, но RPC-метод не объявлен ни в IdentityApi, ни в IdentityServerApi — мёртвый код.
+
 **Проблема:**
 В `identity_api.proto` объявлено сообщение `GenerateTestTokenRequest` / `GenerateTestTokenResponse`. Это тестовый RPC, позволяющий получить токен для **любого** `user_id` без авторизации. Если сервер не закрывает этот метод на уровне middleware/authorization policy — это критическая уязвимость повышения привилегий.
 
-**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 213–219
+**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 225–231
 
 ```protobuf
 message GenerateTestTokenRequest {
@@ -102,10 +107,12 @@ service DevelopersIdentityApi {
 
 ### SEC-04 — `beacon_api.proto` раскрывает внутреннюю топологию сети (host + port всех микросервисов)
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `GetServerInfoResponse` возвращает `ServiceEndpoint` (host + port) для **всех** внутренних микросервисов. Этот endpoint доступен анонимно (`BeaconApi` не имеет авторизации). Атакующий может получить полную карту внутренней инфраструктуры.
 
-**Файл:** `Shared\BarkFluff.Proto\beacon_api.proto` : строки 20–40
+**Файл:** `Shared\BarkFluff.Proto\beacon_api.proto` : строки 53–74
 
 ```protobuf
 message GetServerInfoResponse {
@@ -160,10 +167,12 @@ message GetServerInfoResponse {
 
 ### SEC-05 — `ip_address` приходит из клиентских заголовков в `FastAuth` и `CreateSessionForUserServer`
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 В `CreateSessionForUserServerRequest` поле `ip_address` передаётся как аргумент вызывающего сервиса. Если Identity не валидирует и не перезаписывает IP из gRPC peer — возможна подмена IP для обхода geo-блокировок или rate-limit политик.
 
-**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 74–82
+**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 80–87
 
 ```protobuf
 message CreateSessionForUserServerRequest {
@@ -204,10 +213,12 @@ message CreateSessionForUserServerRequest {
 
 ### OPT-01 — `GetUserAllMessages` возвращает все сообщения разом без пагинации/стриминга
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 Метод экспорта `MessagesServerApi.GetUserAllMessages` возвращает **все** сообщения пользователя и **все** чаты за одну унарную gRPC-операцию. При большом числе сообщений (тысячи/десятки тысяч) это приводит к огромным сообщениям gRPC (дефолтный лимит 4 MB), Out of Memory на сервере при сборке ответа и длительному ожиданию клиента.
 
-**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 214–222
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 452–463
 
 ```protobuf
 // ⚠️ Унарный вызов, возвращает всё одним куском — OOM-риск
@@ -252,10 +263,12 @@ message GetUserAllMessagesResponse {
 
 ### OPT-02 — `MarkAsRead` принимает `repeated int64 message_ids` без ограничения размера
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `MarkAsReadRequest` содержит `repeated int64 message_ids` без явного максимума. Клиент может послать десятки тысяч ID в одном запросе, что создаёт нагрузку на разбор сообщения и обработку в БД (IN-запрос с огромным числом ID).
 
-**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 43–46
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 167–168
 
 ```protobuf
 message MarkAsReadRequest {
@@ -285,10 +298,12 @@ message MarkAsReadRequest {
 
 ### OPT-03 — `SubscribeToOnlineStatus` — нет механизма дедупликации подписок
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `SubscribeToOnlineStatusRequest` принимает массив `user_ids`, но если клиент переподключится и снова подпишется на те же IDs — сервер не знает о предыдущей подписке. При этом `ChangeUsersInSubscription` существует отдельно, что означает, что первоначальный список никак не связан с изменениями. Нет гарантии порядка инициализации стрима и первого вызова `ChangeUsersInSubscription`.
 
-**Файл:** `Shared\BarkFluff.Proto\onliner_api.proto` : строки 44–58
+**Файл:** `Shared\BarkFluff.Proto\onliner_api.proto` : строки 48–57
 
 ```protobuf
 // ⚠️ Стрим открывается с начальным списком, но далее управляется отдельным RPC
@@ -322,10 +337,12 @@ message RemoveUserIdsCommand { repeated int64 user_ids = 1; }
 
 ### OPT-04 — `ListMessages` содержит устаревшее поле `count` вместе с новыми `offset_before`/`offset_after`
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 В `ListMessagesRequest` есть поле `count` с пометкой `deprecated` в комментарии, но оно не помечено как `[deprecated = true]` в proto. Это означает, что кодогенератор не предупреждает клиентов об устаревании, а оба механизма пагинации могут работать одновременно с непредсказуемым приоритетом.
 
-**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 108–120
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 230–241
 
 ```protobuf
 message ListMessagesRequest {
@@ -363,10 +380,12 @@ message ListMessagesRequest {
 
 ### OPT-05 — `GetFilesData` / `GetTempDownloadUrl` — нет лимита на количество файлов в запросе
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `GetFilesDataRequest` и `GetTempDownloadUrlRequest` содержат `repeated string file_ids` без ограничения. Один запрос с тысячами файловых ID создаёт нагрузку на S3-хранилище и базу данных (N+1 или огромный batch-запрос).
 
-**Файл:** `Shared\BarkFluff.Proto\files_api.proto` : строки 55–68
+**Файл:** `Shared\BarkFluff.Proto\files_api.proto` : строки 54–71
 
 ```protobuf
 message GetTempDownloadUrlRequest {
@@ -402,10 +421,12 @@ message GetFilesDataRequest {
 
 ### BUG-01 — `ProfileFieldVisibility.ALL = 0` — нарушение proto3 семантики default value
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 В proto3 нулевое значение enum является **дефолтным** и означает «не задано / неизвестно». Использование `ALL = 0` означает, что **неинициализированное поле** будет автоматически трактоваться как «видно всем». Если клиент забудет явно установить `online_visibility` — он получит `ALL` вместо ожидаемого значения. Это создаёт потенциальную утечку приватности.
 
-**Файл:** `Shared\BarkFluff.Proto\users_api.proto` : строки 574–578
+**Файл:** `Shared\BarkFluff.Proto\users_api.proto` : строки 665–669
 
 ```protobuf
 enum ProfileFieldVisibility {
@@ -435,11 +456,13 @@ enum ProfileFieldVisibility {
 
 ### BUG-02 — `OtpTypeId` / `ServiceStatus` / `StatusTypeId` не имеют namespace-префикса в именах значений enum
 
+> ⚠️ **Статус (2026-05-18):** Частично актуальна. В onliner_api.proto:39-43 StatusTypeId уже исправлен (значения с префиксом STATUS_TYPE_ID_*). В identity_api.proto:165-169 (OtpTypeId) и beacon_api.proto:63-69 (ServiceStatus) — без префиксов, проблема сохраняется.
+
 **Проблема:**
 В proto3 имена значений enum находятся в глобальном namespace пакета. Если два enum имеют одинаковые имена значений — возникает конфликт при компиляции. `OtpTypeId` использует `Unknown`, `Authenticator`, `Email` — без префикса. `ServiceStatus` использует `Unknown`, `Healthy` и т.д. При импорте в один файл или при генерации кода это может вызвать конфликты.
 
-**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 148–151  
-**Файл:** `Shared\BarkFluff.Proto\beacon_api.proto` : строки 55–61
+**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 165–169  
+**Файл:** `Shared\BarkFluff.Proto\beacon_api.proto` : строки 63–69
 
 ```protobuf
 // identity_api.proto
@@ -480,6 +503,8 @@ enum ServiceStatus {
 ---
 
 ### BUG-03 — `ServerColor` и `ServiceEndpoint` продублированы в `beacon_api.proto` и `navigator_api.proto`
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема:**
 Сообщения `ServerColor` и `ServiceEndpoint` объявлены в **двух** разных proto-файлах с разными пакетами (`barkfluff.beacon` и `barkfluff.navigator`). При изменении структуры в одном файле — второй не обновится автоматически. Это приведёт к рассинхрону контрактов.
@@ -532,10 +557,12 @@ import "shared.proto";
 
 ### BUG-04 — `ExportAttachment.type` использует `int32` вместо enum
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 В `ExportAttachment` поле `type` объявлено как `int32` с комментарием о значениях. При этом в `MessageAttachment` (в shared.proto) используется `MessageAttachmentType` enum. Это нарушение консистентности — при десериализации экспорта клиент не получает типизацию, а числовое значение может быть некорректным.
 
-**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 230–245
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 473–478
 
 ```protobuf
 message ExportAttachment {
@@ -568,10 +595,12 @@ message ExportAttachment {
 
 ### BUG-05 — `ConfirmAccountResponse` возвращает только `refresh_token`, без `access_token`
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 После подтверждения аккаунта клиент получает только `refresh_token`. Для использования API ему нужно немедленно сделать ещё один вызов `CreateToken`, чтобы получить `access_token`. Это лишний round-trip после регистрации. При этом `AuthResponse` (логин) и `ConfirmResetPasswordResponse` (сброс пароля) возвращают оба токена.
 
-**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 238–243
+**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 249–251
 
 ```protobuf
 message ConfirmAccountResponse {
@@ -594,10 +623,12 @@ message ConfirmAccountResponse {
 
 ### BUG-06 — `CreateGroupChatRequest` не имеет ограничений на `user_ids` и `title`
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `CreateGroupChatRequest` принимает `repeated int64 user_ids` и `string title` без явных ограничений в контракте. Нет минимума участников (можно создать «группу» из 0 человек), нет максимума (10000 участников?), нет ограничения длины заголовка.
 
-**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 55–64
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 180–187
 
 ```protobuf
 message CreateGroupChatRequest {
@@ -633,10 +664,12 @@ message CreateGroupChatRequest {
 
 ### MISC-01 — `SendEmailOtpCodeRequest` / `SendEmailOtpCodeResponse` — пустые "заглушки" без RPC
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 В `identity_api.proto` объявлены сообщения `SendEmailOtpCodeRequest` и `SendEmailOtpCodeResponse`, но они не используются ни в одном RPC-методе сервиса. Это "мёртвый код" в контракте, который вводит читателей в заблуждение.
 
-**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 128–133
+**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 148–154
 
 ```protobuf
 // ⚠️ Не используются ни в одном RPC
@@ -663,6 +696,8 @@ service IdentityApi {
 ---
 
 ### MISC-02 — `NavigatorApi.RegisterServer` не имеет аутентификации в контракте
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема:**
 `RegisterServer` позволяет зарегистрировать произвольный сервер в Navigator. Контракт не указывает способ авторизации — любой желающий теоретически может зарегистрировать поддельный сервер. Комментария об авторизации нет.
@@ -695,6 +730,8 @@ service NavigatorServerApi {
 ---
 
 ### MISC-03 — `ConfigurationApi` полностью открыт — нет разделения на публичный и серверный
+
+> ✅ **Статус (2026-05-18):** Актуальна.
 
 **Проблема:**
 `ConfigurationApi` содержит методы `UpdateConfiguration`, `AddReservedName`, `DeleteReservedName` и т.д. — это административные операции. Тем не менее, они находятся в одном сервисе без явного разделения на `ConfigurationApi` (read-only) и `ConfigurationServerApi` (write). Нет комментария об авторизации.
@@ -736,6 +773,8 @@ service ConfigurationAdminApi {
 
 ### MISC-04 — `UpdatesApi` не имеет механизма reconnect / resume стрима
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `SubscribeNewMessages` и `SubscribeMessagesRead` — server-side streaming без `last_event_id` или cursor. При разрыве соединения клиент не знает, с какого события возобновить получение — возможна потеря сообщений между разрывом и переподключением.
 
@@ -774,6 +813,8 @@ message SubscribeMessagesReadRequest {
 
 ### MISC-05 — `PageRequest` использует `offset`-пагинацию вместо cursor-based
 
+> ✅ **Статус (2026-05-18):** Актуальна.
+
 **Проблема:**
 `PageRequest` (shared.proto) использует `offset + size` — классическую offset-пагинацию. При большом числе записей `OFFSET N` в SQL работает медленно (сканируется N строк), а при вставке новых данных между страницами пользователь может получить дубликаты или пропустить записи.
 
@@ -807,5 +848,91 @@ message CursorPageResponse {
 
 ---
 
+---
+
+## 🆕 Новые проблемы (обнаружены 2026-05-18)
+
+---
+
+### NEW-SEC-01 — `ForceSetPasswordServerRequest` передаёт новый пароль plaintext в proto
+
+**Проблема:** Поле `new_password` — обычная `string`, видная в логах gRPC, трейсах и любом middleware-слое перехвата. Серверный API для смены пароля повышенного риска.
+
+**Файл:** `Shared\BarkFluff.Proto\identity_api.proto` : строки 113–116
+
+**Варианты решения:** Передавать хеш пароля (BCrypt/Argon2 от вызывающего сервиса), либо добавить явный `// SENSITIVE: do not log` и отключить логирование для этого RPC.
+
+---
+
+### NEW-SEC-02 — `DevelopersApi.GetProtoFileContent` раскрывает исходники контрактов
+
+**Проблема:** `GetProtoFileContent` возвращает полное содержимое `.proto`-файлов по имени. Раскрытие внутренних контрактов облегчает разведку атакующего.
+
+**Файл:** `Shared\BarkFluff.Proto\developers_api.proto` : строки 47–53
+
+**Варианты решения:** Защитить xAuth-токеном или ограничить только dev/staging-окружением. Добавить комментарий об авторизации.
+
+---
+
+### NEW-SEC-03 — `GetDevicesWithFirebaseTokens` без лимита на `user_ids`
+
+**Проблема:** Серверный RPC принимает `repeated int64 user_ids` без ограничения. Скомпрометированный микросервис может получить Firebase-токены произвольного числа пользователей разом.
+
+**Файл:** `Shared\BarkFluff.Proto\users_api.proto` : строки 629–631
+
+**Варианты решения:** Добавить лимит (например, 1000) в комментарий-контракт и валидацию на сервере.
+
+---
+
+### NEW-OPT-01 — `SubscribeToOnlineStatusRequest.user_ids` без лимита — DoS
+
+**Проблема:** Клиент может подписаться на онлайн-статус 100k+ пользователей в одном запросе. Сервер будет держать и рассылать события для всех. Аналогично в `GetOnlineStatusRequest` и `ChangeUsersInSubscriptionRequest`.
+
+**Файл:** `Shared\BarkFluff.Proto\onliner_api.proto` : строки 9–11
+
+**Варианты решения:** Добавить лимит (например, 500) и валидацию на сервере.
+
+---
+
+### NEW-OPT-02 — `GetStickerPackResponse` без пагинации стикеров
+
+**Проблема:** `repeated StickerInfo stickers` без лимита. Стикерпак может содержать сотни стикеров с `file_url`/`preview_url` — потенциально большой ответ.
+
+**Файл:** `Shared\BarkFluff.Proto\files_api.proto` : строки 258–261
+
+**Варианты решения:** Добавить пагинацию или лимит (например, 200 стикеров на пак).
+
+---
+
+### NEW-BUG-01 — `ExportMessage.content_type` — `int32` вместо `MessageContentType` enum
+
+**Проблема:** Аналогично BUG-04 — `content_type = int32` с текстовым комментарием вместо `barkfluff.shared.MessageContentType`. Нарушение консистентности с `Message.type` из `shared.proto`.
+
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строка 473
+
+**Варианты решения:** Использовать `barkfluff.shared.MessageContentType content_type = 8;`.
+
+---
+
+### NEW-BUG-02 — `ChatMember` пропускает field numbers 2 и 3 без `reserved`
+
+**Проблема:** В `ChatMember` объявлены `user_id = 1` и `joined_at = 4`. Field numbers 2/3 пропущены без объявления `reserved` — риск случайного повторного использования номеров в будущем с несовместимостью wire format.
+
+**Файл:** `Shared\BarkFluff.Proto\messages_api.proto` : строки 282–287
+
+**Варианты решения:** Добавить `reserved 2, 3;` в сообщение `ChatMember`.
+
+---
+
+### NEW-MISC-01 — `UpdateChatFolderRequest.has_chat_list_update` — антипаттерн partial update
+
+**Проблема:** Булевый флаг — ручной workaround для частичного обновления. В proto3 стандарт — `optional` поля или `google.protobuf.FieldMask`.
+
+**Файл:** `Shared\BarkFluff.Proto\users_api.proto` : строки 758–764
+
+**Варианты решения:** Использовать `optional` (proto3 optional wrapper) или `FieldMask` для частичного обновления.
+
+---
+
 *Документ сгенерирован на основе полного статического анализа всех `.proto`-файлов проекта `BarkFluff.Proto`.*
-*Всего выявлено: **5 проблем безопасности**, **5 проблем оптимизации**, **6 багов/недоработок**, **5 прочих замечаний качества кода**.*
+*Всего выявлено: **8 проблем безопасности** (5 + 3 новых), **7 проблем оптимизации** (5 + 2 новых), **8 багов/недоработок** (6 + 2 новых), **6 прочих замечаний качества кода** (5 + 1 новое).*

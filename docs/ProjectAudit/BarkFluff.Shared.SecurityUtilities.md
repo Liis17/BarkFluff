@@ -1,10 +1,19 @@
 # Аудит: BarkFluff.Shared.SecurityUtilities
 
-> **Дата:** 2025-07  
+> **Дата создания:** 2025-07  
+> **Последняя проверка актуальности:** 2026-05-18  
 > **Проект:** `Shared/BarkFluff.Shared.SecurityUtilities/`  
 > **Target Framework:** net10.0  
 > **Файлов в проекте:** 1 (`SecurityUtilities.cs`)  
-> **Используется в:** `BarkFluff.Client.WPF` (WPF), `Linux` (Qt/C++ — собственная реализация)
+> **Используется в:** `BarkFluff.Client.WPF` (WPF), `Linux` (Qt/C++ — собственная реализация в `Linux/src/Utils/Validators.cpp` с расходящимся алгоритмом)
+
+## Сводка по статусу актуальности (2026-05-18)
+
+- 🔄 **Частично исправлено:** OPT-02 — паттерн со `static readonly BrushConverter` уже применён в `PasswordReset.xaml.cs:34, 432`, но в `CreateAccount.xaml.cs:204` `new BrushConverter()` создаётся на каждый keystroke по-прежнему.
+- ⚠️ **Остаётся:** SEC-03, SEC-04, OPT-01, OPT-03, BUG-01, BUG-02, BUG-03, QA-01, QA-02, QA-03 (проект `*.Tests` не обнаружен).
+- ⚠️ **Дополнительно:** Linux-реализация в `Validators.cpp` использует другой алгоритм оценки (другие весовые коэффициенты по длине), что создаёт расхождение в score между WPF и Linux-клиентом — это потенциальный отдельный пункт для следующей итерации аудита.
+
+В сводной таблице упоминаются SEC-01 и SEC-02, описания которых отсутствуют в теле документа — они должны быть восстановлены или удалены в следующей ревизии.
 
 ---
 
@@ -201,7 +210,9 @@ public static int EvaluatePasswordStrength(string password)
 
 ---
 
-### OPT-02 — BrushConverter создаётся на каждый вызов в CreateAccount
+### OPT-02 — BrushConverter создаётся на каждый вызов в CreateAccount 🔄 ЧАСТИЧНО ИСПРАВЛЕНО (2026-05-18)
+
+> **Статус 2026-05-18:** В `PasswordReset.xaml.cs:34, 432` уже введён `static readonly BrushConverter BrushConverterInstance = new();` и используется в обработчике. В `CreateAccount.xaml.cs:204` всё ещё создаётся `new BrushConverter()` на каждый keystroke — надо перенести тот же паттерн.
 
 **Проблема / Описание**  
 В `CreateAccount.xaml.cs` при каждом нажатии клавиши создаётся новый `BrushConverter` через `new BrushConverter()`. `BrushConverter` — тяжёлый объект WPF-конвертации.
@@ -537,7 +548,7 @@ public class EvaluatePasswordStrengthTests
 | SEC-03 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs                          |
 | SEC-04 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs   |
 | OPT-01 | Оптимизация  | 🟡 Низкая   | SecurityUtilities.cs                          |
-| OPT-02 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs                         |
+| OPT-02 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs (🔄 PasswordReset.xaml.cs уже исправлен 2026-05-18) |
 | OPT-03 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs + PasswordReset.xaml.cs |
 | BUG-01 | Баг          | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs   |
 | BUG-02 | Баг          | 🟡 Низкая   | PasswordValidator.cs                          |

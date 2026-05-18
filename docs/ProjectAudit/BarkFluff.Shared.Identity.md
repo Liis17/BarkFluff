@@ -2,6 +2,7 @@
 
 > **Область аудита:** `Shared/BarkFluff.Shared.Identity` и всей инфраструктуры идентификации — `JwtService`, `XAuthExtensions`, `TokenRevocationCache`, `UserContext`, `RefreshTokenGenerator`, `PasswordHasher`, `AuthCommandHandler`, `RefreshTokensStorage`.
 > **Дата:** 2026-05-06
+> **Последняя проверка:** 2026-05-18
 > **Статус:** Активный
 
 ---
@@ -42,6 +43,8 @@
 ---
 
 ### SEC-01 — SHA-256 без соли для хэширования паролей
+
+> ⚠️ **Статус (2026-05-18):** Частично исправлена. Backend/BarkFluff.Identity/Services/PasswordHasher.cs теперь использует BCrypt (work factor 12), legacy SHA-256 оставлен для миграции с FixedTimeEquals. НО: Backend/BarkFluff.Users/Helpers/PasswordHasher.cs по-прежнему чистый SHA-256 без соли (см. NEW-S-1).
 
 **Проблема / Описание**
 Пароли хэшируются через SHA-256 без соли. SHA-256 — криптографически стойкая хэш-функция общего назначения, но **не предназначена для хэширования паролей**: она чрезвычайно быстра (миллиарды итераций/сек на GPU), что делает брутфорс и атаки по словарю тривиальными. Отсутствие соли позволяет использовать радужные таблицы.
@@ -86,6 +89,8 @@ public static class PasswordHasher
 ---
 
 ### SEC-02 — `new Random()` для генерации Refresh-токенов
+
+> ✅ **Статус (2026-05-18):** Исправлена. RefreshTokenGenerator.cs:9 использует RandomNumberGenerator.GetBytes(32).
 
 **Проблема / Описание**
 `System.Random` — псевдослучайный генератор, **не криптографически стойкий**. Злоумышленник, зная алгоритм и seed (который может быть предсказуем), может предсказать сгенерированные токены. Длина токена — 20 символов (алфавит ≈ 62 символа) — это ~119 бит энтропии при честном RNG, но на практике с `Random` — намного меньше.
@@ -132,6 +137,8 @@ public static class RefreshTokenGenerator
 ---
 
 ### SEC-03 — Refresh-токен не имеет индекса в БД и хранится в открытом виде
+
+> ⚠️ **Статус (2026-05-18):** Частично исправлена. Индекс IX_RefreshTokens_Value добавлен миграцией 20260507005955_SecurityHardening. Токен по-прежнему хранится plaintext (см. NEW-S-2).
 
 **Проблема / Описание**
 `RefreshToken.Value` — строка без индекса в сущности EF. Поиск `FirstOrDefaultAsync(x => x.Value == refreshToken)` — полный table scan. Кроме того, токен хранится в открытом виде: компрометация БД = компрометация всех сессий.
@@ -195,6 +202,8 @@ private static string ComputeHash(string value)
 
 ### SEC-04 — Email OTP-код хранится в открытом виде в БД и не имеет TTL
 
+> ⚠️ **Статус (2026-05-18):** Актуальна. Поле LastEmailAuthCode не имеет TTL, после успешной проверки не сбрасывается (см. NEW-S-3).
+
 **Проблема / Описание**
 `LastEmailAuthCode` записывается в `authPropertiesStorage` как plaintext-строка и никогда не инвалидируется после использования (нет поля `LastEmailAuthCodeExpiresAt`, нет сброса после успешного использования). Любой доступ к БД раскрывает текущий OTP. Повторное использование кода не защищено.
 
@@ -242,6 +251,8 @@ await authPropertiesStorage.ClearEmailAuthCode(user.User.Id);
 ---
 
 ### SEC-05 — Отсутствие Rate Limiting при аутентификации (Brute-force)
+
+> ✅ **Статус (2026-05-18):** Актуальна. В AuthCommandHandler.Handle нет ни rate limiting, ни lockout.
 
 **Проблема / Описание**
 Endpoint авторизации (`AuthCommandHandler`) не имеет никакой защиты от перебора. Злоумышленник может отправлять неограниченное количество запросов с разными паролями. При слабом хэше пароля (SEC-01) атака становится ещё опаснее.
@@ -295,6 +306,8 @@ private async Task IncrementFailedAttempts(long userId)
 
 ### SEC-06 — `TokenRevocationCache` — in-memory revocation, не работает в multi-instance
 
+> ✅ **Статус (2026-05-18):** Актуальна. TokenRevocationCache по-прежнему ConcurrentDictionary in-memory.
+
 **Проблема / Описание**
 Отзыв токенов хранится исключительно в памяти одного инстанса (`ConcurrentDictionary`). В multi-instance сценарии (несколько реплик сервиса, что типично в Docker/k8s) отзыв токена на одном инстансе не распространяется на другие. Токен будет считаться действительным на остальных репликах.
 
@@ -346,6 +359,8 @@ public class TokenRevocationCache(IConnectionMultiplexer redis)
 
 ### SEC-07 — Срок действия Service-токена — вечность (9999 год)
 
+> ✅ **Статус (2026-05-18):** Актуальна. JwtService.cs:41 без изменений.
+
 **Проблема / Описание**
 Service-токены генерируются с датой истечения `9999-12-31`. Если такой токен утечёт (например, через логи, утечку конфигурации), он будет действителен практически вечно. Стандарт безопасности требует минимально необходимого срока жизни токенов.
 
@@ -381,6 +396,8 @@ public string GenerateServerToken(ServiceId serviceId)
 
 ### SEC-08 — `JwtSettings.SecretKey` без валидации минимальной длины
 
+> ⚠️ **Статус (2026-05-18):** Частично исправлена. ValidateIssuerSigningKey=true применён, но валидация длины ключа при старте отсутствует. Дополнительно: рассинхрон UTF8/ASCII (см. NEW-B-1).
+
 **Проблема / Описание**
 Секретный ключ берётся из конфигурации без проверки длины. HMAC-SHA256 требует минимум 256 бит (32 байта). Слабый ключ делает JWT легко подделываемыми.
 
@@ -411,6 +428,8 @@ IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
 ---
 
 ### SEC-09 — `x-auth-token` в заголовке — токен не protected от логирования
+
+> ✅ **Статус (2026-05-18):** Исправлена. XAuthExtensions не логирует значение токена.
 
 **Проблема / Описание**
 Токен передаётся в HTTP-заголовке `x-auth-token`. Стандартный логгер ASP.NET Core, nginx-логи, gRPC-трассировка и APM-инструменты по умолчанию могут логировать заголовки запросов. Access token в логах = долгосрочный секрет в plaintext.
@@ -451,6 +470,8 @@ app.Use(async (context, next) =>
 
 ### SEC-10 — Email OTP без защиты от timing attack
 
+> ✅ **Статус (2026-05-18):** Актуальна. AuthCommandHandler.cs:181-182 использует string.Equals, не FixedTimeEquals.
+
 **Проблема / Описание**
 Сравнение Email OTP кода выполняется через `string.Equals` — обычное строковое сравнение. Атака по времени (timing attack) позволяет определить правильный префикс кода, замеряя время ответа.
 
@@ -483,6 +504,8 @@ if (!CryptographicOperations.FixedTimeEquals(expected, actual))
 ---
 
 ### OPT-01 — `TokenRevocationCache.Cleanup()` итерирует весь словарь каждые 5 минут
+
+> ✅ **Статус (2026-05-18):** Актуальна, но приемлема для текущих объёмов. TokenRevocationCleanupService вызывает Cleanup() каждые 5 минут в фоне.
 
 **Проблема / Описание**
 `CleanupService` итерирует **весь** `ConcurrentDictionary` каждые 5 минут. При большом количестве отозванных сессий это блокирует потоки. Оптимальнее — хранить ключи с их TTL и использовать структуру с автоматическим устареванием.
@@ -530,6 +553,8 @@ public class TokenRevocationCache(IMemoryCache cache)
 
 ### OPT-02 — `RefreshTokensStorage.FindRefreshToken` — поиск по неиндексированной строке
 
+> ✅ **Статус (2026-05-18):** Исправлена. Индекс IX_RefreshTokens_Value добавлен.
+
 **Проблема / Описание**
 Метод `FindRefreshToken` выполняет поиск по полю `Value` без индекса — это full table scan при каждом обновлении access token. При большом количестве сессий это узкое место производительности.
 
@@ -560,6 +585,8 @@ modelBuilder.Entity<RefreshToken>(entity =>
 ---
 
 ### OPT-03 — `UpdateActivity` в `TokenService` делает двойной `FindById`
+
+> ✅ **Статус (2026-05-18):** Актуальна. AdminPanel TokenService по-прежнему делает два FindById.
 
 **Проблема / Описание**
 `ValidateToken` вызывает `FindById`, затем вызывает `UpdateActivity`, которая снова делает `FindById` — итого 2 запроса к БД вместо 1 при каждом запросе через AdminPanel.
@@ -613,6 +640,8 @@ public AuthToken? ValidateToken(Guid tokenId)
 
 ### OPT-04 — `AuthCommandHandler` вызывает `GetUserContactsAsync` до трёх раз за один запрос
 
+> ⚠️ **Статус (2026-05-18):** Частично исправлена. До 3 вызовов в определённых сценариях сохраняется (строки 114, 214, 283 в AuthCommandHandler).
+
 **Проблема / Описание**
 За один успешный `Handle` вызов в зависимости от пути выполнения `GetUserContactsAsync` вызывается 2–3 раза: при отправке Email OTP, при неудачном пароле и при успешном входе. Каждый вызов — gRPC round-trip к Users сервису.
 
@@ -654,6 +683,8 @@ var info = await GetContactInfo(); // gRPC вызов только при пер
 
 ### BUG-01 — `UserContext.IsAuthenticated` для Service-токенов всегда `false`
 
+> ✅ **Статус (2026-05-18):** Актуальна. UserContext.cs:15 не учитывает TokenType.Service.
+
 **Проблема / Описание**
 `IsAuthenticated` проверяет `UserId != 0`, но Service-токены не содержат клейм `x-user-id` — `UserId` всегда будет `0`. Любой код, использующий `userContext.IsAuthenticated` для проверки авторизации сервисных вызовов, получит `false` даже при валидном Service-токене.
 
@@ -680,6 +711,8 @@ public bool IsAuthenticated => TokenType switch
 ---
 
 ### BUG-02 — `DeleteRefreshToken` не проверяет принадлежность `userId`
+
+> ✅ **Статус (2026-05-18):** Исправлена. DeleteRefreshTokensByDeviceId фильтрует по deviceId && userId.
 
 **Проблема / Описание**
 Метод `DeleteRefreshToken(long id, long userId)` принимает `userId`, но ищет токен **только по `id`** — `userId` не используется в запросе. Злоумышленник, зная чужой `id` токена, может удалить сессию другого пользователя.
@@ -721,6 +754,8 @@ public async Task DeleteRefreshToken(long id, long userId)
 
 ### BUG-03 — `IdentityClaims` и enum `TokenType` сравниваются через `.ToString()` без проверки регистра
 
+> ✅ **Статус (2026-05-18):** Исправлена. XAuthExtensions.cs использует nameof(TokenType.Service)/nameof(TokenType.User).
+
 **Проблема / Описание**
 В `XAuthExtensions` политики авторизации сравнивают значение клейма с `"Service"` / `"User"` (PascalCase). Если когда-либо будет изменён `TokenType.ToString()` или добавлен `[EnumMember]`, сравнение сломается молча.
 
@@ -756,6 +791,8 @@ options.AddPolicy(nameof(TokenType.Service),
 
 ### BUG-04 — `ServiceId.Unknown = 0` — может быть случайно использован как валидный сервис
 
+> ✅ **Статус (2026-05-18):** Актуальна. ServiceId.cs:5 без изменений.
+
 **Проблема / Описание**
 Первый член enum `ServiceId` имеет значение `0`, что является значением по умолчанию в C# для `enum`-полей. Любое неинициализированное поле типа `ServiceId` будет иметь значение `Unknown`. Если где-то сервисный токен будет создан с дефолтным значением — он пройдёт валидацию как токен с `ServiceId = "Unknown"`.
 
@@ -788,6 +825,8 @@ public string GenerateServerToken(ServiceId serviceId)
 ---
 
 ### BUG-05 — `RefreshToken.ExpiresAt` не проверяется при использовании токена
+
+> ✅ **Статус (2026-05-18):** Исправлена. CreateTokenCommandHandler.cs:22 проверяет accessToken.ExpiresAt.
 
 **Проблема / Описание**
 `RefreshToken` содержит поле `ExpiresAt`, но при поиске токена через `FindRefreshToken` нет проверки, что токен не истёк. Устаревший refresh-токен считается валидным до тех пор, пока не будет удалён вручную.
@@ -826,6 +865,8 @@ public async Task<RefreshToken?> FindRefreshToken(string refreshToken)
 ---
 
 ### MISC-01 — `JwtSettings` — properties без `required` или `init` (nullable warnings)
+
+> ✅ **Статус (2026-05-18):** Актуальна. Свойства JwtSettings без required modifier.
 
 **Проблема / Описание**
 Все свойства `JwtSettings` объявлены как `string` без `required` или `= null!`. При включённом `<Nullable>enable</Nullable>` — предупреждения компилятора. При отсутствии конфигурации — `NullReferenceException` в runtime вместо информативного сообщения при старте.
@@ -875,6 +916,8 @@ builder.Services.AddOptions<JwtSettings>()
 
 ### MISC-02 — Дублирование `PasswordHasher` в двух проектах
 
+> ✅ **Статус (2026-05-18):** Актуальна (усугублена). Два хешера теперь используют РАЗНЫЕ алгоритмы (BCrypt в Identity, SHA-256 в Users) — см. NEW-S-1.
+
 **Проблема / Описание**
 Идентичный по назначению класс `PasswordHasher` существует в двух местах: `BarkFluff.Identity/Services/PasswordHasher.cs` и `BarkFluff.Users/Helpers/PasswordHasher.cs`. Если алгоритм хэширования изменится (что необходимо — см. SEC-01), его нужно менять в двух местах.
 
@@ -912,6 +955,8 @@ public static class PasswordHasher
 
 ### MISC-03 — `TokenType` и `ServiceId` — trailing comma в последнем члене enum
 
+> ✅ **Статус (2026-05-18):** Актуальна. ServiceId.cs:30 сохраняет trailing comma.
+
 **Проблема / Описание**
 `ServiceId.cs` содержит лишнюю запятую после последнего члена `Developers = 12,`. Хотя это допустимо синтаксически в C#, это нарушает единообразие с `TokenType`, где последний член не имеет запятой. Незначительная проблема стиля.
 
@@ -936,29 +981,123 @@ public enum ServiceId
 
 ---
 
+---
+
+## 🆕 Новые проблемы (обнаружены 2026-05-18)
+
+---
+
+### NEW-S-1 — Users.PasswordHasher по-прежнему SHA-256 без соли (CRITICAL)
+
+**Файл:** `Backend/BarkFluff.Users/Helpers/PasswordHasher.cs : 8-13`
+
+**Проблема:** `HashPassword` вызывает `SHA256.Create().ComputeHash(...)` без соли, без BCrypt. Используется при регистрации/смене пароля в Users-сервисе. Поскольку Identity-сервис проверяет legacy SHA-256 путь — все новые пользователи фактически получают небезопасный хеш, обходя BCrypt-миграцию.
+
+**Решение:** Заменить на `BCrypt.Net.BCrypt.HashPassword(password, 12)` или вынести единый хешер в Shared-проект.
+
+---
+
+### NEW-S-2 — Refresh-токен хранится в plaintext (HIGH)
+
+**Файл:** `Backend/BarkFluff.Identity/Persistence/Services/RefreshTokensStorage.cs : 13-15`, `Domain/RefreshToken.cs : 10`
+
+**Проблема:** `Value` в БД — plaintext Base64. При SQL-injection или утечке дампа БД атакующий получает все действующие refresh-токены. Индекс добавлен (SEC-03 частично), но хеширования нет.
+
+**Решение:** Хранить `SHA-256(token)` или `BLAKE2(token)`, при поиске хешировать входящее значение.
+
+---
+
+### NEW-S-3 — Email OTP не сбрасывается после успешного использования (HIGH)
+
+**Файл:** `Backend/BarkFluff.Identity/Features/Auth/AuthCommandHandler.cs : 177-195`, `Persistence/Services/AuthPropertiesStorage.cs : 122-143`
+
+**Проблема:** После успешной проверки Email OTP код в `AuthUserProperty.LastEmailAuthCode` не обнуляется. Один и тот же код работает повторно до следующей генерации. Нет поля `LastEmailAuthCodeSentAt` — TTL (5-10 мин) не реализован.
+
+**Решение:** После успешного входа вызвать `UpdateLastEmailAuthCode(userId, null)`. Добавить `LastEmailAuthCodeSentAt` и проверку срока действия.
+
+---
+
+### NEW-S-4 — Refresh-токен живёт 9999 дней без ротации (CRITICAL)
+
+**Файл:** `Backend/BarkFluff.Identity/Features/Auth/AuthCommandHandler.cs : 28`
+
+**Проблема:** Константа `ExpDaysRefreshToken = 9999` — токен выдаётся на ~27 лет. При компрометации (утечка БД, MITM) сессия активна фактически бессрочно. Ротации refresh-токена при использовании в `CreateToken` нет.
+
+**Решение:** Установить разумный TTL (30-90 дней), реализовать ротацию refresh-токена при каждом использовании.
+
+---
+
+### NEW-S-5 — Отсутствует ротация refresh-токена при использовании (HIGH)
+
+**Файл:** `Backend/BarkFluff.Identity/Features/CreateToken/CreateTokenCommandHandler.cs : 15-46`
+
+**Проблема:** При обновлении access-токена через `CreateToken` refresh-токен не ротируется: старый остаётся в БД, новый не создаётся. Компрометированный refresh-токен может использоваться многократно без детектирования (нет механизма обнаружения повторного использования).
+
+**Решение:** Атомарно удалять старый refresh-токен и создавать новый при каждом вызове `CreateToken`. Реализовать reuse detection: если используется уже отозванный токен — отозвать всю цепочку сессий.
+
+---
+
+### NEW-O-1 — Race condition при Email OTP (MED)
+
+**Файл:** `Backend/BarkFluff.Identity/Features/Auth/AuthCommandHandler.cs : 115-117`
+
+**Проблема:** Два параллельных запроса логина с одним email генерируют два разных кода и оба вызывают `UpdateLastEmailAuthCode`. Второй перезаписывает первый; пользователь получил первый email, но в БД уже второй код — аутентификация провалится.
+
+**Решение:** Добавить оптимистичную блокировку или генерировать новый код только если `LastEmailAuthCodeSentAt` старше TTL.
+
+---
+
+### NEW-O-2 — Captive Dependency: DbContext в Storage-сервисах (HIGH)
+
+**Файл:** `Backend/BarkFluff.Identity/Persistence/Services/RefreshTokensStorage.cs : 9`, `AuthPropertiesStorage.cs : 11`
+
+**Проблема:** `IdentityContext` инжектируется в Storage через конструктор. Если Storage зарегистрирован как Singleton или Scoped в неподходящем scope — возникает Captive Dependency: один DbContext используется из нескольких потоков одновременно, что не thread-safe.
+
+**Решение:** Убедиться что Storage-сервисы зарегистрированы как Scoped; либо инжектировать `IDbContextFactory<IdentityContext>`.
+
+---
+
+### NEW-B-1 — Рассинхрон UTF8/ASCII для JWT SecretKey (MED)
+
+**Файл:** `Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs : 26` vs `Backend/BarkFluff.Identity/Services/JwtService.cs : 50`
+
+**Проблема:** `JwtService` подписывает токен ключом через `Encoding.UTF8.GetBytes(SecretKey)`, а `XAuthExtensions` валидирует через `Encoding.ASCII.GetBytes(SecretKey)`. Если ключ содержит символы вне ASCII (кириллица, спецсимволы) — подпись не совпадёт, все токены станут невалидными.
+
+**Решение:** Использовать одинаковую кодировку (UTF8) в обоих местах.
+
+---
+
 ## Сводная таблица проблем
 
-| ID | Категория | Серьёзность | Файл | Краткое описание |
-|----|-----------|-------------|------|-----------------|
-| SEC-01 | Безопасность | 🔴 Критическая | `PasswordHasher.cs` | SHA-256 без соли для паролей |
-| SEC-02 | Безопасность | 🔴 Критическая | `RefreshTokenGenerator.cs` | `new Random()` — не CSPRNG |
-| SEC-03 | Безопасность | 🟠 Высокая | `RefreshToken.cs` | Нет индекса, токен в открытом виде |
-| SEC-04 | Безопасность | 🟠 Высокая | `AuthCommandHandler.cs` | Email OTP без TTL и очистки |
-| SEC-05 | Безопасность | 🟠 Высокая | `AuthCommandHandler.cs` | Нет Rate Limiting (brute-force) |
-| SEC-06 | Безопасность | 🟡 Средняя | `TokenRevocationCache.cs` | In-memory revocation, не масштабируется |
-| SEC-07 | Безопасность | 🟡 Средняя | `JwtService.cs` | Service-токен живёт до 9999 года |
-| SEC-08 | Безопасность | 🟡 Средняя | `XAuthExtensions.cs` | Нет валидации длины SecretKey |
-| SEC-09 | Безопасность | 🟡 Средняя | `XAuthExtensions.cs` | Токен в заголовке — риск логирования |
-| SEC-10 | Безопасность | 🟡 Средняя | `AuthCommandHandler.cs` | Timing attack на Email OTP |
-| OPT-01 | Оптимизация | 🟡 Средняя | `TokenRevocationCache.cs` | O(N) итерация при очистке |
-| OPT-02 | Оптимизация | 🟡 Средняя | `RefreshTokensStorage.cs` | Нет индекса на RefreshToken.Value |
-| OPT-03 | Оптимизация | 🟢 Низкая | `TokenService.cs` | Двойной FindById в ValidateToken |
-| OPT-04 | Оптимизация | 🟡 Средняя | `AuthCommandHandler.cs` | До 3 gRPC вызовов GetUserContacts |
-| BUG-01 | Баг | 🟠 Высокая | `UserContext.cs` | IsAuthenticated=false для Service-токенов |
-| BUG-02 | Баг | 🟠 Высокая | `RefreshTokensStorage.cs` | DeleteRefreshToken не проверяет userId |
-| BUG-03 | Баг | 🟡 Средняя | `XAuthExtensions.cs` | Магические строки для TokenType |
-| BUG-04 | Баг | 🟡 Средняя | `ServiceId.cs` | Unknown=0 как значение по умолчанию |
-| BUG-05 | Баг | 🟠 Высокая | `RefreshTokensStorage.cs` | ExpiresAt не проверяется при поиске |
-| MISC-01 | Code Quality | 🟢 Низкая | `JwtSettings.cs` | Нет required/валидации |
-| MISC-02 | Code Quality | 🟢 Низкая | `PasswordHasher.cs` × 2 | Дублирование класса |
-| MISC-03 | Code Quality | ⚪ Минимальная | `ServiceId.cs` | Trailing comma в enum |
+| ID | Категория | Серьёзность | Статус | Файл | Краткое описание |
+|----|-----------|-------------|--------|------|-----------------|
+| SEC-01 | Безопасность | 🔴 Критическая | 🟡 Частично | `PasswordHasher.cs` | SHA-256 без соли для паролей |
+| SEC-02 | Безопасность | 🔴 Критическая | ✅ Исправлена | `RefreshTokenGenerator.cs` | `new Random()` — не CSPRNG |
+| SEC-03 | Безопасность | 🟠 Высокая | 🟡 Частично | `RefreshToken.cs` | Нет индекса, токен в открытом виде |
+| SEC-04 | Безопасность | 🟠 Высокая | 🟠 Актуальна | `AuthCommandHandler.cs` | Email OTP без TTL и очистки |
+| SEC-05 | Безопасность | 🟠 Высокая | 🟠 Актуальна | `AuthCommandHandler.cs` | Нет Rate Limiting (brute-force) |
+| SEC-06 | Безопасность | 🟡 Средняя | 🟠 Актуальна | `TokenRevocationCache.cs` | In-memory revocation, не масштабируется |
+| SEC-07 | Безопасность | 🟡 Средняя | 🟠 Актуальна | `JwtService.cs` | Service-токен живёт до 9999 года |
+| SEC-08 | Безопасность | 🟡 Средняя | 🟡 Частично | `XAuthExtensions.cs` | Нет валидации длины SecretKey |
+| SEC-09 | Безопасность | 🟡 Средняя | ✅ Исправлена | `XAuthExtensions.cs` | Токен в заголовке — риск логирования |
+| SEC-10 | Безопасность | 🟡 Средняя | 🟠 Актуальна | `AuthCommandHandler.cs` | Timing attack на Email OTP |
+| OPT-01 | Оптимизация | 🟡 Средняя | 🟠 Актуальна | `TokenRevocationCache.cs` | O(N) итерация при очистке |
+| OPT-02 | Оптимизация | 🟡 Средняя | ✅ Исправлена | `RefreshTokensStorage.cs` | Нет индекса на RefreshToken.Value |
+| OPT-03 | Оптимизация | 🟢 Низкая | 🟠 Актуальна | `TokenService.cs` | Двойной FindById в ValidateToken |
+| OPT-04 | Оптимизация | 🟡 Средняя | 🟡 Частично | `AuthCommandHandler.cs` | До 3 gRPC вызовов GetUserContacts |
+| BUG-01 | Баг | 🟠 Высокая | 🟠 Актуальна | `UserContext.cs` | IsAuthenticated=false для Service-токенов |
+| BUG-02 | Баг | 🟠 Высокая | ✅ Исправлена | `RefreshTokensStorage.cs` | DeleteRefreshToken не проверяет userId |
+| BUG-03 | Баг | 🟡 Средняя | ✅ Исправлена | `XAuthExtensions.cs` | Магические строки для TokenType |
+| BUG-04 | Баг | 🟡 Средняя | 🟠 Актуальна | `ServiceId.cs` | Unknown=0 как значение по умолчанию |
+| BUG-05 | Баг | 🟠 Высокая | ✅ Исправлена | `RefreshTokensStorage.cs` | ExpiresAt не проверяется при поиске |
+| MISC-01 | Code Quality | 🟢 Низкая | 🟠 Актуальна | `JwtSettings.cs` | Нет required/валидации |
+| MISC-02 | Code Quality | 🟢 Низкая | 🟠 Актуальна | `PasswordHasher.cs` × 2 | Дублирование класса (усугублена) |
+| MISC-03 | Code Quality | ⚪ Минимальная | 🟠 Актуальна | `ServiceId.cs` | Trailing comma в enum |
+| NEW-S-1 | Безопасность | 🔴 Критическая | 🆕 Новая | `Users/PasswordHasher.cs` | SHA-256 без соли в Users-сервисе |
+| NEW-S-2 | Безопасность | 🟠 Высокая | 🆕 Новая | `RefreshTokensStorage.cs` | Refresh-токен хранится plaintext |
+| NEW-S-3 | Безопасность | 🟠 Высокая | 🆕 Новая | `AuthCommandHandler.cs` | OTP не сбрасывается после использования |
+| NEW-S-4 | Безопасность | 🔴 Критическая | 🆕 Новая | `AuthCommandHandler.cs` | Refresh-токен живёт 9999 дней |
+| NEW-S-5 | Безопасность | 🟠 Высокая | 🆕 Новая | `CreateTokenCommandHandler.cs` | Нет ротации refresh-токена при использовании |
+| NEW-O-1 | Оптимизация | 🟡 Средняя | 🆕 Новая | `AuthCommandHandler.cs` | Race condition при Email OTP |
+| NEW-O-2 | Архитектура | 🟠 Высокая | 🆕 Новая | `RefreshTokensStorage.cs` | Captive Dependency: DbContext в Storage |
+| NEW-B-1 | Баг | 🟡 Средняя | 🆕 Новая | `XAuthExtensions.cs` / `JwtService.cs` | Рассинхрон UTF8/ASCII для JWT ключа |

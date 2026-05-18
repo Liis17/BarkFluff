@@ -1,10 +1,24 @@
 # Аудит проекта: BarkFluff.Users
 
-> **Дата:** 2025  
+> **Дата создания:** 2025  
+> **Последняя проверка актуальности:** 2026-05-18  
 > **Ветка:** `dev`  
 > **Расположение:** `Backend/BarkFluff.Users/`  
 > **Порт:** 7001  
 > **Автор аудита:** GitHub Copilot (BarkfluffAgent)
+
+## Сводка по статусу актуальности (2026-05-18)
+
+Все 21 находка из аудита **остаются актуальны**. Уточнения по строкам/файлам:
+
+- **SEC-01** — `AddDraftUserCommandHandler.cs:35-39, 37, 64` — email логируется не только при создании, но и при конфликте/успехе.
+- **SEC-02** — `AddDraftUserCommandHandler.cs:43` и `ChangeUsernameCommandHandler.cs:33, 47` — есть `Trim()`, но regex-валидации формата по-прежнему нет.
+- **SEC-04** — актуальные строки `UsersApiService.cs:82-99` (`CheckExistEmail`/`CheckExistUsername` помечены `[AllowAnonymous]`).
+- **BUG-04** — `UsersApiService.cs:131` и `ChangeBioCommandHandler.cs:46` — `Bio` всё ещё передаётся без `Trim()`.
+- **CODE-02** — две папки миграций сохраняются: `Persistence/Migrations/` (17 файлов) и `Migrations/` (14 файлов). Решение о консолидации не принято.
+- **CODE-03** — все Storage по-прежнему `Transient`, `UserInfoQueueSender` — `Scoped`, `ReservedUsernamesService` — `Singleton` (`Program.cs:45-52`).
+
+Структура проекта расширилась: добавились фичи `Badges/`, `Devices/`, `Personalization/`, `Prekeys/`, `Privacy/`, `ChatFolder*`, `ListByIds/`, `OverrideDraftUser/` — это не отменяет старых находок, но указывает на рост поверхности воздействия (особенно для SEC-04 и CODE-04 — больше публичных gRPC-методов).
 
 ---
 

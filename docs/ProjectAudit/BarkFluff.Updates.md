@@ -1,9 +1,16 @@
 # Аудит проекта: BarkFluff.Updates
 
-> **Дата аудита:** 2025  
+> **Дата создания:** 2025  
+> **Последняя проверка актуальности:** 2026-05-18  
 > **Ветка:** `dev`  
 > **Покрытие:** все файлы проекта `Backend/BarkFluff.Updates`  
 > **Категории:** 🔴 Безопасность · 🟡 Оптимизация · 🟠 Баги · 🔵 Прочее
+
+## Сводка по статусу актуальности (2026-05-18)
+
+- 🔄 **Контекст изменился:** OPT-02 — в проекте появились generic-базы `Features/Shared/UserStreamSubscriptionsBase<T>` и `DeviceStreamSubscriptionsBase<T>`, но конкретные `StreamSubscriptionsManager` (для `NewMessageEvent`, `MessageReadEvent` и ещё 14 типов событий) от них **не наследуются** — дублирование сохраняется. MISC-03 — асимметрия `record vs class` сохраняется (`NewMessageNotification` — record, `ReadByNotification` — class).
+- ⚠️ **Остаётся:** SEC-01 (RabbitMQ без валидации, `Program.cs:53-56`), SEC-02 (нет лимита подписок), SEC-03 (`AddGrpcReflection` без проверки Environment — `Program.cs:25, 142`), OPT-01 (`Task.Run` в `NewMessageNotificationHandler.cs:47-73`, `ReadByNotificationHandler.cs:51-79`), OPT-03/04, OPT-05 (gauge добавлен через `Set()`, но монотонные счётчики `active_subscriptions`/`active_subscriptions_removed` сохраняются для совместимости), BUG-01 (race condition сохраняется), BUG-02, BUG-03 (`PushNotificationSchedulerHandler.cs:58, 129`), BUG-04, BUG-05, MISC-01, MISC-02 (`PushNotificationSchedulerHandler.cs:63`), MISC-04.
+- ℹ️ **Структура расширилась:** в `Features/` появились новые папки для подписок (`SubscribeMessageEdited`, `SubscribePinnedMessages`, `SubscribeSecretChats`, `SubscribeEncryptedMessages` и др.), каждая со своим `StreamSubscriptionsManager` — это умножает дубль из OPT-02.
 
 ---
 
@@ -231,7 +238,9 @@ await Task.WhenAll(sendTasks);
 
 ---
 
-### OPT-02 — Дублирование кода двух StreamSubscriptionsManager
+### OPT-02 — Дублирование кода двух StreamSubscriptionsManager 🔄 ЧАСТИЧНО (2026-05-18)
+
+> **Статус 2026-05-18:** В проекте появились базовые классы `Features/Shared/UserStreamSubscriptionsBase<T>` (≈59 строк) и `DeviceStreamSubscriptionsBase<T>`. Они **не используются** конкретными `StreamSubscriptionsManager` — те остаются standalone дубликатами. Количество дубликатов выросло до ≈16 (новые подписки добавились: `SubscribeMessageEdited`, `SubscribePinnedMessages`, `SubscribeSecretChats`, `SubscribeEncryptedMessages` и др.). Достаточно заменить тело каждого менеджера на `class StreamSubscriptionsManager : UserStreamSubscriptionsBase<NewMessageEvent>;`.
 
 **Проблема / Описание**  
 `Features/SubscribeNewMessages/StreamSubscriptionsManager.cs` и `Features/SubscribeMessagesRead/StreamSubscriptionsManager.cs` — **идентичны** по логике, отличаются только типом generic-параметра (`NewMessageEvent` vs `MessageReadEvent`). Любое изменение логики (например, добавление лимита из SEC-02) нужно вносить дважды.
@@ -382,7 +391,9 @@ var attachmentType = imageAttachment?.Type
 
 ---
 
-### OPT-05 — Метрики active_subscriptions не декрементируют, а инкрементируют отдельный счётчик
+### OPT-05 — Метрики active_subscriptions не декрементируют, а инкрементируют отдельный счётчик 🔄 ЧАСТИЧНО (2026-05-18)
+
+> **Статус 2026-05-18:** В `UpdatesApiService.cs` уже появились gauge-метрики через `_metrics.Set(...)` (см. строки 115-116, 143-144), но монотонные `_metrics.Increment("active_subscriptions")` (строка 114) и `_metrics.Increment("active_subscriptions_removed")` (строка 129) сохраняются — рекомендуется удалить устаревшие счётчики, оставив только gauge.
 
 **Проблема / Описание**  
 В `UpdatesApiService` при подключении инкрементируется `"active_subscriptions"`, а при отключении — `"active_subscriptions_removed"`. Это два независимых монотонных счётчика, а не один gauge. Посмотрев только на `active_subscriptions`, нельзя узнать реальное число активных соединений.

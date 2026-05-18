@@ -1,11 +1,20 @@
 # Аудит: BarkFluff.Shared.Queue
 
-> **Дата:** 2025-07  
-> **Версия проекта:** net9.0  
+> **Дата создания:** 2025-07  
+> **Последняя проверка актуальности:** 2026-05-18  
+> **Версия проекта:** net10.0  
 > **Расположение:** `Shared/BarkFluff.Shared.Queue/`  
 > **Аудитор:** GitHub Copilot / BarkfluffAgent  
 
 Библиотека содержит только POCO-классы событий для RabbitMQ (MassTransit). Несмотря на кажущуюся простоту, ряд архитектурных и типобезопасностных решений создаёт реальные дыры в безопасности, производительности и надёжности — особенно с учётом того, как эти события потребляются.
+
+## Сводка по статусу актуальности (2026-05-18)
+
+- ✅ **Исправлено:** BUG-03 (file-scoped namespace в `UserChangedBio.cs`), BUG-06 (параметр `newBio` в `UserInfoQueueSender`).
+- ⚠️ **Остаётся:** SEC-01, SEC-02, SEC-03, BUG-01, BUG-02, BUG-04, BUG-05, OPT-01, OPT-02, OPT-03, OPT-04, MISC-01, MISC-02, MISC-03, MISC-04.
+- 🔄 **Контекст изменился:** OPT-01 — расширилась структура каталога, добавились новые события (`NewEncryptedMessageEvent`, `SecretChatInviteEvent`, `PrivateChatInviteEvent` и др.); проблема незаполненных полей в `PushNotificationSchedulerHandler` (теперь строки 89-99) сохраняется.
+
+В каталоге `Messages/` теперь 20 файлов, `Notifications/` — 4, `Users/` — 5, `Identity/` — 1. Появились зашифрованные/секретные события, но они не имеют общей базы (см. MISC-01).
 
 ---
 
@@ -198,7 +207,9 @@ public class NewMessageEvent
 
 ---
 
-### BUG-03 — `UserChangedBio` использует блочный стиль namespace — несоответствие стилю
+### BUG-03 — `UserChangedBio` использует блочный стиль namespace — несоответствие стилю ✅ ИСПРАВЛЕНО (2026-05-18)
+
+> **Статус 2026-05-18:** Файл переписан с file-scoped namespace (`namespace BarkFluff.Shared.Queue.Users;`). Находка закрыта.
 
 **Проблема / Описание**  
 Все остальные файлы проекта используют file-scoped namespace (`namespace X.Y;`), а `UserChangedBio.cs` использует устаревший блочный стиль. Это само по себе не баг, но нарушает консистентность и создаёт лишние diff'ы при ревью.
@@ -292,7 +303,9 @@ public class UserChangedAvatar
 
 ---
 
-### BUG-06 — `UserInfoQueueSender.UserBioChangedEvent` — параметр назван `newUsername` вместо `newBio`
+### BUG-06 — `UserInfoQueueSender.UserBioChangedEvent` — параметр назван `newUsername` вместо `newBio` ✅ ИСПРАВЛЕНО (2026-05-18)
+
+> **Статус 2026-05-18:** Параметр переименован в `newBio` (см. `Backend/BarkFluff.Users/Infrastructure/UserInfoQueueSender.cs:74`). Находка закрыта.
 
 **Проблема / Описание**  
 Метод `UserBioChangedEvent(long userId, string newUsername)` принимает параметр `newUsername`, но передаёт его в `UserChangedBio.NewBio`. Это явная копипаста от `UsernameChangedEvent`. Имя параметра вводит в заблуждение и может привести к передаче username вместо bio при вызове.
@@ -335,6 +348,8 @@ public async Task UserBioChangedEvent(long userId, string newBio)
 ---
 
 ### OPT-01 — `PushNotificationEvent` дублирует данные, уже доступные в RabbitMQ-событии
+
+> **Статус 2026-05-18:** ⚠️ Остаётся. Актуальные строки — `PushNotificationSchedulerHandler.cs:89-99`. В `Publish(new PushNotificationEvent {…})` по-прежнему заполняются только `ChatId`, `SenderId`, `MessageId`, `MessageText`, `RecipientUserIds`, `ContentType`, `ImagePreviewUrl`, `AttachmentCount`; поля `SenderAvatarUrl`, `ChatTitle`, `ChatAvatarUrl`, `IsGroupChat` остаются null/default, и CloudMessaging продолжает делать лишние gRPC-вызовы.
 
 **Проблема / Описание**  
 `PushNotificationSchedulerHandler` вычисляет `SenderAvatarUrl`, `ChatTitle`, `ChatAvatarUrl`, `IsGroupChat` — но **не записывает** их в `PushNotificationEvent` перед публикацией. Вместо этого `PushNotificationConsumer` в CloudMessaging делает два дополнительных gRPC-вызова (`GetByIdAsync` и `GetChatInfoAsync`) для получения тех же данных.
@@ -675,10 +690,10 @@ public class SessionRevokedEvent
 | SEC-03 | Безопасность | 🟡 Средняя | `Notifications/Notification.cs` | `Payload` без инициализатора → NRE |
 | BUG-01 | Баг | 🔴 Высокая | `Messages/ReadReceiptEvent.cs` | Событие не потребляется нигде |
 | BUG-02 | Баг | 🔴 Высокая | `Messages/NewMessageEvent.cs` | `byte[]` и `List<long>` без инициализаторов → NRE |
-| BUG-03 | Баг | ⚪ Низкая | `Users/UserChangedBio.cs` | Устаревший namespace-стиль |
+| BUG-03 | Баг | ⚪ Низкая | `Users/UserChangedBio.cs` | ✅ Исправлено 2026-05-18 — file-scoped namespace |
 | BUG-04 | Баг | 🟡 Средняя | `Notifications/EmailNotification.cs` | `Title`/`Address` без инициализаторов → NRE |
 | BUG-05 | Баг | 🟡 Средняя | `Users/UserChangedAvatar.cs` | URL без инициализаторов → null в Redis |
-| BUG-06 | Баг | 🟡 Средняя | `UserInfoQueueSender.cs` | Параметр `newUsername` вместо `newBio` |
+| BUG-06 | Баг | 🟡 Средняя | `UserInfoQueueSender.cs` | ✅ Исправлено 2026-05-18 — параметр переименован в `newBio` |
 | OPT-01 | Оптимизация | 🟡 Средняя | `PushNotificationEvent.cs` + `PushNotificationSchedulerHandler.cs` | Поля события не заполняются → 2 лишних gRPC-вызова |
 | OPT-02 | Оптимизация | 🟡 Средняя | `UserChangedAvatarConsumer.cs` / `UserChangedNameConsumer.cs` | Последовательное обновление кеша |
 | OPT-03 | Оптимизация | 🟡 Средняя | `PendingPushTracker.cs` | Неограниченный словарь без TTL |
