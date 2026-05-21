@@ -207,6 +207,20 @@ services:
       RemoteServers__Msk__Port: "${MSK_SSH_PORT:-22}"
       RemoteServers__Msk__Username: "${MSK_SSH_USER:-root}"
       RemoteServers__Msk__Password: "${MSK_SSH_PASSWORD:-}"
+      Mail__SmtpHost: "${MAIL_SMTP_HOST:-}"
+      Mail__SmtpPort: "${MAIL_SMTP_PORT:-587}"
+      Mail__ImapHost: "${MAIL_IMAP_HOST:-}"
+      Mail__ImapPort: "${MAIL_IMAP_PORT:-993}"
+      Mail__Accounts__0__Address: "support@barkfluff.com"
+      Mail__Accounts__0__Password: "${MAIL_SUPPORT_PASSWORD:-}"
+      Mail__Accounts__1__Address: "help@barkfluff.com"
+      Mail__Accounts__1__Password: "${MAIL_HELP_PASSWORD:-}"
+      Mail__Accounts__2__Address: "noreply@barkfluff.com"
+      Mail__Accounts__2__Password: "${MAIL_NOREPLY_PASSWORD:-}"
+      Mail__Accounts__3__Address: "privacy@barkfluff.com"
+      Mail__Accounts__3__Password: "${MAIL_PRIVACY_PASSWORD:-}"
+      Mail__Accounts__4__Address: "security@barkfluff.com"
+      Mail__Accounts__4__Password: "${MAIL_SECURITY_PASSWORD:-}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db

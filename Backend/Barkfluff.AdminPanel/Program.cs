@@ -26,6 +26,9 @@ public class Program
 
         builder.WebHost.UseUrls("http://0.0.0.0:51888");
 
+        // Allow larger uploads for mail attachments (default Kestrel limit is 30 MB; bump to 25 MB explicit for clarity)
+        builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 25 * 1024 * 1024);
+
         // Загружаем конфигурацию из сервиса конфигурации
         builder.LoadConfiguration(ServiceId.Unknown);
 
@@ -37,6 +40,7 @@ public class Program
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
+        builder.Services.Configure<MailSettings>(builder.Configuration.GetSection(MailSettings.SectionName));
 
         // Register LiteDB DbContexts as Singletons
         builder.Services.AddSingleton<TokenDbContext>();
@@ -71,6 +75,9 @@ public class Program
 
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
+
+        // Register MailService as Singleton (IMAP connection pool per mailbox)
+        builder.Services.AddSingleton<MailService>();
 
         // Register TelegramBotService as Singleton
         builder.Services.AddSingleton<TelegramBotService>();
@@ -237,6 +244,9 @@ public class Program
         // Map Notifications Endpoints (push-рассылки)
         app.MapNotificationsEndpoints();
 
+        // Map Mail Endpoints (IMAP/SMTP для служебных ящиков)
+        app.MapMailEndpoints();
+
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -281,6 +291,7 @@ public class Program
         app.MapGet("/stickers", async context => await ServeHtmlFile(context, "stickers.html"));
         app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
         app.MapGet("/notifications", async context => await ServeHtmlFile(context, "notifications.html"));
+        app.MapGet("/mail", async context => await ServeHtmlFile(context, "mail.html"));
         app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, "s3-storage.html"));
         app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, "s3-browser.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));

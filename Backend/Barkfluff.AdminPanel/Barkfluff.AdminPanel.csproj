@@ -29,6 +29,7 @@
     <None Remove="Pages\s3-browser.html" />
     <None Remove="Pages\users.html" />
     <None Remove="Pages\notifications.html" />
+    <None Remove="Pages\mail.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -101,6 +102,9 @@
     <Content Include="Pages\notifications.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Pages\mail.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -114,6 +118,7 @@
     <PackageReference Include="AWSSDK.S3" Version="3.*" />
     <PackageReference Include="SSH.NET" Version="2024.2.0" />
     <PackageReference Include="LiteDB" Version="5.0.21" />
+    <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Seq.Api" Version="2025.2.2" />
