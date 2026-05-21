@@ -248,16 +248,10 @@ public class MailService : IAsyncDisposable
 
         message.Body = builder.ToMessageBody();
 
-        var smtpOption = _settings.SmtpPort switch
-        {
-            465 => SecureSocketOptions.SslOnConnect,
-            587 => SecureSocketOptions.StartTls,
-            25 => SecureSocketOptions.None,
-            _ => SecureSocketOptions.Auto
-        };
-
         using var smtp = new SmtpClient();
-        await smtp.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, smtpOption, ct);
+        if (_settings.AcceptInvalidCertificates)
+            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+        await smtp.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, GetSmtpSecurity(), ct);
         await smtp.AuthenticateAsync(account.Address, account.Password, ct);
         await smtp.SendAsync(message, ct);
         await smtp.DisconnectAsync(true, ct);
@@ -318,7 +312,13 @@ public class MailService : IAsyncDisposable
         {
             state.Client?.Dispose();
             state.Client = new ImapClient();
-            await state.Client.ConnectAsync(_settings.ImapHost, _settings.ImapPort, SecureSocketOptions.SslOnConnect, ct);
+            if (_settings.AcceptInvalidCertificates)
+                state.Client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+            await state.Client.ConnectAsync(
+                _settings.ImapHost,
+                _settings.ImapPort,
+                ParseSecurity(_settings.ImapSecurity, SecureSocketOptions.SslOnConnect),
+                ct);
         }
 
         if (!state.Client.IsAuthenticated)
@@ -326,6 +326,33 @@ public class MailService : IAsyncDisposable
             await state.Client.AuthenticateAsync(state.Address, state.Password, ct);
         }
     }
+
+    private SecureSocketOptions GetSmtpSecurity()
+    {
+        if (!string.IsNullOrWhiteSpace(_settings.SmtpSecurity) &&
+            !string.Equals(_settings.SmtpSecurity, "Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            return ParseSecurity(_settings.SmtpSecurity, SecureSocketOptions.Auto);
+        }
+        return _settings.SmtpPort switch
+        {
+            465 => SecureSocketOptions.SslOnConnect,
+            587 => SecureSocketOptions.StartTls,
+            25 => SecureSocketOptions.None,
+            _ => SecureSocketOptions.Auto
+        };
+    }
+
+    private static SecureSocketOptions ParseSecurity(string? value, SecureSocketOptions fallback) =>
+        (value ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "sslonconnect" => SecureSocketOptions.SslOnConnect,
+            "starttls" => SecureSocketOptions.StartTls,
+            "starttlswhenavailable" => SecureSocketOptions.StartTlsWhenAvailable,
+            "none" => SecureSocketOptions.None,
+            "auto" => SecureSocketOptions.Auto,
+            _ => fallback
+        };
 
     private static MailMessageDto MapSummary(IMessageSummary s)
     {

@@ -9,6 +9,15 @@ public class MailSettings
     public string ImapHost { get; set; } = string.Empty;
     public int ImapPort { get; set; } = 993;
 
+    /// <summary>SslOnConnect | StartTls | StartTlsWhenAvailable | None | Auto</summary>
+    public string ImapSecurity { get; set; } = "SslOnConnect";
+
+    /// <summary>SslOnConnect | StartTls | StartTlsWhenAvailable | None | Auto</summary>
+    public string SmtpSecurity { get; set; } = "Auto";
+
+    /// <summary>Принимать самоподписанные / невалидные сертификаты у почтового сервера.</summary>
+    public bool AcceptInvalidCertificates { get; set; }
+
     public List<MailAccountSettings> Accounts { get; set; } = new();
 }
 
