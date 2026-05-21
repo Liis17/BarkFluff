@@ -25,7 +25,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `TokenDbContext.cs` | LiteDB-контекст `db/tokens.db`. Коллекция `Tokens` с индексом по `LastActivity`. Singleton. Создаёт директорию при первом запуске. |
-| `MetricsCacheDbContext.cs` | LiteDB-контекст `db/metrics_cache.db`. Коллекции: `HourlyStats` (события Seq за час), `HourlyTraffic` (трафик для графиков), `HourlyServiceMetrics` (CPU/memory/запросы по сервисам). Singleton. |
+| `MetricsCacheDbContext.cs` | LiteDB-контекст `db/metrics_cache.db`. Коллекции: `HourlyStats` (события Seq за час), `HourlyTraffic` (трафик для графиков), `HourlyServiceMetrics` (CPU/memory/запросы по сервисам), `CompressionRuns` (история ежедневного сжатия логов-метрик). Singleton. |
 
 ---
 
@@ -41,6 +41,11 @@
 | `StickersEndpoints.cs` | `/api/stickers` | Управление стикерпаками: CRUD пака, CRUD стикеров, смена обложки, прокси S3. gRPC Files. |
 | `UsersEndpoints.cs` | `/api/users` | Поиск пользователей, полный профиль (параллельные gRPC-вызовы), назначение бейджей, лимит хранилища, отключение 2FA, аватар, удаление сессий. |
 | `SeqEndpoints.cs` | `/api/seq` | Проксирование логов из Seq, KPI-дашборд, трафик, метрики сервисов, статус сервисов (Seq + Docker). |
+| `LogsClearEndpoints.cs` | `/api/seq/clear` | Запуск и статус удаления логов из Seq (scope=all/old). |
+| `LogsExportEndpoints.cs` | `/api/seq/export` | Запуск, статус и скачивание ZIP-архива экспорта логов. |
+| `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
+| `NotificationsEndpoints.cs` | `/api/notifications` | Публикация push-рассылок (всем устройствам / по списку deviceId) через MassTransit. |
+| `RemoteDockerEndpoints.cs` | `/api/remote-docker` | Управление контейнерами на удалённых хостах по SSH. |
 | `ConfigurationEndpoints.cs` | `/api/configuration` | Чтение и обновление S3-конфигурации бакетов через gRPC Configuration. |
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
@@ -62,6 +67,10 @@
 | `AuthToken.cs` | Сессионный токен: `Id`, `Name`, `CreatedAt`, `LastActivity`, `IpAddress`, `UserAgent`, `AdminUsername`, `ApprovedByTelegramUserId`. Методы `IsExpired()`, `IsVisibleToAdmin()`. |
 | `PendingAuthRequest.cs` | In-memory запрос авторизации ожидающий подтверждения в Telegram. Статусы: Pending / Approved / Rejected / Expired. |
 | `SeqSettings.cs` | POCO-конфиг Seq: `ServerUrl`, `ApiKey`. |
+| `LogsClearJob.cs` | DTO для job'а удаления логов: `LogsClearScope` (All/Old), `LogsClearState`, счётчики. |
+| `LogsExportJob.cs` | DTO для job'а экспорта логов: `LogsExportScope`, `LogsExportState`, путь к ZIP. |
+| `LogsCompressionSettings.cs` | POCO-конфиг ежедневного сжатия логов-метрик: `Enabled`, `ScheduleUtcHour/Minute`, `MaxEventsPerRun`, `DryRun`, шаблоны Seq. |
+| `MetricsCompressionRun.cs` | Запись о завершённом прогоне сжатия (хранится в `MetricsCacheDbContext.CompressionRuns`): `DayUtc`, `CompletedAtUtc`, `ServiceCount`, `SourceEventCount`, `DeletedCount`, `DryRun`. |
 | `Dtos/AuthRequestDto.cs` | Входное тело `POST /api/auth/request`: nickname, tokenName, userAgent, browser, os, ipAddress. |
 | `Dtos/AuthStatusResponse.cs` | Ответ polling `/api/auth/status/{id}`: статус, причина ошибки. |
 | `Dtos/ContainerDtos.cs` | Docker DTO: `ContainerStatusDto`, `ContainerActionRequestDto`, `ContainerActionResponseDto`, `ImageInfoDto`. |
@@ -77,7 +86,10 @@
 | `PendingAuthService.cs` | In-memory словарь pending-запросов. Таймер каждые 60 сек удаляет истёкшие (> `PendingRequestTimeoutMinutes`). |
 | `TelegramBotService.cs` | `IHostedService` + Singleton. Инициализирует `TelegramBotClient` (optional proxy). Отправляет запрос подтверждения с кнопками Approve/Reject. Обрабатывает callback-кнопки и команды `/start`, `/tokens`, `/kill`, `/rename`, `/pending`. |
 | `DockerService.cs` | Запускает `docker` и `docker compose` через `Process` с `ArgumentList` (защита от shell injection). Self-управление через ephemeral helper-контейнер с docker.sock. |
-| `SeqService.cs` | `HttpClient` к Seq REST API: получение событий, SQL-запросы, постраничная загрузка, список сигналов. |
+| `SeqService.cs` | `HttpClient` к Seq REST API: получение событий, SQL-запросы, постраничная загрузка, список сигналов, удаление по фильтру (через пакет `Seq.Api`), запись событий в CLEF-формате (`POST /api/events/raw?clef`). |
+| `LogsClearService.cs` | Singleton + Timer cleanup. Управляет job'ами удаления логов из Seq: подсчёт через SQL, удаление через `Seq.Api`. TTL 30 минут после завершения. |
+| `LogsExportService.cs` | Singleton + Timer cleanup. Управляет job'ами экспорта: постраничная выгрузка событий в JSON-страницы, упаковка в ZIP в `/tmp/logs-export/`. |
+| `MetricsLogCompressorService.cs` | `IHostedService` + Singleton. Ежедневно в 03:00 UTC агрегирует логи-метрики (`@MessageTemplate = 'ServiceMetrics {@Metrics}'`) за вчерашний день: один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count по каждой метрике), затем удаление исходных через точный фильтр шаблона. Идемпотентность через `MetricsCacheDbContext.CompressionRuns`. |
 | `S3BrowserService.cs` | AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из gRPC Configuration. Методы: листинг бакетов/объектов, presigned URL (5 мин). |
 | `MetricsCollectorService.cs` | `IHostedService`. Запускается при старте + каждый час. Собирает события Seq за 24ч, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет устаревшие данные (Stats >24ч, ServiceMetrics >12ч). |
 

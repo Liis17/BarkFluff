@@ -40,6 +40,7 @@ public class Program
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
+        builder.Services.Configure<LogsCompressionSettings>(builder.Configuration.GetSection(LogsCompressionSettings.SectionName));
         builder.Services.Configure<MailSettings>(builder.Configuration.GetSection(MailSettings.SectionName));
 
         // Register LiteDB DbContexts as Singletons
@@ -76,6 +77,10 @@ public class Program
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
 
+
+        // Register MetricsLogCompressorService — ежедневное сжатие логов-метрик в Seq в 03:00 UTC
+        builder.Services.AddSingleton<MetricsLogCompressorService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<MetricsLogCompressorService>());
         // Register MailService as Singleton (IMAP connection pool per mailbox)
         builder.Services.AddSingleton<MailService>();
 
@@ -216,6 +221,9 @@ public class Program
 
         // Map Logs Clear Endpoints
         app.MapLogsClearEndpoints();
+
+        // Map Logs Compression Endpoints (ручной триггер ежедневного сжатия метрик)
+        app.MapLogsCompressionEndpoints();
 
         // Map Docker Endpoints
         app.MapDockerEndpoints();
