@@ -362,9 +362,19 @@
                 </div>
             `;
 
+            const imageAtts = (d.attachments || []).filter(a => (a.mimeType || '').toLowerCase().startsWith('image/'));
+            const inlineImagesHtml = imageAtts.length === 0 ? '' : `
+                <div class="mt-4 space-y-3">
+                    ${imageAtts.map(a => {
+                        const url = `/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${d.uid}/attachments/${a.index}`;
+                        return `<div><a href="${url}" target="_blank" rel="noopener" class="inline-block"><img src="${url}" alt="${escapeHtml(a.fileName)}" loading="lazy" class="max-w-full max-h-[600px] rounded border border-slate-200 shadow-sm hover:shadow-md transition-shadow"></a></div>`;
+                    }).join('')}
+                </div>
+            `;
+
             const bodyHtml = d.htmlBody
                 ? `<iframe class="mail-body-frame" sandbox="" srcdoc="${escapeHtml(d.htmlBody)}"></iframe>`
-                : `<div class="h-full overflow-y-auto p-6"><div class="max-w-4xl mx-auto"><pre class="whitespace-pre-wrap break-words font-sans text-sm text-slate-800">${escapeHtml(d.textBody || '(пусто)')}</pre></div></div>`;
+                : `<div class="h-full overflow-y-auto p-6"><div class="max-w-4xl mx-auto"><pre class="whitespace-pre-wrap break-words font-sans text-sm text-slate-800">${escapeHtml(d.textBody || '(пусто)')}</pre>${inlineImagesHtml}</div></div>`;
 
             $('message-detail').innerHTML = `
                 <div class="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
