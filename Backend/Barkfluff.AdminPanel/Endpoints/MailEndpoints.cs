@@ -115,6 +115,35 @@ public static class MailEndpoints
         })
         .WithName("DownloadMailAttachment");
 
+        // GET /api/mail/{address}/messages/{uid}/inline/{cid} — inline attachment по Content-ID (для <img src="cid:...">)
+        group.MapGet("/{address}/messages/{uid:long}/inline/{cid}", async (
+            string address,
+            long uid,
+            string cid,
+            MailService mail,
+            HttpContext context,
+            CancellationToken ct) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            try
+            {
+                var att = await mail.GetInlineAttachmentAsync(address, (uint)uid, cid, ct);
+                if (att == null) return Results.NotFound();
+                return Results.File(att.Value.Bytes, att.Value.ContentType);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("DownloadMailInlineAttachment");
+
         // POST /api/mail/{address}/messages/{uid}/read
         group.MapPost("/{address}/messages/{uid:long}/read", async (
             string address,

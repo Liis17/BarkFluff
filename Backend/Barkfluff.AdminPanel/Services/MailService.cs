@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
@@ -116,6 +117,8 @@ public class MailService : IAsyncDisposable
                     GetAttachmentSize(p)))
                 .ToList();
 
+            var htmlBody = RewriteCidReferences(message.HtmlBody, message, address, uid);
+
             var fromMailbox = message.From.Mailboxes.FirstOrDefault();
             return new MailMessageDetailDto(
                 uid,
@@ -127,7 +130,7 @@ public class MailService : IAsyncDisposable
                 message.MessageId,
                 message.InReplyTo,
                 message.References?.ToList() ?? new List<string>(),
-                message.HtmlBody,
+                htmlBody,
                 message.TextBody,
                 attachments);
         }
@@ -165,6 +168,43 @@ public class MailService : IAsyncDisposable
             return (
                 string.IsNullOrEmpty(att.FileName) ? $"attachment_{idx}" : att.FileName,
                 att.ContentType?.MimeType ?? "application/octet-stream",
+                ms.ToArray());
+        }
+        finally
+        {
+            state.Lock.Release();
+        }
+    }
+
+    public async Task<(string FileName, string ContentType, byte[] Bytes)?> GetInlineAttachmentAsync(
+        string address, uint uid, string contentId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(contentId)) return null;
+        var account = GetAccountOrThrow(address);
+        var state = GetOrCreateState(account);
+
+        await state.Lock.WaitAsync(ct);
+        try
+        {
+            await EnsureConnectedAsync(state, ct);
+
+            var inbox = state.Client!.Inbox;
+            if (!inbox.IsOpen)
+                await inbox.OpenAsync(FolderAccess.ReadWrite, ct);
+
+            var message = await inbox.GetMessageAsync(new UniqueId(uid), ct);
+            if (message == null) return null;
+
+            var part = message.BodyParts
+                .OfType<MimePart>()
+                .FirstOrDefault(p => string.Equals(p.ContentId, contentId, StringComparison.Ordinal));
+            if (part == null) return null;
+
+            using var ms = new MemoryStream();
+            await part.Content.DecodeToAsync(ms, ct);
+            return (
+                string.IsNullOrEmpty(part.FileName) ? contentId : part.FileName,
+                part.ContentType?.MimeType ?? "application/octet-stream",
                 ms.ToArray());
         }
         finally
@@ -376,6 +416,27 @@ public class MailService : IAsyncDisposable
             isRead,
             hasAttachments,
             preview);
+    }
+
+    private static string? RewriteCidReferences(string? html, MimeMessage message, string address, uint uid)
+    {
+        if (string.IsNullOrEmpty(html)) return html;
+
+        var parts = message.BodyParts
+            .OfType<MimePart>()
+            .Where(p => !string.IsNullOrEmpty(p.ContentId))
+            .ToList();
+        if (parts.Count == 0) return html;
+
+        var addressEnc = Uri.EscapeDataString(address);
+        foreach (var p in parts)
+        {
+            var cid = p.ContentId;
+            var encoded = Uri.EscapeDataString(cid);
+            var url = $"/api/mail/{addressEnc}/messages/{uid}/inline/{encoded}";
+            html = Regex.Replace(html, "cid:" + Regex.Escape(cid), url, RegexOptions.IgnoreCase);
+        }
+        return html;
     }
 
     private static long GetAttachmentSize(MimePart part)

@@ -373,7 +373,7 @@
             `;
 
             const bodyHtml = d.htmlBody
-                ? `<iframe class="mail-body-frame" sandbox="" srcdoc="${escapeHtml(d.htmlBody)}"></iframe>`
+                ? `<iframe class="mail-body-frame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="${escapeHtml(d.htmlBody)}"></iframe>`
                 : `<div class="h-full overflow-y-auto p-6"><div class="max-w-4xl mx-auto"><pre class="whitespace-pre-wrap break-words font-sans text-sm text-slate-800">${escapeHtml(d.textBody || '(пусто)')}</pre>${inlineImagesHtml}</div></div>`;
 
             $('message-detail').innerHTML = `
