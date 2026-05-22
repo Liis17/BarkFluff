@@ -59,8 +59,8 @@ Barkfluff/
 
 Views → ViewModels → Services → Repositories → gRPC
 - In-memory кеши: `InMemoryCache` (actor, generic), `OnlineStatusCache`, `FileURLCache` (presigned S3)
-- Персистентный кеш (GRDB SQLite): `Database` + миграции (`Database/Migrations.swift`), записи `CachedChatRecord`, `CachedMessageRecord`, `CachedFileRecord`
-- Локальные репозитории: `LocalChatRepository`, `LocalMessageRepository` — чтение/запись персистентного кеша из сервисов
+- Персистентный кеш (GRDB SQLite): `Database` + миграции (`Database/Migrations.swift`, последняя — `v6_current_user`), записи `CachedChatRecord`, `CachedMessageRecord`, `CachedFileRecord`, `CachedChatFolderRecord`, `CachedStickerPackRecord`, `CachedStickerRecord`, **`CachedCurrentUserRecord`** (single-row кеш текущего пользователя — id, имя, username, bio, аватар/постер, бейджи, storage limit)
+- Локальные репозитории: `LocalChatRepository`, `LocalMessageRepository`, `LocalChatFolderRepository`, **`LocalCurrentUserRepository`** (`loadCachedCurrentUser()` / `save(_:)` / `clear()` — INSERT OR REPLACE single-row семантика)
 - Кеш медиа на диске: `MediaCacheManager`, типизация — `CachedFileType`, статистика — `CacheStats`, парсинг ключей S3 — `S3URLParser`
 - `TokenRefreshCoordinator` — автоматический рефреш через `AuthInterceptor`
 
@@ -80,6 +80,17 @@ Views → ViewModels → Services → Repositories → gRPC
 3. Параллельно `loadFolders` / `loadChats` / `loadCurrentUser`.
 4. `vm.startListeningForUpdates()`.
 5. `notificationService.start(...)` (нужен `currentUserID`).
+
+`DependencyContainer.loadCurrentUser()` — **stale-first + fire-and-forget revalidate** (с v6):
+1. Читает `cached_current_user` из SQLite через `LocalCurrentUserRepository` и мгновенно выставляет `container.currentUser` / `container.currentUserID` (если ещё nil).
+2. Запускает в фоне `Task { await revalidateCurrentUser() }` — сетевой `getCurrentUser` + write-through в SQLite. Возвращается **сразу** после п.1, не блокирует `ChatListView.task`.
+
+`revalidateCurrentUser()` — публичный write-through. Вызывается:
+- из `loadCurrentUser` в фоне;
+- из `ProfileEditViewModel.saveChanges` после `changeName/changeUsername/changeBio`;
+- из `ProfileEditViewModel.uploadCropped` после `setProfilePicture`;
+- из `PersonalizationSettingsViewModel.uploadPoster` после `setProfilePoster`.
+Гарантия: после успешного редактирования профиля свежие данные попадают и в `container.currentUser` (мгновенно для UI), и в `cached_current_user` (для следующего cold-start). Если сетевой запрос упал — кешированный юзер остаётся видимым, без сброса UI.
 
 `RootView.onChange` — только `notificationService.stop()` при выходе из `.main`. Стартовая `loadCurrentUser`/`notificationService.start` живут в `ChatListView.task` после gate.
 
@@ -103,7 +114,7 @@ Logout строится по «server-first, fail-loud» схеме: если с
    - `userCache`/`chatCache`/`onlineStatusCache.removeAll()` — in-memory кеши.
    - `mediaCacheManager.clearAll()` — файловый медиа-кеш с диска.
    - `fileURLCache.clear()` — runtime + UserDefaults-домен `com.barkfluff.fileURLCache`.
-   - `database.truncateAll()` — SQLite (`cached_message`, `cached_chat`, `cached_file`).
+   - `database.truncateAll()` — SQLite (`cached_message`, `cached_chat`, `cached_chat_folder`, `cached_file`, `cached_sticker`, `cached_sticker_pack`, **`cached_current_user`**).
    - `tokenProvider.purgeForLogout()` — токены, даты истечения, `device_id`. **`server_host`/`server_port` сохраняются.**
    - `personalizationSettings.reset()` + `appearanceSettings.reset()` — локальные UserDefaults-настройки клиента (тема, радиус пузыря, blur/dim, фон чата) сбрасываются к дефолтам.
    - `connectionManager.shutdown()` — закрывает gRPC-соединения. `serverDiscoveryService.disconnect()` **больше не вызывается** — мы хотим оставить сам адрес.

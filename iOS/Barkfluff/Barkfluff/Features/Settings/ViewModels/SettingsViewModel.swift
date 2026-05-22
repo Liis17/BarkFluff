@@ -84,7 +84,7 @@ final class SettingsViewModel {
             sessions = sortSessionsCurrentFirst(loaded)
         } catch {
             currentDeviceId = localDeviceId
-            errorMessage = "Не удалось загрузить сессии"
+            errorMessage = String(localized: "settings.sessions.error.load")
         }
 
         isSessionsLoading = false
@@ -108,7 +108,7 @@ final class SettingsViewModel {
             try await dc.identityRepository.removeActiveSession(deviceID: deviceID)
             sessions.removeAll { $0.deviceId == deviceID }
         } catch {
-            errorMessage = "Не удалось завершить сессию"
+            errorMessage = String(localized: "settings.sessions.error.terminate")
         }
     }
 
@@ -123,7 +123,7 @@ final class SettingsViewModel {
                 try await dc.identityRepository.removeActiveSession(deviceID: session.deviceId)
                 sessions.removeAll { $0.deviceId == session.deviceId }
             } catch {
-                errorMessage = "Не удалось завершить сессию"
+                errorMessage = String(localized: "settings.sessions.error.terminate")
                 break
             }
         }
@@ -148,7 +148,7 @@ final class SettingsViewModel {
 
         do {
             guard let dc = dependencyContainer else {
-                migrationError = "DependencyContainer не настроен"
+                migrationError = String(localized: "settings.token_storage.error.no_container")
                 isMigratingStorage = false
                 return
             }
@@ -180,7 +180,7 @@ final class SettingsViewModel {
             showRestartRequired = true
 
         } catch {
-            migrationError = "Ошибка миграции: \(error.localizedDescription)"
+            migrationError = String(localized: "settings.token_storage.error.migration \(error.localizedDescription)")
         }
 
         isMigratingStorage = false

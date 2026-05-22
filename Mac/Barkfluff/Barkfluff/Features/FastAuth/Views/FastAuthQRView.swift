@@ -13,10 +13,10 @@ struct QRPanelView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.md) {
-            Text("Войти через QR")
+            Text("fast_auth.qr.title")
                 .font(.headline)
 
-            Text("Отсканируйте код в мобильном BarkFluff")
+            Text("fast_auth.qr.instruction")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -72,26 +72,30 @@ struct QRPanelView: View {
         case .pending:
             HStack(spacing: 6) {
                 ProgressView().scaleEffect(0.6)
-                Text(viewModel.timeRemaining > 0
-                     ? "Действителен ещё \(viewModel.timeRemaining) с"
-                     : "Ожидание сканирования…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Group {
+                    if viewModel.timeRemaining > 0 {
+                        Text("fast_auth.qr.status.valid_for \(viewModel.timeRemaining)")
+                    } else {
+                        Text("fast_auth.qr.status.waiting")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         case .accepted:
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("Вход подтверждён").font(.caption.weight(.medium))
+                Text("fast_auth.qr.status.accepted").font(.caption.weight(.medium))
             }
         case .rejected:
             HStack(spacing: 6) {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
-                Text("Отклонено, обновляем…").font(.caption)
+                Text("fast_auth.qr.status.rejected").font(.caption)
             }
         case .expired:
             HStack(spacing: 6) {
                 Image(systemName: "clock.fill").foregroundStyle(.orange)
-                Text("Срок истёк, обновляем…").font(.caption)
+                Text("fast_auth.qr.status.expired").font(.caption)
             }
         }
     }

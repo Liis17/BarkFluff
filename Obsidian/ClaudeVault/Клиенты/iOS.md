@@ -25,9 +25,11 @@ SwiftUI приложение для iOS. iOS-версия macOS-клиента �
 
 ## Локальный кеш (GRDB)
 
-iOS-клиент использует тот же `Database`/`LocalChatRepository`/`LocalMessageRepository` что и macOS:
+iOS-клиент использует тот же `Database`/`LocalChatRepository`/`LocalMessageRepository`/`LocalChatFolderRepository`/**`LocalCurrentUserRepository`** что и macOS. Миграции: v1…v5 + **v6_current_user** (таблица `cached_current_user`, single-row кеш текущего пользователя через `CachedCurrentUserRecord`).
+
 - При открытии чата — stale-while-revalidate: сначала показываются кешированные сообщения, флаг `isRefreshing`, затем фоновая загрузка с сервера и `replaceAll`/`upsertMessages`.
 - Edited/deleted сообщения летят через `editedMessagesStream`/`deletedMessagesStream`, обновляя и UI, и БД.
+- **Текущий пользователь** (`container.currentUser`) — тоже stale-while-revalidate: `DependencyContainer.loadCurrentUser()` мгновенно поднимает из `cached_current_user` и запускает `Task { await revalidateCurrentUser() }` в фоне (fire-and-forget — не блокирует `ChatListView.task`). Write-through в SQLite — после `setProfilePicture`/`changeName`/`setProfilePoster` через `revalidateCurrentUser()` (вызывается из `ProfileEditViewModel.saveChanges`/`uploadCropped` и `PersonalizationSettingsViewModel.uploadPoster`).
 
 ## iOS-specific
 
@@ -63,7 +65,7 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 `ChatListView.task` (порядок):
 1. `vm.isLoading = true` — чтобы UI показывал `ChatRowPlaceholderView`.
 2. `await coordinator.waitForConnectionReady()` — ждём сетевую готовность.
-3. Параллельно `vm.loadFolders()` / `vm.loadChats()` / `container.loadCurrentUser()`.
+3. Параллельно `vm.loadFolders()` / `vm.loadChats()` / `container.loadCurrentUser()`. `loadCurrentUser` теперь stale-first: возвращается мгновенно после чтения SQLite, ревалидация уходит в фон через `Task { await revalidateCurrentUser() }`.
 4. `coordinator.isInitialChatsLoaded = true`.
 5. `vm.startListeningForUpdates()` — подписки UpdatesStream.
 
@@ -129,7 +131,7 @@ PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPick
 
 **Что стирает logout:**
 - Токены (access/refresh) + `device_id` — через `tokenProvider.purgeForLogout()` (общий пакет `BFNetworking`, `UserDefaultsTokenProvider` / `KeychainTokenProvider`).
-- БД (GRDB), все in-memory кеши, файловый кеш картинок, recent stickers, ImagePipeline (Nuke).
+- БД (GRDB), все таблицы кеша — `cached_message`, `cached_chat`, `cached_chat_folder`, `cached_file`, `cached_sticker`, `cached_sticker_pack`, **`cached_current_user`** (`Database.truncateAll()`). In-memory кеши, файловый кеш картинок, recent stickers, ImagePipeline (Nuke).
 - Локальные UserDefaults-настройки: `AppearanceSettings.reset()` (тема), `PersonalizationSettings.reset()` (cornerRadius/blur/dim/background fileID), `DeveloperSettings.reset()` (showUserIDs/showChatIDs).
 
 **Что сохраняет:**

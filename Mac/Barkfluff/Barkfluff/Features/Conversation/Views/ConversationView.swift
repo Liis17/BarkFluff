@@ -64,8 +64,9 @@ struct ConversationView: View {
             if let viewModel {
                 messagesList(viewModel: viewModel)
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // VM ещё не создан — короткий промежуток до .task. Показываем
+                // skeleton, чтобы не мигать пустотой/крутилкой.
+                MessagesListPlaceholderView()
             }
 
             // Слой 2: Плавающий заголовок сверху
@@ -424,8 +425,7 @@ struct ConversationView: View {
     @ViewBuilder
     private func messagesList(viewModel: ConversationViewModel) -> some View {
         if viewModel.isLoading && viewModel.messages.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            MessagesListPlaceholderView()
         } else if viewModel.messages.isEmpty {
             ContentUnavailableView(
                 viewModel.isNewConversation

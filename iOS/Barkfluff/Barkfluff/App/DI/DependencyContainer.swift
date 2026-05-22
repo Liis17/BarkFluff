@@ -58,6 +58,7 @@ final class DependencyContainer {
     let localChatRepository: LocalChatRepository
     let localChatFolderRepository: LocalChatFolderRepository
     let localMessageRepository: LocalMessageRepository
+    let localCurrentUserRepository: LocalCurrentUserRepository
 
     // MARK: - Image Pipeline
 
@@ -202,6 +203,7 @@ final class DependencyContainer {
         self.localChatRepository = LocalChatRepository(database: database)
         self.localChatFolderRepository = LocalChatFolderRepository(database: database)
         self.localMessageRepository = LocalMessageRepository(database: database)
+        self.localCurrentUserRepository = LocalCurrentUserRepository(database: database)
 
         // Image Pipeline — disk cache, не зависит от HTTP cache headers
         self.imagePipeline = ImagePipeline {
@@ -312,14 +314,31 @@ final class DependencyContainer {
 
     // MARK: - Current User Methods
 
-    /// Загрузить текущего пользователя и сохранить его ID
+    /// Stale-first загрузка: мгновенно вытаскиваем кеш, ревалидацию запускаем
+    /// в фоне fire-and-forget. Возвращается **сразу** после чтения из SQLite,
+    /// чтобы `ChatListView.task` не подвисал на сетевом запросе getCurrentUser.
     func loadCurrentUser() async {
+        // 1. Stale — мгновенно показываем последнего сохранённого юзера.
+        if currentUser == nil,
+           let cached = try? await localCurrentUserRepository.loadCachedCurrentUser() {
+            currentUser = cached
+            currentUserID = cached.id
+        }
+        // 2. Revalidate в фоне — не блокирует caller.
+        Task { await revalidateCurrentUser() }
+    }
+
+    /// Сетевой запрос за актуальным профилем + write-through в SQLite.
+    /// Дёргается из `loadCurrentUser` и из write-through-точек редактирования
+    /// профиля (changeName, setProfilePicture, setProfilePoster, ...).
+    func revalidateCurrentUser() async {
         do {
             let user = try await userService.getCurrentUser()
             currentUserID = user.id
             currentUser = user
+            try? await localCurrentUserRepository.save(user)
         } catch {
-            // Если не удалось получить — останется 0
+            // Сеть упала — оставляем кешированного юзера видимым.
         }
     }
 

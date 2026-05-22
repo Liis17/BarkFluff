@@ -50,8 +50,9 @@ struct ConversationView: View {
             if let viewModel {
                 messagesList(viewModel: viewModel)
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // VM ещё не создан — короткий промежуток до .task. Skeleton
+                // вместо крутилки, чтобы UI выглядел как почти-готовый чат.
+                MessagesListPlaceholderView()
             }
 
             // Слой 2: Кнопка "вниз"
@@ -278,8 +279,7 @@ struct ConversationView: View {
     @ViewBuilder
     private func messagesList(viewModel: ConversationViewModel) -> some View {
         if viewModel.isLoading && viewModel.messages.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            MessagesListPlaceholderView()
         } else if viewModel.messages.isEmpty {
             ContentUnavailableView(
                 viewModel.isNewConversation

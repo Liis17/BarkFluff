@@ -12,7 +12,7 @@ struct LoadingView: View {
         VStack(spacing: Theme.Spacing.md) {
             ProgressView()
                 .scaleEffect(1.5)
-            Text("Загрузка...")
+            Text("common.loading")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

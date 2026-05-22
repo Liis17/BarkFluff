@@ -145,7 +145,7 @@ final class ProfileEditViewModel {
             originalBio = bio
             originalUsernameValue = username
 
-            // Обновить пользователя в контейнере
+            // Обновить пользователя в контейнере (inline — мгновенный UI)
             if var user = container.currentUser {
                 user.firstName = firstName
                 user.lastName = lastName
@@ -153,6 +153,10 @@ final class ProfileEditViewModel {
                 user.bio = bio.isEmpty ? nil : bio
                 container.currentUser = user
             }
+
+            // Write-through: ревалидация дёргает getCurrentUser и записывает
+            // свежий profile в SQLite, чтобы следующий cold-start показал его сразу.
+            await container.revalidateCurrentUser()
 
         } catch {
             errorMessage = error.localizedDescription
@@ -264,6 +268,8 @@ final class ProfileEditViewModel {
             )
             try await userService.setProfilePicture(fileID: fileID)
             await loadProfile()
+            // Write-through: новый аватар попадает в SQLite-кеш.
+            await container.revalidateCurrentUser()
         } catch {
             errorMessage = error.localizedDescription
             showError = true

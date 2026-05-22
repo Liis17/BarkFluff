@@ -75,18 +75,18 @@ struct ImageCropperView: View {
 
     private var toolbar: some View {
         HStack {
-            Button("Отмена") { onCancel() }
+            Button("common.cancel") { onCancel() }
                 .keyboardShortcut(.cancelAction)
 
             Spacer()
 
-            Text("Обрезать фото")
+            Text("cropper.title")
                 .font(.headline)
                 .foregroundStyle(.white)
 
             Spacer()
 
-            Button("Готово") { performCrop() }
+            Button("common.done") { performCrop() }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
         }
