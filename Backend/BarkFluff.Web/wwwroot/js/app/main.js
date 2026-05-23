@@ -681,6 +681,87 @@
         _wasConnected = !!data.connected;
     });
 
+    // ── RESYNC: реконнект отдельного стрима ──────────────────────────────────
+    // realtime.js шлёт 'resync' при ЛЮБОМ переоткрытии стрима (backoff/watchdog/
+    // age-timer/visibility). Это ловит случай, когда отвалился только поток новых
+    // сообщений, а остальные живы — тогда connection_status (OR по 4 стримам) не
+    // флипается и обычный catch-up не срабатывает. За время разрыва server-streaming
+    // не реплеит пропущенное → сообщение видно лишь после ручного переоткрытия чата.
+    //
+    // Дебаунсим: при churn'е все 4 стрима реконнектятся почти одновременно — склеиваем
+    // в один проход. Дозагрузка тихая: ререндерим только если хвост реально изменился,
+    // иначе (обычный случай — за окно реконнекта ничего не пропало) DOM не трогаем.
+    var _resyncTimer = null;
+    BF.realtime.on('resync', function () {
+        if (_resyncTimer) return;
+        _resyncTimer = setTimeout(function () {
+            _resyncTimer = null;
+            if (!currentChatId) {
+                // Чат не открыт — обновлять нечего в области сообщений; освежаем сайдбар.
+                loadChats(true);
+                return;
+            }
+            // Тихо сверяем хвост открытого чата. Сайдбар трогаем только если что-то
+            // реально пропустили (тогда вероятны пропуски и в других чатах), чтобы не
+            // ререндерить список и не сбрасывать его прокрутку на каждом churn-цикле.
+            resyncCurrentChatTail();
+        }, 1200);
+    });
+
+    // Совпадает ли только что загруженный хвост с тем, что уже показано (по id, тексту,
+    // флагу isEdited, числу прочитавших и наличию удалений в окне) — тогда менять нечего.
+    function tailMatchesCurrent(fetched) {
+        var byId = new Map();
+        messages.forEach(function (m) { byId.set(String(m.id), m); });
+        var minId = Infinity, maxId = -Infinity;
+        for (var i = 0; i < fetched.length; i++) {
+            var f = fetched[i];
+            var fid = Number(f.id);
+            if (fid < minId) minId = fid;
+            if (fid > maxId) maxId = fid;
+            var cur = byId.get(String(f.id));
+            if (!cur) return false;                                   // новое сообщение
+            if (!!cur.isEdited !== !!f.isEdited) return false;        // правка
+            var ct = (cur.content && cur.content.text) || '';
+            var ft = (f.content && f.content.text) || '';
+            if (ct !== ft) return false;                              // правка текста
+            if ((cur.readBy || []).length !== (f.readBy || []).length) return false; // прочтение
+        }
+        // Удаление: есть наше сообщение в диапазоне окна, которого нет в свежей выборке.
+        var fetchedIds = new Set(fetched.map(function (m) { return String(m.id); }));
+        for (var j = 0; j < messages.length; j++) {
+            var mid = Number(messages[j].id);
+            if (mid >= minId && mid <= maxId && !fetchedIds.has(String(messages[j].id))) return false;
+        }
+        return true;
+    }
+
+    function resyncCurrentChatTail() {
+        if (!currentChatId) return;
+        if (loadingMessages.classList.contains('visible')) return; // чат ещё открывается
+        var chatId = currentChatId;
+        BF.api.getChatInfo(chatId).then(function (info) {
+            if (chatId !== currentChatId || !info || info.error) return null;
+            var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
+            return BF.api.listMessages(chatId, fromId, 30, 10).then(function (data) {
+                return { info: info, data: data };
+            });
+        }).then(function (res) {
+            if (!res || !res.data || !res.data.messages || chatId !== currentChatId) return;
+            var fetched = res.data.messages;
+            if (tailMatchesCurrent(fetched)) return; // за окно реконнекта ничего не пропало
+            currentChatInfo = res.info;
+            var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+            messages = fetched;
+            renderMessages().then(function () {
+                if (wasAtBottom) scrollToBottom();
+            });
+            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
+            // чатах: освежаем превью/счётчики непрочитанного в сайдбаре.
+            loadChats(true);
+        }).catch(function () {});
+    }
+
     // Catch-up: перезагрузка сообщений текущего чата.
     // Используется при восстановлении соединения и при возврате на вкладку,
     // чтобы синхронизировать пропущенные edit/delete/new события.

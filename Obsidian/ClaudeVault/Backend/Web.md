@@ -84,6 +84,18 @@ docker-compose -f docker-compose-dev.yml up web
 | allUnpinnedStream | UpdatesApi | SubscribeAllMessagesUnpinned | Открепление всех сообщений в чате |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
 
+### Устойчивость стримов и catch-up
+
+Сервер (`BarkFluff.Updates`) держит server-streaming подписку на `await Task.Delay(Timeout.Infinite, ct)` и пишет в поток **только** при реальном событии: ни heartbeat, ни replay пропущенного нет (`SubscribeNewMessagesRequest` пустой — отдаются лишь live-события с момента подписки). Поэтому весь учёт «пропущенного за время разрыва» лежит на клиенте.
+
+Механизмы клиента (`realtime.js`):
+- **exponential backoff** (2с → 30с) на error/end каждого стрима;
+- **age-timer** — превентивный реконнект каждые `STREAM_MAX_AGE` (180с);
+- **watchdog** — реконнект «молчащего» стрима после `STREAM_INACTIVITY_THRESHOLD` (90с, проверка раз в 30с): ловит «чёрные дыры», когда прокси/NAT молча дропнул сокет;
+- **page-visibility** — при возврате на вкладку (`tab_visible`) восстанавливаются упавшие стримы.
+
+**Catch-up (важно):** при ЛЮБОМ ПЕРЕоткрытии потоков `new_messages/read/edited/deleted` (не первый запуск) `realtime.js` эмитит событие **`resync`**. `main.js` ловит его с дебаунсом (1200мс) и тихо сверяет хвост открытого чата (`resyncCurrentChatTail` → `tailMatchesCurrent`): ререндер и `loadChats(true)` происходят **только если что-то реально изменилось** (новое/правка/прочтение/удаление в окне), иначе DOM не трогается. Это закрывает баг, когда отвалился один лишь поток новых сообщений, а `connection_status` (OR по 4 стримам) не флипался → старый catch-up не срабатывал и сообщение появлялось только после ручного переоткрытия чата. `connection_status` (полный разрыв всех стримов) и `tab_visible` по-прежнему делают полный `reloadCurrentChatMessages`.
+
 ## Редактирование и удаление сообщений (`main.js`)
 
 - Контекстное меню сообщения (`#msgContextMenu`): пункты **Изменить** / **Удалить** видны только для своих не-системных сообщений (фильтрация в `openContextMenu`).
