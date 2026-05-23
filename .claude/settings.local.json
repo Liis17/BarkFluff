@@ -203,5 +203,6 @@
     "claude-flow"
   ],
   "outputStyle": "default",
-  "spinnerTipsEnabled": true
+  "spinnerTipsEnabled": true,
+  "prefersReducedMotion": false
 }
