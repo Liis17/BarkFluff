@@ -77,7 +77,7 @@
 ## Frontend — страницы
 
 ### `wwwroot/index.html`
-Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `auth.js`, `login-page.js`, proto-bundle.
+Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `auth.js`, `fast-auth.js`, `login-page.js`, `register.js`, proto-bundle. Содержит разметку модалки регистрации `#registerOverlay` и стили `.reg-*`.
 
 ### `wwwroot/messenger.html`
 Главный мессенджер. Подключает все JS-модули из `js/app/`.
@@ -114,6 +114,9 @@ TokenStore: хранит access/refresh токены в localStorage или sess
 - OTP-форма (если 2FA включён)
 - Проверка существующей сессии при загрузке страницы
 - Редирект в `/messenger` после успешного входа
+
+### `register.js` → `BF.register`
+Модальный мастер регистрации из 9 шагов на `index.html` (открывается по `#toRegisterBtn`). Самодостаточный (собственные gRPC-клиенты + ручная metadata). Шаги: имя → username → email → OTP → пароль → аватар (интерактивный кроп) → био → 2FA → готово. Подробности — [[Backend/Web#Регистрация по шагам (register.js)]].
 
 ### `clients.js` → `BF.clients`
 gRPC-Web клиенты для всех сервисов (IdentityApi, UsersApi, MessagesApi, FilesApi, UpdatesApi, OnlinerApi).

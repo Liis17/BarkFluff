@@ -829,6 +829,329 @@
         @media (max-width: 360px) {
             .otp-input { width: 36px; height: 46px; font-size: 17px; }
         }
+
+        /* ─────────────── REGISTRATION MODAL ─────────────── */
+        .reg-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .reg-overlay.visible { display: flex; }
+
+        /* hidden-атрибут должен побеждать display:flex/inline-flex на кнопках/секциях модалки */
+        .reg-dialog [hidden] { display: none !important; }
+
+        @keyframes fadeScaleIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .reg-dialog {
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-card);
+            width: 440px;
+            max-width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        .reg-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 22px 24px 14px;
+        }
+        .reg-back, .reg-close {
+            background: var(--theme-btn-bg);
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--transition), transform 0.15s;
+        }
+        .reg-back:hover, .reg-close:hover { background: var(--theme-btn-hover); transform: scale(1.08); }
+        .reg-head-text { flex: 1; min-width: 0; }
+        .reg-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+        .reg-step-label {
+            font-size: 12.5px;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .reg-progress {
+            height: 3px;
+            background: var(--divider);
+            margin: 0 24px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .reg-progress-bar {
+            height: 100%;
+            width: 11%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2));
+            border-radius: 3px;
+            transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .reg-body {
+            padding: 22px 24px 6px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .reg-step { animation: secIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .reg-step-desc {
+            font-size: 15px;
+            color: var(--text-sub);
+            margin-bottom: 18px;
+            line-height: 1.45;
+        }
+        .reg-hint {
+            font-size: 12px;
+            color: var(--text-sub);
+            opacity: 0.8;
+            margin-top: 6px;
+        }
+
+        /* field status icon (username/email) */
+        .reg-field-status {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .reg-status-ok  { color: var(--success); }
+        .reg-status-err { color: var(--error); }
+        .reg-status-loading {
+            border: 2px solid var(--input-border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        /* OTP inside modal */
+        .reg-otp { margin-top: 4px; margin-bottom: 14px; }
+        .reg-otp-err { text-align: center; margin-bottom: 12px; }
+
+        .reg-link-btn {
+            display: block;
+            margin: 4px auto 0;
+            background: none;
+            border: none;
+            color: var(--link);
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+        .reg-link-btn:hover:not(:disabled) { text-decoration: underline; }
+        .reg-link-btn:disabled { color: var(--text-sub); cursor: default; opacity: 0.7; }
+
+        /* password strength */
+        .reg-strength {
+            height: 5px;
+            background: var(--divider);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .reg-strength-bar {
+            height: 100%;
+            width: 0;
+            border-radius: 5px;
+            transition: width 0.25s ease, background 0.25s ease;
+        }
+        .reg-strength-label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 6px;
+            min-height: 16px;
+        }
+
+        /* avatar step */
+        .reg-avatar-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            padding: 10px 0 6px;
+        }
+        .reg-avatar-circle {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: var(--input-bg);
+            border: 2px dashed var(--input-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .reg-avatar-plus {
+            font-size: 48px;
+            font-weight: 300;
+            color: var(--text-sub);
+            line-height: 1;
+        }
+        .reg-avatar-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* cropper */
+        .reg-cropper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 4px 0;
+        }
+        .reg-crop-stage {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            max-width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+            cursor: grab;
+        }
+        .reg-crop-stage:active { cursor: grabbing; }
+        #regCropCanvas { display: block; width: 100%; height: 100%; }
+        .reg-crop-frame {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.35);
+            border: 2px solid rgba(255, 255, 255, 0.85);
+            border-radius: 50%;
+        }
+        .reg-crop-zoom {
+            width: 100%;
+            max-width: 260px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .reg-crop-actions {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 260px;
+        }
+        .reg-crop-actions .btn-secondary,
+        .reg-crop-actions .btn-primary { flex: 1; padding: 12px; }
+        .reg-crop-apply { width: auto; }
+
+        /* bio */
+        .reg-textarea {
+            resize: vertical;
+            min-height: 90px;
+            line-height: 1.5;
+        }
+        .reg-char-count {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-top: 6px;
+        }
+
+        /* 2FA */
+        .reg-2fa-text {
+            font-size: 14px;
+            color: var(--text-sub);
+            line-height: 1.5;
+            margin-bottom: 18px;
+        }
+        .reg-2fa-qr {
+            display: block;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 16px;
+            border-radius: 12px;
+            background: #fff;
+            padding: 8px;
+        }
+        .reg-2fa-secret-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: var(--radius-input);
+            padding: 10px 14px;
+            margin-bottom: 18px;
+        }
+        .reg-2fa-secret {
+            flex: 1;
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--text);
+            word-break: break-all;
+            letter-spacing: 0.5px;
+        }
+        .reg-2fa-secret-wrap .reg-link-btn { margin: 0; flex-shrink: 0; }
+
+        /* complete step */
+        .reg-step-complete { text-align: center; padding: 20px 0; }
+
+        /* footer */
+        .reg-footer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 24px 22px;
+            border-top: 1px solid var(--divider);
+        }
+        .reg-footer .reg-skip { padding: 13px 22px; }
+        .reg-footer .reg-next { flex: 1; padding: 14px; }
+
+        @media (max-width: 480px) {
+            .reg-overlay { padding: 0; align-items: stretch; }
+            .reg-dialog {
+                width: 100%;
+                max-width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -957,6 +1280,183 @@
         <p class="copyright">© 2026 BarkFluff. Никакие права не защищены.</p>
     </main>
 
+    <!-- ═══════════════ REGISTRATION MODAL ═══════════════ -->
+    <div class="reg-overlay" id="registerOverlay" role="dialog" aria-modal="true" aria-label="Регистрация">
+        <div class="reg-dialog">
+            <div class="reg-header">
+                <button type="button" class="reg-back" id="regBack" aria-label="Назад" hidden>←</button>
+                <div class="reg-head-text">
+                    <div class="reg-title" id="regTitle">Создать аккаунт</div>
+                    <div class="reg-step-label" id="regStepLabel">Шаг 1 из 9</div>
+                </div>
+                <button type="button" class="reg-close" id="regClose" aria-label="Закрыть">×</button>
+            </div>
+            <div class="reg-progress"><div class="reg-progress-bar" id="regProgressBar"></div></div>
+
+            <div class="reg-body">
+
+                <!-- Step 1: Name -->
+                <div class="reg-step" data-step="1">
+                    <p class="reg-step-desc">Как вас зовут?</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regFirstName">Имя</label>
+                        <input type="text" class="form-input" id="regFirstName" maxlength="40" placeholder="Иван" autocomplete="given-name">
+                        <div class="form-error" id="regFirstNameErr" role="alert"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regLastName">Фамилия (необязательно)</label>
+                        <input type="text" class="form-input" id="regLastName" maxlength="40" placeholder="Иванов" autocomplete="family-name">
+                        <div class="form-error" id="regLastNameErr" role="alert"></div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Username -->
+                <div class="reg-step" data-step="2" hidden>
+                    <p class="reg-step-desc">Придумайте имя пользователя</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regUsername">Имя пользователя</label>
+                        <div class="input-wrap">
+                            <input type="text" class="form-input" id="regUsername" maxlength="30" placeholder="ivan_petrov" autocapitalize="off" autocomplete="off" spellcheck="false">
+                            <span class="reg-field-status" id="regUsernameStatus"></span>
+                        </div>
+                        <div class="form-error" id="regUsernameErr" role="alert"></div>
+                        <div class="reg-hint">Латиница, цифры, символы _ и -. От 3 до 30 символов.</div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Email -->
+                <div class="reg-step" data-step="3" hidden>
+                    <p class="reg-step-desc">Укажите электронную почту</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regEmail">Email</label>
+                        <div class="input-wrap">
+                            <input type="email" class="form-input" id="regEmail" maxlength="100" placeholder="user@example.com" autocapitalize="off" autocomplete="off" spellcheck="false">
+                            <span class="reg-field-status" id="regEmailStatus"></span>
+                        </div>
+                        <div class="form-error" id="regEmailErr" role="alert"></div>
+                        <div class="reg-hint">На неё придёт код подтверждения.</div>
+                    </div>
+                </div>
+
+                <!-- Step 4: OTP -->
+                <div class="reg-step" data-step="4" hidden>
+                    <p class="reg-step-desc" id="regOtpDesc">Введите код из письма</p>
+                    <div class="otp-inputs reg-otp" id="regOtp4" role="group" aria-label="Код подтверждения">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                    </div>
+                    <div class="form-error reg-otp-err" id="regOtpErr" role="alert"></div>
+                    <button type="button" class="reg-link-btn" id="regOtpResend">Отправить код повторно</button>
+                </div>
+
+                <!-- Step 5: Password -->
+                <div class="reg-step" data-step="5" hidden>
+                    <p class="reg-step-desc">Придумайте пароль</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regPassword">Пароль</label>
+                        <div class="input-wrap">
+                            <input type="password" class="form-input" id="regPassword" placeholder="Минимум 8 символов" autocomplete="new-password">
+                            <button type="button" class="pw-toggle" id="regPwToggle" aria-label="Показать пароль" tabindex="-1">👁</button>
+                        </div>
+                        <div class="reg-strength"><div class="reg-strength-bar" id="regStrengthBar"></div></div>
+                        <div class="reg-strength-label" id="regStrengthLabel"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regPassword2">Повторите пароль</label>
+                        <input type="password" class="form-input" id="regPassword2" placeholder="Повторите пароль" autocomplete="new-password">
+                        <div class="form-error" id="regPasswordErr" role="alert"></div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Avatar -->
+                <div class="reg-step" data-step="6" hidden>
+                    <p class="reg-step-desc">Добавьте фото профиля</p>
+                    <div class="reg-avatar-empty" id="regAvatarEmpty">
+                        <div class="reg-avatar-circle" id="regAvatarCircle">
+                            <span class="reg-avatar-plus" id="regAvatarPlus">+</span>
+                            <img class="reg-avatar-preview" id="regAvatarPreview" alt="Превью аватара" hidden>
+                        </div>
+                        <button type="button" class="btn-secondary" id="regAvatarPick">Выбрать фото</button>
+                    </div>
+                    <input type="file" id="regAvatarFile" accept="image/*" hidden>
+
+                    <div class="reg-cropper" id="regCropper" hidden>
+                        <div class="reg-crop-stage" id="regCropStage">
+                            <canvas id="regCropCanvas"></canvas>
+                            <div class="reg-crop-frame" aria-hidden="true"></div>
+                        </div>
+                        <input type="range" class="reg-crop-zoom" id="regCropZoom" min="1" max="3" step="0.01" value="1" aria-label="Масштаб">
+                        <div class="reg-crop-actions">
+                            <button type="button" class="btn-secondary" id="regCropCancel">Отмена</button>
+                            <button type="button" class="btn-primary reg-crop-apply" id="regCropApply"><span class="btn-label">Применить</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 7: Bio -->
+                <div class="reg-step" data-step="7" hidden>
+                    <p class="reg-step-desc">Расскажите о себе</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regBio">О себе (необязательно)</label>
+                        <textarea class="form-input reg-textarea" id="regBio" maxlength="200" rows="4" placeholder="Несколько слов о себе"></textarea>
+                        <div class="reg-char-count"><span id="regBioCount">0</span>/200</div>
+                    </div>
+                </div>
+
+                <!-- Step 8: 2FA -->
+                <div class="reg-step" data-step="8" hidden>
+                    <p class="reg-step-desc">Двухфакторная аутентификация</p>
+                    <div id="reg2faIntro">
+                        <p class="reg-2fa-text">Защитите аккаунт одноразовыми кодами из приложения-аутентификатора (Google Authenticator, Authy и др.). Этот шаг можно пропустить и включить позже в настройках.</p>
+                        <button type="button" class="btn-primary" id="reg2faEnable">
+                            <span class="btn-label">Включить 2FA</span>
+                            <div class="btn-spinner"></div>
+                        </button>
+                    </div>
+                    <div id="reg2faSetup" hidden>
+                        <img class="reg-2fa-qr" id="reg2faQr" alt="QR-код для 2FA" hidden>
+                        <p class="reg-2fa-text">Отсканируйте QR или введите ключ вручную:</p>
+                        <div class="reg-2fa-secret-wrap">
+                            <code class="reg-2fa-secret" id="reg2faSecret"></code>
+                            <button type="button" class="reg-link-btn" id="reg2faCopy">Копировать</button>
+                        </div>
+                        <p class="reg-step-desc">Введите код из приложения</p>
+                        <div class="otp-inputs reg-otp" id="regOtp8" role="group" aria-label="Код 2FA">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                        </div>
+                        <div class="form-error reg-otp-err" id="reg2faErr" role="alert"></div>
+                    </div>
+                </div>
+
+                <!-- Step 9: Complete -->
+                <div class="reg-step reg-step-complete" data-step="9" hidden>
+                    <div class="welcome-icon" aria-hidden="true">✓</div>
+                    <h2 class="welcome-title">Аккаунт создан!</h2>
+                    <p class="welcome-subtitle" id="regCompleteName"></p>
+                </div>
+
+            </div><!-- /.reg-body -->
+
+            <div class="reg-footer" id="regFooter">
+                <button type="button" class="btn-secondary reg-skip" id="regSkip" hidden>Пропустить</button>
+                <button type="button" class="btn-primary reg-next" id="regNext">
+                    <span class="btn-label" id="regNextLabel">Далее</span>
+                    <span class="btn-arrow">→</span>
+                    <div class="btn-spinner"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Game canvas (desktop only) -->
     <canvas id="game-canvas" aria-hidden="true"></canvas>
     <div id="game-hint" aria-hidden="true">↑ нажми, чтобы начать</div>
@@ -969,6 +1469,7 @@
     <script src="/js/app/auth.js"      onerror="void 0"></script>
     <script src="/js/app/fast-auth.js" onerror="void 0"></script>
     <script src="/js/app/login-page.js" onerror="void 0"></script>
+    <script src="/js/app/register.js" onerror="void 0"></script>
 
     <script>
     /* ═══════════════════════════════════════════════════

@@ -44,6 +44,7 @@ docker-compose -f docker-compose-dev.yml up web
 - `auth.js` — login, refreshToken, getValidAccessToken
 - `login-page.js` — форма логина, OTP, проверка сессии, запуск/остановка QR-сессии при смене секции
 - `fast-auth.js` — `BF.fastAuth`: QR fast-auth логин (анонимный `GenerateFastAuthToken` + server-streaming `SubscribeFastAuthResult`), автоперезапуск при EXPIRED/REJECTED, отсчёт TTL 5 минут
+- `register.js` — `BF.register`: модальный мастер регистрации из 9 шагов (кнопка `#toRegisterBtn`). См. раздел [[#Регистрация по шагам (register.js)]].
 
 **Мессенджер** (messenger.html):
 - `clients.js` — gRPC-Web клиенты, authCall с auto-refresh
@@ -155,6 +156,28 @@ RPC — `MessagesApi.PinMessage/UnpinMessage/ListPinnedMessages/UnpinAll`, ст�
 **Экспорт** (`exportFile`): crop переводится из дисплейных px в натуральные через `view.scale`; на выходной canvas заливается белый фон (JPEG без альфы) → `base` → `draw` → `toBlob('image/jpeg', 0.92)`.
 
 **Ограничения:** рабочее разрешение `MAX_DIM=4096` (память); EXIF-ориентация фото с камеры применяется через `createImageBitmap(file,{imageOrientation:'from-image'})` с фолбэком на `<img>`; undo не реализован.
+
+## Регистрация по шагам (register.js)
+
+Модальный мастер из 9 шагов, открывается по `#toRegisterBtn` на странице логина. Полностью повторяет flow мобильных/desktop клиентов ([[Клиенты/Android]], [[Клиенты/macOS]], [[Клиенты/iOS]]). Самодостаточный модуль (как `auth.js`): собственные gRPC-Web клиенты (`IdentityApiClient`/`UsersApiClient`/`FilesApiClient`), metadata строится вручную через `BF.metadata.build([token])`. Разметка модалки `#registerOverlay` и CSS `.reg-*` — в `index.html`.
+
+Шаги 1–4 анонимны (без токена); после `ConfirmAccount`+`CreateToken` access/refresh токены сохраняются в `BF.tokens` (тот же формат, что у логина), и шаги 5–9 идут авторизованными.
+
+| Шаг | Поля | RPC | Auth |
+|-----|------|-----|------|
+| 1. Имя/фамилия | firstName (3–40), lastName (≤40, опц.) | — (локально) | — |
+| 2. Username | lowercase, `^[a-z0-9_-]+$`, 3–30, не с цифры | `UsersApi.CheckExistUsername` (debounce 500мс) | анонимно |
+| 3. Email | RFC-формат | `UsersApi.CheckExistEmail` (debounce) → при «Далее» `IdentityApi.CreateAccount` → `code_id` | анонимно |
+| 4. OTP-код | 6 цифр (авто-submit) | `IdentityApi.ConfirmAccount` → `refresh_token`, затем `IdentityApi.CreateToken` → `access_token` + `BF.tokens.save` | анонимно |
+| 5. Пароль | password+confirm (min 8, индикатор силы по 5 критериям) | `IdentityApi.SetPassword(password, old_password="")` | токен |
+| 6. Аватар (skip) | фото → интерактивный квадратный кроп (canvas, drag+zoom, экспорт 512×512 JPEG 0.85) | `FilesApi.GetUploadUrl(USER_AVATAR=1)` → `POST /api/files/upload/{fileId}` → `UsersApi.SetProfilePicture` | токен |
+| 7. Био (skip) | bio (≤200) | `UsersApi.ChangeBio` (только если непусто) | токен |
+| 8. 2FA (skip) | 6 цифр | `IdentityApi.EnableOtpVerification(Authenticator)` → QR+secret; при «Подтвердить» `IdentityApi.ConfirmOtpVerification` | токен |
+| 9. Готово | — | редирект на `/messenger` | — |
+
+- **Навигация**: кнопка «Назад» только на шагах 2–3 (после создания аккаунта возврат запрещён); «Пропустить» — на 6/7/8; прогресс-бар `#regProgressBar`.
+- **Graceful-фолбэк**: ошибки сети при `CheckExist*` и опциональных шагах (аватар/био) не блокируют регистрацию — сервер валидирует повторно при `CreateAccount`.
+- **Resend OTP**: кулдаун 60с, повторно вызывает `CreateAccount`.
 
 ## QR Fast-Auth (`fast-auth.js`)
 
