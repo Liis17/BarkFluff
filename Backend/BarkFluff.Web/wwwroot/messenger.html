@@ -2112,6 +2112,169 @@
             border-top: 1px solid var(--card-border);
         }
 
+        /* === Image editor === */
+        .ie-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 260;
+            background: rgba(0, 0, 0, 0.78);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            backdrop-filter: blur(4px);
+        }
+        .ie-overlay.visible { display: flex; }
+        .ie-dialog {
+            background: var(--dialog-bg);
+            border-radius: 14px;
+            max-width: 880px;
+            width: 100%;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+        }
+        .ie-header {
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .ie-header-title {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .ie-header-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            line-height: 1;
+            color: var(--text-sub);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .ie-header-close:hover { background: var(--card-border); color: var(--text-main); }
+        .ie-toolbar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .ie-tool-group { display: flex; align-items: center; gap: 4px; }
+        .ie-divider {
+            width: 1px;
+            align-self: stretch;
+            margin: 2px 6px;
+            background: var(--card-border);
+        }
+        .ie-tool-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .ie-tool-btn svg { width: 18px; height: 18px; display: block; }
+        .ie-tool-btn:hover { background: var(--primary-alpha); color: var(--text-main); }
+        .ie-tool-btn.active {
+            background: var(--primary-alpha);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        .ie-color-wrap, .ie-size-wrap { display: flex; align-items: center; gap: 6px; }
+        .ie-color-wrap input[type=color] {
+            width: 34px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: var(--input-bg);
+            cursor: pointer;
+        }
+        .ie-size-wrap input[type=range] {
+            width: 110px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .ie-size-val {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            min-width: 44px;
+        }
+        .ie-stage {
+            position: relative;
+            flex: 1;
+            min-height: 320px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 12px;
+            user-select: none;
+        }
+        .ie-canvas-wrap { position: relative; line-height: 0; }
+        .ie-canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            touch-action: none;
+        }
+        .ie-crop-frame {
+            position: absolute;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            cursor: move;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        .ie-crop-frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px);
+            background-size: 33.333% 33.333%;
+            pointer-events: none;
+        }
+        .ie-crop-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        .ie-crop-handle.tl { top: -7px; left: -7px; cursor: nwse-resize; }
+        .ie-crop-handle.tr { top: -7px; right: -7px; cursor: nesw-resize; }
+        .ie-crop-handle.bl { bottom: -7px; left: -7px; cursor: nesw-resize; }
+        .ie-crop-handle.br { bottom: -7px; right: -7px; cursor: nwse-resize; }
+        .ie-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            padding: 12px 18px;
+            border-top: 1px solid var(--card-border);
+        }
+
         /* === About rows === */
         .sd-about-row {
             display: flex;
@@ -3525,6 +3688,70 @@
         </div>
     </div>
 
+    <!-- Image editor dialog -->
+    <div class="ie-overlay" id="imgEditorOverlay">
+        <div class="ie-dialog">
+            <div class="ie-header">
+                <div class="ie-header-title">Редактор изображения</div>
+                <button class="ie-header-close" id="ieEditorClose" title="Закрыть">&times;</button>
+            </div>
+            <div class="ie-toolbar">
+                <div class="ie-tool-group">
+                    <button class="ie-tool-btn" id="ieCrop" type="button" title="Обрезка">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieRotateLeft" type="button" title="Повернуть влево">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieRotateRight" type="button" title="Повернуть вправо">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieFlipH" type="button" title="Отразить по горизонтали">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><polygon points="3 8 9 12 3 16" fill="currentColor" stroke="none"/><polygon points="21 8 15 12 21 16" fill="currentColor" stroke="none"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieFlipV" type="button" title="Отразить по вертикали">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="12" x2="22" y2="12"/><polygon points="8 3 12 9 16 3" fill="currentColor" stroke="none"/><polygon points="8 21 12 15 16 21" fill="currentColor" stroke="none"/></svg>
+                    </button>
+                </div>
+                <div class="ie-divider"></div>
+                <div class="ie-tool-group">
+                    <button class="ie-tool-btn" id="ieBrush" type="button" title="Кисть">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="iePixelate" type="button" title="Пикселизация (скрыть приватное)">
+                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="3" width="5" height="5"/><rect x="14" y="3" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/><rect x="3" y="14" width="5" height="5"/><rect x="16" y="16" width="5" height="5"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieEraser" type="button" title="Ластик">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8.5l-5-5a2 2 0 0 1 0-2.83l8.34-8.34a2 2 0 0 1 2.83 0l5.5 5.5a2 2 0 0 1 0 2.83L13.5 20"/><line x1="6.5" y1="11.5" x2="14" y2="19"/></svg>
+                    </button>
+                </div>
+                <div class="ie-divider"></div>
+                <div class="ie-color-wrap" id="ieColorWrap">
+                    <input type="color" id="ieColor" value="#000000" title="Цвет кисти">
+                </div>
+                <div class="ie-size-wrap" id="ieSizeWrap">
+                    <input type="range" id="ieSize" min="4" max="80" value="24" title="Размер кисти">
+                    <span class="ie-size-val" id="ieSizeVal">24 px</span>
+                </div>
+            </div>
+            <div class="ie-stage" id="ieStage">
+                <div class="ie-canvas-wrap" id="ieCanvasWrap">
+                    <canvas class="ie-canvas" id="ieCanvas"></canvas>
+                    <div class="ie-crop-frame" id="ieCropFrame">
+                        <div class="ie-crop-handle tl" data-handle="tl"></div>
+                        <div class="ie-crop-handle tr" data-handle="tr"></div>
+                        <div class="ie-crop-handle bl" data-handle="bl"></div>
+                        <div class="ie-crop-handle br" data-handle="br"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="ie-actions">
+                <button class="sd-btn-secondary" id="ieCancel" type="button">Отмена</button>
+                <button class="sd-btn sd-btn-primary" id="ieApply" type="button">Готово</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Mobile responsive navigation -->
     <script>
     (function () {
@@ -3617,6 +3844,7 @@
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
+    <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
     <script src="/js/app/main.js?v=personalization-2"></script>

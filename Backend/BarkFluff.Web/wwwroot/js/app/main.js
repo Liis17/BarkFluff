@@ -1144,6 +1144,7 @@
 
     BF.settings.init({ myUserId: myUserId });
     BF.attach.init();
+    if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
 
