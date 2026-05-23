@@ -452,7 +452,7 @@ Mac-специфика:
   - `AttachmentType.displayName(in:)`, `previewText(fileName:in:)`
   - `ChatMemberRole.displayName(in:)`, `FastAuthStatus.displayName(in:)`, `DeviceType.displayName(in:)`, `SharedMediaFilter.displayName(in:)`
   - `BFError.errorDescription(in:)` / `recoverySuggestion(in:)`, `MediaCacheError.errorDescription(in:)`
-  - `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive(_: locale:)` — внутри собирают локаль-специфичный `DateFormatter`
+  - `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive(_: locale:)` — внутри собирают локаль-специфичный `DateFormatter`. `formatForChatList`: сегодня → время (`16:27`), вчера/позавчера → слово+время (`Вчера 16:27`, ключи `bfcore.date.yesterday`, `bfcore.date.day_before_yesterday`), старше → короткая дата с двузначным годом через template `ddMMyy` (`23.05.26` / `5/23/26`)
   - `ErrorLocalizer.localize(_:locale:)` / `recoverySuggestion(for:locale:)`
 - Plurals для last-seen (`bfcore.online.last_seen_minutes/_hours/_days %lld`) — native xcstrings plural variants. RU: one/few/many; EN: one/other.
 

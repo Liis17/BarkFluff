@@ -771,6 +771,41 @@
         }
       }
     },
+    "bfcore.date.day_before_yesterday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Day before yesterday"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позавчера"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteayer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前天"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgestern"
+          }
+        }
+      }
+    },
     "bfcore.date.yesterday": {
       "extractionState": "manual",
       "localizations": {

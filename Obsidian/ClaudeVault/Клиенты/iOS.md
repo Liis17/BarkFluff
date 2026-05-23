@@ -264,7 +264,7 @@ iOS-клиент выступает в роли **сканера**: автори
 **BFCore (общий с macOS):**
 - Каталог: `Packages/BFCore/Sources/BFCore/Resources/Localizable.xcstrings`, `resources: [.process("Resources")]` в `Package.swift`. Внутри пакета — `String(localized: "key", bundle: .module, locale: …)`.
 - Каждый enum/struct с локализованным `displayName: String` отдаёт системную локаль по умолчанию, плюс имеет **locale-aware overload** `displayName(in locale: Locale) -> String`. Тот же паттерн для `OnlineStatus.displayText(in:)`, `AttachmentType.previewText(fileName:in:)`, `BFError.errorDescription(in:)`/`recoverySuggestion(in:)`, `MediaCacheError.errorDescription(in:)`.
-- `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive` принимают `locale: Locale = .current` — внутри собирают локаль-специфичный `DateFormatter`.
+- `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive` принимают `locale: Locale = .current` — внутри собирают локаль-специфичный `DateFormatter`. `formatForChatList`: сегодня → время (`16:27`), вчера/позавчера → слово+время (`Вчера 16:27`, ключи `bfcore.date.yesterday`, `bfcore.date.day_before_yesterday`), старше → короткая дата с двузначным годом через template `ddMMyy` (`23.05.26` / `5/23/26`).
 - `ErrorLocalizer.localize(_:locale:)` / `recoverySuggestion(for:locale:)` — locale-aware.
 - Plurals для last-seen (`bfcore.online.last_seen_minutes/_hours/_days %lld`) — native xcstrings plural variants для русского (one/few/many) и английского (one/other).
 

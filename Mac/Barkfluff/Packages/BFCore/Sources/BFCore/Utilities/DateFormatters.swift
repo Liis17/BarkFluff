@@ -40,13 +40,6 @@ public enum DateFormatterHelper {
         return formatter
     }()
 
-    /// Форматтер для относительного отображения времени (системная локаль).
-    nonisolated(unsafe) public static let relativeFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
-
     // MARK: - Locale-aware форматтеры
 
     private static func makeTimeFormatter(locale: Locale) -> DateFormatter {
@@ -73,28 +66,42 @@ public enum DateFormatterHelper {
         return f
     }
 
-    private static func makeRelativeFormatter(locale: Locale) -> RelativeDateTimeFormatter {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
+    /// Короткая дата с двузначным годом для списка чатов: «ДД.ММ.ГГ» в ru, «M/d/yy» в en.
+    private static func makeShortDateFormatter(locale: Locale) -> DateFormatter {
+        let f = DateFormatter()
         f.locale = locale
+        f.setLocalizedDateFormatFromTemplate("ddMMyy")
         return f
     }
 
     /// Отформатировать дату для отображения в списке чатов.
-    /// - Parameter locale: локаль для текстов («Вчера»/«Yesterday») и форматирования времени.
+    ///
+    /// Сегодня — только время («16:27»), вчера/позавчера — слово + время («Вчера 16:27»),
+    /// старше — короткая дата с двузначным годом («23.05.26»).
+    /// - Parameter locale: локаль для текстов и форматирования времени/даты.
     public static func formatForChatList(_ date: Date, locale: Locale = .current) -> String {
         let calendar = Calendar.current
         let now = Date()
 
         if calendar.isDateInToday(date) {
             return makeTimeFormatter(locale: locale).string(from: date)
-        } else if calendar.isDateInYesterday(date) {
-            return String(localized: "bfcore.date.yesterday", bundle: .module, locale: locale)
-        } else if let daysAgo = calendar.dateComponents([.day], from: date, to: now).day, daysAgo < 7 {
-            return makeRelativeFormatter(locale: locale).localizedString(for: date, relativeTo: now)
-        } else {
-            return makeDateFormatter(locale: locale).string(from: date)
         }
+
+        let timeStr = makeTimeFormatter(locale: locale).string(from: date)
+
+        if calendar.isDateInYesterday(date) {
+            let word = String(localized: "bfcore.date.yesterday", bundle: .module, locale: locale)
+            return "\(word) \(timeStr)"
+        }
+
+        let startOfDate = calendar.startOfDay(for: date)
+        let startOfNow = calendar.startOfDay(for: now)
+        if calendar.dateComponents([.day], from: startOfDate, to: startOfNow).day == 2 {
+            let word = String(localized: "bfcore.date.day_before_yesterday", bundle: .module, locale: locale)
+            return "\(word) \(timeStr)"
+        }
+
+        return makeShortDateFormatter(locale: locale).string(from: date)
     }
 
     /// Отформатировать дату для отображения в сообщении.

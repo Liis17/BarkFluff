@@ -218,6 +218,7 @@ struct ChatRowView: View {
     let onlineStatusService: OnlineStatusServiceProtocol
 
     @State private var onlineStatus: OnlineStatus = .unknown
+    @Environment(\.locale) private var locale
 
     private var otherUserID: Int64? {
         guard !chat.isGroupChat else { return nil }
@@ -246,7 +247,7 @@ struct ChatRowView: View {
                     Spacer()
 
                     if let date = chat.lastMessageDate {
-                        Text(date, style: .time)
+                        Text(DateFormatterHelper.formatForChatList(date, locale: locale))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
