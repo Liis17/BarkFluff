@@ -2042,6 +2042,49 @@
     window.addEventListener('resize', closeChatContextMenu);
     if (chatListEl) chatListEl.addEventListener('scroll', closeChatContextMenu);
 
+    // ========== DEEP-LINK ИЗ COOKIE (с публичной страницы пользователя) ==========
+
+    function bfGetCookie(name) {
+        var m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)');
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function bfDeleteOpenChatCookie() {
+        var base = 'bf_open_chat=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = base;
+        if (/(^|\.)barkfluff\.com$/i.test(location.hostname)) {
+            document.cookie = base + '; domain=.barkfluff.com';
+        }
+    }
+
+    // Если на странице пользователя (barkfluff.com/<username>) нажали «Написать в браузере»,
+    // там в cookie bf_open_chat записан username. Находим пользователя -> chatId -> открываем чат.
+    // Логика повторяет Android DeepLinkActivity: SearchUsers -> точное совпадение -> GetPersonChatId.
+    function maybeOpenChatFromCookie() {
+        var uname = bfGetCookie('bf_open_chat');
+        if (!uname) return;
+        bfDeleteOpenChatCookie();          // одноразово: сразу удаляем
+        uname = uname.trim();
+        if (!uname) return;
+
+        BF.api.searchUsers(uname, 0, 20).then(function (data) {
+            var list = (data && data.users) || [];
+            var target = null;
+            for (var i = 0; i < list.length; i++) {
+                if ((list[i].username || '').toLowerCase() === uname.toLowerCase()) {
+                    target = list[i];
+                    break;
+                }
+            }
+            if (!target) return;           // точного совпадения нет — как в Android, ничего не открываем
+            return BF.api.getPersonChatId(target.id).then(function (d) {
+                if (d && d.chatId) openChat(d.chatId);
+            });
+        }).catch(function (err) {
+            console.error('maybeOpenChatFromCookie failed:', err);
+        });
+    }
+
     // ========== INIT ==========
 
     requestNotificationPermission();
@@ -2060,9 +2103,9 @@
         BF.folders.setOnChange(function () { renderChatList(); });
         BF.folders.init().then(function () {
             return loadChats(true);
-        }).then(updateTitleBadge);
+        }).then(updateTitleBadge).then(maybeOpenChatFromCookie);
     } else {
-        loadChats(true).then(updateTitleBadge);
+        loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie);
     }
 
     BF.realtime.startAll();
