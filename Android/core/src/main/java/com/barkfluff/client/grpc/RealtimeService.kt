@@ -1,17 +1,11 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.util.Log
 import com.barkfluff.client.data.OpenChatManager
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
-import coil.request.ImageRequest
-import coil.request.SuccessResult
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.notifications.NotificationHelper
-import com.barkfluff.client.widget.WidgetUpdater
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.coroutines.coroutineContext
@@ -20,7 +14,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -31,7 +24,11 @@ import kotlin.math.pow
  * Использует общий GrpcManager из Application для всех gRPC вызовов.
  * Поддерживает resume/pause для корректной работы при сворачивании/разворачивании.
  */
-class RealtimeService(private val context: Context, private val grpcManager: GrpcManager) {
+class RealtimeService(
+    private val context: Context,
+    private val grpcManager: GrpcManager,
+    private val sideEffects: RealtimeSideEffects? = null
+) {
 
     companion object {
         private const val TAG = "RealtimeService"
@@ -99,20 +96,11 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
-    private data class CachedUserInfo(
-        val displayName: String,
-        val avatarFileId: String,
-        val avatarFullFileId: String,
-        val avatarPreviewUrl: String,
-        val avatarFullUrl: String
-    )
-
     // Internal state
     private val globalParam = GlobalParam(context)
     private var serviceScope: CoroutineScope? = null
     private val tokenRefreshMutex = Mutex()
     private val seenMessageIds = LinkedHashSet<Long>()
-    private val userInfoCache = ConcurrentHashMap<Long, CachedUserInfo>()
 
     // Online subscription state
     @Volatile
@@ -237,7 +225,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
             }
             Log.v(TAG, "New message: id=$msgId, chatId=${event.chatId}")
             _newMessages.emit(event)
-            WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
+            sideEffects?.onChatChanged(event.chatId)
         }
     }
 
@@ -250,8 +238,8 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
             // Если текущий пользователь в списке прочитавших — убираем уведомление из шторки
             val uid = globalParam.userId
             if (uid > 0 && event.newReadByList.contains(uid)) {
-                NotificationHelper.dismissForChat(context, event.chatId)
-                WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
+                sideEffects?.dismissChatNotifications(event.chatId)
+                sideEffects?.onChatChanged(event.chatId)
             }
         }
     }
@@ -263,7 +251,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeMessagesEdited(request).collect { event ->
             Log.d(TAG, "Message edited received: chatId=${event.chatId}, msgId=${event.message.id}")
             _messageEdited.emit(event)
-            WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
+            sideEffects?.onChatChanged(event.chatId)
         }
     }
 
@@ -274,7 +262,7 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeMessagesDeleted(request).collect { event ->
             Log.d(TAG, "Message deleted received: chatId=${event.chatId}, msgId=${event.messageId}")
             _messageDeleted.emit(event)
-            WidgetUpdater.scheduleRefreshForChat(context, event.chatId)
+            sideEffects?.onChatChanged(event.chatId)
         }
     }
 
@@ -410,82 +398,11 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     }
 
     private suspend fun notificationLoop() {
+        val se = sideEffects ?: return
         try {
             _newMessages.collect { event ->
                 try {
-                    if (!globalParam.notificationsEnabled) return@collect
-
-                    val msg = event.message ?: return@collect
-                    val senderId = msg.senderId
-                    if (senderId == globalParam.userId) return@collect
-
-                    val chatId = event.chatId
-
-                    // Проверяем, открыт ли этот чат сейчас — если да, не показываем уведомление
-                    if (OpenChatManager.isOpen(chatId)) {
-                        return@collect
-                    }
-
-                    val messageId = msg.id
-                    val messageText = msg.content?.text ?: ""
-
-                    // Resolve sender info (cache first)
-                    val userInfo = userInfoCache[senderId] ?: run {
-                        val result = grpcManager.getUserData(senderId)
-                        if (result.isFailure) {
-                            Log.w(TAG, "Failed to get user data for notification: senderId=$senderId")
-                            return@collect
-                        }
-                        val user = result.getOrNull()!!
-                        val displayName = "${user.firstName} ${user.lastName}".trim().ifEmpty { user.username }
-                        val previewId = user.profilePicturePreviewFileId
-                        val fullId = user.profilePictureFileId
-                        Log.d(TAG, "User $senderId avatar: previewFileId='$previewId', fullFileId='$fullId', previewUrl='${user.profilePicturePreviewUrl}', fullUrl='${user.profilePictureUrl}'")
-                        val info = CachedUserInfo(displayName, previewId, fullId, user.profilePicturePreviewUrl, user.profilePictureUrl)
-                        userInfoCache[senderId] = info
-                        info
-                    }
-
-                    // Load avatar bitmap (headless, no View needed)
-                    var avatarBitmap: Bitmap? = null
-                    val avatarFileId = userInfo.avatarFileId.ifBlank { userInfo.avatarFullFileId }
-                    if (avatarFileId.isNotBlank()) {
-                        avatarBitmap = loadBitmapByFileId(avatarFileId)
-                    }
-                    // Fallback: попробовать загрузить напрямую из URL (если fileId не сработал)
-                    if (avatarBitmap == null) {
-                        val directUrl = userInfo.avatarPreviewUrl.ifBlank { userInfo.avatarFullUrl }
-                        if (directUrl.isNotBlank()) {
-                            avatarBitmap = loadBitmapByUrl(directUrl)
-                        }
-                    }
-
-                    // Load image attachment if present
-                    var imageBitmap: Bitmap? = null
-                    try {
-                        val attachments = msg.content?.attachmentsList
-                        val imageAttachment = attachments?.firstOrNull {
-                            it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE
-                        }
-                        if (imageAttachment != null) {
-                            val previewFileId = imageAttachment.previewFileId.ifBlank { imageAttachment.fileId }
-                            if (previewFileId.isNotBlank()) {
-                                imageBitmap = loadBitmapByFileId(previewFileId)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to load image attachment for notification", e)
-                    }
-
-                    NotificationHelper.showMessageNotification(
-                        context,
-                        userInfo.displayName,
-                        messageText,
-                        avatarBitmap,
-                        chatId,
-                        messageId,
-                        imageBitmap
-                    )
+                    se.showMessageNotification(event)
                 } catch (e: Exception) {
                     Log.e(TAG, "Notification dispatch error", e)
                 }
@@ -494,66 +411,6 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Notification loop failed", e)
-        }
-    }
-
-    private suspend fun loadBitmapByFileId(fileId: String): Bitmap? {
-        return try {
-            // Сначала проверяем URL кэш (заполняется AvatarLoader при загрузке списка чатов)
-            var url = com.barkfluff.client.utils.AvatarLoader.urlCache[fileId]
-
-            if (url == null) {
-                val urlResult = grpcManager.getFileDownloadUrl(fileId)
-                if (urlResult.isFailure) {
-                    Log.w(TAG, "Failed to get download URL for fileId=$fileId: ${urlResult.exceptionOrNull()?.message}")
-                    return null
-                }
-                url = urlResult.getOrNull()
-                if (url.isNullOrBlank()) {
-                    Log.w(TAG, "Empty download URL for fileId=$fileId")
-                    return null
-                }
-                com.barkfluff.client.utils.AvatarLoader.urlCache[fileId] = url
-            }
-
-            // Используем общий ImageLoader с disk/memory cache
-            val imageLoader = com.barkfluff.client.utils.AvatarLoader.getImageLoader(context)
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .memoryCacheKey(fileId)
-                .diskCacheKey(fileId)
-                .allowHardware(false)
-                .build()
-            val imageResult = imageLoader.execute(request)
-            if (imageResult is SuccessResult) {
-                (imageResult.drawable as? BitmapDrawable)?.bitmap
-            } else {
-                Log.w(TAG, "Coil failed to load bitmap for fileId=$fileId, result=${imageResult.javaClass.simpleName}")
-                null
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to load bitmap for fileId=$fileId", e)
-            null
-        }
-    }
-
-    private suspend fun loadBitmapByUrl(url: String): Bitmap? {
-        return try {
-            val imageLoader = com.barkfluff.client.utils.AvatarLoader.getImageLoader(context)
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .allowHardware(false)
-                .build()
-            val imageResult = imageLoader.execute(request)
-            if (imageResult is SuccessResult) {
-                (imageResult.drawable as? BitmapDrawable)?.bitmap
-            } else {
-                Log.w(TAG, "Coil failed to load bitmap from URL directly")
-                null
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to load bitmap from URL directly", e)
-            null
         }
     }
 

@@ -12,6 +12,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.notifications.RealtimeSideEffectsImpl
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
@@ -72,7 +73,11 @@ class BarkFluffApplication : Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
         NotificationHelper.createChannels(this)
         grpcManager = GrpcManager()
-        realtimeService = RealtimeService(applicationContext, grpcManager)
+        realtimeService = RealtimeService(
+            applicationContext,
+            grpcManager,
+            RealtimeSideEffectsImpl(applicationContext, grpcManager)
+        )
 
         // E2E-инфраструктура (приватные + секретные чаты)
         signalStore = BarkFluffSignalStore(applicationContext)
