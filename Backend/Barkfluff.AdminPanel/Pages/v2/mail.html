@@ -79,6 +79,9 @@
             overflow: hidden;
             background: var(--md-surface-container-lowest);
         }
+        /* #message-detail — внутренний контейнер письма: тянем на всю высоту секции,
+           чтобы .detail-body (flex:1) растягивался до низа страницы */
+        #message-detail { flex: 1; min-height: 0; }
         .detail-empty {
             flex: 1;
             display: flex; align-items: center; justify-content: center;
