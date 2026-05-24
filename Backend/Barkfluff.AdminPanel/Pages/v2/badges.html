@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Бейджи</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <style>
         .badges-grid {
             display: grid;
@@ -328,20 +327,7 @@
             const res = isEdit
                 ? await fetch(`/api/badges/${id}`, { method:'PUT', body: fd })
                 : await fetch('/api/badges', { method:'POST', body: fd });
-            if (!res.ok) {
-                // preview-mode mock: still succeed by appending
-                if (!isEdit) {
-                    badges.push({
-                        id: Math.max(0, ...badges.map(b => b.id)) + 1,
-                        name: document.getElementById('badgeName').value,
-                        description: document.getElementById('badgeDescription').value,
-                        isActive: document.getElementById('badgeIsActive').checked,
-                        imageUrl: null,
-                        createdAt: new Date().toISOString()
-                    });
-                    renderBadges();
-                }
-            }
+            if (!res.ok) { alert('Не удалось сохранить бейдж: ' + (await res.text())); return; }
             closeModal();
             await loadBadges();
         } finally {

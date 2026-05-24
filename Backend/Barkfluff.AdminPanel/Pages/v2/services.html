@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Сервисы</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <style>
         .tab-bar {
             display: flex;
@@ -293,11 +292,14 @@
 
     function statusBadgeHtml(state) {
         const map = {
-            running:    { cls:'md-status-success', label:'Запущен' },
-            restarting: { cls:'md-status-info',    label:'Перезапуск' },
-            paused:     { cls:'md-status-warn',    label:'Приостановлен' },
-            exited:     { cls:'md-status-error',   label:'Остановлен' },
-            dead:       { cls:'md-status-error',   label:'Остановлен' }
+            running:      { cls:'md-status-success', label:'Запущен' },
+            restarting:   { cls:'md-status-info',    label:'Перезапуск' },
+            paused:       { cls:'md-status-warn',    label:'Приостановлен' },
+            exited:       { cls:'md-status-error',   label:'Остановлен' },
+            dead:         { cls:'md-status-error',   label:'Остановлен' },
+            not_found:    { cls:'md-status-neutral', label:'Не найден' },
+            unconfigured: { cls:'md-status-neutral', label:'Не настроен' },
+            error:        { cls:'md-status-warn',    label:'Ошибка' }
         };
         const info = map[state] || { cls:'md-status-neutral', label: state || 'Нет данных' };
         return `<span class="md-status ${info.cls}"><span class="dot"></span>${info.label}</span>`;
@@ -468,7 +470,7 @@
     }
     async function updateAdminPanel() {
         if (!confirm('Обновить админ-панель? Будет загружен новый образ.')) return;
-        try { await fetch('/api/docker/containers/admin-panel/pull', { method:'POST' }); window.location.href = '/updating'; }
+        try { await fetch('/api/docker/containers/admin-panel/update-own', { method:'POST' }); window.location.href = '/updating'; }
         catch { showNotification('error', 'Не удалось запустить обновление'); }
     }
 
@@ -483,31 +485,73 @@
 
     async function loadRemoteServer(name) {
         try {
-            const r = await fetch('/api/remote-servers');
-            if (!r.ok) throw new Error();
-            const data = await r.json();
-            const info = data[name];
-            if (!info) return;
-            document.getElementById(`info-${name}-host`).textContent = info.host;
-            document.getElementById(`info-${name}-port`).textContent = info.port;
-            document.getElementById(`info-${name}-user`).textContent = info.user;
-            document.getElementById(`info-${name}-pass`).textContent = info.password;
+            const r = await fetch(`/api/remote/${name}/config`);
+            if (r.ok) {
+                const info = await r.json();
+                document.getElementById(`info-${name}-host`).textContent = info.host || '—';
+                document.getElementById(`info-${name}-port`).textContent = info.port || '22';
+                document.getElementById(`info-${name}-user`).textContent = info.username || '—';
+                const passEl = document.getElementById(`info-${name}-pass`);
+                passEl.textContent = info.password ? '•'.repeat(Math.min(info.password.length, 24)) : '—';
+            }
+        } catch {}
+        await loadRemoteContainers(name);
+    }
 
-            const tbody = document.getElementById(`remote-${name}-body`);
-            tbody.innerHTML = info.services.map(s => `
+    async function loadRemoteContainers(name) {
+        const tbody = document.getElementById(`remote-${name}-body`);
+        try {
+            const r = await fetch(`/api/remote/${name}/containers`);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const data = await r.json();
+            if (!data || !data.length) {
+                tbody.innerHTML = `<tr><td colspan="3" class="empty-cell">Нет данных</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = data.map(svc => {
+                const isRunning = svc.state === 'running';
+                const isUnconfigured = svc.state === 'unconfigured';
+                const actions = isUnconfigured
+                    ? '<span style="color:var(--md-outline);">—</span>'
+                    : `<button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}" onclick="handleRemoteAction(event, '${name}', '${svc.serviceName}', '${isRunning?'stop':'start'}')"><span class="msr size-20">${isRunning?'stop':'play_arrow'}</span></button>
+                       <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event, '${name}', '${svc.serviceName}', 'restart')"><span class="msr size-20">restart_alt</span></button>
+                       <button class="md-icon-btn" title="Обновить образ" onclick="handleRemoteAction(event, '${name}', '${svc.serviceName}', 'pull')"><span class="msr size-20">cloud_download</span></button>`;
+                const statusHint = svc.status && svc.state !== 'unconfigured' && svc.state !== 'not_found'
+                    ? `<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(svc.status)}</span>` : '';
+                return `
                 <tr>
-                    <td><div style="display:flex;align-items:center;gap:8px;font-weight:500;"><span class="msr size-18" style="color:var(--md-primary);">dns</span>${escapeHtml(s.name)}</div></td>
-                    <td>${statusBadgeHtml(s.status === 'running' ? 'running' : 'exited')}</td>
-                    <td>
-                        <div style="display:flex;justify-content:center;gap:4px;">
-                            <button class="md-icon-btn"><span class="msr size-20">${s.status === 'running' ? 'stop' : 'play_arrow'}</span></button>
-                            <button class="md-icon-btn"><span class="msr size-20">restart_alt</span></button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
+                    <td><div style="display:flex;align-items:center;gap:8px;font-weight:500;"><span class="msr size-18" style="color:var(--md-primary);">dns</span>${escapeHtml(svc.label)}<span style="font-size:12px;color:var(--md-on-surface-variant);font-weight:400;">${escapeHtml(svc.serviceName)}</span></div></td>
+                    <td>${statusBadgeHtml(svc.state)}${statusHint}</td>
+                    <td><div style="display:flex;justify-content:center;gap:4px;">${actions}</div></td>
+                </tr>`;
+            }).join('');
         } catch (e) {
-            document.getElementById(`remote-${name}-body`).innerHTML = `<tr><td colspan="3" class="empty-cell" style="color:var(--md-error);">Не удалось загрузить</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    }
+
+    async function handleRemoteAction(event, serverId, serviceName, action) {
+        event.stopPropagation();
+        const names = { start:'запуска', stop:'остановки', restart:'перезапуска', pull:'обновления' };
+        if (!confirm(`Выполнить действие "${names[action]}" для ${serviceName}?`)) return;
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
+        try {
+            const r = await fetch(`/api/remote/${serverId}/containers/${serviceName}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
+            const result = await r.json();
+            if (result.success) {
+                showNotification('success', result.message);
+                setTimeout(() => loadRemoteContainers(serverId), 3000);
+            } else {
+                showNotification('error', result.message || 'Ошибка');
+            }
+        } catch (e) {
+            showNotification('error', 'Ошибка: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
         }
     }
 

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Уведомления</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <style>
         .notif-layout {
             display: grid;
@@ -234,7 +233,7 @@
             const btn = document.getElementById('btnSendAll');
             btn.disabled = true;
             try {
-                const res = await fetch('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                const res = await fetch('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }) });
                 if (!res.ok) throw new Error();
                 toast('Рассылка отправлена', 'success');
             } catch { toast('Ошибка отправки', 'err'); }

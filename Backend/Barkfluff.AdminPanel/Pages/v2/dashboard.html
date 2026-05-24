@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Дашборд</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .kpi-grid {
@@ -163,10 +162,6 @@
                 </span>
             </div>
             <div style="display:flex;gap:8px;">
-                <button id="switch-to-v2-btn" class="md-btn md-btn-tonal md-btn-square-press">
-                    <span class="msr size-18">auto_awesome</span>
-                    Новая версия
-                </button>
                 <button id="logout-btn" class="md-btn md-btn-outlined md-btn-square-press">
                     <span class="msr size-18">logout</span>
                     Выйти
@@ -542,11 +537,7 @@
         }
     }
 
-    // ---- Switch / Logout ----
-    document.getElementById('switch-to-v2-btn').addEventListener('click', () => {
-        document.cookie = 'ui_version=v2; path=/; max-age=' + (60*60*24*365);
-        window.location.href = '/v2/';
-    });
+    // ---- Logout ----
     document.getElementById('logout-btn').addEventListener('click', async () => {
         try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
         window.location.href = '/';

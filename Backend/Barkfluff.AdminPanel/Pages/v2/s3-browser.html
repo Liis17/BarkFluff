@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Браузер S3</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <style>
         .breadcrumbs {
             display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
@@ -264,8 +263,8 @@
             const r = await fetch(`/api/s3/buckets/${encodeURIComponent(currentBucket)}/objects?${params}`);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
-            allObjects = allObjects.concat(data.contents || []);
-            continuationToken = data.continuationToken;
+            allObjects = allObjects.concat(data.objects || []);
+            continuationToken = data.nextContinuationToken;
             isTruncated = data.isTruncated;
             renderTable();
             loading.style.display = 'none';
@@ -297,7 +296,6 @@
                     <div class="actions">
                         ${obj.isFolder ? '' : `
                             <button class="md-icon-btn" title="Скачать" onclick="event.stopPropagation();downloadFile('${escapeHtml(fullKey)}', '${escapeHtml(name)}')"><span class="msr size-20">download</span></button>
-                            <button class="md-icon-btn danger" title="Удалить" onclick="event.stopPropagation();deleteFile('${escapeHtml(fullKey)}')"><span class="msr size-20">delete</span></button>
                         `}
                     </div>
                 </div>
@@ -344,16 +342,6 @@
             const url = await getPresignedUrl(key);
             const a = document.createElement('a');
             a.href = url; a.download = name; a.click();
-        } catch (e) { alert(e.message); }
-    };
-
-    window.deleteFile = async function (key) {
-        if (!confirm(`Удалить «${key}»? Это действие необратимо.`)) return;
-        try {
-            const r = await fetch(`/api/s3/buckets/${encodeURIComponent(currentBucket)}/objects?key=${encodeURIComponent(key)}`, { method:'DELETE' });
-            if (!r.ok) throw new Error('Не удалось удалить');
-            allObjects = allObjects.filter(o => o.key !== key);
-            renderTable();
         } catch (e) { alert(e.message); }
     };
 

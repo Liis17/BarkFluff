@@ -44,6 +44,8 @@
     <None Remove="Pages\v2\stickers.html" />
     <None Remove="Pages\v2\updating.html" />
     <None Remove="Pages\v2\users.html" />
+    <None Remove="Pages\v2\assets\md3.css" />
+    <None Remove="Pages\v2\assets\sidebar.js" />
   </ItemGroup>
 
   <ItemGroup>
@@ -159,6 +161,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\users.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\assets\md3.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\assets\sidebar.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

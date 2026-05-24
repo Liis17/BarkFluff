@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Стикеры</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <style>
         .packs-grid {
             display: grid;
@@ -260,7 +259,7 @@
         if (!packs.length) { grid.innerHTML = ''; empty.style.display = 'flex'; return; }
         empty.style.display = 'none';
         grid.innerHTML = packs.map(p => `
-            <div class="pack-card" onclick="openPackDetail(${p.id})">
+            <div class="pack-card" onclick="openPackDetail('${p.id}')">
                 <div class="pack-cover">
                     ${p.coverUrl
                         ? `<img src="${p.coverUrl}" alt="${escapeHtml(p.name)}">`
@@ -269,11 +268,9 @@
                 <div class="pack-meta">
                     <div class="top">
                         <div class="name">${escapeHtml(p.name)}</div>
-                        <span class="md-status ${p.isPublished ? 'md-status-success' : 'md-status-neutral'}">${p.isPublished ? 'Опубликован' : 'Черновик'}</span>
                     </div>
                     <div class="info">
-                        <span class="item"><span class="msr size-18">grid_view</span>${p.stickersCount || 0}</span>
-                        <span class="item" style="opacity:.7;">${p.shortName || ''}</span>
+                        <span class="item"><span class="msr size-18">grid_view</span>${p.stickerCount || 0} стикеров</span>
                     </div>
                 </div>
             </div>
@@ -303,18 +300,13 @@
         const fd = new FormData();
         fd.append('name', document.getElementById('createPackName').value);
         const cover = document.getElementById('createCoverInput').files[0];
-        if (cover) fd.append('cover', cover);
+        if (cover) fd.append('image', cover);
         const btn = document.getElementById('createPackBtn');
         btn.disabled = true;
         try {
             const res = await fetch('/api/stickers/packs', { method:'POST', body: fd });
-            if (!res.ok) {
-                // preview-mode fallback
-                packs.unshift({ id: Math.max(0, ...packs.map(p => p.id)) + 1, name: fd.get('name'), shortName: 'new-pack', coverUrl: null, stickersCount: 0, isPublished: false, createdAt: new Date().toISOString() });
-                renderPacks();
-            } else {
-                await loadPacks();
-            }
+            if (!res.ok) { alert('Не удалось создать пак: ' + (await res.text())); return; }
+            await loadPacks();
             closeCreatePackModal();
         } finally { btn.disabled = false; }
     };
@@ -340,15 +332,15 @@
         const cover = document.getElementById('detailCoverImg');
         if (p.coverUrl) { cover.src = p.coverUrl; cover.style.display = ''; document.getElementById('detailCoverIcon').style.display = 'none'; }
         else { cover.style.display = 'none'; document.getElementById('detailCoverIcon').style.display = ''; }
-        document.getElementById('detailPackInfo').textContent = `${(p.stickers || []).length} стикеров • shortName: ${p.shortName || '—'}`;
+        document.getElementById('detailPackInfo').textContent = `${(p.stickers || []).length} стикеров`;
 
         const grid = document.getElementById('stickersGrid');
         const stickersHtml = (p.stickers || []).map(s => `
             <div class="sticker" data-sid="${s.id}">
-                ${s.imageUrl
-                    ? `<img src="${s.imageUrl}">`
+                ${(s.previewUrl || s.fileUrl)
+                    ? `<img src="${s.previewUrl || s.fileUrl}">`
                     : `<span class="emoji">${escapeHtml(s.emoji || '🐱')}</span>`}
-                <button class="delete-btn" onclick="deleteSticker(${s.id})"><span class="msr">close</span></button>
+                <button class="delete-btn" onclick="deleteSticker('${s.id}')"><span class="msr">close</span></button>
             </div>
         `).join('');
         grid.innerHTML = stickersHtml + `<div class="add-sticker" onclick="openAddStickerModal()"><span class="msr size-40">add</span></div>`;
@@ -361,13 +353,13 @@
     window.savePackName = async function () {
         const name = document.getElementById('detailPackNameInput').value.trim();
         if (!name || name === originalPackName) return;
-        try { await fetch(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
+        try { await fetch(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '' }) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
     };
 
     window.handleCoverChange = async function (input) {
         const f = input.files[0]; if (!f) return;
-        const fd = new FormData(); fd.append('cover', f);
-        try { await fetch(`/api/stickers/packs/${currentPackId}/cover`, { method:'POST', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
+        const fd = new FormData(); fd.append('image', f);
+        try { await fetch(`/api/stickers/packs/${currentPackId}/cover`, { method:'PUT', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
         input.value = '';
     };
 
@@ -382,7 +374,7 @@
 
     window.deleteSticker = async function (sid) {
         if (!confirm('Удалить стикер?')) return;
-        try { await fetch(`/api/stickers/packs/${currentPackId}/stickers/${sid}`, { method:'DELETE' }); await openPackDetail(currentPackId); } catch {}
+        try { await fetch(`/api/stickers/${sid}`, { method:'DELETE' }); await openPackDetail(currentPackId); } catch {}
     };
 
     // Add sticker

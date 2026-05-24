@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Почта</title>
     <link rel="stylesheet" href="assets/md3.css">
-    <script src="assets/preview-mode.js"></script>
     <style>
         .md-page { padding: 0; }
         .mail-shell {
@@ -235,7 +234,7 @@
     const state = {
         accounts: [], activeAccount: null,
         messages: [], selectedUid: null, selectedDetail: null,
-        pendingFiles: [], pollTimer: null
+        pendingFiles: [], pollTimer: null, replyContext: null
     };
     const $ = id => document.getElementById(id);
 
@@ -344,7 +343,10 @@
             if (!r.ok) throw new Error();
             state.selectedDetail = await r.json();
             const localMsg = state.messages.find(m => m.uid === uid);
-            if (localMsg) { localMsg.isRead = true; renderList(); }
+            if (localMsg && !localMsg.isRead) {
+                localMsg.isRead = true; renderList();
+                fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}/read`, { method:'POST' }).catch(() => {});
+            }
             renderDetail(state.selectedDetail);
         } catch (e) {
             $('message-detail').innerHTML = '<div style="padding:48px;text-align:center;color:var(--md-error);">Не удалось загрузить письмо</div>';
@@ -380,12 +382,11 @@
                     <button class="md-btn md-btn-tonal md-btn-square-press" onclick="replyToMessage()">
                         <span class="msr size-18">reply</span>Ответить
                     </button>
-                    <button class="md-btn md-btn-text" onclick="deleteMessage()">
-                        <span class="msr size-18">delete</span>Удалить
-                    </button>
                 </div>
             </div>
-            <div class="detail-body">${d.bodyHtml ? d.bodyHtml : escapeHtml(d.bodyText || '')}</div>
+            <div class="detail-body">${d.htmlBody
+                ? `<iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="${escapeHtml(d.htmlBody)}"></iframe>`
+                : escapeHtml(d.textBody || '')}</div>
             ${attHtml}
         `;
     }
@@ -401,6 +402,7 @@
             $('compose-to').value = '';
             $('compose-subject').value = '';
             $('compose-body').value = '';
+            state.replyContext = null;
         }
         state.pendingFiles = [];
         $('compose-files-list').innerHTML = '';
@@ -417,40 +419,40 @@
             </div>`).join('');
     };
     window.sendMail = async function () {
-        const to = $('compose-to').value.trim();
+        const toRaw = $('compose-to').value.trim();
         const subject = $('compose-subject').value.trim();
         const body = $('compose-body').value;
-        if (!to || !subject) { toast('Укажите получателя и тему', 'err'); return; }
+        if (!toRaw || !subject) { toast('Укажите получателя и тему', 'err'); return; }
+        const payload = {
+            to: toRaw.split(',').map(s => s.trim()).filter(Boolean),
+            cc: [],
+            subject, body,
+            isHtml: $('compose-html').checked,
+            inReplyTo: state.replyContext?.inReplyTo || null,
+            references: state.replyContext?.references || []
+        };
         const fd = new FormData();
-        fd.append('to', to); fd.append('subject', subject); fd.append('body', body);
-        fd.append('isHtml', $('compose-html').checked.toString());
+        fd.append('payload', JSON.stringify(payload));
         state.pendingFiles.forEach(f => fd.append('files', f, f.name));
         const btn = $('compose-send-btn'); btn.disabled = true;
         try {
             const r = await fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/send`, { method:'POST', body: fd });
-            if (!r.ok) throw new Error();
+            if (!r.ok) { let m = 'Ошибка отправки'; try { const j = await r.json(); m = j.error || j.detail || m; } catch {} throw new Error(m); }
             toast('Письмо отправлено', 'ok');
             closeCompose();
-        } catch { toast('Ошибка отправки', 'err'); }
+        } catch (e) { toast(e.message || 'Ошибка отправки', 'err'); }
         finally { btn.disabled = false; }
     };
     window.replyToMessage = function () {
         if (!state.selectedDetail) return;
         const d = state.selectedDetail;
+        state.replyContext = { inReplyTo: d.messageId, references: [...(d.references || []), d.messageId].filter(Boolean) };
+        const subj = d.subject || '';
         openCompose({
             to: d.from?.address || '',
-            subject: 'Re: ' + (d.subject || ''),
-            body: '\n\n----- Исходное сообщение -----\nОт: ' + addrText(d.from) + '\nТема: ' + (d.subject || '') + '\n\n' + (d.bodyText || '')
+            subject: subj.toLowerCase().startsWith('re:') ? subj : 'Re: ' + subj,
+            body: '\n\n----- Исходное сообщение -----\nОт: ' + addrText(d.from) + '\nТема: ' + subj + '\n\n' + (d.textBody || '')
         });
-    };
-    window.deleteMessage = async function () {
-        if (!state.selectedUid) return;
-        if (!confirm('Удалить письмо?')) return;
-        try {
-            await fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${state.selectedUid}`, { method:'DELETE' });
-            await loadMessages();
-            renderDetail(null);
-        } catch { toast('Ошибка удаления', 'err'); }
     };
 
     $('logout-btn').addEventListener('click', async () => {
