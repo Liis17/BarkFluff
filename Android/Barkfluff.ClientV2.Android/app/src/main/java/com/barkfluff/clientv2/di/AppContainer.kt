@@ -5,6 +5,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.utils.FileCache
 
 /**
  * Ручной DI-контейнер (как BarkFluffApplication в V1): держит singletons не-UI слоя из :core.
@@ -14,9 +15,15 @@ import com.barkfluff.client.repository.ChatRepository
 class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
 
+    init {
+        // Дисковый кэш медиафайлов (аудио/документы/видео) — нужен ChatRepository.downloadFile.
+        FileCache.init(appContext)
+    }
+
     val globalParam: GlobalParam = GlobalParam(appContext)
     val grpcManager: GrpcManager = GrpcManager()
     // sideEffects = null: уведомления/виджеты — последующий этап (см. RealtimeSideEffects).
     val realtimeService: RealtimeService = RealtimeService(appContext, grpcManager)
     val chatRepository: ChatRepository = ChatRepository(appContext, grpcManager)
+    val settingsStore: SettingsStore = SettingsStore(appContext)
 }

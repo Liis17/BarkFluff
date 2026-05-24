@@ -35,7 +35,7 @@ Android/
 - **Стек:** Compose BOM 2025.10.01, material3, navigation-compose, lifecycle-viewmodel/runtime-compose, activity-compose, coil-compose, material-icons-core.
 - **DI:** ручной (`di/AppContainer` создаётся в `BarkFluffV2Application`, прокидывается через `LocalAppContainer`; хелпер `appViewModel { }`). Без Hilt.
 - **Паттерн:** MVVM + `StateFlow` (экран читает через `collectAsStateWithLifecycle`), ViewModel вызывает репозитории `:core` и подписывается на `RealtimeService` SharedFlow.
-- **Навигация:** navigation-compose — `Splash → Welcome → SelectServer → Login → Home(Chats/Profile) → Chat`.
+- **Навигация:** navigation-compose — `Splash → Welcome → SelectServer → Login → Home(Chats/Profile) → Chat`, плюс `EditProfile` и `Settings` как отдельные маршруты.
 
 ## Тема M3 Expressive (`ui/theme/`)
 
@@ -44,7 +44,7 @@ Android/
 - `Type.kt` — Typography с emphasized-весами на display/headline/title.
 - `Shape.kt` — расширенные скругления (medium 16dp, large 24dp, extraLarge 32dp).
 - `Motion.kt` — `BfMotion` spring-спеки (spatial/effect/bouncy).
-- `Theme.kt` — `BarkFluffTheme(dynamicColor=true)`, dynamic color (Material You) всегда доступен на minSdk 35.
+- `Theme.kt` — `BarkFluffTheme(darkTheme, dynamicColor)`, dynamic color (Material You) всегда доступен на minSdk 35. Параметры темы берутся из `SettingsStore` (см. ниже): `MainActivity` collect'ит `themeMode` (SYSTEM/LIGHT/DARK) и `dynamicColor` → мгновенная перекраска при смене в настройках.
 
 > ⚠️ `MaterialExpressiveTheme`/`expressiveLightColorScheme` в material3 1.4.x (BOM 2025.10.01) помечены `internal` — недоступны. Поэтому expressive реализован принципами (цвет/форма/размер/spring-движение) поверх обычного `MaterialTheme`. При переходе на material3, где эти API публичны, можно заменить.
 
@@ -72,5 +72,12 @@ Android/
 > В протоколе нет отдельного reply — и ответ, и пересылка идут через `OutgoingMessage.forwarded_message_id`; reply = пересылка в тот же чат, forward = в другой.
 
 - **Просмотрщик изображений** (`ui/components/ImageViewer`): тап по фото в чате → полноэкранный `Dialog` с `HorizontalPager` между фото сообщения + pinch-to-zoom; полный файл резолвится через `getFileDownloadUrl`, до загрузки — `previewUrl`.
+- **Видео** (`ui/components/VideoPlayer`): видео-вложения в чате рендерятся как превью + ▶; тап → полноэкранный плеер на ExoPlayer/media3 (`getFileDownloadUrl` → `MediaItem`, `PlayerView` во `AndroidView`). Добавлены зависимости media3-exoplayer/ui в `:app-v2`.
+- **Аудио** (`ui/components/AudioAttachment`): вложения AUDIO/VOICE — круглая кнопка play/pause + перематываемый `Slider` + таймер. Файл качается через `ChatRepository.downloadFile` (кэш в `FileCache`), играет синглтон `AudioPlayerHelper` из `:core` (один файл одновременно); перепривязка callbacks через `swapCallbacks` при возврате на экран.
+- **Документы** (`ui/components/DocumentAttachment`): вложения DOCUMENT — плитка с расширением файла + имя/размер; тап качает (кэш) и открывает системным выбором через `FileProvider`. Добавлены `<provider>` в манифест `:app-v2` + `res/xml/file_paths.xml` (`media_files/`). `FileCache.init` вызывается в `AppContainer`.
+- **Профиль + настройки** (`ui/screens/profile`, `ui/screens/settings`):
+  - `ProfileScreen` (вкладка Профиль): `getCurrentUserData` → аватар (`BfAvatar` теперь принимает `imageUrl`, Coil), имя/@username/bio/дата регистрации; синк в `GlobalParam`; rows «Редактировать профиль»/«Настройки»/«Выйти». Обновляется при каждом входе (`LaunchedEffect`).
+  - `EditProfileScreen`: правка имени/фамилии/username/bio + смена аватара (PickVisualMedia → `ImageCompressor` → `uploadUserAvatar` → `setProfilePicture`). Username — debounce 500мс + `checkUsername` (свободно/занято/невалидно). Сохранение через `changeName`/`changeUsername`/`changeBio`, апдейт `GlobalParam`.
+  - `SettingsScreen`: режим темы (Системная/Светлая/Тёмная) + переключатель «Динамические цвета», версия приложения. Хранение — `di/SettingsStore` (собственные SharedPreferences, `StateFlow`), читается в `MainActivity`.
 
-**Дальше:** медиа (видео/аудио/документы, просмотрщики фото/видео, камера), стикеры, папки, pinned-сообщения, регистрация/восстановление, E2E (приватные/секретные чаты), системная интеграция (уведомления/FCM, виджеты, share, deeplink, настройки, локализации). E2E-проверка логина/отправки — на устройстве arm64 (libsignal).
+**Дальше:** медиа (камера, GIF), настройки приватности/безопасности/языка (`getPrivacySettings`/2FA/смена пароля — RPC в `:core`), стикеры, папки, pinned-сообщения, регистрация/восстановление, E2E (приватные/секретные чаты), системная интеграция (уведомления/FCM, виджеты, share, deeplink, локализации). E2E-проверка логина/отправки — на устройстве arm64 (libsignal).

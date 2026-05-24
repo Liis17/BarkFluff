@@ -10,7 +10,9 @@ import androidx.navigation.navArgument
 import com.barkfluff.clientv2.ui.screens.chat.ChatScreen
 import com.barkfluff.clientv2.ui.screens.home.HomeScreen
 import com.barkfluff.clientv2.ui.screens.login.LoginScreen
+import com.barkfluff.clientv2.ui.screens.profile.EditProfileScreen
 import com.barkfluff.clientv2.ui.screens.search.SearchScreen
+import com.barkfluff.clientv2.ui.screens.settings.SettingsScreen
 import com.barkfluff.clientv2.ui.screens.server.SelectServerScreen
 import com.barkfluff.clientv2.ui.screens.splash.SplashScreen
 import com.barkfluff.clientv2.ui.screens.welcome.WelcomeScreen
@@ -47,8 +49,19 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },
-                onSearch = { navController.navigate(Routes.SEARCH) }
+                onSearch = { navController.navigate(Routes.SEARCH) },
+                onEditProfile = { navController.navigate(Routes.PROFILE_EDIT) },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
+        }
+        composable(Routes.PROFILE_EDIT) {
+            EditProfileScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SEARCH) {
             SearchScreen(

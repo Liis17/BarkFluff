@@ -1,6 +1,5 @@
 package com.barkfluff.clientv2.ui.screens.home
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -33,7 +31,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,16 +39,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.barkfluff.client.grpc.GrpcManager
-import com.barkfluff.clientv2.di.LocalAppContainer
 import com.barkfluff.clientv2.di.appViewModel
 import com.barkfluff.clientv2.ui.components.BfAvatar
 import com.barkfluff.clientv2.ui.screens.chats.ChatsViewModel
+import com.barkfluff.clientv2.ui.screens.profile.ProfileScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HomeScreen(onOpenChat: (String) -> Unit, onLogout: () -> Unit, onSearch: () -> Unit) {
+fun HomeScreen(
+    onOpenChat: (String) -> Unit,
+    onLogout: () -> Unit,
+    onSearch: () -> Unit,
+    onEditProfile: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -76,7 +79,11 @@ fun HomeScreen(onOpenChat: (String) -> Unit, onLogout: () -> Unit, onSearch: () 
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selectedTab) {
                 0 -> ChatsTab(onOpenChat = onOpenChat, onSearch = onSearch)
-                else -> ProfileTab(onLogout = onLogout)
+                else -> ProfileScreen(
+                    onEditProfile = onEditProfile,
+                    onOpenSettings = onOpenSettings,
+                    onLogout = onLogout
+                )
             }
         }
     }
@@ -165,42 +172,6 @@ private fun ChatRow(chat: GrpcManager.ChatData, onClick: () -> Unit) {
                 Badge(containerColor = MaterialTheme.colorScheme.primary) {
                     Text(chat.countUnread.toString())
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProfileTab(onLogout: () -> Unit) {
-    val container = LocalAppContainer.current
-    val gp = container.globalParam
-    val fullName = remember { "${gp.firstName} ${gp.lastName}".trim().ifBlank { gp.userName } }
-
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Spacer(Modifier.size(8.dp))
-            BfAvatar(name = fullName.ifBlank { "?" }, size = 96.dp)
-            Text(text = fullName.ifBlank { "Профиль" }, style = MaterialTheme.typography.headlineSmall)
-            if (gp.userName.isNotBlank()) {
-                Text(
-                    text = "@${gp.userName}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = {
-                    gp.clearUserData()
-                    onLogout()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Выйти")
             }
         }
     }

@@ -8,6 +8,8 @@ object Routes {
     const val LOGIN = "login"
     const val CHATS = "chats"
     const val PROFILE = "profile"
+    const val PROFILE_EDIT = "profile_edit"
+    const val SETTINGS = "settings"
     const val SEARCH = "search"
 
     const val CHAT_ARG_ID = "chatId"

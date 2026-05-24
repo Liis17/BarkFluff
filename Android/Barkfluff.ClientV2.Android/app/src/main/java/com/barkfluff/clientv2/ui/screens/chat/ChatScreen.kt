@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -67,9 +68,12 @@ import barkfluff.shared.Shared
 import coil.compose.AsyncImage
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.clientv2.di.appViewModel
+import com.barkfluff.clientv2.ui.components.AudioAttachment
 import com.barkfluff.clientv2.ui.components.BfAvatar
+import com.barkfluff.clientv2.ui.components.DocumentAttachment
 import com.barkfluff.clientv2.ui.components.ImageItem
 import com.barkfluff.clientv2.ui.components.ImageViewerOverlay
+import com.barkfluff.clientv2.ui.components.VideoPlayerOverlay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -94,6 +98,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
     var forwarding by remember { mutableStateOf<Shared.Message?>(null) }
     var viewerItems by remember { mutableStateOf<List<ImageItem>?>(null) }
     var viewerStart by remember { mutableIntStateOf(0) }
+    var videoToPlay by remember { mutableStateOf<String?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -167,7 +172,8 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
                             message = message,
                             isMine = message.senderId == myUserId,
                             onLongClick = { selectedMessage = message },
-                            onImageClick = { imgs, idx -> viewerItems = imgs; viewerStart = idx }
+                            onImageClick = { imgs, idx -> viewerItems = imgs; viewerStart = idx },
+                            onVideoClick = { fileId -> videoToPlay = fileId }
                         )
                     }
                 }
@@ -260,6 +266,10 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
     viewerItems?.let { items ->
         ImageViewerOverlay(items = items, startIndex = viewerStart) { viewerItems = null }
     }
+
+    videoToPlay?.let { fileId ->
+        VideoPlayerOverlay(fileId = fileId) { videoToPlay = null }
+    }
 }
 
 @Composable
@@ -281,7 +291,8 @@ private fun MessageBubble(
     message: Shared.Message,
     isMine: Boolean,
     onLongClick: () -> Unit,
-    onImageClick: (List<ImageItem>, Int) -> Unit
+    onImageClick: (List<ImageItem>, Int) -> Unit,
+    onVideoClick: (String) -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     val bubbleColor = if (isMine) scheme.primary else scheme.surfaceContainerHigh
@@ -330,6 +341,49 @@ private fun MessageBubble(
                             .clickable { onImageClick(imageItems, idx) }
                     )
                 }
+
+                attachments.filter { it.type == Shared.MessageAttachmentType.VIDEO }.forEach { att ->
+                    Box(
+                        modifier = Modifier
+                            .padding(bottom = 4.dp)
+                            .size(220.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                            .clickable { onVideoClick(att.fileId) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (att.previewUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = att.previewUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = "Воспроизвести",
+                            tint = Color.White,
+                            modifier = Modifier.size(56.dp)
+                        )
+                    }
+                }
+                attachments.filter {
+                    it.type == Shared.MessageAttachmentType.AUDIO ||
+                        it.type == Shared.MessageAttachmentType.VOICE
+                }.forEach { att ->
+                    AudioAttachment(fileId = att.fileId, fileName = att.fileName, mine = isMine)
+                }
+
+                attachments.filter { it.type == Shared.MessageAttachmentType.DOCUMENT }.forEach { att ->
+                    DocumentAttachment(
+                        fileId = att.fileId,
+                        fileName = att.fileName,
+                        sizeBytes = att.attachmentSize,
+                        mine = isMine
+                    )
+                }
+
                 val text = if (message.hasContent()) message.content.text else ""
                 if (text.isNotBlank()) {
                     Text(text = text, color = textColor, style = MaterialTheme.typography.bodyLarge)
