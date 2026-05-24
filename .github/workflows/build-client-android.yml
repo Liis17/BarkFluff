@@ -7,6 +7,11 @@ on:
       - master
     paths:
       - 'Android/Barkfluff.Client.Android/**'
+      - 'Android/core/**'
+      - 'Android/settings.gradle.kts'
+      - 'Android/build.gradle.kts'
+      - 'Android/gradle.properties'
+      - 'Android/gradle/**'
       - 'Android/android-rebuild.trigger'
   workflow_dispatch:
 
@@ -61,7 +66,7 @@ jobs:
       ANDROID_SDK_ROOT: /home/liis/android-sdk
     defaults:
       run:
-        working-directory: Android/Barkfluff.Client.Android
+        working-directory: Android
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +88,7 @@ jobs:
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
           else
-            SERVER_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+            SERVER_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' Barkfluff.Client.Android/app/build.gradle.kts || echo "0.0.0")
           fi
 
           # Стрипаем любой нечисловой суффикс (например " beta")
@@ -103,12 +108,12 @@ jobs:
 
           echo "New version: $NEW_VERSION"
 
-          sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"${NEW_VERSION}\"/" app/build.gradle.kts
+          sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"${NEW_VERSION}\"/" Barkfluff.Client.Android/app/build.gradle.kts
 
       - name: Пометка beta-версии
         if: github.ref_name == 'dev'
         run: |
-          sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' app/build.gradle.kts
+          sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' Barkfluff.Client.Android/app/build.gradle.kts
 
       - name: Сборка APK
         env:
@@ -116,19 +121,19 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew :app-v1:assembleRelease
 
       - name: Поиск APK
         id: apk
         run: |
-          APK_PATH=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          APK_PATH=$(find Barkfluff.Client.Android/app/build/outputs/apk/release -name '*.apk' | head -1)
           echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
           echo "Found APK: $APK_PATH"
 
       - name: Get version
         id: meta
         run: |
-          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' Barkfluff.Client.Android/app/build.gradle.kts || echo "0.0.0")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
