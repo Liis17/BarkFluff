@@ -12,6 +12,7 @@ import com.barkfluff.clientv2.ui.screens.home.HomeScreen
 import com.barkfluff.clientv2.ui.screens.login.LoginScreen
 import com.barkfluff.clientv2.ui.screens.profile.EditProfileScreen
 import com.barkfluff.clientv2.ui.screens.search.SearchScreen
+import com.barkfluff.clientv2.ui.screens.settings.PrivacyScreen
 import com.barkfluff.clientv2.ui.screens.settings.SettingsScreen
 import com.barkfluff.clientv2.ui.screens.server.SelectServerScreen
 import com.barkfluff.clientv2.ui.screens.splash.SplashScreen
@@ -61,7 +62,13 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             )
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPrivacy = { navController.navigate(Routes.PRIVACY) }
+            )
+        }
+        composable(Routes.PRIVACY) {
+            PrivacyScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SEARCH) {
             SearchScreen(

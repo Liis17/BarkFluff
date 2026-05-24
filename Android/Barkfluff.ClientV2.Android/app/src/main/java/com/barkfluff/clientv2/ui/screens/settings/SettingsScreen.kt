@@ -1,5 +1,6 @@
 package com.barkfluff.clientv2.ui.screens.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -8,6 +9,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,7 +33,7 @@ import com.barkfluff.clientv2.di.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onOpenPrivacy: () -> Unit) {
     val settings = LocalAppContainer.current.settingsStore
     val context = LocalContext.current
     val themeMode by settings.themeMode.collectAsStateWithLifecycle()
@@ -70,6 +72,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 trailingContent = {
                     Switch(checked = dynamicColor, onCheckedChange = settings::setDynamicColor)
                 }
+            )
+
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("Конфиденциальность") },
+                leadingContent = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                modifier = Modifier.clickable(onClick = onOpenPrivacy)
             )
 
             HorizontalDivider()
