@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Сервисы</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <script src="assets/preview-mode.js"></script>
+    <style>
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            margin-bottom: 16px;
+        }
+        .tab {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--md-on-surface-variant);
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: var(--md-shape-sm) var(--md-shape-sm) 0 0;
+            transition: color var(--md-dur-2) var(--md-easing-standard);
+        }
+        .tab::after {
+            content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px;
+            height: 3px; background: transparent;
+            border-radius: 3px 3px 0 0;
+            transition: background var(--md-dur-2) var(--md-easing-standard);
+        }
+        .tab:hover { color: var(--md-on-surface); }
+        .tab.active { color: var(--md-primary); }
+        .tab.active::after { background: var(--md-primary); }
+        .tab .msr { font-size: 18px; }
+
+        .server-info-strip {
+            display: flex; flex-wrap: wrap; gap: 24px;
+            padding: 12px 16px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .server-info-strip .item { display: flex; align-items: center; gap: 8px; }
+        .server-info-strip .label { font-size: 11px; color: var(--md-on-surface-variant); text-transform: uppercase; letter-spacing: .4px; }
+        .server-info-strip .value { font-family: 'Roboto Mono', monospace; color: var(--md-on-surface); }
+
+        .actions-row {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .actions-row .spacer { flex: 1; }
+
+        .panel {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            padding: 24px;
+        }
+
+        /* Notification snack */
+        .notif {
+            position: fixed; top: 20px; right: 20px;
+            min-width: 280px; max-width: 420px;
+            padding: 12px 16px;
+            background: var(--md-inverse-surface);
+            color: var(--md-inverse-on-surface);
+            border-radius: var(--md-shape-sm);
+            box-shadow: var(--md-elev-3);
+            display: flex; align-items: center; gap: 12px;
+            z-index: 999;
+            animation: notif-slide var(--md-dur-3) var(--md-easing-emphasized-decel);
+        }
+        .notif.success { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .notif.error   { background: var(--md-error-container);   color: var(--md-on-error-container);   }
+        @keyframes notif-slide { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .empty-cell { padding: 24px; text-align: center; color: var(--md-on-surface-variant); }
+
+        /* Progress modal services list */
+        .svc-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px;
+            border-radius: var(--md-shape-sm);
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .svc-row.current   { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+        .svc-row.completed { opacity: .6; }
+        .svc-row.pending   { opacity: .35; }
+        .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="services"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <h1>Сервисы</h1>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span class="md-status md-status-info">
+                    <span class="msr size-18">autorenew</span>
+                    Авто-обновление: 30с
+                </span>
+                <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
+                    <span class="msr size-18">restart_alt</span>
+                    Перезапустить
+                </button>
+                <button onclick="updateAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
+                    <span class="msr size-18">cloud_download</span>
+                    Обновить
+                </button>
+                <button id="logoutBtn" class="md-icon-btn" title="Выйти">
+                    <span class="msr">logout</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div class="panel">
+                <!-- Tabs -->
+                <div class="tab-bar">
+                    <button id="tab-barkfluff" class="tab active" onclick="switchTab('barkfluff')">
+                        <span class="msr">dns</span>
+                        BarkFluff Server
+                    </button>
+                    <button id="tab-navigator" class="tab" onclick="switchTab('navigator')">
+                        <span class="msr">explore</span>
+                        Navigator Server
+                    </button>
+                    <button id="tab-msk" class="tab" onclick="switchTab('msk')">
+                        <span class="msr">apartment</span>
+                        MSK Server
+                    </button>
+                </div>
+
+                <!-- BarkFluff panel -->
+                <div id="panel-barkfluff" class="server-panel">
+                    <div class="actions-row">
+                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
+                            <span class="msr size-18">restart_alt</span>
+                            Перезапустить все
+                        </button>
+                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
+                            <span class="msr size-18">cloud_download</span>
+                            Обновить все
+                        </button>
+                        <div class="spacer"></div>
+                        <button id="refreshBtn" class="md-btn md-btn-text" onclick="loadServices()">
+                            <span class="msr size-18">refresh</span>
+                            Обновить
+                        </button>
+                    </div>
+
+                    <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
+                        <table class="md-table">
+                            <thead>
+                                <tr>
+                                    <th>Сервис</th>
+                                    <th>Статус</th>
+                                    <th>Последний лог</th>
+                                    <th>Ошибки</th>
+                                    <th>Событий</th>
+                                    <th style="text-align:center;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servicesTableBody">
+                                <tr><td colspan="6" class="empty-cell">
+                                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                                        <div class="md-loader-expressive" style="width:24px;height:24px;"></div>
+                                        Загрузка сервисов...
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Navigator panel -->
+                <div id="panel-navigator" class="server-panel" style="display:none;">
+                    <div class="server-info-strip">
+                        <div class="item"><span class="label">Host</span><span class="value" id="info-navigator-host">—</span></div>
+                        <div class="item"><span class="label">Port</span><span class="value" id="info-navigator-port">—</span></div>
+                        <div class="item"><span class="label">User</span><span class="value" id="info-navigator-user">—</span></div>
+                        <div class="item">
+                            <span class="label">Password</span>
+                            <span class="value" id="info-navigator-pass" style="letter-spacing:.2em;">—</span>
+                        </div>
+                    </div>
+                    <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
+                        <table class="md-table">
+                            <thead><tr><th>Сервис</th><th>Статус</th><th style="text-align:center;">Действия</th></tr></thead>
+                            <tbody id="remote-navigator-body">
+                                <tr><td colspan="3" class="empty-cell">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MSK panel -->
+                <div id="panel-msk" class="server-panel" style="display:none;">
+                    <div class="server-info-strip">
+                        <div class="item"><span class="label">Host</span><span class="value" id="info-msk-host">—</span></div>
+                        <div class="item"><span class="label">Port</span><span class="value" id="info-msk-port">—</span></div>
+                        <div class="item"><span class="label">User</span><span class="value" id="info-msk-user">—</span></div>
+                        <div class="item">
+                            <span class="label">Password</span>
+                            <span class="value" id="info-msk-pass" style="letter-spacing:.2em;">—</span>
+                        </div>
+                    </div>
+                    <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
+                        <table class="md-table">
+                            <thead><tr><th>Сервис</th><th>Статус</th><th style="text-align:center;">Действия</th></tr></thead>
+                            <tbody id="remote-msk-body">
+                                <tr><td colspan="3" class="empty-cell">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Progress modal -->
+<div id="progressScrim" class="md-scrim">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span class="md-icon-btn tonal-style" style="background:var(--md-warning-container);color:var(--md-on-warning-container);">
+                    <span class="msr">restart_alt</span>
+                </span>
+                <div>
+                    <h3 id="modalTitle">Перезапуск сервисов</h3>
+                    <div style="font-size:13px;color:var(--md-on-surface-variant);" id="modalSubtitle">Выполняется последовательно...</div>
+                </div>
+            </div>
+        </div>
+        <div class="md-dialog-body">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+                <span id="progressText" style="font-weight:500;">Подготовка...</span>
+                <span id="progressCount" style="color:var(--md-on-surface-variant);">0 / 0</span>
+            </div>
+            <div class="md-progress-linear"><div class="bar" id="progressBar" style="width:0%;"></div></div>
+            <div id="servicesList" style="max-height:240px;overflow-y:auto;margin-top:16px;"></div>
+        </div>
+        <div class="md-dialog-actions" id="modalFooter" style="display:none;">
+            <button class="md-btn md-btn-text" onclick="closeProgressModal()">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let servicesData = [];
+    let refreshInterval = null;
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    function formatDate(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function formatRelativeTime(iso) {
+        if (!iso) return 'Нет данных';
+        const d = new Date(iso);
+        const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return `${Math.floor(diff/60)} мин назад`;
+        if (diff < 86400) return `${Math.floor(diff/3600)} ч назад`;
+        return formatDate(iso);
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function statusBadgeHtml(state) {
+        const map = {
+            running:    { cls:'md-status-success', label:'Запущен' },
+            restarting: { cls:'md-status-info',    label:'Перезапуск' },
+            paused:     { cls:'md-status-warn',    label:'Приостановлен' },
+            exited:     { cls:'md-status-error',   label:'Остановлен' },
+            dead:       { cls:'md-status-error',   label:'Остановлен' }
+        };
+        const info = map[state] || { cls:'md-status-neutral', label: state || 'Нет данных' };
+        return `<span class="md-status ${info.cls}"><span class="dot"></span>${info.label}</span>`;
+    }
+
+    async function loadServices() {
+        const tbody = document.getElementById('servicesTableBody');
+        try {
+            const res = await fetch('/api/seq/services/status');
+            if (!res.ok) throw new Error(res.status);
+            servicesData = await res.json();
+            renderServicesTable();
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
+        }
+    }
+
+    function renderServicesTable() {
+        const tbody = document.getElementById('servicesTableBody');
+        if (!servicesData.length) {
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">Сервисы не найдены</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = servicesData.map(svc => {
+            const isRunning = svc.dockerState === 'running';
+            const containerName = getContainerNameFromServiceName(svc.name);
+            const errBadge = (svc.errorCount || 0) > 0
+                ? `<span class="md-status md-status-error">${svc.errorCount}</span>`
+                : `<span class="md-status md-status-success">0</span>`;
+            return `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
+                        <span class="msr size-18" style="color:var(--md-primary);">dns</span>
+                        ${escapeHtml(svc.name)}
+                    </div>
+                </td>
+                <td>${statusBadgeHtml(svc.dockerState)}</td>
+                <td style="color:var(--md-on-surface-variant);font-size:12px;font-family:'Roboto Mono',monospace;">${svc.lastSeen ? formatRelativeTime(svc.lastSeen) : '<span style="color:var(--md-outline);">Нет данных</span>'}</td>
+                <td>${errBadge}</td>
+                <td><span class="md-status md-status-info">${svc.eventCount || 0}</span></td>
+                <td>
+                    <div style="display:flex;justify-content:center;gap:4px;">
+                        <button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}"
+                            onclick="handleContainerAction(event, '${containerName}', '${isRunning?'stop':'start'}')">
+                            <span class="msr size-20">${isRunning?'stop':'play_arrow'}</span>
+                        </button>
+                        <button class="md-icon-btn" title="Перезапустить"
+                            onclick="handleContainerAction(event, '${containerName}', 'restart')">
+                            <span class="msr size-20">restart_alt</span>
+                        </button>
+                        <button class="md-icon-btn" title="Обновить образ"
+                            onclick="handleContainerAction(event, '${containerName}', 'pull')">
+                            <span class="msr size-20">cloud_download</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function getContainerNameFromServiceName(name) {
+        const map = {
+            'BarkFluff.Beacon': 'beacon','BarkFluff.Configuration': 'configuration','BarkFluff.Files': 'files',
+            'BarkFluff.Identity': 'identity','BarkFluff.Messages': 'messages','BarkFluff.Notification': 'notification',
+            'BarkFluff.Users': 'users','BarkFluff.FastAuth': 'fast-auth','BarkFluff.Updates': 'updates',
+            'BarkFluff.Onliner': 'onliner','BarkFluff.CloudMessaging': 'cloud-messaging','BarkFluff.Web': 'web',
+            'BarkFluff.Developers': 'developers','Seq':'seq','Minio':'minio','RabbitMQ':'rabbitmq','Redis':'redis','PostgreSQL':'postgres_barkfluff'
+        };
+        return map[name] || name.toLowerCase().replace('barkfluff.','');
+    }
+
+    async function handleContainerAction(event, container, action) {
+        event.stopPropagation();
+        const names = { start:'запуска', stop:'остановки', restart:'перезапуска', pull:'обновления образа и пересоздания' };
+        if (!confirm(`Выполнить действие "${names[action]}" для контейнера "${container}"?`)) return;
+
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
+        try {
+            const r = await fetch(`/api/docker/containers/${container}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
+            const result = await r.json();
+            if (result.success) {
+                showNotification('success', result.message);
+                setTimeout(loadServices, 2000);
+            } else {
+                showNotification('error', result.message || 'Ошибка');
+            }
+        } catch (e) {
+            showNotification('error', 'Ошибка: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    }
+
+    function showNotification(type, message) {
+        const el = document.createElement('div');
+        el.className = `notif ${type}`;
+        el.innerHTML = `<span class="msr">${type === 'success' ? 'check_circle' : 'error'}</span><span>${escapeHtml(message)}</span>`;
+        document.body.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 4000);
+    }
+
+    // ---- Bulk actions ----
+    async function restartAllServices() {
+        if (!confirm('Перезапустить все сервисы BarkFluff?')) return;
+        showProgressModal('Перезапуск сервисов', servicesData.map(s => getContainerNameFromServiceName(s.name)), 'restart');
+    }
+    async function updateAllServices() {
+        if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
+        showProgressModal('Обновление сервисов', servicesData.map(s => getContainerNameFromServiceName(s.name)), 'pull');
+    }
+
+    function showProgressModal(title, containers, action) {
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('progressCount').textContent = `0 / ${containers.length}`;
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('modalFooter').style.display = 'none';
+        const list = document.getElementById('servicesList');
+        list.innerHTML = containers.map((c, i) => `
+            <div class="svc-row pending" data-svc="${c}">
+                <span class="msr size-18">pending</span>
+                <span>${c}</span>
+            </div>
+        `).join('');
+        document.getElementById('progressScrim').classList.add('open');
+
+        // sequential
+        (async () => {
+            for (let i = 0; i < containers.length; i++) {
+                const c = containers[i];
+                const row = list.querySelector(`[data-svc="${c}"]`);
+                row.classList.remove('pending');
+                row.classList.add('current');
+                row.querySelector('.msr').textContent = 'sync';
+                document.getElementById('progressText').textContent = `Обрабатываем ${c}...`;
+
+                try {
+                    const r = await fetch(`/api/docker/containers/${c}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
+                    const result = await r.json();
+                    if (!result.success) throw new Error(result.message);
+                    row.classList.remove('current');
+                    row.classList.add('completed');
+                    row.querySelector('.msr').textContent = 'check_circle';
+                } catch (e) {
+                    row.classList.remove('current');
+                    row.classList.add('error');
+                    row.querySelector('.msr').textContent = 'error';
+                }
+                document.getElementById('progressCount').textContent = `${i + 1} / ${containers.length}`;
+                document.getElementById('progressBar').style.width = (((i + 1) / containers.length) * 100) + '%';
+            }
+            document.getElementById('progressText').textContent = 'Готово';
+            document.getElementById('modalFooter').style.display = '';
+            setTimeout(loadServices, 1000);
+        })();
+    }
+    function closeProgressModal() { document.getElementById('progressScrim').classList.remove('open'); }
+
+    // ---- Admin panel actions ----
+    async function restartAdminPanel() {
+        if (!confirm('Перезапустить админ-панель? Вы будете перенаправлены на страницу ожидания.')) return;
+        try { await fetch('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        catch { showNotification('error', 'Не удалось запустить перезапуск'); }
+    }
+    async function updateAdminPanel() {
+        if (!confirm('Обновить админ-панель? Будет загружен новый образ.')) return;
+        try { await fetch('/api/docker/containers/admin-panel/pull', { method:'POST' }); window.location.href = '/updating'; }
+        catch { showNotification('error', 'Не удалось запустить обновление'); }
+    }
+
+    // ---- Tabs ----
+    function switchTab(name) {
+        ['barkfluff','navigator','msk'].forEach(t => {
+            document.getElementById('tab-' + t).classList.toggle('active', t === name);
+            document.getElementById('panel-' + t).style.display = t === name ? '' : 'none';
+        });
+        if (name === 'navigator' || name === 'msk') loadRemoteServer(name);
+    }
+
+    async function loadRemoteServer(name) {
+        try {
+            const r = await fetch('/api/remote-servers');
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+            const info = data[name];
+            if (!info) return;
+            document.getElementById(`info-${name}-host`).textContent = info.host;
+            document.getElementById(`info-${name}-port`).textContent = info.port;
+            document.getElementById(`info-${name}-user`).textContent = info.user;
+            document.getElementById(`info-${name}-pass`).textContent = info.password;
+
+            const tbody = document.getElementById(`remote-${name}-body`);
+            tbody.innerHTML = info.services.map(s => `
+                <tr>
+                    <td><div style="display:flex;align-items:center;gap:8px;font-weight:500;"><span class="msr size-18" style="color:var(--md-primary);">dns</span>${escapeHtml(s.name)}</div></td>
+                    <td>${statusBadgeHtml(s.status === 'running' ? 'running' : 'exited')}</td>
+                    <td>
+                        <div style="display:flex;justify-content:center;gap:4px;">
+                            <button class="md-icon-btn"><span class="msr size-20">${s.status === 'running' ? 'stop' : 'play_arrow'}</span></button>
+                            <button class="md-icon-btn"><span class="msr size-20">restart_alt</span></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            document.getElementById(`remote-${name}-body`).innerHTML = `<tr><td colspan="3" class="empty-cell" style="color:var(--md-error);">Не удалось загрузить</td></tr>`;
+        }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (!confirm('Выйти из панели?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    // ---- Init ----
+    (async function () {
+        const auth = await checkAuth();
+        if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? `Создан: ${formatDate(auth.createdAt)}` : '');
+        await loadServices();
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        refreshInterval = setInterval(loadServices, 30000);
+    })();
+</script>
+</body>
+</html>

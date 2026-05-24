@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Авторизация</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <script src="assets/preview-mode.js"></script>
+    <style>
+        html, body {
+            min-height: 100vh;
+            background: var(--md-surface-container-low);
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        /* Decorative expressive shapes in the background */
+        .bg-deco {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-deco span {
+            position: absolute;
+            opacity: .55;
+            filter: blur(60px);
+            animation: shape-float 18s var(--md-easing-emphasized) infinite alternate;
+        }
+        .bg-deco span:nth-child(1) {
+            width: 460px; height: 460px;
+            top: -120px; left: -120px;
+            background: var(--md-primary-container);
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+        }
+        .bg-deco span:nth-child(2) {
+            width: 380px; height: 380px;
+            bottom: -100px; right: -80px;
+            background: var(--md-tertiary-container);
+            border-radius: 40% 60% 60% 40% / 40% 60% 60% 40%;
+            animation-delay: -6s;
+        }
+        .bg-deco span:nth-child(3) {
+            width: 320px; height: 320px;
+            top: 60%; left: 12%;
+            background: var(--md-secondary-container);
+            border-radius: 50% 50% 70% 30% / 30% 60% 40% 70%;
+            animation-delay: -3s;
+        }
+        @keyframes shape-float {
+            0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50%  { transform: translate(40px, -30px) rotate(20deg) scale(1.08); }
+            100% { transform: translate(-30px, 40px) rotate(-15deg) scale(.95); }
+        }
+
+        .login-card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            background: var(--md-surface-container-lowest);
+            border-radius: var(--md-shape-xl);
+            box-shadow: var(--md-elev-3);
+            padding: 40px 32px 32px;
+            text-align: center;
+        }
+
+        .login-icon-wrap {
+            width: 72px; height: 72px;
+            margin: 0 auto 20px;
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            background: var(--md-primary);
+            color: var(--md-on-primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            animation: md-shape-morph 6s var(--md-easing-emphasized) infinite;
+        }
+        .login-icon-wrap .msr {
+            font-size: 36px;
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 40;
+        }
+
+        .login-card h1 {
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            margin: 0 0 8px;
+            letter-spacing: 0;
+        }
+
+        .login-card .subtitle {
+            font-size: 14px;
+            color: var(--md-on-surface-variant);
+            margin: 0 0 28px;
+            line-height: 1.5;
+        }
+
+        /* Form */
+        .login-form { display: flex; flex-direction: column; gap: 12px; }
+
+        .validation-message {
+            font-size: 12px;
+            color: var(--md-error);
+            text-align: left;
+            padding-left: 16px;
+            margin-top: -4px;
+            min-height: 16px;
+            display: none;
+        }
+        .validation-message.visible { display: block; }
+
+        .login-btn {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        /* Status states */
+        .status-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            margin-top: 24px;
+            padding: 20px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-lg);
+        }
+        .status-container.active { display: flex; }
+        .status-container .status-icon {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .status-container .status-icon .msr { font-size: 28px; }
+        .status-container.waiting .status-icon { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+        .status-container.success .status-icon { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .status-container.error .status-icon { background: var(--md-error-container); color: var(--md-on-error-container); }
+        .status-container .status-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            text-align: center;
+            line-height: 1.4;
+        }
+        .status-container.waiting .status-icon {
+            animation: md-shape-morph 3s var(--md-easing-emphasized) infinite;
+        }
+
+        /* Device info card */
+        .device-info {
+            margin-top: 24px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+            line-height: 1.7;
+        }
+        .device-info .row { display: flex; gap: 8px; align-items: baseline; }
+        .device-info .label { font-weight: 500; color: var(--md-on-surface); flex-shrink: 0; }
+
+        .telegram-icon {
+            width: 18px; height: 18px;
+            background: currentColor;
+            -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z'/></svg>") center/contain no-repeat;
+                    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z'/></svg>") center/contain no-repeat;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-deco" aria-hidden="true">
+        <span></span><span></span><span></span>
+    </div>
+
+    <main class="login-card" role="main">
+        <div class="login-icon-wrap" aria-hidden="true">
+            <span class="msr">lock</span>
+        </div>
+
+        <h1>Авторизация</h1>
+        <p class="subtitle">Для входа в панель администратора подтвердите запрос через Telegram.</p>
+
+        <form class="login-form" id="loginForm" autocomplete="off" novalidate>
+            <div class="md-field-outlined" id="nicknameField">
+                <input type="text" id="nicknameInput"
+                       placeholder="Имя пользователя"
+                       aria-label="Имя пользователя"
+                       autocomplete="off" spellcheck="false" />
+            </div>
+            <div id="validationMessage" class="validation-message">Введите ваше имя пользователя</div>
+
+            <button id="loginBtn" type="button" class="md-btn md-btn-filled md-btn-lg md-btn-square-press login-btn">
+                <span class="telegram-icon" aria-hidden="true"></span>
+                Войти через Telegram
+            </button>
+        </form>
+
+        <div id="statusContainer" class="status-container">
+            <div class="status-icon"><span class="msr" id="statusIconGlyph">hourglass_top</span></div>
+            <div class="status-text" id="statusText">Ожидание подтверждения в Telegram...</div>
+            <button id="retryBtn" type="button" class="md-btn md-btn-text" style="display:none;">
+                <span class="msr size-18">refresh</span>
+                Попробовать снова
+            </button>
+        </div>
+
+        <div class="device-info">
+            <div class="row">
+                <span class="label">Устройство:</span>
+                <span id="deviceInfo">—</span>
+            </div>
+            <div class="row">
+                <span class="label">IP-адрес:</span>
+                <span id="ipAddress">определение...</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    (function () {
+        var nicknameField = document.getElementById('nicknameField');
+        var nicknameInput = document.getElementById('nicknameInput');
+        var validationMessage = document.getElementById('validationMessage');
+        var loginBtn = document.getElementById('loginBtn');
+        var statusContainer = document.getElementById('statusContainer');
+        var statusIconGlyph = document.getElementById('statusIconGlyph');
+        var statusText = document.getElementById('statusText');
+        var retryBtn = document.getElementById('retryBtn');
+        var deviceInfoEl = document.getElementById('deviceInfo');
+        var ipAddressEl = document.getElementById('ipAddress');
+
+        var pollInterval = null;
+        var pollTimeout = null;
+
+        function detectDevice() {
+            var ua = navigator.userAgent;
+            var browser = 'Неизвестный браузер';
+            var os = 'Неизвестная ОС';
+            if (ua.indexOf('Firefox/') !== -1) browser = 'Firefox';
+            else if (ua.indexOf('Edg/') !== -1) browser = 'Edge';
+            else if (ua.indexOf('OPR/') !== -1 || ua.indexOf('Opera/') !== -1) browser = 'Opera';
+            else if (ua.indexOf('YaBrowser/') !== -1) browser = 'Yandex Browser';
+            else if (ua.indexOf('Chrome/') !== -1) browser = 'Chrome';
+            else if (ua.indexOf('Safari/') !== -1 && ua.indexOf('Chrome') === -1) browser = 'Safari';
+
+            if (ua.indexOf('Windows NT 10') !== -1) os = 'Windows 10/11';
+            else if (ua.indexOf('Windows NT') !== -1) os = 'Windows';
+            else if (ua.indexOf('Mac OS X') !== -1) os = 'macOS';
+            else if (ua.indexOf('Linux') !== -1 && ua.indexOf('Android') !== -1) os = 'Android';
+            else if (ua.indexOf('Linux') !== -1) os = 'Linux';
+            else if (ua.indexOf('iPhone') !== -1 || ua.indexOf('iPad') !== -1) os = 'iOS';
+
+            return browser + ' / ' + os;
+        }
+
+        function fetchIP() {
+            fetch('https://api.ipify.org?format=json')
+                .then(function (r) { return r.json(); })
+                .then(function (d) { ipAddressEl.textContent = d.ip || '—'; })
+                .catch(function () { ipAddressEl.textContent = 'не удалось определить'; });
+        }
+
+        deviceInfoEl.textContent = detectDevice();
+        fetchIP();
+
+        nicknameInput.addEventListener('input', function () {
+            nicknameField.classList.remove('has-error');
+            validationMessage.classList.remove('visible');
+        });
+
+        function showStatus(state, text) {
+            statusContainer.classList.remove('waiting', 'success', 'error');
+            statusContainer.classList.add('active', state);
+            retryBtn.style.display = state === 'error' ? '' : 'none';
+            if (text) statusText.textContent = text;
+            if (state === 'waiting') statusIconGlyph.textContent = 'hourglass_top';
+            else if (state === 'success') statusIconGlyph.textContent = 'check_circle';
+            else if (state === 'error') statusIconGlyph.textContent = 'error';
+        }
+
+        function hideStatus() {
+            statusContainer.classList.remove('active', 'waiting', 'success', 'error');
+        }
+
+        function stopPolling() {
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+            if (pollTimeout) { clearTimeout(pollTimeout); pollTimeout = null; }
+        }
+
+        function resetState() {
+            stopPolling();
+            hideStatus();
+            loginBtn.disabled = false;
+            nicknameInput.disabled = false;
+            nicknameInput.value = '';
+            nicknameField.classList.remove('has-error');
+            validationMessage.classList.remove('visible');
+        }
+
+        function setCookie(name, value, days) {
+            var expires = '';
+            if (days) {
+                var d = new Date();
+                d.setTime(d.getTime() + days * 86400000);
+                expires = '; expires=' + d.toUTCString();
+            }
+            document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/';
+        }
+
+        function pollAuthStatus(requestId) {
+            showStatus('waiting', 'Ожидание подтверждения в Telegram...');
+
+            pollTimeout = setTimeout(function () {
+                stopPolling();
+                loginBtn.disabled = false;
+                nicknameInput.disabled = false;
+                showStatus('error', 'Время ожидания истекло');
+            }, 10 * 60 * 1000);
+
+            pollInterval = setInterval(function () {
+                fetch('/api/auth/status/' + requestId)
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.status === 1) {
+                            stopPolling();
+                            showStatus('success', 'Авторизация успешна! Перенаправление...');
+                            setCookie('auth_token', data.token, 7);
+                            setTimeout(function () { window.location.href = '/'; }, 900);
+                        } else if (data.status === 2) {
+                            stopPolling();
+                            loginBtn.disabled = false;
+                            nicknameInput.disabled = false;
+                            showStatus('error', 'Запрос отклонён администратором');
+                        } else if (data.status === 3) {
+                            stopPolling();
+                            loginBtn.disabled = false;
+                            nicknameInput.disabled = false;
+                            showStatus('error', 'Время ожидания истекло');
+                        }
+                    })
+                    .catch(function () {
+                        stopPolling();
+                        loginBtn.disabled = false;
+                        nicknameInput.disabled = false;
+                        showStatus('error', 'Ошибка соединения с сервером');
+                    });
+            }, 2000);
+        }
+
+        loginBtn.addEventListener('click', function () {
+            var nickname = nicknameInput.value.trim();
+            if (!nickname) {
+                nicknameField.classList.add('has-error');
+                validationMessage.classList.add('visible');
+                nicknameInput.focus();
+                return;
+            }
+
+            loginBtn.disabled = true;
+            nicknameInput.disabled = true;
+
+            fetch('/api/auth/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userAgent: navigator.userAgent,
+                    tokenName: detectDevice(),
+                    nickname: nickname
+                })
+            })
+            .then(function (res) {
+                if (!res.ok) {
+                    return res.json().then(function (data) { throw new Error(data.message || 'Ошибка запроса'); });
+                }
+                return res.json();
+            })
+            .then(function (data) {
+                if (data.requestId) {
+                    pollAuthStatus(data.requestId);
+                } else {
+                    loginBtn.disabled = false;
+                    nicknameInput.disabled = false;
+                    showStatus('error', 'Не удалось создать запрос');
+                }
+            })
+            .catch(function (err) {
+                loginBtn.disabled = false;
+                nicknameInput.disabled = false;
+                showStatus('error', err.message || 'Ошибка соединения');
+            });
+        });
+
+        nicknameInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+
+        retryBtn.addEventListener('click', resetState);
+    })();
+    </script>
+
+</body>
+</html>

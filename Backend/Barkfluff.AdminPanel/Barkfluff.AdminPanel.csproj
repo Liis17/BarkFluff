@@ -30,6 +30,20 @@
     <None Remove="Pages\users.html" />
     <None Remove="Pages\notifications.html" />
     <None Remove="Pages\mail.html" />
+    <None Remove="Pages\v2\badges.html" />
+    <None Remove="Pages\v2\dashboard.html" />
+    <None Remove="Pages\v2\index.html" />
+    <None Remove="Pages\v2\Login.html" />
+    <None Remove="Pages\v2\logs.html" />
+    <None Remove="Pages\v2\mail.html" />
+    <None Remove="Pages\v2\notifications.html" />
+    <None Remove="Pages\v2\restarting.html" />
+    <None Remove="Pages\v2\s3-browser.html" />
+    <None Remove="Pages\v2\s3-storage.html" />
+    <None Remove="Pages\v2\services.html" />
+    <None Remove="Pages\v2\stickers.html" />
+    <None Remove="Pages\v2\updating.html" />
+    <None Remove="Pages\v2\users.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -103,6 +117,48 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\mail.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\badges.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\dashboard.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\Login.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\logs.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\mail.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\notifications.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\restarting.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\s3-browser.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\s3-storage.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\services.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\stickers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\updating.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\users.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

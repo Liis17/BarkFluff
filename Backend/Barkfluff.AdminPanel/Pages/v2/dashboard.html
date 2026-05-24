@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Дашборд</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <script src="assets/preview-mode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            padding: 20px;
+            transition: box-shadow var(--md-dur-2) var(--md-easing-standard),
+                        border-color var(--md-dur-2) var(--md-easing-standard);
+        }
+        .kpi-card:hover { box-shadow: var(--md-elev-1); border-color: var(--md-outline); }
+        .kpi-card-tonal {
+            background: var(--md-primary-container);
+            color: var(--md-on-primary-container);
+            border-color: transparent;
+        }
+        .kpi-head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px;
+        }
+        .kpi-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--md-on-surface-variant);
+        }
+        .kpi-card-tonal .kpi-label { color: var(--md-on-primary-container); opacity: .75; }
+        .kpi-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-secondary-container);
+            color: var(--md-on-secondary-container);
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .kpi-icon.icon-error { background: var(--md-error-container); color: var(--md-on-error-container); }
+        .kpi-icon.icon-warn  { background: var(--md-warning-container); color: var(--md-on-warning-container); }
+        .kpi-icon.icon-success { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .kpi-icon.icon-tertiary { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+        .kpi-card-tonal .kpi-icon { background: rgba(255,255,255,.55); color: var(--md-on-primary-container); }
+        .kpi-value {
+            font-size: 36px;
+            font-weight: 500;
+            line-height: 1.1;
+            color: var(--md-on-surface);
+            letter-spacing: -0.5px;
+        }
+        .kpi-card-tonal .kpi-value { color: var(--md-on-primary-container); }
+        .kpi-foot {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+        }
+        .kpi-card-tonal .kpi-foot { color: var(--md-on-primary-container); opacity: .8; }
+
+        .panel {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .panel-head {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .panel-head h2 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            margin: 0;
+        }
+        .panel-head .hint {
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+        }
+
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+            gap: 16px;
+        }
+        .service-card {
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-md);
+            overflow: hidden;
+            background: var(--md-surface-container-lowest);
+        }
+        .service-card-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--md-surface-container);
+            border-bottom: 1px solid var(--md-outline-variant);
+        }
+        .service-card-head .name {
+            font-size: 14px; font-weight: 600; color: var(--md-on-surface);
+        }
+        .metric-tabs {
+            display: none;
+            gap: 4px;
+            padding: 8px 8px 0;
+            border-bottom: 1px solid var(--md-outline-variant);
+        }
+        .metric-tabs.open { display: flex; }
+        .metric-tab {
+            position: relative;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--md-on-surface-variant);
+            background: transparent;
+            border: none;
+            border-radius: var(--md-shape-sm) var(--md-shape-sm) 0 0;
+            cursor: pointer;
+            transition: color var(--md-dur-2) var(--md-easing-standard);
+        }
+        .metric-tab::after {
+            content: ""; position: absolute; left: 12px; right: 12px; bottom: 0;
+            height: 2px; background: transparent;
+            transition: background var(--md-dur-2) var(--md-easing-standard);
+        }
+        .metric-tab.active { color: var(--md-primary); }
+        .metric-tab.active::after { background: var(--md-primary); }
+        .metric-tab[disabled] { color: var(--md-outline); cursor: not-allowed; }
+
+        .service-card-body { padding: 16px; }
+        .canvas-wrap { position: relative; height: 220px; }
+        .svc-loading-indicator { color: var(--md-primary); }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="dashboard"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <h1>Обзор системы</h1>
+                <span class="md-status md-status-success" id="system-status-badge">
+                    <span class="dot"></span>
+                    Система активна
+                </span>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button id="switch-to-v2-btn" class="md-btn md-btn-tonal md-btn-square-press">
+                    <span class="msr size-18">auto_awesome</span>
+                    Новая версия
+                </button>
+                <button id="logout-btn" class="md-btn md-btn-outlined md-btn-square-press">
+                    <span class="msr size-18">logout</span>
+                    Выйти
+                </button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <!-- KPI cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-card-tonal">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Всего событий</span>
+                        <span class="kpi-icon"><span class="msr">monitoring</span></span>
+                    </div>
+                    <div class="kpi-value" id="kpi-total">—</div>
+                    <div class="kpi-foot">За последние 24 часа</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Ошибки</span>
+                        <span class="kpi-icon icon-error"><span class="msr">error</span></span>
+                    </div>
+                    <div class="kpi-value" id="kpi-errors">—</div>
+                    <div class="kpi-foot">Error + Fatal</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Предупреждения</span>
+                        <span class="kpi-icon icon-warn"><span class="msr">warning</span></span>
+                    </div>
+                    <div class="kpi-value" id="kpi-warnings">—</div>
+                    <div class="kpi-foot">Warning уровень</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Активных сервисов</span>
+                        <span class="kpi-icon icon-success"><span class="msr">dns</span></span>
+                    </div>
+                    <div class="kpi-value" id="kpi-services">—</div>
+                    <div class="kpi-foot">С логами за 24ч</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Время работы</span>
+                        <span class="kpi-icon icon-tertiary"><span class="msr">timer</span></span>
+                    </div>
+                    <div class="kpi-value" id="kpi-uptime">0:00:00</div>
+                    <div class="kpi-foot" id="kpi-started-at">—</div>
+                </div>
+            </div>
+
+            <!-- Traffic chart -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Трафик системы</h2>
+                    <span class="hint">Обновляется каждые 30 секунд</span>
+                </div>
+                <div style="position:relative;height:320px;">
+                    <canvas id="traffic-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Service metrics -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Метрики сервисов</h2>
+                    <span class="hint">Последние 12 часов</span>
+                </div>
+                <div id="service-metrics-container">
+                    <div style="text-align:center;">
+                        <button id="show-metrics-btn" class="md-btn md-btn-tonal md-btn-square-press">
+                            <span class="msr size-18">bar_chart</span>
+                            Показать метрики
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    // ---- Helpers ----
+    function formatDate(s) {
+        if (!s) return '-';
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return '-';
+        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function formatNumber(n) { return n == null ? '—' : n.toLocaleString('ru-RU'); }
+    function formatTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+    }
+    function formatMetricName(n) {
+        if (!n) return n;
+        return n.split('_').map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }
+    function getShortServiceName(n) {
+        if (!n) return n;
+        const parts = n.split('.');
+        return parts.length > 1 ? parts[parts.length - 1] : n;
+    }
+
+    const metricColors = ['#4F5BD5','#BA1A1A','#146C2E','#815600','#7C4B96','#B4365B','#0C7C9C','#B85228','#1F8A6E','#5B5FCF','#5C772A','#A52545'];
+
+    // ---- Auth ----
+    async function checkAuth() {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (!res.ok) { window.location.href = '/'; return null; }
+            return await res.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    // ---- Dashboard data ----
+    let trafficChart = null;
+    async function loadDashboardData() {
+        const [kpisRes, trafficRes] = await Promise.allSettled([
+            fetch('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+            fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status))
+        ]);
+
+        if (kpisRes.status === 'fulfilled') {
+            const k = kpisRes.value;
+            document.getElementById('kpi-total').textContent = formatNumber(k.totalEvents);
+            document.getElementById('kpi-errors').textContent = formatNumber(k.errorCount);
+            document.getElementById('kpi-warnings').textContent = formatNumber(k.warningCount);
+            document.getElementById('kpi-services').textContent = formatNumber(k.perService ? Object.keys(k.perService).length : 0);
+        } else {
+            ['kpi-total','kpi-errors','kpi-warnings','kpi-services'].forEach(id => document.getElementById(id).textContent = '—');
+        }
+
+        if (trafficRes.status === 'fulfilled') {
+            const t = trafficRes.value;
+            const labels = t.all.map(p => formatTime(p.timestamp));
+            const all = t.all.map(p => p.count);
+            const errors = t.errors.map(p => p.count);
+            const warnings = t.warnings ? t.warnings.map(p => p.count) : [];
+
+            if (trafficChart) {
+                trafficChart.data.labels = labels;
+                trafficChart.data.datasets[0].data = all;
+                trafficChart.data.datasets[1].data = errors;
+                trafficChart.data.datasets[2].data = warnings;
+                trafficChart.update();
+            } else {
+                initChart(labels, all, errors, warnings);
+            }
+        }
+    }
+
+    function initChart(labels, all, errors, warnings) {
+        const ctx = document.getElementById('traffic-chart').getContext('2d');
+        trafficChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [
+                mkDataset('Все события', all, '#4F5BD5'),
+                mkDataset('Ошибки', errors, '#BA1A1A'),
+                mkDataset('Предупреждения', warnings, '#B17900')
+            ]},
+            options: chartOptions(true)
+        });
+    }
+    function mkDataset(label, data, color) {
+        return {
+            label, data,
+            borderColor: color,
+            backgroundColor: color + '1A',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointBackgroundColor: color
+        };
+    }
+    function chartOptions(legend) {
+        return {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: !!legend, position: 'top',
+                    labels: { color:'#46464F', font:{size:12,family:"'Roboto Flex',sans-serif"}, usePointStyle: true, padding: 16 }
+                },
+                tooltip: {
+                    backgroundColor:'#303036', titleFont:{family:"'Roboto Flex',sans-serif",size:12,weight:'600'},
+                    bodyFont:{family:"'Roboto Flex',sans-serif",size:12}, padding:12, cornerRadius:8, displayColors:true,
+                    titleColor:'#F2EFF7', bodyColor:'#F2EFF7'
+                }
+            },
+            scales: {
+                x: { grid:{display:false}, ticks:{color:'#767680', font:{family:"'Roboto Flex',sans-serif",size:11}} },
+                y: { beginAtZero:true, grid:{color:'#C6C5D0', borderDash:[3,3]}, ticks:{color:'#767680', font:{family:"'Roboto Flex',sans-serif",size:11}, precision:0} }
+            },
+            interaction: { intersect:false, mode:'index' }
+        };
+    }
+
+    // ---- Service metrics ----
+    let serviceMetricsLoaded = false;
+    const knownServices = [
+        'BarkFluff.Identity','BarkFluff.Users','BarkFluff.Messages','BarkFluff.Files',
+        'BarkFluff.Updates','BarkFluff.Notification','BarkFluff.Beacon','BarkFluff.FastAuth',
+        'BarkFluff.Onliner','BarkFluff.Configuration','BarkFluff.Web','BarkFluff.ClientStorage'
+    ];
+    const METRIC_TABS = [
+        { key:'counters', label:'Counters' },
+        { key:'errors',   label:'Errors' },
+        { key:'gauges',   label:'Gauges' },
+        { key:'latency',  label:'Latency' }
+    ];
+    function classifyMetric(name) {
+        if (!name) return 'counters';
+        const n = name.toLowerCase();
+        if (n.includes('error')||n.includes('_failed')||n.includes('_fail')||n.includes('rejected')) return 'errors';
+        if (n.includes('duration')||n.includes('latency')||n.endsWith('_ms')||n.includes('_ms_')) return 'latency';
+        if (n.endsWith('_unix')||n.includes('uptime')||n.startsWith('active_')||n.endsWith('_active')
+            ||n.endsWith('_healthy')||n.endsWith('_current')||n.includes('_gauge')||n.endsWith('_size')
+            ||n.endsWith('_subscriptions')||n.endsWith('_streams')||n.endsWith('_connections')) return 'gauges';
+        return 'counters';
+    }
+
+    document.getElementById('show-metrics-btn').addEventListener('click', () => {
+        if (serviceMetricsLoaded) return;
+        serviceMetricsLoaded = true;
+        loadServiceMetrics();
+    });
+
+    function renderServiceCards(services) {
+        const container = document.getElementById('service-metrics-container');
+        let html = '<div class="service-grid">';
+        services.forEach(svc => {
+            const safe = svc.replace(/\./g, '-');
+            const tabsHtml = METRIC_TABS.map((t,i) => `
+                <button class="metric-tab${i===0?' active':''}" data-tab="${t.key}">${t.label}</button>
+            `).join('');
+            const canvasesHtml = METRIC_TABS.map((t,i) => `
+                <canvas id="svc-chart-${safe}-${t.key}" class="metric-canvas" data-tab="${t.key}" style="${i===0?'':'display:none;'}"></canvas>
+            `).join('');
+            html += `
+                <div id="svc-card-${safe}" data-svc="${svc}" class="service-card">
+                    <div class="service-card-head">
+                        <span class="name">${getShortServiceName(svc)}</span>
+                        <span class="md-loader-expressive svc-loading-indicator" style="width:18px;height:18px;"></span>
+                    </div>
+                    <div class="metric-tabs">${tabsHtml}</div>
+                    <div class="service-card-body">
+                        <div class="canvas-wrap">
+                            ${canvasesHtml}
+                            <div class="svc-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--md-on-surface-variant);font-size:13px;">Загрузка...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function buildChartOptions() {
+        return {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display:true, position:'bottom',
+                    labels:{color:'#46464F', font:{family:"'Roboto Flex',sans-serif",size:10}, usePointStyle:true, padding:10, boxWidth:6}},
+                tooltip: { backgroundColor:'#303036', titleColor:'#F2EFF7', bodyColor:'#F2EFF7',
+                    titleFont:{family:"'Roboto Flex',sans-serif",size:11}, bodyFont:{family:"'Roboto Flex',sans-serif",size:11},
+                    padding:8, cornerRadius:6, displayColors:true }
+            },
+            scales: {
+                x: { grid:{display:false}, ticks:{color:'#767680',font:{family:"'Roboto Flex',sans-serif",size:10}} },
+                y: { beginAtZero:true, grid:{color:'#C6C5D0',borderDash:[3,3]}, ticks:{color:'#767680',font:{family:"'Roboto Flex',sans-serif",size:10},precision:0} }
+            },
+            interaction: { intersect:false, mode:'index' }
+        };
+    }
+
+    function renderServiceChart(svc, data) {
+        const safe = svc.replace(/\./g, '-');
+        const card = document.getElementById(`svc-card-${safe}`);
+        if (!card) return;
+        const spinner = card.querySelector('.svc-loading-indicator');
+        if (spinner) spinner.remove();
+        const placeholder = card.querySelector('.svc-placeholder');
+        const tabsBar = card.querySelector('.metric-tabs');
+
+        if (!data.timeSeries || data.timeSeries.length === 0) {
+            if (placeholder) placeholder.textContent = 'Нет данных';
+            return;
+        }
+        const metricNames = new Set();
+        data.timeSeries.forEach(ts => Object.keys(ts.metrics).forEach(k => metricNames.add(k)));
+        if (metricNames.size === 0) { if (placeholder) placeholder.textContent = 'Нет данных'; return; }
+
+        const groups = { counters:[], errors:[], gauges:[], latency:[] };
+        metricNames.forEach(name => groups[classifyMetric(name)].push(name));
+
+        const tabBtns = Array.from(tabsBar.querySelectorAll('.metric-tab'));
+        let firstActive = null;
+        tabBtns.forEach(btn => {
+            const empty = !groups[btn.dataset.tab] || groups[btn.dataset.tab].length === 0;
+            if (empty) {
+                btn.disabled = true;
+                btn.classList.remove('active');
+            } else if (firstActive === null) firstActive = btn.dataset.tab;
+        });
+        if (firstActive === null) { if (placeholder) placeholder.textContent = 'Нет данных'; return; }
+
+        if (placeholder) placeholder.remove();
+        tabsBar.classList.add('open');
+
+        tabBtns.forEach(btn => btn.classList.remove('active'));
+        const activeBtn = tabBtns.find(b => b.dataset.tab === firstActive);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        card.querySelectorAll('.metric-canvas').forEach(c => {
+            c.style.display = c.dataset.tab === firstActive ? '' : 'none';
+        });
+
+        const labels = data.timeSeries.map(ts => formatTime(ts.hour));
+        METRIC_TABS.forEach(tab => {
+            const names = groups[tab.key];
+            if (!names || names.length === 0) return;
+            const canvas = document.getElementById(`svc-chart-${safe}-${tab.key}`);
+            if (!canvas) return;
+            const datasets = names.map((mn, i) => {
+                const c = metricColors[i % metricColors.length];
+                return {
+                    label: formatMetricName(mn),
+                    data: data.timeSeries.map(ts => ts.metrics[mn] || 0),
+                    borderColor: c, backgroundColor: c+'1A', borderWidth: 1.5,
+                    fill: false, tension: 0.3, pointRadius: 0, pointHoverRadius: 4
+                };
+            });
+            new Chart(canvas.getContext('2d'), { type:'line', data:{labels,datasets}, options: buildChartOptions() });
+        });
+    }
+
+    document.getElementById('service-metrics-container').addEventListener('click', (e) => {
+        const btn = e.target.closest('.metric-tab');
+        if (!btn || btn.disabled) return;
+        const card = btn.closest('[data-svc]');
+        if (!card) return;
+        card.querySelectorAll('.metric-tab').forEach(b => b.classList.toggle('active', b === btn));
+        card.querySelectorAll('.metric-canvas').forEach(c => c.style.display = c.dataset.tab === btn.dataset.tab ? '' : 'none');
+    });
+
+    function renderServiceError(svc) {
+        const card = document.getElementById(`svc-card-${svc.replace(/\./g,'-')}`);
+        if (!card) return;
+        const spinner = card.querySelector('.svc-loading-indicator');
+        if (spinner) spinner.remove();
+        const placeholder = card.querySelector('.svc-placeholder');
+        if (placeholder) { placeholder.textContent = 'Ошибка загрузки'; placeholder.style.color = 'var(--md-error)'; }
+    }
+
+    async function loadServiceMetrics() {
+        renderServiceCards(knownServices);
+        for (const svc of knownServices) {
+            try {
+                const res = await fetch(`/api/seq/dashboard/service-metrics/${encodeURIComponent(svc)}?hours=12`);
+                if (!res.ok) throw new Error(res.status);
+                renderServiceChart(svc, await res.json());
+            } catch { renderServiceError(svc); }
+        }
+    }
+
+    // ---- Switch / Logout ----
+    document.getElementById('switch-to-v2-btn').addEventListener('click', () => {
+        document.cookie = 'ui_version=v2; path=/; max-age=' + (60*60*24*365);
+        window.location.href = '/v2/';
+    });
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    // ---- Uptime ----
+    const __startStr = '{{SERVER_STARTED_AT_UTC}}';
+    const serverStartedAtUtc = (() => {
+        const d = new Date(__startStr);
+        if (!isNaN(d.getTime())) return d;
+        // Preview fallback: pretend the server started 7h 32m ago
+        return new Date(Date.now() - (7 * 3600 + 32 * 60) * 1000);
+    })();
+    function updateUptime() {
+        const now = new Date();
+        const diff = Math.max(0, Math.floor((now - serverStartedAtUtc) / 1000));
+        const days = Math.floor(diff / 86400);
+        const h = Math.floor((diff % 86400) / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        let text = '';
+        if (days > 0) text += days + 'д ';
+        text += String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        document.getElementById('kpi-uptime').textContent = text;
+    }
+    function initUptime() {
+        document.getElementById('kpi-started-at').textContent =
+            'Запуск: ' + serverStartedAtUtc.toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        if (isNaN(serverStartedAtUtc.getTime())) document.getElementById('kpi-started-at').textContent = '—';
+        updateUptime();
+        setInterval(updateUptime, 1000);
+    }
+
+    // ---- Init ----
+    (async function init() {
+        const authData = await checkAuth();
+        if (!authData) return;
+
+        const name = authData.name || authData.Name || 'Admin';
+        const created = authData.createdAt || authData.CreatedAt || authData.created_at;
+        if (window.mdNavSetUser) window.mdNavSetUser(name, created ? formatDate(created) : '');
+
+        initUptime();
+        await loadDashboardData();
+
+        const overlay = document.getElementById('loading-overlay');
+        overlay.classList.add('hidden');
+        setTimeout(() => overlay.remove(), 300);
+
+        setInterval(loadDashboardData, 30000);
+    })();
+</script>
+</body>
+</html>

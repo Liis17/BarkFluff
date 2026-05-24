@@ -193,7 +193,19 @@
       "Bash(xcodebuild -project iOS/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build)",
       "Bash(claude mcp *)",
       "Bash(python3 add_localization_keys.py)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(export JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\")",
+      "Bash(./gradlew :core:assembleDebug :app-v1:assembleDebug :app-v2:assembleDebug)",
+      "Bash(curl -s \"https://dl.google.com/dl/android/maven2/androidx/compose/compose-bom/maven-metadata.xml\")",
+      "Bash(curl -s \"https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/maven-metadata.xml\")",
+      "Bash(curl -s \"https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/maven-metadata.xml\")",
+      "Bash(curl -s \"https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-compose/maven-metadata.xml\")",
+      "Bash(curl -s \"https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-compose/maven-metadata.xml\")",
+      "Bash(curl -s \"https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/maven-metadata.xml\")",
+      "Bash(curl -s \"https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin/maven-metadata.xml\")",
+      "Bash(curl -s \"https://repo1.maven.org/maven2/io/coil-kt/coil-compose/maven-metadata.xml\")",
+      "Bash(./gradlew :app-v1:assembleDebug :app-v2:assembleDebug)",
+      "Bash(./gradlew :app-v2:assembleDebug)"
     ],
     "deny": [],
     "ask": []

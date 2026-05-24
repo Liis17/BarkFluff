@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Логи</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <script src="assets/preview-mode.js"></script>
+    <style>
+        .filters {
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+            padding: 16px;
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            margin-bottom: 20px;
+        }
+        .filters > .grow { flex: 1; min-width: 200px; }
+        .level-buttons { display: flex; gap: 4px; }
+
+        .logs-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            overflow: hidden;
+        }
+        .log-row { cursor: pointer; }
+        .log-row.expanded { background: var(--md-surface-container); }
+        .log-row:hover { background: var(--md-surface-container); }
+        .log-cell-toggle { width: 32px; }
+        .log-cell-time { width: 160px; font-family: 'Roboto Mono', monospace; font-size: 12px; color: var(--md-on-surface-variant); }
+        .log-cell-level { width: 100px; }
+        .log-cell-service { width: 200px; font-size: 13px; color: var(--md-on-surface-variant); }
+        .log-cell-msg { font-family: 'Roboto Mono', monospace; font-size: 13px; }
+
+        .log-detail {
+            background: var(--md-surface-container);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            padding: 12px 16px 12px 56px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border-top: 1px solid var(--md-outline-variant);
+        }
+
+        .level-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .level-info  { color: #0B5FBF; }
+        .level-info .dot { background: #0B5FBF; }
+        .level-warning { color: #815600; }
+        .level-warning .dot { background: #B17900; }
+        .level-error { color: var(--md-error); }
+        .level-error .dot { background: var(--md-error); }
+
+        .pagination-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px;
+            font-size: 13px;
+            color: var(--md-on-surface-variant);
+        }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="logs"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <h1>Логи системы</h1>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button onclick="openExportModal()" class="md-btn md-btn-tonal md-btn-square-press">
+                    <span class="msr size-18">download</span>
+                    Экспорт
+                </button>
+                <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" style="color:var(--md-on-error-container);background:var(--md-error-container);">
+                    <span class="msr size-18">delete</span>
+                    Очистить
+                </button>
+                <button id="logoutBtn" class="md-icon-btn" title="Выйти">
+                    <span class="msr">logout</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div class="filters">
+                <div class="md-search" style="min-width:240px;flex:1;">
+                    <span class="msr">search</span>
+                    <input id="searchInput" type="text" placeholder="Поиск по сообщению...">
+                </div>
+
+                <select id="serviceFilter" class="md-input-outlined">
+                    <option value="">Все сервисы</option>
+                </select>
+
+                <div class="level-buttons">
+                    <button data-level="" class="md-chip selected">Все</button>
+                    <button data-level="Information" class="md-chip level-info">
+                        <span class="msr size-18">info</span>
+                        Info
+                    </button>
+                    <button data-level="Warning" class="md-chip level-warning">
+                        <span class="msr size-18">warning</span>
+                        Warning
+                    </button>
+                    <button data-level="Error" class="md-chip level-error">
+                        <span class="msr size-18">error</span>
+                        Error
+                    </button>
+                </div>
+
+                <label class="md-switch" title="Авто-обновление">
+                    <input id="autoRefreshToggle" type="checkbox">
+                    <span class="track"><span class="thumb"></span></span>
+                    <span style="margin-left:8px;font-size:13px;color:var(--md-on-surface-variant);">Авто (10с)</span>
+                </label>
+
+                <button id="refreshBtn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">refresh</span>
+                    Обновить
+                </button>
+            </div>
+
+            <div class="logs-card">
+                <div style="overflow:auto;">
+                    <table class="md-table">
+                        <thead>
+                            <tr>
+                                <th class="log-cell-toggle"></th>
+                                <th class="log-cell-time">Время</th>
+                                <th class="log-cell-level">Уровень</th>
+                                <th class="log-cell-service">Сервис</th>
+                                <th>Сообщение</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-row">
+                    <span id="logsCount">—</span>
+                    <div style="display:flex;gap:8px;">
+                        <button id="prevBtn" class="md-btn md-btn-text" disabled>
+                            <span class="msr size-18">chevron_left</span>
+                            Назад
+                        </button>
+                        <button id="nextBtn" class="md-btn md-btn-text">
+                            Вперёд
+                            <span class="msr size-18">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Export dialog -->
+<div id="exportScrim" class="md-scrim">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Экспорт логов</h3>
+            <button class="md-icon-btn" onclick="closeExportModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body">
+            <p style="color:var(--md-on-surface-variant);">Выгрузит логи с применёнными фильтрами в JSON-файл.</p>
+            <div style="display:flex;gap:12px;align-items:center;">
+                <span style="font-size:13px;">Период (часов):</span>
+                <input id="exportHours" type="number" value="24" min="1" max="720" class="md-input-outlined" style="width:120px;">
+            </div>
+        </div>
+        <div class="md-dialog-actions">
+            <button class="md-btn md-btn-text" onclick="closeExportModal()">Отмена</button>
+            <button class="md-btn md-btn-filled md-btn-square-press" onclick="exportLogs()">
+                <span class="msr size-18">download</span>
+                Скачать
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear dialog -->
+<div id="clearScrim" class="md-scrim">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3 style="color:var(--md-error);">Очистить логи?</h3>
+        </div>
+        <div class="md-dialog-body">
+            <p>Будут безвозвратно удалены все логи в системе Seq. Это действие нельзя отменить.</p>
+        </div>
+        <div class="md-dialog-actions">
+            <button class="md-btn md-btn-text" onclick="closeClearModal()">Отмена</button>
+            <button class="md-btn md-btn-square-press" style="background:var(--md-error);color:var(--md-on-error);" onclick="clearLogs()">
+                Удалить
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let allLogs = [];
+    let filteredLogs = [];
+    let services = [];
+    let currentPage = 0;
+    let pageSize = 50;
+    let activeLevel = '';
+    let activeService = '';
+    let searchQuery = '';
+    let autoRefreshTimer = null;
+    let searchDebounce = null;
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    function formatDate(s) {
+        if (!s) return '—';
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+
+    function levelChip(level) {
+        const map = {
+            Information: { cls:'level-info', icon:'info', label:'Info' },
+            Warning:     { cls:'level-warning', icon:'warning', label:'Warning' },
+            Error:       { cls:'level-error', icon:'error', label:'Error' }
+        };
+        const info = map[level] || { cls:'', icon:'circle', label: level };
+        return `<span class="${info.cls}" style="display:inline-flex;align-items:center;font-weight:500;font-size:12px;">
+                    <span class="dot level-dot" style="background:currentColor;"></span>${info.label}</span>`;
+    }
+
+    function shortService(s) {
+        if (!s) return '';
+        const parts = s.split('.');
+        return parts.length > 1 ? parts[parts.length - 1] : s;
+    }
+
+    async function loadLogs() {
+        try {
+            const params = new URLSearchParams();
+            if (searchQuery) params.set('search', searchQuery);
+            if (activeLevel) params.set('level', activeLevel);
+            if (activeService) params.set('service', activeService);
+            const res = await fetch('/api/seq/logs?' + params.toString());
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            allLogs = data.logs || [];
+            services = data.services || services;
+            populateServiceSelect();
+            applyFilters();
+        } catch (e) {
+            document.getElementById('logsTableBody').innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--md-error);">Ошибка загрузки логов</td></tr>`;
+        }
+    }
+
+    function populateServiceSelect() {
+        const sel = document.getElementById('serviceFilter');
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">Все сервисы</option>' + services.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(shortService(s))}</option>`).join('');
+        sel.value = cur;
+    }
+
+    function applyFilters() {
+        filteredLogs = allLogs.filter(l => {
+            if (activeLevel && l.level !== activeLevel) return false;
+            if (activeService && l.service !== activeService) return false;
+            if (searchQuery && !(l.message || '').toLowerCase().includes(searchQuery.toLowerCase())) return false;
+            return true;
+        });
+        currentPage = 0;
+        render();
+    }
+
+    function render() {
+        const tbody = document.getElementById('logsTableBody');
+        const start = currentPage * pageSize;
+        const slice = filteredLogs.slice(start, start + pageSize);
+        if (slice.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:48px;text-align:center;color:var(--md-on-surface-variant);">
+                <div style="display:inline-flex;flex-direction:column;align-items:center;gap:8px;">
+                    <span class="msr size-48" style="opacity:.4;">inbox</span>
+                    <div>Записей не найдено</div>
+                </div>
+            </td></tr>`;
+        } else {
+            tbody.innerHTML = slice.map((log, i) => `
+                <tr class="log-row" data-idx="${start + i}" onclick="toggleExpand(this, ${start + i})">
+                    <td class="log-cell-toggle"><span class="msr size-18" style="color:var(--md-on-surface-variant);transition:transform .2s;">chevron_right</span></td>
+                    <td class="log-cell-time">${formatDate(log.timestamp)}</td>
+                    <td class="log-cell-level">${levelChip(log.level)}</td>
+                    <td class="log-cell-service">${escapeHtml(shortService(log.service))}</td>
+                    <td class="log-cell-msg">${escapeHtml(log.message)}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('logsCount').textContent =
+            filteredLogs.length === 0
+                ? 'Нет записей'
+                : `Показаны ${start + 1}–${Math.min(start + pageSize, filteredLogs.length)} из ${filteredLogs.length}`;
+
+        document.getElementById('prevBtn').disabled = currentPage === 0;
+        document.getElementById('nextBtn').disabled = (currentPage + 1) * pageSize >= filteredLogs.length;
+    }
+
+    window.toggleExpand = function (row, idx) {
+        const next = row.nextElementSibling;
+        if (next && next.classList.contains('log-detail-row')) {
+            next.remove();
+            row.classList.remove('expanded');
+            row.querySelector('.msr').style.transform = '';
+            return;
+        }
+        row.classList.add('expanded');
+        row.querySelector('.msr').style.transform = 'rotate(90deg)';
+        const log = filteredLogs[idx];
+        const detail = document.createElement('tr');
+        detail.className = 'log-detail-row';
+        const props = log.properties && Object.keys(log.properties).length
+            ? Object.entries(log.properties).map(([k, v]) => `<div><span style="color:var(--md-on-surface-variant);">${escapeHtml(k)}</span>: ${escapeHtml(JSON.stringify(v))}</div>`).join('')
+            : '<div style="color:var(--md-on-surface-variant);">Дополнительных свойств нет</div>';
+        detail.innerHTML = `<td colspan="5" style="padding:0;"><div class="log-detail">
+            <div style="margin-bottom:8px;color:var(--md-on-surface);font-weight:500;">${escapeHtml(log.message)}</div>
+            ${props}
+        </div></td>`;
+        row.after(detail);
+    };
+
+    // ---- Filters wiring ----
+    document.getElementById('searchInput').addEventListener('input', e => {
+        searchQuery = e.target.value;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(applyFilters, 250);
+    });
+    document.getElementById('serviceFilter').addEventListener('change', e => { activeService = e.target.value; applyFilters(); });
+    document.querySelectorAll('.level-buttons .md-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.level-buttons .md-chip').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            activeLevel = btn.dataset.level;
+            applyFilters();
+        });
+    });
+    document.getElementById('refreshBtn').addEventListener('click', loadLogs);
+    document.getElementById('autoRefreshToggle').addEventListener('change', e => {
+        if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+        if (e.target.checked) autoRefreshTimer = setInterval(loadLogs, 10000);
+    });
+    document.getElementById('prevBtn').addEventListener('click', () => { if (currentPage > 0) { currentPage--; render(); window.scrollTo(0,0); } });
+    document.getElementById('nextBtn').addEventListener('click', () => { if ((currentPage+1)*pageSize < filteredLogs.length) { currentPage++; render(); window.scrollTo(0,0); } });
+
+    // ---- Export / Clear ----
+    window.openExportModal = () => document.getElementById('exportScrim').classList.add('open');
+    window.closeExportModal = () => document.getElementById('exportScrim').classList.remove('open');
+    window.openClearModal = () => document.getElementById('clearScrim').classList.add('open');
+    window.closeClearModal = () => document.getElementById('clearScrim').classList.remove('open');
+
+    window.exportLogs = async function () {
+        const hours = parseInt(document.getElementById('exportHours').value, 10) || 24;
+        try {
+            const r = await fetch(`/api/seq/logs/export?hours=${hours}`);
+            const blob = await r.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `logs-${hours}h.json`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch (e) {
+            // fall back to client-side export of currently loaded logs
+            const blob = new Blob([JSON.stringify(filteredLogs, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `logs-export.json`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+        closeExportModal();
+    };
+    window.clearLogs = async function () {
+        try {
+            await fetch('/api/seq/logs', { method:'DELETE' });
+            allLogs = []; applyFilters();
+        } catch {}
+        closeClearModal();
+    };
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (!confirm('Выйти из панели?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const auth = await checkAuth();
+        if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        await loadLogs();
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>
