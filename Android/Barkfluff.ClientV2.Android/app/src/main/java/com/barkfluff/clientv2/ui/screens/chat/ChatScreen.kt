@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,15 +63,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.content.Context
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.heightIn
 import barkfluff.shared.Shared
 import coil.compose.AsyncImage
+import androidx.core.content.FileProvider
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.clientv2.di.appViewModel
 import com.barkfluff.clientv2.ui.components.AudioAttachment
 import com.barkfluff.clientv2.ui.components.BfAvatar
 import com.barkfluff.clientv2.ui.components.DocumentAttachment
+import com.barkfluff.clientv2.ui.components.GifAttachment
 import com.barkfluff.clientv2.ui.components.ImageItem
 import com.barkfluff.clientv2.ui.components.ImageViewerOverlay
 import com.barkfluff.clientv2.ui.components.VideoPlayerOverlay
@@ -99,6 +105,8 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
     var viewerItems by remember { mutableStateOf<List<ImageItem>?>(null) }
     var viewerStart by remember { mutableIntStateOf(0) }
     var videoToPlay by remember { mutableStateOf<String?>(null) }
+    var showAttachSheet by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -111,6 +119,36 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
         }
     }
 
+    val videoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes != null) vm.sendVideo(bytes)
+            }
+        }
+    }
+
+    val cameraPhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val uri = pendingCameraUri
+        if (ok && uri != null) {
+            scope.launch(Dispatchers.IO) {
+                ImageCompressor.compressImage(uri, context).getOrNull()?.let { vm.sendImage(it) }
+            }
+        }
+    }
+
+    val cameraVideo = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { ok ->
+        val uri = pendingCameraUri
+        if (ok && uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes != null) vm.sendVideo(bytes)
+            }
+        }
+    }
+
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)
     }
@@ -119,7 +157,17 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(state.title.ifBlank { "Чат" }) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        BfAvatar(name = state.title.ifBlank { "?" }, size = 36.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = state.title.ifBlank { "Чат" },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
@@ -134,11 +182,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
                 editing = editingMessage != null,
                 replyText = replyingTo?.let { if (it.hasContent()) it.content.text else "" },
                 onValueChange = { input = it },
-                onAttach = {
-                    photoPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                },
+                onAttach = { showAttachSheet = true },
                 onCancelEdit = {
                     editingMessage = null
                     input = ""
@@ -270,6 +314,40 @@ fun ChatScreen(chatId: String, onBack: () -> Unit) {
     videoToPlay?.let { fileId ->
         VideoPlayerOverlay(fileId = fileId) { videoToPlay = null }
     }
+
+    if (showAttachSheet) {
+        ModalBottomSheet(onDismissRequest = { showAttachSheet = false }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                ActionRow("Фото из галереи") {
+                    showAttachSheet = false
+                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+                ActionRow("Видео из галереи") {
+                    showAttachSheet = false
+                    videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                }
+                ActionRow("Снять фото") {
+                    showAttachSheet = false
+                    val uri = createMediaUri(context, "jpg")
+                    pendingCameraUri = uri
+                    cameraPhoto.launch(uri)
+                }
+                ActionRow("Снять видео") {
+                    showAttachSheet = false
+                    val uri = createMediaUri(context, "mp4")
+                    pendingCameraUri = uri
+                    cameraVideo.launch(uri)
+                }
+            }
+        }
+    }
+}
+
+/** Временный файл в cacheDir/media_files/ + FileProvider-URI для записи с камеры. */
+private fun createMediaUri(context: Context, extension: String): Uri {
+    val dir = java.io.File(context.cacheDir, "media_files").apply { mkdirs() }
+    val file = java.io.File(dir, "cam_${System.currentTimeMillis()}.$extension")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
 @Composable
@@ -384,6 +462,10 @@ private fun MessageBubble(
                     )
                 }
 
+                attachments.filter { it.type == Shared.MessageAttachmentType.GIF }.forEach { att ->
+                    GifAttachment(fileId = att.fileId, previewUrl = att.previewUrl)
+                }
+
                 val text = if (message.hasContent()) message.content.text else ""
                 if (text.isNotBlank()) {
                     Text(text = text, color = textColor, style = MaterialTheme.typography.bodyLarge)
@@ -476,9 +558,12 @@ private fun MessageInputBar(
                     )
                 )
                 Spacer(Modifier.width(4.dp))
-                IconButton(onClick = onSend, enabled = !sending && value.isNotBlank()) {
+                FilledIconButton(onClick = onSend, enabled = !sending && value.isNotBlank()) {
                     if (sending) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Отправить")
                     }

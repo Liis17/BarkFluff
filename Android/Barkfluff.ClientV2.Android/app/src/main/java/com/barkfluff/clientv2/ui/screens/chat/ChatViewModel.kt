@@ -90,6 +90,18 @@ class ChatViewModel(
         }
     }
 
+    fun sendVideo(bytes: ByteArray) {
+        if (bytes.isEmpty()) return
+        viewModelScope.launch {
+            _ui.update { it.copy(sending = true) }
+            chatRepository.uploadFile(bytes, FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_VIDEO)
+                .onSuccess { fileId ->
+                    chatRepository.sendMessage(chatId, "", listOf(fileId)).onSuccess { appendMessage(it) }
+                }
+            _ui.update { it.copy(sending = false) }
+        }
+    }
+
     fun editMessage(messageId: Long, text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return

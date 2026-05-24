@@ -11,6 +11,7 @@ object Routes {
     const val PROFILE_EDIT = "profile_edit"
     const val SETTINGS = "settings"
     const val PRIVACY = "privacy"
+    const val SECURITY = "security"
     const val SEARCH = "search"
 
     const val CHAT_ARG_ID = "chatId"

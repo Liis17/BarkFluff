@@ -1,6 +1,5 @@
 package com.barkfluff.clientv2.ui.screens.profile
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -33,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.barkfluff.clientv2.di.LocalAppContainer
 import com.barkfluff.clientv2.di.appViewModel
 import com.barkfluff.clientv2.ui.components.BfAvatar
+import com.barkfluff.clientv2.ui.components.SettingsRow
+import com.barkfluff.clientv2.ui.components.SettingsSection
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -86,21 +85,20 @@ fun ProfileScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, onLogou
             }
 
             Spacer(Modifier.size(24.dp))
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Редактировать профиль") },
-                leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onEditProfile)
-            )
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Настройки") },
-                leadingContent = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onOpenSettings)
-            )
-            HorizontalDivider()
+            SettingsSection {
+                SettingsRow(
+                    title = "Редактировать профиль",
+                    leading = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                    onClick = onEditProfile
+                )
+                SettingsRow(
+                    title = "Настройки",
+                    leading = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    onClick = onOpenSettings
+                )
+            }
 
-            Spacer(Modifier.size(24.dp))
+            Spacer(Modifier.size(16.dp))
             OutlinedButton(
                 onClick = {
                     container.globalParam.clearUserData()
