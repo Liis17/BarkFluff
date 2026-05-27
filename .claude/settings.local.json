@@ -205,7 +205,8 @@
       "Bash(curl -s \"https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin/maven-metadata.xml\")",
       "Bash(curl -s \"https://repo1.maven.org/maven2/io/coil-kt/coil-compose/maven-metadata.xml\")",
       "Bash(./gradlew :app-v1:assembleDebug :app-v2:assembleDebug)",
-      "Bash(./gradlew :app-v2:assembleDebug)"
+      "Bash(./gradlew :app-v2:assembleDebug)",
+      "Bash(dotnet tool *)"
     ],
     "deny": [],
     "ask": []
