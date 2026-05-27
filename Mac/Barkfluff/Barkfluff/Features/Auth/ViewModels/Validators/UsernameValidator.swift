@@ -48,8 +48,8 @@ enum UsernameValidator {
             return .invalid(LocalizedStringResource("auth.validation.username.too_long \(maxLength)"))
         }
 
-        // Проверка на допустимые символы: a-zA-Z0-9_-
-        let allowedPattern = "^[a-zA-Z0-9_\\-]+$"
+        // Проверка на допустимые символы: a-zA-Z0-9_
+        let allowedPattern = "^[a-zA-Z0-9_]+$"
         let predicate = NSPredicate(format: "SELF MATCHES %@", allowedPattern)
         if !predicate.evaluate(with: trimmed) {
             return .invalid(LocalizedStringResource("auth.validation.username.invalid_chars"))

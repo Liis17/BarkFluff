@@ -48,6 +48,10 @@ namespace BarkFluff.WebApi.Core.Managers
                     return new ErrorReturner(true);
                 }, globalParam);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameInvalidFormatException)
+            {
+                return new ErrorReturner(false, "Имя пользователя имеет недопустимый формат: разрешены латинские буквы, цифры и подчёркивание, длина от 3 до 32 символов");
+            }
             catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
             {
                 return new ErrorReturner(false, "Пользователь не подтвержден. Вы не можете изменить имя пользователя до подтверждения аккаунта.");

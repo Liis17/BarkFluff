@@ -81,7 +81,7 @@
     <string name="register_login_rules">Der Anmeldename darf enthalten:</string>
     <string name="register_login_rule_latin">Lateinische Buchstaben (a–z)</string>
     <string name="register_login_rule_digits">Ziffern (0–9)</string>
-    <string name="register_login_rule_symbols">Unterstrich (_) und Bindestrich (-)</string>
+    <string name="register_login_rule_symbols">Unterstrich (_)</string>
     <string name="register_login_max_length">Maximal 30 Zeichen</string>
     <string name="register_login_lowercase">Wird in Kleinbuchstaben umgewandelt</string>
 

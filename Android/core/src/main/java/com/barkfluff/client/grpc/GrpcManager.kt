@@ -53,6 +53,7 @@ class GrpcManager {
         const val ERROR_NOT_VALID_OTP_CODE = "803B632C-4457-4B05-9435-9C3DD0F41E00"
         const val ERROR_INVALID_LOGIN_OR_PASSWORD = "21BFB9B5-C377-45D1-9B15-6B7F3432B397"
         const val ERROR_INVALID_OLD_PASSWORD = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
+        const val ERROR_USERNAME_INVALID_FORMAT = "E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47"
 
         private val ERROR_CODE_KEY: Metadata.Key<String> =
             Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
@@ -1416,6 +1417,15 @@ class GrpcManager {
 
             val response = identityClient!!.createAccount(request)
             Result.success(response.codeId)
+        } catch (e: StatusRuntimeException) {
+            val errorCode = e.trailers?.get(ERROR_CODE_KEY)
+            if (errorCode == ERROR_USERNAME_INVALID_FORMAT) {
+                Log.w(TAG, "Недопустимый формат имени пользователя")
+                Result.failure(Exception("Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа"))
+            } else {
+                Log.e(TAG, "Ошибка создания аккаунта", e)
+                Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания аккаунта", e)
             Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
@@ -1726,6 +1736,15 @@ class GrpcManager {
 
             usersClient!!.changeUsername(request)
             Result.success(Unit)
+        } catch (e: StatusRuntimeException) {
+            val errorCode = e.trailers?.get(ERROR_CODE_KEY)
+            if (errorCode == ERROR_USERNAME_INVALID_FORMAT) {
+                Log.w(TAG, "Недопустимый формат имени пользователя")
+                Result.failure(Exception("Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа"))
+            } else {
+                Log.e(TAG, "Ошибка изменения username", e)
+                Result.failure(Exception("Ошибка изменения username: ${e.message}"))
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка изменения username", e)
             Result.failure(Exception("Ошибка изменения username: ${e.message}"))

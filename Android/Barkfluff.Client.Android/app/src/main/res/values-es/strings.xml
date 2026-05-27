@@ -81,7 +81,7 @@
     <string name="register_login_rules">El usuario puede contener:</string>
     <string name="register_login_rule_latin">Letras latinas (a-z)</string>
     <string name="register_login_rule_digits">Dígitos (0-9)</string>
-    <string name="register_login_rule_symbols">Guion bajo (_) y guion (-)</string>
+    <string name="register_login_rule_symbols">Guion bajo (_)</string>
     <string name="register_login_max_length">Máximo 30 caracteres</string>
     <string name="register_login_lowercase">Se convertirá a minúsculas</string>
 

@@ -11,8 +11,8 @@ namespace BarkFluff.Client.WPF.Validators
         public const int MinLength = 3;
         public const int MaxLength = 30;
 
-        private static readonly Regex ValidUsernamePattern = new Regex(@"^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
-        private static readonly Regex StartsWithInvalidCharPattern = new Regex(@"^[0-9_-]", RegexOptions.Compiled);
+        private static readonly Regex ValidUsernamePattern = new Regex(@"^[a-zA-Z0-9_]+$", RegexOptions.Compiled);
+        private static readonly Regex StartsWithInvalidCharPattern = new Regex(@"^[0-9_]", RegexOptions.Compiled);
 
         /// <summary>
         /// Validates the username

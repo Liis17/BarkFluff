@@ -81,7 +81,7 @@
     <string name="register_login_rules">Login can contain:</string>
     <string name="register_login_rule_latin">Latin letters (a-z)</string>
     <string name="register_login_rule_digits">Digits (0-9)</string>
-    <string name="register_login_rule_symbols">Underscore (_) and dash (-)</string>
+    <string name="register_login_rule_symbols">Underscore (_)</string>
     <string name="register_login_max_length">Maximum 30 characters</string>
     <string name="register_login_lowercase">Will be converted to lowercase</string>
 

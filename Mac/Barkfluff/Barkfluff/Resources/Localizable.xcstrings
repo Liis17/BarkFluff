@@ -3577,31 +3577,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "3-30 characters: letters, digits, _ and -"
+            "value": "3-30 characters: letters, digits, _"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "3-30 символов: буквы, цифры, _ и -"
+            "value": "3-30 символов: буквы, цифры, _"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "3–30 caracteres: letras, dígitos, _ y -"
+            "value": "3–30 caracteres: letras, dígitos, _"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "3–30 个字符：字母、数字、_ 和 -"
+            "value": "3–30 个字符：字母、数字、_"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "3–30 Zeichen: Buchstaben, Ziffern, _ und -"
+            "value": "3–30 Zeichen: Buchstaben, Ziffern, _"
           }
         }
       }
@@ -3681,31 +3681,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Letters, digits, _ and -"
+            "value": "Letters, digits, _"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Буквы, цифры, _ и -"
+            "value": "Буквы, цифры, _"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Letras, dígitos, _ y -"
+            "value": "Letras, dígitos, _"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "字母、数字、_ 和 -"
+            "value": "字母、数字、_"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buchstaben, Ziffern, _ und -"
+            "value": "Buchstaben, Ziffern, _"
           }
         }
       }
@@ -5214,31 +5214,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Letters, digits, _ and - only"
+            "value": "Letters, digits, _ only"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Только буквы, цифры, _ и -"
+            "value": "Только буквы, цифры, _"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo letras, dígitos, _ y -"
+            "value": "Solo letras, dígitos, _"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "仅限字母、数字、_ 和 -"
+            "value": "仅限字母、数字、_"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nur Buchstaben, Ziffern, _ und -"
+            "value": "Nur Buchstaben, Ziffern, _"
           }
         }
       }

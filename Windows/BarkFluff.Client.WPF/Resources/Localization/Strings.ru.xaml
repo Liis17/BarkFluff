@@ -575,13 +575,13 @@
     <!--  Validators: Username  -->
     <system:String x:Key="L_Val_User_Empty">Логин не может быть пустым</system:String>
     <system:String x:Key="L_Val_User_LengthFull">Логин должен быть от {0} до {1} символов</system:String>
-    <system:String x:Key="L_Val_User_BadStartFull">Логин не может начинаться с цифры, тире или нижнего подчеркивания</system:String>
+    <system:String x:Key="L_Val_User_BadStartFull">Логин не может начинаться с цифры или нижнего подчеркивания</system:String>
     <system:String x:Key="L_Val_User_NoBotFull">Логин не должен содержать 'bot'</system:String>
-    <system:String x:Key="L_Val_User_BadCharsFull">Логин содержит недопустимые символы. Разрешены: a-z, A-Z, 0-9, _, -</system:String>
+    <system:String x:Key="L_Val_User_BadCharsFull">Логин содержит недопустимые символы. Разрешены: a-z, A-Z, 0-9, _</system:String>
     <system:String x:Key="L_Val_User_Enter">Введите логин</system:String>
     <system:String x:Key="L_Val_User_Min">Минимум {0} символа</system:String>
     <system:String x:Key="L_Val_User_Max">Максимум {0} символов</system:String>
-    <system:String x:Key="L_Val_User_BadStart">Нельзя начинать с цифры, - или _</system:String>
+    <system:String x:Key="L_Val_User_BadStart">Нельзя начинать с цифры или _</system:String>
     <system:String x:Key="L_Val_User_NoBot">Нельзя использовать 'bot'</system:String>
     <system:String x:Key="L_Val_User_BadChars">Недопустимые символы</system:String>
     <system:String x:Key="L_Val_User_Valid">Логин доступен для проверки</system:String>

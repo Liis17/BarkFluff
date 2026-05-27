@@ -122,7 +122,7 @@ fun EditProfileScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             Spacer(Modifier.size(12.dp))
             val usernameHint = when (state.usernameStatus) {
                 UsernameStatus.TAKEN -> "Имя пользователя занято"
-                UsernameStatus.INVALID -> "3–32 символа: буквы, цифры, _"
+                UsernameStatus.INVALID -> "3–32 символа: латинские буквы, цифры, _"
                 UsernameStatus.AVAILABLE -> "Доступно"
                 else -> null
             }

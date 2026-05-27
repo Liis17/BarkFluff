@@ -575,13 +575,13 @@
     <!--  Validators: Username  -->
     <system:String x:Key="L_Val_User_Empty">Login cannot be empty</system:String>
     <system:String x:Key="L_Val_User_LengthFull">Login must be {0} to {1} characters</system:String>
-    <system:String x:Key="L_Val_User_BadStartFull">Login cannot start with a digit, dash, or underscore</system:String>
+    <system:String x:Key="L_Val_User_BadStartFull">Login cannot start with a digit or underscore</system:String>
     <system:String x:Key="L_Val_User_NoBotFull">Login must not contain 'bot'</system:String>
-    <system:String x:Key="L_Val_User_BadCharsFull">Login contains invalid characters. Allowed: a-z, A-Z, 0-9, _, -</system:String>
+    <system:String x:Key="L_Val_User_BadCharsFull">Login contains invalid characters. Allowed: a-z, A-Z, 0-9, _</system:String>
     <system:String x:Key="L_Val_User_Enter">Enter a login</system:String>
     <system:String x:Key="L_Val_User_Min">At least {0} characters</system:String>
     <system:String x:Key="L_Val_User_Max">At most {0} characters</system:String>
-    <system:String x:Key="L_Val_User_BadStart">Cannot start with digit, - or _</system:String>
+    <system:String x:Key="L_Val_User_BadStart">Cannot start with digit or _</system:String>
     <system:String x:Key="L_Val_User_NoBot">Cannot contain 'bot'</system:String>
     <system:String x:Key="L_Val_User_BadChars">Invalid characters</system:String>
     <system:String x:Key="L_Val_User_Valid">Login looks valid</system:String>

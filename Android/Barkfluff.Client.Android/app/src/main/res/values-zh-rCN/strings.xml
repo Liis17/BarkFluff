@@ -81,7 +81,7 @@
     <string name="register_login_rules">用户名可以包含：</string>
     <string name="register_login_rule_latin">拉丁字母（a–z）</string>
     <string name="register_login_rule_digits">数字（0–9）</string>
-    <string name="register_login_rule_symbols">下划线（_）和连字符（-）</string>
+    <string name="register_login_rule_symbols">下划线（_）</string>
     <string name="register_login_max_length">最多 30 个字符</string>
     <string name="register_login_lowercase">将转换为小写</string>
 

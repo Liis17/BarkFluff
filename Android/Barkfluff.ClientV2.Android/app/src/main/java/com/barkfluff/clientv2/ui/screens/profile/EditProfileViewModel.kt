@@ -130,6 +130,8 @@ class EditProfileViewModel(
         }
     }
 
+    private val usernamePattern = Regex("^[a-zA-Z0-9_]+$")
+
     private fun isValidUsername(value: String): Boolean =
-        value.length in 3..32 && value.all { it.isLetterOrDigit() || it == '_' }
+        value.length in 3..32 && usernamePattern.matches(value)
 }

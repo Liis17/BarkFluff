@@ -81,7 +81,7 @@
     <string name="register_login_rules">Логин может содержать:</string>
     <string name="register_login_rule_latin">Латинские буквы (a-z)</string>
     <string name="register_login_rule_digits">Цифры (0-9)</string>
-    <string name="register_login_rule_symbols">Нижнее подчёркивание (_) и тире (-)</string>
+    <string name="register_login_rule_symbols">Нижнее подчёркивание (_)</string>
     <string name="register_login_max_length">Максимум 30 символов</string>
     <string name="register_login_lowercase">Будет преобразован в нижний регистр</string>
 

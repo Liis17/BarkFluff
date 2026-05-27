@@ -434,7 +434,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
                 if (!response.error.IsSuccess)
                 {
-                    App.ErideMessage.AddMessage("Ошибка при создании аккаунта", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                    App.ErideMessage.AddMessage(response.error.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                     return;
                 }
 
