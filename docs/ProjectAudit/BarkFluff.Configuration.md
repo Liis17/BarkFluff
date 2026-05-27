@@ -8,24 +8,15 @@
 
 ---
 
-## Содержание
-
-- [Статус ранее найденных проблем](#статус-ранее-найденных-проблем)
-- [🔴 Безопасность (новые)](#-безопасность-новые)
-- [🟠 Баги и недоработки (новые)](#-баги-и-недоработки-новые)
-- [🔵 Производительность (новые)](#-производительность-новые)
-- [Перечень дефолтных кредов](#перечень-дефолтных-кредов)
-- [Сводная таблица](#сводная-таблица)
-
 ---
 
 ## Статус ранее найденных проблем
 
-| ID       | Проблема                                                                | Статус            | Где исправлено                                          |
-| -------- | ----------------------------------------------------------------------- | ----------------- | ------------------------------------------------------- |
-| SEC-05   | Пароли RabbitMQ `guest/guest` записывались в БД                         | ✅ Исправлено\*   | `Program.cs:105-106` — теперь через env vars            |
-| BUG-03   | `UpdateConfigurationAsync` не валидирует `ServiceId`                    | ✅ Исправлено     | `UpdateConfigurationCommandHandler.cs:22-33`            |
-| OPT-XX   | `.Any()` вместо `.Count == 0` для `List<T>`                             | ✅ Исправлено     | `ConfigurationDefaultsPopulator.cs:125`                 |
+| ID     | Проблема                                             | Статус         | Где исправлено                               |
+| ------ | ---------------------------------------------------- | -------------- | -------------------------------------------- |
+| SEC-05 | Пароли RabbitMQ `guest/guest` записывались в БД      | ✅ Исправлено\* | `Program.cs:105-106` — теперь через env vars |
+| BUG-03 | `UpdateConfigurationAsync` не валидирует `ServiceId` | ✅ Исправлено   | `UpdateConfigurationCommandHandler.cs:22-33` |
+| OPT-XX | `.Any()` вместо `.Count == 0` для `List<T>`          | ✅ Исправлено   | `ConfigurationDefaultsPopulator.cs:125`      |
 
 > \* SEC-05 закрыт частично: env-vars читаются, но при их отсутствии работает fallback на `guest`/`guest`. См. [NEW-SEC-01](#new-sec-01--rabbitmq-fallback-на-guestguest-cwe-798).
 
@@ -292,34 +283,34 @@ await _publishEndpoint.Publish(new ConfigurationChangedEvent
 
 > Источник: `ConfigurationDefaultsPopulator.cs`, `Program.cs`
 
-| Сервис     | Ключ                  | Дефолтное значение            | Где                                         | Риск           |
-| ---------- | --------------------- | ----------------------------- | ------------------------------------------- | -------------- |
-| RabbitMQ   | Username              | `guest` (fallback)            | `Program.cs:105`                            | 🔴 Высокий     |
-| RabbitMQ   | Password              | `guest` (fallback)            | `Program.cs:106`                            | 🔴 Высокий     |
-| RabbitMQ   | Host                  | `rabbitmq`                    | `ConfigurationDefaultsPopulator.cs:246`     | 🟢 Низкий      |
-| RabbitMQ   | VirtualHost           | `/`                           | `ConfigurationDefaultsPopulator.cs:249`     | 🟢 Низкий      |
-| MinIO S3   | AccessKey             | `minioadmin`                  | `ConfigurationDefaultsPopulator.cs:344`     | 🔴 Высокий     |
-| MinIO S3   | SecretKey             | `minioadmin`                  | `ConfigurationDefaultsPopulator.cs:345`     | 🔴 Высокий     |
-| MinIO S3   | ServiceUrl            | `http://minio:9000`           | `ConfigurationDefaultsPopulator.cs:343`     | 🟢 Низкий      |
-| PostgreSQL | Username / Password   | из env                        | `ConfigurationDefaultsPopulator.cs:271`     | 🟢 Низкий      |
-| Redis      | Host                  | `redis:6379` (без auth)       | `ConfigurationDefaultsPopulator.cs:257`     | 🟡 Средний     |
-| Seq        | ServerUrl             | `http://seq:5341`             | `ConfigurationDefaultsPopulator.cs:263`     | 🟢 Низкий      |
+| Сервис     | Ключ                | Дефолтное значение      | Где                                     | Риск       |
+| ---------- | ------------------- | ----------------------- | --------------------------------------- | ---------- |
+| RabbitMQ   | Username            | `guest` (fallback)      | `Program.cs:105`                        | 🔴 Высокий |
+| RabbitMQ   | Password            | `guest` (fallback)      | `Program.cs:106`                        | 🔴 Высокий |
+| RabbitMQ   | Host                | `rabbitmq`              | `ConfigurationDefaultsPopulator.cs:246` | 🟢 Низкий  |
+| RabbitMQ   | VirtualHost         | `/`                     | `ConfigurationDefaultsPopulator.cs:249` | 🟢 Низкий  |
+| MinIO S3   | AccessKey           | `minioadmin`            | `ConfigurationDefaultsPopulator.cs:344` | 🔴 Высокий |
+| MinIO S3   | SecretKey           | `minioadmin`            | `ConfigurationDefaultsPopulator.cs:345` | 🔴 Высокий |
+| MinIO S3   | ServiceUrl          | `http://minio:9000`     | `ConfigurationDefaultsPopulator.cs:343` | 🟢 Низкий  |
+| PostgreSQL | Username / Password | из env                  | `ConfigurationDefaultsPopulator.cs:271` | 🟢 Низкий  |
+| Redis      | Host                | `redis:6379` (без auth) | `ConfigurationDefaultsPopulator.cs:257` | 🟡 Средний |
+| Seq        | ServerUrl           | `http://seq:5341`       | `ConfigurationDefaultsPopulator.cs:263` | 🟢 Низкий  |
 
 ---
 
 ## Сводная таблица
 
-| ID          | Категория       | Серьёзность     | Файл                                                              | Краткое описание                                          |
-| ----------- | --------------- | --------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
-| NEW-SEC-01  | 🔴 Безопасность | **Высокая**     | `Program.cs:105`                                                  | Fallback на `guest/guest` для RabbitMQ                    |
-| NEW-SEC-02  | 🔴 Безопасность | **Высокая**     | `ConfigurationDefaultsPopulator.cs:344`                           | Дефолтные креды MinIO `minioadmin`                        |
-| NEW-SEC-03  | 🔴 Безопасность | **Критично**    | `ConfigurationApiService.cs:30`                                   | gRPC API без авторизации caller'а                         |
-| NEW-BUG-01  | 🟠 Баг          | **Средняя**     | `ConfigurationStorage.cs:30`                                      | Race condition при upsert                                 |
-| NEW-BUG-02  | 🟠 Баг          | **Средняя**     | `Persistence/Migrations/...AddConfiguration.cs`                   | Нет unique constraint на `(ServiceId, Section, Key)`      |
-| NEW-BUG-03  | 🟠 Баг          | **Средняя**     | `ConfigurationApiService.cs:57`                                   | Нет валидации входных параметров proto                    |
-| NEW-BUG-04  | 🟠 Баг          | **Низкая**      | `GetConfigurationCommandHandler.cs:27`                            | GroupBy материализуется в памяти                          |
-| NEW-PERF-01 | 🔵 Перф         | **Средняя**     | `Persistence/Migrations/...AddConfiguration.cs`                   | Нет индекса `(Section, Key)`                              |
-| NEW-PERF-02 | 🔵 Перф         | **Средняя**     | `ConfigurationStorage.cs:30`                                      | Нет публикации `ConfigurationChanged` в RabbitMQ          |
+| ID          | Категория       | Серьёзность  | Файл                                            | Краткое описание                                     |
+| ----------- | --------------- | ------------ | ----------------------------------------------- | ---------------------------------------------------- |
+| NEW-SEC-01  | 🔴 Безопасность | **Высокая**  | `Program.cs:105`                                | Fallback на `guest/guest` для RabbitMQ               |
+| NEW-SEC-02  | 🔴 Безопасность | **Высокая**  | `ConfigurationDefaultsPopulator.cs:344`         | Дефолтные креды MinIO `minioadmin`                   |
+| NEW-SEC-03  | 🔴 Безопасность | **Критично** | `ConfigurationApiService.cs:30`                 | gRPC API без авторизации caller'а                    |
+| NEW-BUG-01  | 🟠 Баг          | **Средняя**  | `ConfigurationStorage.cs:30`                    | Race condition при upsert                            |
+| NEW-BUG-02  | 🟠 Баг          | **Средняя**  | `Persistence/Migrations/...AddConfiguration.cs` | Нет unique constraint на `(ServiceId, Section, Key)` |
+| NEW-BUG-03  | 🟠 Баг          | **Средняя**  | `ConfigurationApiService.cs:57`                 | Нет валидации входных параметров proto               |
+| NEW-BUG-04  | 🟠 Баг          | **Низкая**   | `GetConfigurationCommandHandler.cs:27`          | GroupBy материализуется в памяти                     |
+| NEW-PERF-01 | 🔵 Перф         | **Средняя**  | `Persistence/Migrations/...AddConfiguration.cs` | Нет индекса `(Section, Key)`                         |
+| NEW-PERF-02 | 🔵 Перф         | **Средняя**  | `ConfigurationStorage.cs:30`                    | Нет публикации `ConfigurationChanged` в RabbitMQ     |
 
 ---
 

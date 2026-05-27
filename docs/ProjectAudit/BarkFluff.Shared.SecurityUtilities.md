@@ -7,19 +7,7 @@
 > **Файлов в проекте:** 1 (`SecurityUtilities.cs`)  
 > **Используется в:** `BarkFluff.Client.WPF` (WPF), `Linux` (Qt/C++ — собственная реализация в `Linux/src/Utils/Validators.cpp` с расходящимся алгоритмом)
 
-## Сводка по статусу актуальности (2026-05-18)
-
-- 🔄 **Частично исправлено:** OPT-02 — паттерн со `static readonly BrushConverter` уже применён в `PasswordReset.xaml.cs:34, 432`, но в `CreateAccount.xaml.cs:204` `new BrushConverter()` создаётся на каждый keystroke по-прежнему.
-- ⚠️ **Остаётся:** SEC-03, SEC-04, OPT-01, OPT-03, BUG-01, BUG-02, BUG-03, QA-01, QA-02, QA-03 (проект `*.Tests` не обнаружен).
-- ⚠️ **Дополнительно:** Linux-реализация в `Validators.cpp` использует другой алгоритм оценки (другие весовые коэффициенты по длине), что создаёт расхождение в score между WPF и Linux-клиентом — это потенциальный отдельный пункт для следующей итерации аудита.
-
-В сводной таблице упоминаются SEC-01 и SEC-02, описания которых отсутствуют в теле документа — они должны быть восстановлены или удалены в следующей ревизии.
-
----
-
 ## Содержание
-
-
 
 ## 🔴 Безопасность
 
@@ -541,18 +529,18 @@ public class EvaluatePasswordStrengthTests
 
 ## Итоговая таблица
 
-| ID     | Категория    | Критичность | Файл                                          |
-| ------ | ------------ | ----------- | --------------------------------------------- |
-| SEC-01 | Безопасность | 🔴 Высокая  | SecurityUtilities.cs + Validators.cpp         |
-| SEC-02 | Безопасность | 🔴 Высокая  | SecurityUtilities.cs                          |
-| SEC-03 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs                          |
-| SEC-04 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs   |
-| OPT-01 | Оптимизация  | 🟡 Низкая   | SecurityUtilities.cs                          |
+| ID     | Категория    | Критичность | Файл                                                                      |
+| ------ | ------------ | ----------- | ------------------------------------------------------------------------- |
+| SEC-01 | Безопасность | 🔴 Высокая  | SecurityUtilities.cs + Validators.cpp                                     |
+| SEC-02 | Безопасность | 🔴 Высокая  | SecurityUtilities.cs                                                      |
+| SEC-03 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs                                                      |
+| SEC-04 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs                               |
+| OPT-01 | Оптимизация  | 🟡 Низкая   | SecurityUtilities.cs                                                      |
 | OPT-02 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs (🔄 PasswordReset.xaml.cs уже исправлен 2026-05-18) |
-| OPT-03 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs + PasswordReset.xaml.cs |
-| BUG-01 | Баг          | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs   |
-| BUG-02 | Баг          | 🟡 Низкая   | PasswordValidator.cs                          |
-| BUG-03 | Баг          | 🟠 Средняя  | SecurityUtilities.cs                          |
-| QA-01  | Качество     | ⚪ Низкая    | SecurityUtilities.cs                          |
-| QA-02  | Качество     | ⚪ Низкая    | SecurityUtilities.cs                          |
-| QA-03  | Качество     | 🟠 Средняя  | — (тестов нет)                                |
+| OPT-03 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs + PasswordReset.xaml.cs                             |
+| BUG-01 | Баг          | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs                               |
+| BUG-02 | Баг          | 🟡 Низкая   | PasswordValidator.cs                                                      |
+| BUG-03 | Баг          | 🟠 Средняя  | SecurityUtilities.cs                                                      |
+| QA-01  | Качество     | ⚪ Низкая    | SecurityUtilities.cs                                                      |
+| QA-02  | Качество     | ⚪ Низкая    | SecurityUtilities.cs                                                      |
+| QA-03  | Качество     | 🟠 Средняя  | — (тестов нет)                                                            |
