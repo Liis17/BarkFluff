@@ -453,6 +453,12 @@
                 unAvailable = true;
                 return;
             }
+            if (val.length < 3 || val.length > 32 || !/^[a-zA-Z0-9_]+$/.test(val)) {
+                unHint.textContent = 'Латиница, цифры, _; от 3 до 32 символов';
+                unHint.className = 'sd-hint error';
+                unAvailable = false;
+                return;
+            }
             unTimer = setTimeout(function () {
                 BF.api.checkExistUsername(val).then(function (r) {
                     if (unInput.value.trim() !== val) return;
@@ -495,8 +501,12 @@
                 ok.textContent = 'Сохранено';
                 form.appendChild(ok);
                 setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
-            }).catch(function () {
+            }).catch(function (err) {
                 saveBtn.disabled = false;
+                if (extractErrorCode(err) === 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47') {
+                    unHint.textContent = 'Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа';
+                    unHint.className = 'sd-hint error';
+                }
             });
         });
     }

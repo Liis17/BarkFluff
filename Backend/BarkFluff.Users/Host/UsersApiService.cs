@@ -128,7 +128,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     public override async Task<ChangeBioResponse> ChangeBio(ChangeBioRequest request, ServerCallContext context)
     {
         _metrics.Increment("profile_bio_updates");
-        var command = new ChangeBioCommand() { Bio = request.Bio };
+        var command = new ChangeBioCommand() { Bio = string.IsNullOrWhiteSpace(request.Bio) ? null : request.Bio.Trim() };
 
         await _mediator.Send(command);
 

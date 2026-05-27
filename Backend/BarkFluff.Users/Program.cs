@@ -51,8 +51,6 @@ public class Program
         builder.Services.AddScoped<UserInfoQueueSender>();
         builder.Services.AddSingleton<ReservedUsernamesService>();
 
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);
 

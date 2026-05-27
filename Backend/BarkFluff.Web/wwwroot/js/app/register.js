@@ -27,7 +27,8 @@
     var filesClient = new bf.FilesApiClient(origin);
 
     var ERROR_CODES = {
-        INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00'
+        INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00',
+        INVALID_USERNAME_FORMAT: 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47'
     };
 
     var TOTAL_STEPS = 9;
@@ -424,7 +425,7 @@
 
     // ─────────────── validation ───────────────
 
-    var USERNAME_RE = /^[a-z0-9_-]+$/;
+    var USERNAME_RE = /^[a-z0-9_]+$/;
     var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/;
 
     function setFieldStatus(id, kind) {
@@ -579,7 +580,7 @@
     function doStep2() {
         var v = $('regUsername').value.toLowerCase().trim();
         if (v.length < 3 || v.length > 30 || !USERNAME_RE.test(v) || /^[0-9]/.test(v)) {
-            return showFieldError('regUsernameErr', 'Латиница, цифры, _ и -; от 3 до 30, не с цифры');
+            return showFieldError('regUsernameErr', 'Латиница, цифры, _; от 3 до 30, не с цифры');
         }
         state.username = v;
         setLoading(nextBtn, true);
@@ -608,7 +609,12 @@
             });
         }).catch(function (err) {
             setLoading(nextBtn, false);
-            showFieldError('regEmailErr', 'Не удалось создать аккаунт. Попробуйте ещё раз');
+            if (errorCodeOf(err) === ERROR_CODES.INVALID_USERNAME_FORMAT) {
+                goToStep(2);
+                showFieldError('regUsernameErr', 'Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа');
+            } else {
+                showFieldError('regEmailErr', 'Не удалось создать аккаунт. Попробуйте ещё раз');
+            }
         });
     }
 
