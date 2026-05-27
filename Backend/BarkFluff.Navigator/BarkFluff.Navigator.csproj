@@ -24,15 +24,16 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Grpc.Tools" Version="2.72.0">
+      <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+      <PackageReference Include="Grpc.Tools" Version="2.80.0">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.1">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     </ItemGroup>
 
     <ItemGroup>

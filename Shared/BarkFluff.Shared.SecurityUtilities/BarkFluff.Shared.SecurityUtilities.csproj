@@ -14,4 +14,8 @@
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+  </ItemGroup>
+
 </Project>

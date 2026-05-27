@@ -47,6 +47,8 @@ var user = await _usersStorage.GetById(request.UserId); // userId из запр�
 
 ### PERF-01 — Двойной SELECT в `SearchUsersByTrigram`: данные + COUNT
 
+> ✅ **ИСПРАВЛЕНО (2026-05-28):** `SearchUsersByTrigram` переписан на ОДИН запрос с оконной функцией `COUNT(*) OVER()` через `Database.SqlQueryRaw<TrigramSearchRow>` (EF Core 8+, немаппированный DTO) + ручной маппинг DTO→User. Убран второй тяжёлый trigram-скан. Попутно исправлен **BUG-01**: прежний `ExecuteSqlRawAsync` возвращал число затронутых строк (`-1` для SELECT), а не `COUNT(*)`, из-за чего тотал поиска всегда схлопывался в 0. Аналогичный баг в `SearchUsers` (full-text) НЕ трогал — вне рамок PERF-01.
+
 **Проблема / Описание:**  
 В `UsersStorage.SearchUsersByTrigram` выполняются **два отдельных тяжёлых запроса** к PostgreSQL с `similarity()`: один за данными, второй за `COUNT(*)`. Оба запроса полностью сканируют таблицу с вычислением trigram-сходства. При большой таблице это удваивает нагрузку.
 
@@ -93,6 +95,8 @@ p.s перепроведить правильность такого запро�
 ### 
 
 ### BUG-02 — Race condition при создании пользователя: проверка username/email не атомарна
+
+> ✅ **ИСПРАВЛЕНО (2026-05-28):** функциональные индексы из PERF-05 подняты до УНИКАЛЬНЫХ (`CREATE UNIQUE INDEX` на `LOWER("Username")` и `LOWER("Email")`) — регистронезависимая уникальность на уровне БД. В `UsersStorage.CreateUser` добавлена обработка `PostgresException` SqlState `23505`: маппинг на `EmailExistException`/`UsernameExistException` по имени индекса, прочие нарушения (например PK по Id) пробрасываются как есть. ⚠️ Миграция упадёт, если в проде уже есть регистронезависимые дубликаты username/email — нужно вычистить заранее.
 
 **Проблема / Описание:**  
 В `AddDraftUserCommandHandler` проверка существования username и email производится отдельными SELECT-запросами, после чего — INSERT. Между проверкой и созданием другой поток может успеть создать пользователя с таким же username/email. Нет транзакции и нет `SELECT FOR UPDATE`.
@@ -149,6 +153,8 @@ catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && 
 
 ### BUG-03 — `ChangeUsername` не проверяет уникальность нового username
 
+> ✅ **ИСПРАВЛЕНО (2026-05-28):** в `ChangeUsernameCommandHandler` перед обновлением добавлена проверка `GetUserByUsername` — если username занят другим пользователем (`Id != текущего`), бросается `UsernameExistException`. Регистронезависимый уникальный индекс из BUG-02 служит страховкой от гонки.
+
 **Проблема / Описание:**  
 `ChangeUsernameCommandHandler` проверяет только зарезервированность нового username, но **не проверяет, свободен ли он**. Пользователь может занять username другого пользователя. Защита только на уровне `CreateUser` (и то с race condition — см. BUG-02).
 
@@ -184,6 +190,8 @@ await _usersStorage.ChangeUsername(_userContext.UserId, username);
 ---
 
 ### BUG-04 — `ChangeBio` не делает `Trim()` — Bio может содержать только пробелы
+
+> ✅ **ИСПРАВЛЕНО (2026-05-28):** в `UsersApiService.ChangeBio` значение нормализуется — `string.IsNullOrWhiteSpace(request.Bio) ? string.Empty : request.Bio.Trim()`. Bio из одних пробелов → пустая строка (очистка), пробелы по краям срезаются. Проверка длины в хендлере работает по обрезанному значению. ⚠️ В аудите предлагался `null`, но Bio в проекте всегда был непустой строкой (`ToGrpc` делает `?? string.Empty`), поэтому нормализуем в `string.Empty` — фикс без рискованного null-каскада в RabbitMQ-событие и контракт.
 
 **Проблема / Описание:**  
 В `ChangeBioCommandHandler` значение `request.Bio` передаётся в хранилище **без `Trim()`**. Пользователь может установить bio из 200 пробелов — валидация длины пройдёт, но значение семантически пустое. Также в `UsersApiService` при вызове `ChangeBio` не делается trim в отличие от `ChangeName` и `ChangeUsername`.
@@ -221,6 +229,8 @@ await _usersStorage.ChangeBio(_userContext.UserId, request.Bio?.Trim());
 
 ### BUG-06 — ID пользователя генерируется через `UnixTimeSeconds` — конфликт при быстрой регистрации
 
+> ✅ **ИСПРАВЛЕНО (2026-05-28):** `UsersStorage.CreateUser` использует `ToUnixTimeMilliseconds()` вместо `ToUnixTimeSeconds()` — ×1000 ниже шанс коллизии PK, сохраняется свойство «Id ≈ время регистрации» (важно для `OrderByDescending(u => u.Id)`). PK-коллизия, если всё же случится, ловится как `23505` в `CreateUser` и пробрасывается (не маскируется под Email/Username conflict).
+
 **Проблема / Описание:**  
 ID пользователя задаётся как `DateTimeOffset.UtcNow.ToUnixTimeSeconds()` — целое число секунд. При одновременной регистрации двух пользователей в одну секунду произойдёт `DbUpdateException` из-за конфликта Primary Key.
 
@@ -255,6 +265,8 @@ var user = new User { Id = id, ... };
 ---
 
 ### CODE-04 — `UsersServerApiService` принимает Storage напрямую в конструктор, нарушая CQRS
+
+> ✅ **ИСПРАВЛЕНО (2026-05-28):** `GetUserByUsername` вынесен в Feature `Features/GetUserByUsername/` (Query + Handler). Из конструктора `UsersServerApiService` убраны все 4 прямые зависимости (`UsersStorage`, `PrivacyStorage`, `PersonalizationStorage`, `FilesServerApiClient`) — остались только `IMediator` и `MetricsCollector`. Метрика `public_profile_views` осталась на входе сервиса, остальные (`public_profile_not_found/hidden`, `files_fetch_*`) перенесены в хендлер.
 
 **Проблема / Описание:**  
 `UsersServerApiService` имеет прямые зависимости на `UsersStorage`, `PrivacyStorage`, `PersonalizationStorage` и `FilesServerApiClient`, используя их **напрямую** для реализации `GetUserByUsername`. Остальные методы идут через MediatR. Это нарушает единообразие архитектуры CQRS: часть логики в handler'ах, часть — в gRPC-сервисе.

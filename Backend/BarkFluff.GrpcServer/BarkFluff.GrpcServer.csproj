@@ -7,21 +7,22 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Google.Protobuf" Version="3.32.0" />
-      <PackageReference Include="Grpc.AspNetCore.Server" Version="2.71.0" />
-      <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.71.0" />
-      <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
-      <PackageReference Include="Grpc.Tools" Version="2.72.0">
+      <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+      <PackageReference Include="Google.Protobuf" Version="3.35.0" />
+      <PackageReference Include="Grpc.AspNetCore.Server" Version="2.80.0" />
+      <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.80.0" />
+      <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
+      <PackageReference Include="Grpc.Tools" Version="2.80.0">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
       <PackageReference Include="MediatR" Version="12.5.0" />
-      <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-      <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
+      <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+      <PackageReference Include="Serilog.Sinks.Seq" Version="9.1.0" />
       <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
       <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-      <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
-      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+      <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
     </ItemGroup>
 
     <ItemGroup>

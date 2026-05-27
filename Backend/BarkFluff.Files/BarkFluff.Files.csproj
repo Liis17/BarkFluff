@@ -8,23 +8,23 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.Core" Version="4.0.3.8" />
-        <PackageReference Include="AWSSDK.S3" Version="4.0.6.6" />
-        <PackageReference Include="Google.Protobuf" Version="3.32.0" />
-        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.71.0" />
-        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
-        <PackageReference Include="Grpc.Tools" Version="2.72.0">
+        <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.23.4" />
+        <PackageReference Include="Google.Protobuf" Version="3.35.0" />
+        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.80.0" />
+        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.80.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.80.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.1" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-        <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.2" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+        <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.1" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     </ItemGroup>
 

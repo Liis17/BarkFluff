@@ -21,13 +21,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FirebaseAdmin" Version="3.2.0" />
-    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.72.0">
+    <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+    <PackageReference Include="FirebaseAdmin" Version="3.5.0" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.80.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.80.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.2" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.1" />
   </ItemGroup>
 
   <ItemGroup>
