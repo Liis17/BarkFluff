@@ -23,7 +23,7 @@ public static class XAuthExtensions
                 cfg.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(configuration["JwtSettings:SecretKey"]!)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:SecretKey"]!)),
                     ValidateIssuer = true,
                     ValidIssuer = configuration["JwtSettings:Issuer"],
                     ValidateAudience = true,
