@@ -1,0 +1,10 @@
+global using Xunit;
+global using FluentAssertions;
+global using Moq;
+global using BarkFluff.Onliner.Tests;
+global using Microsoft.Extensions.Logging;
+global using MetricsCollector = BarkFluff.GrpcServer.Metrics.MetricsCollector;
+global using ProtoUserOnlineStatus = BarkFluff.Proto.Onliner.UserOnlineStatus;
+global using ProtoStatusTypeId = BarkFluff.Proto.Onliner.StatusTypeId;
+global using DomainUserOnlineStatus = BarkFluff.Onliner.Domain.Entities.UserOnlineStatus;
+global using DomainStatusTypeId = BarkFluff.Onliner.Domain.Enums.StatusTypeId;
