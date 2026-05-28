@@ -69,7 +69,7 @@ public class FirebaseService
     /// <summary>
     /// Отправляет push-уведомление батчем на список FCM-токенов одним запросом к FCM (до 500 токенов).
     /// </summary>
-    public async Task SendNotificationBatchAsync(
+    public virtual async Task SendNotificationBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string senderName,
         string messagePreview,
@@ -175,7 +175,7 @@ public class FirebaseService
     /// Отправляет data-only команду на удаление нотификации чата на всех указанных FCM-токенах.
     /// Клиент по type="dismiss_chat_notifications" вызывает NotificationManager.cancel.
     /// </summary>
-    public async Task SendDismissBatchAsync(
+    public virtual async Task SendDismissBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string chatId,
         CancellationToken cancellationToken = default)
@@ -260,7 +260,7 @@ public class FirebaseService
     /// FCM ограничивает SendEachForMulticast 500 токенами на запрос, поэтому
     /// рассылка чанкуется.
     /// </summary>
-    public async Task<(int Success, int Failure)> SendAdminBroadcastBatchAsync(
+    public virtual async Task<(int Success, int Failure)> SendAdminBroadcastBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string title,
         string body,
