@@ -5,8 +5,8 @@
 ## Установка зависимостей
 
 ```powershell
-# grpcurl + ghz уже установлены в C:\Users\Fooxb\Tools\ и добавлены в PATH
-# Если нужно переустановить — скачиваем бинарники:
+# grpcurl + ghz установлены в C:\Users\Fooxb\Tools\ и добавлены в PATH
+# Переустановка:
 # grpcurl: https://github.com/fullstorydev/grpcurl/releases
 # ghz:     https://github.com/bojand/ghz/releases
 ```
@@ -16,10 +16,17 @@
 ```
 LoadTests/
 ├── common.ps1                Общие функции (auth, grpcurl, ghz)
-├── run-load-test.ps1         SendMessage (write) — нагрузка на запись
+├── run-load-test.ps1         SendMessage (write)
 ├── run-readonly-tests.ps1    6 read-only тестов (Messages, Users, Onliner)
-├── run-stream-test.ps1       Streaming stress test (Updates SubscribeNewMessages)
-├── run-multi-user-test.ps1   Мультипользовательский тест (несколько ghz параллельно)
+├── run-chat-ops-test.ps1     Chat ops — 4 теста (GetChatInfo, Members, Pinned, Attachments)
+├── run-mark-as-read-test.ps1 MarkAsRead flood
+├── run-mixed-workload.ps1    Mixed workload (user flow simulation)
+├── run-users-tests.ps1       Users — 7 тестов (GetUser, Search, Devices, Privacy, ...)
+├── run-files-tests.ps1       Files — 3 теста (Storage, Stickers, Hash)
+├── run-identity-tests.ps1    Identity — 2 теста (RefreshToken, Sessions)
+├── run-auth-stress.ps1       Auth stress — логин флуд (без токена)
+├── run-stream-test.ps1       Streaming stress (Updates SubscribeNewMessages)
+├── run-multi-user-test.ps1   Multi-user (несколько ghz параллельно)
 ├── reports/                  HTML отчёты ghz + JSON результаты
 └── README.md
 ```
@@ -41,9 +48,25 @@ LoadTests/
 
 ---
 
-## 1. SendMessage — нагрузка на запись
+## Все тесты — сводная таблица
 
-Нагружает `MessagesApi/SendMessage`. Автоматически находит первый чат если не указан `-ChatId`.
+| # | Скрипт | Сервис | Методы | Тип |
+|---|--------|--------|--------|-----|
+| 1 | `run-load-test.ps1` | Messages | `SendMessage` | Write |
+| 2 | `run-readonly-tests.ps1` | Messages, Users, Onliner | `ListChats`, `ListMessages`, `GetChatInfo`, `GetUser`, `SearchUsers`, `GetOnlineStatus` | Read |
+| 3 | `run-chat-ops-test.ps1` | Messages | `GetChatInfo`, `ListChatMembers`, `ListPinnedMessages`, `ListChatAttachments` | Read |
+| 4 | `run-mark-as-read-test.ps1` | Messages | `MarkAsRead` | Write |
+| 5 | `run-users-tests.ps1` | Users | `GetUser`, `SearchUsers`, `CheckExistUsername`, `GetDevices`, `GetPrivacySettings`, `GetPersonalization`, `GetChatFolders` | Read |
+| 6 | `run-files-tests.ps1` | Files | `GetUserStorageInfo`, `ListStickerPacks`, `CheckFileHash` | Read |
+| 7 | `run-identity-tests.ps1` | Identity | `CreateToken` (refresh), `GetActiveSessions` | Read |
+| 8 | `run-auth-stress.ps1` | Identity | `Auth` (логин) | Write |
+| 9 | `run-mixed-workload.ps1` | Messages | ListChats → ListMessages → GetChatInfo → SendMessage → ListMessages | Mixed |
+| 10 | `run-stream-test.ps1` | Updates | `SubscribeNewMessages` (server streaming) | Stream |
+| 11 | `run-multi-user-test.ps1` | Messages | `SendMessage` (параллельно по разным чатам) | Write |
+
+---
+
+## 1. SendMessage — нагрузка на запись
 
 ```powershell
 .\run-load-test.ps1 `
@@ -55,60 +78,18 @@ LoadTests/
   -UseTls
 ```
 
-### Дополнительные параметры
-
 | Параметр | Описание |
 |----------|----------|
-| `-MessagesHost` | Адрес Messages сервиса |
+| `-MessagesHost` | Адрес Messages |
 | `-ChatId` | ID чата (авто — первый из ListChats) |
-| `-PeerUserId` | ID пользователя (резолвит chat_id автоматически) |
-| `-MessageText` | Тест сообщения (по умолчанию "Load test message from ghz") |
-
-### Примеры
-
-```powershell
-# Конкретный чат, 100RPS лимит, 2 минуты
-.\run-load-test.ps1 `
-  -IdentityHost "identity.barkfluff.com:443" `
-  -MessagesHost "messages.barkfluff.com:443" `
-  -Username "foxreal" `
-  -Password (Read-Host "Password" -AsSecureString) `
-  -ChatId "019caae6-65b6-77bf-aba4-b2e92879904a" `
-  -Concurrency 200 -Duration "120s" -Rps 100 `
-  -UseTls
-
-# По user_id вместо chat_id
-.\run-load-test.ps1 `
-  -IdentityHost "identity.barkfluff.com:443" `
-  -MessagesHost "messages.barkfluff.com:443" `
-  -Username "foxreal" `
-  -Password (Read-Host "Password" -AsSecureString) `
-  -PeerUserId 42 `
-  -UseTls
-
-# Localhost (Docker с пробросом портов)
-.\run-load-test.ps1 `
-  -IdentityHost "localhost:7000" `
-  -MessagesHost "localhost:7007" `
-  -Username "foxreal" `
-  -Password (Read-Host "Password" -AsSecureString) `
-  -Concurrency 50 -TotalRequests 5000
-```
+| `-PeerUserId` | ID пользователя (резолвит chat_id) |
+| `-MessageText` | Текст сообщения |
 
 ---
 
-## 2. Read-only тесты — нагрузка на чтение
+## 2. Read-only тесты — Messages, Users, Onliner
 
-6 тестов, выполняются последовательно. Каждый генерирует отдельный HTML-отчёт.
-
-| # | Сервис | Метод | Запрос |
-|---|--------|-------|--------|
-| 1 | Messages | `ListChats` | pagination: offset=0, size=20 |
-| 2 | Messages | `ListMessages` | 20 сообщений из первого чата |
-| 3 | Messages | `GetChatInfo` | Инфо первого чата |
-| 4 | Users | `GetUser` | Профиль текущего пользователя |
-| 5 | Users | `SearchUsers` | query="a", pagination size=20 |
-| 6 | Onliner | `GetOnlineStatus` | Статус текущего пользователя |
+6 тестов: `ListChats`, `ListMessages`, `GetChatInfo`, `GetUser`, `SearchUsers`, `GetOnlineStatus`. Re-auth перед каждым.
 
 ```powershell
 .\run-readonly-tests.ps1 `
@@ -118,24 +99,126 @@ LoadTests/
   -OnlinerHost "onliner.barkfluff.com:443" `
   -Username "foxreal" `
   -Password (Read-Host "Password" -AsSecureString) `
+  -Concurrency 100 -TotalRequests 10000 `
+  -UseTls
+```
+
+---
+
+## 3. Chat Operations — 4 теста по одному чату
+
+`GetChatInfo`, `ListChatMembers`, `ListPinnedMessages`, `ListChatAttachments`. Re-auth перед каждым.
+
+```powershell
+.\run-chat-ops-test.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -MessagesHost "messages.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
   -Concurrency 50 -TotalRequests 3000 `
   -UseTls
 ```
 
-### Дополнительные параметры
+---
 
-| Параметр | Описание |
-|----------|----------|
-| `-MessagesHost` | Адрес Messages |
-| `-UsersHost` | Адрес Users |
-| `-OnlinerHost` | Адрес Onliner |
+## 4. MarkAsRead Flood
+
+Бомбит `MarkAsRead` с ID реальных сообщений.
+
+```powershell
+.\run-mark-as-read-test.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -MessagesHost "messages.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
+  -Concurrency 100 -TotalRequests 10000 `
+  -UseTls
+```
 
 ---
 
-## 3. Streaming stress test — прочность стримов
+## 5. Users Service — 7 тестов
 
-Открывает N параллельных `SubscribeNewMessages` стримов на Updates сервисе.
-Каждые 5 секунд логирует количество живых/упавших соединений.
+`GetUser`, `SearchUsers`, `CheckExistUsername`, `GetDevices`, `GetPrivacySettings`, `GetPersonalization`, `GetChatFolders`. Re-auth перед каждым.
+
+```powershell
+.\run-users-tests.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -UsersHost "users.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
+  -Concurrency 50 -TotalRequests 3000 `
+  -UseTls
+```
+
+---
+
+## 6. Files Service — 3 теста
+
+`GetUserStorageInfo`, `ListStickerPacks`, `CheckFileHash`.
+
+```powershell
+.\run-files-tests.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -FilesHost "files.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
+  -Concurrency 50 -TotalRequests 3000 `
+  -UseTls
+```
+
+---
+
+## 7. Identity Service — 2 теста
+
+`CreateToken` (refresh flow), `GetActiveSessions`.
+
+```powershell
+.\run-identity-tests.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
+  -Concurrency 50 -TotalRequests 3000 `
+  -UseTls
+```
+
+---
+
+## 8. Auth Stress — логин флуд
+
+Тестирует `IdentityApi/Auth` напрямую. Токен не нужен — каждый запрос = логин.
+
+```powershell
+.\run-auth-stress.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
+  -Concurrency 50 -TotalRequests 5000 `
+  -UseTls
+```
+
+---
+
+## 9. Mixed Workload — user flow simulation
+
+Последовательно: ListChats → ListMessages → GetChatInfo → SendMessage → ListMessages.
+Re-auth каждые 10 итераций. Выводит per-step avg/p50/p95/p99.
+
+```powershell
+.\run-mixed-workload.ps1 `
+  -IdentityHost "identity.barkfluff.com:443" `
+  -MessagesHost "messages.barkfluff.com:443" `
+  -Username "foxreal" `
+  -Password (Read-Host "Password" -AsSecureString) `
+  -Iterations 100 `
+  -UseTls
+```
+
+---
+
+## 10. Streaming Stress — Updates SubscribeNewMessages
+
+Открывает N стримов, держит T секунд, логирует живые/упавшие.
 
 ```powershell
 .\run-stream-test.ps1 `
@@ -143,32 +226,13 @@ LoadTests/
   -UpdatesHost "updates.barkfluff.com:443" `
   -Username "foxreal" `
   -Password (Read-Host "Password" -AsSecureString) `
-  -Connections 100 `
-  -DurationSeconds 60 `
+  -Connections 200 -DurationSeconds 300 `
   -UseTls
 ```
 
-### Дополнительные параметры
-
-| Параметр | Описание | По умолчанию |
-|----------|----------|:---:|
-| `-UpdatesHost` | Адрес Updates | Обязательный |
-| `-Connections` | Количество стримов | 100 |
-| `-DurationSeconds` | Время удержания | 60 |
-
-### Результат
-
-JSON-файл с метриками:
-- `connected` — сколько стримов открылось
-- `alive_after` — сколько осталось живыми
-- `dropped_during` — сколько упало за время теста
-- `drop_rate_pct` — процент падения
-
 ---
 
-## 4. Multi-user тест
-
-Несколько ghz-воркеров параллельно по разным чатам.
+## 11. Multi-user — параллельные ghz по разным чатам
 
 ```powershell
 .\run-multi-user-test.ps1 `
@@ -176,9 +240,7 @@ JSON-файл с метриками:
   -MessagesHost "messages.barkfluff.com:443" `
   -Username "foxreal" `
   -Password (Read-Host "Password" -AsSecureString) `
-  -NumUsers 10 `
-  -ConcurrencyPerUser 5 `
-  -TotalRequestsPerUser 500 `
+  -NumUsers 10 -ConcurrencyPerUser 5 -TotalRequestsPerUser 500 `
   -UseTls
 ```
 
@@ -186,15 +248,17 @@ JSON-файл с метриками:
 
 ## Авторизация
 
-Все скрипты используют XAuth:
-1. Вызов `IdentityApi/Auth` → получение JWT access_token
-2. Токен передаётся в metadata `x-auth-token` (plain text)
-3. Остальные заголовки — Base64(UTF-8): `x-device-id`, `x-device-name`, `x-ip-address`, `x-os-name`, `x-app-name`, `x-app-version`
+Все скрипты (кроме auth-stress) используют XAuth:
+1. `IdentityApi/Auth` → JWT access_token
+2. Токен в metadata `x-auth-token` (plain text)
+3. Остальные заголовки Base64(UTF-8): `x-device-id`, `x-device-name`, `x-ip-address`, `x-os-name`, `x-app-name`, `x-app-version`
+
+Множественные тесты в одном скрипте делают re-auth перед каждым тестом для обхода истечения токена.
 
 ## Типы нагрузочных тестов
 
-| Тип | Как запустить | Что покажет |
-|-----|---------------|-------------|
+| Тип | Параметры | Что покажет |
+|-----|-----------|-------------|
 | Smoke | `-Concurrency 5 -TotalRequests 50` | Работает ли вообще |
 | Load | `-Concurrency 50 -TotalRequests 5000` | Нормальная нагрузка |
 | Stress | `-Concurrency 200 -Duration "120s"` | Превышение нормы |
