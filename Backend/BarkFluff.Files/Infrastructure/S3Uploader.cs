@@ -2,11 +2,11 @@ using Amazon.S3.Model;
 
 namespace BarkFluff.Files.Infrastructure;
 
-public class S3Uploader
+public class S3Uploader : IS3Uploader
 {
-    private readonly S3BucketRegistry _registry;
+    private readonly IS3BucketRegistry _registry;
 
-    public S3Uploader(S3BucketRegistry registry)
+    public S3Uploader(IS3BucketRegistry registry)
     {
         _registry = registry;
     }

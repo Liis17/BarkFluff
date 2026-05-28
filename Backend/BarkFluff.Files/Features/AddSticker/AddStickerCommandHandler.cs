@@ -18,8 +18,8 @@ public class AddStickerCommandHandler : IRequestHandler<AddStickerCommand, AddSt
     private readonly StickersStorage _stickersStorage;
     private readonly StickerPacksStorage _stickerPacksStorage;
     private readonly UploadedFilesStorage _uploadedFilesStorage;
-    private readonly S3Uploader _s3Uploader;
-    private readonly S3BucketRegistry _bucketRegistry;
+    private readonly IS3Uploader _s3Uploader;
+    private readonly IS3BucketRegistry _bucketRegistry;
     private readonly ImageCompressor _imageCompressor;
     private readonly IConfiguration _configuration;
     private readonly RunSettings _runSettings;
@@ -29,8 +29,8 @@ public class AddStickerCommandHandler : IRequestHandler<AddStickerCommand, AddSt
         StickersStorage stickersStorage,
         StickerPacksStorage stickerPacksStorage,
         UploadedFilesStorage uploadedFilesStorage,
-        S3Uploader s3Uploader,
-        S3BucketRegistry bucketRegistry,
+        IS3Uploader s3Uploader,
+        IS3BucketRegistry bucketRegistry,
         ImageCompressor imageCompressor,
         IConfiguration configuration,
         RunSettings runSettings,

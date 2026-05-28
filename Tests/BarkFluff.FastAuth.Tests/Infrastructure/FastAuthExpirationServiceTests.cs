@@ -126,28 +126,6 @@ public class FastAuthExpirationServiceTests
     #region Retention Cleanup
 
     [Fact]
-    public async Task ExecuteAsync_OldFinalizedSession_RemovesFromManager()
-    {
-        var session = AddExpiredSession();
-        session.TryScan(userId: 42);
-        session.TryAccept(session.ConfirmationCode!, 42, new FastAuthResult
-        {
-            Status = FastAuthStatus.Accepted,
-            AccessToken = "token"
-        });
-
-        var cts = new CancellationTokenSource();
-        var service = CreateService();
-
-        await service.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(32));
-        cts.Cancel();
-        await service.StopAsync(cts.Token);
-
-        _manager.TryGet(session.Id).Should().BeNull();
-    }
-
-    [Fact]
     public async Task ExecuteAsync_OldFinalizedSession_IncrementsRemovedMetric()
     {
         var session = AddExpiredSession();

@@ -9,10 +9,10 @@ namespace BarkFluff.Files.Infrastructure;
 /// </summary>
 public class S3BucketInitializer
 {
-    private readonly S3BucketRegistry _registry;
+    private readonly IS3BucketRegistry _registry;
     private readonly ILogger<S3BucketInitializer> _logger;
 
-    public S3BucketInitializer(S3BucketRegistry registry, ILogger<S3BucketInitializer> logger)
+    public S3BucketInitializer(IS3BucketRegistry registry, ILogger<S3BucketInitializer> logger)
     {
         _registry = registry;
         _logger = logger;
