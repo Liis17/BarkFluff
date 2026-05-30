@@ -1,0 +1,90 @@
+.bf-reg {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--md-sys-color-background);
+}
+
+.bf-reg__card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  padding: 28px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.16);
+}
+
+.bf-reg__progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.bf-reg__dot {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  transition: background-color var(--md-sys-motion-standard);
+}
+.bf-reg__dot.is-done {
+  background: var(--md-sys-color-primary);
+}
+
+.bf-reg__title {
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: 800;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 20px;
+}
+
+.bf-reg__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 140px;
+}
+
+.bf-reg__ok {
+  color: var(--success);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.bf-reg__avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.bf-reg__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+/* Индикатор силы пароля */
+.bf-reg__strength {
+  display: flex;
+  gap: 4px;
+}
+.bf-reg__strength span {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+}
+.bf-reg__strength[data-score='1'] span:nth-child(-n + 1),
+.bf-reg__strength[data-score='2'] span:nth-child(-n + 2),
+.bf-reg__strength[data-score='3'] span:nth-child(-n + 3),
+.bf-reg__strength[data-score='4'] span:nth-child(-n + 4) {
+  background: var(--md-sys-color-primary);
+}
+.bf-reg__strength[data-score='1'] span:nth-child(-n + 1) {
+  background: var(--error);
+}
+.bf-reg__strength[data-score='2'] span:nth-child(-n + 2) {
+  background: #e0a800;
+}

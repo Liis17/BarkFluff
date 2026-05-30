@@ -49,6 +49,14 @@ RUN cp gen-index.js gen/index.js && \
         --target=es2020 \
         --log-level=warning
 
+# React-фронтенд (Frontend/Web → статика SPA)
+FROM node:20-slim AS web-build
+WORKDIR /web
+COPY Frontend/Web/package.json Frontend/Web/package-lock.json ./
+RUN npm ci
+COPY Frontend/Web/ ./
+RUN npm run build   # tsc + vite → /web/dist (src/gen уже в репозитории)
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -62,6 +70,8 @@ RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
 COPY . .
 COPY --from=proto-build /protobuild/bundle/barkfluff.bundle.js \
     /src/Backend/BarkFluff.Web/wwwroot/js/proto/barkfluff.bundle.js
+# Собранный React-SPA перекрывает vanilla index.html (messenger.html остаётся fallback).
+COPY --from=web-build /web/dist/ /src/Backend/BarkFluff.Web/wwwroot/
 WORKDIR "/src/Backend/BarkFluff.Web"
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "BarkFluff.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false

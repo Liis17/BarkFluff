@@ -91,6 +91,7 @@
 | [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (iOS 26, на базе macOS-клиента) |
 | [[Клиенты/iOS-ProjectMap]] | Карта всех файлов iOS-клиента с описанием |
 | [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
+| [[Клиенты/Web]] | **Веб-мессенджер** — React 19 + TS SPA, Material 3 Expressive (заменил vanilla-JS) |
 
 ---
 

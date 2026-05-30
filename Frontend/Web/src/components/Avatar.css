@@ -1,0 +1,13 @@
+.bf-avatar {
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  object-fit: cover;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.bf-avatar--fallback {
+  color: #fff;
+  font-weight: 700;
+  user-select: none;
+}

@@ -1,0 +1,149 @@
+.bf-settings {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.bf-settings__nav {
+  width: 280px;
+  flex-shrink: 0;
+  padding: 20px 12px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bf-settings__title {
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: 800;
+  color: var(--md-sys-color-on-surface);
+  padding: 0 12px 12px;
+}
+.bf-settings__tab {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 600;
+  transition: background-color var(--md-sys-motion-standard);
+}
+.bf-settings__tab:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+.bf-settings__tab.is-active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.bf-settings__content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 32px;
+  background: var(--chat-bg);
+}
+
+/* Общие элементы карточек настроек */
+.bf-setcard {
+  max-width: 640px;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.bf-setcard__title {
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 16px;
+}
+.bf-setrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+.bf-setrow:first-of-type {
+  border-top: none;
+}
+.bf-setrow__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bf-setrow__label {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+.bf-setrow__sub {
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.bf-set-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bf-set-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.bf-set-hint {
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 8px 0;
+}
+.bf-set-saved {
+  color: var(--success);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+.bf-set-error {
+  color: var(--md-sys-color-error);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+/* Профиль */
+.bf-profile__avatar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* Хранилище */
+.bf-storage__bar {
+  height: 12px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  overflow: hidden;
+  margin: 8px 0;
+}
+.bf-storage__fill {
+  height: 100%;
+  background: var(--md-sys-color-primary);
+  border-radius: var(--md-sys-shape-corner-full);
+  transition: width var(--md-sys-motion-emphasized);
+}
+
+/* 2FA QR */
+.bf-2fa__qr {
+  width: 180px;
+  height: 180px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: #fff;
+  padding: 8px;
+}
+.bf-2fa__secret {
+  font-family: monospace;
+  background: var(--md-sys-color-surface-container-high);
+  padding: 8px 12px;
+  border-radius: var(--md-sys-shape-corner-small);
+  word-break: break-all;
+}

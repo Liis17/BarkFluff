@@ -1,0 +1,115 @@
+.bf-login {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.bf-login__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.bf-login__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.7;
+}
+.bf-login__blob--1 {
+  width: 420px;
+  height: 420px;
+  background: var(--blob1);
+  top: -120px;
+  left: -80px;
+}
+.bf-login__blob--2 {
+  width: 360px;
+  height: 360px;
+  background: var(--blob2);
+  bottom: -100px;
+  right: -60px;
+}
+
+.bf-login__card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+
+.bf-login__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.bf-login__logo {
+  font-size: 48px;
+  color: var(--md-sys-color-primary);
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 48;
+}
+.bf-login__title {
+  font-size: var(--md-sys-typescale-headline-medium-size);
+  font-weight: 800;
+  color: var(--md-sys-color-on-surface);
+}
+.bf-login__subtitle {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.bf-login__eye {
+  background: none;
+  border: none;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 20px;
+  padding: 8px;
+  display: flex;
+}
+
+.bf-login__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+.bf-login__remember input {
+  accent-color: var(--md-sys-color-primary);
+  width: 18px;
+  height: 18px;
+}
+
+.bf-login__error {
+  color: var(--md-sys-color-error);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  text-align: center;
+}
+
+.bf-login__submit {
+  margin-top: 8px;
+}
+
+.bf-login__switch {
+  text-align: center;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.bf-login__switch a {
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+}

@@ -1,0 +1,119 @@
+.bf-bubble {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0;
+}
+.bf-bubble--out {
+  justify-content: flex-end;
+}
+.bf-bubble--in {
+  justify-content: flex-start;
+}
+
+/* Действия наведения */
+.bf-bubble__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-standard);
+  order: 2;
+}
+.bf-bubble--out .bf-bubble__actions {
+  order: -1;
+}
+.bf-bubble:hover .bf-bubble__actions {
+  opacity: 1;
+}
+.bf-bubble__actions button {
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 18px;
+  padding: 6px;
+  border-radius: var(--md-sys-shape-corner-full);
+  cursor: pointer;
+}
+.bf-bubble__actions button:hover {
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+}
+
+.bf-bubble__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bf-bubble__editinput {
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--input-bg);
+  color: var(--md-sys-color-on-surface);
+  padding: 8px 10px;
+  font: inherit;
+  resize: vertical;
+  outline: none;
+}
+.bf-bubble__editactions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.bf-bubble__editactions button {
+  border: none;
+  background: none;
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.bf-bubble__pinmark {
+  font-size: 14px;
+}
+
+.bf-bubble__box {
+  position: relative;
+  max-width: min(70%, 560px);
+  padding: 8px 12px;
+  border-radius: var(--md-sys-shape-corner-large);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  word-break: break-word;
+}
+.bf-bubble--in .bf-bubble__box {
+  background: var(--msg-in-bg);
+  color: var(--md-sys-color-on-surface);
+  border-bottom-left-radius: var(--md-sys-shape-corner-extra-small);
+}
+.bf-bubble--out .bf-bubble__box {
+  background: var(--msg-out-bg);
+  color: var(--msg-out-text);
+  border-bottom-right-radius: var(--md-sys-shape-corner-extra-small);
+}
+
+.bf-bubble__sender {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+}
+.bf-bubble__text {
+  white-space: pre-wrap;
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: 1.35;
+}
+.bf-bubble__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-end;
+  margin-top: 2px;
+  font-size: var(--md-sys-typescale-label-small-size);
+  opacity: 0.7;
+}
+.bf-bubble__check {
+  font-size: 16px;
+}
+.bf-bubble__edited {
+  font-style: italic;
+}

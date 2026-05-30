@@ -226,7 +226,10 @@
       "mcp__playwright__browser_evaluate",
       "Bash(perl -i -pe 's/^\\(    runs-on: \\)self-hosted$/${1}[self-hosted, linux]/' .github/workflows/build-backend-users.yml)",
       "Bash(echo \"exit=$?\")",
-      "Bash(perl -i -pe 's/^\\(\\\\s*runs-on: \\)self-hosted\\\\b/${1}[self-hosted, linux]/' .github/workflows/build-*.yml)"
+      "Bash(perl -i -pe 's/^\\(\\\\s*runs-on: \\)self-hosted\\\\b/${1}[self-hosted, linux]/' .github/workflows/build-*.yml)",
+      "Bash(cat .dockerignore)",
+      "Bash(cat Backend/.dockerignore)",
+      "Bash(awk 'NR>=120 && NR<=170' docker-compose-dev.yml)"
     ],
     "deny": [],
     "ask": []

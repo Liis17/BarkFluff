@@ -1,0 +1,20 @@
+.bf-layout {
+  display: flex;
+  height: 100dvh;
+  width: 100%;
+  background: var(--md-sys-color-background);
+}
+
+.bf-layout__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Compact: на узких экранах рейл сворачивается (полноценная адаптация — фаза 8) */
+@media (max-width: 600px) {
+  .bf-layout {
+    flex-direction: column-reverse;
+  }
+}

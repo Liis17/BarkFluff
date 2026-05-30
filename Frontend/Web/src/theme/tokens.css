@@ -1,0 +1,90 @@
+/*
+ * Material 3 Expressive — структурные (theme-independent) токены.
+ * Цветовые роли (--md-sys-color-*) задаются по темам в themes.css.
+ * Ссылки: docs/material-3-expressive-guidelines.md (§3 формы, §4 motion, §2 типографика).
+ */
+:root {
+  /* ===== Shape (corner radius) — расширенная шкала M3 Expressive ===== */
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-increased: 32px;
+  --md-sys-shape-corner-extra-extra-large: 48px;
+  --md-sys-shape-corner-full: 9999px;
+
+  /* ===== Motion — easing (legacy curves для transitions) ===== */
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-easing-legacy: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== Motion — duration ===== */
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+
+  /* Готовые transition-комбинации для удобства */
+  --md-sys-motion-emphasized: var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  --md-sys-motion-standard: var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+
+  /* ===== State layer opacities (M3) ===== */
+  --md-sys-state-hover-opacity: 0.08;
+  --md-sys-state-focus-opacity: 0.10;
+  --md-sys-state-pressed-opacity: 0.10;
+  --md-sys-state-dragged-opacity: 0.16;
+
+  /* ===== Typescale ===== */
+  --md-sys-typescale-body-font: 'Roboto Flex', 'Inter', system-ui, -apple-system, sans-serif;
+  --md-sys-typescale-brand-font: 'Roboto Flex', 'Inter', system-ui, sans-serif;
+
+  --md-sys-typescale-display-large-size: 57px;
+  --md-sys-typescale-display-medium-size: 45px;
+  --md-sys-typescale-display-small-size: 36px;
+  --md-sys-typescale-headline-large-size: 32px;
+  --md-sys-typescale-headline-medium-size: 28px;
+  --md-sys-typescale-headline-small-size: 24px;
+  --md-sys-typescale-title-large-size: 22px;
+  --md-sys-typescale-title-medium-size: 16px;
+  --md-sys-typescale-title-small-size: 14px;
+  --md-sys-typescale-body-large-size: 16px;
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-body-small-size: 12px;
+  --md-sys-typescale-label-large-size: 14px;
+  --md-sys-typescale-label-medium-size: 12px;
+  --md-sys-typescale-label-small-size: 11px;
+
+  /* ===== Spacing scale (4dp grid) ===== */
+  --md-sys-spacing-1: 4px;
+  --md-sys-spacing-2: 8px;
+  --md-sys-spacing-3: 12px;
+  --md-sys-spacing-4: 16px;
+  --md-sys-spacing-5: 20px;
+  --md-sys-spacing-6: 24px;
+  --md-sys-spacing-8: 32px;
+
+  /* Layout */
+  --bf-sidebar-width: 360px;
+  --bf-rail-width: 88px;
+}
+
+/* Уважаем системную настройку уменьшения движения (M3 §10 accessibility). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --md-sys-motion-emphasized: 1ms linear;
+    --md-sys-motion-standard: 1ms linear;
+  }
+}
