@@ -20,7 +20,7 @@ export function SettingsPage() {
         {TABS.map((t) => (
           <NavLink
             key={t.to}
-            to={t.to}
+            to={`/settings/${t.to}`}
             className={({ isActive }) => `bf-settings__tab ${isActive ? 'is-active' : ''}`}
           >
             <span className="material-symbols-rounded">{t.icon}</span>
@@ -34,7 +34,7 @@ export function SettingsPage() {
           <Route path="sessions" element={<SessionsSettings />} />
           <Route path="security" element={<TwoFactorSettings />} />
           <Route path="storage" element={<StorageSettings />} />
-          <Route path="*" element={<Navigate to="profile" replace />} />
+          <Route path="*" element={<Navigate to="/settings/profile" replace />} />
         </Routes>
       </div>
     </div>
