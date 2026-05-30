@@ -25,7 +25,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   request-approval:
     name: "📲 Запрос подтверждения"
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     outputs:
       approved: ${{ steps.result.outputs.approved }}
     steps:
@@ -60,7 +60,7 @@ jobs:
     name: "📱 Сборка Android Client"
     needs: request-approval
     if: needs.request-approval.outputs.approved == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     env:
       ANDROID_HOME: /home/liis/android-sdk
       ANDROID_SDK_ROOT: /home/liis/android-sdk

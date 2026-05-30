@@ -22,7 +22,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   check-dotnet:
     name: "🔍 Проверка .NET 10.0 SDK"
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     steps:
       - name: "Проверка наличия .NET 10.0 SDK"
         id: check
@@ -57,7 +57,7 @@ jobs:
   request-approval:
     name: "📲 Запрос подтверждения"
     needs: check-dotnet
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     outputs:
       approved: ${{ steps.result.outputs.approved }}
     steps:
@@ -92,7 +92,7 @@ jobs:
     name: "🐳 Сборка и публикация BarkFluff.Configuration"
     needs: [check-dotnet, request-approval]
     if: needs.request-approval.outputs.approved == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
 
