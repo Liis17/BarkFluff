@@ -20,6 +20,16 @@ docker-compose -f docker-compose-dev.yml up web
 2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP.
 3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**)
 
+## gRPC-Web трейлеры (grpc-status) — критично
+
+Браузерный gRPC-Web (connect-es) ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware собирает этот фрейм из трёх источников:
+
+1. **promotedTrailers** — `grpc-status`/`grpc-message`/`x-error-code` из *заголовков* ответа (ловятся в `OnStarting`). Это **trailers-only** случай: бизнес-ошибки (`OtpCodeNeedException` и пр.) бэкенд отдаёт через `RpcException` → статус летит в HTTP/2-**заголовках**.
+2. **IHttpResponseTrailersFeature** — почти всегда пуст (см. ниже).
+3. **`ctx.Items["grpc-upstream-response"]`** — `HttpResponseMessage.TrailingHeaders` upstream-ответа. Ссылку кладёт YARP-трансформ `AddResponseTransform` (фаза заголовков), читаем после `await next()`.
+
+> ⚠️ **Почему источник №3 обязателен.** У **успешного** unary-ответа `grpc-status: 0` приходит от бэкенда как HTTP/2-**трейлер**. Канал nginx → web идёт по **HTTP/1.1** (`proxy_http_version 1.1`), где Kestrel не отдаёт `IHttpResponseTrailersFeature` (`SupportsTrailers() == false`), поэтому YARP не может перенести трейлеры в downstream-ответ. Без чтения `TrailingHeaders` напрямую middleware писал **пустой** trailer-frame → connect-es падал с `[internal] protocol error: missing status` (вход проходил на бэке, но фронт не мог прочитать ответ).
+
 ## YARP Routes
 
 | Route | Backend | Protocol |

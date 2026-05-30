@@ -12,6 +12,7 @@ using System.Net;
 using System.Text;
 
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,7 +76,18 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // gRPC-Web middleware (ниже) превращает входящий HTTP/1.1 gRPC-Web запрос
 // в обычный gRPC HTTP/2, после чего YARP форвардит его в соответствующий сервис.
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(BuildRoutes(), BuildClusters(builder.Configuration));
+    .LoadFromMemory(BuildRoutes(), BuildClusters(builder.Configuration))
+    // grpc-status успешного unary-ответа бэкенд отдаёт как HTTP/2-трейлер. Канал
+    // nginx -> web работает по HTTP/1.1, где Kestrel не выдаёт IHttpResponseTrailersFeature,
+    // поэтому YARP не может перенести трейлеры в ответ. Сохраняем ссылку на upstream-ответ,
+    // чтобы gRPC-Web middleware прочитал TrailingHeaders после докачки тела и вложил
+    // grpc-status в trailer-frame (иначе connect-es падает с "missing status").
+    .AddTransforms(ctx => ctx.AddResponseTransform(tc =>
+    {
+        if (tc.ProxyResponse is not null)
+            tc.HttpContext.Items["grpc-upstream-response"] = tc.ProxyResponse;
+        return ValueTask.CompletedTask;
+    }));
 
 builder.Services.AddHealthChecks();
 
@@ -224,6 +236,16 @@ app.Use(async (ctx, next) =>
     {
         foreach (var kvp in trailerFeature.Trailers)
             trailerHeaders[kvp.Key.ToString()] = kvp.Value.ToString();
+    }
+
+    // У успешного unary-ответа grpc-status приходит как HTTP/2-трейлер upstream'а; на
+    // HTTP/1.1-канале к nginx IHttpResponseTrailersFeature отсутствует, поэтому читаем
+    // трейлеры напрямую из сохранённого upstream-ответа (тело уже докачано — они заполнены).
+    if (ctx.Items.TryGetValue("grpc-upstream-response", out var upstreamObj)
+        && upstreamObj is System.Net.Http.HttpResponseMessage upstreamResponse)
+    {
+        foreach (var h in upstreamResponse.TrailingHeaders)
+            trailerHeaders[h.Key] = string.Join(",", h.Value);
     }
 
     var trailerSb = new StringBuilder();
