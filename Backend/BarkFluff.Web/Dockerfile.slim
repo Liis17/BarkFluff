@@ -51,23 +51,12 @@ RUN cp gen-index.js gen/index.js && \
         --target=es2020 \
         --log-level=warning
 
-# Stage 2: React-фронтенд (Frontend/Web → статика SPA)
-FROM node:20-slim AS web-build
-WORKDIR /web
-COPY Frontend/Web/package.json Frontend/Web/package-lock.json ./
-RUN npm ci
-COPY Frontend/Web/ ./
-RUN npm run build   # tsc + vite → /web/dist (src/gen уже в репозитории)
-
 # Final stage: runtime image with pre-built .NET output from runner + JS bundle from proto-build
 # Web остаётся на Alpine: healthcheck требует wget (busybox), которого нет в chiseled
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 COPY --from=proto-build /protobuild/bundle/barkfluff.bundle.js /app/wwwroot/js/proto/barkfluff.bundle.js
 COPY publish/ .
-# Overlay собранного React-SPA (index.html + assets) поверх vanilla из publish/.
-# Старый messenger.html остаётся доступен как fallback на /messenger.
-COPY --from=web-build /web/dist/ ./wwwroot/
 RUN mkdir -p /app/logs && chown $APP_UID /app/logs
 USER $APP_UID
 EXPOSE 7016
