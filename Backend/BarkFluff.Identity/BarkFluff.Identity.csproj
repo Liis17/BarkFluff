@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+        <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
         <PackageReference Include="Grpc.AspNetCore.Web" Version="2.80.0" />
         <PackageReference Include="Grpc.Net.ClientFactory" Version="2.80.0" />
         <PackageReference Include="Grpc.Tools" Version="2.80.0">
@@ -16,7 +16,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
-        <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.1" />
+        <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8">
           <PrivateAssets>all</PrivateAssets>

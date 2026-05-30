@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
     <PackageReference Include="Grpc.Core.Api" Version="2.80.0" />
   </ItemGroup>
 

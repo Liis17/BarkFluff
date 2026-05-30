@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
-        <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.1" />
+        <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
+        <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     </ItemGroup>
 

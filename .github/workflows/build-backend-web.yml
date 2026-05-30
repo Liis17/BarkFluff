@@ -62,6 +62,7 @@ jobs:
     steps:
       - name: "📲 Собрать BarkFluff.Web?"
         id: approval
+        if: github.ref_name != 'dev'
         continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
@@ -78,7 +79,7 @@ jobs:
       - name: Результат
         id: result
         run: |
-          if [ "${{ steps.approval.outcome }}" = "success" ]; then
+          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
             echo "approved=true" >> "$GITHUB_OUTPUT"
           else
             echo "approved=false" >> "$GITHUB_OUTPUT"

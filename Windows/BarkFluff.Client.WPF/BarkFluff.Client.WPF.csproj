@@ -79,7 +79,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
     <PackageReference Include="Google.Protobuf" Version="3.35.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />

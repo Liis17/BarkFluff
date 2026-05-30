@@ -88,7 +88,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.Core" Version="4.0.7.3" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="Telegram.Bot" Version="22.10.0.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />

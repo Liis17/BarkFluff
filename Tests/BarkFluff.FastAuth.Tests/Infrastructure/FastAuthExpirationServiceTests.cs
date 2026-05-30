@@ -1,8 +1,9 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using BarkFluff.FastAuth.Domain;
 using BarkFluff.FastAuth.Infrastructure;
 using BarkFluff.Proto.FastAuth;
+
+using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace BarkFluff.FastAuth.Tests.Infrastructure;
 
@@ -70,7 +71,7 @@ public class FastAuthExpirationServiceTests
 
         var snapshot = _metrics.SnapshotAndReset();
         snapshot.Should().ContainKey("sessions_expired");
-        snapshot["sessions_expired"].Should().BeGreaterOrEqualTo(1);
+        snapshot["sessions_expired"].Should().BeGreaterThanOrEqualTo(1);
     }
 
     [Fact]
