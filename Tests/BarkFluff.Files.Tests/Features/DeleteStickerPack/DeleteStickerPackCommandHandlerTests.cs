@@ -30,11 +30,14 @@ public class DeleteStickerPackCommandHandlerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Handle_NonExistentPack_ReturnsSuccess()
+    public async Task Handle_NonExistentPack_DoesNotDeleteOtherPacks()
     {
-        var result = await _handler.Handle(
+        var existing = await _helper.SeedStickerPack();
+
+        await _handler.Handle(
             new DeleteStickerPackCommand { PackId = Guid.NewGuid() }, CancellationToken.None);
 
-        result.Should().NotBeNull();
+        var survived = await _helper.StickerPacksStorage.GetByIdAsync(existing.Id);
+        survived.Should().NotBeNull();
     }
 }

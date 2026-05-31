@@ -22,6 +22,10 @@ public class ReadByQueueSenderTests
 
         await _sender.SendEvent(chatId, 42, readBy, chatMembers);
 
-        _publishEndpoint.Verify(p => p.Publish(It.IsAny<Shared.Queue.Messages.MessageReadEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        _publishEndpoint.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.MessageReadEvent>(e =>
+                e.ChatId == chatId && e.MessageId == 42 &&
+                e.NewReadBy.SequenceEqual(readBy) && e.ChatMembers.SequenceEqual(chatMembers)),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

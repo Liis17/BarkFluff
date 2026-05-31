@@ -6,12 +6,17 @@ using BarkFluff.Files.Services;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Files.Tests;
 
 public class TestHelper
 {
+    // SQLite in-memory: настоящий реляционный движок (в отличие от InMemory-провайдера),
+    // поддерживает raw SQL / ExecuteDelete / GroupBy. БД жива, пока открыто соединение,
+    // поэтому держим его в поле на всё время жизни хелпера.
+    private readonly SqliteConnection _connection;
     public FilesContext DbContext { get; }
     public UploadedFilesStorage UploadedFilesStorage { get; }
     public TempFilesStorage TempFilesStorage { get; }
@@ -26,11 +31,15 @@ public class TestHelper
 
     public TestHelper()
     {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
         var options = new DbContextOptionsBuilder<FilesContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseSqlite(_connection)
             .Options;
 
         DbContext = new FilesContext(options);
+        DbContext.Database.EnsureCreated();
 
         var configMock = new Mock<IConfiguration>();
         configMock.Setup(c => c["TempFiles:ExpiresAt"]).Returns("60");

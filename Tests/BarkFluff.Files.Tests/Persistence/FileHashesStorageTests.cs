@@ -59,9 +59,23 @@ public class FileHashesStorageTests : IAsyncLifetime
         result!.Hash.Should().Be(hash);
     }
 
-    [Fact(Skip = "InMemory EF Core does not support ExecuteDeleteAsync")]
-    public void DeleteHashByFileId_RemovesHash() { }
+    [Fact]
+    public async Task DeleteHashByFileId_RemovesHash()
+    {
+        var fileId = Guid.NewGuid();
+        await Storage.AddHash(new Domain.FileHash { FileId = fileId, Hash = "abc123" });
 
-    [Fact(Skip = "InMemory EF Core does not support ExecuteDeleteAsync")]
-    public void DeleteHashByFileId_NotFound_ReturnsZero() { }
+        var deleted = await Storage.DeleteHashByFileId(fileId);
+
+        deleted.Should().Be(1);
+        (await Storage.GetHashByFileId(fileId)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteHashByFileId_NotFound_ReturnsZero()
+    {
+        var deleted = await Storage.DeleteHashByFileId(Guid.NewGuid());
+
+        deleted.Should().Be(0);
+    }
 }

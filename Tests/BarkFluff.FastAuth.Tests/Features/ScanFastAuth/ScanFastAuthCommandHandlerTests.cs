@@ -175,8 +175,10 @@ public class ScanFastAuthCommandHandlerTests
 
     #region Expired Session
 
+    // Сессия, помеченная Expired через TryExpire(), уже IsFinal → TryScan возвращает
+    // AlreadyHandled, поэтому хендлер бросает FastAuthInvalidStateException, а не ...Expired.
     [Fact]
-    public async Task Handle_ExpiredSession_ThrowsFastAuthSessionExpiredException()
+    public async Task Handle_ExpiredSession_ThrowsFastAuthInvalidStateException()
     {
         var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
         session.TryExpire();

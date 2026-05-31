@@ -25,7 +25,7 @@ public class AckSecretMessageCommandHandlerTests
             TestHelper.CreateLogger<AckSecretMessageCommandHandler>());
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidAck_ReturnsResponse()
     {
         var deviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -37,7 +37,7 @@ public class AckSecretMessageCommandHandlerTests
         result.Should().NotBeNull();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NoDeviceId_ThrowsDeviceIdRequiredException()
     {
         var handler = CreateHandler(1, deviceId: null);
@@ -47,7 +47,7 @@ public class AckSecretMessageCommandHandlerTests
         await act.Should().ThrowAsync<DeviceIdRequiredException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_EmptyMessageId_ReturnsResponse()
     {
         var handler = CreateHandler(1);
@@ -58,7 +58,7 @@ public class AckSecretMessageCommandHandlerTests
         _buffer.Verify(b => b.AckMessageAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_CallsAckMessageAsync()
     {
         var deviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");

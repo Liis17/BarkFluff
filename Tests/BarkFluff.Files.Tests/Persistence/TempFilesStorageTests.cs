@@ -73,6 +73,17 @@ public class TempFilesStorageTests : IAsyncLifetime
         result.Should().BeEmpty();
     }
 
-    [Fact(Skip = "InMemory EF Core does not support ExecuteDeleteAsync")]
-    public void DeleteExpiredAsync_RemovesOnlyExpired() { }
+    [Fact]
+    public async Task DeleteExpiredAsync_RemovesOnlyExpired()
+    {
+        var f1 = await _helper.SeedFile();
+        var f2 = await _helper.SeedFile();
+        await _helper.SeedTempFile(f1.Id, expiresAt: DateTime.UtcNow.AddHours(-1));
+        var valid = await _helper.SeedTempFile(f2.Id, expiresAt: DateTime.UtcNow.AddHours(1));
+
+        var deleted = await Storage.DeleteExpiredAsync();
+
+        deleted.Should().Be(1);
+        (await Storage.GetTempFile(valid.Id)).Should().NotBeNull();
+    }
 }

@@ -30,7 +30,7 @@ public class RejectSecretChatInviteCommandHandlerTests
             TestHelper.CreateLogger<RejectSecretChatInviteCommandHandler>());
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidReject_ReturnsResponse()
     {
         var deviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -51,7 +51,7 @@ public class RejectSecretChatInviteCommandHandlerTests
         _queueSender.Verify(q => q.SendInviteResolution("invite-1", 10, invite.SenderDeviceId, 1, deviceId, false, It.IsAny<byte[]>()), Times.Once);
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NoDeviceId_ThrowsDeviceIdRequiredException()
     {
         var handler = CreateHandler(1, deviceId: null);
@@ -61,7 +61,7 @@ public class RejectSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<DeviceIdRequiredException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_EmptyInviteId_ThrowsSecretInviteNotFoundException()
     {
         var handler = CreateHandler(1);
@@ -71,7 +71,7 @@ public class RejectSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<SecretInviteNotFoundException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_InviteNotFound_ThrowsSecretInviteNotFoundException()
     {
         var deviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -83,7 +83,7 @@ public class RejectSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<SecretInviteNotFoundException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_WrongRecipient_ThrowsNoAccessToChatException()
     {
         var deviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");

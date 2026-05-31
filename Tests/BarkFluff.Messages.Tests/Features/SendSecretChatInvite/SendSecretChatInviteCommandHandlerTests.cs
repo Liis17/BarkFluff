@@ -29,7 +29,7 @@ public class SendSecretChatInviteCommandHandlerTests
             TestHelper.CreateLogger<SendSecretChatInviteCommandHandler>());
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidInvite_SendsAndReturnsResponse()
     {
         _buffer.Setup(b => b.EnqueueInviteAsync(It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<byte[]>()))
@@ -47,7 +47,7 @@ public class SendSecretChatInviteCommandHandlerTests
         result.InviteId.Should().Be("invite-1");
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NoDeviceId_ThrowsDeviceIdRequiredException()
     {
         var handler = CreateHandler(1, deviceId: null);
@@ -62,7 +62,7 @@ public class SendSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<DeviceIdRequiredException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_SelfInviteSameDevice_ThrowsSourceForSendMessageNotSetException()
     {
         var deviceId = Guid.NewGuid();
@@ -78,7 +78,7 @@ public class SendSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<SourceForSendMessageNotSetException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_EnvelopeTooSmall_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -93,7 +93,7 @@ public class SendSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_EnvelopeTooLarge_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -108,7 +108,7 @@ public class SendSecretChatInviteCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_PublishesInviteAndSilentPush()
     {
         _buffer.Setup(b => b.EnqueueInviteAsync(It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<byte[]>()))

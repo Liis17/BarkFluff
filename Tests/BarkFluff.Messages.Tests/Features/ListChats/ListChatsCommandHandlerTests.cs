@@ -67,10 +67,11 @@ public class ListChatsCommandHandlerTests
     {
         var userId = 1L;
         var handler = CreateHandler(userId);
+        var command = new ListChatsCommand { Skip = 0, Size = 100 };
 
-        var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 100 }, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        result.Should().NotBeNull();
+        command.Size.Should().Be(50);
     }
 
     [Fact]
@@ -83,7 +84,8 @@ public class ListChatsCommandHandlerTests
 
         var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
 
-        result.Should().NotBeNull();
+        result.Chats.Should().ContainSingle();
+        result.Chats[0].Members.Should().BeEmpty();
     }
 
     private void SetupCacheValue(string key, string? value)

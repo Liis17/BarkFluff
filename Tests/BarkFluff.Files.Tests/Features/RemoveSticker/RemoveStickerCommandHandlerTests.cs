@@ -32,12 +32,15 @@ public class RemoveStickerCommandHandlerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Handle_StickerNotFound_ReturnsSuccess()
+    public async Task Handle_StickerNotFound_DoesNotDeleteOtherStickers()
     {
-        var result = await _handler.Handle(
+        var existing = await _helper.SeedSticker();
+
+        await _handler.Handle(
             new RemoveStickerCommand { StickerId = Guid.NewGuid() }, CancellationToken.None);
 
-        result.Should().NotBeNull();
+        var survived = await _helper.StickersStorage.GetByIdAsync(existing.Id);
+        survived.Should().NotBeNull();
     }
 
     [Fact]

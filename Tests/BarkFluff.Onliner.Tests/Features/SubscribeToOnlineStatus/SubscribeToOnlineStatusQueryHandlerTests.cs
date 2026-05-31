@@ -81,6 +81,7 @@ public class SubscribeToOnlineStatusQueryHandlerTests
 
         var snapshot = _h.Metrics.SnapshotAndReset();
         snapshot.Should().ContainKey("subscriptions_hidden_by_privacy");
+        snapshot["subscriptions_hidden_by_privacy"].Should().Be(1);
     }
 
     [Fact]

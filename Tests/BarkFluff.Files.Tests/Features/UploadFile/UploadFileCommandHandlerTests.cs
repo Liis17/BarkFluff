@@ -608,7 +608,7 @@ public class UploadFileCommandHandlerTests
 
     #region Deduplication
 
-    [Fact(Skip = "InMemory EF Core does not support ExecuteDeleteAsync used in deduplication path")]
+    [Fact]
     public async Task Handle_Deduplication_SameType_ReturnsExistingFileId()
     {
         var data = new byte[] { 42, 42, 42 };

@@ -47,7 +47,7 @@ public class CreatePrivateChatCommandHandlerTests
                 () => { }));
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidRequest_CreatesPrivateChat()
     {
         var handler = CreateHandler(1);
@@ -67,7 +67,7 @@ public class CreatePrivateChatCommandHandlerTests
         dbChat!.Type.Should().Be(Domain.ChatType.Private);
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_SelfChat_ThrowsSourceForSendMessageNotSetException()
     {
         var handler = CreateHandler(1);
@@ -82,7 +82,7 @@ public class CreatePrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<SourceForSendMessageNotSetException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_SaltTooShort_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -97,7 +97,7 @@ public class CreatePrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_SaltTooLong_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -112,7 +112,7 @@ public class CreatePrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_VerifierTooShort_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -127,7 +127,7 @@ public class CreatePrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_SetsInviteInStore()
     {
         var handler = CreateHandler(1);
@@ -142,7 +142,7 @@ public class CreatePrivateChatCommandHandlerTests
         _inviteStore.Verify(s => s.SetAsync(It.IsAny<Guid>(), 2), Times.Once);
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_PublishesInviteEvent()
     {
         var handler = CreateHandler(1);

@@ -125,7 +125,8 @@ public class SetPasswordCommandHandlerTests
 
         var pw = await _context.UserPasswords.FirstOrDefaultAsync(x => x.UserId == 1);
         Assert.NotNull(pw);
-        Assert.NotEqual(PasswordHasher.HashPassword("correctold"), pw.PasswordHash);
+        Assert.True(PasswordHasher.VerifyPassword("newpass123", pw.PasswordHash));
+        Assert.False(PasswordHasher.VerifyPassword("correctold", pw.PasswordHash));
         _publishEndpoint.Verify(p => p.Publish(It.IsAny<BarkFluff.Shared.Queue.Notifications.EmailNotification>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

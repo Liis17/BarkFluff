@@ -58,6 +58,7 @@ public class SetOnlineStatusCommandHandlerTests
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
         var snapshot = _h.Metrics.SnapshotAndReset();
         snapshot.Should().ContainKey("status_changes.online");
+        snapshot["status_changes.online"].Should().Be(1);
     }
 
     [Fact]

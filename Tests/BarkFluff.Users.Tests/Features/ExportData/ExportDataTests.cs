@@ -89,7 +89,7 @@ public class ExportDataCommandHandlerTests : IAsyncDisposable
         result.Files.First(f => f.Filename == "profile.json").Content.Should().Contain("export");
     }
 
-    [Fact(Skip = "Moq cannot intercept MessagesServerApiClient virtual method delegation correctly")]
+    [Fact]
     public async Task Handle_MessagesSuccess_ReturnsMessagesJson()
     {
         var user = await _h.SeedUser();
@@ -132,7 +132,7 @@ public class ExportDataCommandHandlerTests : IAsyncDisposable
         result.Files.Should().NotContain(f => f.Filename == "messages.json");
     }
 
-    [Fact(Skip = "Moq cannot intercept MessagesServerApiClient virtual method delegation correctly")]
+    [Fact]
     public async Task Handle_FilesFromAttachments_ReturnsFilesJson()
     {
         var user = await _h.SeedUser();
@@ -186,7 +186,7 @@ public class ExportDataCommandHandlerTests : IAsyncDisposable
         result.Files.Should().Contain(f => f.Filename == "files_error.json");
     }
 
-    [Fact(Skip = "Moq cannot intercept MessagesServerApiClient virtual method delegation correctly")]
+    [Fact]
     public async Task Handle_ProfilePictureIncludedInFileIds()
     {
         var user = await _h.SeedUser(profilePicture: "avatar-file-id");

@@ -106,6 +106,18 @@ public class StickerPacksStorageTests : IAsyncLifetime
         count.Should().Be(2);
     }
 
-    [Fact(Skip = "InMemory EF Core does not support GroupBy with ToDictionaryAsync")]
-    public void GetStickerCountsAsync_ReturnsCountsByPack() { }
+    [Fact]
+    public async Task GetStickerCountsAsync_ReturnsCountsByPack()
+    {
+        var pack1 = await _helper.SeedStickerPack();
+        var pack2 = await _helper.SeedStickerPack();
+        await _helper.SeedSticker(stickerPackId: pack1.Id);
+        await _helper.SeedSticker(stickerPackId: pack1.Id);
+        await _helper.SeedSticker(stickerPackId: pack2.Id);
+
+        var counts = await Storage.GetStickerCountsAsync([pack1.Id, pack2.Id]);
+
+        counts[pack1.Id].Should().Be(2);
+        counts[pack2.Id].Should().Be(1);
+    }
 }

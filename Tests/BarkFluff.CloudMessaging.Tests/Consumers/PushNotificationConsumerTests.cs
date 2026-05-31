@@ -458,8 +458,10 @@ public class PushNotificationConsumerTests
             Times.Once);
     }
 
+    // Consumer не делает ранний выход при пустых после фильтрации токенах:
+    // он вызывает Firebase с пустым списком (guard на Count == 0 живёт уже в FirebaseService).
     [Fact]
-    public async Task Consume_AllTokensEmpty_DoesNotCallFirebase()
+    public async Task Consume_AllTokensEmpty_CallsFirebaseWithEmptyTokenList()
     {
         var consumer = CreateConsumer();
         var @event = new PushNotificationEvent

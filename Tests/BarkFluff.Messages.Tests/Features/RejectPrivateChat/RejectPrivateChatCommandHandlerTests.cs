@@ -30,7 +30,7 @@ public class RejectPrivateChatCommandHandlerTests
             TestHelper.CreateLogger<RejectPrivateChatCommandHandler>());
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidReject_DeletesChatAndInvite()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
@@ -45,7 +45,7 @@ public class RejectPrivateChatCommandHandlerTests
         _queueSender.Verify(q => q.SendInviteResolution(chat.Id, 1, 2, false), Times.Once);
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ChatNotFound_ThrowsChatNotFoundException()
     {
         var handler = CreateHandler(1);
@@ -55,7 +55,7 @@ public class RejectPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<ChatNotFoundException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NotPrivateChat_ThrowsChatNotPrivateException()
     {
         var chat = await _h.SeedChat(memberUserIds: [1, 2]);
@@ -66,7 +66,7 @@ public class RejectPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<ChatNotPrivateException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NoInvite_ThrowsPrivateChatInviteNotFoundException()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
@@ -78,7 +78,7 @@ public class RejectPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<PrivateChatInviteNotFoundException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_WrongUser_ThrowsNoAccessToChatException()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);

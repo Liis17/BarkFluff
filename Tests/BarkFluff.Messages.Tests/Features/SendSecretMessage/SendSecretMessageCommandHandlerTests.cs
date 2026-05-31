@@ -29,7 +29,7 @@ public class SendSecretMessageCommandHandlerTests
             TestHelper.CreateLogger<SendSecretMessageCommandHandler>());
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidMessage_SendsAndReturnsResponse()
     {
         _buffer.Setup(b => b.EnqueueMessageAsync(It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<byte[]>()))
@@ -47,7 +47,7 @@ public class SendSecretMessageCommandHandlerTests
         result.MessageId.Should().Be("msg-1");
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NoDeviceId_ThrowsDeviceIdRequiredException()
     {
         var handler = CreateHandler(1, deviceId: null);
@@ -62,7 +62,7 @@ public class SendSecretMessageCommandHandlerTests
         await act.Should().ThrowAsync<DeviceIdRequiredException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_EnvelopeTooSmall_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -77,7 +77,7 @@ public class SendSecretMessageCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_EnvelopeTooLarge_ThrowsInvalidEncryptedPayloadException()
     {
         var handler = CreateHandler(1);
@@ -92,7 +92,7 @@ public class SendSecretMessageCommandHandlerTests
         await act.Should().ThrowAsync<InvalidEncryptedPayloadException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_PublishesMessageAndSilentPush()
     {
         _buffer.Setup(b => b.EnqueueMessageAsync(It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<byte[]>()))

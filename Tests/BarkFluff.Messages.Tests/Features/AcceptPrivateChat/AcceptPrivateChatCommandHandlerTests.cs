@@ -30,7 +30,7 @@ public class AcceptPrivateChatCommandHandlerTests
             TestHelper.CreateLogger<AcceptPrivateChatCommandHandler>());
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ValidAccept_AddsMemberAndRemovesInvite()
     {
         var inviterId = 1L;
@@ -45,7 +45,7 @@ public class AcceptPrivateChatCommandHandlerTests
         _inviteStore.Verify(s => s.RemoveAsync(chat.Id), Times.Once);
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_ChatNotFound_ThrowsChatNotFoundException()
     {
         var handler = CreateHandler(1);
@@ -55,7 +55,7 @@ public class AcceptPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<ChatNotFoundException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NotPrivateChat_ThrowsChatNotPrivateException()
     {
         var chat = await _h.SeedChat(memberUserIds: [1, 2]);
@@ -66,7 +66,7 @@ public class AcceptPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<ChatNotPrivateException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_NoInvite_ThrowsPrivateChatInviteNotFoundException()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
@@ -78,7 +78,7 @@ public class AcceptPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<PrivateChatInviteNotFoundException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_WrongUser_ThrowsNoAccessToChatException()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
@@ -90,7 +90,7 @@ public class AcceptPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<NoAccessToChatException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_AlreadyAccepted_ThrowsPrivateChatAlreadyAcceptedException()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1, 2], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
@@ -102,7 +102,7 @@ public class AcceptPrivateChatCommandHandlerTests
         await act.Should().ThrowAsync<PrivateChatAlreadyAcceptedException>();
     }
 
-    [Fact(Skip = "Requires Redis")]
+    [Fact]
     public async Task Handle_PublishesInviteResolutionEvent()
     {
         var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [1], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
