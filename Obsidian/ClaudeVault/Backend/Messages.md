@@ -26,7 +26,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений |
 | `EditMessage` | Правка своего сообщения: текст и/или список вложений. Forward-снапшот не редактируется. Системные нельзя. Выставляет `IsEdited`+`EditedAt`, публикует `MessageEditedEvent` |
 | `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`). Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
-| `ListChats` | Список чатов с пагинацией, имена/аватары из Redis или Users API |
+| `ListChats` | Список чатов с пагинацией, имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат) |
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
@@ -127,7 +127,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 |----------|---------------|
 | `Chat` | `LastMessage`, `CountUnread`, `FirstUnreadMessageId` — вычисляются в рантайме, не в БД. `Type` (enum ChatType: Regular/Private/Secret, default=Regular). `KdfSalt` и `PassphraseVerifier` — bytea nullable, заполняются только для `Type=Private`. Чаты с `Type=Secret` сервер не материализует — поле существует только для совместимости proto |
 | `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление |
-| `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable) |
+| `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable). Индекс `(ChatId, SentAt)` — обязателен: все выборки сообщений фильтруют по `ChatId` и сортируют по `SentAt`, без него seq scan |
 | `EncryptedMessage` | Шифрованное сообщение приватного чата. Отдельная таблица `EncryptedMessages` (НЕ join с `Messages`). Поля: `Id` (bigserial), `ChatId`, `SenderId`, `SenderDeviceId` (Guid), `SentAt`, `Ciphertext`/`Nonce`/`AssociatedData` (bytea), `IsEdited`, `EditedAt`, `IsDeleted`. Soft-delete очищает все 3 bytea-поля. Индексы по `ChatId` и `(ChatId, SentAt)` |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |
 | `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker, ForwardedMessage |
