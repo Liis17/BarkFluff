@@ -43,6 +43,7 @@ public class UsersStorage
     public async Task<List<User>> GetByIds(List<long> ids)
     {
         var users = await _usersContext.Users
+            .AsNoTracking()
             .Include(u => u.Contact)
             .Where(x => ids.Contains(x.Id))
             .ToListAsync();

@@ -40,7 +40,11 @@ public class Program
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<UsersContext>(c
-            => c.UseNpgsql(builder.Configuration["UsersDb"]));
+            => c.UseNpgsql(builder.Configuration["UsersDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddTransient<UsersStorage>();
         builder.Services.AddTransient<DevicesStorage>();

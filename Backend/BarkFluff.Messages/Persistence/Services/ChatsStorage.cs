@@ -28,6 +28,7 @@ public class ChatsStorage
         //todo: если будет лагать, то разделить на два разных запроса
         var chats = await _context
             .Chats
+            .AsNoTracking()
             .Include(x => x.Members)
             .Where(x => x.Members!.Any(m => m.UserId == userId))
             .OrderBy(x => x.Id)
