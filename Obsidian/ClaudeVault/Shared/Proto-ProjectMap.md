@@ -236,9 +236,14 @@
 | `SetOnlineStatus` | unary | Установить статус "В сети" (heartbeat) |
 | `GetOnlineStatus` | unary | Получить статусы нескольких пользователей |
 | `ChangeUsersInSubscription` | unary | Обновить список пользователей в подписке (полная замена массива) |
+| `SetTypingStatus` | unary | Heartbeat «печатает» в `chat_id` (`action`: TYPING/CANCELLED); ретранслируется участникам |
+| `SubscribeToTyping` | server streaming | Подписка на `TypingEvent` по списку `chat_ids` |
+| `ChangeChatsInTypingSubscription` | unary | Обновить список чатов в typing-подписке (полная замена массива) |
 
 **Enum `StatusTypeId`:** UNKNOWN, STATUS_ONLINE, STATUS_OFFLINE
+**Enum `TypingAction`:** TYPING_ACTION_UNKNOWN, TYPING_ACTION_TYPING, TYPING_ACTION_CANCELLED
 **`UserOnlineStatus`:** user_id + status + last_seen timestamp
+**`TypingEvent`:** chat_id + user_id + action
 
 ---
 

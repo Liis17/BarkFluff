@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Consumers;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
+using BarkFluff.Onliner.Features.SubscribeToTyping;
 using BarkFluff.Onliner.Host;
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Proto.Users;
@@ -45,6 +46,7 @@ public class Program
 
         // Регистрируем handler для streaming (не через MediatR)
         builder.Services.AddScoped<SubscribeToOnlineStatusQueryHandler>();
+        builder.Services.AddScoped<SubscribeToTypingQueryHandler>();
 
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);

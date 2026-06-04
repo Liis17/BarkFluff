@@ -12,6 +12,10 @@ public static class DependencyInjection
         services.AddSingleton<OnlineStatusSubscriptionsManager>();
         services.AddSingleton<OnlineStatusNotifier>();
 
+        // Индикаторы набора текста — чистый ретранслятор поверх in-memory подписок
+        services.AddSingleton<TypingSubscriptionsManager>();
+        services.AddSingleton<TypingNotifier>();
+
         // Фильтр видимости онлайн-статуса (использует gRPC-клиент UsersServerApi)
         services.AddScoped<OnlineVisibilityFilter>();
 
