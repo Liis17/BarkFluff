@@ -39,6 +39,7 @@
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\onliner_api.proto" GrpcServices="Server" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>

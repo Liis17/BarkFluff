@@ -33,13 +33,42 @@ message ChangeUsersInSubscriptionRequest {
 }
 
 message ChangeUsersInSubscriptionResponse {
-  
+
 }
+
+message SetTypingStatusRequest {
+  string chat_id = 1; // Чат (Guid-строка), в котором пользователь печатает
+  TypingAction action = 2; // Действие: печатает / прекратил (по умолчанию — печатает)
+}
+
+message SetTypingStatusResponse { }
+
+message SubscribeToTypingRequest {
+  repeated string chat_ids = 1; // Чаты (Guid-строки), для которых нужны индикаторы набора
+}
+
+message TypingEvent {
+  string chat_id = 1; // Чат (Guid-строка), в котором происходит набор
+  int64 user_id = 2; // Кто печатает
+  TypingAction action = 3; // Действие
+}
+
+message ChangeChatsInTypingSubscriptionRequest {
+  repeated string chat_ids = 1; // Новый массив идентификаторов чатов (Guid-строки)
+}
+
+message ChangeChatsInTypingSubscriptionResponse { }
 
 enum StatusTypeId {
   STATUS_TYPE_ID_UNKNOWN = 0;
   STATUS_ONLINE = 1;
   STATUS_OFFLINE = 2;
+}
+
+enum TypingAction {
+  TYPING_ACTION_UNKNOWN = 0;
+  TYPING_ACTION_TYPING = 1;
+  TYPING_ACTION_CANCELLED = 2;
 }
 
 service OnlinerApi {
@@ -53,6 +82,15 @@ service OnlinerApi {
   // Получить статус пользователей
   rpc GetOnlineStatus(GetOnlineStatusRequest) returns (GetOnlineStatusResponse);
   
-  // Изменить список пользователей на которые ты подписан 
+  // Изменить список пользователей на которые ты подписан
   rpc ChangeUsersInSubscription(ChangeUsersInSubscriptionRequest) returns (ChangeUsersInSubscriptionResponse);
+
+  // Сообщить, что пользователь печатает в чате (heartbeat, ретранслируется участникам)
+  rpc SetTypingStatus(SetTypingStatusRequest) returns (SetTypingStatusResponse);
+
+  // Подписаться на индикаторы набора текста в выбранных чатах
+  rpc SubscribeToTyping(SubscribeToTypingRequest) returns (stream TypingEvent);
+
+  // Изменить список чатов, для которых приходят индикаторы набора
+  rpc ChangeChatsInTypingSubscription(ChangeChatsInTypingSubscriptionRequest) returns (ChangeChatsInTypingSubscriptionResponse);
 }
