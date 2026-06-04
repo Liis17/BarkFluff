@@ -19,6 +19,9 @@ public static class DependencyInjection
         // Фильтр видимости онлайн-статуса (использует gRPC-клиент UsersServerApi)
         services.AddScoped<OnlineVisibilityFilter>();
 
+        // Фильтр членства в чате для typing (использует gRPC-клиент MessagesServerApi)
+        services.AddScoped<ChatMembershipFilter>();
+
         // Background Services
         services.AddHostedService<OfflineDetectionService>();
         services.AddHostedService<DatabasePersistenceService>();

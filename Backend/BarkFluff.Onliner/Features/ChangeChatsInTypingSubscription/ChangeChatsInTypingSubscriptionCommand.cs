@@ -6,5 +6,5 @@ namespace BarkFluff.Onliner.Features.ChangeChatsInTypingSubscription;
 
 public class ChangeChatsInTypingSubscriptionCommand : IRequest<ChangeChatsInTypingSubscriptionResponse>
 {
-    public required List<long> ChatIds { get; set; }
+    public required List<string> ChatIds { get; set; }
 }

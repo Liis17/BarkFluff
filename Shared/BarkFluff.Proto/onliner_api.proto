@@ -37,24 +37,24 @@ message ChangeUsersInSubscriptionResponse {
 }
 
 message SetTypingStatusRequest {
-  int64 chat_id = 1; // Чат, в котором пользователь печатает
+  string chat_id = 1; // Чат (Guid-строка), в котором пользователь печатает
   TypingAction action = 2; // Действие: печатает / прекратил (по умолчанию — печатает)
 }
 
 message SetTypingStatusResponse { }
 
 message SubscribeToTypingRequest {
-  repeated int64 chat_ids = 1; // Чаты, для которых нужны индикаторы набора
+  repeated string chat_ids = 1; // Чаты (Guid-строки), для которых нужны индикаторы набора
 }
 
 message TypingEvent {
-  int64 chat_id = 1; // Чат, в котором происходит набор
+  string chat_id = 1; // Чат (Guid-строка), в котором происходит набор
   int64 user_id = 2; // Кто печатает
   TypingAction action = 3; // Действие
 }
 
 message ChangeChatsInTypingSubscriptionRequest {
-  repeated int64 chat_ids = 1; // Новый массив идентификаторов чатов
+  repeated string chat_ids = 1; // Новый массив идентификаторов чатов (Guid-строки)
 }
 
 message ChangeChatsInTypingSubscriptionResponse { }

@@ -17,9 +17,9 @@ public class TypingSubscriptionsManager
     private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, SubscriptionData>>
         _subscriptions = new();
 
-    // Обратный индекс: ChatId -> (ConnectionId -> ReverseEntry).
+    // Обратный индекс: ChatId (Guid-строка) -> (ConnectionId -> ReverseEntry).
     // Позволяет получать стримы, отслеживающие конкретный чат, без перебора всех подписок.
-    private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, ReverseEntry>>
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, ReverseEntry>>
         _reverseIndex = new();
 
     /// <summary>
@@ -28,7 +28,7 @@ public class TypingSubscriptionsManager
     public class SubscriptionData
     {
         public required IServerStreamWriter<TypingEvent> Stream { get; init; }
-        public required HashSet<long> TrackedChatIds { get; init; }
+        public required HashSet<string> TrackedChatIds { get; init; }
     }
 
     /// <summary>
@@ -41,11 +41,11 @@ public class TypingSubscriptionsManager
     /// </summary>
     public Guid RegisterSubscription(
         long subscriberId,
-        List<long> trackedChatIds,
+        List<string> trackedChatIds,
         IServerStreamWriter<TypingEvent> responseStream)
     {
         var connectionId = Guid.NewGuid();
-        var trackedSet = new HashSet<long>(trackedChatIds);
+        var trackedSet = new HashSet<string>(trackedChatIds);
 
         var userSubscriptions = _subscriptions.GetOrAdd(
             subscriberId,
@@ -88,7 +88,7 @@ public class TypingSubscriptionsManager
     /// Получить стримы, отслеживающие данный чат, кроме самого печатающего.
     /// O(1) за счёт обратного индекса.
     /// </summary>
-    public List<IServerStreamWriter<TypingEvent>> GetStreamsTrackingChat(long chatId, long exceptSubscriberId)
+    public List<IServerStreamWriter<TypingEvent>> GetStreamsTrackingChat(string chatId, long exceptSubscriberId)
     {
         if (!_reverseIndex.TryGetValue(chatId, out var connections))
         {
@@ -105,7 +105,7 @@ public class TypingSubscriptionsManager
     /// Обновить TrackedChatIds во всех активных подписках пользователя.
     /// </summary>
     /// <returns>Количество обновлённых подписок (0 если нет активных)</returns>
-    public int UpdateAllSubscriptions(long subscriberId, List<long> newChatIds)
+    public int UpdateAllSubscriptions(long subscriberId, List<string> newChatIds)
     {
         if (!_subscriptions.TryGetValue(subscriberId, out var userSubscriptions))
         {
@@ -114,7 +114,7 @@ public class TypingSubscriptionsManager
 
         foreach (var (connectionId, oldSubscription) in userSubscriptions.ToList())
         {
-            var newSet = new HashSet<long>(newChatIds);
+            var newSet = new HashSet<string>(newChatIds);
 
             var newSubscription = new SubscriptionData
             {
@@ -153,7 +153,7 @@ public class TypingSubscriptionsManager
     private void AddToReverseIndex(
         Guid connectionId,
         long subscriberId,
-        IEnumerable<long> trackedChatIds,
+        IEnumerable<string> trackedChatIds,
         IServerStreamWriter<TypingEvent> stream)
     {
         var entry = new ReverseEntry(stream, subscriberId);
@@ -168,7 +168,7 @@ public class TypingSubscriptionsManager
         }
     }
 
-    private void RemoveFromReverseIndex(Guid connectionId, IEnumerable<long> trackedChatIds)
+    private void RemoveFromReverseIndex(Guid connectionId, IEnumerable<string> trackedChatIds)
     {
         foreach (var chatId in trackedChatIds)
         {

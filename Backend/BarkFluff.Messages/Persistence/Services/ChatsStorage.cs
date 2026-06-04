@@ -84,6 +84,15 @@ public class ChatsStorage
             .AnyAsync(m => m.ChatId == chatId && m.UserId == userId);
     }
 
+    public async Task<List<Guid>> GetMemberChatIds(long userId, List<Guid> chatIds)
+    {
+        return await _context.ChatMembers
+            .Where(m => m.UserId == userId && chatIds.Contains(m.ChatId))
+            .Select(m => m.ChatId)
+            .Distinct()
+            .ToListAsync();
+    }
+
     public async Task<int> GetTotalUserChats(long userId)
     {
         // Считаем только чаты, у которых есть сообщения (исключаем пустые чаты)

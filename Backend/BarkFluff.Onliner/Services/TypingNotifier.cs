@@ -29,7 +29,7 @@ public class TypingNotifier
     /// Разослать индикатор набора всем подписчикам чата, кроме самого печатающего.
     /// </summary>
     public async Task NotifyTyping(
-        long chatId,
+        string chatId,
         long typingUserId,
         TypingAction action,
         CancellationToken cancellationToken = default)
@@ -60,7 +60,7 @@ public class TypingNotifier
     private async Task SendToStreamAsync(
         IServerStreamWriter<TypingEvent> stream,
         TypingEvent typingEvent,
-        long chatId,
+        string chatId,
         CancellationToken cancellationToken)
     {
         try

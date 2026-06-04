@@ -6,6 +6,7 @@ using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 using BarkFluff.Onliner.Features.SubscribeToTyping;
 using BarkFluff.Onliner.Host;
 using BarkFluff.Onliner.Persistence.Contexts;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -55,6 +56,12 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["UsersService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddGrpcClient<MessagesServerApi.MessagesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["MessagesService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddMassTransit(x =>
