@@ -371,4 +371,3 @@
 | `Protos/*.proto` | Исходные proto-файлы (зеркало `Shared/BarkFluff.Proto`) |
 | `ExportOptions.plist` | Параметры экспорта архива для App Store |
 | `LiquidGlassGuide.md` | Руководство применения Liquid Glass в проекте |
-| `Mac/TZ_0_FilesRepository.md` … `TZ_4_Registration_macOS.md` | Технические задания по основным фичам |
