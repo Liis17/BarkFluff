@@ -28,6 +28,7 @@ public class ChatsStorage
         //todo: если будет лагать, то разделить на два разных запроса
         var chats = await _context
             .Chats
+            .AsNoTracking()
             .Include(x => x.Members)
             .Where(x => x.Members!.Any(m => m.UserId == userId))
             .OrderBy(x => x.Id)
@@ -81,6 +82,15 @@ public class ChatsStorage
     {
         return await _context.ChatMembers
             .AnyAsync(m => m.ChatId == chatId && m.UserId == userId);
+    }
+
+    public async Task<List<Guid>> GetMemberChatIds(long userId, List<Guid> chatIds)
+    {
+        return await _context.ChatMembers
+            .Where(m => m.UserId == userId && chatIds.Contains(m.ChatId))
+            .Select(m => m.ChatId)
+            .Distinct()
+            .ToListAsync();
     }
 
     public async Task<int> GetTotalUserChats(long userId)

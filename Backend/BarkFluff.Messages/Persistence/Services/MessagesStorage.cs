@@ -40,6 +40,7 @@ public class MessagesStorage
 
         var messages = await _context
             .Messages
+            .AsNoTracking()
             .OrderByDescending(m => m.SentAt)
             .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt <= startDate)
             .Take(count)
@@ -67,6 +68,7 @@ public class MessagesStorage
             var count = offsetBefore > 0 ? Math.Min(offsetBefore, MaxOffset) : MaxOffset;
             var latestMessages = await _context
                 .Messages
+                .AsNoTracking()
                 .Where(x => x.ChatId == chatId && !x.IsDeleted)
                 .OrderByDescending(m => m.SentAt)
                 .Take(count)
@@ -90,6 +92,7 @@ public class MessagesStorage
         {
             var messagesBefore = await _context
                 .Messages
+                .AsNoTracking()
                 .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt < referenceMessage.SentAt)
                 .OrderByDescending(m => m.SentAt)
                 .Take(offsetBefore)
@@ -106,6 +109,7 @@ public class MessagesStorage
         {
             var messagesAfter = await _context
                 .Messages
+                .AsNoTracking()
                 .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt > referenceMessage.SentAt)
                 .OrderBy(m => m.SentAt)
                 .Take(offsetAfter)

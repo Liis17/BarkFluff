@@ -451,6 +451,9 @@ service MessagesServerApi {
 
   // Получить все сообщения пользователя для экспорта
   rpc GetUserAllMessages(GetUserAllMessagesRequest) returns(GetUserAllMessagesResponse);
+
+  // Отфильтровать чаты, в которых пользователь состоит (батч-проверка членства)
+  rpc CheckChatMembership(CheckChatMembershipRequest) returns(CheckChatMembershipResponse);
 }
 
 message GetUserAllMessagesRequest {
@@ -488,4 +491,13 @@ message ExportChat {
   string title = 2; // название чата
   bool is_group_chat = 3; // является ли групповым чатом
   repeated int64 member_ids = 4; // идентификаторы участников
+}
+
+message CheckChatMembershipRequest {
+  int64 user_id = 1; // проверяемый пользователь
+  repeated string chat_ids = 2; // идентификаторы чатов (Guid-строки)
+}
+
+message CheckChatMembershipResponse {
+  repeated string member_chat_ids = 1; // подмножество chat_ids, где пользователь состоит
 }
