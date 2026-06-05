@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff — Войти</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ─────────────── TOKENS ─────────────── */
+        :root {
+            --font: 'Outfit', sans-serif;
+            --radius-card: 28px;
+            --radius-input: 14px;
+            --radius-btn: 14px;
+            --transition: 0.22s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* ── LIGHT ── */
+        [data-theme="light"] {
+            --bg:           #f2ede8;
+            --bg-noise:     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+            --blob1:        #e8c5a0;
+            --blob2:        #f5d9c2;
+            --blob3:        #d4a88a;
+            --card-bg:      rgba(255,255,255,0.72);
+            --card-border:  rgba(255,255,255,0.9);
+            --card-shadow:  0 32px 64px -16px rgba(100,50,20,0.14), 0 2px 8px rgba(0,0,0,0.05);
+            --text:         #1c1410;
+            --text-sub:     #7a6a5e;
+            --input-bg:     rgba(255,255,255,0.6);
+            --input-border: rgba(0,0,0,0.10);
+            --input-focus-border: #8c351c;
+            --input-focus-shadow: rgba(140,53,28,0.18);
+            --primary:      #8c351c;
+            --primary-2:    #a0442a;
+            --primary-glow: rgba(140,53,28,0.28);
+            --btn-text:     #fff;
+            --link:         #8c351c;
+            --error:        #c0392b;
+            --success:      #2ecc71;
+            --divider:      rgba(0,0,0,0.07);
+            --check-color:  #8c351c;
+            --logo-gradient: linear-gradient(135deg,#1c1410 0%,#5a3a28 100%);
+            --title-gradient: linear-gradient(135deg,#1c1410 0%,#5a3a28 100%);
+            --theme-btn-bg: rgba(0,0,0,0.06);
+            --theme-btn-hover: rgba(0,0,0,0.12);
+            --theme-btn-active-bg: #8c351c;
+            --theme-btn-active-color: #fff;
+            --copyright:    #9a8a80;
+            --game-line:    #8c351c;
+            --game-score:   rgba(0,0,0,0.15);
+            --game-hint:    rgba(0,0,0,0.25);
+            --game-over-bg: rgba(255,255,255,0.85);
+        }
+
+        /* ── DARK ── */
+        [data-theme="dark"] {
+            --bg:           #1a1310;
+            --blob1:        #3d1f10;
+            --blob2:        #2a1608;
+            --blob3:        #4a2518;
+            --card-bg:      rgba(40,28,20,0.80);
+            --card-border:  rgba(255,255,255,0.07);
+            --card-shadow:  0 32px 64px -16px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+            --text:         #f0e8e0;
+            --text-sub:     #8a7a6e;
+            --input-bg:     rgba(255,255,255,0.05);
+            --input-border: rgba(255,255,255,0.10);
+            --input-focus-border: #c0663a;
+            --input-focus-shadow: rgba(192,102,58,0.20);
+            --primary:      #c0663a;
+            --primary-2:    #d07848;
+            --primary-glow: rgba(192,102,58,0.35);
+            --btn-text:     #fff;
+            --link:         #c0663a;
+            --error:        #e74c3c;
+            --success:      #2ecc71;
+            --divider:      rgba(255,255,255,0.07);
+            --check-color:  #c0663a;
+            --logo-gradient: linear-gradient(135deg,#f0e8e0 0%,#c0a080 100%);
+            --title-gradient: linear-gradient(135deg,#f0e8e0 0%,#c8a888 100%);
+            --theme-btn-bg: rgba(255,255,255,0.06);
+            --theme-btn-hover: rgba(255,255,255,0.12);
+            --theme-btn-active-bg: #c0663a;
+            --theme-btn-active-color: #fff;
+            --copyright:    #5a4a40;
+            --game-line:    #c0663a;
+            --game-score:   rgba(255,255,255,0.15);
+            --game-hint:    rgba(255,255,255,0.25);
+            --game-over-bg: rgba(30,18,10,0.85);
+        }
+
+        /* ── MIDNIGHT ── */
+        [data-theme="midnight"] {
+            --bg:           #0c0e1a;
+            --blob1:        #1a1f3d;
+            --blob2:        #0d1226;
+            --blob3:        #251840;
+            --card-bg:      rgba(20,24,48,0.82);
+            --card-border:  rgba(120,100,255,0.12);
+            --card-shadow:  0 32px 64px -16px rgba(0,0,0,0.6), 0 0 0 1px rgba(100,80,255,0.08);
+            --text:         #e8e4ff;
+            --text-sub:     #7070a0;
+            --input-bg:     rgba(255,255,255,0.04);
+            --input-border: rgba(120,100,255,0.15);
+            --input-focus-border: #8b7bff;
+            --input-focus-shadow: rgba(139,123,255,0.22);
+            --primary:      #7b6bf0;
+            --primary-2:    #9080ff;
+            --primary-glow: rgba(123,107,240,0.4);
+            --btn-text:     #fff;
+            --link:         #9080ff;
+            --error:        #e05c7c;
+            --success:      #4cd9a0;
+            --divider:      rgba(120,100,255,0.10);
+            --check-color:  #9080ff;
+            --logo-gradient: linear-gradient(135deg,#e8e4ff 0%,#a090ff 100%);
+            --title-gradient: linear-gradient(135deg,#e8e4ff 0%,#b0a0ff 100%);
+            --theme-btn-bg: rgba(120,100,255,0.08);
+            --theme-btn-hover: rgba(120,100,255,0.18);
+            --theme-btn-active-bg: #7b6bf0;
+            --theme-btn-active-color: #fff;
+            --copyright:    #3a3860;
+            --game-line:    #7b6bf0;
+            --game-score:   rgba(200,180,255,0.2);
+            --game-hint:    rgba(200,180,255,0.3);
+            --game-over-bg: rgba(12,14,26,0.88);
+        }
+
+        /* ─────────────── RESET & BASE ─────────────── */
+        *, *::before, *::after {
+            margin: 0; padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font);
+            background-color: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            position: relative;
+            overflow-x: hidden;
+            padding: 24px 16px 140px;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* ─────────────── BACKGROUND ─────────────── */
+        .bg-blobs {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.55;
+            will-change: transform;
+        }
+
+        .b1 {
+            top: -15%; left: -10%;
+            width: 55vw; height: 55vw;
+            background: var(--blob1);
+            animation: drift1 28s ease-in-out infinite alternate;
+        }
+        .b2 {
+            bottom: -15%; right: -10%;
+            width: 45vw; height: 45vw;
+            background: var(--blob2);
+            animation: drift2 34s ease-in-out infinite alternate;
+        }
+        .b3 {
+            top: 40%; left: 50%;
+            width: 30vw; height: 30vw;
+            background: var(--blob3);
+            animation: drift3 22s ease-in-out infinite alternate;
+        }
+
+        @keyframes drift1 { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(40px,-50px) scale(1.08)} }
+        @keyframes drift2 { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(-50px,40px) scale(1.05)} }
+        @keyframes drift3 { 0%{transform:translate(-50%,-50%) scale(1)} 100%{transform:translate(-55%,-45%) scale(0.92)} }
+
+        /* ─────────────── THEME SWITCHER ─────────────── */
+        .theme-switcher {
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            z-index: 100;
+            display: flex;
+            gap: 6px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 50px;
+            padding: 5px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .theme-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            background: var(--theme-btn-bg);
+            color: var(--text);
+            transition: background var(--transition), transform 0.15s, box-shadow var(--transition);
+            line-height: 1;
+        }
+
+        .theme-btn:hover {
+            background: var(--theme-btn-hover);
+            transform: scale(1.1);
+        }
+
+        .theme-btn.active {
+            background: var(--theme-btn-active-bg);
+            color: var(--theme-btn-active-color);
+            box-shadow: 0 2px 10px var(--primary-glow);
+        }
+
+        /* ─────────────── PAGE WRAPPER ─────────────── */
+        .page {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 880px;
+            animation: pageIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        /* ─────────────── LOGIN HEADER (общий заголовок над двумя карточками) ─────────────── */
+        .login-header {
+            text-align: center;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .login-header .card-title { margin-bottom: 4px; }
+        .login-header .card-subtitle { margin-bottom: 0; }
+
+        /* ─────────────── LOGIN ROW (форма + QR) ─────────────── */
+        .login-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        @keyframes pageIn {
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─────────────── LOGO ─────────────── */
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+
+        .logo-text {
+            font-size: 22px;
+            font-weight: 700;
+            background: var(--logo-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.3px;
+        }
+
+        /* ─────────────── CARD ─────────────── */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-card);
+            padding: 36px 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: var(--card-shadow);
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+        }
+
+        /* ─────────────── QR CARD (быстрый вход через мобильный) ─────────────── */
+        .qr-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-card);
+            padding: 32px 28px 28px;
+            width: 320px;
+            max-width: 100%;
+            box-shadow: var(--card-shadow);
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .qr-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+            text-align: center;
+            letter-spacing: -0.2px;
+        }
+
+        .qr-subtitle {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-align: center;
+            margin-bottom: 18px;
+            line-height: 1.4;
+        }
+
+        .qr-box {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            background: #ffffff;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            margin-bottom: 14px;
+        }
+
+        .qr-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .qr-spinner {
+            width: 42px;
+            height: 42px;
+            border: 3px solid rgba(0,0,0,0.10);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.85s linear infinite;
+        }
+
+        .qr-status {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-align: center;
+            min-height: 18px;
+            line-height: 1.4;
+            transition: color var(--transition);
+        }
+
+        .qr-status--ok { color: var(--success); }
+        .qr-status--err { color: var(--error); }
+
+        /* ─────────────── CARD HEADER ─────────────── */
+        .card-title {
+            font-size: 28px;
+            font-weight: 800;
+            background: var(--title-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.6px;
+            margin-bottom: 5px;
+        }
+
+        .card-subtitle {
+            color: var(--text-sub);
+            font-size: 15px;
+            font-weight: 400;
+            margin-bottom: 30px;
+        }
+
+        /* ─────────────── FORM ─────────────── */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            transition: color var(--transition);
+        }
+
+        .input-wrap {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 13px 16px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: var(--radius-input);
+            color: var(--text);
+            font-size: 15px;
+            font-family: var(--font);
+            font-weight: 400;
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+            -webkit-appearance: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 3.5px var(--input-focus-shadow);
+            background: var(--input-bg);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-sub);
+            opacity: 0.5;
+        }
+
+        .form-input.error {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px rgba(192,57,43,0.15);
+        }
+
+        .form-error {
+            font-size: 12px;
+            color: var(--error);
+            margin-top: 6px;
+            min-height: 18px;
+            display: none;
+            animation: errIn 0.2s ease;
+        }
+
+        .form-error.visible { display: block; }
+
+        @keyframes errIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* password toggle */
+        .pw-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-size: 18px;
+            padding: 2px;
+            line-height: 1;
+            opacity: 0.6;
+            transition: opacity var(--transition);
+        }
+        .pw-toggle:hover { opacity: 1; }
+
+        /* ─────────────── CHECKBOX ─────────────── */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--check-color);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checkbox-group label {
+            font-size: 13.5px;
+            color: var(--text-sub);
+            cursor: pointer;
+            line-height: 1.4;
+        }
+
+        /* ─────────────── BUTTONS ─────────────── */
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: var(--btn-text);
+            border: none;
+            border-radius: var(--radius-btn);
+            font-size: 16px;
+            font-weight: 600;
+            font-family: var(--font);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 8px 28px var(--primary-glow);
+            transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
+            letter-spacing: 0.1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 36px var(--primary-glow);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-arrow {
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+
+        .btn-primary:hover:not(:disabled) .btn-arrow { transform: translateX(4px); }
+
+        .btn-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+            display: none;
+        }
+
+        .btn-primary.loading .btn-spinner { display: block; }
+        .btn-primary.loading .btn-label,
+        .btn-primary.loading .btn-arrow  { display: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ripple */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: scale(0);
+            animation: rippleAnim 0.5s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleAnim {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* ─────────────── DIVIDER ─────────────── */
+        .divider {
+            height: 1px;
+            background: var(--divider);
+            margin: 22px 0;
+        }
+
+        /* ─────────────── FOOTER IN CARD ─────────────── */
+        .card-footer {
+            text-align: center;
+        }
+
+        .card-footer p {
+            font-size: 14px;
+            color: var(--text-sub);
+            margin-bottom: 14px;
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 26px;
+            background: var(--theme-btn-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: var(--radius-btn);
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: background var(--transition), border-color var(--transition), transform 0.18s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--theme-btn-hover);
+            border-color: var(--input-focus-border);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary .btn-arrow { font-size: 16px; transition: transform 0.2s; }
+        .btn-secondary:hover .btn-arrow { transform: translateX(3px); }
+
+        /* ─────────────── SECTION TRANSITIONS ─────────────── */
+        .section { display: block; }
+        .section.hidden { display: none; }
+
+        .section-enter {
+            animation: secIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        @keyframes secIn {
+            from { opacity: 0; transform: translateX(18px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ─────────────── OTP ─────────────── */
+        .otp-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--link);
+            cursor: pointer;
+            margin-bottom: 18px;
+            background: none;
+            border: none;
+            font-family: var(--font);
+            font-weight: 500;
+            transition: color var(--transition), gap var(--transition);
+            padding: 0;
+        }
+
+        .otp-back:hover { gap: 10px; }
+
+        .otp-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .otp-subtitle {
+            font-size: 13.5px;
+            color: var(--text-sub);
+            margin-bottom: 22px;
+            line-height: 1.5;
+        }
+
+        .otp-inputs {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 22px;
+        }
+
+        .otp-input {
+            width: 46px;
+            height: 56px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 22px;
+            font-weight: 700;
+            font-family: var(--font);
+            text-align: center;
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition), transform 0.15s;
+        }
+
+        .otp-input:focus {
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 3px var(--input-focus-shadow);
+            transform: scale(1.06);
+        }
+
+        .otp-input.filled {
+            border-color: var(--primary);
+        }
+
+        /* ─────────────── WELCOME ─────────────── */
+        .welcome-icon {
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(135deg, var(--success), #27ae60);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            margin: 0 auto 18px;
+            box-shadow: 0 8px 28px rgba(46,204,113,0.3);
+            animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .welcome-subtitle {
+            font-size: 14px;
+            color: var(--text-sub);
+            text-align: center;
+        }
+
+        /* ─────────────── COPYRIGHT ─────────────── */
+        .copyright {
+            font-size: 12px;
+            color: var(--copyright);
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* ─────────────── GAME ─────────────── */
+        #game-canvas {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            z-index: 50;
+            pointer-events: none;
+            display: none;
+        }
+
+        #game-canvas.active {
+            display: block;
+            pointer-events: auto;
+        }
+
+        #game-hint {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font);
+            font-size: 12px;
+            color: var(--game-hint);
+            pointer-events: none;
+            z-index: 49;
+            white-space: nowrap;
+            transition: opacity 0.5s;
+        }
+
+        /* ─────────────── RESPONSIVE ─────────────── */
+        @media (max-width: 720px) {
+            .qr-card { width: 100%; max-width: 420px; }
+            .qr-box { width: 220px; height: 220px; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 16px 12px 80px; }
+
+            .card {
+                padding: 28px 22px;
+                border-radius: 22px;
+            }
+
+            .card-title { font-size: 24px; }
+
+            .otp-inputs { gap: 6px; }
+
+            .otp-input {
+                width: 40px;
+                height: 50px;
+                font-size: 19px;
+            }
+
+            .theme-switcher {
+                top: 12px;
+                left: 12px;
+            }
+
+            #game-hint { display: none; }
+        }
+
+        @media (max-width: 360px) {
+            .otp-input { width: 36px; height: 46px; font-size: 17px; }
+        }
+
+        /* ─────────────── REGISTRATION MODAL ─────────────── */
+        .reg-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .reg-overlay.visible { display: flex; }
+
+        /* hidden-атрибут должен побеждать display:flex/inline-flex на кнопках/секциях модалки */
+        .reg-dialog [hidden] { display: none !important; }
+
+        @keyframes fadeScaleIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .reg-dialog {
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-card);
+            width: 440px;
+            max-width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        .reg-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 22px 24px 14px;
+        }
+        .reg-back, .reg-close {
+            background: var(--theme-btn-bg);
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--transition), transform 0.15s;
+        }
+        .reg-back:hover, .reg-close:hover { background: var(--theme-btn-hover); transform: scale(1.08); }
+        .reg-head-text { flex: 1; min-width: 0; }
+        .reg-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+        .reg-step-label {
+            font-size: 12.5px;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .reg-progress {
+            height: 3px;
+            background: var(--divider);
+            margin: 0 24px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .reg-progress-bar {
+            height: 100%;
+            width: 11%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2));
+            border-radius: 3px;
+            transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .reg-body {
+            padding: 22px 24px 6px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .reg-step { animation: secIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .reg-step-desc {
+            font-size: 15px;
+            color: var(--text-sub);
+            margin-bottom: 18px;
+            line-height: 1.45;
+        }
+        .reg-hint {
+            font-size: 12px;
+            color: var(--text-sub);
+            opacity: 0.8;
+            margin-top: 6px;
+        }
+
+        /* field status icon (username/email) */
+        .reg-field-status {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .reg-status-ok  { color: var(--success); }
+        .reg-status-err { color: var(--error); }
+        .reg-status-loading {
+            border: 2px solid var(--input-border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        /* OTP inside modal */
+        .reg-otp { margin-top: 4px; margin-bottom: 14px; }
+        .reg-otp-err { text-align: center; margin-bottom: 12px; }
+
+        .reg-link-btn {
+            display: block;
+            margin: 4px auto 0;
+            background: none;
+            border: none;
+            color: var(--link);
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+        .reg-link-btn:hover:not(:disabled) { text-decoration: underline; }
+        .reg-link-btn:disabled { color: var(--text-sub); cursor: default; opacity: 0.7; }
+
+        /* password strength */
+        .reg-strength {
+            height: 5px;
+            background: var(--divider);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .reg-strength-bar {
+            height: 100%;
+            width: 0;
+            border-radius: 5px;
+            transition: width 0.25s ease, background 0.25s ease;
+        }
+        .reg-strength-label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 6px;
+            min-height: 16px;
+        }
+
+        /* avatar step */
+        .reg-avatar-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            padding: 10px 0 6px;
+        }
+        .reg-avatar-circle {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: var(--input-bg);
+            border: 2px dashed var(--input-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .reg-avatar-plus {
+            font-size: 48px;
+            font-weight: 300;
+            color: var(--text-sub);
+            line-height: 1;
+        }
+        .reg-avatar-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* cropper */
+        .reg-cropper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 4px 0;
+        }
+        .reg-crop-stage {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            max-width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+            cursor: grab;
+        }
+        .reg-crop-stage:active { cursor: grabbing; }
+        #regCropCanvas { display: block; width: 100%; height: 100%; }
+        .reg-crop-frame {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.35);
+            border: 2px solid rgba(255, 255, 255, 0.85);
+            border-radius: 50%;
+        }
+        .reg-crop-zoom {
+            width: 100%;
+            max-width: 260px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .reg-crop-actions {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 260px;
+        }
+        .reg-crop-actions .btn-secondary,
+        .reg-crop-actions .btn-primary { flex: 1; padding: 12px; }
+        .reg-crop-apply { width: auto; }
+
+        /* bio */
+        .reg-textarea {
+            resize: vertical;
+            min-height: 90px;
+            line-height: 1.5;
+        }
+        .reg-char-count {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-top: 6px;
+        }
+
+        /* 2FA */
+        .reg-2fa-text {
+            font-size: 14px;
+            color: var(--text-sub);
+            line-height: 1.5;
+            margin-bottom: 18px;
+        }
+        .reg-2fa-qr {
+            display: block;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 16px;
+            border-radius: 12px;
+            background: #fff;
+            padding: 8px;
+        }
+        .reg-2fa-secret-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: var(--radius-input);
+            padding: 10px 14px;
+            margin-bottom: 18px;
+        }
+        .reg-2fa-secret {
+            flex: 1;
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--text);
+            word-break: break-all;
+            letter-spacing: 0.5px;
+        }
+        .reg-2fa-secret-wrap .reg-link-btn { margin: 0; flex-shrink: 0; }
+
+        /* complete step */
+        .reg-step-complete { text-align: center; padding: 20px 0; }
+
+        /* footer */
+        .reg-footer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 24px 22px;
+            border-top: 1px solid var(--divider);
+        }
+        .reg-footer .reg-skip { padding: 13px 22px; }
+        .reg-footer .reg-next { flex: 1; padding: 14px; }
+
+        @media (max-width: 480px) {
+            .reg-overlay { padding: 0; align-items: stretch; }
+            .reg-dialog {
+                width: 100%;
+                max-width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BG Blobs -->
+    <div class="bg-blobs" aria-hidden="true">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+        <div class="blob b3"></div>
+    </div>
+
+    <!-- Theme Switcher -->
+    <div class="theme-switcher" role="group" aria-label="Цветовая схема">
+        <button class="theme-btn" data-theme-val="light"  title="Светлая тема"   aria-label="Светлая">☀️</button>
+        <button class="theme-btn" data-theme-val="dark"   title="Тёмная тема"    aria-label="Тёмная">🌙</button>
+        <button class="theme-btn" data-theme-val="midnight" title="Полночь"      aria-label="Полночь">✨</button>
+    </div>
+
+    <!-- Main Page -->
+    <main class="page" role="main">
+        <div class="logo">
+            <img src="/favicon.ico" class="logo-icon" alt="BarkFluff Logo" onerror="this.style.display='none'">
+            <span class="logo-text">BarkFluff</span>
+        </div>
+
+        <header class="login-header">
+            <h1 class="card-title">Добро пожаловать</h1>
+            <p class="card-subtitle">Войдите в свой аккаунт</p>
+        </header>
+
+        <div class="login-row">
+
+        <div class="card">
+
+            <!-- LOGIN SECTION -->
+            <div id="loginSection" class="section" role="region" aria-label="Вход">
+                <form id="loginForm" novalidate>
+                    <div class="form-group">
+                        <label class="form-label" for="loginInput">Почта или имя пользователя</label>
+                        <div class="input-wrap">
+                            <input type="text" class="form-input" id="loginInput"
+                                   placeholder="user@example.com"
+                                   maxlength="50" autocomplete="username">
+                        </div>
+                        <div class="form-error" id="loginError" role="alert"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="passwordInput">Пароль</label>
+                        <div class="input-wrap">
+                            <input type="password" class="form-input" id="passwordInput"
+                                   placeholder="Введите пароль"
+                                   autocomplete="current-password">
+                            <button type="button" class="pw-toggle" id="pwToggle" aria-label="Показать пароль" tabindex="-1">👁</button>
+                        </div>
+                        <div class="form-error" id="passwordError" role="alert"></div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="tempLoginCheck">
+                        <label for="tempLoginCheck">Временный вход (выход при закрытии вкладки)</label>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="signInBtn">
+                        <span class="btn-label">Войти</span>
+                        <span class="btn-arrow">→</span>
+                        <div class="btn-spinner"></div>
+                    </button>
+                </form>
+
+                <div class="divider"></div>
+                <div class="card-footer">
+                    <p>Нет аккаунта?</p>
+                    <button class="btn-secondary" id="toRegisterBtn">
+                        Зарегистрироваться
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- OTP SECTION -->
+            <div id="otpSection" class="section hidden" role="region" aria-label="Подтверждение OTP">
+                <button class="otp-back" id="otpBack" aria-label="Назад">← Назад</button>
+                <h2 class="otp-title">Код подтверждения</h2>
+                <p class="otp-subtitle">Введите 6-значный код из<br>приложения-аутентификатора или письма</p>
+
+                <div class="otp-inputs" id="otpInputs" role="group" aria-label="Поля кода">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                </div>
+                <div class="form-error" id="otpError" style="text-align:center;margin-bottom:14px" role="alert"></div>
+
+                <button type="button" class="btn-primary" id="otpSubmitBtn">
+                    <span class="btn-label">Подтвердить</span>
+                    <span class="btn-arrow">→</span>
+                    <div class="btn-spinner"></div>
+                </button>
+            </div>
+
+            <!-- WELCOME SECTION -->
+            <div id="welcomeSection" class="section hidden" role="region" aria-label="Успешный вход">
+                <div class="welcome-icon" aria-hidden="true">✓</div>
+                <h2 class="welcome-title">Вы вошли в аккаунт</h2>
+                <p class="welcome-subtitle">Веб-версия мессенджера скоро будет доступна</p>
+            </div>
+
+        </div>
+
+        <!-- QR FAST-AUTH CARD -->
+        <aside class="qr-card" id="fastAuthCard" aria-label="Вход через QR">
+            <h2 class="qr-title">Войти через QR</h2>
+            <p class="qr-subtitle">Отсканируйте код в&nbsp;мобильном BarkFluff</p>
+            <div class="qr-box">
+                <div class="qr-spinner" id="fastAuthSpinner" aria-hidden="true"></div>
+                <img class="qr-img" id="fastAuthImg" alt="QR-код для входа" hidden>
+            </div>
+            <div class="qr-status" id="fastAuthStatus" data-phase="loading">Загрузка кода…</div>
+        </aside>
+
+        </div><!-- /.login-row -->
+
+        <p class="copyright">© 2026 BarkFluff. Никакие права не защищены.</p>
+    </main>
+
+    <!-- ═══════════════ REGISTRATION MODAL ═══════════════ -->
+    <div class="reg-overlay" id="registerOverlay" role="dialog" aria-modal="true" aria-label="Регистрация">
+        <div class="reg-dialog">
+            <div class="reg-header">
+                <button type="button" class="reg-back" id="regBack" aria-label="Назад" hidden>←</button>
+                <div class="reg-head-text">
+                    <div class="reg-title" id="regTitle">Создать аккаунт</div>
+                    <div class="reg-step-label" id="regStepLabel">Шаг 1 из 9</div>
+                </div>
+                <button type="button" class="reg-close" id="regClose" aria-label="Закрыть">×</button>
+            </div>
+            <div class="reg-progress"><div class="reg-progress-bar" id="regProgressBar"></div></div>
+
+            <div class="reg-body">
+
+                <!-- Step 1: Name -->
+                <div class="reg-step" data-step="1">
+                    <p class="reg-step-desc">Как вас зовут?</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regFirstName">Имя</label>
+                        <input type="text" class="form-input" id="regFirstName" maxlength="40" placeholder="Иван" autocomplete="given-name">
+                        <div class="form-error" id="regFirstNameErr" role="alert"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regLastName">Фамилия (необязательно)</label>
+                        <input type="text" class="form-input" id="regLastName" maxlength="40" placeholder="Иванов" autocomplete="family-name">
+                        <div class="form-error" id="regLastNameErr" role="alert"></div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Username -->
+                <div class="reg-step" data-step="2" hidden>
+                    <p class="reg-step-desc">Придумайте имя пользователя</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regUsername">Имя пользователя</label>
+                        <div class="input-wrap">
+                            <input type="text" class="form-input" id="regUsername" maxlength="30" placeholder="ivan_petrov" autocapitalize="off" autocomplete="off" spellcheck="false">
+                            <span class="reg-field-status" id="regUsernameStatus"></span>
+                        </div>
+                        <div class="form-error" id="regUsernameErr" role="alert"></div>
+                        <div class="reg-hint">Латиница, цифры, символ _. От 3 до 30 символов.</div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Email -->
+                <div class="reg-step" data-step="3" hidden>
+                    <p class="reg-step-desc">Укажите электронную почту</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regEmail">Email</label>
+                        <div class="input-wrap">
+                            <input type="email" class="form-input" id="regEmail" maxlength="100" placeholder="user@example.com" autocapitalize="off" autocomplete="off" spellcheck="false">
+                            <span class="reg-field-status" id="regEmailStatus"></span>
+                        </div>
+                        <div class="form-error" id="regEmailErr" role="alert"></div>
+                        <div class="reg-hint">На неё придёт код подтверждения.</div>
+                    </div>
+                </div>
+
+                <!-- Step 4: OTP -->
+                <div class="reg-step" data-step="4" hidden>
+                    <p class="reg-step-desc" id="regOtpDesc">Введите код из письма</p>
+                    <div class="otp-inputs reg-otp" id="regOtp4" role="group" aria-label="Код подтверждения">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                    </div>
+                    <div class="form-error reg-otp-err" id="regOtpErr" role="alert"></div>
+                    <button type="button" class="reg-link-btn" id="regOtpResend">Отправить код повторно</button>
+                </div>
+
+                <!-- Step 5: Password -->
+                <div class="reg-step" data-step="5" hidden>
+                    <p class="reg-step-desc">Придумайте пароль</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regPassword">Пароль</label>
+                        <div class="input-wrap">
+                            <input type="password" class="form-input" id="regPassword" placeholder="Минимум 8 символов" autocomplete="new-password">
+                            <button type="button" class="pw-toggle" id="regPwToggle" aria-label="Показать пароль" tabindex="-1">👁</button>
+                        </div>
+                        <div class="reg-strength"><div class="reg-strength-bar" id="regStrengthBar"></div></div>
+                        <div class="reg-strength-label" id="regStrengthLabel"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regPassword2">Повторите пароль</label>
+                        <input type="password" class="form-input" id="regPassword2" placeholder="Повторите пароль" autocomplete="new-password">
+                        <div class="form-error" id="regPasswordErr" role="alert"></div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Avatar -->
+                <div class="reg-step" data-step="6" hidden>
+                    <p class="reg-step-desc">Добавьте фото профиля</p>
+                    <div class="reg-avatar-empty" id="regAvatarEmpty">
+                        <div class="reg-avatar-circle" id="regAvatarCircle">
+                            <span class="reg-avatar-plus" id="regAvatarPlus">+</span>
+                            <img class="reg-avatar-preview" id="regAvatarPreview" alt="Превью аватара" hidden>
+                        </div>
+                        <button type="button" class="btn-secondary" id="regAvatarPick">Выбрать фото</button>
+                    </div>
+                    <input type="file" id="regAvatarFile" accept="image/*" hidden>
+
+                    <div class="reg-cropper" id="regCropper" hidden>
+                        <div class="reg-crop-stage" id="regCropStage">
+                            <canvas id="regCropCanvas"></canvas>
+                            <div class="reg-crop-frame" aria-hidden="true"></div>
+                        </div>
+                        <input type="range" class="reg-crop-zoom" id="regCropZoom" min="1" max="3" step="0.01" value="1" aria-label="Масштаб">
+                        <div class="reg-crop-actions">
+                            <button type="button" class="btn-secondary" id="regCropCancel">Отмена</button>
+                            <button type="button" class="btn-primary reg-crop-apply" id="regCropApply"><span class="btn-label">Применить</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 7: Bio -->
+                <div class="reg-step" data-step="7" hidden>
+                    <p class="reg-step-desc">Расскажите о себе</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regBio">О себе (необязательно)</label>
+                        <textarea class="form-input reg-textarea" id="regBio" maxlength="200" rows="4" placeholder="Несколько слов о себе"></textarea>
+                        <div class="reg-char-count"><span id="regBioCount">0</span>/200</div>
+                    </div>
+                </div>
+
+                <!-- Step 8: 2FA -->
+                <div class="reg-step" data-step="8" hidden>
+                    <p class="reg-step-desc">Двухфакторная аутентификация</p>
+                    <div id="reg2faIntro">
+                        <p class="reg-2fa-text">Защитите аккаунт одноразовыми кодами из приложения-аутентификатора (Google Authenticator, Authy и др.). Этот шаг можно пропустить и включить позже в настройках.</p>
+                        <button type="button" class="btn-primary" id="reg2faEnable">
+                            <span class="btn-label">Включить 2FA</span>
+                            <div class="btn-spinner"></div>
+                        </button>
+                    </div>
+                    <div id="reg2faSetup" hidden>
+                        <img class="reg-2fa-qr" id="reg2faQr" alt="QR-код для 2FA" hidden>
+                        <p class="reg-2fa-text">Отсканируйте QR или введите ключ вручную:</p>
+                        <div class="reg-2fa-secret-wrap">
+                            <code class="reg-2fa-secret" id="reg2faSecret"></code>
+                            <button type="button" class="reg-link-btn" id="reg2faCopy">Копировать</button>
+                        </div>
+                        <p class="reg-step-desc">Введите код из приложения</p>
+                        <div class="otp-inputs reg-otp" id="regOtp8" role="group" aria-label="Код 2FA">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                        </div>
+                        <div class="form-error reg-otp-err" id="reg2faErr" role="alert"></div>
+                    </div>
+                </div>
+
+                <!-- Step 9: Complete -->
+                <div class="reg-step reg-step-complete" data-step="9" hidden>
+                    <div class="welcome-icon" aria-hidden="true">✓</div>
+                    <h2 class="welcome-title">Аккаунт создан!</h2>
+                    <p class="welcome-subtitle" id="regCompleteName"></p>
+                </div>
+
+            </div><!-- /.reg-body -->
+
+            <div class="reg-footer" id="regFooter">
+                <button type="button" class="btn-secondary reg-skip" id="regSkip" hidden>Пропустить</button>
+                <button type="button" class="btn-primary reg-next" id="regNext">
+                    <span class="btn-label" id="regNextLabel">Далее</span>
+                    <span class="btn-arrow">→</span>
+                    <div class="btn-spinner"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game canvas (desktop only) -->
+    <canvas id="game-canvas" aria-hidden="true"></canvas>
+    <div id="game-hint" aria-hidden="true">↑ нажми, чтобы начать</div>
+
+    <!-- Scripts -->
+    <script src="/js/proto/barkfluff.bundle.js" onerror="void 0"></script>
+    <script src="/js/app/device.js"    onerror="void 0"></script>
+    <script src="/js/app/tokens.js"    onerror="void 0"></script>
+    <script src="/js/app/metadata.js"  onerror="void 0"></script>
+    <script src="/js/app/auth.js"      onerror="void 0"></script>
+    <script src="/js/app/fast-auth.js" onerror="void 0"></script>
+    <script src="/js/app/login-page.js" onerror="void 0"></script>
+    <script src="/js/app/register.js" onerror="void 0"></script>
+
+    <script>
+    /* ═══════════════════════════════════════════════════
+       THEME MANAGEMENT — bf_theme cookie
+    ═══════════════════════════════════════════════════ */
+    (function() {
+        function getCookie(name) {
+            const m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g,'\\$1') + '=([^;]*)');
+            return m ? decodeURIComponent(m[1]) : null;
+        }
+
+        function setThemeCookie(val) {
+            const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+            document.cookie = 'bf_theme=' + encodeURIComponent(val) + '; path=/; expires=' + expires + '; SameSite=Lax';
+        }
+
+        function applyTheme(val) {
+            const allowed = ['light','dark','midnight'];
+            if (!allowed.includes(val)) val = 'light';
+            document.documentElement.setAttribute('data-theme', val);
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.themeVal === val);
+            });
+        }
+
+        // Init from cookie or system preference
+        let saved = getCookie('bf_theme');
+        if (!saved) {
+            saved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        applyTheme(saved);
+
+        // Buttons
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const val = this.dataset.themeVal;
+                applyTheme(val);
+                setThemeCookie(val);
+            });
+        });
+    })();
+
+    /* ═══════════════════════════════════════════════════
+       RIPPLE EFFECT
+    ═══════════════════════════════════════════════════ */
+    document.querySelectorAll('.btn-primary').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const rect = btn.getBoundingClientRect();
+            const r = document.createElement('span');
+            r.className = 'ripple';
+            const size = Math.max(rect.width, rect.height);
+            r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+            btn.appendChild(r);
+            setTimeout(() => r.remove(), 600);
+        });
+    });
+
+    /* ═══════════════════════════════════════════════════
+       PASSWORD TOGGLE
+    ═══════════════════════════════════════════════════ */
+    const pwToggle = document.getElementById('pwToggle');
+    const pwInput  = document.getElementById('passwordInput');
+    pwToggle.addEventListener('click', () => {
+        const show = pwInput.type === 'password';
+        pwInput.type = show ? 'text' : 'password';
+        pwToggle.textContent = show ? '🙈' : '👁';
+    });
+
+    /* ═══════════════════════════════════════════════════
+       SECTION HELPERS
+    ═══════════════════════════════════════════════════ */
+    function showSection(id) {
+        ['loginSection','otpSection','welcomeSection'].forEach(s => {
+            const el = document.getElementById(s);
+            if (s === id) {
+                el.classList.remove('hidden');
+                el.classList.add('section-enter');
+                setTimeout(() => el.classList.remove('section-enter'), 400);
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+    }
+
+    function setLoading(btn, loading) {
+        btn.disabled = loading;
+        btn.classList.toggle('loading', loading);
+    }
+
+    function showError(id, msg) {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.classList.toggle('visible', !!msg);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       LOGIN FORM
+    ═══════════════════════════════════════════════════ */
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const login    = document.getElementById('loginInput').value.trim();
+        const password = document.getElementById('passwordInput').value;
+        showError('loginError',''); showError('passwordError','');
+
+        let ok = true;
+        if (!login)    { showError('loginError','Введите почту или имя пользователя'); document.getElementById('loginInput').classList.add('error'); ok = false; }
+        if (!password) { showError('passwordError','Введите пароль'); document.getElementById('passwordInput').classList.add('error'); ok = false; }
+        if (!ok) return;
+
+        document.getElementById('loginInput').classList.remove('error');
+        document.getElementById('passwordInput').classList.remove('error');
+
+        const btn = document.getElementById('signInBtn');
+        setLoading(btn, true);
+
+        // Call real auth if available
+        if (typeof window.loginUser === 'function') {
+            try {
+                const res = await window.loginUser(login, password);
+                setLoading(btn, false);
+                if (res && res.needsOtp) { showSection('otpSection'); }
+                else if (res && res.ok)  { showSection('welcomeSection'); }
+                else { showError('loginError', res?.message || 'Неверные данные'); }
+            } catch(err) {
+                setLoading(btn, false);
+                showError('loginError', err.message || 'Ошибка соединения');
+            }
+        } else {
+            // Demo: simulate OTP step
+            setTimeout(() => { setLoading(btn, false); showSection('otpSection'); }, 900);
+        }
+    });
+
+    /* ═══════════════════════════════════════════════════
+       OTP INPUTS
+    ═══════════════════════════════════════════════════ */
+    const otpInputs = [...document.querySelectorAll('.otp-input')];
+    otpInputs.forEach((inp, i) => {
+        inp.addEventListener('input', function() {
+            const val = this.value.replace(/\D/g,'');
+            this.value = val;
+            this.classList.toggle('filled', !!val);
+            if (val && i < otpInputs.length - 1) otpInputs[i+1].focus();
+        });
+        inp.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && !this.value && i > 0) {
+                otpInputs[i-1].focus();
+                otpInputs[i-1].value = '';
+                otpInputs[i-1].classList.remove('filled');
+            }
+        });
+        inp.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const data = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+            data.split('').forEach((ch, j) => {
+                if (otpInputs[j]) { otpInputs[j].value = ch; otpInputs[j].classList.add('filled'); }
+            });
+            if (otpInputs[data.length]) otpInputs[data.length].focus();
+        });
+    });
+
+    document.getElementById('otpBack').addEventListener('click', () => {
+        otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
+        showError('otpError','');
+        showSection('loginSection');
+    });
+
+    document.getElementById('otpSubmitBtn').addEventListener('click', async function() {
+        const code = otpInputs.map(i => i.value).join('');
+        showError('otpError','');
+        if (code.length < 6) { showError('otpError','Введите 6 цифр'); return; }
+
+        const btn = document.getElementById('otpSubmitBtn');
+        setLoading(btn, true);
+
+        if (typeof window.verifyOtp === 'function') {
+            try {
+                const res = await window.verifyOtp(code);
+                setLoading(btn, false);
+                if (res && res.ok) showSection('welcomeSection');
+                else showError('otpError', res?.message || 'Неверный код');
+            } catch(err) {
+                setLoading(btn, false);
+                showError('otpError', err.message || 'Ошибка');
+            }
+        } else {
+            setTimeout(() => { setLoading(btn, false); showSection('welcomeSection'); }, 800);
+        }
+    });
+
+    /* ═══════════════════════════════════════════════════
+       EASTER EGG — RUNNER GAME (Desktop only)
+    ═══════════════════════════════════════════════════ */
+    (function() {
+        // Only on desktop
+        if (window.innerWidth < 768 || 'ontouchstart' in window) return;
+
+        const canvas  = document.getElementById('game-canvas');
+        const hint    = document.getElementById('game-hint');
+        const ctx     = canvas.getContext('2d');
+
+        let W, H, dpr;
+        let state    = 'idle'; // idle | playing | dead
+        let score    = 0;
+        let raf      = null;
+        let gameSpeed = 5;
+        let frameCount = 0;
+
+        // Player
+        const GROUND = 12;    // px from bottom of canvas (logical)
+        const PLAYER_X = 60;
+        const PLAYER_SIZE = 10;
+        const JUMP_HEIGHT = 85; // max jump height allowed (px, upward)
+
+        let playerY    = 0;  // offset from ground (0 = on ground)
+        let playerVY   = 0;
+        const GRAVITY  = 0.55;
+        const JUMP_VY  = -10;
+        let isJumping  = false;
+
+        // Obstacles: each = { x, segments: [{dx, dy}] }
+        let obstacles  = [];
+        let spawnTimer = 0;
+        let spawnInterval = 90;
+
+        function resize() {
+            dpr = window.devicePixelRatio || 1;
+            W   = window.innerWidth;
+            H   = 120;
+            canvas.width  = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width  = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function getThemeColor(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#888';
+        }
+
+        function groundY() { return H - GROUND; }
+
+        // Generate a random obstacle (bumps/steps along the ground line)
+        function makeObstacle() {
+            const type = Math.random();
+            const segs = [];
+            if (type < 0.4) {
+                // Single bump
+                const h = 8 + Math.random() * 10;
+                const w = 16 + Math.random() * 12;
+                segs.push({dx: w/2, dy: -h}, {dx: w/2, dy: h});
+            } else if (type < 0.7) {
+                // Double bump
+                const h1 = 7 + Math.random() * 8;
+                const h2 = 5 + Math.random() * 8;
+                segs.push({dx: 10, dy: -h1}, {dx: 10, dy: h1}, {dx: 12, dy: 0}, {dx: 10, dy: -h2}, {dx: 10, dy: h2});
+            } else {
+                // Tall step
+                const h = 12 + Math.random() * 10;
+                const w = 8 + Math.random() * 8;
+                segs.push({dx: w, dy: -h}, {dx: w*1.5, dy: 0}, {dx: w, dy: h});
+            }
+            return { x: W + 20, segments: segs, hit: false };
+        }
+
+        // Returns array of points on ground line for an obstacle (at given x offset from obs.x)
+        function obsPoints(obs) {
+            let cx = obs.x;
+            let cy = groundY();
+            const pts = [{x: cx, y: cy}];
+            for (const seg of obs.segments) {
+                cx += seg.dx;
+                cy += seg.dy;
+                pts.push({x: cx, y: cy});
+            }
+            return pts;
+        }
+
+        // Check collision: player bounding box vs obstacle path
+        function checkCollision(obs) {
+            const py = groundY() - playerY;
+            const px = PLAYER_X;
+            // Player circle: px, py-PLAYER_SIZE/2, radius PLAYER_SIZE*0.55
+            const pr = PLAYER_SIZE * 0.55;
+            const pts = obsPoints(obs);
+            for (let i = 0; i < pts.length - 1; i++) {
+                const ax = pts[i].x, ay = pts[i].y;
+                const bx = pts[i+1].x, by = pts[i+1].y;
+                // Distance point to segment
+                const dx = bx - ax, dy = by - ay;
+                const len2 = dx*dx + dy*dy;
+                if (len2 === 0) continue;
+                const t = Math.max(0, Math.min(1, ((px-ax)*dx + (py-ay)*dy) / len2));
+                const nx = ax + t*dx, ny = ay + t*dy;
+                const dist = Math.hypot(px-nx, py-ny);
+                if (dist < pr + 1.5) return true;
+            }
+            return false;
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, W, H);
+            const lineColor = getThemeColor('--game-line');
+            const scoreColor = getThemeColor('--game-score');
+
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth   = 1.5;
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
+
+            // Draw ground line with obstacle bumps
+            ctx.beginPath();
+            ctx.moveTo(0, groundY());
+
+            // Collect all obstacle segments in order
+            // Between obstacles: straight line
+            const sortedObs = [...obstacles].sort((a,b) => a.x - b.x);
+            let curX = 0;
+
+            for (const obs of sortedObs) {
+                if (obs.x > curX) {
+                    ctx.lineTo(obs.x, groundY());
+                }
+                const pts = obsPoints(obs);
+                for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
+                // end x of this obstacle
+                curX = pts[pts.length - 1].x;
+            }
+            ctx.lineTo(W, groundY());
+            ctx.stroke();
+
+            // Player — small square on the line
+            const py = groundY() - playerY - PLAYER_SIZE;
+            ctx.fillStyle = lineColor;
+            ctx.beginPath();
+            ctx.roundRect
+                ? ctx.roundRect(PLAYER_X - PLAYER_SIZE/2, py, PLAYER_SIZE, PLAYER_SIZE, 2)
+                : ctx.rect(PLAYER_X - PLAYER_SIZE/2, py, PLAYER_SIZE, PLAYER_SIZE);
+            ctx.fill();
+
+            // Score
+            if (state === 'playing' || state === 'dead') {
+                ctx.fillStyle = scoreColor;
+                ctx.font = '11px ' + (getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || 'sans-serif');
+                ctx.textAlign = 'right';
+                ctx.fillText(String(score).padStart(5,'0'), W - 16, 18);
+            }
+
+            // Game over overlay
+            if (state === 'dead') {
+                const bg = getThemeColor('--game-over-bg');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = lineColor;
+                ctx.font = 'bold 13px ' + (getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || 'sans-serif');
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER  •  Счёт: ' + score + '  •  ↑ снова', W/2, H/2 + 5);
+            }
+        }
+
+        function gameLoop() {
+            if (state !== 'playing') { drawGame(); return; }
+            frameCount++;
+
+            // Physics
+            playerVY += GRAVITY;
+            playerY  -= playerVY;
+            if (playerY <= 0) { playerY = 0; playerVY = 0; isJumping = false; }
+            // Cap jump so player stays within canvas
+            const maxY = H - GROUND - PLAYER_SIZE - 8;
+            if (playerY > maxY) { playerY = maxY; playerVY = 0; }
+
+            // Speed ramp
+            gameSpeed = 5 + Math.floor(score / 200) * 0.5;
+
+            // Spawn
+            spawnTimer++;
+            const dynInterval = Math.max(50, spawnInterval - Math.floor(score / 100) * 3);
+            if (spawnTimer >= dynInterval) {
+                obstacles.push(makeObstacle());
+                spawnTimer = 0;
+            }
+
+            // Move obstacles
+            obstacles.forEach(o => { o.x -= gameSpeed; });
+            obstacles = obstacles.filter(o => {
+                const pts = obsPoints(o);
+                return pts[pts.length-1].x > -20;
+            });
+
+            // Score
+            if (frameCount % 6 === 0) score++;
+
+            // Collision
+            for (const obs of obstacles) {
+                if (checkCollision(obs)) {
+                    state = 'dead';
+                    drawGame();
+                    return;
+                }
+            }
+
+            drawGame();
+            raf = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            state       = 'playing';
+            score       = 0;
+            frameCount  = 0;
+            playerY     = 0;
+            playerVY    = 0;
+            isJumping   = false;
+            obstacles   = [];
+            spawnTimer  = spawnInterval;
+            gameSpeed   = 5;
+            cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(gameLoop);
+        }
+
+        function jump() {
+            if (state === 'idle') {
+                canvas.classList.add('active');
+                hint.style.opacity = '0';
+                setTimeout(() => hint.style.display = 'none', 500);
+                startGame();
+                return;
+            }
+            if (state === 'dead') {
+                startGame();
+                return;
+            }
+            if (state === 'playing' && !isJumping) {
+                playerVY  = JUMP_VY;
+                isJumping = true;
+            }
+        }
+
+        // Keyboard: ArrowUp only when no input/button focused
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'ArrowUp') return;
+            const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
+            if (['input','textarea','button','select'].includes(tag)) return;
+            e.preventDefault();
+            jump();
+        });
+
+        // Touch on canvas
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            jump();
+        }, { passive: false });
+
+        canvas.addEventListener('click', jump);
+
+        // Init resize
+        resize();
+        window.addEventListener('resize', resize);
+
+        // Show hint on desktop after short delay
+        if (window.innerWidth >= 768) {
+            setTimeout(() => {
+                hint.style.opacity = '1';
+            }, 3000);
+        }
+    })();
+    </script>
+</body>
+</html>

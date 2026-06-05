@@ -1,0 +1,10 @@
+{
+  "name": "barkfluff-proto-bundle",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "google-protobuf": "3.21.2",
+    "grpc-web": "1.5.0",
+    "esbuild": "0.24.0"
+  }
+}
