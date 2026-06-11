@@ -234,7 +234,10 @@
       "Bash(command -v python3)",
       "Bash(command -v py)",
       "Bash(command -v python.exe)",
-      "Bash(py -)"
+      "Bash(py -)",
+      "Bash(npm -v)",
+      "Bash(ls node_modules)",
+      "Bash(npm ci *)"
     ],
     "deny": [],
     "ask": []
