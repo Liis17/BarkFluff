@@ -457,6 +457,9 @@ service MessagesServerApi {
 
   // Получить идентификаторы участников чата (для рассылки ринга группового звонка)
   rpc GetChatMemberIds(GetChatMemberIdsRequest) returns(GetChatMemberIdsResponse);
+
+  // Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
+  rpc PostCallSystemMessage(PostCallSystemMessageRequest) returns(PostCallSystemMessageResponse);
 }
 
 message GetUserAllMessagesRequest {
@@ -511,4 +514,33 @@ message GetChatMemberIdsRequest {
 
 message GetChatMemberIdsResponse {
   repeated int64 user_ids = 1; // идентификаторы участников чата
+}
+
+// Итог звонка для системного сообщения. Текст форматирует Messages.
+enum CallSystemResult {
+  CALL_SYSTEM_RESULT_UNKNOWN = 0;
+  CALL_SYSTEM_RESULT_ENDED = 1;    // состоялся (с длительностью)
+  CALL_SYSTEM_RESULT_MISSED = 2;   // пропущен
+  CALL_SYSTEM_RESULT_REJECTED = 3; // отклонён
+}
+
+// Цель личного звонка (системное сообщение пишется в личный чат двух пользователей).
+message PersonCallTarget {
+  int64 caller_user_id = 1;
+  int64 callee_user_id = 2;
+}
+
+message PostCallSystemMessageRequest {
+  // Ровно одно из двух: групповой чат (chat_id) или личный звонок (person).
+  oneof target {
+    string chat_id = 1;          // групповой чат (Guid-строка)
+    PersonCallTarget person = 2; // личный звонок
+  }
+  int64 sender_user_id = 3;      // от кого системное сообщение (инициатор звонка)
+  CallSystemResult result = 4;
+  int64 duration_seconds = 5;    // длительность разговора (0 для несостоявшихся)
+}
+
+message PostCallSystemMessageResponse {
+  bool posted = 1; // false, если личного чата ещё нет (сообщение не записано)
 }

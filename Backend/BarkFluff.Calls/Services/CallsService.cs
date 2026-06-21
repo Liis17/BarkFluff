@@ -217,6 +217,7 @@ public class CallsService
                 Finalize(session, CallEndReasonKind.Rejected, userId);
                 await _db.SaveChangesAsync(ct);
                 _timeouts.Cancel(session.Id);
+                await PostCallSystemMessageAsync(session, ct);
             }
 
             // Инициатору — «отклонён»; всем устройствам получателя — гасим ринг.
@@ -245,6 +246,7 @@ public class CallsService
             await _db.SaveChangesAsync(ct);
             _timeouts.Cancel(session.Id);
             await NotifyEndedAsync(session, ct);
+            await PostCallSystemMessageAsync(session, ct);
             _metrics.Increment("calls_ended");
         }
 
@@ -266,6 +268,7 @@ public class CallsService
         Finalize(session, CallEndReasonKind.Missed, endedByUserId: null);
         await _db.SaveChangesAsync();
         await NotifyEndedAsync(session, CancellationToken.None);
+        await PostCallSystemMessageAsync(session, CancellationToken.None);
         _metrics.Increment("calls_missed");
         _logger.LogInformation("Звонок {CallId} помечен пропущенным (таймаут)", callId);
     }
@@ -284,6 +287,7 @@ public class CallsService
         await _db.SaveChangesAsync();
         _timeouts.Cancel(session.Id);
         await NotifyEndedAsync(session, CancellationToken.None);
+        await PostCallSystemMessageAsync(session, CancellationToken.None);
         _metrics.Increment("calls_room_finished");
         _logger.LogInformation("Звонок {CallId} завершён по room_finished", session.Id);
     }
@@ -339,6 +343,49 @@ public class CallsService
         };
 
         await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+    }
+
+    /// <summary>Системное сообщение об итоге звонка в чат (best-effort, не блокирует call-control).</summary>
+    private async Task PostCallSystemMessageAsync(CallSession session, CancellationToken ct)
+    {
+        var result = session.EndReason switch
+        {
+            CallEndReasonKind.Rejected => CallSystemResult.Rejected,
+            CallEndReasonKind.Missed => CallSystemResult.Missed,
+            _ => session.DurationSeconds > 0
+                ? CallSystemResult.Ended
+                : CallSystemResult.Missed,
+        };
+
+        var request = new PostCallSystemMessageRequest
+        {
+            SenderUserId = session.CallerUserId,
+            Result = result,
+            DurationSeconds = session.DurationSeconds,
+        };
+
+        if (session.IsGroup)
+        {
+            request.ChatId = session.ChatId!.Value.ToString();
+        }
+        else
+        {
+            request.Person = new PersonCallTarget
+            {
+                CallerUserId = session.CallerUserId,
+                CalleeUserId = session.CalleeUserId!.Value,
+            };
+        }
+
+        try
+        {
+            await _messagesClient.PostCallSystemMessageAsync(request, cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _metrics.Increment("call_system_message_errors");
+            _logger.LogWarning(ex, "Не удалось записать системное сообщение о звонке {CallId}", session.Id);
+        }
     }
 
     private static void Finalize(CallSession session, CallEndReasonKind reason, long? endedByUserId)

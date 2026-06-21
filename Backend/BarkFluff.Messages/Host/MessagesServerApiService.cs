@@ -1,6 +1,7 @@
 using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.ExportData;
 using BarkFluff.Messages.Features.GetChatMemberIds;
+using BarkFluff.Messages.Features.PostCallSystemMessage;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Identity;
 
@@ -57,5 +58,39 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         };
 
         return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<PostCallSystemMessageResponse> PostCallSystemMessage(
+        PostCallSystemMessageRequest request,
+        ServerCallContext context)
+    {
+        Guid? chatId = null;
+        long? caller = null;
+        long? callee = null;
+
+        switch (request.TargetCase)
+        {
+            case PostCallSystemMessageRequest.TargetOneofCase.ChatId when Guid.TryParse(request.ChatId, out var cid):
+                chatId = cid;
+                break;
+            case PostCallSystemMessageRequest.TargetOneofCase.Person:
+                caller = request.Person.CallerUserId;
+                callee = request.Person.CalleeUserId;
+                break;
+            default:
+                return Task.FromResult(new PostCallSystemMessageResponse { Posted = false });
+        }
+
+        var command = new PostCallSystemMessageCommand
+        {
+            ChatId = chatId,
+            CallerUserId = caller,
+            CalleeUserId = callee,
+            SenderUserId = request.SenderUserId,
+            Result = request.Result,
+            DurationSeconds = request.DurationSeconds,
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
     }
 }

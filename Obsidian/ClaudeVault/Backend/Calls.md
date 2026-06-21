@@ -28,6 +28,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **Webhooks** — отдельный HTTP/1.1-листенер (`RunSettings:Http1Port=7026`), `WebhookReceiver` верифицирует подпись. `room_finished` → финализация CDR; `participant_joined/left` → `ParticipantEvent` в стрим.
 - **CDR** — таблица `CallSessions` (Postgres/EF Core): caller/callee/chat, room, media, status (Ringing→Active→Ended), reason, тайминги, длительность.
 - **Таймаут** — `CallTimeoutScheduler` (45с): не ответили → `CallEndReason.Missed`.
+- **Системное сообщение** — при завершении звонок пишет в чат системное сообщение («Звонок · 5:23» / «Пропущенный звонок» / «Звонок отклонён») через `MessagesServerApi.PostCallSystemMessage` (best-effort). Для личного звонка — в существующий личный чат; если чата ещё нет, сообщение не пишется (чат не создаётся).
 
 ## gRPC API (`calls_api.proto`, `CallsApi`)
 
@@ -54,13 +55,13 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 ## Зависимости
 
-- **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка) + `GetChatMemberIds` (ринг участникам).
+- **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
 - **[[Backend/Beacon]]** — отдаёт клиенту `livekit_url` из конфига Calls.
 - **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `Backend/livekit/livekit.yaml`.
 - **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами).
 
 ## Не реализовано (следующие шаги)
 
-- Системное сообщение «звонок N мин / пропущенный» в [[Backend/Messages]] (нужен резолв person-chat-id + фан-аут участникам).
+- Системное сообщение для личного звонка с **новым контактом** (личного чата ещё нет) — сейчас не пишется, чтобы не тащить создание чата с кэшем имён/аватаров в путь звонка.
 - VoIP/CallKit push при входящем звонке через [[Backend/CloudMessaging]] (Фаза 3 плана).
 - Клиенты (LiveKit SDK, экран звонка) — Фаза 4.
