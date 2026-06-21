@@ -48,19 +48,21 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Onliner }, cancellationToken: cancellationToken).ResponseAsync;
         var fastAuthTask = _configurationApiClient
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.FastAuth }, cancellationToken: cancellationToken).ResponseAsync;
+        var callsTask = _configurationApiClient
+            .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Calls }, cancellationToken: cancellationToken).ResponseAsync;
 
         try
         {
-            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask);
-            _metrics.Add("configuration_fetch_success", 7);
+            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask);
+            _metrics.Add("configuration_fetch_success", 8);
         }
         catch
         {
             // Считаем сколько задач отвалилось, остальные считаем успешными.
-            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask }
+            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask }
                 .Count(t => t.IsFaulted);
             _metrics.Add("configuration_fetch_errors", failed);
-            _metrics.Add("configuration_fetch_success", 7 - failed);
+            _metrics.Add("configuration_fetch_success", 8 - failed);
             throw;
         }
 
@@ -71,6 +73,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         var updatesSettings = updatesTask.Result;
         var onlinerSettings = onlinerTask.Result;
         var fastAuthSettings = fastAuthTask.Result;
+        var callsSettings = callsTask.Result;
 
         _logger.LogInformation(
             "Информация о сервере '{ServerName}' успешно собрана. Описание: {Description}",
@@ -99,6 +102,10 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Updates = ParseService(ServiceId.Updates, updatesSettings.Configurations),
             Onliner = ParseService(ServiceId.Onliner, onlinerSettings.Configurations),
             FastAuth = ParseService(ServiceId.FastAuth, fastAuthSettings.Configurations),
+
+            // WSS-адрес LiveKit для звонков (пусто, если Calls/LiveKit не настроены).
+            LivekitUrl = callsSettings.Configurations
+                .FirstOrDefault(x => x.Section == "LiveKit" && x.Key == "Url")?.Value ?? string.Empty,
         };
     }
 
