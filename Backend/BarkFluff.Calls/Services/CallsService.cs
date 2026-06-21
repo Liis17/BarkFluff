@@ -1,0 +1,434 @@
+using BarkFluff.Calls.Domain;
+using BarkFluff.Calls.Persistence;
+using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Calls;
+using BarkFluff.Proto.Messages;
+
+using Google.Protobuf.WellKnownTypes;
+
+using Grpc.Core;
+
+using Microsoft.EntityFrameworkCore;
+
+namespace BarkFluff.Calls.Services;
+
+/// <summary>
+/// Доменная логика жизненного цикла звонка: ringing → active → ended.
+/// Backend делает call-control + выдачу LiveKit-токенов; медиа идёт мимо backend.
+/// Доставка ринга — in-process через <see cref="CallEventSubscriptionsManager"/>
+/// (device-scope, как SubscribeSecretMessages в Updates).
+/// </summary>
+public class CallsService
+{
+    private readonly CallsContext _db;
+    private readonly LiveKitTokenService _tokens;
+    private readonly CallEventSubscriptionsManager _subscriptions;
+    private readonly CallTimeoutScheduler _timeouts;
+    private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
+    private readonly UserContext _userContext;
+    private readonly MetricsCollector _metrics;
+    private readonly ILogger<CallsService> _logger;
+
+    public CallsService(
+        CallsContext db,
+        LiveKitTokenService tokens,
+        CallEventSubscriptionsManager subscriptions,
+        CallTimeoutScheduler timeouts,
+        MessagesServerApi.MessagesServerApiClient messagesClient,
+        UserContext userContext,
+        MetricsCollector metrics,
+        ILogger<CallsService> logger)
+    {
+        _db = db;
+        _tokens = tokens;
+        _subscriptions = subscriptions;
+        _timeouts = timeouts;
+        _messagesClient = messagesClient;
+        _userContext = userContext;
+        _metrics = metrics;
+        _logger = logger;
+    }
+
+    // ── Исходящий звонок ───────────────────────────────────────────────────
+
+    public async Task<InitiateCallResponse> InitiateAsync(InitiateCallRequest request, CancellationToken ct)
+    {
+        var callerId = _userContext.UserId;
+        var media = request.MediaType.ToDomain();
+
+        var session = new CallSession
+        {
+            Id = Guid.NewGuid(),
+            CallerUserId = callerId,
+            Media = media,
+            Status = CallStatus.Ringing,
+            EndReason = CallEndReasonKind.None,
+            StartedAt = DateTime.UtcNow,
+        };
+
+        switch (request.TargetCase)
+        {
+            case InitiateCallRequest.TargetOneofCase.CalleeUserId:
+                if (request.CalleeUserId == callerId)
+                {
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, "Нельзя позвонить самому себе"));
+                }
+
+                session.CalleeUserId = request.CalleeUserId;
+                break;
+
+            case InitiateCallRequest.TargetOneofCase.ChatId:
+                var chatId = ParseGuid(request.ChatId, "chat_id");
+                await EnsureChatMemberAsync(callerId, chatId, ct);
+                session.ChatId = chatId;
+                break;
+
+            default:
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Не указан получатель звонка"));
+        }
+
+        session.RoomName = $"call:{session.Id}";
+
+        _db.CallSessions.Add(session);
+        await _db.SaveChangesAsync(ct);
+
+        _timeouts.Schedule(session.Id);
+
+        var incoming = new CallEvent
+        {
+            Incoming = new IncomingCallEvent
+            {
+                CallId = session.Id.ToString(),
+                CallerUserId = callerId,
+                ChatId = session.ChatId?.ToString() ?? string.Empty,
+                MediaType = media.ToProto(),
+                StartedAt = Timestamp.FromDateTime(session.StartedAt),
+            }
+        };
+
+        await RingAsync(session, incoming, ct);
+
+        _metrics.Increment("calls_initiated");
+        _metrics.Increment(session.IsGroup ? "calls_initiated_group" : "calls_initiated_direct");
+        _logger.LogInformation("Звонок {CallId} инициирован пользователем {UserId} ({Kind})",
+            session.Id, callerId, session.IsGroup ? "group" : "direct");
+
+        return new InitiateCallResponse
+        {
+            CallId = session.Id.ToString(),
+            LivekitUrl = _tokens.Url,
+            AccessToken = CreateToken(session, callerId),
+        };
+    }
+
+    // ── Приём звонка ───────────────────────────────────────────────────────
+
+    public async Task<AcceptCallResponse> AcceptAsync(string callId, CancellationToken ct)
+    {
+        var userId = _userContext.UserId;
+        var deviceId = RequireDeviceId();
+        var session = await LoadAsync(callId, ct);
+
+        if (session.Status == CallStatus.Ended)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Звонок уже завершён"));
+        }
+
+        await EnsureCanAnswerAsync(session, userId, ct);
+
+        if (session.Status == CallStatus.Ringing)
+        {
+            session.Status = CallStatus.Active;
+            session.AnsweredAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+            _timeouts.Cancel(session.Id);
+            _metrics.Increment("calls_answered");
+        }
+
+        var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
+
+        // Уведомляем инициатора и гасим ринг на остальных устройствах ответившего.
+        await _subscriptions.SendToUserAsync(session.CallerUserId, accepted);
+        await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+
+        _logger.LogInformation("Звонок {CallId} принят пользователем {UserId}", session.Id, userId);
+
+        return new AcceptCallResponse
+        {
+            LivekitUrl = _tokens.Url,
+            AccessToken = CreateToken(session, userId),
+        };
+    }
+
+    // ── Присоединение к идущему звонку (group late-join / второй девайс) ────
+
+    public async Task<JoinCallResponse> JoinAsync(string callId, CancellationToken ct)
+    {
+        var userId = _userContext.UserId;
+        var deviceId = RequireDeviceId();
+        var session = await LoadAsync(callId, ct);
+
+        if (session.Status != CallStatus.Active)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Звонок не идёт"));
+        }
+
+        await EnsureParticipantAsync(session, userId, ct);
+
+        // Гасим ринг на остальных устройствах присоединившегося.
+        var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
+        await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+
+        _metrics.Increment("calls_joined");
+        _logger.LogInformation("Пользователь {UserId} присоединился к звонку {CallId}", userId, session.Id);
+
+        return new JoinCallResponse
+        {
+            LivekitUrl = _tokens.Url,
+            AccessToken = CreateToken(session, userId),
+        };
+    }
+
+    // ── Отклонение ─────────────────────────────────────────────────────────
+
+    public async Task<RejectCallResponse> RejectAsync(string callId, CancellationToken ct)
+    {
+        var userId = _userContext.UserId;
+        var session = await LoadAsync(callId, ct);
+
+        var rejected = new CallEvent { Rejected = new CallRejectedEvent { CallId = session.Id.ToString(), RejectedByUserId = userId } };
+
+        if (session.IsGroup)
+        {
+            await EnsureParticipantAsync(session, userId, ct);
+            // В группе один отказ не завершает звонок — лишь гасим ринг на устройствах отказавшегося.
+            await _subscriptions.SendToUserAsync(userId, rejected);
+        }
+        else
+        {
+            if (userId != session.CalleeUserId)
+            {
+                throw new RpcException(new Status(StatusCode.PermissionDenied, "Нет доступа к звонку"));
+            }
+
+            if (session.Status != CallStatus.Ended)
+            {
+                Finalize(session, CallEndReasonKind.Rejected, userId);
+                await _db.SaveChangesAsync(ct);
+                _timeouts.Cancel(session.Id);
+            }
+
+            // Инициатору — «отклонён»; всем устройствам получателя — гасим ринг.
+            await _subscriptions.SendToUserAsync(session.CallerUserId, rejected);
+            await _subscriptions.SendToUserAsync(userId, rejected);
+            _metrics.Increment("calls_rejected");
+        }
+
+        _logger.LogInformation("Звонок {CallId} отклонён пользователем {UserId}", session.Id, userId);
+        return new RejectCallResponse();
+    }
+
+    // ── Завершение ─────────────────────────────────────────────────────────
+
+    public async Task<EndCallResponse> EndAsync(string callId, CancellationToken ct)
+    {
+        var userId = _userContext.UserId;
+        var session = await LoadAsync(callId, ct);
+
+        await EnsureParticipantAsync(session, userId, ct);
+
+        if (session.Status != CallStatus.Ended)
+        {
+            var reason = session.AnsweredAt.HasValue ? CallEndReasonKind.Hangup : CallEndReasonKind.Missed;
+            Finalize(session, reason, userId);
+            await _db.SaveChangesAsync(ct);
+            _timeouts.Cancel(session.Id);
+            await NotifyEndedAsync(session, ct);
+            _metrics.Increment("calls_ended");
+        }
+
+        _logger.LogInformation("Звонок {CallId} завершён пользователем {UserId}", session.Id, userId);
+        return new EndCallResponse();
+    }
+
+    // ── Системные пути (таймаут / webhooks LiveKit) ────────────────────────
+
+    /// <summary>Таймаут ринга — звонок никто не принял.</summary>
+    public async Task TimeoutAsync(Guid callId)
+    {
+        var session = await _db.CallSessions.FirstOrDefaultAsync(c => c.Id == callId);
+        if (session is null || session.Status != CallStatus.Ringing)
+        {
+            return;
+        }
+
+        Finalize(session, CallEndReasonKind.Missed, endedByUserId: null);
+        await _db.SaveChangesAsync();
+        await NotifyEndedAsync(session, CancellationToken.None);
+        _metrics.Increment("calls_missed");
+        _logger.LogInformation("Звонок {CallId} помечен пропущенным (таймаут)", callId);
+    }
+
+    /// <summary>LiveKit webhook room_finished — комната опустела, финализируем CDR.</summary>
+    public async Task HandleRoomFinishedAsync(string roomName)
+    {
+        var session = await _db.CallSessions.FirstOrDefaultAsync(c => c.RoomName == roomName);
+        if (session is null || session.Status == CallStatus.Ended)
+        {
+            return;
+        }
+
+        var reason = session.AnsweredAt.HasValue ? CallEndReasonKind.Hangup : CallEndReasonKind.Missed;
+        Finalize(session, reason, endedByUserId: null);
+        await _db.SaveChangesAsync();
+        _timeouts.Cancel(session.Id);
+        await NotifyEndedAsync(session, CancellationToken.None);
+        _metrics.Increment("calls_room_finished");
+        _logger.LogInformation("Звонок {CallId} завершён по room_finished", session.Id);
+    }
+
+    /// <summary>LiveKit webhook participant_joined/left — для группового UI.</summary>
+    public async Task HandleParticipantAsync(string roomName, string identity, bool joined)
+    {
+        var session = await _db.CallSessions.FirstOrDefaultAsync(c => c.RoomName == roomName);
+        if (session is null || !long.TryParse(identity, out var userId))
+        {
+            return;
+        }
+
+        var evt = new CallEvent
+        {
+            Member = new ParticipantEvent
+            {
+                CallId = session.Id.ToString(),
+                UserId = userId,
+                Action = joined ? ParticipantAction.ParticipantJoined : ParticipantAction.ParticipantLeft,
+            }
+        };
+
+        var recipients = (await GetParticipantsAsync(session)).Where(id => id != userId);
+        await _subscriptions.SendToUsersAsync(recipients, evt);
+    }
+
+    // ── Вспомогательное ────────────────────────────────────────────────────
+
+    private async Task RingAsync(CallSession session, CallEvent incoming, CancellationToken ct)
+    {
+        if (session.IsGroup)
+        {
+            var members = await GetGroupMembersAsync(session.ChatId!.Value, ct);
+            await _subscriptions.SendToUsersAsync(members.Where(id => id != session.CallerUserId), incoming);
+        }
+        else
+        {
+            await _subscriptions.SendToUserAsync(session.CalleeUserId!.Value, incoming);
+        }
+    }
+
+    private async Task NotifyEndedAsync(CallSession session, CancellationToken ct)
+    {
+        var evt = new CallEvent
+        {
+            Ended = new CallEndedEvent
+            {
+                CallId = session.Id.ToString(),
+                Reason = session.EndReason.ToProto(),
+                DurationSeconds = session.DurationSeconds,
+            }
+        };
+
+        await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+    }
+
+    private static void Finalize(CallSession session, CallEndReasonKind reason, long? endedByUserId)
+    {
+        session.Status = CallStatus.Ended;
+        session.EndReason = reason;
+        session.EndedAt = DateTime.UtcNow;
+        session.EndedByUserId = endedByUserId;
+    }
+
+    private string CreateToken(CallSession session, long userId)
+        => _tokens.CreateRoomToken(session.RoomName, userId.ToString(), displayName: null);
+
+    private async Task<IReadOnlyList<long>> GetParticipantsAsync(CallSession session)
+    {
+        if (session.IsGroup)
+        {
+            return await GetGroupMembersAsync(session.ChatId!.Value, CancellationToken.None);
+        }
+
+        return new[] { session.CallerUserId, session.CalleeUserId ?? 0 };
+    }
+
+    private async Task<IReadOnlyList<long>> GetGroupMembersAsync(Guid chatId, CancellationToken ct)
+    {
+        var response = await _messagesClient.GetChatMemberIdsAsync(
+            new GetChatMemberIdsRequest { ChatId = chatId.ToString() }, cancellationToken: ct);
+        return response.UserIds;
+    }
+
+    private async Task EnsureCanAnswerAsync(CallSession session, long userId, CancellationToken ct)
+    {
+        if (session.IsGroup)
+        {
+            await EnsureChatMemberAsync(userId, session.ChatId!.Value, ct);
+        }
+        else if (userId != session.CalleeUserId)
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "Звонок адресован не вам"));
+        }
+    }
+
+    private async Task EnsureParticipantAsync(CallSession session, long userId, CancellationToken ct)
+    {
+        if (session.IsGroup)
+        {
+            await EnsureChatMemberAsync(userId, session.ChatId!.Value, ct);
+        }
+        else if (userId != session.CallerUserId && userId != session.CalleeUserId)
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "Нет доступа к звонку"));
+        }
+    }
+
+    private async Task EnsureChatMemberAsync(long userId, Guid chatId, CancellationToken ct)
+    {
+        var request = new CheckChatMembershipRequest { UserId = userId };
+        request.ChatIds.Add(chatId.ToString());
+
+        var response = await _messagesClient.CheckChatMembershipAsync(request, cancellationToken: ct);
+        if (!response.MemberChatIds.Contains(chatId.ToString()))
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "Вы не состоите в этом чате"));
+        }
+    }
+
+    private async Task<CallSession> LoadAsync(string callId, CancellationToken ct)
+    {
+        var id = ParseGuid(callId, "call_id");
+        var session = await _db.CallSessions.FirstOrDefaultAsync(c => c.Id == id, ct);
+        return session ?? throw new RpcException(new Status(StatusCode.NotFound, "Звонок не найден"));
+    }
+
+    private Guid RequireDeviceId()
+    {
+        if (string.IsNullOrEmpty(_userContext.DeviceId) || !Guid.TryParse(_userContext.DeviceId, out var deviceId))
+        {
+            throw new RpcException(new Status(StatusCode.Unauthenticated, "Для звонков требуется device-id в токене"));
+        }
+
+        return deviceId;
+    }
+
+    private static Guid ParseGuid(string value, string field)
+    {
+        if (!Guid.TryParse(value, out var guid))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, $"Некорректный {field}"));
+        }
+
+        return guid;
+    }
+}
