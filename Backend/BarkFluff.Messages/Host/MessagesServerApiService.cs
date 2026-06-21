@@ -1,5 +1,6 @@
 using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.ExportData;
+using BarkFluff.Messages.Features.GetChatMemberIds;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Identity;
 
@@ -41,6 +42,18 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         {
             UserId = request.UserId,
             ChatIds = request.ChatIds
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<GetChatMemberIdsResponse> GetChatMemberIds(
+        GetChatMemberIdsRequest request,
+        ServerCallContext context)
+    {
+        var query = new GetChatMemberIdsQuery
+        {
+            ChatId = request.ChatId
         };
 
         return _mediator.Send(query, context.CancellationToken);

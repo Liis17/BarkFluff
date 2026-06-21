@@ -454,6 +454,9 @@ service MessagesServerApi {
 
   // Отфильтровать чаты, в которых пользователь состоит (батч-проверка членства)
   rpc CheckChatMembership(CheckChatMembershipRequest) returns(CheckChatMembershipResponse);
+
+  // Получить идентификаторы участников чата (для рассылки ринга группового звонка)
+  rpc GetChatMemberIds(GetChatMemberIdsRequest) returns(GetChatMemberIdsResponse);
 }
 
 message GetUserAllMessagesRequest {
@@ -500,4 +503,12 @@ message CheckChatMembershipRequest {
 
 message CheckChatMembershipResponse {
   repeated string member_chat_ids = 1; // подмножество chat_ids, где пользователь состоит
+}
+
+message GetChatMemberIdsRequest {
+  string chat_id = 1; // идентификатор чата (Guid-строка)
+}
+
+message GetChatMemberIdsResponse {
+  repeated int64 user_ids = 1; // идентификаторы участников чата
 }
