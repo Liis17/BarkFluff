@@ -54,6 +54,7 @@
 | [[Backend/ClientStorage]] | Хранилище клиентских приложений | — |
 | [[Backend/ClientStorage-ProjectMap]] | Карта всех файлов и классов ClientStorage | — |
 | [[Backend/Developers]] | Портал документации для разработчиков | 7020 |
+| [[Backend/Calls]] | Звонки (аудио/видео, 1-на-1 + группы) на LiveKit SFU | 7025 |
 | [[Backend/Nginx]] | Nginx reverse proxy — TLS, субдомены, gRPC/HTTP маршрутизация | — |
 
 ### Shared-библиотеки

@@ -175,6 +175,17 @@ services:
     depends_on:
       - configuration
 
+  calls:
+    image: docker.barkfluff.com:5000/barkfluff-calls-dev:latest
+    container_name: calls
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   # === Панель администрирования ===
 
   admin-panel:
@@ -288,6 +299,20 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
+    networks:
+      - barkfluff-network
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit
+    restart: always
+    command: --config /etc/livekit/livekit.yaml
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit/livekit.yaml:ro
+    ports:
+      - "7880:7880"            # HTTP/WS (сигнализация, отдаётся клиенту как LiveKit:Url)
+      - "7881:7881"            # ICE/TCP fallback
+      - "50000-50200:50000-50200/udp" # RTC media (диапазон UDP)
     networks:
       - barkfluff-network
 

@@ -96,6 +96,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Updates.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Navigator.Tests", "Tests\BarkFluff.Navigator.Tests\BarkFluff.Navigator.Tests.csproj", "{C5DF72E9-6E20-4D67-8D13-1115300AEF20}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Calls", "Backend\BarkFluff.Calls\BarkFluff.Calls.csproj", "{5DE63F42-CA93-46FA-8124-C74E3A641F8B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -574,6 +576,18 @@ Global
 		{C5DF72E9-6E20-4D67-8D13-1115300AEF20}.Release|x64.Build.0 = Release|Any CPU
 		{C5DF72E9-6E20-4D67-8D13-1115300AEF20}.Release|x86.ActiveCfg = Release|Any CPU
 		{C5DF72E9-6E20-4D67-8D13-1115300AEF20}.Release|x86.Build.0 = Release|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Debug|x64.Build.0 = Debug|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Debug|x86.Build.0 = Debug|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Release|x64.ActiveCfg = Release|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Release|x64.Build.0 = Release|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Release|x86.ActiveCfg = Release|Any CPU
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -618,6 +632,7 @@ Global
 		{AFE3412A-67B7-49CC-9D72-F771898DA35C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{EE08E30F-5AAF-4F2D-A35A-C07A1C74A388} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{C5DF72E9-6E20-4D67-8D13-1115300AEF20} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{5DE63F42-CA93-46FA-8124-C74E3A641F8B} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
