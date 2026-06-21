@@ -206,6 +206,7 @@
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
+        messagesArea.parentElement.classList.add('visible');
         messagesArea.classList.add('visible');
         messagesInner.innerHTML = '';
         inputBar.classList.add('visible');

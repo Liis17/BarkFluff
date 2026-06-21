@@ -443,6 +443,20 @@
             background: var(--chat-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Контент чата над фоновыми слоями (.messages-bg-layer / .messages-bg-dim) */
+        .chat-area > .connection-banner,
+        .chat-area > .chat-header,
+        .chat-area > .pinned-bar,
+        .chat-area > .chat-empty,
+        .chat-area > .loading-messages,
+        .chat-area > .messages-area-wrap,
+        .chat-area > .input-bar {
+            position: relative;
+            z-index: 1;
         }
 
         .connection-banner {
@@ -529,11 +543,13 @@
         .messages-area-wrap {
             flex: 1;
             position: relative;
-            display: flex;
+            display: none;
             flex-direction: column;
             min-height: 0;
             overflow: hidden;
         }
+
+        .messages-area-wrap.visible { display: flex; }
 
         .messages-bg-layer {
             position: absolute;
@@ -3436,6 +3452,8 @@
         </div>
 
         <div class="chat-area">
+            <div class="messages-bg-layer" id="messagesBgLayer"></div>
+            <div class="messages-bg-dim" id="messagesBgDim"></div>
             <div class="connection-banner" id="connectionBanner">
                 <span class="connection-banner-icon">&#9888;</span>
                 <span>Подключение к серверу...</span>
@@ -3465,8 +3483,6 @@
 
             <div class="loading-messages" id="loadingMessages">Загрузка...</div>
             <div class="messages-area-wrap">
-                <div class="messages-bg-layer" id="messagesBgLayer"></div>
-                <div class="messages-bg-dim" id="messagesBgDim"></div>
                 <div class="messages-area" id="messagesArea">
                     <div class="messages-inner" id="messagesInner"></div>
                 </div>
