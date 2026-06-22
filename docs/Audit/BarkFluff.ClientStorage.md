@@ -91,7 +91,7 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 **Почему это проблема:** Без работающего кеша каждое скачивание идёт стримингом из S3 (медленнее, дороже, и Range сломан — P1). После каждого деплоя `CacheWarmupService` заново выкачивает из S3 все дистрибутивы (до 8 файлов × 512 МБ).
 **Рекомендация:** Добавить в Dockerfile `RUN mkdir -p /app/publish/cache` (тогда `COPY --chown=1654:1654` даст права) и примонтировать named volume `clientstorage-cache:/app/cache` в обоих compose. Проверить на живом контейнере, что кеш действительно наполняется (`ls /app/cache`).
 
-### D3. Переменные ClientStorage отсутствуют в sample.env — Low
+### D3. ~~Переменные ClientStorage отсутствуют в sample.env~~ — ~~Low~~ **Неактуально**
 
 **Файл:** `Backend/sample.env` (нет `UPLOAD_TOKEN`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_SERVICE_URL`, `S3_BUCKET_NAME`, `CLIENTSTORAGE_PORT`)
 **Проблема:** Compose-файлы сервиса требуют шесть переменных окружения, но в образцовом env-файле репозитория их нет.
