@@ -40,6 +40,7 @@ public class Program
             builder.SetRunningAddress(builder.Configuration);
         }
 
+        builder.Services.AddMemoryCache();
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.Beacon");
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());

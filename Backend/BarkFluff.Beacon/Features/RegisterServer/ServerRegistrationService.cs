@@ -37,8 +37,9 @@ public class ServerRegistrationService : BackgroundService
                 var externalHost = config["ExternalEndpoint:Host"];
                 if (string.IsNullOrWhiteSpace(externalHost))
                 {
-                    // Фолбэк на RunSettings для обратной совместимости
-                    externalHost = config["RunSettings:Host"] ?? "beacon.example.com";
+                    _logger.LogError("Не задан ExternalEndpoint:Host — регистрация в Navigator пропущена");
+                    await Task.Delay(_interval, stoppingToken);
+                    continue;
                 }
 
                 // Navigator валидирует BeaconHost как hostname/IP без схемы — нормализуем,
