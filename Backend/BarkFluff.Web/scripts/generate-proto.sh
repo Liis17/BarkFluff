@@ -79,7 +79,8 @@ if [ ! -d "$SCRIPT_DIR/node_modules/esbuild" ]; then
   "dependencies": {
     "google-protobuf": "3.21.2",
     "grpc-web": "1.5.0",
-    "esbuild": "0.24.0"
+    "esbuild": "0.24.0",
+    "livekit-client": "2.19.2"
   }
 }
 EOF
