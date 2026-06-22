@@ -11,7 +11,7 @@
  *
  * События (BF.calls.on):
  *   'incoming'      {callId, callerUserId, chatId, isGroup, mediaType}  — показать ринг
- *   'connect'       {callId, role, phase, livekitUrl, accessToken, mediaType, isGroup, chatId}
+ *   'connect'       {callId, role, phase, livekitUrl, accessToken, mediaType, isGroup, chatId, peerUserId}
  *                                                                       — открыть экран и войти в комнату
  *   'peer_accepted' {callId, userId}                                    — собеседник принял (caller)
  *   'peer_rejected' {callId, userId}                                    — собеседник отклонил (caller)
@@ -278,7 +278,8 @@
                 accessToken: resp.getAccessToken(),
                 mediaType: mediaType,
                 isGroup: isGroup,
-                chatId: currentCall.chatId
+                chatId: currentCall.chatId,
+                peerUserId: isGroup ? null : target.userId
             });
             return resp;
         });
@@ -304,7 +305,8 @@
                 accessToken: resp.getAccessToken(),
                 mediaType: call ? call.mediaType : callsProto().CallMediaType.CALL_MEDIA_VIDEO,
                 isGroup: call ? call.isGroup : false,
-                chatId: call ? call.chatId : ''
+                chatId: call ? call.chatId : '',
+                peerUserId: call && !call.isGroup ? call.callerUserId : null
             });
             return resp;
         });

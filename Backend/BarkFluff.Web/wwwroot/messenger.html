@@ -545,11 +545,17 @@
         .btn-call {
             background: none; border: none; color: var(--text-sub);
             cursor: pointer; padding: 8px; border-radius: 8px;
-            font-size: 20px; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center;
             transition: color 0.2s, background 0.2s; flex-shrink: 0;
         }
+        .btn-call svg { width: 20px; height: 20px; }
         .btn-call:hover { color: var(--primary); background: rgba(140, 53, 28, 0.08); }
         .btn-call:disabled { opacity: .4; cursor: default; }
+
+        @keyframes callPulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(1.85); opacity: 0; }
+        }
 
         /* Ring overlay (incoming) */
         .call-ring-overlay {
@@ -567,17 +573,24 @@
             background: linear-gradient(135deg, #c87e5b, #8c351c);
             display: flex; align-items: center; justify-content: center;
             font-size: 34px; font-weight: 700; color: #fff; overflow: hidden;
+            position: relative;
         }
         .call-ring-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-ring-avatar.pulsing::before, .call-ring-avatar.pulsing::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            border: 2px solid rgba(200,126,91,0.7); animation: callPulse 1.8s ease-out infinite;
+        }
+        .call-ring-avatar.pulsing::after { animation-delay: 0.9s; }
         .call-ring-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
         .call-ring-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 24px; }
         .call-ring-actions { display: flex; justify-content: center; gap: 40px; }
         .call-round-btn {
             width: 60px; height: 60px; border-radius: 50%; border: none;
-            cursor: pointer; font-size: 26px; color: #fff;
+            cursor: pointer; color: #fff;
             display: flex; align-items: center; justify-content: center;
             transition: transform .15s, filter .15s;
         }
+        .call-round-btn svg { width: 26px; height: 26px; }
         .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
         .call-btn-accept { background: #2e9e5b; }
         .call-btn-reject, .call-ctl-end { background: #d83a3a; }
@@ -593,6 +606,7 @@
         }
         .call-screen-title { font-size: 16px; font-weight: 600; }
         .call-screen-timer { font-size: 13px; color: rgba(255,255,255,0.7); }
+
         .call-grid {
             flex: 1; display: grid; gap: 8px; padding: 8px;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -602,7 +616,9 @@
             position: relative; background: #1c1b19; border-radius: 12px;
             overflow: hidden; aspect-ratio: 4 / 3;
             display: flex; align-items: center; justify-content: center;
+            transition: box-shadow .15s;
         }
+        .call-tile.speaking { box-shadow: inset 0 0 0 3px #3ddc84; }
         .call-tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
         .call-tile-avatar {
             width: 72px; height: 72px; border-radius: 50%;
@@ -617,16 +633,72 @@
             padding: 3px 8px; border-radius: 6px; max-width: 80%;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
+
+        /* Waiting for peer */
+        .call-waiting {
+            display: none; flex: 1; flex-direction: column;
+            align-items: center; justify-content: center; gap: 14px; color: #fff;
+        }
+        .call-screen.waiting .call-waiting { display: flex; }
+        .call-waiting-avatar {
+            width: 120px; height: 120px; border-radius: 50%; position: relative;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 46px; font-weight: 700; color: #fff; overflow: hidden;
+        }
+        .call-waiting-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-waiting-avatar::before, .call-waiting-avatar::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            border: 2px solid rgba(200,126,91,0.65); animation: callPulse 1.8s ease-out infinite;
+        }
+        .call-waiting-avatar::after { animation-delay: 0.9s; }
+        .call-waiting-name { font-size: 20px; font-weight: 700; }
+        .call-waiting-sub { font-size: 14px; color: rgba(255,255,255,0.6); }
+        /* Self-preview (PiP) while waiting */
+        .call-screen.waiting .call-grid {
+            position: absolute; right: 20px; bottom: 104px;
+            width: 150px; height: 112px; min-height: 0; padding: 0;
+            display: block; z-index: 3;
+        }
+        .call-screen.waiting .call-tile {
+            aspect-ratio: auto; width: 100%; height: 100%;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        /* Screen-share stage */
+        .call-stage { display: none; }
+        .call-screen.has-stage .call-stage {
+            display: flex; flex-direction: column; flex: 1; min-height: 0;
+            padding: 8px 16px 0; gap: 6px;
+        }
+        .call-stage-video {
+            flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+        }
+        .call-stage-video video {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+            border-radius: 12px; background: #000;
+        }
+        .call-stage-label { color: rgba(255,255,255,0.75); font-size: 13px; text-align: center; }
+        .call-screen.has-stage .call-grid {
+            flex: 0 0 auto; display: flex; justify-content: center; gap: 8px;
+            padding: 8px; height: 140px; grid-template-columns: none; align-content: stretch;
+        }
+        .call-screen.has-stage .call-tile {
+            flex: 0 0 auto; width: 186px; height: 124px; aspect-ratio: auto;
+        }
+
         .call-controls { display: flex; justify-content: center; gap: 16px; padding: 20px; }
         .call-ctl {
             width: 56px; height: 56px; border-radius: 50%; border: none;
-            cursor: pointer; font-size: 22px;
+            cursor: pointer;
             background: rgba(255,255,255,0.12); color: #fff;
             display: flex; align-items: center; justify-content: center;
-            transition: background .15s;
+            transition: background .15s, color .15s;
         }
+        .call-ctl svg { width: 24px; height: 24px; }
         .call-ctl:hover { background: rgba(255,255,255,0.22); }
-        .call-ctl.off { background: rgba(255,255,255,0.85); color: #11100f; }
+        .call-ctl.off { background: #d83a3a; color: #fff; }
+        .call-ctl.active { background: var(--primary); color: #fff; }
 
         .messages-area-wrap {
             flex: 1;
@@ -3554,8 +3626,8 @@
                     <div class="chat-header-status" id="chatHeaderStatus"></div>
                 </div>
                 <div class="chat-header-actions">
-                    <button class="btn-call" id="btnCallAudio" title="Аудиозвонок">&#9742;</button>
-                    <button class="btn-call" id="btnCallVideo" title="Видеозвонок">&#128249;</button>
+                    <button class="btn-call" id="btnCallAudio" title="Аудиозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
+                    <button class="btn-call" id="btnCallVideo" title="Видеозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
                 </div>
             </div>
 
@@ -3659,8 +3731,8 @@
             <div class="call-ring-name" id="callRingName">Входящий звонок</div>
             <div class="call-ring-sub" id="callRingSub"></div>
             <div class="call-ring-actions">
-                <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить">&#10006;</button>
-                <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять">&#9742;</button>
+                <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 8.63 19.24M5 5a2 2 0 0 0-1 .54 19.5 19.5 0 0 0-3 8.63 2 2 0 0 0 .54 1.84"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button>
+                <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
             </div>
         </div>
     </div>
@@ -3671,12 +3743,21 @@
             <div class="call-screen-title" id="callScreenTitle">Звонок</div>
             <div class="call-screen-timer" id="callScreenTimer"></div>
         </div>
+        <div class="call-stage" id="callStage">
+            <div class="call-stage-video" id="callStageVideo"></div>
+            <div class="call-stage-label" id="callStageLabel"></div>
+        </div>
+        <div class="call-waiting" id="callWaiting">
+            <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
+            <div class="call-waiting-name" id="callWaitingName"></div>
+            <div class="call-waiting-sub" id="callWaitingSub"></div>
+        </div>
         <div class="call-grid" id="callGrid"></div>
         <div class="call-controls">
-            <button class="call-ctl" id="callToggleMic" title="Микрофон">&#127908;</button>
-            <button class="call-ctl" id="callToggleCam" title="Камера">&#128249;</button>
-            <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана">&#128421;</button>
-            <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить">&#128244;</button>
+            <button class="call-ctl off" id="callToggleMic" title="Микрофон"></button>
+            <button class="call-ctl off" id="callToggleCam" title="Камера"></button>
+            <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана"></button>
+            <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить"></button>
         </div>
     </div>
 
@@ -3979,8 +4060,8 @@
     <script src="/js/app/files.js"></script>
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
-    <script src="/js/app/calls.js?v=calls-1"></script>
-    <script src="/js/app/calls-ui.js?v=calls-1"></script>
+    <script src="/js/app/calls.js?v=calls-2"></script>
+    <script src="/js/app/calls-ui.js?v=calls-2"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
