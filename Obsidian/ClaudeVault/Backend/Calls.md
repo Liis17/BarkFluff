@@ -53,6 +53,15 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 | `LiveKit:Url` | WSS-адрес (дублируется в [[Backend/Beacon]].`livekit_url`) |
 | `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `Backend/livekit/livekit.yaml`) |
 
+## Внешний доступ ([[Backend/Nginx]])
+
+Контейнеры наружу портов не публикуют — всё внешнее идёт через nginx :443 по субдоменам:
+
+- `calls.barkfluff.com` → `grpc://calls:7025` (`calls.conf`, gRPC + долгий таймаут под `SubscribeCallEvents`).
+- `livekit.barkfluff.com` → `http://livekit:7880` WSS-сигнализация (`livekit.conf`). В проде `LiveKit:Url = wss://livekit.barkfluff.com`.
+- Webhook `calls:7026` — внутренний (LiveKit → Calls), наружу не выходит.
+- **Медиа LiveKit** (UDP 50000-50200 + ICE/TCP 7881) nginx проксировать не может — публикуется напрямую на хосте; firewall открывает только 443 + эти медиа-порты. В проде `rtc.use_external_ip: true`.
+
 ## Зависимости
 
 - **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
