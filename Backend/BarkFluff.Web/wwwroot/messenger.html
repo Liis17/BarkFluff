@@ -166,63 +166,40 @@
         /* === SIDEBAR === */
 
         .sidebar {
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            bottom: 3px;
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
             background: var(--sidebar-bg);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            border-right: 1px solid var(--card-border);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
             display: flex;
             flex-direction: column;
-        }
-
-        .sidebar-header {
-            padding: 16px;
-            border-bottom: 1px solid var(--card-border);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .sidebar-header .logo-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        .sidebar-header .logo-text {
-            font-size: 18px;
-            font-weight: 700;
-            background: var(--logo-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            flex: 1;
+            z-index: 10;
         }
 
         /* === SIDEBAR NAV (floating) === */
 
-        .sidebar {
-            position: relative;
-        }
-
         .chat-list {
-            padding-bottom: 68px;
+            padding-bottom: 80px;
         }
 
         .sidebar-nav {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
             height: 60px;
             display: flex;
             background: var(--nav-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-top: 1px solid var(--card-border);
+            border-radius: 14px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.10);
             z-index: 10;
         }
 
@@ -244,8 +221,15 @@
         }
 
         .nav-btn .nav-icon {
-            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             line-height: 1;
+        }
+
+        .nav-btn .nav-icon svg {
+            width: 22px;
+            height: 22px;
         }
 
         .nav-btn.active {
@@ -445,6 +429,7 @@
             -webkit-backdrop-filter: blur(12px);
             position: relative;
             overflow: hidden;
+            padding-left: calc(var(--sidebar-width) + 6px);
         }
 
         /* Контент чата над фоновыми слоями (.messages-bg-layer / .messages-bg-dim) */
@@ -616,7 +601,7 @@
             padding: 12px 16px 28px;
         }
         .call-tile {
-            position: relative; flex: 0 0 auto;
+            position: relative; flex: 0 0 auto; cursor: pointer;
             width: clamp(200px, 30vw, 340px); aspect-ratio: 3 / 2; max-height: 100%;
             background: #1c1b19; border-radius: 12px; overflow: hidden;
             display: flex; align-items: center; justify-content: center;
@@ -627,6 +612,34 @@
             border-radius: 12px; pointer-events: none; z-index: 2;
         }
         .call-tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        /* Демонстрация экрана — целиком (без обрезки). */
+        .call-tile.screen video { object-fit: contain; }
+        /* Подсказка «развернуть» (по наведению) и кнопка свернуть (в развёрнутом). */
+        .call-tile-hint {
+            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+            border-radius: 8px; background: rgba(0,0,0,0.45); color: #fff; opacity: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity .15s; pointer-events: none; z-index: 3;
+        }
+        .call-tile:hover .call-tile-hint { opacity: 1; }
+        .call-tile-hint svg { width: 16px; height: 16px; }
+        .call-tile.expanded .call-tile-hint { display: none; }
+        .call-tile-close {
+            position: absolute; top: 14px; right: 16px; width: 42px; height: 42px;
+            border-radius: 50%; border: none; background: rgba(0,0,0,0.55); color: #fff;
+            cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 1160;
+        }
+        .call-tile.expanded .call-tile-close { display: flex; }
+        .call-tile-close svg { width: 20px; height: 20px; }
+        /* Развёрнутый на весь экран блок (контролы остаются слоем выше). */
+        .call-tile.expanded {
+            position: fixed; inset: 0; width: auto; height: auto; max-height: none;
+            aspect-ratio: auto; border-radius: 0; background: #000; z-index: 1158;
+            cursor: default; animation: tileExpand .2s ease;
+        }
+        .call-tile.expanded video { object-fit: contain; }
+        .call-tile.expanded .call-tile-label { left: 16px; bottom: 90px; font-size: 14px; max-width: 60%; }
+        @keyframes tileExpand { from { opacity: .4; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
         .call-tile-avatar {
             width: 72px; height: 72px; border-radius: 50%;
             background: linear-gradient(135deg, #c87e5b, #8c351c);
@@ -675,30 +688,11 @@
         }
         /* Во время ожидания удалённых нет — пустую сетку прячем (себя видно в PiP). */
         .call-screen.waiting .call-grid { display: none; }
+        /* При развороте блока на весь экран PiP не нужен. */
+        .call-screen.has-expanded .call-self-pip { display: none; }
 
-        /* Screen-share stage */
-        .call-stage { display: none; }
-        .call-screen.has-stage .call-stage {
-            display: flex; flex-direction: column; flex: 1; min-height: 0;
-            padding: 8px 16px 0; gap: 6px;
-        }
-        .call-stage-video {
-            flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
-        }
-        .call-stage-video video {
-            max-width: 100%; max-height: 100%; object-fit: contain;
-            border-radius: 12px; background: #000;
-        }
-        .call-stage-label { color: rgba(255,255,255,0.75); font-size: 13px; text-align: center; }
-        .call-screen.has-stage .call-grid {
-            flex: 0 0 auto; display: flex; justify-content: center; gap: 8px;
-            padding: 8px; height: 140px; grid-template-columns: none; align-content: stretch;
-        }
-        .call-screen.has-stage .call-tile {
-            flex: 0 0 auto; width: 186px; height: 124px; aspect-ratio: auto;
-        }
-
-        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 16px; padding: 20px; }
+        /* Контролы — слоем выше развёрнутого блока (z 1158). */
+        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 16px; padding: 20px; position: relative; z-index: 1159; }
         .call-ctl {
             position: relative;
             width: 56px; height: 56px; border-radius: 50%; border: none;
@@ -3659,11 +3653,6 @@
 
     <div class="app">
         <div class="sidebar">
-            <div class="sidebar-header">
-                <img src="/favicon.ico" class="logo-icon" alt="BarkFluff">
-                <span class="logo-text">BarkFluff</span>
-            </div>
-
             <div class="search-container">
                 <div class="search-wrapper">
                     <span class="search-icon">&#128269;</span>
@@ -3676,11 +3665,15 @@
             <div class="chat-list" id="chatList"></div>
             <div class="sidebar-nav" id="sidebarNav">
                 <button class="nav-btn active" id="navChats">
-                    <span class="nav-icon">&#128172;</span>
+                    <span class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </span>
                     <span>Чаты</span>
                 </button>
                 <button class="nav-btn" id="navSettings">
-                    <span class="nav-icon">&#9881;&#65039;</span>
+                    <span class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </span>
                     <span>Настройки</span>
                 </button>
             </div>
@@ -3817,10 +3810,6 @@
         <div class="call-screen-top">
             <div class="call-screen-title" id="callScreenTitle">Звонок</div>
             <div class="call-screen-timer" id="callScreenTimer"></div>
-        </div>
-        <div class="call-stage" id="callStage">
-            <div class="call-stage-video" id="callStageVideo"></div>
-            <div class="call-stage-label" id="callStageLabel"></div>
         </div>
         <div class="call-waiting" id="callWaiting">
             <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
@@ -4166,7 +4155,7 @@
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
     <script src="/js/app/calls.js?v=calls-3"></script>
-    <script src="/js/app/calls-ui.js?v=calls-5"></script>
+    <script src="/js/app/calls-ui.js?v=calls-6"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>

@@ -23,21 +23,23 @@
         // Классическая «трубка завершения» (сплошная, как красная кнопка отбоя).
         phoneEnd: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08A.99.99 0 0 1 0 12.38c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>',
         quality: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
-        chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 14 12 8 18 14"/></svg>'
+        chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 14 12 8 18 14"/></svg>',
+        expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+        close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
     };
 
     // --- DOM ---
     var ringOverlay, ringAvatar, ringName, ringSub, ringAccept, ringReject;
     var screenEl, gridEl, titleEl, timerEl, btnMic, btnCam, btnScreen, btnHangup;
-    var stageVideoWrap, stageLabel, waitingAvatar, waitingName, waitingSub;
+    var waitingAvatar, waitingName, waitingSub;
     var btnQuality, qualityPanel, audioChips, videoChips, videoQualityGroup, audioQualityGroup;
     var selfPip, selfPipVideo = null;
     var micCaret, micMenu, camCaret, camMenu;
 
     // --- LiveKit ---
     var room = null;
-    var tiles = {};            // identity -> { el, avatarEl, labelEl, videoEl, audioEls } — только удалённые
-    var stage = null;          // демонстрация экрана: { identity, track }
+    var tiles = {};            // key -> tile (камера: identity; экран: identity#screen)
+    var expandedKey = null;    // блок, развёрнутый на весь экран
     var micOn = false, camOn = false, screenOn = false;
 
     // --- Детектор речи (WebAudio, низкая задержка, реагирует на любой звук) ---
@@ -184,42 +186,91 @@
         if (selfPip) selfPip.classList.remove('on');
     }
 
-    // --- Плитки участников (только удалённые) ---
-    function ensureTile(participant) {
-        if (participant.isLocal) return null; // себя показываем в PiP, не в сетке
-        var id = participant.identity;
-        if (tiles[id]) return tiles[id];
+    // --- Плитки: камера и демонстрация — отдельные равноправные блоки ---
+    function camKey(identity) { return identity; }
+    function screenKey(identity) { return identity + '#screen'; }
 
-        var el = document.createElement('div'); el.className = 'call-tile';
+    function createTile(key, opts) {
+        var el = document.createElement('div');
+        el.className = 'call-tile' + (opts.screen ? ' screen' : '');
         var avatar = document.createElement('div'); avatar.className = 'call-tile-avatar';
         var label = document.createElement('div'); label.className = 'call-tile-label';
-        label.textContent = participant.isLocal ? 'Вы' : ('#' + id);
-        el.appendChild(avatar); el.appendChild(label);
+        label.textContent = opts.label;
+        var hint = document.createElement('div'); hint.className = 'call-tile-hint'; hint.innerHTML = ICONS.expand;
+        var close = document.createElement('button'); close.className = 'call-tile-close';
+        close.title = 'Свернуть'; close.innerHTML = ICONS.close;
+        close.addEventListener('click', function (e) { e.stopPropagation(); collapseExpand(); });
+        if (opts.withAvatar) el.appendChild(avatar);
+        el.appendChild(label); el.appendChild(hint); el.appendChild(close);
+        el.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(key); });
         gridEl.appendChild(el);
-
-        var tile = { el: el, avatarEl: avatar, labelEl: label, videoEl: null, audioEls: [] };
-        tiles[id] = tile;
-
-        var uid = Number(id);
-        if (uid) {
-            resolveUser(uid).then(function (user) {
-                if (!tiles[id]) return;
-                if (!participant.isLocal) label.textContent = userName(user, '#' + id);
-                fillAvatar(avatar, user, participant.isLocal ? 'Вы' : label.textContent);
-            });
-        }
+        var tile = { el: el, avatarEl: avatar, labelEl: label, videoEl: null, audioEls: [],
+                     track: null, identity: opts.identity, isLocal: !!opts.isLocal, screen: !!opts.screen };
+        tiles[key] = tile;
         updateLayout();
         return tile;
     }
 
-    function removeTile(participant) {
-        var tile = tiles[participant.identity];
+    function ensureTile(participant) {
+        if (participant.isLocal) return null; // своя камера — в PiP, не плитка
+        var key = camKey(participant.identity);
+        if (tiles[key]) return tiles[key];
+        var tile = createTile(key, { identity: participant.identity, isLocal: false,
+            label: '#' + participant.identity, withAvatar: true, screen: false });
+        var uid = Number(participant.identity);
+        if (uid) resolveUser(uid).then(function (user) {
+            if (!tiles[key]) return;
+            tile.labelEl.textContent = userName(user, '#' + participant.identity);
+            fillAvatar(tile.avatarEl, user, tile.labelEl.textContent);
+        });
+        return tile;
+    }
+
+    function ensureScreenTile(participant) {
+        var key = screenKey(participant.identity);
+        if (tiles[key]) return tiles[key];
+        var base = participant.isLocal ? 'Вы' : ('#' + participant.identity);
+        var tile = createTile(key, { identity: participant.identity, isLocal: participant.isLocal,
+            label: base + ' · демонстрация экрана', withAvatar: false, screen: true });
+        var uid = Number(participant.identity);
+        if (uid && !participant.isLocal) resolveUser(uid).then(function (user) {
+            if (tiles[key]) tile.labelEl.textContent = userName(user, base) + ' · демонстрация экрана';
+        });
+        return tile;
+    }
+
+    function removeTileByKey(key) {
+        var tile = tiles[key];
         if (!tile) return;
-        detachSpeakingMeter(participant.identity);
+        if (expandedKey === key) collapseExpand();
         tile.audioEls.forEach(function (a) { try { a.remove(); } catch (e) {} });
         try { tile.el.remove(); } catch (e) {}
-        delete tiles[participant.identity];
+        delete tiles[key];
         updateLayout();
+    }
+    function removeParticipant(participant) {
+        detachSpeakingMeter(participant.identity);
+        removeTileByKey(camKey(participant.identity));
+        removeTileByKey(screenKey(participant.identity));
+    }
+
+    // --- Разворот блока на весь экран (контролы остаются слоем выше) ---
+    function toggleExpand(key) {
+        if (expandedKey === key) collapseExpand(); else expandTile(key);
+    }
+    function expandTile(key) {
+        if (!tiles[key]) return;
+        collapseExpand();
+        closeAllPopovers();
+        expandedKey = key;
+        tiles[key].el.classList.add('expanded');
+        screenEl.classList.add('has-expanded');
+    }
+    function collapseExpand() {
+        if (!expandedKey) return;
+        if (tiles[expandedKey]) tiles[expandedKey].el.classList.remove('expanded');
+        expandedKey = null;
+        screenEl.classList.remove('has-expanded');
     }
 
     // --- Детектор речи ---
@@ -268,93 +319,62 @@
         meterRaf = requestAnimationFrame(meterTick);
     }
 
-    function setTileVideo(tile, videoEl) {
-        if (tile.videoEl) { try { tile.videoEl.remove(); } catch (e) {} }
+    function setTileVideo(tile, track) {
+        if (!tile) return;
+        var videoEl = track.attach();
         videoEl.autoplay = true; videoEl.playsInline = true;
-        tile.videoEl = videoEl;
-        tile.el.insertBefore(videoEl, tile.avatarEl);
+        if (tile.isLocal) videoEl.muted = true;
+        if (tile.videoEl) { try { tile.videoEl.remove(); } catch (e) {} }
+        tile.videoEl = videoEl; tile.track = track;
+        tile.el.insertBefore(videoEl, tile.labelEl);
         tile.avatarEl.style.display = 'none';
     }
     function clearTileVideo(tile) {
         if (tile.videoEl) { try { tile.videoEl.remove(); } catch (e) {} tile.videoEl = null; }
+        tile.track = null;
         tile.avatarEl.style.display = '';
     }
 
-    // --- Демонстрация экрана (stage) ---
     function isScreenShare(track, pub) {
         var SS = window.LivekitClient.Track.Source.ScreenShare;
         return (pub && pub.source === SS) || (track && track.source === SS);
     }
 
-    function setStage(participant, track) {
-        if (stage && stage.track) { try { stage.track.detach().forEach(function (e) { e.remove(); }); } catch (e) {} }
-        var v = track.attach();
-        v.autoplay = true; v.playsInline = true;
-        if (participant.isLocal) v.muted = true;
-        stageVideoWrap.innerHTML = '';
-        stageVideoWrap.appendChild(v);
-        stage = { identity: participant.identity, track: track };
-
-        var base = participant.isLocal ? 'Вы' : ('#' + participant.identity);
-        stageLabel.textContent = base + ' · демонстрация экрана';
-        var uid = Number(participant.identity);
-        if (uid && !participant.isLocal) {
-            resolveUser(uid).then(function (user) {
-                if (stage && stage.identity === participant.identity)
-                    stageLabel.textContent = userName(user, base) + ' · демонстрация экрана';
-            });
-        }
-        updateLayout();
-    }
-    function clearStage(identity) {
-        if (!stage) return;
-        if (identity && stage.identity !== identity) return;
-        try { stage.track.detach().forEach(function (e) { e.remove(); }); } catch (e) {}
-        stageVideoWrap.innerHTML = '';
-        stage = null;
-        updateLayout();
-    }
-
-    // Раскладка экрана: ожидание (нет удалённых) / демонстрация / обычная сетка.
+    // Раскладка: ожидание, пока нет ни одного удалённого блока (камера/экран/аудио).
     function updateLayout() {
         if (!screenEl) return;
-        var hasStage = !!stage;
-        var hasRemote = Object.keys(tiles).length > 0; // tiles — только удалённые
-        screenEl.classList.toggle('has-stage', hasStage);
-        screenEl.classList.toggle('waiting', !hasStage && !hasRemote);
+        var hasRemote = Object.keys(tiles).some(function (k) { return !tiles[k].isLocal; });
+        screenEl.classList.toggle('waiting', !hasRemote);
     }
 
     // --- LiveKit события ---
     function onTrackSubscribed(track, pub, participant) {
         var L = window.LivekitClient;
         if (track.kind === L.Track.Kind.Video) {
-            if (isScreenShare(track, pub)) { setStage(participant, track); return; }
-            setTileVideo(ensureTile(participant), track.attach());
+            if (isScreenShare(track, pub)) setTileVideo(ensureScreenTile(participant), track);
+            else setTileVideo(ensureTile(participant), track);
         } else if (track.kind === L.Track.Kind.Audio) {
             var tile = ensureTile(participant);
-            var a = track.attach();
-            a.style.display = 'none';
-            tile.el.appendChild(a);
-            tile.audioEls.push(a);
+            var a = track.attach(); a.style.display = 'none';
+            if (tile) { tile.el.appendChild(a); tile.audioEls.push(a); }
             attachSpeakingMeter(participant.identity, track); // подсветка говорящего
         }
     }
     function onTrackUnsubscribed(track, pub, participant) {
         var L = window.LivekitClient;
-        if (track.kind === L.Track.Kind.Video && isScreenShare(track, pub)) {
-            try { track.detach().forEach(function (el) { el.remove(); }); } catch (e) {}
-            clearStage(participant.identity);
-            return;
-        }
         try { track.detach().forEach(function (el) { el.remove(); }); } catch (e) {}
-        if (track.kind === L.Track.Kind.Audio) detachSpeakingMeter(participant.identity);
-        var tile = tiles[participant.identity];
-        if (tile && track.kind === L.Track.Kind.Video) clearTileVideo(tile);
+        if (track.kind === L.Track.Kind.Video) {
+            if (isScreenShare(track, pub)) { removeTileByKey(screenKey(participant.identity)); return; }
+            var tile = tiles[camKey(participant.identity)];
+            if (tile) clearTileVideo(tile);
+        } else if (track.kind === L.Track.Kind.Audio) {
+            detachSpeakingMeter(participant.identity);
+        }
     }
     function onLocalTrackPublished(pub, participant) {
         var L = window.LivekitClient;
         if (!pub.track || pub.track.kind !== L.Track.Kind.Video) return; // аудио не отрисовываем (эхо)
-        if (isScreenShare(pub.track, pub)) { setStage(participant, pub.track); return; }
+        if (isScreenShare(pub.track, pub)) { setTileVideo(ensureScreenTile(participant), pub.track); return; }
         setSelfVideo(pub.track.attach()); // своя камера — в PiP
     }
     function onLocalTrackUnpublished(pub, participant) {
@@ -363,7 +383,7 @@
         var isVideo = (pub.kind === L.Track.Kind.Video) || (pub.track && pub.track.kind === L.Track.Kind.Video);
         if (!isVideo) return;
         if (pub.track) { try { pub.track.detach().forEach(function (el) { el.remove(); }); } catch (e) {} }
-        if (pub.source === L.Track.Source.ScreenShare) { clearStage(participant.identity); return; }
+        if (pub.source === L.Track.Source.ScreenShare) { removeTileByKey(screenKey(participant.identity)); return; }
         clearSelfVideo(); // камеру выключили — PiP исчезает (включая «замёрзший» последний кадр)
     }
 
@@ -382,7 +402,7 @@
             ensureTile(p);
             startTimer(); // первый собеседник вошёл — звонок состоялся
         });
-        room.on(L.RoomEvent.ParticipantDisconnected, function (p) { removeTile(p); });
+        room.on(L.RoomEvent.ParticipantDisconnected, function (p) { removeParticipant(p); });
 
         var wantVideo = d.mediaType === BF.calls.MediaType.VIDEO;
 
@@ -578,7 +598,7 @@
         closeAllPopovers();
         renderControls();
         setupWaiting(d);
-        screenEl.classList.remove('has-stage');
+        collapseExpand();
         screenEl.classList.add('waiting');   // до подключения собеседника
         screenEl.classList.add('visible');
         connectLiveKit(d);
@@ -589,11 +609,10 @@
         stopTimer();
         stopRingtone();
         if (room) { try { room.disconnect(); } catch (e) {} room = null; }
+        collapseExpand();
         clearGrid();
         clearSelfVideo();
-        stage = null;
-        stageVideoWrap.innerHTML = '';
-        screenEl.classList.remove('visible', 'waiting', 'has-stage');
+        screenEl.classList.remove('visible', 'waiting', 'has-expanded');
         closeAllPopovers();
         setAudioPending(false); setVideoPending(false);
         activeCallId = null;
@@ -716,7 +735,6 @@
         titleEl = $('callScreenTitle'); timerEl = $('callScreenTimer');
         btnMic = $('callToggleMic'); btnCam = $('callToggleCam');
         btnScreen = $('callToggleScreen'); btnHangup = $('callHangup');
-        stageVideoWrap = $('callStageVideo'); stageLabel = $('callStageLabel');
         waitingAvatar = $('callWaitingAvatar'); waitingName = $('callWaitingName'); waitingSub = $('callWaitingSub');
         btnQuality = $('callToggleQuality'); qualityPanel = $('callQualityPanel');
         audioChips = $('callAudioChips'); videoChips = $('callVideoChips');
