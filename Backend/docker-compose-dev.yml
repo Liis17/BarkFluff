@@ -308,7 +308,9 @@ services:
     restart: always
     command: --config /etc/livekit/livekit.yaml
     volumes:
-      - ./livekit/livekit.yaml:/etc/livekit/livekit.yaml:ro
+      # Монтируем папку целиком, а не один файл: bind-mount одиночного файла,
+      # которого ещё нет на хосте, Docker молча подменяет каталогом.
+      - ./livekit:/etc/livekit:ro
     ports:
       # Dev: в локальном стеке nginx нет, поэтому сигнализацию публикуем напрямую.
       # В проде 7880 фронтит nginx (livekit.barkfluff.com, WSS) и наружу не публикуется.
