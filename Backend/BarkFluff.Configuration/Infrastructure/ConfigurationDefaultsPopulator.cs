@@ -154,7 +154,7 @@ public class ConfigurationDefaultsPopulator
                 populatedCount++;
                 _logger.LogDebug("Авто-заполнение: [{ServiceId}] {Section}:{Key} = {Value}",
                     config.ServiceId, config.Section, config.Key,
-                    IsSensitive(config) ? "***" : defaultValue);
+                    IsSensitive(config, defaultValue) ? "***" : defaultValue);
             }
         }
 
@@ -409,11 +409,13 @@ public class ConfigurationDefaultsPopulator
         return result.ToString();
     }
 
-    private static bool IsSensitive(ConfigurationItem config)
+    private static bool IsSensitive(ConfigurationItem config, string? value = null)
     {
         return config.Key is "SecretKey" or "Password" or "Token" or "ApiSecret"
                || config.Section.Contains("Password")
                || config.Section.Contains("Secret")
-               || config.Section.Contains("Token");
+               || config.Section.Contains("Token")
+               || config.Section.EndsWith("Db")
+               || (value?.Contains("Password=", StringComparison.OrdinalIgnoreCase) ?? false);
     }
 }
