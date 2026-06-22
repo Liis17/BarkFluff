@@ -2110,6 +2110,7 @@
     }
 
     BF.realtime.startAll();
+    if (BF.calls && BF.calls.start) BF.calls.start();
 
     if (BF.personalization && BF.personalization.init) BF.personalization.init();
 
