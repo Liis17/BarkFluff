@@ -10,7 +10,6 @@ using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
-
 using Livekit.Server.Sdk.Dotnet;
 
 using MassTransit;
