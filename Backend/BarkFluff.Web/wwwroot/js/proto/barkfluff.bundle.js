@@ -4,9 +4,9 @@ var BarkFluffBundle = (() => {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
 
-  // Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google-protobuf.js
+  // scripts/node_modules/google-protobuf/google-protobuf.js
   var require_google_protobuf = __commonJS({
-    "Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google-protobuf.js"(exports, module) {
+    "scripts/node_modules/google-protobuf/google-protobuf.js"(exports, module) {
       var $jscomp = $jscomp || {};
       $jscomp.scope = {};
       $jscomp.findInternal = function(a2, b2, c2) {
@@ -6391,9 +6391,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/node_modules/grpc-web/index.js
+  // scripts/node_modules/grpc-web/index.js
   var require_grpc_web = __commonJS({
-    "Backend/BarkFluff.Web/scripts/node_modules/grpc-web/index.js"(exports2, module2) {
+    "scripts/node_modules/grpc-web/index.js"(exports2, module2) {
       var n;
       function aa(a2) {
         var b2 = 0;
@@ -8284,9 +8284,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js
+  // scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js
   var require_timestamp_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js"(exports2) {
+    "scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -8406,16 +8406,18 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/shared_pb.js
+  // scripts/.proto-tmp/shared_pb.js
   var require_shared_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/shared_pb.js"(exports2) {
+    "scripts/.proto-tmp/shared_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
+      goog2.exportSymbol("proto.barkfluff.shared.ChatType", null, global2);
+      goog2.exportSymbol("proto.barkfluff.shared.EncryptedMessage", null, global2);
       goog2.exportSymbol("proto.barkfluff.shared.ForwardedMessageAttachment", null, global2);
       goog2.exportSymbol("proto.barkfluff.shared.Message", null, global2);
       goog2.exportSymbol("proto.barkfluff.shared.MessageAttachment", null, global2);
@@ -8424,6 +8426,7 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.shared.MessageContentType", null, global2);
       goog2.exportSymbol("proto.barkfluff.shared.PageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.shared.PinnedMessageInfo", null, global2);
+      goog2.exportSymbol("proto.barkfluff.shared.SecretEnvelope", null, global2);
       proto.barkfluff.shared.PageRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -8465,6 +8468,20 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.shared.PinnedMessageInfo, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.shared.PinnedMessageInfo.displayName = "proto.barkfluff.shared.PinnedMessageInfo";
+      }
+      proto.barkfluff.shared.EncryptedMessage = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.shared.EncryptedMessage, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.shared.EncryptedMessage.displayName = "proto.barkfluff.shared.EncryptedMessage";
+      }
+      proto.barkfluff.shared.SecretEnvelope = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.shared.SecretEnvelope, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.shared.SecretEnvelope.displayName = "proto.barkfluff.shared.SecretEnvelope";
       }
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.shared.PageRequest.prototype.toObject = function(opt_includeInstance) {
@@ -9461,6 +9478,573 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.shared.PinnedMessageInfo.prototype.hasPinnedAt = function() {
         return jspb2.Message.getField(this, 3) != null;
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.shared.EncryptedMessage.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.shared.EncryptedMessage.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.shared.EncryptedMessage.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            id: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            chatId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            senderId: jspb2.Message.getFieldWithDefault(msg, 3, 0),
+            senderDeviceId: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            sentAt: (f2 = msg.getSentAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            ciphertext: msg.getCiphertext_asB64(),
+            nonce: msg.getNonce_asB64(),
+            associatedData: msg.getAssociatedData_asB64(),
+            isEdited: jspb2.Message.getBooleanFieldWithDefault(msg, 9, false),
+            editedAt: (f2 = msg.getEditedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            isDeleted: jspb2.Message.getBooleanFieldWithDefault(msg, 11, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.shared.EncryptedMessage.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.shared.EncryptedMessage();
+        return proto.barkfluff.shared.EncryptedMessage.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.shared.EncryptedMessage.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSenderId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderDeviceId(value);
+              break;
+            case 5:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setSentAt(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setCiphertext(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setNonce(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setAssociatedData(value);
+              break;
+            case 9:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setIsEdited(value);
+              break;
+            case 10:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setEditedAt(value);
+              break;
+            case 11:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setIsDeleted(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.shared.EncryptedMessage.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.shared.EncryptedMessage.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSenderId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+        f2 = message.getSenderDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getSentAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getCiphertext_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            6,
+            f2
+          );
+        }
+        f2 = message.getNonce_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            7,
+            f2
+          );
+        }
+        f2 = message.getAssociatedData_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            8,
+            f2
+          );
+        }
+        f2 = message.getIsEdited();
+        if (f2) {
+          writer.writeBool(
+            9,
+            f2
+          );
+        }
+        f2 = message.getEditedAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            10,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getIsDeleted();
+        if (f2) {
+          writer.writeBool(
+            11,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getSenderId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setSenderId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getSenderDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setSenderDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getSentAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 5)
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setSentAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 5, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.clearSentAt = function() {
+        return this.setSentAt(void 0);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.hasSentAt = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getCiphertext = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getCiphertext_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getCiphertext()
+          )
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getCiphertext_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getCiphertext()
+          )
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setCiphertext = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 6, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getNonce = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getNonce_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getNonce()
+          )
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getNonce_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getNonce()
+          )
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setNonce = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 7, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getAssociatedData = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 8, "")
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getAssociatedData_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getAssociatedData()
+          )
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getAssociatedData_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getAssociatedData()
+          )
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setAssociatedData = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 8, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getIsEdited = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 9, false)
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setIsEdited = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 9, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getEditedAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 10)
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setEditedAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 10, value);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.clearEditedAt = function() {
+        return this.setEditedAt(void 0);
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.hasEditedAt = function() {
+        return jspb2.Message.getField(this, 10) != null;
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.getIsDeleted = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 11, false)
+        );
+      };
+      proto.barkfluff.shared.EncryptedMessage.prototype.setIsDeleted = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 11, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.shared.SecretEnvelope.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.shared.SecretEnvelope.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.shared.SecretEnvelope.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messageId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            senderUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            senderDeviceId: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            recipientDeviceId: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            envelope: msg.getEnvelope_asB64(),
+            sentAt: (f2 = msg.getSentAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.shared.SecretEnvelope.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.shared.SecretEnvelope();
+        return proto.barkfluff.shared.SecretEnvelope.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.shared.SecretEnvelope.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setMessageId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSenderUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderDeviceId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRecipientDeviceId(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setEnvelope(value);
+              break;
+            case 6:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setSentAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.shared.SecretEnvelope.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.shared.SecretEnvelope.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getSenderUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSenderDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getRecipientDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getEnvelope_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            5,
+            f2
+          );
+        }
+        f2 = message.getSentAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            6,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getSenderUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.setSenderUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getSenderDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.setSenderDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getRecipientDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.setRecipientDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getEnvelope = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getEnvelope_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getEnvelope_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.setEnvelope = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 5, value);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.getSentAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 6)
+        );
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.setSentAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 6, value);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.clearSentAt = function() {
+        return this.setSentAt(void 0);
+      };
+      proto.barkfluff.shared.SecretEnvelope.prototype.hasSentAt = function() {
+        return jspb2.Message.getField(this, 6) != null;
+      };
       proto.barkfluff.shared.MessageAttachmentType = {
         MESSAGE_ATTACHMENT_TYPE_UNKNOWN: 0,
         IMAGE: 1,
@@ -9477,18 +10061,23 @@ var BarkFluffBundle = (() => {
         GENERIC: 1,
         SYSTEM: 2
       };
+      proto.barkfluff.shared.ChatType = {
+        CHAT_TYPE_REGULAR: 0,
+        CHAT_TYPE_PRIVATE: 1,
+        CHAT_TYPE_SECRET: 2
+      };
       goog2.object.extend(exports2, proto.barkfluff.shared);
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_pb.js
+  // scripts/.proto-tmp/identity_api_pb.js
   var require_identity_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/identity_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
       goog2.exportSymbol("proto.barkfluff.identity.AuthRequest", null, global2);
@@ -9512,6 +10101,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.identity.EnableOtpVerificationRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.EnableOtpVerificationResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.FastAuthRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.identity.ForceSetPasswordServerRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.identity.ForceSetPasswordServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.GenerateTestTokenRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.GenerateTestTokenResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.GetActiveSessionsRequest", null, global2);
@@ -9576,6 +10167,20 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.identity.RemoveActiveSessionServerRequest, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.identity.RemoveActiveSessionServerRequest.displayName = "proto.barkfluff.identity.RemoveActiveSessionServerRequest";
+      }
+      proto.barkfluff.identity.ForceSetPasswordServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.identity.ForceSetPasswordServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.identity.ForceSetPasswordServerRequest.displayName = "proto.barkfluff.identity.ForceSetPasswordServerRequest";
+      }
+      proto.barkfluff.identity.ForceSetPasswordServerResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.identity.ForceSetPasswordServerResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.identity.ForceSetPasswordServerResponse.displayName = "proto.barkfluff.identity.ForceSetPasswordServerResponse";
       }
       proto.barkfluff.identity.ConfirmResetPasswordRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
@@ -10409,6 +11014,133 @@ var BarkFluffBundle = (() => {
         return jspb2.Message.setProto3StringField(this, 2, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.identity.ForceSetPasswordServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.identity.ForceSetPasswordServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.identity.ForceSetPasswordServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            newPassword: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.identity.ForceSetPasswordServerRequest();
+        return proto.barkfluff.identity.ForceSetPasswordServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setNewPassword(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.identity.ForceSetPasswordServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getNewPassword();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.prototype.getNewPassword = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerRequest.prototype.setNewPassword = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.identity.ForceSetPasswordServerResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.identity.ForceSetPasswordServerResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.identity.ForceSetPasswordServerResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.identity.ForceSetPasswordServerResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.identity.ForceSetPasswordServerResponse();
+        return proto.barkfluff.identity.ForceSetPasswordServerResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.identity.ForceSetPasswordServerResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.identity.ForceSetPasswordServerResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.identity.ConfirmResetPasswordRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.identity.ConfirmResetPasswordRequest.toObject(opt_includeInstance, this);
         };
@@ -10612,8 +11344,8 @@ var BarkFluffBundle = (() => {
         };
         proto.barkfluff.identity.ResetPasswordRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            username: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            email: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            username: (f2 = jspb2.Message.getField(msg, 1)) == null ? void 0 : f2,
+            email: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2,
             otpType: jspb2.Message.getFieldWithDefault(msg, 3, 0)
           };
           if (includeInstance) {
@@ -12565,8 +13297,8 @@ var BarkFluffBundle = (() => {
         };
         proto.barkfluff.identity.AuthRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            username: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            email: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            username: (f2 = jspb2.Message.getField(msg, 1)) == null ? void 0 : f2,
+            email: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2,
             password: jspb2.Message.getFieldWithDefault(msg, 3, ""),
             otpCode: jspb2.Message.getFieldWithDefault(msg, 4, "")
           };
@@ -13114,9 +13846,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_grpc_web_pb.js
+  // scripts/.proto-tmp/identity_api_grpc_web_pb.js
   var require_identity_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/identity_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -13767,18 +14499,49 @@ var BarkFluffBundle = (() => {
           methodDescriptor_IdentityServerApi_CreateSessionForUserServer
         );
       };
+      var methodDescriptor_IdentityServerApi_ForceSetPasswordServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.identity.IdentityServerApi/ForceSetPasswordServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.identity.ForceSetPasswordServerRequest,
+        proto2.barkfluff.identity.ForceSetPasswordServerResponse,
+        /**
+         * @param {!proto.barkfluff.identity.ForceSetPasswordServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.identity.ForceSetPasswordServerResponse.deserializeBinary
+      );
+      proto2.barkfluff.identity.IdentityServerApiClient.prototype.forceSetPasswordServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.identity.IdentityServerApi/ForceSetPasswordServer",
+          request,
+          metadata || {},
+          methodDescriptor_IdentityServerApi_ForceSetPasswordServer,
+          callback
+        );
+      };
+      proto2.barkfluff.identity.IdentityServerApiPromiseClient.prototype.forceSetPasswordServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.identity.IdentityServerApi/ForceSetPasswordServer",
+          request,
+          metadata || {},
+          methodDescriptor_IdentityServerApi_ForceSetPasswordServer
+        );
+      };
       module2.exports = proto2.barkfluff.identity;
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_pb.js
+  // scripts/.proto-tmp/users_api_pb.js
   var require_users_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/users_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
       var shared_pb = require_shared_pb();
@@ -13817,11 +14580,14 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.DeviceFirebaseToken", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ExportDataRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ExportDataResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.FetchPrekeyBundleRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.FetchPrekeyBundleResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.FindByLoginRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.FindByLoginRequest.LoginCase", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.FindByLoginResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetAllBadgesRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetAllBadgesResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetByIdRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetByIdResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetChatFoldersRequest", null, global2);
@@ -13830,6 +14596,7 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.GetCurrentDeviceResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesWithFirebaseTokensResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetPersonalizationRequest", null, global2);
@@ -13838,6 +14605,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.GetPrivacySettingsResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetProfilePosterRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetProfilePosterResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetProfilePosterServerRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetProfilePosterServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetUserBadgesRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetUserBadgesResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetUserByUsernameRequest", null, global2);
@@ -13853,10 +14622,17 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.JsonFile", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ListByIdsRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ListByIdsResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ListPeerDevicesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ListPeerDevicesResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.OneTimePreKey", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.PeerDeviceInfo", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.PrekeyBundle", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.PrivacySettings", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ProfileFieldVisibility", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RegisterDeviceRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RegisterDeviceResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.RegisterPrekeyBundleRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.RegisterPrekeyBundleResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RemoveChatFromFolderRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RemoveChatFromFolderResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RemoveUserBadgeRequest", null, global2);
@@ -13865,6 +14641,10 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.RenameDeviceResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ReorderChatFoldersRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ReorderChatFoldersResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ReplenishOneTimePrekeysRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ReplenishOneTimePrekeysResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.RotateSignedPrekeyRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.RotateSignedPrekeyResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.SearchUsersRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.SearchUsersResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.SearchUsersServerRequest", null, global2);
@@ -13879,6 +14659,9 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.SetProfilePictureServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.SetProfilePosterRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.SetProfilePosterResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.SetProfilePosterServerRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.SetProfilePosterServerResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.SignedPreKey", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateBadgeRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateBadgeResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateChatFolderRequest", null, global2);
@@ -13887,6 +14670,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.UpdatePersonalizationResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdatePrivacySettingsRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdatePrivacySettingsResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpdateProfileServerRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpdateProfileServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateStorageLimitRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateStorageLimitResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateUserBadgePriorityRequest", null, global2);
@@ -13908,6 +14693,48 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.users.SetProfilePictureServerResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.SetProfilePictureServerResponse.displayName = "proto.barkfluff.users.SetProfilePictureServerResponse";
+      }
+      proto.barkfluff.users.UpdateProfileServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpdateProfileServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpdateProfileServerRequest.displayName = "proto.barkfluff.users.UpdateProfileServerRequest";
+      }
+      proto.barkfluff.users.UpdateProfileServerResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpdateProfileServerResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpdateProfileServerResponse.displayName = "proto.barkfluff.users.UpdateProfileServerResponse";
+      }
+      proto.barkfluff.users.SetProfilePosterServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.SetProfilePosterServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.SetProfilePosterServerRequest.displayName = "proto.barkfluff.users.SetProfilePosterServerRequest";
+      }
+      proto.barkfluff.users.SetProfilePosterServerResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.SetProfilePosterServerResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.SetProfilePosterServerResponse.displayName = "proto.barkfluff.users.SetProfilePosterServerResponse";
+      }
+      proto.barkfluff.users.GetProfilePosterServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetProfilePosterServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetProfilePosterServerRequest.displayName = "proto.barkfluff.users.GetProfilePosterServerRequest";
+      }
+      proto.barkfluff.users.GetProfilePosterServerResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetProfilePosterServerResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetProfilePosterServerResponse.displayName = "proto.barkfluff.users.GetProfilePosterServerResponse";
       }
       proto.barkfluff.users.SearchUsersServerRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
@@ -14413,6 +15240,20 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest.displayName = "proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest";
       }
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.displayName = "proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest";
+      }
+      proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.displayName = "proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest";
+      }
       proto.barkfluff.users.GetDevicesWithFirebaseTokensResponse = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.GetDevicesWithFirebaseTokensResponse.repeatedFields_, null);
       };
@@ -14665,6 +15506,104 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.ReorderChatFoldersResponse.displayName = "proto.barkfluff.users.ReorderChatFoldersResponse";
       }
+      proto.barkfluff.users.SignedPreKey = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.SignedPreKey, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.SignedPreKey.displayName = "proto.barkfluff.users.SignedPreKey";
+      }
+      proto.barkfluff.users.OneTimePreKey = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.OneTimePreKey, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.OneTimePreKey.displayName = "proto.barkfluff.users.OneTimePreKey";
+      }
+      proto.barkfluff.users.PrekeyBundle = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.PrekeyBundle, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.PrekeyBundle.displayName = "proto.barkfluff.users.PrekeyBundle";
+      }
+      proto.barkfluff.users.RegisterPrekeyBundleRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.RegisterPrekeyBundleRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.RegisterPrekeyBundleRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.RegisterPrekeyBundleRequest.displayName = "proto.barkfluff.users.RegisterPrekeyBundleRequest";
+      }
+      proto.barkfluff.users.RegisterPrekeyBundleResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.RegisterPrekeyBundleResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.RegisterPrekeyBundleResponse.displayName = "proto.barkfluff.users.RegisterPrekeyBundleResponse";
+      }
+      proto.barkfluff.users.FetchPrekeyBundleRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.FetchPrekeyBundleRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.FetchPrekeyBundleRequest.displayName = "proto.barkfluff.users.FetchPrekeyBundleRequest";
+      }
+      proto.barkfluff.users.FetchPrekeyBundleResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.FetchPrekeyBundleResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.FetchPrekeyBundleResponse.displayName = "proto.barkfluff.users.FetchPrekeyBundleResponse";
+      }
+      proto.barkfluff.users.ListPeerDevicesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ListPeerDevicesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ListPeerDevicesRequest.displayName = "proto.barkfluff.users.ListPeerDevicesRequest";
+      }
+      proto.barkfluff.users.ListPeerDevicesResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.ListPeerDevicesResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ListPeerDevicesResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ListPeerDevicesResponse.displayName = "proto.barkfluff.users.ListPeerDevicesResponse";
+      }
+      proto.barkfluff.users.PeerDeviceInfo = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.PeerDeviceInfo, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.PeerDeviceInfo.displayName = "proto.barkfluff.users.PeerDeviceInfo";
+      }
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.ReplenishOneTimePrekeysRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ReplenishOneTimePrekeysRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ReplenishOneTimePrekeysRequest.displayName = "proto.barkfluff.users.ReplenishOneTimePrekeysRequest";
+      }
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ReplenishOneTimePrekeysResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ReplenishOneTimePrekeysResponse.displayName = "proto.barkfluff.users.ReplenishOneTimePrekeysResponse";
+      }
+      proto.barkfluff.users.RotateSignedPrekeyRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.RotateSignedPrekeyRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.RotateSignedPrekeyRequest.displayName = "proto.barkfluff.users.RotateSignedPrekeyRequest";
+      }
+      proto.barkfluff.users.RotateSignedPrekeyResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.RotateSignedPrekeyResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.RotateSignedPrekeyResponse.displayName = "proto.barkfluff.users.RotateSignedPrekeyResponse";
+      }
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.SetProfilePictureServerRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.users.SetProfilePictureServerRequest.toObject(opt_includeInstance, this);
@@ -14815,6 +15754,460 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.users.SetProfilePictureServerResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpdateProfileServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpdateProfileServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpdateProfileServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            firstName: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            lastName: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            bio: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            username: jspb2.Message.getFieldWithDefault(msg, 5, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpdateProfileServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpdateProfileServerRequest();
+        return proto.barkfluff.users.UpdateProfileServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFirstName(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLastName(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setBio(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUsername(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpdateProfileServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFirstName();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getLastName();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getBio();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.getFirstName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.setFirstName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.getLastName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.setLastName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.getBio = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.setBio = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.getUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.users.UpdateProfileServerRequest.prototype.setUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpdateProfileServerResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpdateProfileServerResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpdateProfileServerResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpdateProfileServerResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpdateProfileServerResponse();
+        return proto.barkfluff.users.UpdateProfileServerResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpdateProfileServerResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpdateProfileServerResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpdateProfileServerResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpdateProfileServerResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.SetProfilePosterServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.SetProfilePosterServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.SetProfilePosterServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            posterFileId: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.SetProfilePosterServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.SetProfilePosterServerRequest();
+        return proto.barkfluff.users.SetProfilePosterServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setPosterFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.SetProfilePosterServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getPosterFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.prototype.getPosterFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.SetProfilePosterServerRequest.prototype.setPosterFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.SetProfilePosterServerResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.SetProfilePosterServerResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.SetProfilePosterServerResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.SetProfilePosterServerResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.SetProfilePosterServerResponse();
+        return proto.barkfluff.users.SetProfilePosterServerResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.SetProfilePosterServerResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.SetProfilePosterServerResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.SetProfilePosterServerResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.SetProfilePosterServerResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetProfilePosterServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetProfilePosterServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetProfilePosterServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetProfilePosterServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetProfilePosterServerRequest();
+        return proto.barkfluff.users.GetProfilePosterServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetProfilePosterServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetProfilePosterServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetProfilePosterServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetProfilePosterServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.GetProfilePosterServerRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.GetProfilePosterServerRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetProfilePosterServerResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetProfilePosterServerResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetProfilePosterServerResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            posterUrl: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetProfilePosterServerResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetProfilePosterServerResponse();
+        return proto.barkfluff.users.GetProfilePosterServerResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetProfilePosterServerResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setPosterUrl(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetProfilePosterServerResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetProfilePosterServerResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetProfilePosterServerResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getPosterUrl();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.GetProfilePosterServerResponse.prototype.getPosterUrl = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.GetProfilePosterServerResponse.prototype.setPosterUrl = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.SearchUsersServerRequest.prototype.toObject = function(opt_includeInstance) {
@@ -16962,8 +18355,8 @@ var BarkFluffBundle = (() => {
         };
         proto.barkfluff.users.FindByLoginRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            username: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            email: jspb2.Message.getFieldWithDefault(msg, 2, "")
+            username: (f2 = jspb2.Message.getField(msg, 1)) == null ? void 0 : f2,
+            email: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -17764,7 +19157,7 @@ var BarkFluffBundle = (() => {
         proto.barkfluff.users.GetUserBadgesRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
             userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
-            limit: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+            limit: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -17934,7 +19327,7 @@ var BarkFluffBundle = (() => {
           var f2, obj = {
             userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
             badgeId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
-            priority: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+            priority: (f2 = jspb2.Message.getField(msg, 3)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -20924,6 +22317,116 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest.prototype.clearUserIdsList = function() {
         return this.setUserIdsList([]);
       };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            deviceIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest();
+        return proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addDeviceIds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getDeviceIdsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.prototype.getDeviceIdsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.prototype.setDeviceIdsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.prototype.addDeviceIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest.prototype.clearDeviceIdsList = function() {
+        return this.setDeviceIdsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest();
+        return proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
       proto.barkfluff.users.GetDevicesWithFirebaseTokensResponse.repeatedFields_ = [1];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.GetDevicesWithFirebaseTokensResponse.prototype.toObject = function(opt_includeInstance) {
@@ -22708,8 +24211,8 @@ var BarkFluffBundle = (() => {
         proto.barkfluff.users.UpdateChatFolderRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
             folderId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            folderName: jspb2.Message.getFieldWithDefault(msg, 2, ""),
-            folderIcon: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            folderName: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2,
+            folderIcon: (f2 = jspb2.Message.getField(msg, 3)) == null ? void 0 : f2,
             hasChatListUpdate: jspb2.Message.getBooleanFieldWithDefault(msg, 4, false),
             chatListList: (f2 = jspb2.Message.getRepeatedField(msg, 5)) == null ? void 0 : f2
           };
@@ -23568,6 +25071,1376 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.users.ReorderChatFoldersResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.SignedPreKey.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.SignedPreKey.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.SignedPreKey.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            prekeyId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            publicKey: msg.getPublicKey_asB64(),
+            signature: msg.getSignature_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.SignedPreKey.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.SignedPreKey();
+        return proto.barkfluff.users.SignedPreKey.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.SignedPreKey.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readUint32()
+              );
+              msg.setPrekeyId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setPublicKey(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setSignature(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.SignedPreKey.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.SignedPreKey.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getPrekeyId();
+        if (f2 !== 0) {
+          writer.writeUint32(
+            1,
+            f2
+          );
+        }
+        f2 = message.getPublicKey_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSignature_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getPrekeyId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.setPrekeyId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getPublicKey = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getPublicKey_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getPublicKey()
+          )
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getPublicKey_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getPublicKey()
+          )
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.setPublicKey = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getSignature = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getSignature_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getSignature()
+          )
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.getSignature_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getSignature()
+          )
+        );
+      };
+      proto.barkfluff.users.SignedPreKey.prototype.setSignature = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.OneTimePreKey.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.OneTimePreKey.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.OneTimePreKey.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            prekeyId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            publicKey: msg.getPublicKey_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.OneTimePreKey.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.OneTimePreKey();
+        return proto.barkfluff.users.OneTimePreKey.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.OneTimePreKey.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readUint32()
+              );
+              msg.setPrekeyId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setPublicKey(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.OneTimePreKey.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.OneTimePreKey.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getPrekeyId();
+        if (f2 !== 0) {
+          writer.writeUint32(
+            1,
+            f2
+          );
+        }
+        f2 = message.getPublicKey_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.getPrekeyId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.setPrekeyId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.getPublicKey = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.getPublicKey_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getPublicKey()
+          )
+        );
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.getPublicKey_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getPublicKey()
+          )
+        );
+      };
+      proto.barkfluff.users.OneTimePreKey.prototype.setPublicKey = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.PrekeyBundle.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.PrekeyBundle.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.PrekeyBundle.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            deviceId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            registrationId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            identityPubkey: msg.getIdentityPubkey_asB64(),
+            signedPrekey: (f2 = msg.getSignedPrekey()) && proto.barkfluff.users.SignedPreKey.toObject(includeInstance, f2),
+            oneTimePrekey: (f2 = msg.getOneTimePrekey()) && proto.barkfluff.users.OneTimePreKey.toObject(includeInstance, f2),
+            hasOneTimePrekey: jspb2.Message.getBooleanFieldWithDefault(msg, 6, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.PrekeyBundle.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.PrekeyBundle();
+        return proto.barkfluff.users.PrekeyBundle.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.PrekeyBundle.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setDeviceId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readUint32()
+              );
+              msg.setRegistrationId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setIdentityPubkey(value);
+              break;
+            case 4:
+              var value = new proto.barkfluff.users.SignedPreKey();
+              reader.readMessage(value, proto.barkfluff.users.SignedPreKey.deserializeBinaryFromReader);
+              msg.setSignedPrekey(value);
+              break;
+            case 5:
+              var value = new proto.barkfluff.users.OneTimePreKey();
+              reader.readMessage(value, proto.barkfluff.users.OneTimePreKey.deserializeBinaryFromReader);
+              msg.setOneTimePrekey(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setHasOneTimePrekey(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.PrekeyBundle.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.PrekeyBundle.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRegistrationId();
+        if (f2 !== 0) {
+          writer.writeUint32(
+            2,
+            f2
+          );
+        }
+        f2 = message.getIdentityPubkey_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+        f2 = message.getSignedPrekey();
+        if (f2 != null) {
+          writer.writeMessage(
+            4,
+            f2,
+            proto.barkfluff.users.SignedPreKey.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getOneTimePrekey();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            proto.barkfluff.users.OneTimePreKey.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getHasOneTimePrekey();
+        if (f2) {
+          writer.writeBool(
+            6,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.setDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getRegistrationId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.setRegistrationId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getIdentityPubkey = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getIdentityPubkey_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getIdentityPubkey()
+          )
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getIdentityPubkey_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getIdentityPubkey()
+          )
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.setIdentityPubkey = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getSignedPrekey = function() {
+        return (
+          /** @type{?proto.barkfluff.users.SignedPreKey} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.users.SignedPreKey, 4)
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.setSignedPrekey = function(value) {
+        return jspb2.Message.setWrapperField(this, 4, value);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.clearSignedPrekey = function() {
+        return this.setSignedPrekey(void 0);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.hasSignedPrekey = function() {
+        return jspb2.Message.getField(this, 4) != null;
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getOneTimePrekey = function() {
+        return (
+          /** @type{?proto.barkfluff.users.OneTimePreKey} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.users.OneTimePreKey, 5)
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.setOneTimePrekey = function(value) {
+        return jspb2.Message.setWrapperField(this, 5, value);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.clearOneTimePrekey = function() {
+        return this.setOneTimePrekey(void 0);
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.hasOneTimePrekey = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.getHasOneTimePrekey = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 6, false)
+        );
+      };
+      proto.barkfluff.users.PrekeyBundle.prototype.setHasOneTimePrekey = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 6, value);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.repeatedFields_ = [4];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.RegisterPrekeyBundleRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.RegisterPrekeyBundleRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            registrationId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            identityPubkey: msg.getIdentityPubkey_asB64(),
+            signedPrekey: (f2 = msg.getSignedPrekey()) && proto.barkfluff.users.SignedPreKey.toObject(includeInstance, f2),
+            oneTimePrekeysList: jspb2.Message.toObjectList(
+              msg.getOneTimePrekeysList(),
+              proto.barkfluff.users.OneTimePreKey.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.RegisterPrekeyBundleRequest();
+        return proto.barkfluff.users.RegisterPrekeyBundleRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readUint32()
+              );
+              msg.setRegistrationId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setIdentityPubkey(value);
+              break;
+            case 3:
+              var value = new proto.barkfluff.users.SignedPreKey();
+              reader.readMessage(value, proto.barkfluff.users.SignedPreKey.deserializeBinaryFromReader);
+              msg.setSignedPrekey(value);
+              break;
+            case 4:
+              var value = new proto.barkfluff.users.OneTimePreKey();
+              reader.readMessage(value, proto.barkfluff.users.OneTimePreKey.deserializeBinaryFromReader);
+              msg.addOneTimePrekeys(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.RegisterPrekeyBundleRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getRegistrationId();
+        if (f2 !== 0) {
+          writer.writeUint32(
+            1,
+            f2
+          );
+        }
+        f2 = message.getIdentityPubkey_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSignedPrekey();
+        if (f2 != null) {
+          writer.writeMessage(
+            3,
+            f2,
+            proto.barkfluff.users.SignedPreKey.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getOneTimePrekeysList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            4,
+            f2,
+            proto.barkfluff.users.OneTimePreKey.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.getRegistrationId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.setRegistrationId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.getIdentityPubkey = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.getIdentityPubkey_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getIdentityPubkey()
+          )
+        );
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.getIdentityPubkey_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getIdentityPubkey()
+          )
+        );
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.setIdentityPubkey = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.getSignedPrekey = function() {
+        return (
+          /** @type{?proto.barkfluff.users.SignedPreKey} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.users.SignedPreKey, 3)
+        );
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.setSignedPrekey = function(value) {
+        return jspb2.Message.setWrapperField(this, 3, value);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.clearSignedPrekey = function() {
+        return this.setSignedPrekey(void 0);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.hasSignedPrekey = function() {
+        return jspb2.Message.getField(this, 3) != null;
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.getOneTimePrekeysList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.users.OneTimePreKey>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.users.OneTimePreKey, 4)
+        );
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.setOneTimePrekeysList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 4, value);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.addOneTimePrekeys = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.barkfluff.users.OneTimePreKey, opt_index);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleRequest.prototype.clearOneTimePrekeysList = function() {
+        return this.setOneTimePrekeysList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.RegisterPrekeyBundleResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.RegisterPrekeyBundleResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.RegisterPrekeyBundleResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.RegisterPrekeyBundleResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.RegisterPrekeyBundleResponse();
+        return proto.barkfluff.users.RegisterPrekeyBundleResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.RegisterPrekeyBundleResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.RegisterPrekeyBundleResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.FetchPrekeyBundleRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.FetchPrekeyBundleRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.FetchPrekeyBundleRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            deviceId: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.FetchPrekeyBundleRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.FetchPrekeyBundleRequest();
+        return proto.barkfluff.users.FetchPrekeyBundleRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setDeviceId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.FetchPrekeyBundleRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.prototype.getDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.FetchPrekeyBundleRequest.prototype.setDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.FetchPrekeyBundleResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.FetchPrekeyBundleResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            bundle: (f2 = msg.getBundle()) && proto.barkfluff.users.PrekeyBundle.toObject(includeInstance, f2),
+            remainingOneTimePrekeys: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.FetchPrekeyBundleResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.FetchPrekeyBundleResponse();
+        return proto.barkfluff.users.FetchPrekeyBundleResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.PrekeyBundle();
+              reader.readMessage(value, proto.barkfluff.users.PrekeyBundle.deserializeBinaryFromReader);
+              msg.setBundle(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setRemainingOneTimePrekeys(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.FetchPrekeyBundleResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getBundle();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            proto.barkfluff.users.PrekeyBundle.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getRemainingOneTimePrekeys();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.getBundle = function() {
+        return (
+          /** @type{?proto.barkfluff.users.PrekeyBundle} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.users.PrekeyBundle, 1)
+        );
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.setBundle = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.clearBundle = function() {
+        return this.setBundle(void 0);
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.hasBundle = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.getRemainingOneTimePrekeys = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.users.FetchPrekeyBundleResponse.prototype.setRemainingOneTimePrekeys = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ListPeerDevicesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ListPeerDevicesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ListPeerDevicesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ListPeerDevicesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ListPeerDevicesRequest();
+        return proto.barkfluff.users.ListPeerDevicesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ListPeerDevicesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ListPeerDevicesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ListPeerDevicesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ListPeerDevicesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.ListPeerDevicesRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.ListPeerDevicesRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ListPeerDevicesResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ListPeerDevicesResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ListPeerDevicesResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            devicesList: jspb2.Message.toObjectList(
+              msg.getDevicesList(),
+              proto.barkfluff.users.PeerDeviceInfo.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ListPeerDevicesResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ListPeerDevicesResponse();
+        return proto.barkfluff.users.ListPeerDevicesResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.PeerDeviceInfo();
+              reader.readMessage(value, proto.barkfluff.users.PeerDeviceInfo.deserializeBinaryFromReader);
+              msg.addDevices(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ListPeerDevicesResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getDevicesList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.users.PeerDeviceInfo.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.prototype.getDevicesList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.users.PeerDeviceInfo>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.users.PeerDeviceInfo, 1)
+        );
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.prototype.setDevicesList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.prototype.addDevices = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.users.PeerDeviceInfo, opt_index);
+      };
+      proto.barkfluff.users.ListPeerDevicesResponse.prototype.clearDevicesList = function() {
+        return this.setDevicesList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.PeerDeviceInfo.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.PeerDeviceInfo.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.PeerDeviceInfo.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            deviceId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            displayName: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            hasBundle: jspb2.Message.getBooleanFieldWithDefault(msg, 3, false),
+            lastSeenAt: (f2 = msg.getLastSeenAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.PeerDeviceInfo.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.PeerDeviceInfo();
+        return proto.barkfluff.users.PeerDeviceInfo.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.PeerDeviceInfo.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setDeviceId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setDisplayName(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setHasBundle(value);
+              break;
+            case 4:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setLastSeenAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.PeerDeviceInfo.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.PeerDeviceInfo.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getDisplayName();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getHasBundle();
+        if (f2) {
+          writer.writeBool(
+            3,
+            f2
+          );
+        }
+        f2 = message.getLastSeenAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            4,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.getDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.setDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.getDisplayName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.setDisplayName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.getHasBundle = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 3, false)
+        );
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.setHasBundle = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 3, value);
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.getLastSeenAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 4)
+        );
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.setLastSeenAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 4, value);
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.clearLastSeenAt = function() {
+        return this.setLastSeenAt(void 0);
+      };
+      proto.barkfluff.users.PeerDeviceInfo.prototype.hasLastSeenAt = function() {
+        return jspb2.Message.getField(this, 4) != null;
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ReplenishOneTimePrekeysRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ReplenishOneTimePrekeysRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ReplenishOneTimePrekeysRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            prekeysList: jspb2.Message.toObjectList(
+              msg.getPrekeysList(),
+              proto.barkfluff.users.OneTimePreKey.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ReplenishOneTimePrekeysRequest();
+        return proto.barkfluff.users.ReplenishOneTimePrekeysRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.OneTimePreKey();
+              reader.readMessage(value, proto.barkfluff.users.OneTimePreKey.deserializeBinaryFromReader);
+              msg.addPrekeys(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ReplenishOneTimePrekeysRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getPrekeysList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.users.OneTimePreKey.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.prototype.getPrekeysList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.users.OneTimePreKey>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.users.OneTimePreKey, 1)
+        );
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.prototype.setPrekeysList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.prototype.addPrekeys = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.users.OneTimePreKey, opt_index);
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysRequest.prototype.clearPrekeysList = function() {
+        return this.setPrekeysList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ReplenishOneTimePrekeysResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ReplenishOneTimePrekeysResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ReplenishOneTimePrekeysResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            totalOneTimePrekeys: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ReplenishOneTimePrekeysResponse();
+        return proto.barkfluff.users.ReplenishOneTimePrekeysResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setTotalOneTimePrekeys(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ReplenishOneTimePrekeysResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getTotalOneTimePrekeys();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse.prototype.getTotalOneTimePrekeys = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.ReplenishOneTimePrekeysResponse.prototype.setTotalOneTimePrekeys = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.RotateSignedPrekeyRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.RotateSignedPrekeyRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.RotateSignedPrekeyRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            signedPrekey: (f2 = msg.getSignedPrekey()) && proto.barkfluff.users.SignedPreKey.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.RotateSignedPrekeyRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.RotateSignedPrekeyRequest();
+        return proto.barkfluff.users.RotateSignedPrekeyRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.SignedPreKey();
+              reader.readMessage(value, proto.barkfluff.users.SignedPreKey.deserializeBinaryFromReader);
+              msg.setSignedPrekey(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.RotateSignedPrekeyRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getSignedPrekey();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            proto.barkfluff.users.SignedPreKey.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.prototype.getSignedPrekey = function() {
+        return (
+          /** @type{?proto.barkfluff.users.SignedPreKey} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.users.SignedPreKey, 1)
+        );
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.prototype.setSignedPrekey = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.prototype.clearSignedPrekey = function() {
+        return this.setSignedPrekey(void 0);
+      };
+      proto.barkfluff.users.RotateSignedPrekeyRequest.prototype.hasSignedPrekey = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.RotateSignedPrekeyResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.RotateSignedPrekeyResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.RotateSignedPrekeyResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.RotateSignedPrekeyResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.RotateSignedPrekeyResponse();
+        return proto.barkfluff.users.RotateSignedPrekeyResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.RotateSignedPrekeyResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.RotateSignedPrekeyResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.RotateSignedPrekeyResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.RotateSignedPrekeyResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
       proto.barkfluff.users.ProfileFieldVisibility = {
         ALL: 0,
         FRIENDS: 1,
@@ -23577,9 +26450,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_grpc_web_pb.js
+  // scripts/.proto-tmp/users_api_grpc_web_pb.js
   var require_users_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/users_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -24436,6 +27309,161 @@ var BarkFluffBundle = (() => {
           methodDescriptor_UsersApi_ReorderChatFolders
         );
       };
+      var methodDescriptor_UsersApi_RegisterPrekeyBundle = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/RegisterPrekeyBundle",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.RegisterPrekeyBundleRequest,
+        proto2.barkfluff.users.RegisterPrekeyBundleResponse,
+        /**
+         * @param {!proto.barkfluff.users.RegisterPrekeyBundleRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.RegisterPrekeyBundleResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.registerPrekeyBundle = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/RegisterPrekeyBundle",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_RegisterPrekeyBundle,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.registerPrekeyBundle = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/RegisterPrekeyBundle",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_RegisterPrekeyBundle
+        );
+      };
+      var methodDescriptor_UsersApi_FetchPrekeyBundle = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/FetchPrekeyBundle",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.FetchPrekeyBundleRequest,
+        proto2.barkfluff.users.FetchPrekeyBundleResponse,
+        /**
+         * @param {!proto.barkfluff.users.FetchPrekeyBundleRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.FetchPrekeyBundleResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.fetchPrekeyBundle = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/FetchPrekeyBundle",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_FetchPrekeyBundle,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.fetchPrekeyBundle = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/FetchPrekeyBundle",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_FetchPrekeyBundle
+        );
+      };
+      var methodDescriptor_UsersApi_ListPeerDevices = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/ListPeerDevices",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.ListPeerDevicesRequest,
+        proto2.barkfluff.users.ListPeerDevicesResponse,
+        /**
+         * @param {!proto.barkfluff.users.ListPeerDevicesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.ListPeerDevicesResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.listPeerDevices = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ListPeerDevices",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ListPeerDevices,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.listPeerDevices = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ListPeerDevices",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ListPeerDevices
+        );
+      };
+      var methodDescriptor_UsersApi_ReplenishOneTimePrekeys = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/ReplenishOneTimePrekeys",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.ReplenishOneTimePrekeysRequest,
+        proto2.barkfluff.users.ReplenishOneTimePrekeysResponse,
+        /**
+         * @param {!proto.barkfluff.users.ReplenishOneTimePrekeysRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.ReplenishOneTimePrekeysResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.replenishOneTimePrekeys = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ReplenishOneTimePrekeys",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ReplenishOneTimePrekeys,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.replenishOneTimePrekeys = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ReplenishOneTimePrekeys",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ReplenishOneTimePrekeys
+        );
+      };
+      var methodDescriptor_UsersApi_RotateSignedPrekey = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/RotateSignedPrekey",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.RotateSignedPrekeyRequest,
+        proto2.barkfluff.users.RotateSignedPrekeyResponse,
+        /**
+         * @param {!proto.barkfluff.users.RotateSignedPrekeyRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.RotateSignedPrekeyResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.rotateSignedPrekey = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/RotateSignedPrekey",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_RotateSignedPrekey,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.rotateSignedPrekey = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/RotateSignedPrekey",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_RotateSignedPrekey
+        );
+      };
       proto2.barkfluff.users.UsersServerApiClient = function(hostname, credentials, options) {
         if (!options) options = {};
         options.format = "text";
@@ -25223,6 +28251,68 @@ var BarkFluffBundle = (() => {
           methodDescriptor_UsersServerApi_GetDevicesWithFirebaseTokens
         );
       };
+      var methodDescriptor_UsersServerApi_GetDevicesWithFirebaseTokensByDeviceIds = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/GetDevicesWithFirebaseTokensByDeviceIds",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest,
+        proto2.barkfluff.users.GetDevicesWithFirebaseTokensResponse,
+        /**
+         * @param {!proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.GetDevicesWithFirebaseTokensResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.getDevicesWithFirebaseTokensByDeviceIds = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetDevicesWithFirebaseTokensByDeviceIds",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetDevicesWithFirebaseTokensByDeviceIds,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.getDevicesWithFirebaseTokensByDeviceIds = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetDevicesWithFirebaseTokensByDeviceIds",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetDevicesWithFirebaseTokensByDeviceIds
+        );
+      };
+      var methodDescriptor_UsersServerApi_GetAllDevicesWithFirebaseTokens = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/GetAllDevicesWithFirebaseTokens",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest,
+        proto2.barkfluff.users.GetDevicesWithFirebaseTokensResponse,
+        /**
+         * @param {!proto.barkfluff.users.GetAllDevicesWithFirebaseTokensRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.GetDevicesWithFirebaseTokensResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.getAllDevicesWithFirebaseTokens = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetAllDevicesWithFirebaseTokens",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetAllDevicesWithFirebaseTokens,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.getAllDevicesWithFirebaseTokens = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetAllDevicesWithFirebaseTokens",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetAllDevicesWithFirebaseTokens
+        );
+      };
       var methodDescriptor_UsersServerApi_GetUserPrivacy = new grpc.web.MethodDescriptor(
         "/barkfluff.users.UsersServerApi/GetUserPrivacy",
         grpc.web.MethodType.UNARY,
@@ -25254,36 +28344,146 @@ var BarkFluffBundle = (() => {
           methodDescriptor_UsersServerApi_GetUserPrivacy
         );
       };
+      var methodDescriptor_UsersServerApi_UpdateProfileServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/UpdateProfileServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.UpdateProfileServerRequest,
+        proto2.barkfluff.users.UpdateProfileServerResponse,
+        /**
+         * @param {!proto.barkfluff.users.UpdateProfileServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.UpdateProfileServerResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.updateProfileServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/UpdateProfileServer",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_UpdateProfileServer,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.updateProfileServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/UpdateProfileServer",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_UpdateProfileServer
+        );
+      };
+      var methodDescriptor_UsersServerApi_SetProfilePosterServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/SetProfilePosterServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.SetProfilePosterServerRequest,
+        proto2.barkfluff.users.SetProfilePosterServerResponse,
+        /**
+         * @param {!proto.barkfluff.users.SetProfilePosterServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.SetProfilePosterServerResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.setProfilePosterServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/SetProfilePosterServer",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_SetProfilePosterServer,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.setProfilePosterServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/SetProfilePosterServer",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_SetProfilePosterServer
+        );
+      };
+      var methodDescriptor_UsersServerApi_GetProfilePosterServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/GetProfilePosterServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.GetProfilePosterServerRequest,
+        proto2.barkfluff.users.GetProfilePosterServerResponse,
+        /**
+         * @param {!proto.barkfluff.users.GetProfilePosterServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.GetProfilePosterServerResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.getProfilePosterServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetProfilePosterServer",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetProfilePosterServer,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.getProfilePosterServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetProfilePosterServer",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetProfilePosterServer
+        );
+      };
       module2.exports = proto2.barkfluff.users;
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_pb.js
+  // scripts/.proto-tmp/messages_api_pb.js
   var require_messages_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/messages_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var shared_pb = require_shared_pb();
       goog2.object.extend(proto, shared_pb);
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
+      goog2.exportSymbol("proto.barkfluff.messages.AcceptPrivateChatRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.AcceptPrivateChatResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.AcceptSecretChatInviteRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.AcceptSecretChatInviteResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.AckSecretMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.AckSecretMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CallSystemResult", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.Chat", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ChatAttachmentInfo", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ChatMember", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckChatMembershipRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckChatMembershipResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CreateGroupChatRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CreateGroupChatResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CreatePrivateChatRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CreatePrivateChatResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.DeleteMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.DeleteMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.DeletePrivateMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.DeletePrivateMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.EditMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.EditMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.EditPrivateMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.EditPrivateMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ExportAttachment", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ExportChat", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ExportMessage", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetChatInfoRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetChatInfoResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.GetChatMemberIdsRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.GetChatMemberIdsResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetPersonChatIdRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetPersonChatIdResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetUserAllMessagesRequest", null, global2);
@@ -25301,14 +28501,30 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.messages.ListMessagesResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ListPinnedMessagesRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ListPinnedMessagesResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ListPrivateMessagesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ListPrivateMessagesResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.MarkAsReadRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.MarkAsReadResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.OutgoingMessage", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.PersonCallTarget", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.PinMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.PinMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.PostCallSystemMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.PostCallSystemMessageRequest.TargetCase", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.PostCallSystemMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.RejectPrivateChatRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.RejectPrivateChatResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.RejectSecretChatInviteRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.RejectSecretChatInviteResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.SendMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.SendMessageRequest.SourceIdCase", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.SendMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.SendPrivateMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.SendPrivateMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.SendSecretChatInviteRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.SendSecretChatInviteResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.SendSecretMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.SendSecretMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.UnpinAllRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.UnpinAllResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.UnpinMessageRequest", null, global2);
@@ -25572,6 +28788,174 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.messages.GetChatInfoResponse.displayName = "proto.barkfluff.messages.GetChatInfoResponse";
       }
+      proto.barkfluff.messages.CreatePrivateChatRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CreatePrivateChatRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CreatePrivateChatRequest.displayName = "proto.barkfluff.messages.CreatePrivateChatRequest";
+      }
+      proto.barkfluff.messages.CreatePrivateChatResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CreatePrivateChatResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CreatePrivateChatResponse.displayName = "proto.barkfluff.messages.CreatePrivateChatResponse";
+      }
+      proto.barkfluff.messages.AcceptPrivateChatRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.AcceptPrivateChatRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.AcceptPrivateChatRequest.displayName = "proto.barkfluff.messages.AcceptPrivateChatRequest";
+      }
+      proto.barkfluff.messages.AcceptPrivateChatResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.AcceptPrivateChatResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.AcceptPrivateChatResponse.displayName = "proto.barkfluff.messages.AcceptPrivateChatResponse";
+      }
+      proto.barkfluff.messages.RejectPrivateChatRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.RejectPrivateChatRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.RejectPrivateChatRequest.displayName = "proto.barkfluff.messages.RejectPrivateChatRequest";
+      }
+      proto.barkfluff.messages.RejectPrivateChatResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.RejectPrivateChatResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.RejectPrivateChatResponse.displayName = "proto.barkfluff.messages.RejectPrivateChatResponse";
+      }
+      proto.barkfluff.messages.SendPrivateMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.SendPrivateMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.SendPrivateMessageRequest.displayName = "proto.barkfluff.messages.SendPrivateMessageRequest";
+      }
+      proto.barkfluff.messages.SendPrivateMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.SendPrivateMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.SendPrivateMessageResponse.displayName = "proto.barkfluff.messages.SendPrivateMessageResponse";
+      }
+      proto.barkfluff.messages.ListPrivateMessagesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ListPrivateMessagesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ListPrivateMessagesRequest.displayName = "proto.barkfluff.messages.ListPrivateMessagesRequest";
+      }
+      proto.barkfluff.messages.ListPrivateMessagesResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.ListPrivateMessagesResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ListPrivateMessagesResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ListPrivateMessagesResponse.displayName = "proto.barkfluff.messages.ListPrivateMessagesResponse";
+      }
+      proto.barkfluff.messages.EditPrivateMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.EditPrivateMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.EditPrivateMessageRequest.displayName = "proto.barkfluff.messages.EditPrivateMessageRequest";
+      }
+      proto.barkfluff.messages.EditPrivateMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.EditPrivateMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.EditPrivateMessageResponse.displayName = "proto.barkfluff.messages.EditPrivateMessageResponse";
+      }
+      proto.barkfluff.messages.DeletePrivateMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.DeletePrivateMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.DeletePrivateMessageRequest.displayName = "proto.barkfluff.messages.DeletePrivateMessageRequest";
+      }
+      proto.barkfluff.messages.DeletePrivateMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.DeletePrivateMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.DeletePrivateMessageResponse.displayName = "proto.barkfluff.messages.DeletePrivateMessageResponse";
+      }
+      proto.barkfluff.messages.SendSecretChatInviteRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.SendSecretChatInviteRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.SendSecretChatInviteRequest.displayName = "proto.barkfluff.messages.SendSecretChatInviteRequest";
+      }
+      proto.barkfluff.messages.SendSecretChatInviteResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.SendSecretChatInviteResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.SendSecretChatInviteResponse.displayName = "proto.barkfluff.messages.SendSecretChatInviteResponse";
+      }
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.AcceptSecretChatInviteRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.AcceptSecretChatInviteRequest.displayName = "proto.barkfluff.messages.AcceptSecretChatInviteRequest";
+      }
+      proto.barkfluff.messages.AcceptSecretChatInviteResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.AcceptSecretChatInviteResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.AcceptSecretChatInviteResponse.displayName = "proto.barkfluff.messages.AcceptSecretChatInviteResponse";
+      }
+      proto.barkfluff.messages.RejectSecretChatInviteRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.RejectSecretChatInviteRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.RejectSecretChatInviteRequest.displayName = "proto.barkfluff.messages.RejectSecretChatInviteRequest";
+      }
+      proto.barkfluff.messages.RejectSecretChatInviteResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.RejectSecretChatInviteResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.RejectSecretChatInviteResponse.displayName = "proto.barkfluff.messages.RejectSecretChatInviteResponse";
+      }
+      proto.barkfluff.messages.SendSecretMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.SendSecretMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.SendSecretMessageRequest.displayName = "proto.barkfluff.messages.SendSecretMessageRequest";
+      }
+      proto.barkfluff.messages.SendSecretMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.SendSecretMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.SendSecretMessageResponse.displayName = "proto.barkfluff.messages.SendSecretMessageResponse";
+      }
+      proto.barkfluff.messages.AckSecretMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.AckSecretMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.AckSecretMessageRequest.displayName = "proto.barkfluff.messages.AckSecretMessageRequest";
+      }
+      proto.barkfluff.messages.AckSecretMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.AckSecretMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.AckSecretMessageResponse.displayName = "proto.barkfluff.messages.AckSecretMessageResponse";
+      }
       proto.barkfluff.messages.GetUserAllMessagesRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -25606,6 +28990,55 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.messages.ExportChat, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.messages.ExportChat.displayName = "proto.barkfluff.messages.ExportChat";
+      }
+      proto.barkfluff.messages.CheckChatMembershipRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.CheckChatMembershipRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckChatMembershipRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckChatMembershipRequest.displayName = "proto.barkfluff.messages.CheckChatMembershipRequest";
+      }
+      proto.barkfluff.messages.CheckChatMembershipResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.CheckChatMembershipResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckChatMembershipResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckChatMembershipResponse.displayName = "proto.barkfluff.messages.CheckChatMembershipResponse";
+      }
+      proto.barkfluff.messages.GetChatMemberIdsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.GetChatMemberIdsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.GetChatMemberIdsRequest.displayName = "proto.barkfluff.messages.GetChatMemberIdsRequest";
+      }
+      proto.barkfluff.messages.GetChatMemberIdsResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.GetChatMemberIdsResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.GetChatMemberIdsResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.GetChatMemberIdsResponse.displayName = "proto.barkfluff.messages.GetChatMemberIdsResponse";
+      }
+      proto.barkfluff.messages.PersonCallTarget = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.PersonCallTarget, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.PersonCallTarget.displayName = "proto.barkfluff.messages.PersonCallTarget";
+      }
+      proto.barkfluff.messages.PostCallSystemMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, proto.barkfluff.messages.PostCallSystemMessageRequest.oneofGroups_);
+      };
+      goog2.inherits(proto.barkfluff.messages.PostCallSystemMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.PostCallSystemMessageRequest.displayName = "proto.barkfluff.messages.PostCallSystemMessageRequest";
+      }
+      proto.barkfluff.messages.PostCallSystemMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.PostCallSystemMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.PostCallSystemMessageResponse.displayName = "proto.barkfluff.messages.PostCallSystemMessageResponse";
       }
       proto.barkfluff.messages.EditMessageRequest.repeatedFields_ = [3];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -26948,8 +30381,8 @@ var BarkFluffBundle = (() => {
         };
         proto.barkfluff.messages.SendMessageRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            userId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            chatId: (f2 = jspb2.Message.getField(msg, 1)) == null ? void 0 : f2,
+            userId: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2,
             message: (f2 = msg.getMessage()) && proto.barkfluff.messages.OutgoingMessage.toObject(includeInstance, f2)
           };
           if (includeInstance) {
@@ -27869,7 +31302,10 @@ var BarkFluffBundle = (() => {
               includeInstance
             ),
             countUnread: jspb2.Message.getFieldWithDefault(msg, 7, 0),
-            firstUnreadMessageId: jspb2.Message.getFieldWithDefault(msg, 8, 0)
+            firstUnreadMessageId: jspb2.Message.getFieldWithDefault(msg, 8, 0),
+            chatType: jspb2.Message.getFieldWithDefault(msg, 9, 0),
+            kdfSalt: msg.getKdfSalt_asB64(),
+            passphraseVerifier: msg.getPassphraseVerifier_asB64()
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -27941,6 +31377,27 @@ var BarkFluffBundle = (() => {
               );
               msg.setFirstUnreadMessageId(value);
               break;
+            case 9:
+              var value = (
+                /** @type {!proto.barkfluff.shared.ChatType} */
+                reader.readEnum()
+              );
+              msg.setChatType(value);
+              break;
+            case 10:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setKdfSalt(value);
+              break;
+            case 11:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setPassphraseVerifier(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -28010,6 +31467,27 @@ var BarkFluffBundle = (() => {
         if (f2 !== 0) {
           writer.writeInt64(
             8,
+            f2
+          );
+        }
+        f2 = message.getChatType();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            9,
+            f2
+          );
+        }
+        f2 = message.getKdfSalt_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            10,
+            f2
+          );
+        }
+        f2 = message.getPassphraseVerifier_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            11,
             f2
           );
         }
@@ -28097,6 +31575,65 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.messages.Chat.prototype.setFirstUnreadMessageId = function(value) {
         return jspb2.Message.setProto3IntField(this, 8, value);
+      };
+      proto.barkfluff.messages.Chat.prototype.getChatType = function() {
+        return (
+          /** @type {!proto.barkfluff.shared.ChatType} */
+          jspb2.Message.getFieldWithDefault(this, 9, 0)
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.setChatType = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 9, value);
+      };
+      proto.barkfluff.messages.Chat.prototype.getKdfSalt = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 10, "")
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.getKdfSalt_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getKdfSalt()
+          )
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.getKdfSalt_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getKdfSalt()
+          )
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.setKdfSalt = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 10, value);
+      };
+      proto.barkfluff.messages.Chat.prototype.getPassphraseVerifier = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 11, "")
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.getPassphraseVerifier_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getPassphraseVerifier()
+          )
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.getPassphraseVerifier_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getPassphraseVerifier()
+          )
+        );
+      };
+      proto.barkfluff.messages.Chat.prototype.setPassphraseVerifier = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 11, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.messages.ChatMember.prototype.toObject = function(opt_includeInstance) {
@@ -29129,6 +32666,2065 @@ var BarkFluffBundle = (() => {
         return this.setMembersIdList([]);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CreatePrivateChatRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CreatePrivateChatRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CreatePrivateChatRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            peerUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            kdfSalt: msg.getKdfSalt_asB64(),
+            passphraseVerifier: msg.getPassphraseVerifier_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CreatePrivateChatRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CreatePrivateChatRequest();
+        return proto.barkfluff.messages.CreatePrivateChatRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setPeerUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setKdfSalt(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setPassphraseVerifier(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CreatePrivateChatRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getPeerUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getKdfSalt_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+        f2 = message.getPassphraseVerifier_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getPeerUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.setPeerUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getKdfSalt = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getKdfSalt_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getKdfSalt()
+          )
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getKdfSalt_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getKdfSalt()
+          )
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.setKdfSalt = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getPassphraseVerifier = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getPassphraseVerifier_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getPassphraseVerifier()
+          )
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.getPassphraseVerifier_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getPassphraseVerifier()
+          )
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatRequest.prototype.setPassphraseVerifier = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CreatePrivateChatResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CreatePrivateChatResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CreatePrivateChatResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chat: (f2 = msg.getChat()) && proto.barkfluff.messages.Chat.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CreatePrivateChatResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CreatePrivateChatResponse();
+        return proto.barkfluff.messages.CreatePrivateChatResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.messages.Chat();
+              reader.readMessage(value, proto.barkfluff.messages.Chat.deserializeBinaryFromReader);
+              msg.setChat(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CreatePrivateChatResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChat();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            proto.barkfluff.messages.Chat.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.prototype.getChat = function() {
+        return (
+          /** @type{?proto.barkfluff.messages.Chat} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.messages.Chat, 1)
+        );
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.prototype.setChat = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.prototype.clearChat = function() {
+        return this.setChat(void 0);
+      };
+      proto.barkfluff.messages.CreatePrivateChatResponse.prototype.hasChat = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.AcceptPrivateChatRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.AcceptPrivateChatRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.AcceptPrivateChatRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.AcceptPrivateChatRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.AcceptPrivateChatRequest();
+        return proto.barkfluff.messages.AcceptPrivateChatRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.AcceptPrivateChatRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.AcceptPrivateChatRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.AcceptPrivateChatRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.AcceptPrivateChatRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.AcceptPrivateChatRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.AcceptPrivateChatRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.AcceptPrivateChatResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.AcceptPrivateChatResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.AcceptPrivateChatResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chat: (f2 = msg.getChat()) && proto.barkfluff.messages.Chat.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.AcceptPrivateChatResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.AcceptPrivateChatResponse();
+        return proto.barkfluff.messages.AcceptPrivateChatResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.messages.Chat();
+              reader.readMessage(value, proto.barkfluff.messages.Chat.deserializeBinaryFromReader);
+              msg.setChat(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.AcceptPrivateChatResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChat();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            proto.barkfluff.messages.Chat.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.prototype.getChat = function() {
+        return (
+          /** @type{?proto.barkfluff.messages.Chat} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.messages.Chat, 1)
+        );
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.prototype.setChat = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.prototype.clearChat = function() {
+        return this.setChat(void 0);
+      };
+      proto.barkfluff.messages.AcceptPrivateChatResponse.prototype.hasChat = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.RejectPrivateChatRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.RejectPrivateChatRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.RejectPrivateChatRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.RejectPrivateChatRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.RejectPrivateChatRequest();
+        return proto.barkfluff.messages.RejectPrivateChatRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.RejectPrivateChatRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.RejectPrivateChatRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.RejectPrivateChatRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.RejectPrivateChatRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.RejectPrivateChatRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.RejectPrivateChatRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.RejectPrivateChatResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.RejectPrivateChatResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.RejectPrivateChatResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.RejectPrivateChatResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.RejectPrivateChatResponse();
+        return proto.barkfluff.messages.RejectPrivateChatResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.RejectPrivateChatResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.RejectPrivateChatResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.RejectPrivateChatResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.RejectPrivateChatResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.SendPrivateMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.SendPrivateMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.SendPrivateMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            ciphertext: msg.getCiphertext_asB64(),
+            nonce: msg.getNonce_asB64(),
+            associatedData: msg.getAssociatedData_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.SendPrivateMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.SendPrivateMessageRequest();
+        return proto.barkfluff.messages.SendPrivateMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setCiphertext(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setNonce(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setAssociatedData(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.SendPrivateMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getCiphertext_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+        f2 = message.getNonce_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAssociatedData_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getCiphertext = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getCiphertext_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getCiphertext()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getCiphertext_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getCiphertext()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.setCiphertext = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getNonce = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getNonce_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getNonce()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getNonce_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getNonce()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.setNonce = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getAssociatedData = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getAssociatedData_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getAssociatedData()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.getAssociatedData_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getAssociatedData()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageRequest.prototype.setAssociatedData = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 4, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.SendPrivateMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.SendPrivateMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.SendPrivateMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            message: (f2 = msg.getMessage()) && shared_pb.EncryptedMessage.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.SendPrivateMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.SendPrivateMessageResponse();
+        return proto.barkfluff.messages.SendPrivateMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new shared_pb.EncryptedMessage();
+              reader.readMessage(value, shared_pb.EncryptedMessage.deserializeBinaryFromReader);
+              msg.setMessage(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.SendPrivateMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessage();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            shared_pb.EncryptedMessage.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.prototype.getMessage = function() {
+        return (
+          /** @type{?proto.barkfluff.shared.EncryptedMessage} */
+          jspb2.Message.getWrapperField(this, shared_pb.EncryptedMessage, 1)
+        );
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.prototype.setMessage = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.prototype.clearMessage = function() {
+        return this.setMessage(void 0);
+      };
+      proto.barkfluff.messages.SendPrivateMessageResponse.prototype.hasMessage = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ListPrivateMessagesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ListPrivateMessagesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            fromMessageId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            offsetBefore: jspb2.Message.getFieldWithDefault(msg, 3, 0),
+            offsetAfter: jspb2.Message.getFieldWithDefault(msg, 4, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ListPrivateMessagesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ListPrivateMessagesRequest();
+        return proto.barkfluff.messages.ListPrivateMessagesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setFromMessageId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setOffsetBefore(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setOffsetAfter(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ListPrivateMessagesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFromMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getOffsetBefore();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            3,
+            f2
+          );
+        }
+        f2 = message.getOffsetAfter();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.getFromMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.setFromMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.getOffsetBefore = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.setOffsetBefore = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.getOffsetAfter = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.messages.ListPrivateMessagesRequest.prototype.setOffsetAfter = function(value) {
+        return jspb2.Message.setProto3IntField(this, 4, value);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ListPrivateMessagesResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ListPrivateMessagesResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ListPrivateMessagesResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messagesList: jspb2.Message.toObjectList(
+              msg.getMessagesList(),
+              shared_pb.EncryptedMessage.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ListPrivateMessagesResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ListPrivateMessagesResponse();
+        return proto.barkfluff.messages.ListPrivateMessagesResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new shared_pb.EncryptedMessage();
+              reader.readMessage(value, shared_pb.EncryptedMessage.deserializeBinaryFromReader);
+              msg.addMessages(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ListPrivateMessagesResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessagesList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            shared_pb.EncryptedMessage.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.prototype.getMessagesList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.shared.EncryptedMessage>} */
+          jspb2.Message.getRepeatedWrapperField(this, shared_pb.EncryptedMessage, 1)
+        );
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.prototype.setMessagesList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.prototype.addMessages = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.shared.EncryptedMessage, opt_index);
+      };
+      proto.barkfluff.messages.ListPrivateMessagesResponse.prototype.clearMessagesList = function() {
+        return this.setMessagesList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.EditPrivateMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.EditPrivateMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.EditPrivateMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messageId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            ciphertext: msg.getCiphertext_asB64(),
+            nonce: msg.getNonce_asB64(),
+            associatedData: msg.getAssociatedData_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.EditPrivateMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.EditPrivateMessageRequest();
+        return proto.barkfluff.messages.EditPrivateMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setMessageId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setCiphertext(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setNonce(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setAssociatedData(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.EditPrivateMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getCiphertext_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+        f2 = message.getNonce_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAssociatedData_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getCiphertext = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getCiphertext_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getCiphertext()
+          )
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getCiphertext_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getCiphertext()
+          )
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.setCiphertext = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getNonce = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getNonce_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getNonce()
+          )
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getNonce_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getNonce()
+          )
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.setNonce = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getAssociatedData = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getAssociatedData_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getAssociatedData()
+          )
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.getAssociatedData_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getAssociatedData()
+          )
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageRequest.prototype.setAssociatedData = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 4, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.EditPrivateMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.EditPrivateMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.EditPrivateMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            message: (f2 = msg.getMessage()) && shared_pb.EncryptedMessage.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.EditPrivateMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.EditPrivateMessageResponse();
+        return proto.barkfluff.messages.EditPrivateMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new shared_pb.EncryptedMessage();
+              reader.readMessage(value, shared_pb.EncryptedMessage.deserializeBinaryFromReader);
+              msg.setMessage(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.EditPrivateMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessage();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            shared_pb.EncryptedMessage.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.prototype.getMessage = function() {
+        return (
+          /** @type{?proto.barkfluff.shared.EncryptedMessage} */
+          jspb2.Message.getWrapperField(this, shared_pb.EncryptedMessage, 1)
+        );
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.prototype.setMessage = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.prototype.clearMessage = function() {
+        return this.setMessage(void 0);
+      };
+      proto.barkfluff.messages.EditPrivateMessageResponse.prototype.hasMessage = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.DeletePrivateMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.DeletePrivateMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.DeletePrivateMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messageId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.DeletePrivateMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.DeletePrivateMessageRequest();
+        return proto.barkfluff.messages.DeletePrivateMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.DeletePrivateMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setMessageId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.DeletePrivateMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.DeletePrivateMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.DeletePrivateMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.DeletePrivateMessageRequest.prototype.getMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.DeletePrivateMessageRequest.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.DeletePrivateMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.DeletePrivateMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.DeletePrivateMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.DeletePrivateMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.DeletePrivateMessageResponse();
+        return proto.barkfluff.messages.DeletePrivateMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.DeletePrivateMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.DeletePrivateMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.DeletePrivateMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.DeletePrivateMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.SendSecretChatInviteRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.SendSecretChatInviteRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            recipientUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            recipientDeviceId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            initialEnvelope: msg.getInitialEnvelope_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.SendSecretChatInviteRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.SendSecretChatInviteRequest();
+        return proto.barkfluff.messages.SendSecretChatInviteRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setRecipientUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRecipientDeviceId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setInitialEnvelope(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.SendSecretChatInviteRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getRecipientUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRecipientDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getInitialEnvelope_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.getRecipientUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.setRecipientUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.getRecipientDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.setRecipientDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.getInitialEnvelope = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.getInitialEnvelope_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getInitialEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.getInitialEnvelope_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getInitialEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteRequest.prototype.setInitialEnvelope = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.SendSecretChatInviteResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.SendSecretChatInviteResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            inviteId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            inviteExpiresAt: (f2 = msg.getInviteExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.SendSecretChatInviteResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.SendSecretChatInviteResponse();
+        return proto.barkfluff.messages.SendSecretChatInviteResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInviteId(value);
+              break;
+            case 2:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setInviteExpiresAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.SendSecretChatInviteResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getInviteId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getInviteExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.getInviteId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.setInviteId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.getInviteExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 2)
+        );
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.setInviteExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 2, value);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.clearInviteExpiresAt = function() {
+        return this.setInviteExpiresAt(void 0);
+      };
+      proto.barkfluff.messages.SendSecretChatInviteResponse.prototype.hasInviteExpiresAt = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.AcceptSecretChatInviteRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.AcceptSecretChatInviteRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            inviteId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            responseEnvelope: msg.getResponseEnvelope_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.AcceptSecretChatInviteRequest();
+        return proto.barkfluff.messages.AcceptSecretChatInviteRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInviteId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setResponseEnvelope(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.AcceptSecretChatInviteRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getInviteId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getResponseEnvelope_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.getInviteId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.setInviteId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.getResponseEnvelope = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.getResponseEnvelope_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getResponseEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.getResponseEnvelope_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getResponseEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteRequest.prototype.setResponseEnvelope = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.AcceptSecretChatInviteResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.AcceptSecretChatInviteResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.AcceptSecretChatInviteResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.AcceptSecretChatInviteResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.AcceptSecretChatInviteResponse();
+        return proto.barkfluff.messages.AcceptSecretChatInviteResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.AcceptSecretChatInviteResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.AcceptSecretChatInviteResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.RejectSecretChatInviteRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.RejectSecretChatInviteRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.RejectSecretChatInviteRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            inviteId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.RejectSecretChatInviteRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.RejectSecretChatInviteRequest();
+        return proto.barkfluff.messages.RejectSecretChatInviteRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInviteId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.RejectSecretChatInviteRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getInviteId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteRequest.prototype.getInviteId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteRequest.prototype.setInviteId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.RejectSecretChatInviteResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.RejectSecretChatInviteResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.RejectSecretChatInviteResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.RejectSecretChatInviteResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.RejectSecretChatInviteResponse();
+        return proto.barkfluff.messages.RejectSecretChatInviteResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.RejectSecretChatInviteResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.RejectSecretChatInviteResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.SendSecretMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.SendSecretMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.SendSecretMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            recipientUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            recipientDeviceId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            envelope: msg.getEnvelope_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.SendSecretMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.SendSecretMessageRequest();
+        return proto.barkfluff.messages.SendSecretMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setRecipientUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRecipientDeviceId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setEnvelope(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.SendSecretMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getRecipientUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRecipientDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getEnvelope_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.getRecipientUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.setRecipientUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.getRecipientDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.setRecipientDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.getEnvelope = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.getEnvelope_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.getEnvelope_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageRequest.prototype.setEnvelope = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.SendSecretMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.SendSecretMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.SendSecretMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messageId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            expiresAt: (f2 = msg.getExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.SendSecretMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.SendSecretMessageResponse();
+        return proto.barkfluff.messages.SendSecretMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setMessageId(value);
+              break;
+            case 2:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setExpiresAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.SendSecretMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.getMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.getExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 2)
+        );
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.setExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 2, value);
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.clearExpiresAt = function() {
+        return this.setExpiresAt(void 0);
+      };
+      proto.barkfluff.messages.SendSecretMessageResponse.prototype.hasExpiresAt = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.AckSecretMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.AckSecretMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.AckSecretMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messageId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.AckSecretMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.AckSecretMessageRequest();
+        return proto.barkfluff.messages.AckSecretMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.AckSecretMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setMessageId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.AckSecretMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.AckSecretMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.AckSecretMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.AckSecretMessageRequest.prototype.getMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.AckSecretMessageRequest.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.AckSecretMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.AckSecretMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.AckSecretMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.AckSecretMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.AckSecretMessageResponse();
+        return proto.barkfluff.messages.AckSecretMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.AckSecretMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.AckSecretMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.AckSecretMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.AckSecretMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.messages.GetUserAllMessagesRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.messages.GetUserAllMessagesRequest.toObject(opt_includeInstance, this);
         };
@@ -29907,13 +35503,658 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.messages.ExportChat.prototype.clearMemberIdsList = function() {
         return this.setMemberIdsList([]);
       };
+      proto.barkfluff.messages.CheckChatMembershipRequest.repeatedFields_ = [2];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckChatMembershipRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckChatMembershipRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckChatMembershipRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            chatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckChatMembershipRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckChatMembershipRequest();
+        return proto.barkfluff.messages.CheckChatMembershipRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addChatIds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckChatMembershipRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getChatIdsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.getChatIdsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 2)
+        );
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.setChatIdsList = function(value) {
+        return jspb2.Message.setField(this, 2, value || []);
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.addChatIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 2, value, opt_index);
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.clearChatIdsList = function() {
+        return this.setChatIdsList([]);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckChatMembershipResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckChatMembershipResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckChatMembershipResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            memberChatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckChatMembershipResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckChatMembershipResponse();
+        return proto.barkfluff.messages.CheckChatMembershipResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addMemberChatIds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckChatMembershipResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMemberChatIdsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.getMemberChatIdsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.setMemberChatIdsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.addMemberChatIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.clearMemberChatIdsList = function() {
+        return this.setMemberChatIdsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.GetChatMemberIdsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.GetChatMemberIdsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.GetChatMemberIdsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.GetChatMemberIdsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.GetChatMemberIdsRequest();
+        return proto.barkfluff.messages.GetChatMemberIdsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.GetChatMemberIdsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.GetChatMemberIdsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.GetChatMemberIdsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.GetChatMemberIdsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.GetChatMemberIdsRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.GetChatMemberIdsRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.GetChatMemberIdsResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.GetChatMemberIdsResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.GetChatMemberIdsResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.GetChatMemberIdsResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.GetChatMemberIdsResponse();
+        return proto.barkfluff.messages.GetChatMemberIdsResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var values = (
+                /** @type {!Array<number>} */
+                reader.isDelimited() ? reader.readPackedInt64() : [reader.readInt64()]
+              );
+              for (var i = 0; i < values.length; i++) {
+                msg.addUserIds(values[i]);
+              }
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.GetChatMemberIdsResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserIdsList();
+        if (f2.length > 0) {
+          writer.writePackedInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.prototype.getUserIdsList = function() {
+        return (
+          /** @type {!Array<number>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.prototype.setUserIdsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.prototype.addUserIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.messages.GetChatMemberIdsResponse.prototype.clearUserIdsList = function() {
+        return this.setUserIdsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.PersonCallTarget.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.PersonCallTarget.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.PersonCallTarget.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callerUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            calleeUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.PersonCallTarget.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.PersonCallTarget();
+        return proto.barkfluff.messages.PersonCallTarget.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.PersonCallTarget.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setCallerUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setCalleeUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.PersonCallTarget.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.PersonCallTarget.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.PersonCallTarget.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallerUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getCalleeUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.PersonCallTarget.prototype.getCallerUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.PersonCallTarget.prototype.setCallerUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.PersonCallTarget.prototype.getCalleeUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.messages.PersonCallTarget.prototype.setCalleeUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.oneofGroups_ = [[1, 2]];
+      proto.barkfluff.messages.PostCallSystemMessageRequest.TargetCase = {
+        TARGET_NOT_SET: 0,
+        CHAT_ID: 1,
+        PERSON: 2
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.getTargetCase = function() {
+        return (
+          /** @type {proto.barkfluff.messages.PostCallSystemMessageRequest.TargetCase} */
+          jspb2.Message.computeOneofCase(this, proto.barkfluff.messages.PostCallSystemMessageRequest.oneofGroups_[0])
+        );
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.PostCallSystemMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.PostCallSystemMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: (f2 = jspb2.Message.getField(msg, 1)) == null ? void 0 : f2,
+            person: (f2 = msg.getPerson()) && proto.barkfluff.messages.PersonCallTarget.toObject(includeInstance, f2),
+            senderUserId: jspb2.Message.getFieldWithDefault(msg, 3, 0),
+            result: jspb2.Message.getFieldWithDefault(msg, 4, 0),
+            durationSeconds: jspb2.Message.getFieldWithDefault(msg, 5, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.PostCallSystemMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.PostCallSystemMessageRequest();
+        return proto.barkfluff.messages.PostCallSystemMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = new proto.barkfluff.messages.PersonCallTarget();
+              reader.readMessage(value, proto.barkfluff.messages.PersonCallTarget.deserializeBinaryFromReader);
+              msg.setPerson(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSenderUserId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {!proto.barkfluff.messages.CallSystemResult} */
+                reader.readEnum()
+              );
+              msg.setResult(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setDurationSeconds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.PostCallSystemMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = /** @type {string} */
+        jspb2.Message.getField(message, 1);
+        if (f2 != null) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getPerson();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            proto.barkfluff.messages.PersonCallTarget.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getSenderUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+        f2 = message.getResult();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            4,
+            f2
+          );
+        }
+        f2 = message.getDurationSeconds();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            5,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setOneofField(this, 1, proto.barkfluff.messages.PostCallSystemMessageRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.clearChatId = function() {
+        return jspb2.Message.setOneofField(this, 1, proto.barkfluff.messages.PostCallSystemMessageRequest.oneofGroups_[0], void 0);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.hasChatId = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.getPerson = function() {
+        return (
+          /** @type{?proto.barkfluff.messages.PersonCallTarget} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.messages.PersonCallTarget, 2)
+        );
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.setPerson = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 2, proto.barkfluff.messages.PostCallSystemMessageRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.clearPerson = function() {
+        return this.setPerson(void 0);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.hasPerson = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.getSenderUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.setSenderUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.getResult = function() {
+        return (
+          /** @type {!proto.barkfluff.messages.CallSystemResult} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.setResult = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 4, value);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.getDurationSeconds = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 5, 0)
+        );
+      };
+      proto.barkfluff.messages.PostCallSystemMessageRequest.prototype.setDurationSeconds = function(value) {
+        return jspb2.Message.setProto3IntField(this, 5, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.PostCallSystemMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.PostCallSystemMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.PostCallSystemMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            posted: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.PostCallSystemMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.PostCallSystemMessageResponse();
+        return proto.barkfluff.messages.PostCallSystemMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.PostCallSystemMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setPosted(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.PostCallSystemMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.PostCallSystemMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.PostCallSystemMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getPosted();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.PostCallSystemMessageResponse.prototype.getPosted = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.PostCallSystemMessageResponse.prototype.setPosted = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      proto.barkfluff.messages.CallSystemResult = {
+        CALL_SYSTEM_RESULT_UNKNOWN: 0,
+        CALL_SYSTEM_RESULT_ENDED: 1,
+        CALL_SYSTEM_RESULT_MISSED: 2,
+        CALL_SYSTEM_RESULT_REJECTED: 3
+      };
       goog2.object.extend(exports2, proto.barkfluff.messages);
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_grpc_web_pb.js
+  // scripts/.proto-tmp/messages_api_grpc_web_pb.js
   var require_messages_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/messages_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var shared_pb = require_shared_pb();
@@ -30429,6 +36670,378 @@ var BarkFluffBundle = (() => {
           methodDescriptor_MessagesApi_UnpinAll
         );
       };
+      var methodDescriptor_MessagesApi_CreatePrivateChat = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/CreatePrivateChat",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.CreatePrivateChatRequest,
+        proto2.barkfluff.messages.CreatePrivateChatResponse,
+        /**
+         * @param {!proto.barkfluff.messages.CreatePrivateChatRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.CreatePrivateChatResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.createPrivateChat = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/CreatePrivateChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_CreatePrivateChat,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.createPrivateChat = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/CreatePrivateChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_CreatePrivateChat
+        );
+      };
+      var methodDescriptor_MessagesApi_AcceptPrivateChat = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/AcceptPrivateChat",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.AcceptPrivateChatRequest,
+        proto2.barkfluff.messages.AcceptPrivateChatResponse,
+        /**
+         * @param {!proto.barkfluff.messages.AcceptPrivateChatRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.AcceptPrivateChatResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.acceptPrivateChat = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/AcceptPrivateChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_AcceptPrivateChat,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.acceptPrivateChat = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/AcceptPrivateChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_AcceptPrivateChat
+        );
+      };
+      var methodDescriptor_MessagesApi_RejectPrivateChat = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/RejectPrivateChat",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.RejectPrivateChatRequest,
+        proto2.barkfluff.messages.RejectPrivateChatResponse,
+        /**
+         * @param {!proto.barkfluff.messages.RejectPrivateChatRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.RejectPrivateChatResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.rejectPrivateChat = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/RejectPrivateChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_RejectPrivateChat,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.rejectPrivateChat = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/RejectPrivateChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_RejectPrivateChat
+        );
+      };
+      var methodDescriptor_MessagesApi_SendPrivateMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/SendPrivateMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.SendPrivateMessageRequest,
+        proto2.barkfluff.messages.SendPrivateMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.SendPrivateMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.SendPrivateMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.sendPrivateMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/SendPrivateMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_SendPrivateMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.sendPrivateMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/SendPrivateMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_SendPrivateMessage
+        );
+      };
+      var methodDescriptor_MessagesApi_ListPrivateMessages = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/ListPrivateMessages",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ListPrivateMessagesRequest,
+        proto2.barkfluff.messages.ListPrivateMessagesResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ListPrivateMessagesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ListPrivateMessagesResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.listPrivateMessages = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/ListPrivateMessages",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_ListPrivateMessages,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.listPrivateMessages = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/ListPrivateMessages",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_ListPrivateMessages
+        );
+      };
+      var methodDescriptor_MessagesApi_EditPrivateMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/EditPrivateMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.EditPrivateMessageRequest,
+        proto2.barkfluff.messages.EditPrivateMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.EditPrivateMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.EditPrivateMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.editPrivateMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/EditPrivateMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_EditPrivateMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.editPrivateMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/EditPrivateMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_EditPrivateMessage
+        );
+      };
+      var methodDescriptor_MessagesApi_DeletePrivateMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/DeletePrivateMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.DeletePrivateMessageRequest,
+        proto2.barkfluff.messages.DeletePrivateMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.DeletePrivateMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.DeletePrivateMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.deletePrivateMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/DeletePrivateMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_DeletePrivateMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.deletePrivateMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/DeletePrivateMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_DeletePrivateMessage
+        );
+      };
+      var methodDescriptor_MessagesApi_SendSecretChatInvite = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/SendSecretChatInvite",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.SendSecretChatInviteRequest,
+        proto2.barkfluff.messages.SendSecretChatInviteResponse,
+        /**
+         * @param {!proto.barkfluff.messages.SendSecretChatInviteRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.SendSecretChatInviteResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.sendSecretChatInvite = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/SendSecretChatInvite",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_SendSecretChatInvite,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.sendSecretChatInvite = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/SendSecretChatInvite",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_SendSecretChatInvite
+        );
+      };
+      var methodDescriptor_MessagesApi_AcceptSecretChatInvite = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/AcceptSecretChatInvite",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.AcceptSecretChatInviteRequest,
+        proto2.barkfluff.messages.AcceptSecretChatInviteResponse,
+        /**
+         * @param {!proto.barkfluff.messages.AcceptSecretChatInviteRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.AcceptSecretChatInviteResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.acceptSecretChatInvite = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/AcceptSecretChatInvite",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_AcceptSecretChatInvite,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.acceptSecretChatInvite = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/AcceptSecretChatInvite",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_AcceptSecretChatInvite
+        );
+      };
+      var methodDescriptor_MessagesApi_RejectSecretChatInvite = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/RejectSecretChatInvite",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.RejectSecretChatInviteRequest,
+        proto2.barkfluff.messages.RejectSecretChatInviteResponse,
+        /**
+         * @param {!proto.barkfluff.messages.RejectSecretChatInviteRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.RejectSecretChatInviteResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.rejectSecretChatInvite = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/RejectSecretChatInvite",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_RejectSecretChatInvite,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.rejectSecretChatInvite = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/RejectSecretChatInvite",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_RejectSecretChatInvite
+        );
+      };
+      var methodDescriptor_MessagesApi_SendSecretMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/SendSecretMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.SendSecretMessageRequest,
+        proto2.barkfluff.messages.SendSecretMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.SendSecretMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.SendSecretMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.sendSecretMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/SendSecretMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_SendSecretMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.sendSecretMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/SendSecretMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_SendSecretMessage
+        );
+      };
+      var methodDescriptor_MessagesApi_AckSecretMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesApi/AckSecretMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.AckSecretMessageRequest,
+        proto2.barkfluff.messages.AckSecretMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.AckSecretMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.AckSecretMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesApiClient.prototype.ackSecretMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/AckSecretMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_AckSecretMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesApiPromiseClient.prototype.ackSecretMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesApi/AckSecretMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesApi_AckSecretMessage
+        );
+      };
       proto2.barkfluff.messages.MessagesServerApiClient = function(hostname, credentials, options) {
         if (!options) options = {};
         options.format = "text";
@@ -30472,18 +37085,111 @@ var BarkFluffBundle = (() => {
           methodDescriptor_MessagesServerApi_GetUserAllMessages
         );
       };
+      var methodDescriptor_MessagesServerApi_CheckChatMembership = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/CheckChatMembership",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.CheckChatMembershipRequest,
+        proto2.barkfluff.messages.CheckChatMembershipResponse,
+        /**
+         * @param {!proto.barkfluff.messages.CheckChatMembershipRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.CheckChatMembershipResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.checkChatMembership = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckChatMembership",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckChatMembership,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.checkChatMembership = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckChatMembership",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckChatMembership
+        );
+      };
+      var methodDescriptor_MessagesServerApi_GetChatMemberIds = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/GetChatMemberIds",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.GetChatMemberIdsRequest,
+        proto2.barkfluff.messages.GetChatMemberIdsResponse,
+        /**
+         * @param {!proto.barkfluff.messages.GetChatMemberIdsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.GetChatMemberIdsResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.getChatMemberIds = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/GetChatMemberIds",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_GetChatMemberIds,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.getChatMemberIds = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/GetChatMemberIds",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_GetChatMemberIds
+        );
+      };
+      var methodDescriptor_MessagesServerApi_PostCallSystemMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/PostCallSystemMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.PostCallSystemMessageRequest,
+        proto2.barkfluff.messages.PostCallSystemMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.PostCallSystemMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.PostCallSystemMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.postCallSystemMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/PostCallSystemMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_PostCallSystemMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.postCallSystemMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/PostCallSystemMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_PostCallSystemMessage
+        );
+      };
       module2.exports = proto2.barkfluff.messages;
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_pb.js
+  // scripts/.proto-tmp/files_api_pb.js
   var require_files_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/files_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
       var shared_pb = require_shared_pb();
@@ -30529,6 +37235,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.files.UploadBadgeImageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.UploadFileInfo", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.UploadFileType", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.UploadPosterServerRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.UploadPosterServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.UploadStickerImageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.UploadStickerImageResponse", null, global2);
       proto.barkfluff.files.GetTempDownloadUrlRequest = function(opt_data) {
@@ -30635,6 +37343,20 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.files.UploadAvatarServerResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.files.UploadAvatarServerResponse.displayName = "proto.barkfluff.files.UploadAvatarServerResponse";
+      }
+      proto.barkfluff.files.UploadPosterServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.UploadPosterServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.UploadPosterServerRequest.displayName = "proto.barkfluff.files.UploadPosterServerRequest";
+      }
+      proto.barkfluff.files.UploadPosterServerResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.UploadPosterServerResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.UploadPosterServerResponse.displayName = "proto.barkfluff.files.UploadPosterServerResponse";
       }
       proto.barkfluff.files.CheckFileHashRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
@@ -32378,6 +39100,222 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.files.UploadAvatarServerResponse.prototype.setFileId = function(value) {
         return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.UploadPosterServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.UploadPosterServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.UploadPosterServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            imageData: msg.getImageData_asB64(),
+            filename: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            userId: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.UploadPosterServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.UploadPosterServerRequest();
+        return proto.barkfluff.files.UploadPosterServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setImageData(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFilename(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.UploadPosterServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getImageData_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFilename();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.getImageData = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.getImageData_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getImageData()
+          )
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.getImageData_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getImageData()
+          )
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.setImageData = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 1, value);
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.getFilename = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.setFilename = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.UploadPosterServerResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.UploadPosterServerResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.UploadPosterServerResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fileUrl: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            fileId: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.UploadPosterServerResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.UploadPosterServerResponse();
+        return proto.barkfluff.files.UploadPosterServerResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileUrl(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.UploadPosterServerResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFileUrl();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.prototype.getFileUrl = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.prototype.setFileUrl = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.files.UploadPosterServerResponse.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.files.CheckFileHashRequest.prototype.toObject = function(opt_includeInstance) {
@@ -34824,9 +41762,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_grpc_web_pb.js
+  // scripts/.proto-tmp/files_api_grpc_web_pb.js
   var require_files_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/files_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -35199,6 +42137,37 @@ var BarkFluffBundle = (() => {
           methodDescriptor_FilesServerApi_UploadAvatarServer
         );
       };
+      var methodDescriptor_FilesServerApi_UploadPosterServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.files.FilesServerApi/UploadPosterServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.files.UploadPosterServerRequest,
+        proto2.barkfluff.files.UploadPosterServerResponse,
+        /**
+         * @param {!proto.barkfluff.files.UploadPosterServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.files.UploadPosterServerResponse.deserializeBinary
+      );
+      proto2.barkfluff.files.FilesServerApiClient.prototype.uploadPosterServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/UploadPosterServer",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_UploadPosterServer,
+          callback
+        );
+      };
+      proto2.barkfluff.files.FilesServerApiPromiseClient.prototype.uploadPosterServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/UploadPosterServer",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_UploadPosterServer
+        );
+      };
       var methodDescriptor_FilesServerApi_CreateStickerPack = new grpc.web.MethodDescriptor(
         "/barkfluff.files.FilesServerApi/CreateStickerPack",
         grpc.web.MethodType.UNARY,
@@ -35513,25 +42482,33 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_pb.js
+  // scripts/.proto-tmp/updates_api_pb.js
   var require_updates_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/updates_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
       var shared_pb = require_shared_pb();
       goog2.object.extend(proto, shared_pb);
       goog2.exportSymbol("proto.barkfluff.updates.AllMessagesUnpinnedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.EncryptedMessageDeletedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.EncryptedMessageEditedEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.MessageDeletedEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.MessageEditedEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.MessagePinnedEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.MessageReadEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.MessageUnpinnedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.NewEncryptedMessageEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.NewMessageEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.NewSecretMessageEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.PrivateChatInviteEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.PrivateChatInviteResolutionEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SecretChatInviteEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SecretChatInviteResolutionEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.SubscribeAllMessagesUnpinnedRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.SubscribeMessagesDeletedRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.SubscribeMessagesEditedRequest", null, global2);
@@ -35539,6 +42516,14 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.updates.SubscribeMessagesReadRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.SubscribeMessagesUnpinnedRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.updates.SubscribeNewMessagesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribePrivateChatInvitesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribePrivateMessageEditsRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribePrivateMessagesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribeSecretChatInvitesRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.updates.SubscribeSecretMessagesRequest", null, global2);
       proto.barkfluff.updates.SubscribeNewMessagesRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -35636,6 +42621,118 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.updates.AllMessagesUnpinnedEvent, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.updates.AllMessagesUnpinnedEvent.displayName = "proto.barkfluff.updates.AllMessagesUnpinnedEvent";
+      }
+      proto.barkfluff.updates.SubscribePrivateMessagesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribePrivateMessagesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribePrivateMessagesRequest.displayName = "proto.barkfluff.updates.SubscribePrivateMessagesRequest";
+      }
+      proto.barkfluff.updates.SubscribePrivateMessageEditsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribePrivateMessageEditsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.displayName = "proto.barkfluff.updates.SubscribePrivateMessageEditsRequest";
+      }
+      proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.displayName = "proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest";
+      }
+      proto.barkfluff.updates.SubscribePrivateChatInvitesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribePrivateChatInvitesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.displayName = "proto.barkfluff.updates.SubscribePrivateChatInvitesRequest";
+      }
+      proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.displayName = "proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest";
+      }
+      proto.barkfluff.updates.NewEncryptedMessageEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.NewEncryptedMessageEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.NewEncryptedMessageEvent.displayName = "proto.barkfluff.updates.NewEncryptedMessageEvent";
+      }
+      proto.barkfluff.updates.EncryptedMessageEditedEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.EncryptedMessageEditedEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.EncryptedMessageEditedEvent.displayName = "proto.barkfluff.updates.EncryptedMessageEditedEvent";
+      }
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.EncryptedMessageDeletedEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.EncryptedMessageDeletedEvent.displayName = "proto.barkfluff.updates.EncryptedMessageDeletedEvent";
+      }
+      proto.barkfluff.updates.PrivateChatInviteEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.PrivateChatInviteEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.PrivateChatInviteEvent.displayName = "proto.barkfluff.updates.PrivateChatInviteEvent";
+      }
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.PrivateChatInviteResolutionEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.PrivateChatInviteResolutionEvent.displayName = "proto.barkfluff.updates.PrivateChatInviteResolutionEvent";
+      }
+      proto.barkfluff.updates.SubscribeSecretChatInvitesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribeSecretChatInvitesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.displayName = "proto.barkfluff.updates.SubscribeSecretChatInvitesRequest";
+      }
+      proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.displayName = "proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest";
+      }
+      proto.barkfluff.updates.SubscribeSecretMessagesRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SubscribeSecretMessagesRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SubscribeSecretMessagesRequest.displayName = "proto.barkfluff.updates.SubscribeSecretMessagesRequest";
+      }
+      proto.barkfluff.updates.SecretChatInviteEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SecretChatInviteEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SecretChatInviteEvent.displayName = "proto.barkfluff.updates.SecretChatInviteEvent";
+      }
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.SecretChatInviteResolutionEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.SecretChatInviteResolutionEvent.displayName = "proto.barkfluff.updates.SecretChatInviteResolutionEvent";
+      }
+      proto.barkfluff.updates.NewSecretMessageEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.updates.NewSecretMessageEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.updates.NewSecretMessageEvent.displayName = "proto.barkfluff.updates.NewSecretMessageEvent";
       }
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.updates.SubscribeNewMessagesRequest.prototype.toObject = function(opt_includeInstance) {
@@ -36598,13 +43695,1363 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.updates.AllMessagesUnpinnedEvent.prototype.setChatId = function(value) {
         return jspb2.Message.setProto3StringField(this, 1, value);
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribePrivateMessagesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribePrivateMessagesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribePrivateMessagesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribePrivateMessagesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribePrivateMessagesRequest();
+        return proto.barkfluff.updates.SubscribePrivateMessagesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribePrivateMessagesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribePrivateMessagesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribePrivateMessagesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribePrivateMessagesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribePrivateMessageEditsRequest();
+        return proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribePrivateMessageEditsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest();
+        return proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribePrivateChatInvitesRequest();
+        return proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribePrivateChatInvitesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest();
+        return proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.NewEncryptedMessageEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.NewEncryptedMessageEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            message: (f2 = msg.getMessage()) && shared_pb.EncryptedMessage.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.NewEncryptedMessageEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.NewEncryptedMessageEvent();
+        return proto.barkfluff.updates.NewEncryptedMessageEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = new shared_pb.EncryptedMessage();
+              reader.readMessage(value, shared_pb.EncryptedMessage.deserializeBinaryFromReader);
+              msg.setMessage(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.NewEncryptedMessageEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getMessage();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            shared_pb.EncryptedMessage.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.getMessage = function() {
+        return (
+          /** @type{?proto.barkfluff.shared.EncryptedMessage} */
+          jspb2.Message.getWrapperField(this, shared_pb.EncryptedMessage, 2)
+        );
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.setMessage = function(value) {
+        return jspb2.Message.setWrapperField(this, 2, value);
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.clearMessage = function() {
+        return this.setMessage(void 0);
+      };
+      proto.barkfluff.updates.NewEncryptedMessageEvent.prototype.hasMessage = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.EncryptedMessageEditedEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.EncryptedMessageEditedEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            message: (f2 = msg.getMessage()) && shared_pb.EncryptedMessage.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.EncryptedMessageEditedEvent();
+        return proto.barkfluff.updates.EncryptedMessageEditedEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = new shared_pb.EncryptedMessage();
+              reader.readMessage(value, shared_pb.EncryptedMessage.deserializeBinaryFromReader);
+              msg.setMessage(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.EncryptedMessageEditedEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getMessage();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            shared_pb.EncryptedMessage.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.getMessage = function() {
+        return (
+          /** @type{?proto.barkfluff.shared.EncryptedMessage} */
+          jspb2.Message.getWrapperField(this, shared_pb.EncryptedMessage, 2)
+        );
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.setMessage = function(value) {
+        return jspb2.Message.setWrapperField(this, 2, value);
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.clearMessage = function() {
+        return this.setMessage(void 0);
+      };
+      proto.barkfluff.updates.EncryptedMessageEditedEvent.prototype.hasMessage = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.EncryptedMessageDeletedEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.EncryptedMessageDeletedEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.EncryptedMessageDeletedEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            messageId: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.EncryptedMessageDeletedEvent();
+        return proto.barkfluff.updates.EncryptedMessageDeletedEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setMessageId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.EncryptedMessageDeletedEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.prototype.getMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.updates.EncryptedMessageDeletedEvent.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.PrivateChatInviteEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.PrivateChatInviteEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.PrivateChatInviteEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            inviterUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            kdfSalt: msg.getKdfSalt_asB64(),
+            passphraseVerifier: msg.getPassphraseVerifier_asB64(),
+            invitedAt: (f2 = msg.getInvitedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.PrivateChatInviteEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.PrivateChatInviteEvent();
+        return proto.barkfluff.updates.PrivateChatInviteEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setInviterUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setKdfSalt(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setPassphraseVerifier(value);
+              break;
+            case 5:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setInvitedAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.PrivateChatInviteEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getInviterUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getKdfSalt_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            3,
+            f2
+          );
+        }
+        f2 = message.getPassphraseVerifier_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            4,
+            f2
+          );
+        }
+        f2 = message.getInvitedAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getInviterUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.setInviterUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getKdfSalt = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getKdfSalt_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getKdfSalt()
+          )
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getKdfSalt_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getKdfSalt()
+          )
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.setKdfSalt = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 3, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getPassphraseVerifier = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getPassphraseVerifier_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getPassphraseVerifier()
+          )
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getPassphraseVerifier_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getPassphraseVerifier()
+          )
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.setPassphraseVerifier = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 4, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.getInvitedAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 5)
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.setInvitedAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 5, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.clearInvitedAt = function() {
+        return this.setInvitedAt(void 0);
+      };
+      proto.barkfluff.updates.PrivateChatInviteEvent.prototype.hasInvitedAt = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.PrivateChatInviteResolutionEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.PrivateChatInviteResolutionEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            inviteeUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            accepted: jspb2.Message.getBooleanFieldWithDefault(msg, 3, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.PrivateChatInviteResolutionEvent();
+        return proto.barkfluff.updates.PrivateChatInviteResolutionEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setInviteeUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setAccepted(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.PrivateChatInviteResolutionEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getInviteeUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAccepted();
+        if (f2) {
+          writer.writeBool(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.getInviteeUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.setInviteeUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.getAccepted = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 3, false)
+        );
+      };
+      proto.barkfluff.updates.PrivateChatInviteResolutionEvent.prototype.setAccepted = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribeSecretChatInvitesRequest();
+        return proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribeSecretChatInvitesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest();
+        return proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SubscribeSecretMessagesRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SubscribeSecretMessagesRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SubscribeSecretMessagesRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SubscribeSecretMessagesRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SubscribeSecretMessagesRequest();
+        return proto.barkfluff.updates.SubscribeSecretMessagesRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SubscribeSecretMessagesRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SubscribeSecretMessagesRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SubscribeSecretMessagesRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SubscribeSecretMessagesRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SecretChatInviteEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SecretChatInviteEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SecretChatInviteEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            inviteId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            senderUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            senderDeviceId: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            initialEnvelope: msg.getInitialEnvelope_asB64(),
+            invitedAt: (f2 = msg.getInvitedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            expiresAt: (f2 = msg.getExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SecretChatInviteEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SecretChatInviteEvent();
+        return proto.barkfluff.updates.SecretChatInviteEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInviteId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSenderUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderDeviceId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setInitialEnvelope(value);
+              break;
+            case 5:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setInvitedAt(value);
+              break;
+            case 6:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setExpiresAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SecretChatInviteEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getInviteId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getSenderUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSenderDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getInitialEnvelope_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            4,
+            f2
+          );
+        }
+        f2 = message.getInvitedAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            6,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getInviteId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.setInviteId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getSenderUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.setSenderUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getSenderDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.setSenderDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getInitialEnvelope = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getInitialEnvelope_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getInitialEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getInitialEnvelope_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getInitialEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.setInitialEnvelope = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 4, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getInvitedAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 5)
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.setInvitedAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 5, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.clearInvitedAt = function() {
+        return this.setInvitedAt(void 0);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.hasInvitedAt = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.getExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 6)
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.setExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 6, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.clearExpiresAt = function() {
+        return this.setExpiresAt(void 0);
+      };
+      proto.barkfluff.updates.SecretChatInviteEvent.prototype.hasExpiresAt = function() {
+        return jspb2.Message.getField(this, 6) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.SecretChatInviteResolutionEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.SecretChatInviteResolutionEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            inviteId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            recipientUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            recipientDeviceId: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            accepted: jspb2.Message.getBooleanFieldWithDefault(msg, 4, false),
+            responseEnvelope: msg.getResponseEnvelope_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.SecretChatInviteResolutionEvent();
+        return proto.barkfluff.updates.SecretChatInviteResolutionEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInviteId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setRecipientUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRecipientDeviceId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setAccepted(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setResponseEnvelope(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.SecretChatInviteResolutionEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getInviteId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRecipientUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getRecipientDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAccepted();
+        if (f2) {
+          writer.writeBool(
+            4,
+            f2
+          );
+        }
+        f2 = message.getResponseEnvelope_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            5,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getInviteId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.setInviteId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getRecipientUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.setRecipientUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getRecipientDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.setRecipientDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getAccepted = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 4, false)
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.setAccepted = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 4, value);
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getResponseEnvelope = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getResponseEnvelope_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getResponseEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.getResponseEnvelope_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getResponseEnvelope()
+          )
+        );
+      };
+      proto.barkfluff.updates.SecretChatInviteResolutionEvent.prototype.setResponseEnvelope = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 5, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.updates.NewSecretMessageEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.updates.NewSecretMessageEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.updates.NewSecretMessageEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            envelope: (f2 = msg.getEnvelope()) && shared_pb.SecretEnvelope.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.updates.NewSecretMessageEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.updates.NewSecretMessageEvent();
+        return proto.barkfluff.updates.NewSecretMessageEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new shared_pb.SecretEnvelope();
+              reader.readMessage(value, shared_pb.SecretEnvelope.deserializeBinaryFromReader);
+              msg.setEnvelope(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.updates.NewSecretMessageEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getEnvelope();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            shared_pb.SecretEnvelope.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.prototype.getEnvelope = function() {
+        return (
+          /** @type{?proto.barkfluff.shared.SecretEnvelope} */
+          jspb2.Message.getWrapperField(this, shared_pb.SecretEnvelope, 1)
+        );
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.prototype.setEnvelope = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.prototype.clearEnvelope = function() {
+        return this.setEnvelope(void 0);
+      };
+      proto.barkfluff.updates.NewSecretMessageEvent.prototype.hasEnvelope = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
       goog2.object.extend(exports2, proto.barkfluff.updates);
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_grpc_web_pb.js
+  // scripts/.proto-tmp/updates_api_grpc_web_pb.js
   var require_updates_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/updates_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -36834,28 +45281,275 @@ var BarkFluffBundle = (() => {
           methodDescriptor_UpdatesApi_SubscribeAllMessagesUnpinned
         );
       };
+      var methodDescriptor_UpdatesApi_SubscribePrivateMessages = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribePrivateMessages",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribePrivateMessagesRequest,
+        proto2.barkfluff.updates.NewEncryptedMessageEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribePrivateMessagesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.NewEncryptedMessageEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribePrivateMessages = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateMessages",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateMessages
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribePrivateMessages = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateMessages",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateMessages
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribePrivateMessageEdits = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribePrivateMessageEdits",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribePrivateMessageEditsRequest,
+        proto2.barkfluff.updates.EncryptedMessageEditedEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribePrivateMessageEditsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.EncryptedMessageEditedEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribePrivateMessageEdits = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateMessageEdits",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateMessageEdits
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribePrivateMessageEdits = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateMessageEdits",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateMessageEdits
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribePrivateMessageDeletes = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribePrivateMessageDeletes",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribePrivateMessageDeletesRequest,
+        proto2.barkfluff.updates.EncryptedMessageDeletedEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribePrivateMessageDeletesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.EncryptedMessageDeletedEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribePrivateMessageDeletes = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateMessageDeletes",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateMessageDeletes
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribePrivateMessageDeletes = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateMessageDeletes",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateMessageDeletes
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribePrivateChatInvites = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribePrivateChatInvites",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribePrivateChatInvitesRequest,
+        proto2.barkfluff.updates.PrivateChatInviteEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribePrivateChatInvitesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.PrivateChatInviteEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribePrivateChatInvites = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateChatInvites",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateChatInvites
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribePrivateChatInvites = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateChatInvites",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateChatInvites
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribePrivateChatInviteResolutions = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribePrivateChatInviteResolutions",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest,
+        proto2.barkfluff.updates.PrivateChatInviteResolutionEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribePrivateChatInviteResolutionsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.PrivateChatInviteResolutionEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribePrivateChatInviteResolutions = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateChatInviteResolutions",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateChatInviteResolutions
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribePrivateChatInviteResolutions = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribePrivateChatInviteResolutions",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribePrivateChatInviteResolutions
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribeSecretChatInvites = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribeSecretChatInvites",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribeSecretChatInvitesRequest,
+        proto2.barkfluff.updates.SecretChatInviteEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribeSecretChatInvitesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.SecretChatInviteEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribeSecretChatInvites = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribeSecretChatInvites",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribeSecretChatInvites
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribeSecretChatInvites = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribeSecretChatInvites",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribeSecretChatInvites
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribeSecretChatResolutions = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribeSecretChatResolutions",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribeSecretChatResolutionsRequest,
+        proto2.barkfluff.updates.SecretChatInviteResolutionEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribeSecretChatResolutionsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.SecretChatInviteResolutionEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribeSecretChatResolutions = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribeSecretChatResolutions",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribeSecretChatResolutions
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribeSecretChatResolutions = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribeSecretChatResolutions",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribeSecretChatResolutions
+        );
+      };
+      var methodDescriptor_UpdatesApi_SubscribeSecretMessages = new grpc.web.MethodDescriptor(
+        "/barkfluff.updates.UpdatesApi/SubscribeSecretMessages",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.updates.SubscribeSecretMessagesRequest,
+        proto2.barkfluff.updates.NewSecretMessageEvent,
+        /**
+         * @param {!proto.barkfluff.updates.SubscribeSecretMessagesRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.updates.NewSecretMessageEvent.deserializeBinary
+      );
+      proto2.barkfluff.updates.UpdatesApiClient.prototype.subscribeSecretMessages = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribeSecretMessages",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribeSecretMessages
+        );
+      };
+      proto2.barkfluff.updates.UpdatesApiPromiseClient.prototype.subscribeSecretMessages = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.updates.UpdatesApi/SubscribeSecretMessages",
+          request,
+          metadata || {},
+          methodDescriptor_UpdatesApi_SubscribeSecretMessages
+        );
+      };
       module2.exports = proto2.barkfluff.updates;
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_pb.js
+  // scripts/.proto-tmp/onliner_api_pb.js
   var require_onliner_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/onliner_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
+      goog2.exportSymbol("proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.GetOnlineStatusRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.GetOnlineStatusResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.SetOnlineStatusRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.SetOnlineStatusResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.SetTypingStatusRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.SetTypingStatusResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.StatusTypeId", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.SubscribeToOnlineStatusRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.SubscribeToTypingRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.TypingAction", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.TypingEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.UserOnlineStatus", null, global2);
       proto.barkfluff.onliner.SubscribeToOnlineStatusRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.repeatedFields_, null);
@@ -36912,6 +45606,48 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse.displayName = "proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse";
+      }
+      proto.barkfluff.onliner.SetTypingStatusRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.SetTypingStatusRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.SetTypingStatusRequest.displayName = "proto.barkfluff.onliner.SetTypingStatusRequest";
+      }
+      proto.barkfluff.onliner.SetTypingStatusResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.SetTypingStatusResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.SetTypingStatusResponse.displayName = "proto.barkfluff.onliner.SetTypingStatusResponse";
+      }
+      proto.barkfluff.onliner.SubscribeToTypingRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.onliner.SubscribeToTypingRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.SubscribeToTypingRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.SubscribeToTypingRequest.displayName = "proto.barkfluff.onliner.SubscribeToTypingRequest";
+      }
+      proto.barkfluff.onliner.TypingEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.TypingEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.TypingEvent.displayName = "proto.barkfluff.onliner.TypingEvent";
+      }
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.displayName = "proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest";
+      }
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.displayName = "proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse";
       }
       proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.repeatedFields_ = [1];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -37440,18 +46176,443 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.SetTypingStatusRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.SetTypingStatusRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.SetTypingStatusRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            action: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.SetTypingStatusRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.SetTypingStatusRequest();
+        return proto.barkfluff.onliner.SetTypingStatusRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!proto.barkfluff.onliner.TypingAction} */
+                reader.readEnum()
+              );
+              msg.setAction(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.SetTypingStatusRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getAction();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.prototype.getAction = function() {
+        return (
+          /** @type {!proto.barkfluff.onliner.TypingAction} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.onliner.SetTypingStatusRequest.prototype.setAction = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.SetTypingStatusResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.SetTypingStatusResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.SetTypingStatusResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.SetTypingStatusResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.SetTypingStatusResponse();
+        return proto.barkfluff.onliner.SetTypingStatusResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.SetTypingStatusResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.SetTypingStatusResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.SetTypingStatusResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.SetTypingStatusResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.SubscribeToTypingRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.SubscribeToTypingRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.SubscribeToTypingRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.SubscribeToTypingRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.SubscribeToTypingRequest();
+        return proto.barkfluff.onliner.SubscribeToTypingRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addChatIds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.SubscribeToTypingRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatIdsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.prototype.getChatIdsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.prototype.setChatIdsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.prototype.addChatIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.onliner.SubscribeToTypingRequest.prototype.clearChatIdsList = function() {
+        return this.setChatIdsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.TypingEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.TypingEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.TypingEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            userId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            action: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.TypingEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.TypingEvent();
+        return proto.barkfluff.onliner.TypingEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.TypingEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!proto.barkfluff.onliner.TypingAction} */
+                reader.readEnum()
+              );
+              msg.setAction(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.TypingEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.TypingEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAction();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.getAction = function() {
+        return (
+          /** @type {!proto.barkfluff.onliner.TypingAction} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.setAction = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 3, value);
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest();
+        return proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addChatIds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatIdsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.prototype.getChatIdsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.prototype.setChatIdsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.prototype.addChatIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.prototype.clearChatIdsList = function() {
+        return this.setChatIdsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse();
+        return proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
       proto.barkfluff.onliner.StatusTypeId = {
         STATUS_TYPE_ID_UNKNOWN: 0,
         STATUS_ONLINE: 1,
         STATUS_OFFLINE: 2
       };
+      proto.barkfluff.onliner.TypingAction = {
+        TYPING_ACTION_UNKNOWN: 0,
+        TYPING_ACTION_TYPING: 1,
+        TYPING_ACTION_CANCELLED: 2
+      };
       goog2.object.extend(exports2, proto.barkfluff.onliner);
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_grpc_web_pb.js
+  // scripts/.proto-tmp/onliner_api_grpc_web_pb.js
   var require_onliner_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/onliner_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -37593,18 +46754,110 @@ var BarkFluffBundle = (() => {
           methodDescriptor_OnlinerApi_ChangeUsersInSubscription
         );
       };
+      var methodDescriptor_OnlinerApi_SetTypingStatus = new grpc.web.MethodDescriptor(
+        "/barkfluff.onliner.OnlinerApi/SetTypingStatus",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.onliner.SetTypingStatusRequest,
+        proto2.barkfluff.onliner.SetTypingStatusResponse,
+        /**
+         * @param {!proto.barkfluff.onliner.SetTypingStatusRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.onliner.SetTypingStatusResponse.deserializeBinary
+      );
+      proto2.barkfluff.onliner.OnlinerApiClient.prototype.setTypingStatus = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerApi/SetTypingStatus",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerApi_SetTypingStatus,
+          callback
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerApiPromiseClient.prototype.setTypingStatus = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerApi/SetTypingStatus",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerApi_SetTypingStatus
+        );
+      };
+      var methodDescriptor_OnlinerApi_SubscribeToTyping = new grpc.web.MethodDescriptor(
+        "/barkfluff.onliner.OnlinerApi/SubscribeToTyping",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.onliner.SubscribeToTypingRequest,
+        proto2.barkfluff.onliner.TypingEvent,
+        /**
+         * @param {!proto.barkfluff.onliner.SubscribeToTypingRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.onliner.TypingEvent.deserializeBinary
+      );
+      proto2.barkfluff.onliner.OnlinerApiClient.prototype.subscribeToTyping = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.onliner.OnlinerApi/SubscribeToTyping",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerApi_SubscribeToTyping
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerApiPromiseClient.prototype.subscribeToTyping = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.onliner.OnlinerApi/SubscribeToTyping",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerApi_SubscribeToTyping
+        );
+      };
+      var methodDescriptor_OnlinerApi_ChangeChatsInTypingSubscription = new grpc.web.MethodDescriptor(
+        "/barkfluff.onliner.OnlinerApi/ChangeChatsInTypingSubscription",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest,
+        proto2.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse,
+        /**
+         * @param {!proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.deserializeBinary
+      );
+      proto2.barkfluff.onliner.OnlinerApiClient.prototype.changeChatsInTypingSubscription = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerApi/ChangeChatsInTypingSubscription",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerApi_ChangeChatsInTypingSubscription,
+          callback
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerApiPromiseClient.prototype.changeChatsInTypingSubscription = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerApi/ChangeChatsInTypingSubscription",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerApi_ChangeChatsInTypingSubscription
+        );
+      };
       module2.exports = proto2.barkfluff.onliner;
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_pb.js
+  // scripts/.proto-tmp/fast_auth_api_pb.js
   var require_fast_auth_api_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/fast_auth_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
-      var global2 = function() {
-        return this || window || global2 || self || Function("return this")();
-      }.call(null);
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
       goog2.exportSymbol("proto.barkfluff.fast.auth.AcceptFastAuthRequest", null, global2);
@@ -38950,9 +48203,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js
+  // scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js
   var require_fast_auth_api_grpc_web_pb = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -39173,9 +48426,1956 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // Backend/BarkFluff.Web/scripts/.proto-tmp/index.js
+  // scripts/.proto-tmp/calls_api_pb.js
+  var require_calls_api_pb = __commonJS({
+    "scripts/.proto-tmp/calls_api_pb.js"(exports2) {
+      var jspb2 = require_google_protobuf();
+      var goog2 = jspb2;
+      var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
+        return this;
+      }.call(null) || Function("return this")();
+      var google_protobuf_timestamp_pb = require_timestamp_pb();
+      goog2.object.extend(proto, google_protobuf_timestamp_pb);
+      goog2.exportSymbol("proto.barkfluff.calls.AcceptCallRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.AcceptCallResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallAcceptedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallEndReason", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallEndedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallEvent.EventCase", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallMediaType", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallRejectedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.EndCallRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.EndCallResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.IncomingCallEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.InitiateCallRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.InitiateCallRequest.TargetCase", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.InitiateCallResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.JoinCallRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.JoinCallResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.ParticipantAction", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.ParticipantEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.RejectCallRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.RejectCallResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.SubscribeCallEventsRequest", null, global2);
+      proto.barkfluff.calls.InitiateCallRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_);
+      };
+      goog2.inherits(proto.barkfluff.calls.InitiateCallRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.InitiateCallRequest.displayName = "proto.barkfluff.calls.InitiateCallRequest";
+      }
+      proto.barkfluff.calls.InitiateCallResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.InitiateCallResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.InitiateCallResponse.displayName = "proto.barkfluff.calls.InitiateCallResponse";
+      }
+      proto.barkfluff.calls.JoinCallRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.JoinCallRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.JoinCallRequest.displayName = "proto.barkfluff.calls.JoinCallRequest";
+      }
+      proto.barkfluff.calls.JoinCallResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.JoinCallResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.JoinCallResponse.displayName = "proto.barkfluff.calls.JoinCallResponse";
+      }
+      proto.barkfluff.calls.AcceptCallRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.AcceptCallRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.AcceptCallRequest.displayName = "proto.barkfluff.calls.AcceptCallRequest";
+      }
+      proto.barkfluff.calls.AcceptCallResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.AcceptCallResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.AcceptCallResponse.displayName = "proto.barkfluff.calls.AcceptCallResponse";
+      }
+      proto.barkfluff.calls.RejectCallRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.RejectCallRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.RejectCallRequest.displayName = "proto.barkfluff.calls.RejectCallRequest";
+      }
+      proto.barkfluff.calls.RejectCallResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.RejectCallResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.RejectCallResponse.displayName = "proto.barkfluff.calls.RejectCallResponse";
+      }
+      proto.barkfluff.calls.EndCallRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.EndCallRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.EndCallRequest.displayName = "proto.barkfluff.calls.EndCallRequest";
+      }
+      proto.barkfluff.calls.EndCallResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.EndCallResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.EndCallResponse.displayName = "proto.barkfluff.calls.EndCallResponse";
+      }
+      proto.barkfluff.calls.SubscribeCallEventsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.SubscribeCallEventsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.SubscribeCallEventsRequest.displayName = "proto.barkfluff.calls.SubscribeCallEventsRequest";
+      }
+      proto.barkfluff.calls.CallEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, proto.barkfluff.calls.CallEvent.oneofGroups_);
+      };
+      goog2.inherits(proto.barkfluff.calls.CallEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.CallEvent.displayName = "proto.barkfluff.calls.CallEvent";
+      }
+      proto.barkfluff.calls.IncomingCallEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.IncomingCallEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.IncomingCallEvent.displayName = "proto.barkfluff.calls.IncomingCallEvent";
+      }
+      proto.barkfluff.calls.CallAcceptedEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.CallAcceptedEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.CallAcceptedEvent.displayName = "proto.barkfluff.calls.CallAcceptedEvent";
+      }
+      proto.barkfluff.calls.CallRejectedEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.CallRejectedEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.CallRejectedEvent.displayName = "proto.barkfluff.calls.CallRejectedEvent";
+      }
+      proto.barkfluff.calls.CallEndedEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.CallEndedEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.CallEndedEvent.displayName = "proto.barkfluff.calls.CallEndedEvent";
+      }
+      proto.barkfluff.calls.ParticipantEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.ParticipantEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.ParticipantEvent.displayName = "proto.barkfluff.calls.ParticipantEvent";
+      }
+      proto.barkfluff.calls.InitiateCallRequest.oneofGroups_ = [[1, 2]];
+      proto.barkfluff.calls.InitiateCallRequest.TargetCase = {
+        TARGET_NOT_SET: 0,
+        CALLEE_USER_ID: 1,
+        CHAT_ID: 2
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.getTargetCase = function() {
+        return (
+          /** @type {proto.barkfluff.calls.InitiateCallRequest.TargetCase} */
+          jspb2.Message.computeOneofCase(this, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_[0])
+        );
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.InitiateCallRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.InitiateCallRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.InitiateCallRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            calleeUserId: (f2 = jspb2.Message.getField(msg, 1)) == null ? void 0 : f2,
+            chatId: (f2 = jspb2.Message.getField(msg, 2)) == null ? void 0 : f2,
+            mediaType: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.InitiateCallRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.InitiateCallRequest();
+        return proto.barkfluff.calls.InitiateCallRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.InitiateCallRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setCalleeUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallMediaType} */
+                reader.readEnum()
+              );
+              msg.setMediaType(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.InitiateCallRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.InitiateCallRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = /** @type {number} */
+        jspb2.Message.getField(message, 1);
+        if (f2 != null) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = /** @type {string} */
+        jspb2.Message.getField(message, 2);
+        if (f2 != null) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getMediaType();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.getCalleeUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.setCalleeUserId = function(value) {
+        return jspb2.Message.setOneofField(this, 1, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.clearCalleeUserId = function() {
+        return jspb2.Message.setOneofField(this, 1, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_[0], void 0);
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.hasCalleeUserId = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setOneofField(this, 2, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.clearChatId = function() {
+        return jspb2.Message.setOneofField(this, 2, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_[0], void 0);
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.hasChatId = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.getMediaType = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallMediaType} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.calls.InitiateCallRequest.prototype.setMediaType = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.InitiateCallResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.InitiateCallResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.InitiateCallResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            livekitUrl: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 3, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.InitiateCallResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.InitiateCallResponse();
+        return proto.barkfluff.calls.InitiateCallResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.InitiateCallResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLivekitUrl(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAccessToken(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.InitiateCallResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.InitiateCallResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getLivekitUrl();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAccessToken();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.getLivekitUrl = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.setLivekitUrl = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.getAccessToken = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.setAccessToken = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.JoinCallRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.JoinCallRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.JoinCallRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.JoinCallRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.JoinCallRequest();
+        return proto.barkfluff.calls.JoinCallRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.JoinCallRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.JoinCallRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.JoinCallRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.JoinCallRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.JoinCallRequest.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.JoinCallRequest.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.JoinCallResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.JoinCallResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.JoinCallResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            livekitUrl: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.JoinCallResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.JoinCallResponse();
+        return proto.barkfluff.calls.JoinCallResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.JoinCallResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLivekitUrl(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAccessToken(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.JoinCallResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.JoinCallResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getLivekitUrl();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getAccessToken();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.getLivekitUrl = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.setLivekitUrl = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.getAccessToken = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.setAccessToken = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.AcceptCallRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.AcceptCallRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.AcceptCallRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.AcceptCallRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.AcceptCallRequest();
+        return proto.barkfluff.calls.AcceptCallRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.AcceptCallRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.AcceptCallRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.AcceptCallRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.AcceptCallRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.AcceptCallRequest.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.AcceptCallRequest.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.AcceptCallResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.AcceptCallResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.AcceptCallResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            livekitUrl: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.AcceptCallResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.AcceptCallResponse();
+        return proto.barkfluff.calls.AcceptCallResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.AcceptCallResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLivekitUrl(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAccessToken(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.AcceptCallResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.AcceptCallResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getLivekitUrl();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getAccessToken();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.getLivekitUrl = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.setLivekitUrl = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.getAccessToken = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.setAccessToken = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.RejectCallRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.RejectCallRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.RejectCallRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.RejectCallRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.RejectCallRequest();
+        return proto.barkfluff.calls.RejectCallRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.RejectCallRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.RejectCallRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.RejectCallRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.RejectCallRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.RejectCallRequest.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.RejectCallRequest.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.RejectCallResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.RejectCallResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.RejectCallResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.RejectCallResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.RejectCallResponse();
+        return proto.barkfluff.calls.RejectCallResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.RejectCallResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.RejectCallResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.RejectCallResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.RejectCallResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.EndCallRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.EndCallRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.EndCallRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.EndCallRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.EndCallRequest();
+        return proto.barkfluff.calls.EndCallRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.EndCallRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.EndCallRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.EndCallRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.EndCallRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.EndCallRequest.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.EndCallRequest.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.EndCallResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.EndCallResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.EndCallResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.EndCallResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.EndCallResponse();
+        return proto.barkfluff.calls.EndCallResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.EndCallResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.EndCallResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.EndCallResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.EndCallResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.SubscribeCallEventsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.SubscribeCallEventsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.SubscribeCallEventsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.SubscribeCallEventsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.SubscribeCallEventsRequest();
+        return proto.barkfluff.calls.SubscribeCallEventsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.SubscribeCallEventsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.SubscribeCallEventsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.SubscribeCallEventsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.SubscribeCallEventsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      proto.barkfluff.calls.CallEvent.oneofGroups_ = [[1, 2, 3, 4, 5]];
+      proto.barkfluff.calls.CallEvent.EventCase = {
+        EVENT_NOT_SET: 0,
+        INCOMING: 1,
+        ACCEPTED: 2,
+        REJECTED: 3,
+        ENDED: 4,
+        MEMBER: 5
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getEventCase = function() {
+        return (
+          /** @type {proto.barkfluff.calls.CallEvent.EventCase} */
+          jspb2.Message.computeOneofCase(this, proto.barkfluff.calls.CallEvent.oneofGroups_[0])
+        );
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.CallEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.CallEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.CallEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            incoming: (f2 = msg.getIncoming()) && proto.barkfluff.calls.IncomingCallEvent.toObject(includeInstance, f2),
+            accepted: (f2 = msg.getAccepted()) && proto.barkfluff.calls.CallAcceptedEvent.toObject(includeInstance, f2),
+            rejected: (f2 = msg.getRejected()) && proto.barkfluff.calls.CallRejectedEvent.toObject(includeInstance, f2),
+            ended: (f2 = msg.getEnded()) && proto.barkfluff.calls.CallEndedEvent.toObject(includeInstance, f2),
+            member: (f2 = msg.getMember()) && proto.barkfluff.calls.ParticipantEvent.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.CallEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.CallEvent();
+        return proto.barkfluff.calls.CallEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.CallEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.calls.IncomingCallEvent();
+              reader.readMessage(value, proto.barkfluff.calls.IncomingCallEvent.deserializeBinaryFromReader);
+              msg.setIncoming(value);
+              break;
+            case 2:
+              var value = new proto.barkfluff.calls.CallAcceptedEvent();
+              reader.readMessage(value, proto.barkfluff.calls.CallAcceptedEvent.deserializeBinaryFromReader);
+              msg.setAccepted(value);
+              break;
+            case 3:
+              var value = new proto.barkfluff.calls.CallRejectedEvent();
+              reader.readMessage(value, proto.barkfluff.calls.CallRejectedEvent.deserializeBinaryFromReader);
+              msg.setRejected(value);
+              break;
+            case 4:
+              var value = new proto.barkfluff.calls.CallEndedEvent();
+              reader.readMessage(value, proto.barkfluff.calls.CallEndedEvent.deserializeBinaryFromReader);
+              msg.setEnded(value);
+              break;
+            case 5:
+              var value = new proto.barkfluff.calls.ParticipantEvent();
+              reader.readMessage(value, proto.barkfluff.calls.ParticipantEvent.deserializeBinaryFromReader);
+              msg.setMember(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.CallEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.CallEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.CallEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getIncoming();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            proto.barkfluff.calls.IncomingCallEvent.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getAccepted();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            proto.barkfluff.calls.CallAcceptedEvent.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getRejected();
+        if (f2 != null) {
+          writer.writeMessage(
+            3,
+            f2,
+            proto.barkfluff.calls.CallRejectedEvent.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getEnded();
+        if (f2 != null) {
+          writer.writeMessage(
+            4,
+            f2,
+            proto.barkfluff.calls.CallEndedEvent.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getMember();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            proto.barkfluff.calls.ParticipantEvent.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getIncoming = function() {
+        return (
+          /** @type{?proto.barkfluff.calls.IncomingCallEvent} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.calls.IncomingCallEvent, 1)
+        );
+      };
+      proto.barkfluff.calls.CallEvent.prototype.setIncoming = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 1, proto.barkfluff.calls.CallEvent.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.clearIncoming = function() {
+        return this.setIncoming(void 0);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.hasIncoming = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getAccepted = function() {
+        return (
+          /** @type{?proto.barkfluff.calls.CallAcceptedEvent} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.calls.CallAcceptedEvent, 2)
+        );
+      };
+      proto.barkfluff.calls.CallEvent.prototype.setAccepted = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 2, proto.barkfluff.calls.CallEvent.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.clearAccepted = function() {
+        return this.setAccepted(void 0);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.hasAccepted = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getRejected = function() {
+        return (
+          /** @type{?proto.barkfluff.calls.CallRejectedEvent} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.calls.CallRejectedEvent, 3)
+        );
+      };
+      proto.barkfluff.calls.CallEvent.prototype.setRejected = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 3, proto.barkfluff.calls.CallEvent.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.clearRejected = function() {
+        return this.setRejected(void 0);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.hasRejected = function() {
+        return jspb2.Message.getField(this, 3) != null;
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getEnded = function() {
+        return (
+          /** @type{?proto.barkfluff.calls.CallEndedEvent} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.calls.CallEndedEvent, 4)
+        );
+      };
+      proto.barkfluff.calls.CallEvent.prototype.setEnded = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 4, proto.barkfluff.calls.CallEvent.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.clearEnded = function() {
+        return this.setEnded(void 0);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.hasEnded = function() {
+        return jspb2.Message.getField(this, 4) != null;
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getMember = function() {
+        return (
+          /** @type{?proto.barkfluff.calls.ParticipantEvent} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.calls.ParticipantEvent, 5)
+        );
+      };
+      proto.barkfluff.calls.CallEvent.prototype.setMember = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 5, proto.barkfluff.calls.CallEvent.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.clearMember = function() {
+        return this.setMember(void 0);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.hasMember = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.IncomingCallEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.IncomingCallEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.IncomingCallEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            callerUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            chatId: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            mediaType: jspb2.Message.getFieldWithDefault(msg, 4, 0),
+            startedAt: (f2 = msg.getStartedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.IncomingCallEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.IncomingCallEvent();
+        return proto.barkfluff.calls.IncomingCallEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setCallerUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallMediaType} */
+                reader.readEnum()
+              );
+              msg.setMediaType(value);
+              break;
+            case 5:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setStartedAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.IncomingCallEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.IncomingCallEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getCallerUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getMediaType();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            4,
+            f2
+          );
+        }
+        f2 = message.getStartedAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.getCallerUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.setCallerUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.getMediaType = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallMediaType} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.setMediaType = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 4, value);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.getStartedAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 5)
+        );
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.setStartedAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 5, value);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.clearStartedAt = function() {
+        return this.setStartedAt(void 0);
+      };
+      proto.barkfluff.calls.IncomingCallEvent.prototype.hasStartedAt = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.CallAcceptedEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.CallAcceptedEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.CallAcceptedEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            acceptedByUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.CallAcceptedEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.CallAcceptedEvent();
+        return proto.barkfluff.calls.CallAcceptedEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setAcceptedByUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.CallAcceptedEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getAcceptedByUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.prototype.getAcceptedByUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.CallAcceptedEvent.prototype.setAcceptedByUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.CallRejectedEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.CallRejectedEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.CallRejectedEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            rejectedByUserId: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.CallRejectedEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.CallRejectedEvent();
+        return proto.barkfluff.calls.CallRejectedEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.CallRejectedEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setRejectedByUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.CallRejectedEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.CallRejectedEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.CallRejectedEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRejectedByUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.CallRejectedEvent.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.CallRejectedEvent.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.CallRejectedEvent.prototype.getRejectedByUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.CallRejectedEvent.prototype.setRejectedByUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.CallEndedEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.CallEndedEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.CallEndedEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            reason: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            durationSeconds: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.CallEndedEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.CallEndedEvent();
+        return proto.barkfluff.calls.CallEndedEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.CallEndedEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallEndReason} */
+                reader.readEnum()
+              );
+              msg.setReason(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setDurationSeconds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.CallEndedEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.CallEndedEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getReason();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            2,
+            f2
+          );
+        }
+        f2 = message.getDurationSeconds();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.getReason = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallEndReason} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.setReason = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 2, value);
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.getDurationSeconds = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.calls.CallEndedEvent.prototype.setDurationSeconds = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.ParticipantEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.ParticipantEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.ParticipantEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            userId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            action: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.ParticipantEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.ParticipantEvent();
+        return proto.barkfluff.calls.ParticipantEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.ParticipantEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!proto.barkfluff.calls.ParticipantAction} */
+                reader.readEnum()
+              );
+              msg.setAction(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.ParticipantEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.ParticipantEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAction();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.getAction = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.ParticipantAction} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.calls.ParticipantEvent.prototype.setAction = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 3, value);
+      };
+      proto.barkfluff.calls.CallMediaType = {
+        CALL_MEDIA_TYPE_UNKNOWN: 0,
+        CALL_MEDIA_AUDIO: 1,
+        CALL_MEDIA_VIDEO: 2
+      };
+      proto.barkfluff.calls.CallEndReason = {
+        CALL_END_REASON_UNKNOWN: 0,
+        CALL_END_HANGUP: 1,
+        CALL_END_REJECTED: 2,
+        CALL_END_MISSED: 3,
+        CALL_END_BUSY: 4,
+        CALL_END_FAILED: 5
+      };
+      proto.barkfluff.calls.ParticipantAction = {
+        PARTICIPANT_ACTION_UNKNOWN: 0,
+        PARTICIPANT_JOINED: 1,
+        PARTICIPANT_LEFT: 2
+      };
+      goog2.object.extend(exports2, proto.barkfluff.calls);
+    }
+  });
+
+  // scripts/.proto-tmp/calls_api_grpc_web_pb.js
+  var require_calls_api_grpc_web_pb = __commonJS({
+    "scripts/.proto-tmp/calls_api_grpc_web_pb.js"(exports2, module2) {
+      var grpc = {};
+      grpc.web = require_grpc_web();
+      var google_protobuf_timestamp_pb = require_timestamp_pb();
+      var proto2 = {};
+      proto2.barkfluff = {};
+      proto2.barkfluff.calls = require_calls_api_pb();
+      proto2.barkfluff.calls.CallsApiClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      var methodDescriptor_CallsApi_InitiateCall = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/InitiateCall",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.calls.InitiateCallRequest,
+        proto2.barkfluff.calls.InitiateCallResponse,
+        /**
+         * @param {!proto.barkfluff.calls.InitiateCallRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.InitiateCallResponse.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.initiateCall = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/InitiateCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_InitiateCall,
+          callback
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.initiateCall = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/InitiateCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_InitiateCall
+        );
+      };
+      var methodDescriptor_CallsApi_JoinCall = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/JoinCall",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.calls.JoinCallRequest,
+        proto2.barkfluff.calls.JoinCallResponse,
+        /**
+         * @param {!proto.barkfluff.calls.JoinCallRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.JoinCallResponse.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.joinCall = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/JoinCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_JoinCall,
+          callback
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.joinCall = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/JoinCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_JoinCall
+        );
+      };
+      var methodDescriptor_CallsApi_AcceptCall = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/AcceptCall",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.calls.AcceptCallRequest,
+        proto2.barkfluff.calls.AcceptCallResponse,
+        /**
+         * @param {!proto.barkfluff.calls.AcceptCallRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.AcceptCallResponse.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.acceptCall = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/AcceptCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_AcceptCall,
+          callback
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.acceptCall = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/AcceptCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_AcceptCall
+        );
+      };
+      var methodDescriptor_CallsApi_RejectCall = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/RejectCall",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.calls.RejectCallRequest,
+        proto2.barkfluff.calls.RejectCallResponse,
+        /**
+         * @param {!proto.barkfluff.calls.RejectCallRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.RejectCallResponse.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.rejectCall = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/RejectCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_RejectCall,
+          callback
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.rejectCall = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/RejectCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_RejectCall
+        );
+      };
+      var methodDescriptor_CallsApi_EndCall = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/EndCall",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.calls.EndCallRequest,
+        proto2.barkfluff.calls.EndCallResponse,
+        /**
+         * @param {!proto.barkfluff.calls.EndCallRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.EndCallResponse.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.endCall = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/EndCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_EndCall,
+          callback
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.endCall = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/EndCall",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_EndCall
+        );
+      };
+      var methodDescriptor_CallsApi_SubscribeCallEvents = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/SubscribeCallEvents",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.calls.SubscribeCallEventsRequest,
+        proto2.barkfluff.calls.CallEvent,
+        /**
+         * @param {!proto.barkfluff.calls.SubscribeCallEventsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.CallEvent.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.subscribeCallEvents = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.calls.CallsApi/SubscribeCallEvents",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_SubscribeCallEvents
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.subscribeCallEvents = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.calls.CallsApi/SubscribeCallEvents",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_SubscribeCallEvents
+        );
+      };
+      module2.exports = proto2.barkfluff.calls;
+    }
+  });
+
+  // scripts/.proto-tmp/index.js
   var require_index = __commonJS({
-    "Backend/BarkFluff.Web/scripts/.proto-tmp/index.js"(exports2, module2) {
+    "scripts/.proto-tmp/index.js"(exports2, module2) {
       var jspb2 = require_google_protobuf();
       var grpcWeb = require_grpc_web();
       var sharedPb = require_shared_pb();
@@ -39193,6 +50393,8 @@ var BarkFluffBundle = (() => {
       var onlinerSvc = require_onliner_api_grpc_web_pb();
       var fastAuthPb = require_fast_auth_api_pb();
       var fastAuthSvc = require_fast_auth_api_grpc_web_pb();
+      var callsPb = require_calls_api_pb();
+      var callsSvc = require_calls_api_grpc_web_pb();
       var barkfluff = {
         grpcWeb,
         proto: typeof proto !== "undefined" ? proto : globalThis.proto || {},
@@ -39209,7 +50411,9 @@ var BarkFluffBundle = (() => {
         OnlinerApiClient: onlinerSvc.OnlinerApiClient || onlinerSvc.OnlinerApiPromiseClient,
         OnlinerApiPromiseClient: onlinerSvc.OnlinerApiPromiseClient,
         FastAuthApiClient: fastAuthSvc.FastAuthApiClient || fastAuthSvc.FastAuthApiPromiseClient,
-        FastAuthApiPromiseClient: fastAuthSvc.FastAuthApiPromiseClient
+        FastAuthApiPromiseClient: fastAuthSvc.FastAuthApiPromiseClient,
+        CallsApiClient: callsSvc.CallsApiClient || callsSvc.CallsApiPromiseClient,
+        CallsApiPromiseClient: callsSvc.CallsApiPromiseClient
       };
       if (typeof window !== "undefined") window.barkfluff = barkfluff;
       module2.exports = barkfluff;
