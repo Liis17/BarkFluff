@@ -14,19 +14,19 @@ BarkFluff.Configuration — централизованное хранилище 
 
 ## Безопасность
 
-### S1. Полное отсутствие аутентификации — анонимное чтение всех секретов платформы — Critical
+### S1. ~~Полное отсутствие аутентификации — анонимное чтение всех секретов платформы~~ — ~~Critical~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Program.cs:40-45,145`, `Backend/BarkFluff.Configuration/Host/ConfigurationApiService.cs:30`, `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationStorage.cs:20-28`
 **Проблема:** `Program.cs` регистрирует gRPC только с `ServerExceptionInterceptor` (строки 40-43) и не вызывает `AddXAuth()`/`UseXAuth()`. На `ConfigurationApiService` и его методах нет ни одного `[Authorize]`. Метод `GetConfiguration` (ConfigurationApiService.cs:30) доступен анонимно. При этом `ConfigurationStorage.GetConfiguration` (строки 22-25) выбирает записи `x.ServiceId == serviceId || x.ServiceId == ServiceId.Unknown`, а под `ServiceId.Unknown` (0) в сид-миграции `20251123000000_SeedInitialConfigurationKeys.cs` лежат `JwtSettings:SecretKey`, `RabbitMQ:Password`, токены `UsersService`/`FilesService` и т.д.
 **Почему это проблема:** Один анонимный вызов `GetConfiguration` с любым `ServiceId` возвращает глобальный JWT-ключ подписи. С этим ключом атакующий выпускает себе сервисные токены (`TokenType.Service`) и получает полный доступ ко всем микросервисам — это компрометация всей платформы. Также утекают пароли БД, ключи S3, креды брокера.
 **Рекомендация:** Включить `AddXAuth`/`UseXAuth` в `Program.cs`, навесить `[Authorize(Policy = nameof(TokenType.Service))]` на `ConfigurationApiService`, выдать каждому сервису собственный сервисный токен и пускать только аутентифицированные вызовы.
 
-### S2. Клиент произвольно выбирает `ServiceId` — сервис A читает конфиг сервиса B — Critical
+### S2. ~~Клиент произвольно выбирает `ServiceId` — сервис A читает конфиг сервиса B~~ — ~~Critical~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Host/ConfigurationApiService.cs:30-40`, `Backend/BarkFluff.Configuration/Features/GetConfiguration/GetConfigurationCommand.cs:10`
 **Проблема:** `ServiceId` берётся прямо из `request.ServiceId` (ConfigurationApiService.cs:39) и не сверяется ни с какой аутентифицированной идентичностью вызывающего. Нет привязки «токен сервиса X → может читать только конфиг X».
 **Почему это проблема:** Даже если добавить аутентификацию по S1, без привязки `ServiceId` к идентичности любой сервис (или утёкший сервисный токен) сможет вытянуть секреты любого другого сервиса. Нарушается изоляция секретов между сервисами.
 **Рекомендация:** Определять `ServiceId` из claim'ов токена вызывающего, а не из тела запроса; запросы на чужой `ServiceId` отклонять (общие записи `ServiceId.Unknown` отдавать только в составе собственного конфига).
 
-### S3. `UpdateConfiguration` без аутентификации — анонимная запись любых секретов — Critical
+### S3. ~~`UpdateConfiguration` без аутентификации — анонимная запись любых секретов~~ — ~~Critical~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Host/ConfigurationApiService.cs:57-72`, `Backend/BarkFluff.Configuration/Features/UpdateConfiguration/UpdateConfigurationCommandHandler.cs:20-71`
 **Проблема:** `UpdateConfiguration` доступен анонимно (нет `[Authorize]`). Валидируется только корректность `ServiceId` (handler:22), но не личность вызывающего. Запись идёт в БД через `ConfigurationStorage.UpdateConfigurationAsync`.
 **Почему это проблема:** Атакующий может перезаписать `JwtSettings:SecretKey` (сломав/перехватив всю аутентификацию), подменить `Host` любого сервиса на адрес под своим контролем (MITM межсервисного трафика) или подменить ключи S3/креды БД. Запись секретов должна быть доступна только админке.
