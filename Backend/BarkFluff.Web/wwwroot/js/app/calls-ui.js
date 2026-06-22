@@ -40,6 +40,11 @@
     var stage = null;          // демонстрация экрана: { identity, track }
     var micOn = false, camOn = false, screenOn = false;
 
+    // --- Детектор речи (WebAudio, низкая задержка, реагирует на любой звук) ---
+    var meters = {};           // identity -> { src, an, data, lastAbove }
+    var meterRaf = null;
+    var SPEAK_THRESHOLD = 0.03, SPEAK_HOLD_MS = 250;
+
     // Выбранные устройства (in-app пикеры) — null = устройство по умолчанию.
     var selectedMicId = null, selectedCamId = null;
     // Индикация «применяю качество» для того, кто меняет.
@@ -171,7 +176,11 @@
         selfPip.classList.add('on');
     }
     function clearSelfVideo() {
-        if (selfPipVideo) { try { selfPipVideo.remove(); } catch (e) {} selfPipVideo = null; }
+        if (selfPipVideo) {
+            try { selfPipVideo.srcObject = null; } catch (e) {} // сбросить «замёрзший» последний кадр
+            try { selfPipVideo.remove(); } catch (e) {}
+            selfPipVideo = null;
+        }
         if (selfPip) selfPip.classList.remove('on');
     }
 
@@ -206,10 +215,57 @@
     function removeTile(participant) {
         var tile = tiles[participant.identity];
         if (!tile) return;
+        detachSpeakingMeter(participant.identity);
         tile.audioEls.forEach(function (a) { try { a.remove(); } catch (e) {} });
         try { tile.el.remove(); } catch (e) {}
         delete tiles[participant.identity];
         updateLayout();
+    }
+
+    // --- Детектор речи ---
+    function attachSpeakingMeter(identity, track) {
+        if (!track || !track.mediaStreamTrack) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            detachSpeakingMeter(identity);
+            var src = audioCtx.createMediaStreamSource(new MediaStream([track.mediaStreamTrack]));
+            var an = audioCtx.createAnalyser();
+            an.fftSize = 512; an.smoothingTimeConstant = 0.2;
+            src.connect(an); // в destination не подключаем — только анализ, без эха
+            meters[identity] = { src: src, an: an, data: new Uint8Array(an.fftSize), lastAbove: 0 };
+            startMeterLoop();
+        } catch (e) { /* WebAudio недоступен — подсветки не будет, не критично */ }
+    }
+    function detachSpeakingMeter(identity) {
+        var m = meters[identity];
+        if (!m) return;
+        try { m.src.disconnect(); } catch (e) {}
+        delete meters[identity];
+        if (tiles[identity]) tiles[identity].el.classList.remove('speaking');
+    }
+    function clearAllMeters() {
+        Object.keys(meters).forEach(detachSpeakingMeter);
+        if (meterRaf) { cancelAnimationFrame(meterRaf); meterRaf = null; }
+    }
+    function startMeterLoop() {
+        if (!meterRaf) meterRaf = requestAnimationFrame(meterTick);
+    }
+    function meterTick() {
+        var ids = Object.keys(meters);
+        if (!ids.length) { meterRaf = null; return; }
+        var now = (window.performance && performance.now) ? performance.now() : Date.now();
+        ids.forEach(function (id) {
+            var m = meters[id], tile = tiles[id];
+            if (!tile) return;
+            m.an.getByteTimeDomainData(m.data);
+            var sum = 0;
+            for (var i = 0; i < m.data.length; i++) { var v = (m.data[i] - 128) / 128; sum += v * v; }
+            var rms = Math.sqrt(sum / m.data.length);
+            if (rms > SPEAK_THRESHOLD) m.lastAbove = now;
+            tile.el.classList.toggle('speaking', (now - m.lastAbove) < SPEAK_HOLD_MS);
+        });
+        meterRaf = requestAnimationFrame(meterTick);
     }
 
     function setTileVideo(tile, videoEl) {
@@ -280,6 +336,7 @@
             a.style.display = 'none';
             tile.el.appendChild(a);
             tile.audioEls.push(a);
+            attachSpeakingMeter(participant.identity, track); // подсветка говорящего
         }
     }
     function onTrackUnsubscribed(track, pub, participant) {
@@ -290,6 +347,7 @@
             return;
         }
         try { track.detach().forEach(function (el) { el.remove(); }); } catch (e) {}
+        if (track.kind === L.Track.Kind.Audio) detachSpeakingMeter(participant.identity);
         var tile = tiles[participant.identity];
         if (tile && track.kind === L.Track.Kind.Video) clearTileVideo(tile);
     }
@@ -301,18 +359,12 @@
     }
     function onLocalTrackUnpublished(pub, participant) {
         var L = window.LivekitClient;
-        if (!pub.track || pub.track.kind !== L.Track.Kind.Video) return;
-        try { pub.track.detach().forEach(function (el) { el.remove(); }); } catch (e) {}
-        if (isScreenShare(pub.track, pub)) { clearStage(participant.identity); return; }
-        clearSelfVideo(); // камеру выключили — PiP исчезает
-    }
-
-    function onActiveSpeakers(speakers) {
-        var speaking = {};
-        speakers.forEach(function (p) { speaking[p.identity] = true; });
-        Object.keys(tiles).forEach(function (id) {
-            tiles[id].el.classList.toggle('speaking', !!speaking[id]);
-        });
+        // pub.track при отписке может быть уже null — определяем тип по publication.
+        var isVideo = (pub.kind === L.Track.Kind.Video) || (pub.track && pub.track.kind === L.Track.Kind.Video);
+        if (!isVideo) return;
+        if (pub.track) { try { pub.track.detach().forEach(function (el) { el.remove(); }); } catch (e) {} }
+        if (pub.source === L.Track.Source.ScreenShare) { clearStage(participant.identity); return; }
+        clearSelfVideo(); // камеру выключили — PiP исчезает (включая «замёрзший» последний кадр)
     }
 
     function connectLiveKit(d) {
@@ -326,7 +378,6 @@
         room.on(L.RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
         room.on(L.RoomEvent.LocalTrackPublished, onLocalTrackPublished);
         room.on(L.RoomEvent.LocalTrackUnpublished, onLocalTrackUnpublished);
-        room.on(L.RoomEvent.ActiveSpeakersChanged, onActiveSpeakers);
         room.on(L.RoomEvent.ParticipantConnected, function (p) {
             ensureTile(p);
             startTimer(); // первый собеседник вошёл — звонок состоялся
@@ -352,6 +403,7 @@
     }
 
     function clearGrid() {
+        clearAllMeters();
         Object.keys(tiles).forEach(function (id) {
             tiles[id].audioEls.forEach(function (a) { try { a.remove(); } catch (e) {} });
             try { tiles[id].el.remove(); } catch (e) {}

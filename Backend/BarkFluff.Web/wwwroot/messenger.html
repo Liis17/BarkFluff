@@ -607,16 +607,19 @@
         .call-screen-title { font-size: 16px; font-weight: 600; }
         .call-screen-timer { font-size: 13px; color: rgba(255,255,255,0.7); }
 
+        /* Компактные тайлы в линию по центру; не растягиваются на всю ширину,
+           помещаются в окно, с отступами (снизу больше — под контролами). */
         .call-grid {
-            flex: 1; display: grid; gap: 8px; padding: 8px;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            align-content: center; min-height: 0;
+            flex: 1; min-height: 0; overflow: hidden;
+            display: flex; flex-wrap: wrap; gap: 12px;
+            align-items: center; align-content: center; justify-content: center;
+            padding: 12px 16px 28px;
         }
         .call-tile {
-            position: relative; background: #1c1b19; border-radius: 12px;
-            overflow: hidden; aspect-ratio: 4 / 3;
+            position: relative; flex: 0 0 auto;
+            width: clamp(200px, 30vw, 340px); aspect-ratio: 3 / 2; max-height: 100%;
+            background: #1c1b19; border-radius: 12px; overflow: hidden;
             display: flex; align-items: center; justify-content: center;
-            transition: box-shadow .15s;
         }
         /* Обводка говорящего — поверх видео (inset-тень прячется под видео в режиме демонстрации). */
         .call-tile.speaking::after {
@@ -4163,7 +4166,7 @@
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
     <script src="/js/app/calls.js?v=calls-3"></script>
-    <script src="/js/app/calls-ui.js?v=calls-4"></script>
+    <script src="/js/app/calls-ui.js?v=calls-5"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
