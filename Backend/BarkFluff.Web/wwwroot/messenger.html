@@ -540,6 +540,94 @@
         .chat-header-status { font-size: 12px; color: var(--text-sub); }
         .chat-header-status.online { color: var(--online-color); }
 
+        /* --- Calls UI --- */
+        .chat-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .btn-call {
+            background: none; border: none; color: var(--text-sub);
+            cursor: pointer; padding: 8px; border-radius: 8px;
+            font-size: 20px; line-height: 1;
+            transition: color 0.2s, background 0.2s; flex-shrink: 0;
+        }
+        .btn-call:hover { color: var(--primary); background: rgba(140, 53, 28, 0.08); }
+        .btn-call:disabled { opacity: .4; cursor: default; }
+
+        /* Ring overlay (incoming) */
+        .call-ring-overlay {
+            display: none; position: fixed; inset: 0; z-index: 1200;
+            background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+        }
+        .call-ring-overlay.visible { display: flex; }
+        .call-ring-card {
+            background: var(--dialog-bg); border-radius: 20px; padding: 28px 32px;
+            width: 320px; max-width: 90%; text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .call-ring-avatar {
+            width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 34px; font-weight: 700; color: #fff; overflow: hidden;
+        }
+        .call-ring-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-ring-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+        .call-ring-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 24px; }
+        .call-ring-actions { display: flex; justify-content: center; gap: 40px; }
+        .call-round-btn {
+            width: 60px; height: 60px; border-radius: 50%; border: none;
+            cursor: pointer; font-size: 26px; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform .15s, filter .15s;
+        }
+        .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+        .call-btn-accept { background: #2e9e5b; }
+        .call-btn-reject, .call-ctl-end { background: #d83a3a; }
+
+        /* Active call screen */
+        .call-screen {
+            display: none; position: fixed; inset: 0; z-index: 1150;
+            background: #11100f; flex-direction: column;
+        }
+        .call-screen.visible { display: flex; }
+        .call-screen-top {
+            padding: 16px 24px; display: flex; align-items: center; gap: 12px; color: #fff;
+        }
+        .call-screen-title { font-size: 16px; font-weight: 600; }
+        .call-screen-timer { font-size: 13px; color: rgba(255,255,255,0.7); }
+        .call-grid {
+            flex: 1; display: grid; gap: 8px; padding: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            align-content: center; min-height: 0;
+        }
+        .call-tile {
+            position: relative; background: #1c1b19; border-radius: 12px;
+            overflow: hidden; aspect-ratio: 4 / 3;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .call-tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        .call-tile-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; font-weight: 700; color: #fff; overflow: hidden;
+        }
+        .call-tile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .call-tile-label {
+            position: absolute; left: 10px; bottom: 8px;
+            background: rgba(0,0,0,0.5); color: #fff; font-size: 12px;
+            padding: 3px 8px; border-radius: 6px; max-width: 80%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .call-controls { display: flex; justify-content: center; gap: 16px; padding: 20px; }
+        .call-ctl {
+            width: 56px; height: 56px; border-radius: 50%; border: none;
+            cursor: pointer; font-size: 22px;
+            background: rgba(255,255,255,0.12); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .15s;
+        }
+        .call-ctl:hover { background: rgba(255,255,255,0.22); }
+        .call-ctl.off { background: rgba(255,255,255,0.85); color: #11100f; }
+
         .messages-area-wrap {
             flex: 1;
             position: relative;
@@ -3465,6 +3553,10 @@
                     <div class="chat-header-name" id="chatHeaderName"></div>
                     <div class="chat-header-status" id="chatHeaderStatus"></div>
                 </div>
+                <div class="chat-header-actions">
+                    <button class="btn-call" id="btnCallAudio" title="Аудиозвонок">&#9742;</button>
+                    <button class="btn-call" id="btnCallVideo" title="Видеозвонок">&#128249;</button>
+                </div>
             </div>
 
             <div class="pinned-bar hidden" id="pinnedBar">
@@ -3558,6 +3650,34 @@
     <div class="image-overlay" id="imageOverlay">
         <img id="overlayImage" src="" alt="">
         <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+    </div>
+
+    <!-- Входящий звонок (ring) -->
+    <div class="call-ring-overlay" id="callRingOverlay">
+        <div class="call-ring-card">
+            <div class="call-ring-avatar" id="callRingAvatar"></div>
+            <div class="call-ring-name" id="callRingName">Входящий звонок</div>
+            <div class="call-ring-sub" id="callRingSub"></div>
+            <div class="call-ring-actions">
+                <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить">&#10006;</button>
+                <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять">&#9742;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Активный звонок -->
+    <div class="call-screen" id="callScreen">
+        <div class="call-screen-top">
+            <div class="call-screen-title" id="callScreenTitle">Звонок</div>
+            <div class="call-screen-timer" id="callScreenTimer"></div>
+        </div>
+        <div class="call-grid" id="callGrid"></div>
+        <div class="call-controls">
+            <button class="call-ctl" id="callToggleMic" title="Микрофон">&#127908;</button>
+            <button class="call-ctl" id="callToggleCam" title="Камера">&#128249;</button>
+            <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана">&#128421;</button>
+            <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить">&#128244;</button>
+        </div>
     </div>
 
     <div class="profile-overlay" id="profileOverlay">
@@ -3860,6 +3980,7 @@
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
     <script src="/js/app/calls.js?v=calls-1"></script>
+    <script src="/js/app/calls-ui.js?v=calls-1"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
