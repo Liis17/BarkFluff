@@ -39,9 +39,15 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 | `AcceptCall` | Принять → токен; гасит ринг на остальных устройствах, уведомляет caller |
 | `RejectCall` | Отклонить (1-на-1 завершает звонок; в группе — гасит ринг у отказавшегося) |
 | `EndCall` | Завершить |
-| `SubscribeCallEvents` | **Device-scope** стрим `CallEvent` (incoming/accepted/rejected/ended/member) — требует device-id в JWT |
+| `SetCallAudioQuality` | Сменить **общее** качество голоса звонка (AUTO/LOW/MEDIUM/HIGH); рассылает `CallAudioQualityChanged` всем участникам |
+| `SubscribeCallEvents` | **Device-scope** стрим `CallEvent` (incoming/accepted/rejected/ended/member/**audio_quality**) — требует device-id в JWT |
 
 Все методы — `[Authorize(Policy = nameof(TokenType.User))]`.
+
+### Качество медиа
+
+- **Голос — общий для звонка.** Любой участник вызывает `SetCallAudioQuality`; текущее значение хранит `CallQualityStore` (in-memory Singleton — состояние транзиентное, как подписки, поэтому колонки в CDR нет), сервер рассылает `CallAudioQualityChanged` всем (включая инициатора смены — единый источник истины). Текущее качество отдаётся в ответах `Initiate/Accept/Join` (`audio_quality`) — late-join получает актуальное. Применение пресета к публикации — на клиенте (LiveKit `audioPreset`).
+- **Видео — локально у публикующего.** Качество своего видео-стрима (разрешение+битрейт) клиент меняет сам через LiveKit; на backend не ходит. См. [[Клиенты/Web]].
 
 ## Конфигурация (секция в [[Backend/Configuration]], ServiceId=13)
 
