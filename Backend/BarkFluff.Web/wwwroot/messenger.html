@@ -618,7 +618,11 @@
             display: flex; align-items: center; justify-content: center;
             transition: box-shadow .15s;
         }
-        .call-tile.speaking { box-shadow: inset 0 0 0 3px #3ddc84; }
+        /* Обводка говорящего — поверх видео (inset-тень прячется под видео в режиме демонстрации). */
+        .call-tile.speaking::after {
+            content: ''; position: absolute; inset: 0; border: 3px solid #3ddc84;
+            border-radius: 12px; pointer-events: none; z-index: 2;
+        }
         .call-tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
         .call-tile-avatar {
             width: 72px; height: 72px; border-radius: 50%;
@@ -654,16 +658,20 @@
         .call-waiting-avatar::after { animation-delay: 0.9s; }
         .call-waiting-name { font-size: 20px; font-weight: 700; }
         .call-waiting-sub { font-size: 14px; color: rgba(255,255,255,0.6); }
-        /* Self-preview (PiP) while waiting */
-        .call-screen.waiting .call-grid {
-            position: absolute; right: 20px; bottom: 104px;
-            width: 150px; height: 112px; min-height: 0; padding: 0;
-            display: block; z-index: 3;
+        /* Локальное превью (PiP) — всегда в углу, только при включённой камере */
+        .call-self-pip {
+            display: none; position: absolute; right: 20px; bottom: 104px;
+            width: 160px; height: 120px; border-radius: 12px; overflow: hidden;
+            background: #1c1b19; box-shadow: 0 4px 16px rgba(0,0,0,0.45); z-index: 5;
         }
-        .call-screen.waiting .call-tile {
-            aspect-ratio: auto; width: 100%; height: 100%;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        .call-self-pip.on { display: block; }
+        .call-self-pip video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .call-self-pip-label {
+            position: absolute; left: 8px; bottom: 6px; background: rgba(0,0,0,0.5);
+            color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px;
         }
+        /* Во время ожидания удалённых нет — пустую сетку прячем (себя видно в PiP). */
+        .call-screen.waiting .call-grid { display: none; }
 
         /* Screen-share stage */
         .call-stage { display: none; }
@@ -687,8 +695,9 @@
             flex: 0 0 auto; width: 186px; height: 124px; aspect-ratio: auto;
         }
 
-        .call-controls { display: flex; justify-content: center; gap: 16px; padding: 20px; }
+        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 16px; padding: 20px; }
         .call-ctl {
+            position: relative;
             width: 56px; height: 56px; border-radius: 50%; border: none;
             cursor: pointer;
             background: rgba(255,255,255,0.12); color: #fff;
@@ -699,6 +708,16 @@
         .call-ctl:hover { background: rgba(255,255,255,0.22); }
         .call-ctl.off { background: #d83a3a; color: #fff; }
         .call-ctl.active { background: var(--primary); color: #fff; }
+        /* Кнопка завершения — всегда красная (включая hover). */
+        .call-ctl-end:hover { background: #e24b4b; }
+        /* Спиннер «применяю качество» поверх кнопки качества. */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .call-ctl.busy svg { opacity: .3; }
+        .call-ctl.busy::after {
+            content: ''; position: absolute; top: 50%; left: 50%; margin: -12px 0 0 -12px;
+            width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
+        }
 
         /* Quality popover */
         .call-quality-panel {
@@ -720,6 +739,38 @@
         }
         .call-chip:hover { background: rgba(255,255,255,0.1); }
         .call-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        /* Применение качества идёт с задержкой — гасим чипы и крутим спиннер у заголовка. */
+        .call-quality-title { position: relative; }
+        .call-quality-group.pending .call-chip { opacity: .5; pointer-events: none; }
+        .call-quality-group.pending .call-quality-title::after {
+            content: ''; position: absolute; right: 0; top: -1px; width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+            border-radius: 50%; animation: spin .8s linear infinite;
+        }
+
+        /* Выбор устройства (карет на кнопке микрофона/камеры) */
+        .call-ctl-wrap { position: relative; display: flex; }
+        .call-ctl-caret {
+            position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px;
+            border-radius: 50%; border: 2px solid #11100f; background: #3a3836; color: #fff;
+            padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .call-ctl-caret svg { width: 12px; height: 12px; }
+        .call-ctl-caret:hover { background: #4a4744; }
+        .call-ctl-menu {
+            display: none; position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%);
+            background: #232220; border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 6;
+        }
+        .call-ctl-menu.open { display: block; }
+        .call-ctl-menu-item {
+            display: block; width: 100%; text-align: left; border: none; background: transparent;
+            color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .call-ctl-menu-item:hover { background: rgba(255,255,255,0.1); }
+        .call-ctl-menu-item.active { background: var(--primary); color: #fff; }
+        .call-ctl-menu-empty { color: rgba(255,255,255,0.5); padding: 8px 10px; font-size: 13px; }
 
         .messages-area-wrap {
             flex: 1;
@@ -3774,8 +3825,9 @@
             <div class="call-waiting-sub" id="callWaitingSub"></div>
         </div>
         <div class="call-grid" id="callGrid"></div>
+        <div class="call-self-pip" id="callSelfPip"><div class="call-self-pip-label">Вы</div></div>
         <div class="call-quality-panel" id="callQualityPanel">
-            <div class="call-quality-group">
+            <div class="call-quality-group" id="callAudioQualityGroup">
                 <div class="call-quality-title">Голос · для всех</div>
                 <div class="call-quality-chips" id="callAudioChips">
                     <button class="call-chip" data-q="0">Авто</button>
@@ -3795,8 +3847,16 @@
             </div>
         </div>
         <div class="call-controls">
-            <button class="call-ctl off" id="callToggleMic" title="Микрофон"></button>
-            <button class="call-ctl off" id="callToggleCam" title="Камера"></button>
+            <div class="call-ctl-wrap">
+                <button class="call-ctl off" id="callToggleMic" title="Микрофон"></button>
+                <button class="call-ctl-caret" id="callMicCaret" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
+                <div class="call-ctl-menu" id="callMicMenu"></div>
+            </div>
+            <div class="call-ctl-wrap">
+                <button class="call-ctl" id="callToggleCam" title="Камера"></button>
+                <button class="call-ctl-caret" id="callCamCaret" title="Выбрать камеру" aria-label="Выбрать камеру"></button>
+                <div class="call-ctl-menu" id="callCamMenu"></div>
+            </div>
             <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана"></button>
             <button class="call-ctl" id="callToggleQuality" title="Качество"></button>
             <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить"></button>
@@ -4103,7 +4163,7 @@
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
     <script src="/js/app/calls.js?v=calls-3"></script>
-    <script src="/js/app/calls-ui.js?v=calls-3"></script>
+    <script src="/js/app/calls-ui.js?v=calls-4"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
