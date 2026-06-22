@@ -84,7 +84,7 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 **Почему это проблема:** Если хостовой firewall не закрывает порт, сервис доступен извне по чистому HTTP: UPLOAD_TOKEN при загрузке через этот порт уходит в открытом виде (перехват = компрометация всех дистрибутивов), плюс прямой доступ обходит nginx-ограничения и делает эксплуатируемыми S1/S2.
 **Рекомендация:** Привязать публикацию к loopback: `ports: [ "127.0.0.1:${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]` (nginx ходит на 127.0.0.1, этого достаточно).
 
-### D2. Кеш-каталог /app/cache не в volume; вероятная проблема прав в chiseled-образе — Medium
+### D2. ~~Кеш-каталог /app/cache не в volume; вероятная проблема прав в chiseled-образе~~ — ~~Medium~~ **Исправлено (2026-06-22)**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Dockerfile:12-17`, `Backend/BarkFluff.ClientStorage/docker-compose-master.yml:6-7`, `Backend/BarkFluff.ClientStorage/Program.cs:78`
 **Проблема:** В volume вынесен только `/app/data` (SQLite). Каталог кеша `/app/cache` не создаётся в образе (в build-стадии делается только `mkdir /app/publish/data`, строка 12 Dockerfile) и не примонтирован. Контейнер работает под непривилегированным UID 1654 (`USER $APP_UID`) в chiseled-образе, где `/app` принадлежит root — `Directory.CreateDirectory("/app/cache")` на старте (Program.cs:78) с высокой вероятностью упадёт с `UnauthorizedAccessException`, а если каталог всё же создаётся — кеш не переживает пересоздание контейнера.

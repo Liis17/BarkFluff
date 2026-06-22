@@ -6,6 +6,7 @@ services:
     ports: [ "127.0.0.1:${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]
     volumes:
       - clientstorage-data:/app/data
+      - clientstorage-cache:/app/cache
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:${CLIENTSTORAGE_PORT}"
@@ -20,6 +21,7 @@ services:
 
 volumes:
   clientstorage-data:
+  clientstorage-cache:
 
 networks:
   barkfluff-network:
