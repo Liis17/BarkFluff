@@ -68,13 +68,13 @@ BarkFluff.Configuration — централизованное хранилище 
 **Почему это проблема:** Пароль БД утекает в Seq/файловые логи при включённом уровне Debug. Снижается уровень защиты секретов.
 **Рекомендация:** Расширить `IsSensitive` (ловить значения, содержащие `Password=`/`SecretKey=`, и секции `*Db`), либо не логировать значения вовсе. Сейчас уровень `Default: Information` (appsettings.json) спасает по умолчанию, но любой переход на Debug раскроет секреты.
 
-### S10. `UpdateConfiguration` возвращает `ex.Message` клиенту — Low
+### S10. ~~`UpdateConfiguration` возвращает `ex.Message` клиенту~~ — ~~Low~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Features/UpdateConfiguration/UpdateConfigurationCommandHandler.cs:69`, аналогично в reserved-names обработчиках (`AddReservedNameCommandHandler.cs:39`, `DeleteReservedNameCommandHandler.cs:39`, `UpdateReservedNameCommandHandler.cs:39`)
 **Проблема:** Текст внутреннего исключения возвращается в `Message` ответа.
 **Почему это проблема:** Раскрытие внутренних деталей (ошибки БД, имена сущностей) вызывающему; в сочетании с анонимным доступом усиливает разведку.
 **Рекомендация:** Возвращать обобщённое сообщение, детали писать только в лог.
 
-### S11. Несоответствие кодировок ключа: ASCII при выпуске токена vs UTF8 при валидации — Low
+### S11. ~~Несоответствие кодировок ключа: ASCII при выпуске токена vs UTF8 при валидации~~ — ~~Low~~ **Исправлено (2026-06-23)**
 **Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:358` (`Encoding.ASCII.GetBytes`) против `Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:26` (`Encoding.UTF8.GetBytes`)
 **Проблема:** Сервисные токены подписываются ключом, преобразованным через `Encoding.ASCII`, а все сервисы валидируют тем же ключом через `Encoding.UTF8`. Для авто-сгенерированного ключа (charset ASCII в `GenerateRandomKey`, строка 384) байты совпадают, поэтому сейчас работает. Но если `SecretKey` зададут вручную с не-ASCII символом, ASCII-кодирование исказит байты ключа.
 **Почему это проблема:** Скрытая хрупкость: смена ключа на не-ASCII строку сломает всю межсервисную аутентификацию (токены подписаны иначе, чем валидируются).

@@ -373,7 +373,7 @@ public class ConfigurationDefaultsPopulator
     /// </summary>
     private static string GenerateServiceToken(string secretKey, string issuer, string audience, string serviceName)
     {
-        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secretKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
