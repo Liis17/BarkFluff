@@ -29,7 +29,7 @@ Beacon — точка входа для клиентов: единственны
 **Почему это проблема:** Один неаутентифицированный внешний запрос превращается в 7 внутренних RPC — коэффициент амплификации 7x. Дешёвый флуд на `beacon.barkfluff.com` способен положить Configuration, от которого зависят все остальные сервисы (включая их старт через `LoadConfiguration`).
 **Рекомендация:** Добавить в `beacon.conf` `limit_req_zone`/`limit_req` (например, 5 r/s с burst на IP) — для анонимного эндпоинта это безопасно. В сочетании с кэшированием из P1 амплификация устраняется полностью.
 
-### S3. gRPC reflection включён в production на публичном эндпоинте — Low
+### S3. ~~gRPC reflection включён в production на публичном эндпоинте~~ — ~~Low~~ **Исправлено (2026-06-22)**
 
 **Файл:** `Backend/BarkFluff.Beacon/Program.cs:46` (`AddGrpcReflection`), `Backend/BarkFluff.Beacon/Program.cs:66` (`MapGrpcReflectionService`)
 **Проблема:** Reflection-сервис регистрируется безусловно, без проверки окружения, и доступен анонимно через публичный `beacon.barkfluff.com`.

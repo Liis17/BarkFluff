@@ -44,7 +44,8 @@ public class Program
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.Beacon");
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
         builder.Services.AddSettings<ServerColorSettings>(builder.Configuration, "ServerColor");
         builder.Services.AddSettings<ServerPropsSettings>(builder.Configuration, "ServerProps");
         builder.Services.AddGrpcClient<BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient>(o =>
@@ -64,7 +65,8 @@ public class Program
         startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         startupMetrics.Set("navigator_registration_healthy", 0);
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
         app.UseRouting();
         app.MapGrpcService<BeaconApiService>();
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
