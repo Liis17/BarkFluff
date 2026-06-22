@@ -49,7 +49,7 @@ Beacon — точка входа для клиентов: единственны
 **Почему это проблема:** Beacon — первый эндпоинт, который дёргает каждый клиент при запуске приложения. Линейный рост клиентских запросов даёт 7-кратный рост нагрузки на Configuration; латентность ответа Beacon равна латентности самого медленного из 7 RPC; падение Configuration делает Beacon полностью неработоспособным (а это единственная точка входа для клиентов). Плюс вектор амплификации из S2.
 **Рекомендация:** Кэшировать собранный `GetServerInfoResponse` (или результаты `GetConfiguration`) в `IMemoryCache` с TTL 1–5 минут и фоновым обновлением; при недоступности Configuration отдавать последний удачный снапшот (stale-while-revalidate). Это убирает 99%+ внутреннего трафика и развязывает доступность Beacon от Configuration.
 
-### P2. `Task.WhenAll` падает целиком при ошибке одного из семи RPC — Low
+### P2. ~~`Task.WhenAll` падает целиком при ошибке одного из семи RPC~~ — ~~Low~~ **Неактуально**
 
 **Файл:** `Backend/BarkFluff.Beacon/Features/GetServerInfo/GetServerInfoCommandHandler.cs:52-65`
 **Проблема:** При сбое любого одного из 7 вызовов `GetConfiguration` исключение пробрасывается наружу (`throw` на строке 64) и клиент получает ошибку всего `GetServerInfo`, хотя 6 из 7 конфигураций успешно получены.
@@ -58,7 +58,7 @@ Beacon — точка входа для клиентов: единственны
 
 ## Docker / nginx
 
-### D1. master-compose публикует plaintext gRPC-порт Beacon на хост в обход nginx — Medium
+### D1. ~~master-compose публикует plaintext gRPC-порт Beacon на хост в обход nginx~~ — ~~Medium~~ **Неактуально**
 
 **Файл:** `Backend/docker-compose-master.yml:12` (`ports: ["${BEACON_PORT}:${BEACON_PORT}"]`)
 **Проблема:** В production-компоузе порт Beacon публикуется напрямую на хост. Kestrel слушает h2c (HTTP/2 без TLS — `Program.cs:30-37`), TLS-терминация выполняется только в nginx (`beacon.conf`). В dev-компоузе (`Backend/docker-compose-dev.yml:10-20`) порт, наоборот, не публикуется — корректная схема.
