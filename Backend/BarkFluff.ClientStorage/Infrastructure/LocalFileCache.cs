@@ -35,6 +35,13 @@ public class LocalFileCache
         return path;
     }
 
+    public async Task UpdateFromFileAsync(ClientType clientType, ReleaseChannel channel, string sourcePath)
+    {
+        await using var fs = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.None,
+            bufferSize: 81920, useAsync: true);
+        await UpdateAsync(clientType, channel, fs);
+    }
+
     public async Task UpdateAsync(ClientType clientType, ReleaseChannel channel, Stream source)
     {
         var path = CachePath(clientType, channel);

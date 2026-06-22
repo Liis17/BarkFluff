@@ -348,6 +348,7 @@ public class ClientStorageController : ControllerBase
         var tempPath = Path.Combine(tempDir, s3Key);
         string checksum;
 
+        bool s3Succeeded = false;
         try
         {
             // 1) принимаем файл с попутным SHA-256
@@ -373,6 +374,7 @@ public class ClientStorageController : ControllerBase
                 tempPath,
                 s3Key,
                 file.ContentType ?? "application/octet-stream");
+            s3Succeeded = true;
         }
         catch (Amazon.S3.AmazonS3Exception s3ex)
         {
@@ -388,10 +390,14 @@ public class ClientStorageController : ControllerBase
         }
         finally
         {
-            try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); }
-            catch (Exception ex)
+            // На успешном пути temp отдаём фоновой задаче — она сама его удалит после прогрева кэша
+            if (!s3Succeeded)
             {
-                _logger.LogWarning(ex, "Не удалось удалить temp-файл {Path}", tempPath);
+                try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось удалить temp-файл {Path}", tempPath);
+                }
             }
         }
 
@@ -417,7 +423,7 @@ public class ClientStorageController : ControllerBase
         await _db.SaveChangesAsync();
 
         // Обновляем кеш асинхронно — не задерживаем ответ клиенту
-        _ = UpdateCacheInBackgroundAsync(s3Key, clientType, releaseChannel);
+        _ = UpdateCacheInBackgroundAsync(s3Key, clientType, releaseChannel, tempPath);
 
         return Ok(new
         {
@@ -429,8 +435,27 @@ public class ClientStorageController : ControllerBase
         });
     }
 
-    private async Task UpdateCacheInBackgroundAsync(string s3Key, ClientType clientType, ReleaseChannel channel)
+    private async Task UpdateCacheInBackgroundAsync(string s3Key, ClientType clientType, ReleaseChannel channel,
+        string? tempPath = null)
     {
+        if (tempPath != null && System.IO.File.Exists(tempPath))
+        {
+            try
+            {
+                await _cache.UpdateFromFileAsync(clientType, channel, tempPath);
+                _logger.LogInformation("Кеш обновлён из temp-файла: {ClientType} {Channel}", clientType, channel);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось обновить кеш из temp-файла, скачиваем из S3");
+            }
+            finally
+            {
+                try { System.IO.File.Delete(tempPath); } catch { }
+            }
+        }
+
         try
         {
             using var result = await _s3.DownloadAsync(s3Key);
