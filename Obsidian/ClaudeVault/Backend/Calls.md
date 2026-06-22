@@ -69,8 +69,13 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `Backend/livekit/livekit.yaml`.
 - **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами).
 
+## Клиенты
+
+- **[[Клиенты/Web]]** — первый клиент звонков (обкатка): gRPC-Web через YARP [[Backend/BarkFluff.Web]], медиа через `livekit-client` (WSS напрямую к LiveKit). Модули `js/app/calls.js` (сигнализация + `SubscribeCallEvents`) и `js/app/calls-ui.js` (ринг/экран + LiveKit Room). Поддержаны 1-на-1 и группы, аудио+видео.
+  - ⚠️ Dev-нюанс: `LiveKit:Url` должен быть **browser-reachable** (`ws://localhost:7880`, не `ws://livekit:7880`); getUserMedia требует secure context (`localhost`/HTTPS).
+- Остальные клиенты (macOS/iOS/Android/Windows/Linux) — отдельно, по запросу.
+
 ## Не реализовано (следующие шаги)
 
 - Системное сообщение для личного звонка с **новым контактом** (личного чата ещё нет) — сейчас не пишется, чтобы не тащить создание чата с кэшем имён/аватаров в путь звонка.
-- VoIP/CallKit push при входящем звонке через [[Backend/CloudMessaging]] (Фаза 3 плана).
-- Клиенты (LiveKit SDK, экран звонка) — Фаза 4.
+- VoIP/CallKit push при входящем звонке через [[Backend/CloudMessaging]] (Фаза 3 плана). На вебе входящий ловится только при открытой вкладке (стрим живёт с страницей).

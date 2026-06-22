@@ -1,68 +1,64 @@
 # Web
 
-Веб-клиент мессенджера BarkFluff — полноценное **React 19 + TypeScript SPA** на Material 3 Expressive. Заменил старый vanilla-JS клиент (`Backend/BarkFluff.Web/wwwroot/*.html` + `js/app/*.js`).
+Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** (без фреймворка и бандлера приложения), раздаётся хостом [[Backend/BarkFluff.Web]].
 
-Расположение: `Frontend/Web/`
-Раздаётся сервисом [[Backend/BarkFluff.Web]] (YARP-прокси gRPC-Web↔gRPC) из его `wwwroot/` после `npm run build`.
+Расположение: `Backend/BarkFluff.Web/wwwroot/` (разметка `messenger.html`, модули `js/app/*.js`).
+
+> ⚠️ Раньше существовало React-переписывание (`Frontend/Web/`), но оно было **намеренно откатано** (коммиты «возвращаемся на старую вебверсию» / «Восстановить веб-версию мессенджера (vanilla, до React)»). Актуальный и развиваемый клиент — этот vanilla-вариант. React-доку считать неактуальной.
 
 ## Tech Stack
 
-| Технология | Версия |
-|------------|--------|
-| React | 19 |
-| TypeScript | 5.7 |
-| Vite | 6.x |
-| react-router-dom | 7.x |
-| zustand | 5.x (состояние чатов/темы) |
-| @connectrpc/connect(-web) | 1.x |
-| @bufbuild/protobuf | 1.x |
+| Технология | Версия | Назначение |
+|------------|--------|-----------|
+| grpc-web | 1.5.0 | gRPC-Web клиенты (`protoc-gen-grpc-web`, callback-style) |
+| google-protobuf | 3.21.2 | runtime сообщений |
+| esbuild | 0.24.0 | сборка proto-бандла и LiveKit-бандла в IIFE-глобал |
+| livekit-client | 2.19.2 | WebRTC SDK для звонков ([[Backend/Calls]]) |
+
+Приложение — обычные `<script>`-модули, каждый оборачивает себя в IIFE и вешает API на глобал `window.BF.*`.
 
 ## Сборка
 
 ```bash
-cd Frontend/Web
-npm install
-npm run generate              # buf generate → src/gen (из proto/)
-npm run sync-proto            # обновить proto/ из Shared/BarkFluff.Proto
-npm run build                 # tsc + vite → ../../Backend/BarkFluff.Web/wwwroot
-npm run dev                   # http://localhost:517x, проксирует gRPC на BF_PROXY (по умолч. :7016)
+cd Backend/BarkFluff.Web
+# proto-бандл (window.barkfluff + window.proto.barkfluff.*)
+pwsh scripts/generate-proto.ps1      # Windows
+bash scripts/generate-proto.sh       # Linux/macOS (нужен protoc-gen-grpc-web в PATH)
+# LiveKit JS SDK (window.LivekitClient)
+pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 ```
 
-Сборка пишет в `wwwroot` c `emptyOutDir:false` — старый `messenger.html` и `js/` сохраняются как fallback на `/messenger`.
+Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списках в `Dockerfile`/`Dockerfile.slim`.
 
 ## Архитектура
 
 ### Транспорт и авторизация
-- `baseUrl: '/'` для `createGrpcWebTransport` — connect-web формирует `/{pkg}.{Service}/{Method}`, что совпадает с YARP-маршрутами прокси.
-- `api/transport.ts` — клиенты с auth-интерсептором (`api/interceptor.ts`): подставляет device-метаданные + `x-auth-token`, при `UNAUTHENTICATED` делает forced refresh + ретрай.
-- `api/baseTransport.ts` — «голый» транспорт (без интерсептора) для login/refresh/pre-auth/стримов — разрывает цикл импортов.
-- `api/tokenStore.ts` — токены в localStorage/sessionStorage (порт старого `tokens.js`); `api/refresh.ts` — single-flight refresh; `api/metadata.ts` — base64-заголовки.
-- Коды ошибок: `api/errorCodes.ts` (OTP_REQUIRED / INVALID_OTP / INVALID_CREDENTIALS / INVALID_USERNAME_FORMAT).
-- Состояние авторизации: `state/AuthContext.tsx` (login/logout/applySession, currentUserId из JWT).
+- gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(origin)`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`).
+- `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16).
+- `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`).
+- `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
 
 ### Real-time
-- `realtime/RealtimeProvider.tsx` — 7 server-streaming подписок [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/unpinned/all-unpinned).
-- `realtime/streams.ts` — переподключение с backoff 2с→30с, forced refresh при auth-ошибке, resync активного чата при переоткрытии (стримы не реплеят пропущенное), реакция на `visibilitychange`.
-- События пишутся напрямую в `state/chatStore.ts` (Zustand) → UI обновляется реактивно.
+- `js/app/realtime.js` (`BF.realtime`) — server-streaming подписки [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/...) и [[Backend/Onliner|OnlinerApi]]. Реконнект с backoff 2→30с, превентивный age-timer (180с), watchdog по молчанию (90с), реакция на `visibilitychange`, forced refresh при коде 16, событие `resync` для дозагрузки пропущенного.
+- События раздаются через `BF.realtime.on(event, cb)`; UI слушает их в `js/app/main.js`.
 
-### Роутинг
-`/login`, `/register`, `/chats`, `/chats/:chatId`, `/settings/{profile,sessions,security,storage}`. `RequireAuth`/`PublicOnly` (`app/RequireAuth.tsx`). Layout — `app/AppLayout.tsx` + `components/NavRail`.
+### Звонки (см. [[Backend/Calls]])
+- `js/app/calls.js` (`BF.calls`) — сигнализация: device-scope стрим `SubscribeCallEvents` (паттерн `realtime.js`), call-control `InitiateCall/Accept/Reject/Join/End`, машина состояний одного звонка, события `incoming/connect/peer_accepted/peer_rejected/ring_dismiss/ended/member`. Запускается в `main.js` рядом с `BF.realtime.startAll()`.
+- `js/app/calls-ui.js` (`BF.callsUI`) — UI: ринг-оверлей входящего, полноэкранный экран активного звонка (сетка плиток + контролы микро/камера/демонстрация/сброс), рингтон (WebAudio), медиа через `window.LivekitClient` (Room: connect, публикация треков, привязка `TrackSubscribed`/`ParticipantConnected` к плиткам). Имя/аватар участника резолвится через `BF.api.getUser` (identity LiveKit-токена = userId).
+- Кнопки звонка — в шапке чата (`#chatHeader`), обработчики в `main.js` (1-на-1 → `callee_user_id`, группа → `chat_id`).
+- LiveKit-бандл: `wwwroot/js/vendor/livekit-client.bundle.js` (esbuild IIFE, `window.LivekitClient`).
 
-### Функции (MVP)
-- **Логин + 2FA** (OTP-шаг), **регистрация** (9-шаговый мастер `features/register/RegisterWizard.tsx`).
-- **Чаты**: список ([[Backend/Messages|MessagesApi]].ListChats), просмотр сообщений с пагинацией вверх, разделители дат.
-- **Сообщения**: отправка/редактирование/удаление/закреп/прочитано, вложения (загрузка REST `/api/files/upload`, скачивание через [[Backend/Files|FilesApi]].GetTempDownloadUrl).
-- **Настройки**: профиль ([[Backend/Users|UsersApi]] Change*/SetProfilePicture), сессии (GetActiveSessions/RemoveActiveSession/RenameDevice), 2FA (Enable/Confirm/Disable), хранилище (GetUserStorageInfo).
+### Хост и маршрутизация
+- [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
 
-### Тема Material 3 Expressive
-- `theme/tokens.css` — структурные токены (shape/motion/typescale), `theme/themes.css` — 3 темы (light/dark/midnight) с цветами 1:1 из старого `messenger.html` + цветовые роли `--md-sys-color-*`.
-- `theme/ThemeProvider.tsx` + `state/themeStore.ts` — переключение, персист в localStorage, `data-theme` на `<html>`.
-- Кастомные компоненты (`components/`): Button, IconButton, TextField, Avatar, Switch, NavRail.
+### Темы
+- 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`. Иконки — Unicode/эмодзи.
 
-## Не входит в MVP (задел на будущее)
-Папки чатов, персонализация (фоны/постеры), QR fast-auth, E2E private-чаты (Argon2id+AES-GCM), секретные Signal-чаты. Архитектура (отдельный transport, стор) позволяет добавить позже.
+## Функции
+Логин + 2FA, регистрация, fast-auth (QR), список чатов и сообщения (отправка/редактирование/удаление/закреп/прочитано, вложения, пересылка), папки, настройки (профиль/сессии/2FA/хранилище), персонализация, **звонки (аудио/видео, 1-на-1 и группы)**.
 
 ## Связи
-- [[Backend/BarkFluff.Web]] — хост-сервис (YARP + gRPC-Web конвертация), серверную часть не меняли.
-- [[Архитектура]] — общий tech stack, XAuth, gRPC-клиент.
-- [[Клиенты/Developers-Web]] — родственный React-проект (портал документации), использован как референс.
+- [[Backend/BarkFluff.Web]] — хост (YARP gRPC-Web↔gRPC + статика).
+- [[Backend/Calls]] — бэкенд звонков (LiveKit SFU), первый клиент которого — этот веб.
+- [[Backend/Updates]], [[Backend/Onliner]] — источники real-time стримов.
+- [[Архитектура]] — общий tech stack, XAuth.
