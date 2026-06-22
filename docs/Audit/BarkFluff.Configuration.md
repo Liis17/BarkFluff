@@ -84,13 +84,13 @@ BarkFluff.Configuration — централизованное хранилище 
 
 ## Производительность
 
-### P1. Нет кэширования чтений конфигурации — запрос к БД на каждый `GetConfiguration` — Low
+### P1. ~~Нет кэширования чтений конфигурации — запрос к БД на каждый `GetConfiguration`~~ — ~~Low~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationStorage.cs:20-28`
 **Проблема:** Каждый вызов `GetConfiguration` идёт в БД. Кэша нет.
 **Почему это проблема:** Потенциальная нагрузка на БД, если бы вызовы были частыми.
 **Рекомендация:** Не критично: клиенты (`WebApplicationBuilderExtensions.LoadConfiguration`) тянут конфиг один раз при старте, используется `AsNoTracking()` (хорошо). Кэш можно добавить при появлении горячего пути, сейчас — необязательно.
 
-### P2. `CountAsync` после каждой записи конфигурации — Low
+### P2. ~~`CountAsync` после каждой записи конфигурации~~ — ~~Low~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationStorage.cs:62-63`
 **Проблема:** После каждого `UpdateConfigurationAsync` выполняется отдельный `CountAsync` для обновления gauge-метрики.
 **Почему это проблема:** Лишний запрос к БД на запись.
@@ -102,7 +102,7 @@ BarkFluff.Configuration — централизованное хранилище 
 **Файл:** `Backend/docker-compose-master.yml:24`
 Дублируется как ключевая инфраструктурная находка: внутренний сервис-хранилище секретов не должен публиковаться на хост. В dev (`docker-compose-dev.yml:22-36`) сделано правильно — без `ports`.
 
-### D2. `env_file: .env` пробрасывает широкий набор кредов в контейнер Configuration — Low
+### D2. ~~`env_file: .env` пробрасывает широкий набор кредов в контейнер Configuration~~ — ~~Low~~ **Неактуально**
 **Файл:** `Backend/docker-compose-dev.yml:26-27`, `Backend/docker-compose-master.yml:25-26`
 **Проблема:** В контейнер Configuration целиком загружается `.env` (нужно для проброса `RABBITMQ_DEFAULT_USER/PASS` в Populator).
 **Почему это проблема:** В окружении процесса оказывается больше секретов, чем требуется сервису; расширяется поверхность утечки (через дамп env, логи краша).
