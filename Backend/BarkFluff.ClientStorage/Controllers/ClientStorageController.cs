@@ -302,20 +302,31 @@ public class ClientStorageController : ControllerBase
 
         // Кеша нет → стримим напрямую из S3
         _logger.LogWarning("Кеш отсутствует для {ClientType} {Channel}, стриминг из S3", clientType, releaseChannel);
+        S3DownloadResult? result = null;
         try
         {
-            var rangeHeader = Request.Headers.Range.FirstOrDefault();
-            var result      = await _s3.DownloadAsync(clientFile.S3Key, rangeHeader);
-            return new FileStreamResult(result.Stream, clientFile.ContentType)
-            {
-                FileDownloadName      = clientFile.OriginalFileName,
-                EnableRangeProcessing = true
-            };
+            result = await _s3.DownloadAsync(clientFile.S3Key, Request.Headers.Range.FirstOrDefault());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка стриминга из S3 для {S3Key}", clientFile.S3Key);
+            _logger.LogError(ex, "Ошибка получения объекта из S3 для {S3Key}", clientFile.S3Key);
             return StatusCode(500, new { error = "Ошибка при скачивании файла" });
+        }
+
+        using (result)
+        {
+            Response.ContentType   = clientFile.ContentType;
+            Response.ContentLength = result.ContentLength;
+            Response.Headers["Content-Disposition"] = $"attachment; filename=\"{clientFile.OriginalFileName}\"";
+
+            if (!string.IsNullOrEmpty(result.ContentRange))
+            {
+                Response.StatusCode              = StatusCodes.Status206PartialContent;
+                Response.Headers["Content-Range"] = result.ContentRange;
+            }
+
+            await result.Stream.CopyToAsync(Response.Body);
+            return new EmptyResult();
         }
     }
 

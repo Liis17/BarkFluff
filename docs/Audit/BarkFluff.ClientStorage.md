@@ -15,35 +15,35 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 
 ## Безопасность
 
-### S1. Доверие X-Forwarded-* от любого источника + Host-заголовок в публичных URL — Medium
+### S1. ~~Доверие X-Forwarded-* от любого источника + Host-заголовок в публичных URL~~ — ~~Medium~~ **Неактуально**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Program.cs:53-55`, `Backend/BarkFluff.ClientStorage/Controllers/ClientStorageController.cs:186`
 **Проблема:** `ForwardedHeadersOptions` настроены с `KnownNetworks.Clear()` и `KnownProxies.Clear()` — middleware принимает `X-Forwarded-For/Proto/Host` от **любого** клиента, а не только от nginx. При этом `BuildPublicUrl` (строка 186) при отсутствии `PUBLIC_BASE_URL` строит URL из `Request.Scheme`/`Request.Host`, которые после `UseForwardedHeaders` берутся из этих заголовков. `PUBLIC_BASE_URL` не задан ни в одном из compose-файлов, а `AllowedHosts: "*"` (`appsettings.json:8`) не фильтрует Host.
 **Почему это проблема:** Любой, кто дотянется до сервиса напрямую (порт опубликован на хост, см. D1), может прислать `X-Forwarded-Host: evil.com` и получить в ответе `/bitsurl` ссылку на чужой домен. Также подменяется `X-Forwarded-For` — в логах окажется поддельный IP, что мешает расследованию инцидентов и обходит будущие rate-limit'ы по IP.
 **Рекомендация:** Задать `PUBLIC_BASE_URL` в compose (тогда Host вообще не используется) и ограничить доверенные прокси: вместо `Clear()` указать `options.KnownNetworks.Add(...)` с подсетью docker-сети/адресом nginx, либо принимать forwarded-заголовки только при недоступности сервиса извне (см. D1).
 
-### S2. Отключены защиты Kestrel от медленных клиентов (slowloris / slow-read DoS) — Medium
+### S2. ~~Отключены защиты Kestrel от медленных клиентов (slowloris / slow-read DoS)~~ — ~~Medium~~ **Неактуально**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Program.cs:68-72`
 **Проблема:** `KeepAliveTimeout = 30 минут`, `MinRequestBodyDataRate = null`, `MinResponseDataRate = null` — отключены оба механизма Kestrel, разрывающие соединения с клиентами, которые шлют/читают данные слишком медленно.
 **Почему это проблема:** Сервис публичный (скачивание дистрибутивов не требует авторизации) и отдаёт файлы до 512 МБ. Атакующий может открыть множество соединений и читать ответ по байту — каждое держит поток-обработчик, файловый дескриптор и (при кеш-промахе) живое соединение к S3. nginx частично сглаживает это буферизацией ответов, но контейнер доступен и напрямую (D1), где защиты нет вовсе.
 **Рекомендация:** Вернуть `MinResponseDataRate` (например, дефолтные 240 байт/с с grace-периодом) — легитимным медленным клиентам этого достаточно; для загрузок при необходимости оставить ослабленный `MinRequestBodyDataRate` только через `IHttpMinRequestBodyDataRateFeature` на `/set`-маршрутах. Дополнительно ограничить `MaxConcurrentConnections`.
 
-### S3. Раскрытие деталей S3-ошибок в ответе клиенту — Low
+### S3. ~~Раскрытие деталей S3-ошибок в ответе клиенту~~ — ~~Low~~ **Неактуально**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Controllers/ClientStorageController.cs:371`
 **Проблема:** При ошибке загрузки в S3 клиенту возвращается `error = $"S3: {s3ex.ErrorCode ?? "unknown"} ({s3ex.StatusCode})"` — код ошибки и статус провайдера хранилища.
 **Почему это проблема:** Раскрывает внутреннюю инфраструктуру (факт использования S3-совместимого хранилища, характер ошибки — `AccessDenied`, `NoSuchBucket` и т.п.). Эндпоинт доступен только владельцу UPLOAD_TOKEN, поэтому критичность низкая, но при утечке токена это помогает разведке.
 **Рекомендация:** Возвращать обезличенное сообщение («Ошибка при загрузке файла»), а ErrorCode/StatusCode оставить только в логах (они там уже есть, строки 368-370).
 
-### S4. Нет валидации загружаемых файлов; ContentType берётся от клиента — Low
+### S4. ~~Нет валидации загружаемых файлов; ContentType берётся от клиента~~ — ~~Low~~ **Неактуально**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Controllers/ClientStorageController.cs:364,398` (приём), `:289,309` (отдача)
 **Проблема:** Загружаемый файл не проверяется ни по расширению, ни по magic bytes; `ContentType` берётся из multipart-заголовка клиента, сохраняется в БД и затем отдаётся как есть всем скачивающим. `OriginalFileName` (строка 396) тоже клиентский и попадает в `Content-Disposition` ответа.
 **Почему это проблема:** Владелец UPLOAD_TOKEN может опубликовать под видом дистрибутива произвольный контент с произвольным MIME-типом. Риск смягчён: загрузка аутентифицирована, а `FileDownloadName` заставляет ASP.NET выставлять `Content-Disposition: attachment` (браузер не отрендерит `text/html` инлайн) и корректно экранирует имя файла.
 **Рекомендация:** Белый список ContentType/расширений по типу клиента (zip/exe/apk/dmg/ipa), проверка magic bytes первых байт файла, добавить заголовок `X-Content-Type-Options: nosniff` в ответы скачивания.
 
-### S5. Единый статический UPLOAD_TOKEN без ротации — Low
+### S5. ~~Единый статический UPLOAD_TOKEN без ротации~~ — ~~Low~~ **Неактуально**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Middleware/TokenAuthMiddleware.cs:14-16`, `Backend/BarkFluff.ClientStorage/docker-compose-master.yml:15`
 **Проблема:** Загрузка всех дистрибутивов всех платформ защищена одним долгоживущим shared-secret в переменной окружения. Нет ротации, нет привязки к субъекту, нет аудита «кто загрузил». Токен виден через `docker inspect` и в окружении процесса.
@@ -54,7 +54,7 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 
 ## Производительность
 
-### P1. Сломанные Range-запросы при отдаче из S3 (кеш-промах) — High
+### P1. ~~Сломанные Range-запросы при отдаче из S3 (кеш-промах)~~ — ~~High~~ **Исправлено (2026-06-22)**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/Controllers/ClientStorageController.cs:307-313`, `Backend/BarkFluff.ClientStorage/Infrastructure/S3StorageService.cs:102-123`
 **Проблема:** При кеш-промахе Range-заголовок клиента парсится вручную и передаётся в S3 (`ByteRange`), а полученный **уже частичный** поток заворачивается в `FileStreamResult` с `EnableRangeProcessing = true`. `GetObjectResponse.ResponseStream` — non-seekable, поэтому ASP.NET Core не может определить длину (`FileStreamResultExecutor` берёт `Length` только при `CanSeek`), пропускает range-обработку и отдаёт ответ со статусом **200 OK без Content-Range/Content-Length**, хотя тело содержит только запрошенный фрагмент.
