@@ -310,9 +310,10 @@ services:
     volumes:
       - ./livekit/livekit.yaml:/etc/livekit/livekit.yaml:ro
     ports:
-      # 7880 (сигнализация/API) наружу НЕ публикуем — внешний доступ только через nginx
-      # (livekit.barkfluff.com, WSS). Внутри docker-сети доступен как livekit:7880.
-      # WebRTC-медиа nginx проксировать не может — эти порты обязаны быть прямыми:
+      # Dev: в локальном стеке nginx нет, поэтому сигнализацию публикуем напрямую.
+      # В проде 7880 фронтит nginx (livekit.barkfluff.com, WSS) и наружу не публикуется.
+      - "7880:7880"                     # HTTP/WS сигнализация + API
+      # WebRTC-медиа nginx проксировать не может — эти порты всегда прямые:
       - "7881:7881"                     # ICE/TCP fallback
       - "50000-50200:50000-50200/udp"   # RTC media (UDP)
     networks:
