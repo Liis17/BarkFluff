@@ -77,7 +77,7 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 
 ## Docker / nginx
 
-### D1. Порт контейнера опубликован на всех интерфейсах в обход nginx/TLS — Medium
+### D1. ~~Порт контейнера опубликован на всех интерфейсах в обход nginx/TLS~~ — ~~Medium~~ **Исправлено (2026-06-22)**
 
 **Файл:** `Backend/BarkFluff.ClientStorage/docker-compose-master.yml:5`, `Backend/BarkFluff.ClientStorage/docker-compose-dev.yml:6`
 **Проблема:** `ports: [ "${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]` публикует порт на `0.0.0.0`, тогда как nginx (`Backend/nginx/barkfluff.single-server.conf:5-7`) проксирует на `127.0.0.1:7050` и терминирует TLS на `storage.barkfluff.com`.
