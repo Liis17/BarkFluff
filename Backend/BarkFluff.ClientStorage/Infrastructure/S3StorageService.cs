@@ -95,6 +95,15 @@ public class S3StorageService : IDisposable
         }
     }
 
+    public async Task DeleteAsync(string key)
+    {
+        await _client.DeleteObjectAsync(new Amazon.S3.Model.DeleteObjectRequest
+        {
+            BucketName = _bucketName,
+            Key = key
+        });
+    }
+
     /// <summary>
     /// Возвращает стриминговый ответ S3 без буферизации.
     /// Caller должен через await using освободить результат.
