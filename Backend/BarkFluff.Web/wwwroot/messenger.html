@@ -175,8 +175,10 @@
             background: var(--sidebar-bg);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            border-radius: 16px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            /* M3 Expressive: corner.extra-large (20dp) для card-like панелей */
+            border-radius: 20px;
+            /* Elevation 2 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.10);
             display: flex;
             flex-direction: column;
             z-index: 10;
@@ -198,9 +200,12 @@
             background: var(--nav-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-radius: 14px;
-            box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+            /* M3 Expressive: Floating Toolbar — pill shape (corner.full) */
+            border-radius: 9999px;
+            /* Elevation 3 */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 6px 18px rgba(0,0,0,0.12);
             z-index: 10;
+            overflow: hidden;
         }
 
         .nav-btn {
@@ -209,22 +214,26 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 3px;
+            gap: 4px;
             border: none;
             background: none;
             font-family: 'Inter', sans-serif;
             font-size: 11px;
+            font-weight: 500;
             color: var(--text-sub);
             cursor: pointer;
             padding: 6px;
             transition: color 0.2s;
         }
 
+        /* M3 Expressive: nav indicator pill под иконкой */
         .nav-btn .nav-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            line-height: 1;
+            padding: 4px 20px;
+            border-radius: 9999px;
+            transition: background 0.2s;
         }
 
         .nav-btn .nav-icon svg {
@@ -236,8 +245,16 @@
             color: var(--primary);
         }
 
+        .nav-btn.active .nav-icon {
+            background: var(--primary-alpha);
+        }
+
+        .nav-btn:hover:not(.active) .nav-icon {
+            background: rgba(0,0,0,0.05);
+        }
+
         .search-container {
-            padding: 12px 16px;
+            padding: 16px 16px 12px;
         }
 
         .search-input {
@@ -2815,14 +2832,14 @@
             .sidebar {
                 width: 100%;
                 min-width: 100%;
-                border-right: none;
-                /* Slide in/out */
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                position: absolute;
-                top: 0;
+                border-radius: 0;
+                box-shadow: none;
                 left: 0;
+                top: 0;
                 bottom: 0;
                 z-index: 5;
+                /* Slide in/out */
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
 
             .chat-area {
@@ -2832,6 +2849,7 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
+                padding-left: 0;
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 /* Start offscreen to the right */
                 transform: translateX(100%);
