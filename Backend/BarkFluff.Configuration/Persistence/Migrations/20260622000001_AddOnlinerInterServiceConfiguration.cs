@@ -15,16 +15,23 @@ namespace BarkFluff.Configuration.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Идемпотентно: вставляем ключ только если его ещё нет (на таблице нет
+            // уникального индекса по Section/Key/ServiceId, ключи могли добавить вручную).
             migrationBuilder.Sql(@"
                 INSERT INTO ""Configurations"" (""Section"", ""Key"", ""Value"", ""EditedAt"", ""EditedBy"", ""EditedFrom"", ""ServiceId"")
-                VALUES
+                SELECT v.""Section"", v.""Key"", '', NOW(), 'system', 'migration', 9
+                FROM (VALUES
                     -- Messages: проверка членства в чате (ChatMembershipFilter)
-                    ('MessagesService', 'Host', '', NOW(), 'system', 'migration', 9),
-                    ('MessagesService', 'Token', '', NOW(), 'system', 'migration', 9),
-
+                    ('MessagesService', 'Host'),
+                    ('MessagesService', 'Token'),
                     -- Users: настройки видимости онлайна (OnlineVisibilityFilter)
-                    ('UsersService', 'Host', '', NOW(), 'system', 'migration', 9),
-                    ('UsersService', 'Token', '', NOW(), 'system', 'migration', 9);
+                    ('UsersService', 'Host'),
+                    ('UsersService', 'Token')
+                ) AS v(""Section"", ""Key"")
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM ""Configurations"" c
+                    WHERE c.""ServiceId"" = 9 AND c.""Section"" = v.""Section"" AND c.""Key"" = v.""Key""
+                );
             ");
         }
 
