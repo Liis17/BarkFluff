@@ -700,6 +700,27 @@
         .call-ctl.off { background: #d83a3a; color: #fff; }
         .call-ctl.active { background: var(--primary); color: #fff; }
 
+        /* Quality popover */
+        .call-quality-panel {
+            display: none; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+            background: #232220; border-radius: 14px; padding: 14px 16px; z-index: 4;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 260px;
+        }
+        .call-quality-panel.open { display: block; }
+        .call-quality-group + .call-quality-group { margin-top: 12px; }
+        .call-quality-title {
+            color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase;
+            letter-spacing: .04em; margin-bottom: 7px;
+        }
+        .call-quality-chips { display: flex; gap: 6px; }
+        .call-chip {
+            flex: 1; border: 1px solid rgba(255,255,255,0.15); background: transparent;
+            color: rgba(255,255,255,0.8); border-radius: 8px; padding: 7px 6px;
+            font-size: 12px; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+        }
+        .call-chip:hover { background: rgba(255,255,255,0.1); }
+        .call-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
         .messages-area-wrap {
             flex: 1;
             position: relative;
@@ -3753,10 +3774,31 @@
             <div class="call-waiting-sub" id="callWaitingSub"></div>
         </div>
         <div class="call-grid" id="callGrid"></div>
+        <div class="call-quality-panel" id="callQualityPanel">
+            <div class="call-quality-group">
+                <div class="call-quality-title">Голос · для всех</div>
+                <div class="call-quality-chips" id="callAudioChips">
+                    <button class="call-chip" data-q="0">Авто</button>
+                    <button class="call-chip" data-q="1">Низкое</button>
+                    <button class="call-chip" data-q="2">Среднее</button>
+                    <button class="call-chip" data-q="3">Высокое</button>
+                </div>
+            </div>
+            <div class="call-quality-group" id="callVideoQualityGroup">
+                <div class="call-quality-title">Видео · ваш стрим</div>
+                <div class="call-quality-chips" id="callVideoChips">
+                    <button class="call-chip" data-q="0">Авто</button>
+                    <button class="call-chip" data-q="1">Низкое</button>
+                    <button class="call-chip" data-q="2">Среднее</button>
+                    <button class="call-chip" data-q="3">Высокое</button>
+                </div>
+            </div>
+        </div>
         <div class="call-controls">
             <button class="call-ctl off" id="callToggleMic" title="Микрофон"></button>
             <button class="call-ctl off" id="callToggleCam" title="Камера"></button>
             <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана"></button>
+            <button class="call-ctl" id="callToggleQuality" title="Качество"></button>
             <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить"></button>
         </div>
     </div>
@@ -4060,8 +4102,8 @@
     <script src="/js/app/files.js"></script>
     <script src="/js/app/messages.js?v=folders-pins-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
-    <script src="/js/app/calls.js?v=calls-2"></script>
-    <script src="/js/app/calls-ui.js?v=calls-2"></script>
+    <script src="/js/app/calls.js?v=calls-3"></script>
+    <script src="/js/app/calls-ui.js?v=calls-3"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>

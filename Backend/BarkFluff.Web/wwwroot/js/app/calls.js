@@ -11,13 +11,14 @@
  *
  * События (BF.calls.on):
  *   'incoming'      {callId, callerUserId, chatId, isGroup, mediaType}  — показать ринг
- *   'connect'       {callId, role, phase, livekitUrl, accessToken, mediaType, isGroup, chatId, peerUserId}
+ *   'connect'       {callId, role, phase, livekitUrl, accessToken, mediaType, isGroup, chatId, peerUserId, audioQuality}
  *                                                                       — открыть экран и войти в комнату
  *   'peer_accepted' {callId, userId}                                    — собеседник принял (caller)
  *   'peer_rejected' {callId, userId}                                    — собеседник отклонил (caller)
  *   'ring_dismiss'  {callId}                                            — входящий больше не актуален
  *   'ended'         {callId, reason, durationSeconds, wasRinging}       — звонок завершён
  *   'member'        {callId, userId, action}                           — участник вошёл/вышел (группа)
+ *   'audio_quality_changed' {callId, quality, changedByUserId}          — общее качество голоса сменилось
  *
  * Requires: BF.clients, BF.metadata, window.proto.barkfluff.calls
  * Exposes: BF.calls
@@ -154,14 +155,26 @@
         });
     }
 
+    function handleAudioQuality(q) {
+        var callId = q.getCallId();
+        if (!currentCall || currentCall.callId !== callId) return;
+        currentCall.audioQuality = q.getQuality();
+        emit('audio_quality_changed', {
+            callId: callId,
+            quality: q.getQuality(),
+            changedByUserId: q.getChangedByUserId()
+        });
+    }
+
     function dispatchEvent(evt) {
         var EventCase = callsProto().CallEvent.EventCase;
         switch (evt.getEventCase()) {
-            case EventCase.INCOMING: handleIncoming(evt.getIncoming()); break;
-            case EventCase.ACCEPTED: handleAccepted(evt.getAccepted()); break;
-            case EventCase.REJECTED: handleRejected(evt.getRejected()); break;
-            case EventCase.ENDED:    handleEnded(evt.getEnded());       break;
-            case EventCase.MEMBER:   handleMember(evt.getMember());     break;
+            case EventCase.INCOMING:      handleIncoming(evt.getIncoming());         break;
+            case EventCase.ACCEPTED:      handleAccepted(evt.getAccepted());         break;
+            case EventCase.REJECTED:      handleRejected(evt.getRejected());         break;
+            case EventCase.ENDED:         handleEnded(evt.getEnded());               break;
+            case EventCase.MEMBER:        handleMember(evt.getMember());             break;
+            case EventCase.AUDIO_QUALITY: handleAudioQuality(evt.getAudioQuality()); break;
             default: break;
         }
     }
@@ -268,7 +281,8 @@
                 isGroup: isGroup,
                 mediaType: mediaType,
                 livekitUrl: resp.getLivekitUrl(),
-                accessToken: resp.getAccessToken()
+                accessToken: resp.getAccessToken(),
+                audioQuality: resp.getAudioQuality()
             };
             emit('connect', {
                 callId: callId,
@@ -279,7 +293,8 @@
                 mediaType: mediaType,
                 isGroup: isGroup,
                 chatId: currentCall.chatId,
-                peerUserId: isGroup ? null : target.userId
+                peerUserId: isGroup ? null : target.userId,
+                audioQuality: resp.getAudioQuality()
             });
             return resp;
         });
@@ -296,6 +311,7 @@
                 call.status = 'active';
                 call.livekitUrl = resp.getLivekitUrl();
                 call.accessToken = resp.getAccessToken();
+                call.audioQuality = resp.getAudioQuality();
             }
             emit('connect', {
                 callId: callId,
@@ -306,7 +322,8 @@
                 mediaType: call ? call.mediaType : callsProto().CallMediaType.CALL_MEDIA_VIDEO,
                 isGroup: call ? call.isGroup : false,
                 chatId: call ? call.chatId : '',
-                peerUserId: call && !call.isGroup ? call.callerUserId : null
+                peerUserId: call && !call.isGroup ? call.callerUserId : null,
+                audioQuality: resp.getAudioQuality()
             });
             return resp;
         });
@@ -336,7 +353,8 @@
                 isGroup: true,
                 mediaType: media,
                 livekitUrl: resp.getLivekitUrl(),
-                accessToken: resp.getAccessToken()
+                accessToken: resp.getAccessToken(),
+                audioQuality: resp.getAudioQuality()
             };
             emit('connect', {
                 callId: callId,
@@ -346,7 +364,8 @@
                 accessToken: resp.getAccessToken(),
                 mediaType: media,
                 isGroup: true,
-                chatId: chatId || ''
+                chatId: chatId || '',
+                audioQuality: resp.getAudioQuality()
             });
             return resp;
         });
@@ -363,6 +382,16 @@
         ).catch(function () { /* best-effort */ });
     }
 
+    // Сменить общее качество голоса звонка (broadcast всем участникам через сервер).
+    function setAudioQuality(callId, quality) {
+        var req = new (callsProto().SetCallAudioQualityRequest)();
+        req.setCallId(callId);
+        req.setQuality(quality);
+        return BF.clients.authCall(
+            BF.clients.calls.setCallAudioQuality.bind(BF.clients.calls), req
+        );
+    }
+
     function getCurrent() { return currentCall; }
 
     window.BF.calls = {
@@ -375,11 +404,21 @@
         reject: reject,
         join: join,
         end: end,
+        setAudioQuality: setAudioQuality,
         getCurrent: getCurrent,
-        // Тип медиа — резолвится лениво (бандл загружен до app-скриптов)
+        // Типы — резолвятся лениво (бандл загружен до app-скриптов)
         get MediaType() {
             var t = callsProto().CallMediaType;
             return { AUDIO: t.CALL_MEDIA_AUDIO, VIDEO: t.CALL_MEDIA_VIDEO };
+        },
+        get AudioQuality() {
+            var q = callsProto().CallAudioQuality;
+            return {
+                AUTO: q.CALL_AUDIO_QUALITY_AUTO,
+                LOW: q.CALL_AUDIO_QUALITY_LOW,
+                MEDIUM: q.CALL_AUDIO_QUALITY_MEDIUM,
+                HIGH: q.CALL_AUDIO_QUALITY_HIGH
+            };
         }
     };
 })();

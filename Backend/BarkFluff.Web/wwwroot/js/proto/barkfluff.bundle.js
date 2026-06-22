@@ -48439,6 +48439,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.calls.AcceptCallRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.AcceptCallResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.CallAcceptedEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallAudioQuality", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.CallAudioQualityChangedEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.CallEndReason", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.CallEndedEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.CallEvent", null, global2);
@@ -48457,6 +48459,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.calls.ParticipantEvent", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.RejectCallRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.RejectCallResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.SetCallAudioQualityRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.calls.SetCallAudioQualityResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.calls.SubscribeCallEventsRequest", null, global2);
       proto.barkfluff.calls.InitiateCallRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, proto.barkfluff.calls.InitiateCallRequest.oneofGroups_);
@@ -48528,6 +48532,20 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.calls.EndCallResponse.displayName = "proto.barkfluff.calls.EndCallResponse";
       }
+      proto.barkfluff.calls.SetCallAudioQualityRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.SetCallAudioQualityRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.SetCallAudioQualityRequest.displayName = "proto.barkfluff.calls.SetCallAudioQualityRequest";
+      }
+      proto.barkfluff.calls.SetCallAudioQualityResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.SetCallAudioQualityResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.SetCallAudioQualityResponse.displayName = "proto.barkfluff.calls.SetCallAudioQualityResponse";
+      }
       proto.barkfluff.calls.SubscribeCallEventsRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -48576,6 +48594,13 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.calls.ParticipantEvent, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.calls.ParticipantEvent.displayName = "proto.barkfluff.calls.ParticipantEvent";
+      }
+      proto.barkfluff.calls.CallAudioQualityChangedEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.calls.CallAudioQualityChangedEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.calls.CallAudioQualityChangedEvent.displayName = "proto.barkfluff.calls.CallAudioQualityChangedEvent";
       }
       proto.barkfluff.calls.InitiateCallRequest.oneofGroups_ = [[1, 2]];
       proto.barkfluff.calls.InitiateCallRequest.TargetCase = {
@@ -48723,7 +48748,8 @@ var BarkFluffBundle = (() => {
           var f2, obj = {
             callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
             livekitUrl: jspb2.Message.getFieldWithDefault(msg, 2, ""),
-            accessToken: jspb2.Message.getFieldWithDefault(msg, 3, "")
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            audioQuality: jspb2.Message.getFieldWithDefault(msg, 4, 0)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -48764,6 +48790,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setAccessToken(value);
               break;
+            case 4:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+                reader.readEnum()
+              );
+              msg.setAudioQuality(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -48799,6 +48832,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getAudioQuality();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            4,
+            f2
+          );
+        }
       };
       proto.barkfluff.calls.InitiateCallResponse.prototype.getCallId = function() {
         return (
@@ -48826,6 +48866,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.calls.InitiateCallResponse.prototype.setAccessToken = function(value) {
         return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.getAudioQuality = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.calls.InitiateCallResponse.prototype.setAudioQuality = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 4, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.calls.JoinCallRequest.prototype.toObject = function(opt_includeInstance) {
@@ -48898,7 +48947,8 @@ var BarkFluffBundle = (() => {
         proto.barkfluff.calls.JoinCallResponse.toObject = function(includeInstance, msg) {
           var f2, obj = {
             livekitUrl: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, "")
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            audioQuality: jspb2.Message.getFieldWithDefault(msg, 3, 0)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -48932,6 +48982,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setAccessToken(value);
               break;
+            case 3:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+                reader.readEnum()
+              );
+              msg.setAudioQuality(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -48960,6 +49017,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getAudioQuality();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            3,
+            f2
+          );
+        }
       };
       proto.barkfluff.calls.JoinCallResponse.prototype.getLivekitUrl = function() {
         return (
@@ -48978,6 +49042,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.calls.JoinCallResponse.prototype.setAccessToken = function(value) {
         return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.getAudioQuality = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.calls.JoinCallResponse.prototype.setAudioQuality = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 3, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.calls.AcceptCallRequest.prototype.toObject = function(opt_includeInstance) {
@@ -49050,7 +49123,8 @@ var BarkFluffBundle = (() => {
         proto.barkfluff.calls.AcceptCallResponse.toObject = function(includeInstance, msg) {
           var f2, obj = {
             livekitUrl: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, "")
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            audioQuality: jspb2.Message.getFieldWithDefault(msg, 3, 0)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -49084,6 +49158,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setAccessToken(value);
               break;
+            case 3:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+                reader.readEnum()
+              );
+              msg.setAudioQuality(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -49112,6 +49193,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getAudioQuality();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            3,
+            f2
+          );
+        }
       };
       proto.barkfluff.calls.AcceptCallResponse.prototype.getLivekitUrl = function() {
         return (
@@ -49130,6 +49218,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.calls.AcceptCallResponse.prototype.setAccessToken = function(value) {
         return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.getAudioQuality = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.calls.AcceptCallResponse.prototype.setAudioQuality = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 3, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.calls.RejectCallRequest.prototype.toObject = function(opt_includeInstance) {
@@ -49338,6 +49435,133 @@ var BarkFluffBundle = (() => {
         var f2 = void 0;
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.SetCallAudioQualityRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.SetCallAudioQualityRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.SetCallAudioQualityRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            quality: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.SetCallAudioQualityRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.SetCallAudioQualityRequest();
+        return proto.barkfluff.calls.SetCallAudioQualityRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+                reader.readEnum()
+              );
+              msg.setQuality(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.SetCallAudioQualityRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getQuality();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.prototype.getQuality = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.SetCallAudioQualityRequest.prototype.setQuality = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.SetCallAudioQualityResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.SetCallAudioQualityResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.SetCallAudioQualityResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.SetCallAudioQualityResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.SetCallAudioQualityResponse();
+        return proto.barkfluff.calls.SetCallAudioQualityResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.SetCallAudioQualityResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.SetCallAudioQualityResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.SetCallAudioQualityResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.SetCallAudioQualityResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.calls.SubscribeCallEventsRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.calls.SubscribeCallEventsRequest.toObject(opt_includeInstance, this);
         };
@@ -49376,14 +49600,15 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.calls.SubscribeCallEventsRequest.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
       };
-      proto.barkfluff.calls.CallEvent.oneofGroups_ = [[1, 2, 3, 4, 5]];
+      proto.barkfluff.calls.CallEvent.oneofGroups_ = [[1, 2, 3, 4, 5, 6]];
       proto.barkfluff.calls.CallEvent.EventCase = {
         EVENT_NOT_SET: 0,
         INCOMING: 1,
         ACCEPTED: 2,
         REJECTED: 3,
         ENDED: 4,
-        MEMBER: 5
+        MEMBER: 5,
+        AUDIO_QUALITY: 6
       };
       proto.barkfluff.calls.CallEvent.prototype.getEventCase = function() {
         return (
@@ -49401,7 +49626,8 @@ var BarkFluffBundle = (() => {
             accepted: (f2 = msg.getAccepted()) && proto.barkfluff.calls.CallAcceptedEvent.toObject(includeInstance, f2),
             rejected: (f2 = msg.getRejected()) && proto.barkfluff.calls.CallRejectedEvent.toObject(includeInstance, f2),
             ended: (f2 = msg.getEnded()) && proto.barkfluff.calls.CallEndedEvent.toObject(includeInstance, f2),
-            member: (f2 = msg.getMember()) && proto.barkfluff.calls.ParticipantEvent.toObject(includeInstance, f2)
+            member: (f2 = msg.getMember()) && proto.barkfluff.calls.ParticipantEvent.toObject(includeInstance, f2),
+            audioQuality: (f2 = msg.getAudioQuality()) && proto.barkfluff.calls.CallAudioQualityChangedEvent.toObject(includeInstance, f2)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -49445,6 +49671,11 @@ var BarkFluffBundle = (() => {
               var value = new proto.barkfluff.calls.ParticipantEvent();
               reader.readMessage(value, proto.barkfluff.calls.ParticipantEvent.deserializeBinaryFromReader);
               msg.setMember(value);
+              break;
+            case 6:
+              var value = new proto.barkfluff.calls.CallAudioQualityChangedEvent();
+              reader.readMessage(value, proto.barkfluff.calls.CallAudioQualityChangedEvent.deserializeBinaryFromReader);
+              msg.setAudioQuality(value);
               break;
             default:
               reader.skipField();
@@ -49498,6 +49729,14 @@ var BarkFluffBundle = (() => {
             5,
             f2,
             proto.barkfluff.calls.ParticipantEvent.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getAudioQuality();
+        if (f2 != null) {
+          writer.writeMessage(
+            6,
+            f2,
+            proto.barkfluff.calls.CallAudioQualityChangedEvent.serializeBinaryToWriter
           );
         }
       };
@@ -49575,6 +49814,21 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.calls.CallEvent.prototype.hasMember = function() {
         return jspb2.Message.getField(this, 5) != null;
+      };
+      proto.barkfluff.calls.CallEvent.prototype.getAudioQuality = function() {
+        return (
+          /** @type{?proto.barkfluff.calls.CallAudioQualityChangedEvent} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.calls.CallAudioQualityChangedEvent, 6)
+        );
+      };
+      proto.barkfluff.calls.CallEvent.prototype.setAudioQuality = function(value) {
+        return jspb2.Message.setOneofWrapperField(this, 6, proto.barkfluff.calls.CallEvent.oneofGroups_[0], value);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.clearAudioQuality = function() {
+        return this.setAudioQuality(void 0);
+      };
+      proto.barkfluff.calls.CallEvent.prototype.hasAudioQuality = function() {
+        return jspb2.Message.getField(this, 6) != null;
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.calls.IncomingCallEvent.prototype.toObject = function(opt_includeInstance) {
@@ -50141,6 +50395,118 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.calls.ParticipantEvent.prototype.setAction = function(value) {
         return jspb2.Message.setProto3EnumField(this, 3, value);
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.calls.CallAudioQualityChangedEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.calls.CallAudioQualityChangedEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            callId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            quality: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            changedByUserId: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.calls.CallAudioQualityChangedEvent();
+        return proto.barkfluff.calls.CallAudioQualityChangedEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setCallId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+                reader.readEnum()
+              );
+              msg.setQuality(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setChangedByUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.calls.CallAudioQualityChangedEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getCallId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getQuality();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            2,
+            f2
+          );
+        }
+        f2 = message.getChangedByUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.getCallId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.setCallId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.getQuality = function() {
+        return (
+          /** @type {!proto.barkfluff.calls.CallAudioQuality} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.setQuality = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 2, value);
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.getChangedByUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.calls.CallAudioQualityChangedEvent.prototype.setChangedByUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
       proto.barkfluff.calls.CallMediaType = {
         CALL_MEDIA_TYPE_UNKNOWN: 0,
         CALL_MEDIA_AUDIO: 1,
@@ -50158,6 +50524,12 @@ var BarkFluffBundle = (() => {
         PARTICIPANT_ACTION_UNKNOWN: 0,
         PARTICIPANT_JOINED: 1,
         PARTICIPANT_LEFT: 2
+      };
+      proto.barkfluff.calls.CallAudioQuality = {
+        CALL_AUDIO_QUALITY_AUTO: 0,
+        CALL_AUDIO_QUALITY_LOW: 1,
+        CALL_AUDIO_QUALITY_MEDIUM: 2,
+        CALL_AUDIO_QUALITY_HIGH: 3
       };
       goog2.object.extend(exports2, proto.barkfluff.calls);
     }
@@ -50337,6 +50709,37 @@ var BarkFluffBundle = (() => {
           request,
           metadata || {},
           methodDescriptor_CallsApi_EndCall
+        );
+      };
+      var methodDescriptor_CallsApi_SetCallAudioQuality = new grpc.web.MethodDescriptor(
+        "/barkfluff.calls.CallsApi/SetCallAudioQuality",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.calls.SetCallAudioQualityRequest,
+        proto2.barkfluff.calls.SetCallAudioQualityResponse,
+        /**
+         * @param {!proto.barkfluff.calls.SetCallAudioQualityRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.calls.SetCallAudioQualityResponse.deserializeBinary
+      );
+      proto2.barkfluff.calls.CallsApiClient.prototype.setCallAudioQuality = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/SetCallAudioQuality",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_SetCallAudioQuality,
+          callback
+        );
+      };
+      proto2.barkfluff.calls.CallsApiPromiseClient.prototype.setCallAudioQuality = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.calls.CallsApi/SetCallAudioQuality",
+          request,
+          metadata || {},
+          methodDescriptor_CallsApi_SetCallAudioQuality
         );
       };
       var methodDescriptor_CallsApi_SubscribeCallEvents = new grpc.web.MethodDescriptor(
