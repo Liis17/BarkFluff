@@ -47,6 +47,7 @@ public class Program
         builder.Services.AddSettings<LiveKitSettings>(builder.Configuration, "LiveKit");
         builder.Services.AddSingleton<LiveKitTokenService>();
         builder.Services.AddSingleton<CallEventSubscriptionsManager>();
+        builder.Services.AddSingleton<CallQualityStore>();
         builder.Services.AddSingleton<CallTimeoutScheduler>();
         builder.Services.AddSingleton(sp =>
         {

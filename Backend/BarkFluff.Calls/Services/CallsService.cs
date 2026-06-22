@@ -24,6 +24,7 @@ public class CallsService
     private readonly CallsContext _db;
     private readonly LiveKitTokenService _tokens;
     private readonly CallEventSubscriptionsManager _subscriptions;
+    private readonly CallQualityStore _quality;
     private readonly CallTimeoutScheduler _timeouts;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
     private readonly UserContext _userContext;
@@ -34,6 +35,7 @@ public class CallsService
         CallsContext db,
         LiveKitTokenService tokens,
         CallEventSubscriptionsManager subscriptions,
+        CallQualityStore quality,
         CallTimeoutScheduler timeouts,
         MessagesServerApi.MessagesServerApiClient messagesClient,
         UserContext userContext,
@@ -43,6 +45,7 @@ public class CallsService
         _db = db;
         _tokens = tokens;
         _subscriptions = subscriptions;
+        _quality = quality;
         _timeouts = timeouts;
         _messagesClient = messagesClient;
         _userContext = userContext;
@@ -119,6 +122,7 @@ public class CallsService
             CallId = session.Id.ToString(),
             LivekitUrl = _tokens.Url,
             AccessToken = CreateToken(session, callerId),
+            AudioQuality = _quality.GetAudio(session.Id).ToProto(),
         };
     }
 
@@ -158,6 +162,7 @@ public class CallsService
         {
             LivekitUrl = _tokens.Url,
             AccessToken = CreateToken(session, userId),
+            AudioQuality = _quality.GetAudio(session.Id).ToProto(),
         };
     }
 
@@ -187,6 +192,7 @@ public class CallsService
         {
             LivekitUrl = _tokens.Url,
             AccessToken = CreateToken(session, userId),
+            AudioQuality = _quality.GetAudio(session.Id).ToProto(),
         };
     }
 
@@ -252,6 +258,42 @@ public class CallsService
 
         _logger.LogInformation("Звонок {CallId} завершён пользователем {UserId}", session.Id, userId);
         return new EndCallResponse();
+    }
+
+    // ── Качество голоса (общее для всех участников) ─────────────────────────
+
+    public async Task<SetCallAudioQualityResponse> SetAudioQualityAsync(SetCallAudioQualityRequest request, CancellationToken ct)
+    {
+        var userId = _userContext.UserId;
+        var session = await LoadAsync(request.CallId, ct);
+
+        if (session.Status != CallStatus.Active)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Звонок не идёт"));
+        }
+
+        await EnsureParticipantAsync(session, userId, ct);
+
+        var quality = request.Quality.ToDomain();
+        _quality.SetAudio(session.Id, quality);
+
+        var evt = new CallEvent
+        {
+            AudioQuality = new CallAudioQualityChangedEvent
+            {
+                CallId = session.Id.ToString(),
+                Quality = quality.ToProto(),
+                ChangedByUserId = userId,
+            }
+        };
+
+        // Рассылаем всем участникам, включая инициатора смены — единый источник истины.
+        await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+
+        _logger.LogInformation("Качество голоса звонка {CallId} → {Quality} (сменил {UserId})",
+            session.Id, quality, userId);
+
+        return new SetCallAudioQualityResponse();
     }
 
     // ── Системные пути (таймаут / webhooks LiveKit) ────────────────────────
@@ -332,6 +374,8 @@ public class CallsService
 
     private async Task NotifyEndedAsync(CallSession session, CancellationToken ct)
     {
+        _quality.Remove(session.Id);
+
         var evt = new CallEvent
         {
             Ended = new CallEndedEvent

@@ -45,6 +45,9 @@ public class CallsApiService : CallsApi.CallsApiBase
     public override Task<EndCallResponse> EndCall(EndCallRequest request, ServerCallContext context)
         => _calls.EndAsync(request.CallId, context.CancellationToken);
 
+    public override Task<SetCallAudioQualityResponse> SetCallAudioQuality(SetCallAudioQualityRequest request, ServerCallContext context)
+        => _calls.SetAudioQualityAsync(request, context.CancellationToken);
+
     public override async Task SubscribeCallEvents(
         SubscribeCallEventsRequest request,
         IServerStreamWriter<CallEvent> responseStream,

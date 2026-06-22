@@ -1,5 +1,6 @@
 using BarkFluff.Calls.Domain;
 
+using ProtoAudioQuality = BarkFluff.Proto.Calls.CallAudioQuality;
 using ProtoEndReason = BarkFluff.Proto.Calls.CallEndReason;
 using ProtoMediaType = BarkFluff.Proto.Calls.CallMediaType;
 
@@ -8,6 +9,22 @@ namespace BarkFluff.Calls.Services;
 /// <summary>Маппинг доменных enum'ов звонка ↔ proto.</summary>
 public static class CallMapping
 {
+    public static CallAudioQualityKind ToDomain(this ProtoAudioQuality quality) => quality switch
+    {
+        ProtoAudioQuality.Low => CallAudioQualityKind.Low,
+        ProtoAudioQuality.Medium => CallAudioQualityKind.Medium,
+        ProtoAudioQuality.High => CallAudioQualityKind.High,
+        _ => CallAudioQualityKind.Auto,
+    };
+
+    public static ProtoAudioQuality ToProto(this CallAudioQualityKind quality) => quality switch
+    {
+        CallAudioQualityKind.Low => ProtoAudioQuality.Low,
+        CallAudioQualityKind.Medium => ProtoAudioQuality.Medium,
+        CallAudioQualityKind.High => ProtoAudioQuality.High,
+        _ => ProtoAudioQuality.Auto,
+    };
+
     public static CallMediaKind ToDomain(this ProtoMediaType media) => media switch
     {
         ProtoMediaType.CallMediaAudio => CallMediaKind.Audio,
