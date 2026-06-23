@@ -15,7 +15,7 @@ FastAuth реализует QR-авторизацию: анонимное уст
 
 ## Безопасность
 
-### S1. Нет rate limiting на анонимных эндпоинтах: неограниченное создание сессий в памяти и генерация QR — High
+### S1. ~~Нет rate limiting на анонимных эндпоинтах: неограниченное создание сессий в памяти и генерация QR~~ — ~~High~~ **Исправлено (2026-06-23)**
 
 **Файл:** `Backend/BarkFluff.FastAuth/Host/FastAuthApiService.cs:22-44` (`[AllowAnonymous]` на `GenerateFastAuthToken` и `SubscribeFastAuthResult`); `Backend/BarkFluff.FastAuth/Infrastructure/FastAuthSessionsManager.cs:14-34`; `Backend/nginx/fast-auth.conf:15-24` (location без `limit_req`/`limit_conn`)
 **Проблема:** `GenerateFastAuthToken` доступен без аутентификации и без какого-либо ограничения частоты — ни в nginx, ни в сервисе. Каждый вызов создаёт объект `FastAuthSession` с unbounded `Channel` в `ConcurrentDictionary` (живёт 5 минут до экспирации + 30 секунд retention) и синхронно генерирует PNG QR-кода (`QrCodeGenerator.cs:15`, `GetGraphic(20)` — ~740x740 px) с base64-кодированием. `SubscribeFastAuthResult` так же анонимно открывает server-stream до 5 минут на сессию.
@@ -100,7 +100,7 @@ FastAuth реализует QR-авторизацию: анонимное уст
 **Почему это проблема:** Если хостовый файрвол не закрывает порт, любой может подключиться к авторизационному сервису напрямую без TLS: access/refresh-токены и JWT из `x-auth-token` пойдут открытым текстом; плюс прямой обход любых будущих nginx-ограничений (rate limiting из S1). Nginx ходит в контейнер по имени через docker-сеть — публикация порта для него не нужна.
 **Рекомендация:** Убрать секцию `ports` у fast-auth в master-compose (по примеру dev), либо ограничить привязкой `127.0.0.1:` если порт нужен для локальной отладки на хосте.
 
-### D2. В nginx-конфиге нет rate limiting для анонимных эндпоинтов — Low
+### D2. ~~В nginx-конфиге нет rate limiting для анонимных эндпоинтов~~ — ~~Low~~ **Исправлено (2026-06-23)**
 
 **Файл:** `Backend/nginx/fast-auth.conf:15-24`
 **Проблема:** Единственный `location /` проксирует весь gRPC-трафик без `limit_req`/`limit_conn`; `grpc_read_timeout 300s` корректно согласован с TTL сессии (5 минут), но число одновременных стримов с одного IP не ограничено.
