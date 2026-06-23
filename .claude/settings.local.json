@@ -237,7 +237,10 @@
       "Bash(py -)",
       "Bash(npm -v)",
       "Bash(ls node_modules)",
-      "Bash(npm ci *)"
+      "Bash(npm ci *)",
+      "Bash(openssl s_client -connect storage.barkfluff.com:443 -servername storage.barkfluff.com)",
+      "Bash(openssl x509 *)",
+      "Bash(openssl s_client -connect storage.barkfluff.com:443 -servername storage.barkfluff.com -showcerts)"
     ],
     "deny": [],
     "ask": []
