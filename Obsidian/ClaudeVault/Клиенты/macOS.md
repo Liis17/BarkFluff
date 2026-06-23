@@ -467,6 +467,16 @@ Mac-специфика:
 - ViewModels — `@Observable` классы
 - Async/await для всех асинхронных операций
 
+## Звонки
+
+Аудио/видео, 1-на-1 и групповые. Сигнализация — gRPC ([[Backend/Calls]]) через `BFNetworking.CallsRepository` + `CallEventsStreamManager` (фоновый стрим `SubscribeCallEvents`; эндпоинт Calls обнаруживается через [[Backend/Beacon]] `GetServerInfoResponse.calls`). Медиа — **LiveKit Swift SDK** в пакете `BFCalls`.
+
+- `BFCalls.CallController` (`@MainActor @Observable`) — state-машина (idle/outgoing/incoming/connecting/active/ended), LiveKit `Room`, медиа-контролы (mic/cam/screen/качество), плитки участников, резолвер имён через `UserService`. Синглтон-аксессор `DependencyContainer.callController`; старт/стоп из `RootView` по `.main`.
+- Общие SwiftUI-вью (в `BFCalls`, кросс-платформенные): `IncomingCallView` (ринг), `CallScreenView` (экран+контролы+сетка участников+self-PiP+панель качества+таймер), `CallMinimizedBar`.
+- Оверлей: `Features/Call/Views/CallOverlayView.swift` — **плавающий немодальный** поверх чата (клики мимо карточки проходят к чату), свёрнутый/развёрнутый, перетаскиваемый.
+- Точки входа: кнопки аудио/видео в `ConversationHeaderView`.
+- Разрешения: entitlements `com.apple.security.device.audio-input` + `…camera`, `NSMicrophone/NSCameraUsageDescription`.
+
 ## Сборка
 
 ```bash

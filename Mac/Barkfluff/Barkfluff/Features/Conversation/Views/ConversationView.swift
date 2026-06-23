@@ -8,6 +8,8 @@
 
 import SwiftUI
 import BFCore
+import BFNetworking
+import BFCalls
 import UniformTypeIdentifiers
 
 // MARK: - PreferenceKeys для измерения высот оверлеев
@@ -203,6 +205,18 @@ struct ConversationView: View {
         .padding(.bottom, Theme.Spacing.xs)
         .ignoresSafeArea(edges: .top)
         .toolbarBackground(.hidden, for: .windowToolbar)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { startCall(.audio) } label: {
+                    Image(systemName: "phone.fill")
+                }
+                .help("Аудиозвонок")
+                Button { startCall(.video) } label: {
+                    Image(systemName: "video.fill")
+                }
+                .help("Видеозвонок")
+            }
+        }
         .animation(.spring(duration: 0.25), value: viewModel?.pendingReply?.id)
         .animation(.spring(duration: 0.25), value: viewModel?.editingMessage?.id)
         .onPreferenceChange(HeaderHeightKey.self) { headerHeight = $0 }
@@ -485,6 +499,24 @@ struct ConversationView: View {
                     Task { await MediaActions.saveDocuments(atts, container: container) }
                 }
             )
+        }
+    }
+
+    // MARK: - Calls
+
+    /// userID собеседника для личного звонка (первый участник, не текущий пользователь).
+    private var peerUserID: Int64? {
+        chat.members.first { $0.userID != container.currentUserID }?.userID
+    }
+
+    private func startCall(_ media: CallMediaTypeDTO) {
+        let controller = container.callController
+        Task {
+            if chat.isGroupChat {
+                await controller.startCall(calleeUserID: nil, chatID: chat.id, media: media)
+            } else if let peer = peerUserID {
+                await controller.startCall(calleeUserID: peer, chatID: nil, media: media)
+            }
         }
     }
 

@@ -123,14 +123,18 @@ final class DependencyContainer {
         return vm
     }
 
-    // MARK: - Calls Factory
+    // MARK: - Calls Controller
 
-    /// Создаёт CallController. Владелец — корневая вью (живёт всю сессию,
-    /// чтобы входящие ловились app-wide). Сам стартует/останавливает
-    /// `callEventsStreamManager` через `start()`/`stop()`.
+    @ObservationIgnored @MainActor private var _callController: CallController?
+
+    /// Лениво создаваемый синглтон CallController (живёт всю сессию, ловит входящие app-wide).
+    /// Стартует/останавливается из корневой вью по состоянию `.main`.
     @MainActor
-    func makeCallController() -> CallController {
-        CallController(callsRepository: callsRepository, eventsManager: callEventsStreamManager)
+    var callController: CallController {
+        if let existing = _callController { return existing }
+        let controller = CallController(callsRepository: callsRepository, eventsManager: callEventsStreamManager)
+        _callController = controller
+        return controller
     }
 
     // MARK: - Current User

@@ -8,6 +8,7 @@
 
 import Foundation
 import Observation
+import AVFoundation
 import BFNetworking
 import LiveKit
 
@@ -29,10 +30,17 @@ public final class CallController {
     /// Момент начала разговора (для таймера в UI).
     public private(set) var callStartedAt: Date?
 
+    /// Имена/аватары участников (резолвятся через `participantResolver`).
+    public private(set) var displays: [Int64: CallParticipantDisplay] = [:]
+
     // MARK: - Зависимости
 
     private let callsRepository: CallsRepositoryProtocol
     private let eventsManager: CallEventsStreamManager
+
+    /// Резолвер отображения участника (имя/аватар). Устанавливает приложение
+    /// (через UserService/UserCache), чтобы BFCalls не зависел от BFCore.
+    public var participantResolver: (@Sendable (Int64) async -> CallParticipantDisplay?)?
 
     private var room: Room?
     private var roomDelegate: RoomDelegateAdapter?
@@ -71,6 +79,7 @@ public final class CallController {
         guard phase == .idle else { return }
         let isGroup = (chatID != nil)
         call = ActiveCallInfo(callID: "", peerUserID: calleeUserID, chatID: chatID, media: media, isGroup: isGroup, isIncoming: false)
+        if let calleeUserID { ensureDisplay(for: calleeUserID) }
         phase = .outgoing
         do {
             let info = try await callsRepository.initiateCall(calleeUserID: calleeUserID, chatID: chatID, media: media)
@@ -161,6 +170,7 @@ public final class CallController {
             let isGroup = !chatID.isEmpty
             call = ActiveCallInfo(callID: callID, peerUserID: callerUserID, chatID: isGroup ? chatID : nil,
                                   media: media, isGroup: isGroup, isIncoming: true)
+            ensureDisplay(for: callerUserID)
             phase = .incoming
         case .accepted:
             break // caller уже подключён к комнате; ждём участника
@@ -186,6 +196,9 @@ public final class CallController {
         self.roomDelegate = adapter
         self.room = room
         do {
+            // Явно запрашиваем доступ к устройствам до публикации (mic всегда,
+            // камера — для видео), чтобы не упасть при первом доступе.
+            await Self.requestMediaPermissions(video: media == .video)
             try await room.connect(
                 url: info.livekitURL,
                 token: info.accessToken,
@@ -259,16 +272,42 @@ public final class CallController {
         for (_, participant) in room.remoteParticipants {
             let idString = participant.identity?.stringValue ?? ""
             let userID = Int64(idString)
-            let cameraTrack = participant.videoTracks.first { $0.track?.source == .camera }?.track as? VideoTrack
+            if let userID { ensureDisplay(for: userID) }
             tiles.append(CallTile(id: idString, userID: userID, isSpeaking: participant.isSpeaking,
-                                  isScreenShare: false, videoTrack: cameraTrack))
-            if let screenTrack = participant.videoTracks.first(where: { $0.track?.source == .screenShareVideo })?.track as? VideoTrack {
+                                  isScreenShare: false,
+                                  videoTrack: Self.activeVideo(participant.videoTracks, source: .camera)))
+            if let screenTrack = Self.activeVideo(participant.videoTracks, source: .screenShareVideo) {
                 tiles.append(CallTile(id: idString + "#screen", userID: userID, isSpeaking: false,
                                       isScreenShare: true, videoTrack: screenTrack))
             }
         }
         participants = tiles
-        localVideoTrack = room.localParticipant.videoTracks.first { $0.track?.source == .camera }?.track as? VideoTrack
+        localVideoTrack = Self.activeVideo(room.localParticipant.videoTracks, source: .camera)
+    }
+
+    /// Видеотрек публикации заданного источника, только если он НЕ замьючен
+    /// (иначе после выключения камеры SwiftUIVideoView держит последний кадр).
+    private static func activeVideo(_ publications: [TrackPublication], source: Track.Source) -> VideoTrack? {
+        guard let pub = publications.first(where: { $0.source == source && !$0.isMuted }) else { return nil }
+        return pub.track as? VideoTrack
+    }
+
+    /// Запрос доступа к микрофону/камере (нужны usage descriptions в Info.plist).
+    private static func requestMediaPermissions(video: Bool) async {
+        _ = await AVCaptureDevice.requestAccess(for: .audio)
+        if video {
+            _ = await AVCaptureDevice.requestAccess(for: .video)
+        }
+    }
+
+    /// Лениво резолвит имя/аватар участника через `participantResolver` и кэширует.
+    private func ensureDisplay(for userID: Int64) {
+        guard displays[userID] == nil, let resolver = participantResolver else { return }
+        displays[userID] = CallParticipantDisplay(name: "", initials: "", avatarURL: nil) // плейсхолдер от повторных запросов
+        Task { [weak self] in
+            guard let resolved = await resolver(userID) else { return }
+            self?.displays[userID] = resolved
+        }
     }
 }
 
@@ -323,6 +362,12 @@ final class RoomDelegateAdapter: NSObject, RoomDelegate, @unchecked Sendable {
 
     @objc
     func room(_ room: Room, participant: LocalParticipant, didPublishTrack publication: LocalTrackPublication) {
+        let controller = controller
+        Task { @MainActor in controller?.onRoomChanged() }
+    }
+
+    @objc
+    func room(_ room: Room, participant: Participant, trackPublication: TrackPublication, didUpdateIsMuted isMuted: Bool) {
         let controller = controller
         Task { @MainActor in controller?.onRoomChanged() }
     }

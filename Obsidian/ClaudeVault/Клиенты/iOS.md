@@ -274,6 +274,15 @@ iOS-клиент выступает в роли **сканера**: автори
 
 **Hardcoded `Locale(identifier: "ru_RU")` запрещены** — заменены на `@Environment(\.locale)` (`ProfileInfoSection.swift`, `ConversationView.swift`, `MessageGrouper.swift`).
 
+## Звонки
+
+Реализованы по образцу [[Клиенты/macOS]] на общих пакетах `BFNetworking` + `BFCalls` (LiveKit Swift SDK). UI общий (`IncomingCallView` / `CallScreenView` из `BFCalls`), контроллер — `BFCalls.CallController` (синглтон `DependencyContainer.callController`).
+
+- Оверлей `Features/Call/Views/CallOverlayView.swift` — **полноэкранный** (без сворачивания), монтируется в `RootView` (zIndex поверх `MainTabView`).
+- ⚠️ Работает **только при открытом приложении**: нет аккаунта разработчика → нет VoIP-push/CallKit. В фоне (`scenePhase == .background`) звонок завершается и стрим событий глушится; при возврате в `.active` — поднимается заново.
+- Демонстрация экрана — in-app (LiveKit `InAppScreenCapturer`); системный broadcast-extension вне объёма.
+- Точки входа: кнопки аудио/видео в тулбаре `ConversationView`. Разрешения mic/camera уже заданы (`INFOPLIST_KEY_NS…UsageDescription`).
+
 ## Что вне scope текущей итерации
 
 - **NotificationService / push-уведомления** — отложено.
