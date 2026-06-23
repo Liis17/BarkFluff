@@ -85,6 +85,7 @@ Package: `com.barkfluff.client`
 - `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
 - `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`.
 - `core/calls/CallEventsService.kt` подключается в `BarkFluffApplication` вместе с `RealtimeService`: держит lifecycle-подписку на `SubscribeCallEvents`, публикует raw events через `SharedFlow`, текущее состояние звонка через `StateFlow`, делает reconnect/backoff и auto-reject второго входящего звонка при уже активном звонке.
+- В `BarkFluffApplication` есть foreground bridge для `CallEventsService.events`: incoming открывает `IncomingCallActivity` и показывает call notification, accepted/rejected/ended закрывают входящий экран через package-local broadcast и убирают notification. Background/killed сценарий остаётся за FCM payload `incoming_call`/`dismiss_call`.
 - В V1 `ChatActivity` добавлены кнопки аудио/видео звонка в верхнюю панель. Они запускают сигналинг и открывают `CallActivity` с `livekitUrl/accessToken`.
 - FCM service обрабатывает `type=incoming_call` и `type=dismiss_call`. `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle` для входящего звонка.
 - Добавлены IncomingCallActivity, CallActivity, CallActionReceiver и permissions для микрофона/camera/screen-share/full-screen intent.

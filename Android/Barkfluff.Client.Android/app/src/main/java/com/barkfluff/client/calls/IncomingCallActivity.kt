@@ -1,6 +1,10 @@
 package com.barkfluff.client.calls
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
@@ -21,6 +25,17 @@ class IncomingCallActivity : AppCompatActivity() {
     private lateinit var callId: String
     private lateinit var callerName: String
     private lateinit var mediaType: String
+    private var dismissReceiverRegistered = false
+
+    private val dismissReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != CallExtras.ACTION_DISMISS_INCOMING_CALL) return
+            if (intent.getStringExtra(CallExtras.EXTRA_CALL_ID) == callId) {
+                NotificationHelper.dismissCall(this@IncomingCallActivity, callId)
+                finish()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,10 +50,30 @@ class IncomingCallActivity : AppCompatActivity() {
         }
 
         setContentView(buildContent())
+        registerDismissReceiver()
 
         if (intent.action == CallExtras.ACTION_ACCEPT_CALL) {
             acceptCall()
         }
+    }
+
+    override fun onDestroy() {
+        if (dismissReceiverRegistered) {
+            unregisterReceiver(dismissReceiver)
+            dismissReceiverRegistered = false
+        }
+        super.onDestroy()
+    }
+
+    private fun registerDismissReceiver() {
+        val filter = IntentFilter(CallExtras.ACTION_DISMISS_INCOMING_CALL)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dismissReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(dismissReceiver, filter)
+        }
+        dismissReceiverRegistered = true
     }
 
     private fun buildContent(): LinearLayout {

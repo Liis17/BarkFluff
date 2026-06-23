@@ -2,11 +2,15 @@ package com.barkfluff.client
 
 import android.app.Application
 import android.app.DownloadManager
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.calls.CallEventsService
+import com.barkfluff.client.calls.CallExtras
+import com.barkfluff.client.calls.IncomingCallActivity
 import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
@@ -29,6 +33,13 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class BarkFluffApplication : Application() {
@@ -56,6 +67,12 @@ class BarkFluffApplication : Application() {
 
     lateinit var callEventsService: CallEventsService
         private set
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var callEventsUiJob: Job? = null
+
+    @Volatile
+    private var presentedIncomingCallId: String? = null
 
     /**
      * Флаг: приложение было свёрнуто и снова развёрнуто.
@@ -113,12 +130,14 @@ class BarkFluffApplication : Application() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 realtimeService.resume()
+                startCallEventsUiBridge()
                 callEventsService.resume()
             }
 
             override fun onStop(owner: LifecycleOwner) {
                 cameFromBackground = true
                 realtimeService.pause()
+                stopCallEventsUiBridge()
                 callEventsService.pause()
             }
         })
@@ -126,11 +145,84 @@ class BarkFluffApplication : Application() {
 
     override fun onTerminate() {
         realtimeService.shutdown()
+        stopCallEventsUiBridge()
         callEventsService.shutdown()
+        applicationScope.cancel()
         grpcManager.shutdown()
         super.onTerminate()
     }
 
+    private fun startCallEventsUiBridge() {
+        if (callEventsUiJob?.isActive == true) return
+        callEventsUiJob = applicationScope.launch {
+            callEventsService.events.collect { event ->
+                handleCallEvent(event)
+            }
+        }
+    }
+
+    private fun stopCallEventsUiBridge() {
+        callEventsUiJob?.cancel()
+        callEventsUiJob = null
+    }
+
+    private fun handleCallEvent(event: CallsApiOuterClass.CallEvent) {
+        when (event.eventCase) {
+            CallsApiOuterClass.CallEvent.EventCase.INCOMING -> presentIncomingCall(event.incoming)
+            CallsApiOuterClass.CallEvent.EventCase.ACCEPTED -> dismissIncomingCall(event.accepted.callId)
+            CallsApiOuterClass.CallEvent.EventCase.REJECTED -> dismissIncomingCall(event.rejected.callId)
+            CallsApiOuterClass.CallEvent.EventCase.ENDED -> dismissIncomingCall(event.ended.callId)
+            else -> Unit
+        }
+    }
+
+    private fun presentIncomingCall(event: CallsApiOuterClass.IncomingCallEvent) {
+        if (event.callId.isBlank() || presentedIncomingCallId == event.callId) return
+        presentedIncomingCallId = event.callId
+
+        val mediaType = if (event.mediaType == CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO) {
+            "video"
+        } else {
+            "audio"
+        }
+        val displayName = if (event.chatId.isNotBlank()) "Групповой звонок" else "Входящий звонок"
+
+        NotificationHelper.showIncomingCallNotification(
+            context = applicationContext,
+            callId = event.callId,
+            callerName = displayName,
+            mediaType = mediaType,
+            callerUserId = event.callerUserId,
+            chatId = event.chatId,
+            chatTitle = displayName
+        )
+
+        try {
+            startActivity(Intent(this, IncomingCallActivity::class.java).apply {
+                putExtra(CallExtras.EXTRA_CALL_ID, event.callId)
+                putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+                putExtra(CallExtras.EXTRA_CALLER_USER_ID, event.callerUserId)
+                putExtra(CallExtras.EXTRA_CHAT_ID, event.chatId)
+                putExtra(CallExtras.EXTRA_CHAT_TITLE, displayName)
+                putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            })
+        } catch (e: Exception) {
+            Log.w("BarkFluffApplication", "Failed to open incoming call UI", e)
+        }
+    }
+
+    private fun dismissIncomingCall(callId: String) {
+        if (callId.isBlank()) return
+        if (presentedIncomingCallId == callId) {
+            presentedIncomingCallId = null
+        }
+        NotificationHelper.dismissCall(applicationContext, callId)
+        sendBroadcast(Intent(CallExtras.ACTION_DISMISS_INCOMING_CALL).apply {
+            setPackage(packageName)
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+        })
+    }
     private fun scheduleWidgetRefreshWorker() {
         try {
             val constraints = Constraints.Builder()
