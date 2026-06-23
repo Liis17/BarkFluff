@@ -34,9 +34,17 @@
         android:maxSdkVersion="32"
         tools:ignore="ScopedStorage" />
 
-    <!-- Camera permission for image picker -->
+    <!-- Camera permission for image picker and calls -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Calls -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:name=".BarkFluffApplication"
@@ -129,6 +137,20 @@
 
         <activity
             android:name=".UserProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".calls.IncomingCallActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
+
+        <activity
+            android:name=".calls.CallActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait" />
@@ -362,6 +384,10 @@
 
         <receiver
             android:name=".notifications.MarkAsReadReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".calls.CallActionReceiver"
             android:exported="false" />
 
         <!-- Firebase Cloud Messaging Service -->

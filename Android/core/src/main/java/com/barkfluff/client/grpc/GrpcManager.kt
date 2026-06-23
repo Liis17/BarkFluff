@@ -5,6 +5,7 @@ import android.util.Base64
 import android.util.Log
 import barkfluff.beacon.BeaconApiGrpcKt
 import barkfluff.beacon.BeaconApiOuterClass
+import barkfluff.calls.CallsApiGrpcKt
 import barkfluff.fast.auth.FastAuthApiGrpcKt
 import barkfluff.fast.auth.FastAuthApiOuterClass
 import barkfluff.fast.auth.FastAuthApiOuterClass.ScanFastAuthResponse
@@ -69,6 +70,7 @@ class GrpcManager {
     private var updatesAddress: String? = null
     private var onlinerAddress: String? = null
     private var fastAuthAddress: String? = null
+    private var callsAddress: String? = null
 
     // gRPC каналы
     var navigatorChannel: Channel? = null
@@ -88,6 +90,8 @@ class GrpcManager {
     var onlinerChannel: Channel? = null
         private set
     var fastAuthChannel: Channel? = null
+        private set
+    var callsChannel: Channel? = null
         private set
 
     // gRPC клиенты
@@ -109,6 +113,8 @@ class GrpcManager {
         private set
     var fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub? = null
         private set
+    var callsClient: CallsApiGrpcKt.CallsApiCoroutineStub? = null
+        private set
 
     /**
      * Проверяет, инициализированы ли основные клиенты (identity, users, files, messages).
@@ -128,6 +134,7 @@ class GrpcManager {
         val messages = globalParam.socketMessages
         val onliner = globalParam.socketOnliner
         val updates = globalParam.socketUpdates
+        val calls = globalParam.socketCalls
 
         if (identity.isNotBlank()) createIdentityClient(identity, context, includeDeviceInfo = true)
         if (users.isNotBlank()) createUsersClient(users, context, includeDeviceInfo = true)
@@ -137,6 +144,7 @@ class GrpcManager {
         if (updates.isNotBlank()) createUpdatesClient(updates, context, includeDeviceInfo = true)
         val fastAuth = globalParam.socketFastAuth
         if (fastAuth.isNotBlank()) createFastAuthClient(fastAuth, context, includeDeviceInfo = true)
+        if (calls.isNotBlank()) createCallsClient(calls, context, includeDeviceInfo = true)
     }
 
     /**
@@ -708,7 +716,9 @@ class GrpcManager {
                 messagesEndpoint = buildEndpointUrl(response.messages.endpoint.host, response.messages.endpoint.port, response.messages.tlsEnabled),
                 updatesEndpoint = buildEndpointUrl(response.updates.endpoint.host, response.updates.endpoint.port, response.updates.tlsEnabled),
                 onlinerEndpoint = buildEndpointUrl(response.onliner.endpoint.host, response.onliner.endpoint.port, response.onliner.tlsEnabled),
-                fastAuthEndpoint = buildEndpointUrl(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port, response.fastAuth.tlsEnabled)
+                fastAuthEndpoint = buildEndpointUrl(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port, response.fastAuth.tlsEnabled),
+                callsEndpoint = if (response.hasCalls()) buildEndpointUrl(response.calls.endpoint.host, response.calls.endpoint.port, response.calls.tlsEnabled) else "",
+                livekitUrl = response.livekitUrl
             )
 
             Log.d(TAG, "Получена информация о сервере: ${serverInfo.name}")
@@ -795,7 +805,7 @@ class GrpcManager {
         // 1. Сохраняем старые каналы для последующего закрытия
         val oldChannels = listOfNotNull(
             identityChannel, usersChannel, filesChannel,
-            messagesChannel, updatesChannel, onlinerChannel
+            messagesChannel, updatesChannel, onlinerChannel, callsChannel
         )
 
         // 2. Сбрасываем адреса, чтобы initAllClients не пропустил пересоздание (idempotency check)
@@ -806,6 +816,7 @@ class GrpcManager {
         updatesAddress = null
         onlinerAddress = null
         fastAuthAddress = null
+        callsAddress = null
 
         // 3. Создаём новые каналы и клиенты — ссылки обновляются атомарно для каждого сервиса
         initAllClients(context, globalParam)
@@ -829,6 +840,7 @@ class GrpcManager {
         shutdownChannel(updatesChannel)
         shutdownChannel(onlinerChannel)
         shutdownChannel(fastAuthChannel)
+        shutdownChannel(callsChannel)
 
         navigatorChannel = null
         beaconChannel = null
@@ -839,6 +851,7 @@ class GrpcManager {
         updatesChannel = null
         onlinerChannel = null
         fastAuthChannel = null
+        callsChannel = null
 
         navigatorClient = null
         beaconClient = null
@@ -849,6 +862,7 @@ class GrpcManager {
         updatesClient = null
         onlinerClient = null
         fastAuthClient = null
+        callsClient = null
 
         navigatorAddress = null
         beaconAddress = null
@@ -859,6 +873,7 @@ class GrpcManager {
         updatesAddress = null
         onlinerAddress = null
         fastAuthAddress = null
+        callsAddress = null
     }
 
     /**
@@ -1073,6 +1088,41 @@ class GrpcManager {
         }
     }
 
+    fun createCallsClient(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
+        if (address.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес Calls сервера не указан"))
+        }
+
+        val normalized = ensureHttpPrefix(address)
+        if (this.callsAddress == normalized && callsClient != null) return Result.success(Unit)
+
+        return try {
+            val channel = createChannel(normalized)
+
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
+            } else {
+                channel
+            }
+
+            this.callsChannel = interceptedChannel
+            callsClient = CallsApiGrpcKt.CallsApiCoroutineStub(interceptedChannel)
+            this.callsAddress = normalized
+            Log.d(TAG, "Calls клиент создан: $normalized")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания Calls клиента", e)
+            Result.failure(Exception("Ошибка подключения к серверу звонков: ${e.message}"))
+        }
+    }
     suspend fun scanFastAuth(fastAuthId: String): Result<ScanFastAuthResponse> = withContext(Dispatchers.IO) {
         try {
             if (fastAuthClient == null) {
@@ -2025,7 +2075,9 @@ class GrpcManager {
         val messagesEndpoint: String,
         val updatesEndpoint: String,
         val onlinerEndpoint: String,
-        val fastAuthEndpoint: String
+        val fastAuthEndpoint: String,
+        val callsEndpoint: String,
+        val livekitUrl: String
     )
 
     data class ChatData(

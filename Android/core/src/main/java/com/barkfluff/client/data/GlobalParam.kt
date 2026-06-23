@@ -62,6 +62,14 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_SOCKET_FAST_AUTH, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SOCKET_FAST_AUTH, value).apply()
 
+    var socketCalls: String
+        get() = sharedPreferences.getString(KEY_SOCKET_CALLS, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_SOCKET_CALLS, value).apply()
+
+    var livekitUrl: String
+        get() = sharedPreferences.getString(KEY_LIVEKIT_URL, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_LIVEKIT_URL, value).apply()
+
     var serverName: String
         get() = sharedPreferences.getString(KEY_SERVER_NAME, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SERVER_NAME, value).apply()
@@ -270,6 +278,8 @@ class GlobalParam(private val context: Context) {
         val updates = socketUpdates
         val onliner = socketOnliner
         val fastAuth = socketFastAuth
+        val calls = socketCalls
+        val livekit = livekitUrl
         val serverNameVal = serverName
         val serverDescVal = serverDescription
         val language = appLanguage
@@ -287,6 +297,8 @@ class GlobalParam(private val context: Context) {
             if (updates.isNotBlank()) putString(KEY_SOCKET_UPDATES, updates)
             if (onliner.isNotBlank()) putString(KEY_SOCKET_ONLINER, onliner)
             if (fastAuth.isNotBlank()) putString(KEY_SOCKET_FAST_AUTH, fastAuth)
+            if (calls.isNotBlank()) putString(KEY_SOCKET_CALLS, calls)
+            if (livekit.isNotBlank()) putString(KEY_LIVEKIT_URL, livekit)
             if (serverNameVal.isNotBlank()) putString(KEY_SERVER_NAME, serverNameVal)
             if (serverDescVal.isNotBlank()) putString(KEY_SERVER_DESCRIPTION, serverDescVal)
             putString(KEY_APP_LANGUAGE, language)
@@ -305,6 +317,8 @@ class GlobalParam(private val context: Context) {
         private const val KEY_SOCKET_UPDATES = "socket_updates"
         private const val KEY_SOCKET_ONLINER = "socket_onliner"
         private const val KEY_SOCKET_FAST_AUTH = "socket_fast_auth"
+        private const val KEY_SOCKET_CALLS = "socket_calls"
+        private const val KEY_LIVEKIT_URL = "livekit_url"
         private const val KEY_SERVER_NAME = "server_name"
         private const val KEY_SERVER_DESCRIPTION = "server_description"
         private const val KEY_DEVICE_ID = "device_id"

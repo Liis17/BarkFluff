@@ -53,7 +53,9 @@ class AboutActivity : AppCompatActivity() {
             "Messages" to globalParam.socketMessages,
             "Updates" to globalParam.socketUpdates,
             "Onliner" to globalParam.socketOnliner,
-            "FastAuth" to globalParam.socketFastAuth
+            "FastAuth" to globalParam.socketFastAuth,
+            "Calls" to globalParam.socketCalls,
+            "LiveKit" to globalParam.livekitUrl
         )
 
         val container = binding.serverInfoContainer

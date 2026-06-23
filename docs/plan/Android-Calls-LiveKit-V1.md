@@ -4,6 +4,33 @@
 
 ---
 
+## 0. Статус выполнения
+
+### Сделано на текущем этапе
+
+- V1-only ограничение зафиксировано: изменения идут в `Android/Barkfluff.Client.Android/app` и `Android/core`, `Android/Barkfluff.ClientV2.Android` не трогается.
+- Android Beacon proto синхронизирован по Calls: добавлен `Service calls = 14` рядом с `livekit_url = 13`.
+- В `GlobalParam` добавлены `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
+- `GrpcManager` создаёт `CallsApi` client, хранит calls channel/client и пересоздаёт его вместе с остальными gRPC-клиентами.
+- В `core` добавлен тонкий `CallRepository` для `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`.
+- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка; они запускают signaling и открывают временный `CallActivity`.
+- Добавлены базовые V1-компоненты входящего/активного звонка: `IncomingCallActivity`, `CallActivity`, `CallActionReceiver`.
+- FCM V1 обрабатывает `incoming_call` и `dismiss_call`; `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle`.
+- В V1 manifest добавлены call permissions и регистрация новых activity/receiver.
+- Проверка: `./gradlew :app-v1:assembleDebug` проходит успешно. В логе остаются D8/R8 warnings по Kotlin metadata, сборку они не блокируют.
+
+### Осталось сделать
+
+- Подключить LiveKit Android SDK в `:app-v1` и реализовать реальный media engine: connect room, mic/camera, remote tracks, screen share.
+- Заменить временный `CallActivity` на полноценный экран разговора с плитками участников, self PiP, таймером, controls и bottom sheets выбора камеры/экрана/качества.
+- Добавить `CallEventsService`/state-machine поверх `SubscribeCallEvents`: reconnect/backoff, busy policy, завершение ring на других устройствах.
+- Доработать backend push для входящих звонков и dismiss-событий, если соответствующие events ещё не публикуются.
+- Реализовать список звонков после появления backend `ListCallHistory`/источника истории.
+- Добавить bottom navigation пункт `Звонки` и проверить constraints phone/tablet layouts.
+- Добавить foreground service для активного звонка и screen-share, когда появится LiveKit media слой.
+- Провести ручной QA Android V1 ↔ web/Android V1 для audio/video, background/killed incoming, Android 14 full-screen fallback.
+
+---
 ## 1. Что уже есть
 
 ### Backend и протокол
@@ -42,7 +69,7 @@
 - `:app-v1` — основной целевой Android-клиент для этой задачи.
 - V1 уже имеет Firebase Messaging data-only payload для сообщений и локальные уведомления.
 - V1 уже показывает системные сообщения внутри чата, поэтому итоги звонков могут появляться в переписке после backend-системного сообщения.
-- V1 пока не имеет звонкового UI, call notifications, `CallsApi` wiring и экрана списка звонков.
+- V1 получил стартовый signaling/UI слой: `CallsApi` wiring, кнопки аудио/видео в чате, базовые incoming/active call activity и call notifications. Полноценный LiveKit media UI и экран списка звонков ещё не реализованы.
 - Floating bottom navigation в `activity_main.xml` сейчас рассчитан на два пункта; добавление `Звонки` требует проверки phone и `layout-w600dp`.
 
 ### Android V2
@@ -324,7 +351,7 @@ Foreground service:
 
 ## 8. Фазы реализации
 
-### Фаза 0 — синхронизация контрактов
+### Фаза 0 — синхронизация контрактов — сделано
 
 1. Обновить Android proto из `Shared/BarkFluff.Proto`: `beacon_api.proto`, `calls_api.proto`.
 2. Добавить `socketCalls/livekitUrl` в `GlobalParam`.
@@ -332,7 +359,7 @@ Foreground service:
 
 Проверка: `./gradlew :core:assembleDebug :app-v1:assembleDebug`, `ServerInfo` содержит Calls и LiveKit.
 
-### Фаза 1 — call signaling в core
+### Фаза 1 — call signaling в core — частично сделано
 
 1. `CallRepository`.
 2. `CallEventsService` с reconnect/backoff.
@@ -350,7 +377,7 @@ Foreground service:
 
 Проверка: Android V1 ↔ web аудио/видео звонок, mute/camera/screen share работают.
 
-### Фаза 3 — активный экран звонка
+### Фаза 3 — активный экран звонка — начато
 
 1. `CallActivity`.
 2. Плитки участников, self PiP, waiting state, timer.
@@ -359,7 +386,7 @@ Foreground service:
 
 Проверка: ручной сценарий 1-на-1 и группа 3 участника; rotation/multi-window не ломают звонок.
 
-### Фаза 4 — входящий звонок и FCM
+### Фаза 4 — входящий звонок и FCM — частично сделано
 
 1. Backend call push events + CloudMessaging consumer.
 2. V1 Firebase handling для `incoming_call`/`dismiss_call`.
