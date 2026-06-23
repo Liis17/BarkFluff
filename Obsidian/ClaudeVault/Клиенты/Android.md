@@ -84,9 +84,11 @@ Package: `com.barkfluff.client`
 - `GlobalParam` хранит `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
 - `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
 - `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`.
-- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка в верхнюю панель. Пока они запускают сигналинг и открывают временный `CallActivity`; LiveKit media renderer будет следующим слоем.
+- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка в верхнюю панель. Они запускают сигналинг и открывают `CallActivity` с `livekitUrl/accessToken`.
 - FCM service обрабатывает `type=incoming_call` и `type=dismiss_call`. `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle` для входящего звонка.
-- Добавлены `IncomingCallActivity`, `CallActivity`, `CallActionReceiver` и permissions для микрофона/camera/screen-share/full-screen intent.
+- Добавлены IncomingCallActivity, CallActivity, CallActionReceiver и permissions для микрофона/camera/screen-share/full-screen intent.
+- В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`; `LiveKitCallEngine` управляет room lifecycle, mic/camera/screen share и track events, а `CallActivity` отображает удалённый video track, базовый self PiP, screen share через системный `MediaProjection` intent и bottom sheet качества голоса.
+- `CallForegroundService` держит ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; action уведомления завершает активный звонок через `CallActionReceiver`.
 
 Связанный backend-контекст: [[Backend/Calls]], [[Backend/CloudMessaging]].
 ## Firebase FCM токен

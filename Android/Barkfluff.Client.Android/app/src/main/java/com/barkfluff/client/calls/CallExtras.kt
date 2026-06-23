@@ -3,6 +3,7 @@ package com.barkfluff.client.calls
 object CallExtras {
     const val ACTION_ACCEPT_CALL = "com.barkfluff.client.calls.ACTION_ACCEPT_CALL"
     const val ACTION_REJECT_CALL = "com.barkfluff.client.calls.ACTION_REJECT_CALL"
+    const val ACTION_END_CALL = "com.barkfluff.client.calls.ACTION_END_CALL"
 
     const val EXTRA_CALL_ID = "extra_call_id"
     const val EXTRA_CALLER_NAME = "extra_caller_name"

@@ -22,6 +22,7 @@ import androidx.core.graphics.drawable.IconCompat
 import com.barkfluff.client.MainActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.calls.CallActionReceiver
+import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.calls.IncomingCallActivity
 
@@ -336,6 +337,64 @@ object NotificationHelper {
         }
     }
 
+
+    fun buildOngoingCallNotification(
+        context: Context,
+        callId: String,
+        title: String,
+        mediaType: String,
+        livekitUrl: String,
+        accessToken: String
+    ): android.app.Notification {
+        val displayName = title.ifBlank { "Звонок" }
+        val notificationId = callId.hashCode()
+        val contentIntent = Intent(context, CallActivity::class.java).apply {
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+            putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+            putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+            putExtra(CallExtras.EXTRA_LIVEKIT_URL, livekitUrl)
+            putExtra(CallExtras.EXTRA_ACCESS_TOKEN, accessToken)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 3,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val endIntent = Intent(context, CallActionReceiver::class.java).apply {
+            action = CallExtras.ACTION_END_CALL
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+        }
+        val endPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 4,
+            endIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val person = Person.Builder()
+            .setName(displayName)
+            .setKey(callId)
+            .setIcon(IconCompat.createWithBitmap(createPlaceholderBitmap(displayName, callId.hashCode().toLong())))
+            .build()
+
+        val callType = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        return NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(context.resources.getColor(R.color.primary, null))
+            .setContentTitle(displayName)
+            .setContentText("$callType идёт")
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setSilent(true)
+            .setAutoCancel(false)
+            .setContentIntent(contentPendingIntent)
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(person, endPendingIntent))
+            .build()
+    }
     fun dismissCall(context: Context, callId: String) {
         if (callId.isBlank()) return
         context.getSystemService(NotificationManager::class.java).cancel(callId.hashCode())

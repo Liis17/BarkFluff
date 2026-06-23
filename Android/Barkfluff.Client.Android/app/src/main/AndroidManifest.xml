@@ -399,6 +399,11 @@
             </intent-filter>
         </service>
 
+        <!-- Foreground service for active calls -->
+        <service
+            android:name=".calls.CallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|camera|mediaProjection" />
         <!-- Foreground service for outgoing media (compress/upload/send queue) -->
         <service
             android:name=".send.MediaSendService"

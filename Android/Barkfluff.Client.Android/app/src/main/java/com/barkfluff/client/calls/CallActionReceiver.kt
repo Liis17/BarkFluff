@@ -15,7 +15,8 @@ import kotlinx.coroutines.launch
 class CallActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != CallExtras.ACTION_REJECT_CALL) return
+        val action = intent.action
+        if (action != CallExtras.ACTION_REJECT_CALL && action != CallExtras.ACTION_END_CALL) return
 
         val callId = intent.getStringExtra(CallExtras.EXTRA_CALL_ID).orEmpty()
         if (callId.isBlank()) return
@@ -30,10 +31,15 @@ class CallActionReceiver : BroadcastReceiver() {
                         app.grpcManager.createCallsClient(callsAddress, context, includeDeviceInfo = true)
                     }
                 }
-                app.callRepository.reject(callId)
+                if (action == CallExtras.ACTION_END_CALL) {
+                    app.callRepository.end(callId)
+                    CallForegroundService.stop(context)
+                } else {
+                    app.callRepository.reject(callId)
+                }
                 NotificationHelper.dismissCall(context, callId)
             } catch (e: Exception) {
-                Log.e("CallActionReceiver", "Failed to reject call $callId", e)
+                Log.e("CallActionReceiver", "Failed to handle call action $action for $callId", e)
             } finally {
                 pendingResult.finish()
             }

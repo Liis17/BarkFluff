@@ -13,16 +13,20 @@
 - В `GlobalParam` добавлены `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
 - `GrpcManager` создаёт `CallsApi` client, хранит calls channel/client и пересоздаёт его вместе с остальными gRPC-клиентами.
 - В `core` добавлен тонкий `CallRepository` для `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`.
-- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка; они запускают signaling и открывают временный `CallActivity`.
+- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка; они запускают signaling и открывают `CallActivity` с LiveKit-подключением.
 - Добавлены базовые V1-компоненты входящего/активного звонка: `IncomingCallActivity`, `CallActivity`, `CallActionReceiver`.
 - FCM V1 обрабатывает `incoming_call` и `dismiss_call`; `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle`.
 - В V1 manifest добавлены call permissions и регистрация новых activity/receiver.
-- Проверка: `./gradlew :app-v1:assembleDebug` проходит успешно. В логе остаются D8/R8 warnings по Kotlin metadata, сборку они не блокируют.
+- В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`.
+- `CallActivity` теперь подключается к LiveKit room через `LiveKitCallEngine`: запрашивает mic/camera permissions, публикует микрофон/камеру, показывает удалённый video track, базовый self PiP, запускает системный screen share intent и даёт bottom sheet качества голоса.
+- Добавлены M3-style icon controls для микрофона, камеры, демонстрации, качества и завершения звонка.
+- Добавлен `CallForegroundService` для ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; notification action умеет завершать активный звонок через `CallActionReceiver`.
+- Проверка: `./gradlew :app-v1:assembleDebug` проходит успешно. В логе остаются D8/R8 warnings по Kotlin metadata и warning по strip `liblkjingle_peerconnection_so.so`, сборку они не блокируют.
 
 ### Осталось сделать
 
-- Подключить LiveKit Android SDK в `:app-v1` и реализовать реальный media engine: connect room, mic/camera, remote tracks, screen share.
-- Заменить временный `CallActivity` на полноценный экран разговора с плитками участников, self PiP, таймером, controls и bottom sheets выбора камеры/экрана/качества.
+- Довести LiveKit-слой до production: расширить `LiveKitCallEngine`, добавить participant grid и обработку сложных disconnect/reconnect сценариев.
+- Расширить `CallActivity` до полноценного экрана разговора: плитки участников, таймер, адаптивная сетка, отдельные bottom sheets камеры/экрана/качества.
 - Добавить `CallEventsService`/state-machine поверх `SubscribeCallEvents`: reconnect/backoff, busy policy, завершение ring на других устройствах.
 - Доработать backend push для входящих звонков и dismiss-событий, если соответствующие events ещё не публикуются.
 - Реализовать список звонков после появления backend `ListCallHistory`/источника истории.
@@ -368,10 +372,10 @@ Foreground service:
 
 Проверка: два Android V1-клиента получают incoming через stream, accept на одном устройстве гасит ring на другом.
 
-### Фаза 2 — LiveKit engine в V1
+### Фаза 2 — LiveKit engine в V1 — частично сделано
 
-1. Добавить `io.livekit:livekit-android` и при необходимости `livekit-android-camerax` в `:app-v1`.
-2. `LiveKitCallEngine`: connect/disconnect, publish mic/camera, screen share, track events.
+1. Добавить `io.livekit:livekit-android` и при необходимости `livekit-android-camerax` в `:app-v1` — сделано (`2.26.0`).
+2. `LiveKitCallEngine`: connect/disconnect, publish mic/camera, screen share, track events — базово сделано.
 3. Маппинг LiveKit participants/tracks в V1 UI model.
 4. Audio quality через server event; video quality локально.
 
@@ -380,9 +384,10 @@ Foreground service:
 ### Фаза 3 — активный экран звонка — начато
 
 1. `CallActivity`.
-2. Плитки участников, self PiP, waiting state, timer.
-3. Controls: mic, camera, screen, quality, hangup.
-4. Bottom sheets: camera/screen/quality.
+2. Плитки участников, self PiP, waiting state, timer — self PiP и waiting state базово сделаны; сетка и таймер ещё нужны.
+3. Controls: mic, camera, screen, quality, hangup — базово сделано.
+4. Bottom sheets: camera/screen/quality — базово сделано для выбора camera/screen и качества голоса; отдельные device sheets ещё нужны.
+5. Foreground service активного звонка и ongoing notification — базово сделано.
 
 Проверка: ручной сценарий 1-на-1 и группа 3 участника; rotation/multi-window не ломают звонок.
 

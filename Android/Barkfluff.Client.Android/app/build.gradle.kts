@@ -140,6 +140,10 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
 
+    // LiveKit media engine for calls.
+    implementation("io.livekit:livekit-android:2.26.0")
+    implementation("io.livekit:livekit-android-camerax:2.26.0")
+
     // ML Kit Barcode Scanning
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
