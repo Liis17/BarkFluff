@@ -1754,16 +1754,12 @@ class GrpcManager {
     /**
      * Получает список активных сессий
      */
-    suspend fun getActiveSessions(): Result<List<SessionData>> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
+    suspend fun getActiveSessions(context: Context): Result<List<SessionData>> = withContext(Dispatchers.IO) {
+        suspend fun doCall(): List<SessionData> {
+            if (identityClient == null) throw IllegalStateException("Identity клиент не создан")
             val request = IdentityApiOuterClass.GetActiveSessionsRequest.newBuilder().build()
             val response = identityClient!!.getActiveSessions(request)
-
-            val sessions = response.sessionsList.map { session ->
+            return response.sessionsList.map { session ->
                 SessionData(
                     id = session.id,
                     createdAt = session.createdAt.seconds * 1000,
@@ -1776,8 +1772,22 @@ class GrpcManager {
                     location = session.location
                 )
             }
+        }
 
-            Result.success(sessions)
+        try {
+            Result.success(doCall())
+        } catch (e: StatusException) {
+            if (e.status.code == Status.Code.UNAUTHENTICATED && forceRefreshToken(context)) {
+                try {
+                    Result.success(doCall())
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Ошибка получения сессий после обновления токена", e2)
+                    Result.failure(Exception("Ошибка получения сессий: ${e2.message}"))
+                }
+            } else {
+                Log.e(TAG, "Ошибка получения сессий", e)
+                Result.failure(Exception("Ошибка получения сессий: ${e.message}"))
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения сессий", e)
             Result.failure(Exception("Ошибка получения сессий: ${e.message}"))

@@ -2478,6 +2478,25 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
+        // Realtime-эхо своего сообщения может прийти раньше, чем ответ sendMessage
+        // заменит оптимистичный item по localId. Чтобы не появился дубликат — «усыновляем»
+        // ещё не заменённый оптимистичный item (по контенту) вместо добавления второго.
+        // localId сохраняем: пришедший позже ответ sendMessage найдёт item и проставит SENT.
+        if (msg.senderId == currentUserId) {
+            val optIdx = currentList.indexOfFirst {
+                it.type == MessageType.MESSAGE &&
+                it.localId != null &&
+                it.readStatus == ReadStatus.SENDING &&
+                it.text == (msg.content?.text ?: "") &&
+                it.attachments.size == (msg.content?.attachmentsList?.size ?: 0)
+            }
+            if (optIdx >= 0) {
+                currentList[optIdx] = toMessageItem(msg).copy(localId = currentList[optIdx].localId)
+                messageAdapter.submitList(currentList)
+                return
+            }
+        }
+
         val messageItem = toMessageItem(msg)
 
         // Убираем разделитель непрочитанных если он ещё есть

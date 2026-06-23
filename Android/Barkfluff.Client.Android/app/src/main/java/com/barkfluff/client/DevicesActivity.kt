@@ -108,7 +108,7 @@ class DevicesActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val result = grpcManager.getActiveSessions()
+            val result = grpcManager.getActiveSessions(this@DevicesActivity)
             binding.progressLoading.visibility = View.GONE
 
             if (result.isSuccess) {
