@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
@@ -53,6 +54,9 @@ class BarkFluffApplication : Application() {
     lateinit var callRepository: CallRepository
         private set
 
+    lateinit var callEventsService: CallEventsService
+        private set
+
     /**
      * Флаг: приложение было свёрнуто и снова развёрнуто.
      * Устанавливается в true при уходе в фон, сбрасывается компонентами при обработке.
@@ -89,6 +93,7 @@ class BarkFluffApplication : Application() {
         privateChatRepository = PrivateChatRepository(applicationContext, grpcManager)
         secretChatRepository = SecretChatRepository(applicationContext, grpcManager, signalStore)
         callRepository = CallRepository(grpcManager)
+        callEventsService = CallEventsService(applicationContext, grpcManager, callRepository)
 
         // Инициализируем персистентный кэш URL файлов
         AvatarLoader.initializeCache(this)
@@ -108,17 +113,20 @@ class BarkFluffApplication : Application() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 realtimeService.resume()
+                callEventsService.resume()
             }
 
             override fun onStop(owner: LifecycleOwner) {
                 cameFromBackground = true
                 realtimeService.pause()
+                callEventsService.pause()
             }
         })
     }
 
     override fun onTerminate() {
         realtimeService.shutdown()
+        callEventsService.shutdown()
         grpcManager.shutdown()
         super.onTerminate()
     }

@@ -18,6 +18,7 @@
 - FCM V1 обрабатывает `incoming_call` и `dismiss_call`; `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle`.
 - В V1 manifest добавлены call permissions и регистрация новых activity/receiver.
 - В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`.
+- В `core` добавлен `CallEventsService`: lifecycle-подписка на `SubscribeCallEvents`, `StateFlow` текущего звонка/connection state, reconnect/backoff, forced token refresh после повторных ошибок и busy policy с auto-reject второго входящего звонка.
 - `CallActivity` теперь подключается к LiveKit room через `LiveKitCallEngine`: запрашивает mic/camera permissions, публикует микрофон/камеру, показывает удалённый video track, базовый self PiP, запускает системный screen share intent и даёт bottom sheet качества голоса.
 - Добавлены M3-style icon controls для микрофона, камеры, демонстрации, качества и завершения звонка.
 - Добавлен `CallForegroundService` для ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; notification action умеет завершать активный звонок через `CallActionReceiver`.
@@ -27,7 +28,7 @@
 
 - Довести LiveKit-слой до production: расширить `LiveKitCallEngine`, добавить participant grid и обработку сложных disconnect/reconnect сценариев.
 - Расширить `CallActivity` до полноценного экрана разговора: плитки участников, таймер, адаптивная сетка, отдельные bottom sheets камеры/экрана/качества.
-- Добавить `CallEventsService`/state-machine поверх `SubscribeCallEvents`: reconnect/backoff, busy policy, завершение ring на других устройствах.
+- Довести state-machine звонков до UI-интеграции: открытие incoming UI из stream, завершение ring на других устройствах, синхронизация active/ended состояния с `CallActivity`.
 - Доработать backend push для входящих звонков и dismiss-событий, если соответствующие events ещё не публикуются.
 - Реализовать список звонков после появления backend `ListCallHistory`/источника истории.
 - Добавить bottom navigation пункт `Звонки` и проверить constraints phone/tablet layouts.
@@ -363,14 +364,14 @@ Foreground service:
 
 Проверка: `./gradlew :core:assembleDebug :app-v1:assembleDebug`, `ServerInfo` содержит Calls и LiveKit.
 
-### Фаза 1 — call signaling в core — частично сделано
+### Фаза 1 — call signaling в core — базово сделано
 
 1. `CallRepository`.
 2. `CallEventsService` с reconnect/backoff.
 3. State machine одного звонка: incoming, ringing, connecting, active, ended.
-4. Unit tests на state transitions, если в Android-модуле уже есть тестовая инфраструктура; иначе минимальные JVM tests для pure state reducer.
+4. Unit tests на state transitions, если в Android-модуле уже есть тестовая инфраструктура; иначе минимальные JVM tests для pure state reducer — ещё нужно.
 
-Проверка: два Android V1-клиента получают incoming через stream, accept на одном устройстве гасит ring на другом.
+Проверка: `./gradlew :app-v1:assembleDebug` проходит; ручной multi-device QA stream/accept/dismiss ещё нужен.
 
 ### Фаза 2 — LiveKit engine в V1 — частично сделано
 
