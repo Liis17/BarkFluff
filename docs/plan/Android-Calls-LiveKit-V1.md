@@ -23,6 +23,7 @@
 - `CallActivity` теперь подключается к LiveKit room через `LiveKitCallEngine`: запрашивает mic/camera permissions, публикует микрофон/камеру, показывает удалённый video track, базовый self PiP, запускает системный screen share intent и даёт bottom sheet качества голоса.
 - Добавлены M3-style icon controls для микрофона, камеры, демонстрации, качества и завершения звонка.
 - Добавлен `CallForegroundService` для ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; notification action умеет завершать активный звонок через `CallActionReceiver`.
+- Добавлена вкладка `Звонки` в bottom navigation V1 и каркас `CallsFragment` на XML/ViewBinding: toolbar, фильтры `Все`/`Пропущенные`, empty state в M3-стиле. Реальные элементы истории ждут backend `ListCallHistory`.
 - Проверка: `./gradlew :app-v1:assembleDebug` проходит успешно. В логе остаются D8/R8 warnings по Kotlin metadata и warning по strip `liblkjingle_peerconnection_so.so`, сборку они не блокируют.
 
 ### Осталось сделать
@@ -31,8 +32,8 @@
 - Расширить `CallActivity` до полноценного экрана разговора: плитки участников, таймер, адаптивная сетка, отдельные bottom sheets камеры/экрана/качества.
 - Довести state-machine звонков до полной UI-интеграции: синхронизация active/ended состояния с `CallActivity`, более точные имена/аватары входящего звонка и обработка late join.
 - Доработать backend push для входящих звонков и dismiss-событий, если соответствующие events ещё не публикуются.
-- Реализовать список звонков после появления backend `ListCallHistory`/источника истории.
-- Добавить bottom navigation пункт `Звонки` и проверить constraints phone/tablet layouts.
+- Подключить реальные записи в `CallsFragment` после появления backend `ListCallHistory`/источника истории.
+- Доработать список звонков: адаптер строк, группировка по датам, быстрые audio/video actions и tablet QA.
 - Добавить foreground service для активного звонка и screen-share, когда появится LiveKit media слой.
 - Провести ручной QA Android V1 ↔ web/Android V1 для audio/video, background/killed incoming, Android 14 full-screen fallback.
 
@@ -403,10 +404,10 @@ Foreground service:
 
 Проверка: входящий звонок приходит при foreground, background и killed app; Android 14+ без full-screen permission показывает heads-up fallback.
 
-### Фаза 5 — список звонков
+### Фаза 5 — список звонков — начато
 
 1. Backend `ListCallHistory`.
-2. `CallsFragment` с фильтрами и быстрыми действиями.
+2. `CallsFragment` с фильтрами — UI-каркас сделан; адаптер истории и быстрые действия ещё нужны.
 3. `GetActiveCalls` или другой источник для баннера `Присоединиться`.
 
 Проверка: завершённые, пропущенные, отклонённые и групповые звонки отображаются корректно.
