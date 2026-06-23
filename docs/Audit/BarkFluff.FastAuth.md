@@ -57,7 +57,7 @@ FastAuth реализует QR-авторизацию: анонимное уст
 **Почему это проблема:** Любой внешний клиент (`grpcurl`) получает полное описание API авторизационного сервиса, включая нереализованный `FastAuthServerApi.GetFastAuthInfo`, — упрощение разведки для атакующего. Не уязвимость сама по себе, но лишняя информация на security-критичном сервисе.
 **Рекомендация:** Маппить reflection только в Development (`if (app.Environment.IsDevelopment())`).
 
-### S7. Политика `User` пропускает Service-токены на пользовательские операции — Low
+### S7. Политика `User` пропускает Service-токены на пользовательские операции — Low **→ Отложено** (требует проверки всех сервисов где используется политика User; сейчас пропускаем)
 
 **Файл:** `Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:79-80` (политика общая, затрагивает `FastAuthApiService.cs:46-76`)
 **Проблема:** Политика `TokenType.User` принимает claim `User` **или** `Service`. `ScanFastAuth`/`AcceptFastAuth`/`RejectFastAuth` рассчитаны на конкретного пользователя, но любой держатель сервисного токена проходит авторизацию; у Service-токена `UserContext.UserId` = 0 (`UserContext.cs:23`), и `TryScan(0)` успешно переводит чужую сессию в Scanned.
