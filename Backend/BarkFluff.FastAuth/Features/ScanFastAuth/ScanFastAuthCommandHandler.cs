@@ -37,7 +37,7 @@ public class ScanFastAuthCommandHandler(
 
         logger.LogInformation(
             "FastAuth session {Id} scanned by user {UserId}",
-            session.Id, userContext.UserId);
+            session.Id[..8], userContext.UserId);
 
         return Task.FromResult(new ScanFastAuthResponse
         {

@@ -1266,7 +1266,7 @@
 
     document.addEventListener('click', function (e) {
         if (!stickerPicker || !stickerPicker.classList.contains('visible')) return;
-        if (!stickerPicker.contains(e.target) && e.target !== stickerBtn) {
+        if (!stickerPicker.contains(e.target) && !stickerBtn.contains(e.target)) {
             stickerPicker.classList.remove('visible');
             stickerBtn.classList.remove('active');
         }

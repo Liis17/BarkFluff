@@ -62,6 +62,12 @@ public class AcceptFastAuthCommandHandler(
 
         if (!session.TryAccept(request.ConfirmationCode, userContext.UserId, acceptedResult))
         {
+            await identityClient.RemoveActiveSessionServerAsync(
+                new Proto.Identity.RemoveActiveSessionServerRequest
+                {
+                    UserId = userContext.UserId,
+                    DeviceId = newDeviceId
+                }, cancellationToken: cancellationToken);
             throw new FastAuthInvalidStateException();
         }
 
@@ -69,7 +75,7 @@ public class AcceptFastAuthCommandHandler(
 
         logger.LogInformation(
             "FastAuth session {Id} accepted by user {UserId}, new device {DeviceId} provisioned",
-            session.Id, userContext.UserId, newDeviceId);
+            session.Id[..8], userContext.UserId, newDeviceId);
 
         return new AcceptFastAuthResponse();
     }
