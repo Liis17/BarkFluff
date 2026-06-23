@@ -21,6 +21,7 @@
 - В `core` добавлен `CallEventsService`: lifecycle-подписка на `SubscribeCallEvents`, `StateFlow` текущего звонка/connection state, reconnect/backoff, forced token refresh после повторных ошибок и busy policy с auto-reject второго входящего звонка.
 - В `BarkFluffApplication` добавлен foreground bridge для `CallEventsService.events`: входящий stream-событие показывает существующий incoming call UI/CallStyle notification, а accepted/rejected/ended гасит notification и закрывает `IncomingCallActivity` через package-local broadcast.
 - `CallActivity` теперь подключается к LiveKit room через `LiveKitCallEngine`: запрашивает mic/camera permissions, публикует микрофон/камеру, показывает удалённый video track, базовый self PiP, запускает системный screen share intent и даёт bottom sheet качества голоса.
+- В `CallActivity` добавлен таймер длительности разговора: стартует после LiveKit connect, сохраняет elapsed при reconnect и останавливается при disconnect/destroy.
 - Добавлены M3-style icon controls для микрофона, камеры, демонстрации, качества и завершения звонка.
 - Добавлен `CallForegroundService` для ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; notification action умеет завершать активный звонок через `CallActionReceiver`.
 - Добавлена вкладка `Звонки` в bottom navigation V1 и каркас `CallsFragment` на XML/ViewBinding: toolbar, фильтры `Все`/`Пропущенные`, empty state в M3-стиле. Реальные элементы истории ждут backend `ListCallHistory`.
@@ -29,7 +30,7 @@
 ### Осталось сделать
 
 - Довести LiveKit-слой до production: расширить `LiveKitCallEngine`, добавить participant grid и обработку сложных disconnect/reconnect сценариев.
-- Расширить `CallActivity` до полноценного экрана разговора: плитки участников, таймер, адаптивная сетка, отдельные bottom sheets камеры/экрана/качества.
+- Расширить `CallActivity` до полноценного экрана разговора: плитки участников, адаптивная сетка, отдельные bottom sheets камеры/экрана/качества.
 - Довести state-machine звонков до полной UI-интеграции: синхронизация active/ended состояния с `CallActivity`, более точные имена/аватары входящего звонка и обработка late join.
 - Доработать backend push для входящих звонков и dismiss-событий, если соответствующие events ещё не публикуются.
 - Подключить реальные записи в `CallsFragment` после появления backend `ListCallHistory`/источника истории.
@@ -387,7 +388,7 @@ Foreground service:
 ### Фаза 3 — активный экран звонка — начато
 
 1. `CallActivity`.
-2. Плитки участников, self PiP, waiting state, timer — self PiP и waiting state базово сделаны; сетка и таймер ещё нужны.
+2. Плитки участников, self PiP, waiting state, timer — self PiP, waiting state и таймер базово сделаны; адаптивная сетка ещё нужна.
 3. Controls: mic, camera, screen, quality, hangup — базово сделано.
 4. Bottom sheets: camera/screen/quality — базово сделано для выбора camera/screen и качества голоса; отдельные device sheets ещё нужны.
 5. Foreground service активного звонка и ongoing notification — базово сделано.

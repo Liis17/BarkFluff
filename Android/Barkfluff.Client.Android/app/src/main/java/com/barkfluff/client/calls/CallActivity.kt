@@ -26,6 +26,8 @@ import com.barkfluff.client.notifications.NotificationHelper
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import io.livekit.android.renderer.SurfaceViewRenderer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
@@ -49,6 +51,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private var cameraEnabled = false
     private var screenShareEnabled = false
     private var pendingCameraToggleAfterPermission = false
+    private var callStartedAtMs = 0L
+    private var callTimerJob: Job? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -330,6 +334,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onDestroy() {
+        stopCallTimer()
         callEngine.disconnect()
         CallForegroundService.stop(this)
         runCatching { remoteRenderer.release() }
@@ -342,7 +347,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onConnected(cameraEnabled: Boolean) {
-        statusText.text = "В разговоре"
+        startCallTimer()
         this.cameraEnabled = cameraEnabled
         cameraButton.isSelected = cameraEnabled
         cameraButton.contentDescription = if (cameraEnabled) "Выключить камеру" else "Включить камеру"
@@ -352,7 +357,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     override fun onRemoteVideoAttached() {
         remoteRenderer.visibility = View.VISIBLE
         waitingText.visibility = View.GONE
-        statusText.text = "В разговоре"
+        renderCallDuration()
     }
 
     override fun onRemoteVideoDetached() {
@@ -365,10 +370,12 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onReconnecting() {
+        stopCallTimer()
         statusText.text = "Восстанавливаем соединение..."
     }
 
     override fun onDisconnected() {
+        stopCallTimer()
         statusText.text = "Звонок завершён"
     }
 
@@ -376,12 +383,51 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         screenShareEnabled = enabled
         screenButton.isSelected = enabled
         screenButton.contentDescription = if (enabled) "Выключить демонстрацию экрана" else "Демонстрация экрана"
-        statusText.text = if (enabled) "Демонстрация экрана включена" else "В разговоре"
+        if (enabled) {
+            statusText.text = "Демонстрация экрана включена"
+        } else {
+            renderCallDuration()
+        }
         updateCallForegroundService()
     }
 
     override fun onError(message: String) {
+        stopCallTimer()
         statusText.text = message
+    }
+
+    private fun startCallTimer() {
+        if (callStartedAtMs == 0L) {
+            callStartedAtMs = System.currentTimeMillis()
+        }
+        if (callTimerJob?.isActive == true) return
+
+        callTimerJob = lifecycleScope.launch {
+            while (true) {
+                renderCallDuration()
+                delay(1_000L)
+            }
+        }
+    }
+
+    private fun stopCallTimer() {
+        callTimerJob?.cancel()
+        callTimerJob = null
+    }
+
+    private fun renderCallDuration() {
+        if (callStartedAtMs == 0L) {
+            statusText.text = "В разговоре"
+            return
+        }
+        val elapsedSeconds = ((System.currentTimeMillis() - callStartedAtMs) / 1_000L).coerceAtLeast(0L)
+        statusText.text = "В разговоре · ${formatDuration(elapsedSeconds)}"
+    }
+
+    private fun formatDuration(totalSeconds: Long): String {
+        val minutes = totalSeconds / 60L
+        val seconds = (totalSeconds % 60L).toString().padStart(2, '0')
+        return "$minutes:$seconds"
     }
 
     private fun updateCallForegroundService() {

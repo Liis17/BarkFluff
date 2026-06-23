@@ -91,6 +91,7 @@ Package: `com.barkfluff.client`
 - FCM service обрабатывает `type=incoming_call` и `type=dismiss_call`. `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle` для входящего звонка.
 - Добавлены IncomingCallActivity, CallActivity, CallActionReceiver и permissions для микрофона/camera/screen-share/full-screen intent.
 - В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`; `LiveKitCallEngine` управляет room lifecycle, mic/camera/screen share и track events, а `CallActivity` отображает удалённый video track, базовый self PiP, screen share через системный `MediaProjection` intent и bottom sheet качества голоса.
+- `CallActivity` показывает таймер длительности разговора после LiveKit connect; при reconnect таймер не сбрасывает elapsed и останавливается при disconnect/destroy.
 - `CallForegroundService` держит ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; action уведомления завершает активный звонок через `CallActionReceiver`.
 
 Связанный backend-контекст: [[Backend/Calls]], [[Backend/CloudMessaging]].
