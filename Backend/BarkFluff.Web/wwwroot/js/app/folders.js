@@ -134,7 +134,14 @@
     }
 
     function filterChats(chats) {
-        if (activeFolderId === 'all' || !foldersById.has(activeFolderId)) return chats;
+        if (activeFolderId === 'all') {
+            if (foldersById.size === 0) return chats;
+            return chats.filter(function (c) {
+                var sets = chatToFolders.get(c.id);
+                return !sets || sets.size === 0;
+            });
+        }
+        if (!foldersById.has(activeFolderId)) return chats;
         var folder = foldersById.get(activeFolderId);
         var ids = new Set(folder.chatList || []);
         return chats.filter(function (c) { return ids.has(c.id); });
