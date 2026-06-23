@@ -63,6 +63,20 @@ public struct CallTile: Identifiable {
     }
 }
 
+// MARK: - Отображение участника (имя/аватар, резолвится приложением)
+
+public struct CallParticipantDisplay: Sendable, Equatable {
+    public let name: String
+    public let initials: String
+    public let avatarURL: String?
+
+    public init(name: String, initials: String, avatarURL: String?) {
+        self.name = name
+        self.initials = initials
+        self.avatarURL = avatarURL
+    }
+}
+
 // MARK: - Качество видео (локальное, у публикующего)
 
 public enum CallVideoQualityLevel: Sendable, Hashable, CaseIterable {

@@ -79,7 +79,10 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 - **[[Клиенты/Web]]** — первый клиент звонков (обкатка): gRPC-Web через YARP [[Backend/BarkFluff.Web]], медиа через `livekit-client` (WSS напрямую к LiveKit). Модули `js/app/calls.js` (сигнализация + `SubscribeCallEvents`) и `js/app/calls-ui.js` (ринг/экран + LiveKit Room). Поддержаны 1-на-1 и группы, аудио+видео.
   - ⚠️ Dev-нюанс: `LiveKit:Url` должен быть **browser-reachable** (`ws://localhost:7880`, не `ws://livekit:7880`); getUserMedia требует secure context (`localhost`/HTTPS).
-- Остальные клиенты (macOS/iOS/Android/Windows/Linux) — отдельно, по запросу.
+- **[[Клиенты/macOS]] / [[Клиенты/iOS]]** — нативные клиенты звонков. Сигнализация — gRPC через общий пакет `BFNetworking` (`CallsRepository` + `CallEventsStreamManager`, эндпоинт Calls обнаруживается через [[Backend/Beacon]] `GetServerInfoResponse.calls`). Медиа — **LiveKit Swift SDK** в пакете `BFCalls` (`CallController` — state-машина + Room + медиа-контролы + плитки). UI общий (SwiftUI в `BFCalls`): ринг, экран звонка, контролы (mic/cam/screen/качество), self-PiP, таймер. 1-на-1 и группы, аудио+видео+демонстрация экрана.
+  - **macOS** — плавающий немодальный оверлей поверх чата (не блокирует чат): сворачивается в компактную плашку (имя/таймер/mute/hangup), разворачивается со всеми контролами; перетаскивается.
+  - **iOS** — полноэкранный оверлей; работает **только при открытом приложении** (нет аккаунта разработчика → нет VoIP-push/CallKit; в фоне звонок завершается по `scenePhase`). Демонстрация экрана — in-app (системный broadcast-extension вне объёма).
+- Остальные клиенты (Android/Windows/Linux) — отдельно, по запросу.
 
 ## Не реализовано (следующие шаги)
 

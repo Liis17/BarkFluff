@@ -326,6 +326,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Barkfluff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Доступ к микрофону нужен для аудио- и видеозвонков.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Доступ к камере нужен для видеозвонков.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -365,6 +367,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Barkfluff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Доступ к микрофону нужен для аудио- и видеозвонков.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Доступ к камере нужен для видеозвонков.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
