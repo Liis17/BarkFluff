@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import barkfluff.calls.CallsApiOuterClass
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.ClipData
@@ -28,6 +29,8 @@ import com.barkfluff.client.adapter.MessageAdapter
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
+import com.barkfluff.client.calls.CallActivity
+import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
@@ -239,6 +242,11 @@ class ChatActivity : AppCompatActivity() {
         // Кнопка меню (три точки) — пока ничего не делает
         binding.btnMore.setOnClickListener { /* TODO: доп. меню */ }
 
+        binding.btnAudioCall.applySpringPress()
+        binding.btnVideoCall.applySpringPress()
+        binding.btnAudioCall.setOnClickListener { startCall(video = false) }
+        binding.btnVideoCall.setOnClickListener { startCall(video = true) }
+
         // Клик на карточку с информацией о чате (аватар + имя) — открывает профиль
         binding.chatInfoCard.setOnClickListener {
             startActivity(
@@ -252,6 +260,61 @@ class ChatActivity : AppCompatActivity() {
                 )
             )
         }
+    }
+
+
+    private fun startCall(video: Boolean) {
+        lifecycleScope.launch {
+            if (!ensureCallsClient()) return@launch
+
+            val app = application as BarkFluffApplication
+            val mediaType = if (video) {
+                CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
+            } else {
+                CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO
+            }
+
+            val result = if (isGroupChat) {
+                app.callRepository.initiateGroup(chatId, mediaType)
+            } else {
+                if (otherUserId <= 0L) {
+                    Toast.makeText(this@ChatActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                app.callRepository.initiateDirect(otherUserId, mediaType)
+            }
+
+            result.onSuccess { response ->
+                startActivity(Intent(this@ChatActivity, CallActivity::class.java).apply {
+                    putExtra(CallExtras.EXTRA_CALL_ID, response.callId)
+                    putExtra(CallExtras.EXTRA_CALLER_NAME, chatTitle)
+                    putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+                    putExtra(CallExtras.EXTRA_MEDIA_TYPE, if (video) "video" else "audio")
+                    putExtra(CallExtras.EXTRA_LIVEKIT_URL, response.livekitUrl.ifBlank { globalParam.livekitUrl })
+                    putExtra(CallExtras.EXTRA_ACCESS_TOKEN, response.accessToken)
+                })
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to start call", error)
+                Toast.makeText(this@ChatActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun ensureCallsClient(): Boolean {
+        val app = application as BarkFluffApplication
+        if (app.grpcManager.callsClient != null) return true
+
+        val callsAddress = globalParam.socketCalls
+        if (callsAddress.isBlank()) {
+            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
+        if (result.isFailure) {
+            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
+        }
+        return result.isSuccess
     }
 
     private fun loadChatAvatar() {

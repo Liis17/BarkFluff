@@ -48,6 +48,19 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "onMessageReceived: от ${remoteMessage.from}")
 
         val data = remoteMessage.data
+        when (data["type"]) {
+            "incoming_call" -> {
+                handleIncomingCall(data)
+                return
+            }
+            "dismiss_call" -> {
+                val callId = data["call_id"]
+                if (!callId.isNullOrBlank()) {
+                    NotificationHelper.dismissCall(applicationContext, callId)
+                }
+                return
+            }
+        }
 
         // Команда dismiss: убираем нотификацию чата (после прочтения на другом устройстве)
         if (data["type"] == "dismiss_chat_notifications") {
@@ -149,6 +162,36 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
                 }
             }
         }
+    }
+
+
+    private fun handleIncomingCall(data: Map<String, String>) {
+        val callId = data["call_id"]
+        if (callId.isNullOrBlank()) {
+            Log.w(TAG, "incoming_call без call_id, пропускаем")
+            return
+        }
+
+        val rawMediaType = data["media_type"].orEmpty()
+        val mediaType = if (rawMediaType.equals("2") || rawMediaType.contains("VIDEO", ignoreCase = true)) {
+            "video"
+        } else {
+            "audio"
+        }
+        val callerName = data["caller_name"]?.takeIf { it.isNotBlank() }
+            ?: data["chat_title"]?.takeIf { it.isNotBlank() }
+            ?: "BarkFluff"
+
+        NotificationHelper.showIncomingCallNotification(
+            context = applicationContext,
+            callId = callId,
+            callerName = callerName,
+            mediaType = mediaType,
+            callerUserId = data["caller_user_id"]?.toLongOrNull() ?: 0L,
+            chatId = data["chat_id"].orEmpty(),
+            chatTitle = data["chat_title"].orEmpty()
+        )
+        Log.d(TAG, "incoming_call notification shown: callId=$callId, mediaType=$mediaType")
     }
 
     /**

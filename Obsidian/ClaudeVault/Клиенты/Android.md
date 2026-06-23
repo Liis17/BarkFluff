@@ -75,6 +75,20 @@ Package: `com.barkfluff.client`
 - `ProfileFragment` → кнопка "Выйти"
 - `DevicesActivity` → завершение сессии **текущего** устройства (если `deviceId == globalParam.deviceId`)
 
+
+## Звонки (V1)
+
+Стартовая интеграция звонков живёт только в V1 (`Android/Barkfluff.Client.Android/app`) и общем `Android/core`; V2 не менялся.
+
+- `Android/core/src/main/proto/beacon_api.proto` синхронизирован с `Shared/BarkFluff.Proto/beacon_api.proto`: добавлен `Service calls = 14` рядом с `livekit_url = 13`.
+- `GlobalParam` хранит `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
+- `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
+- `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`.
+- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка в верхнюю панель. Пока они запускают сигналинг и открывают временный `CallActivity`; LiveKit media renderer будет следующим слоем.
+- FCM service обрабатывает `type=incoming_call` и `type=dismiss_call`. `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle` для входящего звонка.
+- Добавлены `IncomingCallActivity`, `CallActivity`, `CallActionReceiver` и permissions для микрофона/camera/screen-share/full-screen intent.
+
+Связанный backend-контекст: [[Backend/Calls]], [[Backend/CloudMessaging]].
 ## Firebase FCM токен
 
 `utils/FirebaseTokenHelper.kt`:

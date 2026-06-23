@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
@@ -49,6 +50,9 @@ class BarkFluffApplication : Application() {
     lateinit var secretChatRepository: SecretChatRepository
         private set
 
+    lateinit var callRepository: CallRepository
+        private set
+
     /**
      * Флаг: приложение было свёрнуто и снова развёрнуто.
      * Устанавливается в true при уходе в фон, сбрасывается компонентами при обработке.
@@ -84,6 +88,7 @@ class BarkFluffApplication : Application() {
         prekeyManager = PrekeyManager(applicationContext, signalStore)
         privateChatRepository = PrivateChatRepository(applicationContext, grpcManager)
         secretChatRepository = SecretChatRepository(applicationContext, grpcManager, signalStore)
+        callRepository = CallRepository(grpcManager)
 
         // Инициализируем персистентный кэш URL файлов
         AvatarLoader.initializeCache(this)

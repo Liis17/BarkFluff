@@ -21,6 +21,9 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.barkfluff.client.MainActivity
 import com.barkfluff.client.R
+import com.barkfluff.client.calls.CallActionReceiver
+import com.barkfluff.client.calls.CallExtras
+import com.barkfluff.client.calls.IncomingCallActivity
 
 object NotificationHelper {
 
@@ -42,6 +45,11 @@ object NotificationHelper {
     const val CHANNEL_CHAT_MESSAGES = "chat_messages"
     private const val CHANNEL_CHAT_MESSAGES_NAME = "Сообщения чатов"
     private const val CHANNEL_CHAT_MESSAGES_DESC = "Уведомления о новых сообщениях в личных и групповых чатах"
+
+    // Канал: Звонки
+    const val CHANNEL_CALLS = "calls"
+    private const val CHANNEL_CALLS_NAME = "Звонки"
+    private const val CHANNEL_CALLS_DESC = "Входящие и активные звонки"
 
     // Канал: Системные
     const val CHANNEL_SYSTEM = "system"
@@ -80,6 +88,18 @@ object NotificationHelper {
                 setShowBadge(true)
             }
 
+            val callsChannel = NotificationChannel(
+                CHANNEL_CALLS,
+                CHANNEL_CALLS_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = CHANNEL_CALLS_DESC
+                group = GROUP_ID
+                enableVibration(true)
+                setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+
             val systemChannel = NotificationChannel(
                 CHANNEL_SYSTEM,
                 CHANNEL_SYSTEM_NAME,
@@ -100,7 +120,7 @@ object NotificationHelper {
                 setShowBadge(false)
             }
 
-            manager.createNotificationChannels(listOf(chatChannel, systemChannel, otherChannel))
+            manager.createNotificationChannels(listOf(chatChannel, callsChannel, systemChannel, otherChannel))
             Log.d(TAG, "Notification channels created")
         }
     }
@@ -229,6 +249,97 @@ object NotificationHelper {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to show notification", e)
         }
+    }
+
+
+    fun showIncomingCallNotification(
+        context: Context,
+        callId: String,
+        callerName: String,
+        mediaType: String,
+        callerUserId: Long = 0L,
+        chatId: String = "",
+        chatTitle: String = ""
+    ) {
+        if (callId.isBlank()) return
+
+        val notificationId = callId.hashCode()
+        val displayName = callerName.ifBlank { chatTitle.ifBlank { "BarkFluff" } }
+        val contentIntent = Intent(context, IncomingCallActivity::class.java).apply {
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+            putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+            putExtra(CallExtras.EXTRA_CALLER_USER_ID, callerUserId)
+            putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+            putExtra(CallExtras.EXTRA_CHAT_TITLE, chatTitle)
+            putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val acceptIntent = Intent(context, IncomingCallActivity::class.java).apply {
+            action = CallExtras.ACTION_ACCEPT_CALL
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+            putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+            putExtra(CallExtras.EXTRA_CALLER_USER_ID, callerUserId)
+            putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+            putExtra(CallExtras.EXTRA_CHAT_TITLE, chatTitle)
+            putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val acceptPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 1,
+            acceptIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val rejectIntent = Intent(context, CallActionReceiver::class.java).apply {
+            action = CallExtras.ACTION_REJECT_CALL
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+        }
+        val rejectPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 2,
+            rejectIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val person = Person.Builder()
+            .setName(displayName)
+            .setKey(if (callerUserId > 0) callerUserId.toString() else callId)
+            .setIcon(IconCompat.createWithBitmap(createPlaceholderBitmap(displayName, callerUserId.takeIf { it > 0 } ?: callId.hashCode().toLong())))
+            .build()
+
+        val title = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(context.resources.getColor(R.color.primary, null))
+            .setContentTitle(displayName)
+            .setContentText(title)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setContentIntent(contentPendingIntent)
+            .setFullScreenIntent(contentPendingIntent, true)
+            .setStyle(NotificationCompat.CallStyle.forIncomingCall(person, rejectPendingIntent, acceptPendingIntent))
+
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(TAG, "No notification permission for incoming call", e)
+        }
+    }
+
+    fun dismissCall(context: Context, callId: String) {
+        if (callId.isBlank()) return
+        context.getSystemService(NotificationManager::class.java).cancel(callId.hashCode())
+        Log.d(TAG, "Call notification dismissed: callId=$callId")
     }
 
     fun dismissForChat(context: Context, chatId: String) {

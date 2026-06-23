@@ -162,6 +162,8 @@
     <!-- Chat content descriptions -->
     <string name="cd_back">Назад</string>
     <string name="cd_more_menu">Дополнительное меню</string>
+    <string name="cd_audio_call">Аудиозвонок</string>
+    <string name="cd_video_call">Видеозвонок</string>
     <string name="cd_pinned">Закреплено</string>
     <string name="cd_all_pinned">Все закреплённые</string>
     <string name="cd_scroll_down">Прокрутить вниз</string>
