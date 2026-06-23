@@ -1,18 +1,22 @@
 package com.barkfluff.client
 
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityAboutBinding
+import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import com.google.android.material.divider.MaterialDivider
+import kotlinx.coroutines.launch
 
 class AboutActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAboutBinding
     private lateinit var globalParam: GlobalParam
+    private val grpcManager = GrpcManager()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +29,7 @@ class AboutActivity : AppCompatActivity() {
         fillAppInfo()
         fillDeviceInfo()
         fillServerInfo()
+        refreshServerInfo()
     }
 
     private fun setupToolbar() {
@@ -59,6 +64,7 @@ class AboutActivity : AppCompatActivity() {
         )
 
         val container = binding.serverInfoContainer
+        container.removeAllViews()
 
         services.forEachIndexed { index, (name, address) ->
             if (index > 0) {
@@ -109,6 +115,19 @@ class AboutActivity : AppCompatActivity() {
             row.addView(addressView)
             container.addView(row)
         }
+    }
+
+    private fun refreshServerInfo() {
+        lifecycleScope.launch {
+            if (refreshServerInfoFromBeacon(grpcManager, globalParam)) {
+                fillServerInfo()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        grpcManager.shutdown()
     }
 
     private fun getColorFromAttr(attr: Int): Int {
