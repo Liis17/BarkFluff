@@ -476,6 +476,8 @@ Mac-специфика:
 - Оверлей: `Features/Call/Views/CallOverlayView.swift` — **плавающий немодальный** поверх чата (клики мимо карточки проходят к чату), свёрнутый/развёрнутый, перетаскиваемый.
 - Точки входа: кнопки аудио/видео в `ConversationHeaderView`.
 - Разрешения: entitlements `com.apple.security.device.audio-input` + `…camera`, `NSMicrophone/NSCameraUsageDescription`.
+  - ⚠️ **Критично:** нужен ещё `com.apple.security.network.server` — иначе App Sandbox блокирует UDP-приём WebRTC и `room.connect` падает с `Code=202 (subscriber transport .failed)` (сигналинг подключается, медиа — нет). На iOS этого нет.
+  - Камера на macOS **не включается автоматически** при connect (авто-старт захвата роняет CMIO/WebRTC) — включается кнопкой внутри звонка.
 
 ## Сборка
 

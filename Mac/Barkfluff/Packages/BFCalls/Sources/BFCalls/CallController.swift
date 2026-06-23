@@ -127,6 +127,7 @@ public final class CallController {
     public func toggleCamera() async {
         guard let room else { return }
         let newValue = !isCameraEnabled
+        if newValue { await Self.requestCameraPermission() }
         do {
             try await room.localParticipant.setCamera(enabled: newValue)
             isCameraEnabled = newValue
@@ -196,21 +197,24 @@ public final class CallController {
         self.roomDelegate = adapter
         self.room = room
         do {
-            // Явно запрашиваем доступ к устройствам до публикации (mic всегда,
-            // камера — для видео), чтобы не упасть при первом доступе.
-            await Self.requestMediaPermissions(video: media == .video)
+            // Микрофон — запрашиваем доступ до подключения.
+            await Self.requestMicPermission()
             try await room.connect(
                 url: info.livekitURL,
                 token: info.accessToken,
                 connectOptions: ConnectOptions(autoSubscribe: true),
                 roomOptions: RoomOptions(adaptiveStream: true, dynacast: true)
             )
-            try await room.localParticipant.setMicrophone(enabled: true)
-            isMicEnabled = true
-            if media == .video {
-                try await room.localParticipant.setCamera(enabled: true)
-                isCameraEnabled = true
+            // Микрофон — best-effort: если недоступен, звонок НЕ закрываем.
+            do {
+                try await room.localParticipant.setMicrophone(enabled: true)
+                isMicEnabled = true
+            } catch {
+                isMicEnabled = false
             }
+            // Камеру НЕ включаем автоматически: на macOS авто-старт захвата камеры
+            // в момент connect роняет CMIO/WebRTC. Для видеозвонка камера стартует
+            // выключенной — пользователь включает её кнопкой (toggleCamera).
             if phase == .connecting { phase = .active }
             if callStartedAt == nil { callStartedAt = Date() }
             refreshFromRoom()
@@ -292,12 +296,14 @@ public final class CallController {
         return pub.track as? VideoTrack
     }
 
-    /// Запрос доступа к микрофону/камере (нужны usage descriptions в Info.plist).
-    private static func requestMediaPermissions(video: Bool) async {
+    /// Запрос доступа к микрофону (нужен NSMicrophoneUsageDescription в Info.plist).
+    private static func requestMicPermission() async {
         _ = await AVCaptureDevice.requestAccess(for: .audio)
-        if video {
-            _ = await AVCaptureDevice.requestAccess(for: .video)
-        }
+    }
+
+    /// Запрос доступа к камере (нужен NSCameraUsageDescription в Info.plist).
+    private static func requestCameraPermission() async {
+        _ = await AVCaptureDevice.requestAccess(for: .video)
     }
 
     /// Лениво резолвит имя/аватар участника через `participantResolver` и кэширует.
