@@ -701,6 +701,14 @@ class GrpcManager {
 
             val request = BeaconApiOuterClass.GetServerInfoRequest.newBuilder().build()
             val response = beaconClient!!.getServerInfo(request)
+            Log.d(
+                TAG,
+                "Beacon calls: has=${response.hasCalls()}, " +
+                    "host=${if (response.hasCalls()) response.calls.endpoint.host else ""}, " +
+                    "port=${if (response.hasCalls()) response.calls.endpoint.port else 0}, " +
+                    "tls=${response.hasCalls() && response.calls.tlsEnabled}, " +
+                    "livekit=${response.livekitUrl.isNotBlank()}"
+            )
 
             val serverInfo = ServerInfo(
                 name = response.name,
@@ -740,6 +748,10 @@ class GrpcManager {
      * чтобы избежать двойного префикса.
      */
     private fun buildEndpointUrl(host: String, port: Int, tlsEnabled: Boolean): String {
+        if (host.isBlank() || port <= 0) {
+            return ""
+        }
+
         var cleanHost = host
         if (cleanHost.startsWith("https://", ignoreCase = true)) {
             cleanHost = cleanHost.substring(8)

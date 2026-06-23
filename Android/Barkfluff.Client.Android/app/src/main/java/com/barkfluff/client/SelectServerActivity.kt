@@ -281,8 +281,12 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun ensureHttpPrefix(url: String): String {
+        if (url.isBlank()) {
+            return url
+        }
+
         return if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            "http://$url"
+            "https://$url"
         } else {
             url
         }

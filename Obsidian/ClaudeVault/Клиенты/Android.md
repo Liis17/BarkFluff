@@ -82,6 +82,7 @@ Package: `com.barkfluff.client`
 
 - `Android/core/src/main/proto/beacon_api.proto` синхронизирован с `Shared/BarkFluff.Proto/beacon_api.proto`: добавлен `Service calls = 14` рядом с `livekit_url = 13`.
 - `GlobalParam` хранит `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
+- При применении ответа Beacon V1 не превращает пустой/offline Calls endpoint в URL, по умолчанию добавляет `https://` к адресам без схемы и пишет в Logcat raw-диагностику `Beacon calls: has/host/port/tls/livekit`.
 - `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
 - `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`.
 - `core/calls/CallEventsService.kt` подключается в `BarkFluffApplication` вместе с `RealtimeService`: держит lifecycle-подписку на `SubscribeCallEvents`, публикует raw events через `SharedFlow`, текущее состояние звонка через `StateFlow`, делает reconnect/backoff и auto-reject второго входящего звонка при уже активном звонке.
