@@ -26,12 +26,12 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений |
 | `EditMessage` | Правка своего сообщения: текст и/или список вложений. Forward-снапшот не редактируется. Системные нельзя. Выставляет `IsEdited`+`EditedAt`, публикует `MessageEditedEvent` |
 | `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`). Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
-| `ListChats` | Список чатов с пагинацией, имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат) |
+| `ListChats` | Список непустых чатов с пагинацией по последнему неудалённому сообщению (`last_message.SentAt DESC`); имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат) |
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
 | `MarkAsRead` | PostgreSQL array операции, публикует `MessageReadEvent` |
-| `GetPersonChatId` | Получить или создать личный чат (поддерживает self-chat) |
+| `GetPersonChatId` | Получить или создать обычный личный чат (поддерживает self-chat); при дублях выбирает чат с самым свежим неудалённым сообщением |
 | `GetChatInfo` | Счётчик непрочитанных, последнее сообщение |
 | `ListChatMembers` | Пагинированный список с данными из Users API |
 | `ListChatAttachments` | Вложения по типу, фильтрация + сортировка |
@@ -146,7 +146,8 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 - **Пагинация**: `GetChatMessagesWithOffset` — двунаправленная загрузка вокруг `fromMessageId` (по 50 в каждую сторону)
 - **Права кика**: только создатель группы и `GroupChatInfo.UsersCanKick`
 - **Self-chat**: `CreatePersonChat(userId, userId)` — личный чат с самим собой поддерживается
-- **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`). `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`
+- **Личные чаты**: `GetPersonChatId` и отправка по `user_id` ищут только `ChatType.Regular` DM с ровно двумя участниками. Если в БД есть дубли обычных DM между теми же пользователями, выбирается чат с самым свежим неудалённым сообщением.
+- **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`). `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`. Пустые чаты отфильтровываются до пагинации, чтобы страницы списка чатов были стабильными для всех клиентов.
 - **Edit-семантика**: при правке forward-вложения сохраняются как есть (Telegram-style), не-forward attachments полностью пересоздаются по новому списку `FileIds`. Forward-снапшоты не обновляются автоматически
 - **Pin-права**: любой участник чата может закреплять/откреплять любые сообщения (общая для чата доска). Авторизация — `[Authorize(Policy = nameof(TokenType.User))]` + `CheckAccessToChat`. Лимит: 100 закрепов на чат → `TooManyPinnedMessagesException`
 - **Pin + Soft-delete**: при `DeleteMessage` запись из `PinnedMessages` удаляется автоматически и публикуется `MessageUnpinnedEvent`. `ListPinnedMessages` дополнительно фильтрует через `!IsDeleted` (защита от рассинхрона)

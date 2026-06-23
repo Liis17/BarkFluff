@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Calls";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.calls;
+
+// ── Инициация ──────────────────────────────────────────────
+message InitiateCallRequest {
+  // Ровно одно из двух: 1-на-1 (callee_user_id) или групповой (chat_id).
+  oneof target {
+    int64  callee_user_id = 1; // Личный звонок конкретному пользователю
+    string chat_id        = 2; // Групповой звонок в чат (Guid-строка)
+  }
+  CallMediaType media_type = 3; // AUDIO / VIDEO (старт с включённой камерой)
+}
+
+message InitiateCallResponse {
+  string call_id      = 1; // ID звонка (Guid)
+  string livekit_url  = 2; // WSS-адрес LiveKit (дублируется в Beacon)
+  string access_token = 3; // LiveKit JWT для входа инициатора в комнату
+  CallAudioQuality audio_quality = 4; // Текущее общее качество голоса звонка
+}
+
+// ── Присоединение к идущему звонку (group / второй девайс) ──
+message JoinCallRequest { string call_id = 1; }
+message JoinCallResponse {
+  string livekit_url  = 1;
+  string access_token = 2;
+  CallAudioQuality audio_quality = 3; // Текущее общее качество голоса звонка
+}
+
+// ── Ответ / отклонение / завершение ────────────────────────
+message AcceptCallRequest { string call_id = 1; }
+message AcceptCallResponse {
+  string livekit_url  = 1;
+  string access_token = 2;
+  CallAudioQuality audio_quality = 3; // Текущее общее качество голоса звонка
+}
+
+message RejectCallRequest { string call_id = 1; }
+message RejectCallResponse { }
+
+message EndCallRequest { string call_id = 1; }
+message EndCallResponse { }
+
+// ── Качество голоса (общее для всех участников звонка) ──────
+message SetCallAudioQualityRequest {
+  string call_id = 1;
+  CallAudioQuality quality = 2;
+}
+message SetCallAudioQualityResponse { }
+
+// ── Подписка на события звонка (device-scope) ──────────────
+message SubscribeCallEventsRequest { }
+
+message CallEvent {
+  oneof event {
+    IncomingCallEvent incoming = 1; // Входящий звонок (ring)
+    CallAcceptedEvent accepted = 2; // Принят (гасим ring на др. устройствах / уведомляем caller)
+    CallRejectedEvent rejected = 3; // Отклонён
+    CallEndedEvent    ended    = 4; // Завершён / пропущен
+    ParticipantEvent  member   = 5; // Кто-то вошёл/вышел (для группового UI)
+    CallAudioQualityChangedEvent audio_quality = 6; // Кто-то сменил общее качество голоса
+  }
+}
+
+message IncomingCallEvent {
+  string call_id          = 1;
+  int64  caller_user_id   = 2;
+  string chat_id          = 3; // непустой для группового звонка
+  CallMediaType media_type = 4;
+  google.protobuf.Timestamp started_at = 5;
+}
+
+message CallAcceptedEvent { string call_id = 1; int64 accepted_by_user_id = 2; }
+message CallRejectedEvent { string call_id = 1; int64 rejected_by_user_id = 2; }
+
+message CallEndedEvent {
+  string call_id = 1;
+  CallEndReason reason = 2;
+  int64  duration_seconds = 3; // 0 для несостоявшихся
+}
+
+message ParticipantEvent {
+  string call_id = 1;
+  int64  user_id = 2;
+  ParticipantAction action = 3; // JOINED / LEFT
+}
+
+message CallAudioQualityChangedEvent {
+  string call_id = 1;
+  CallAudioQuality quality = 2;
+  int64  changed_by_user_id = 3;
+}
+
+enum CallMediaType {
+  CALL_MEDIA_TYPE_UNKNOWN = 0;
+  CALL_MEDIA_AUDIO = 1;
+  CALL_MEDIA_VIDEO = 2;
+}
+
+enum CallEndReason {
+  CALL_END_REASON_UNKNOWN = 0;
+  CALL_END_HANGUP   = 1; // Завершён участником
+  CALL_END_REJECTED = 2; // Отклонён
+  CALL_END_MISSED   = 3; // Никто не ответил (таймаут)
+  CALL_END_BUSY     = 4; // Получатель занят
+  CALL_END_FAILED   = 5; // Сетевой/медиа-сбой
+}
+
+enum ParticipantAction {
+  PARTICIPANT_ACTION_UNKNOWN = 0;
+  PARTICIPANT_JOINED = 1;
+  PARTICIPANT_LEFT   = 2;
+}
+
+// Общее качество голоса звонка. AUTO (0) — дефолт SDK.
+enum CallAudioQuality {
+  CALL_AUDIO_QUALITY_AUTO   = 0;
+  CALL_AUDIO_QUALITY_LOW    = 1;
+  CALL_AUDIO_QUALITY_MEDIUM = 2;
+  CALL_AUDIO_QUALITY_HIGH   = 3;
+}
+
+service CallsApi {
+  rpc InitiateCall(InitiateCallRequest) returns (InitiateCallResponse);
+  rpc JoinCall(JoinCallRequest) returns (JoinCallResponse);
+  rpc AcceptCall(AcceptCallRequest) returns (AcceptCallResponse);
+  rpc RejectCall(RejectCallRequest) returns (RejectCallResponse);
+  rpc EndCall(EndCallRequest) returns (EndCallResponse);
+
+  // Сменить общее качество голоса (применяется всеми участниками)
+  rpc SetCallAudioQuality(SetCallAudioQualityRequest) returns (SetCallAudioQualityResponse);
+
+  // Device-scope: подписка живёт до отмены, как SubscribeSecretMessages в Updates
+  rpc SubscribeCallEvents(SubscribeCallEventsRequest) returns (stream CallEvent);
+}

@@ -71,6 +71,10 @@ service IdentityServerApi {
   // Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
   // Регистрирует устройство в Users, отправляет уведомление о входе.
   rpc CreateSessionForUserServer(CreateSessionForUserServerRequest) returns(CreateSessionForUserServerResponse);
+
+  // Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+  // Отправляет email-уведомление пользователю.
+  rpc ForceSetPasswordServer(ForceSetPasswordServerRequest) returns(ForceSetPasswordServerResponse);
 }
 
 message CreateSessionForUserServerRequest {
@@ -104,6 +108,14 @@ message RemoveActiveSessionServerRequest {
   int64 user_id = 1;
   string device_id = 2;
 }
+
+// Принудительная смена пароля (серверный, для админ-панели)
+message ForceSetPasswordServerRequest {
+  int64 user_id = 1;
+  string new_password = 2;
+}
+
+message ForceSetPasswordServerResponse { }
 
 message ConfirmResetPasswordRequest {
   string reset_id = 1; // идентификатор сброса пароля

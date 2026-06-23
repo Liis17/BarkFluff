@@ -31,29 +31,37 @@ public class ChatsStorage
             .AsNoTracking()
             .Include(x => x.Members)
             .Where(x => x.Members!.Any(m => m.UserId == userId))
-            .OrderBy(x => x.Id)
+            .Where(c => _context.Messages.Any(m => m.ChatId == c.Id && !m.IsDeleted))
+            .Select(c => new
+            {
+                Chat = c,
+                LastMessageSentAt = _context.Messages
+                    .Where(m => m.ChatId == c.Id && !m.IsDeleted)
+                    .Max(m => (DateTime?)m.SentAt)
+            })
+            .OrderByDescending(x => x.LastMessageSentAt)
+            .ThenBy(x => x.Chat.Id)
             .Skip(skip)
             .Take(count)
             .Select(c => new Chat
             {
-                Id = c.Id,
-                Title = c.Title,
-                Picture = c.Picture,
-                IsGroupChat = c.IsGroupChat,
-                Members = c.Members,
-                CountUnread = _context.Messages.Count(x => x.ChatId == c.Id && !x.IsDeleted && !x.ReadBy.Contains(userId)),
+                Id = c.Chat.Id,
+                Title = c.Chat.Title,
+                Picture = c.Chat.Picture,
+                IsGroupChat = c.Chat.IsGroupChat,
+                Members = c.Chat.Members,
+                CountUnread = _context.Messages.Count(x => x.ChatId == c.Chat.Id && !x.IsDeleted && !x.ReadBy.Contains(userId)),
                 FirstUnreadMessageId = _context.Messages
-                    .Where(m => m.ChatId == c.Id && !m.IsDeleted && !m.ReadBy.Contains(userId))
+                    .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted && !m.ReadBy.Contains(userId))
                     .Min(m => (long?)m.Id),
                 LastMessage = _context.Messages
-                    .Where(m => m.ChatId == c.Id && !m.IsDeleted)
+                    .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted)
                     .OrderByDescending(m => m.SentAt)
                     .FirstOrDefault()
             })
             .ToListAsync();
 
-        // Фильтруем пустые чаты (без сообщений)
-        return chats.Where(x => x.LastMessage != null).ToList();
+        return chats;
     }
 
     public async Task<Guid?> GetUserChatIdWithPerson(long person, long userId)
@@ -61,21 +69,41 @@ public class ChatsStorage
         if (person == userId)
         {
             // Самочат: ищем личный чат, где оба участника — один и тот же пользователь
-            var selfChat = await _context.Chats
-                .Include(x => x.Members)
-                .FirstOrDefaultAsync(x => !x.IsGroupChat
-                                          && x.Members!.Count == 2
-                                          && x.Members!.All(m => m.UserId == userId));
-            return selfChat?.Id;
+            return await _context.Chats
+                .Where(x => !x.IsGroupChat
+                            && x.Type == ChatType.Regular
+                            && x.Members!.Count == 2
+                            && x.Members!.All(m => m.UserId == userId))
+                .Select(c => new
+                {
+                    c.Id,
+                    LastMessageSentAt = _context.Messages
+                        .Where(m => m.ChatId == c.Id && !m.IsDeleted)
+                        .Max(m => (DateTime?)m.SentAt)
+                })
+                .OrderByDescending(x => x.LastMessageSentAt)
+                .ThenBy(x => x.Id)
+                .Select(x => (Guid?)x.Id)
+                .FirstOrDefaultAsync();
         }
 
-        var chat = await _context.Chats
-            .Include(x => x.Members)
-            .FirstOrDefaultAsync(x => !x.IsGroupChat
-                                      && x.Members!.Any(m => m.UserId == person)
-                                      && x.Members!.Any(m => m.UserId == userId));
-
-        return chat?.Id;
+        return await _context.Chats
+            .Where(x => !x.IsGroupChat
+                        && x.Type == ChatType.Regular
+                        && x.Members!.Count == 2
+                        && x.Members!.Any(m => m.UserId == person)
+                        && x.Members!.Any(m => m.UserId == userId))
+            .Select(c => new
+            {
+                c.Id,
+                LastMessageSentAt = _context.Messages
+                    .Where(m => m.ChatId == c.Id && !m.IsDeleted)
+                    .Max(m => (DateTime?)m.SentAt)
+            })
+            .OrderByDescending(x => x.LastMessageSentAt)
+            .ThenBy(x => x.Id)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<bool> CheckAccessToChat(Guid chatId, long userId)

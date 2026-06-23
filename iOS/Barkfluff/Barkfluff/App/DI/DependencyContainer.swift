@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import BFNetworking
 import BFCore
+import BFCalls
 import Nuke
 
 /// Контейнер зависимостей для всего приложения
@@ -84,6 +85,13 @@ final class DependencyContainer {
     let updatesStreamManager: UpdatesStreamManager
     let onlinerStreamManager: OnlinerStreamManager
 
+    // MARK: - Calls
+
+    /// gRPC-сигнализация звонков (BarkFluff.Calls).
+    let callsRepository: CallsRepository
+    /// Фоновый стрим событий звонков (ринг/принят/завершён/...).
+    let callEventsStreamManager: CallEventsStreamManager
+
     // MARK: - Personalization
 
     /// Локальные настройки персонализации (UserDefaults-backed).
@@ -116,6 +124,16 @@ final class DependencyContainer {
         let vm = SettingsViewModel()
         vm.dependencyContainer = self
         return vm
+    }
+
+    // MARK: - Calls Factory
+
+    /// Создаёт CallController. Владелец — корневая вью (живёт всю сессию,
+    /// чтобы входящие ловились app-wide). Сам стартует/останавливает
+    /// `callEventsStreamManager` через `start()`/`stop()`.
+    @MainActor
+    func makeCallController() -> CallController {
+        CallController(callsRepository: callsRepository, eventsManager: callEventsStreamManager)
     }
 
     // MARK: - Current User
@@ -220,6 +238,13 @@ final class DependencyContainer {
         )
         self.onlinerStreamManager = OnlinerStreamManager(
             onlinerRepository: onlinerRepository,
+            tokenRefreshCoordinator: tokenRefreshCoordinator
+        )
+
+        // Calls
+        self.callsRepository = CallsRepository(connectionManager: connectionManager)
+        self.callEventsStreamManager = CallEventsStreamManager(
+            callsRepository: callsRepository,
             tokenRefreshCoordinator: tokenRefreshCoordinator
         )
 
@@ -353,6 +378,7 @@ final class DependencyContainer {
         // 1. Останавливаем все стримы и фоновые подписки
         await updatesService.stop()
         await onlineStatusService.stop()
+        await callEventsStreamManager.stop()
 
         // 2. Чистим in-memory кеши
         await userCache.removeAll()

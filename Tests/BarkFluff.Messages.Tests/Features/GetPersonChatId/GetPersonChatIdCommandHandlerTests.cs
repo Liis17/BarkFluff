@@ -83,4 +83,34 @@ public class GetPersonChatIdCommandHandlerTests
 
         result.ChatId.Should().Be(chat.Id.ToString());
     }
+
+    [Fact]
+    public async Task Handle_DuplicateRegularChats_ReturnsChatWithLatestMessage()
+    {
+        SetupUsersClient(2);
+        var olderChat = await _h.SeedChat(memberUserIds: [1, 2]);
+        await _h.SeedMessage(olderChat.Id, 1, "older", sentAt: DateTime.UtcNow.AddDays(-1));
+        var newerChat = await _h.SeedChat(memberUserIds: [1, 2]);
+        await _h.SeedMessage(newerChat.Id, 1, "newer", sentAt: DateTime.UtcNow);
+        var handler = CreateHandler(1);
+
+        var result = await handler.Handle(new GetPersonChatIdCommand { UserId = 2 }, CancellationToken.None);
+
+        result.ChatId.Should().Be(newerChat.Id.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_PrivateChatExists_CreatesRegularChat()
+    {
+        SetupUsersClient(2);
+        SetupUsersClient(1);
+        await _h.SeedChat(type: BarkFluff.Messages.Domain.ChatType.Private, memberUserIds: [1, 2]);
+        var handler = CreateHandler(1);
+
+        var result = await handler.Handle(new GetPersonChatIdCommand { UserId = 2 }, CancellationToken.None);
+
+        result.ChatId.Should().NotBeNullOrEmpty();
+        result.ChatId.Should().NotBe(_h.DbContext.Chats.Single(c => c.Type == BarkFluff.Messages.Domain.ChatType.Private).Id.ToString());
+        _h.DbContext.Chats.Count(c => c.Type == BarkFluff.Messages.Domain.ChatType.Regular).Should().Be(1);
+    }
 }

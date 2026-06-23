@@ -41,6 +41,8 @@ message GetServerInfoResponse {
   string location = 12; // Локация сервера
 
   string livekit_url = 13; // WSS-адрес LiveKit SFU для звонков (пусто, если звонки не настроены)
+
+  Service calls = 14; // Микросервис calls (gRPC-сигнализация звонков)
 }
 
 message ServerColor {

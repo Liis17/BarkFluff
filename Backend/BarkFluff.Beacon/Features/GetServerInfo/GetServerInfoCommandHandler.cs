@@ -112,6 +112,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Updates = ParseService(ServiceId.Updates, updatesSettings.Configurations),
             Onliner = ParseService(ServiceId.Onliner, onlinerSettings.Configurations),
             FastAuth = ParseService(ServiceId.FastAuth, fastAuthSettings.Configurations),
+            Calls = ParseService(ServiceId.Calls, callsSettings.Configurations),
 
             // WSS-адрес LiveKit для звонков (пусто, если Calls/LiveKit не настроены).
             LivekitUrl = callsSettings.Configurations

@@ -95,14 +95,15 @@ public class TestHelper
         MessageContentType type = MessageContentType.Generic,
         List<long>? readBy = null,
         bool isDeleted = false,
-        bool isEdited = false)
+        bool isEdited = false,
+        DateTime? sentAt = null)
     {
         var message = new Message
         {
             Id = Interlocked.Increment(ref _nextId),
             ChatId = chatId,
             SenderId = senderId,
-            SentAt = DateTime.UtcNow,
+            SentAt = sentAt ?? DateTime.UtcNow,
             Type = type,
             IsDeleted = isDeleted,
             IsEdited = isEdited,

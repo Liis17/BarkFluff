@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7D38D9C62F54AC15006F41A6 /* BFCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7D9D42D02F54AB0000F1AE0A /* BFCore */; };
 		7D38D9C72F54AC15006F41A6 /* BFNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 7D9D42D12F54AB0000F1AE0A /* BFNetworking */; };
+		7DCA02112F54AC15006F41A6 /* BFCalls in Frameworks */ = {isa = PBXBuildFile; productRef = 7DCA02212F54AB0000F1AE0A /* BFCalls */; };
 		7D38D9C82F54AC15006F41A6 /* BFProto in Frameworks */ = {isa = PBXBuildFile; productRef = 7D9D42D22F54AB0000F1AE0A /* BFProto */; };
 		7D38D9C92F54AC16006F41A6 /* Nuke in Frameworks */ = {isa = PBXBuildFile; productRef = 7D38D9CA2F54AC16006F41A6 /* Nuke */; };
 		7D38D9CB2F54AC16006F41A6 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7D38D9CC2F54AC16006F41A6 /* NukeUI */; };
@@ -33,6 +34,7 @@
 			files = (
 				7D38D9C82F54AC15006F41A6 /* BFProto in Frameworks */,
 				7D38D9C72F54AC15006F41A6 /* BFNetworking in Frameworks */,
+				7DCA02112F54AC15006F41A6 /* BFCalls in Frameworks */,
 				7D38D9C62F54AC15006F41A6 /* BFCore in Frameworks */,
 				7D38D9C92F54AC16006F41A6 /* Nuke in Frameworks */,
 				7D38D9CB2F54AC16006F41A6 /* NukeUI in Frameworks */,
@@ -80,6 +82,7 @@
 			packageProductDependencies = (
 				7D9D42D02F54AB0000F1AE0A /* BFCore */,
 				7D9D42D12F54AB0000F1AE0A /* BFNetworking */,
+				7DCA02212F54AB0000F1AE0A /* BFCalls */,
 				7D9D42D22F54AB0000F1AE0A /* BFProto */,
 				7D38D9CA2F54AC16006F41A6 /* Nuke */,
 				7D38D9CC2F54AC16006F41A6 /* NukeUI */,
@@ -117,6 +120,7 @@
 				7D9D42CF2F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFCore" */,
 				7D9D42D32F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFNetworking" */,
 				7D9D42D42F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFProto" */,
+				7DCA02312F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFCalls" */,
 				7D38D9CD2F54AC17006F41A6 /* XCRemoteSwiftPackageReference "Nuke" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -387,6 +391,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Mac/Barkfluff/Packages/BFProto;
 		};
+		7DCA02312F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFCalls" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Mac/Barkfluff/Packages/BFCalls;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -420,6 +428,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7D9D42D32F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFNetworking" */;
 			productName = BFNetworking;
+		};
+		7DCA02212F54AB0000F1AE0A /* BFCalls */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7DCA02312F54AB0000F1AE0A /* XCLocalSwiftPackageReference "../../Mac/Barkfluff/Packages/BFCalls" */;
+			productName = BFCalls;
 		};
 		7D9D42D22F54AB0000F1AE0A /* BFProto */ = {
 			isa = XCSwiftPackageProductDependency;

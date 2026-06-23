@@ -193,6 +193,22 @@ public struct Barkfluff_Beacon_GetServerInfoResponse: @unchecked Sendable {
     set {_uniqueStorage()._location = newValue}
   }
 
+  /// WSS-адрес LiveKit SFU для звонков (пусто, если звонки не настроены)
+  public var livekitURL: String {
+    get {_storage._livekitURL}
+    set {_uniqueStorage()._livekitURL = newValue}
+  }
+
+  /// Микросервис calls (gRPC-сигнализация звонков)
+  public var calls: Barkfluff_Beacon_Service {
+    get {_storage._calls ?? Barkfluff_Beacon_Service()}
+    set {_uniqueStorage()._calls = newValue}
+  }
+  /// Returns true if `calls` has been explicitly set.
+  public var hasCalls: Bool {_storage._calls != nil}
+  /// Clears the value of `calls`. Subsequent reads from it will return its default value.
+  public mutating func clearCalls() {_uniqueStorage()._calls = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -295,7 +311,7 @@ extension Barkfluff_Beacon_GetServerInfoRequest: SwiftProtobuf.Message, SwiftPro
 
 extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetServerInfoResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}color\0\u{1}identity\0\u{1}users\0\u{1}files\0\u{1}messages\0\u{1}updates\0\u{1}onliner\0\u{3}fast_auth\0\u{3}public_name\0\u{1}location\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}color\0\u{1}identity\0\u{1}users\0\u{1}files\0\u{1}messages\0\u{1}updates\0\u{1}onliner\0\u{3}fast_auth\0\u{3}public_name\0\u{1}location\0\u{3}livekit_url\0\u{1}calls\0")
 
   fileprivate class _StorageClass {
     var _name: String = String()
@@ -310,6 +326,8 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
     var _fastAuth: Barkfluff_Beacon_Service? = nil
     var _publicName: String = String()
     var _location: String = String()
+    var _livekitURL: String = String()
+    var _calls: Barkfluff_Beacon_Service? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -332,6 +350,8 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
       _fastAuth = source._fastAuth
       _publicName = source._publicName
       _location = source._location
+      _livekitURL = source._livekitURL
+      _calls = source._calls
     }
   }
 
@@ -362,6 +382,8 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._fastAuth) }()
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._publicName) }()
         case 12: try { try decoder.decodeSingularStringField(value: &_storage._location) }()
+        case 13: try { try decoder.decodeSingularStringField(value: &_storage._livekitURL) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._calls) }()
         default: break
         }
       }
@@ -410,6 +432,12 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
       if !_storage._location.isEmpty {
         try visitor.visitSingularStringField(value: _storage._location, fieldNumber: 12)
       }
+      if !_storage._livekitURL.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._livekitURL, fieldNumber: 13)
+      }
+      try { if let v = _storage._calls {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -431,6 +459,8 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
         if _storage._fastAuth != rhs_storage._fastAuth {return false}
         if _storage._publicName != rhs_storage._publicName {return false}
         if _storage._location != rhs_storage._location {return false}
+        if _storage._livekitURL != rhs_storage._livekitURL {return false}
+        if _storage._calls != rhs_storage._calls {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -88,6 +88,43 @@ public class ListChatsCommandHandlerTests
         result.Chats[0].Members.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_EmptyChatsBeforeNonEmptyChats_DoNotConsumePage()
+    {
+        var userId = 1L;
+        for (var i = 0; i < 60; i++)
+        {
+            await _h.SeedChat(isGroupChat: true, title: $"Empty {i}", memberUserIds: [userId, 2]);
+        }
+
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Non Empty", memberUserIds: [userId, 2]);
+        await _h.SeedMessage(chat.Id, userId, "hello");
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
+
+        result.Chats.Should().ContainSingle();
+        result.Chats[0].Id.Should().Be(chat.Id.ToString());
+        result.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_PageIsSortedByLastMessageBeforePagination()
+    {
+        var userId = 1L;
+        var olderChat = await _h.SeedChat(isGroupChat: true, title: "Older", memberUserIds: [userId, 2]);
+        await _h.SeedMessage(olderChat.Id, userId, "older", sentAt: DateTime.UtcNow.AddDays(-1));
+        var newerChat = await _h.SeedChat(isGroupChat: true, title: "Newer", memberUserIds: [userId, 2]);
+        await _h.SeedMessage(newerChat.Id, userId, "newer", sentAt: DateTime.UtcNow);
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 1 }, CancellationToken.None);
+
+        result.Chats.Should().ContainSingle();
+        result.Chats[0].Id.Should().Be(newerChat.Id.ToString());
+        result.TotalCount.Should().Be(2);
+    }
+
     private void SetupCacheValue(string key, string? value)
     {
         _cacheMock.Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
