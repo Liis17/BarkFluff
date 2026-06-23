@@ -124,6 +124,55 @@ enum CallAudioQuality {
   CALL_AUDIO_QUALITY_HIGH   = 3;
 }
 
+// ── История звонков ────────────────────────────────────────
+message ListCallHistoryRequest {
+  CallHistoryFilter filter = 1;
+  int32 limit = 2;                                  // макс 50
+  google.protobuf.Timestamp before_started_at = 3;  // курсор: вернуть звонки старше этого момента (пусто = с начала)
+}
+
+message ListCallHistoryResponse {
+  repeated CallHistoryItem items = 1;
+  bool has_more = 2; // есть ли более старые записи за курсором
+}
+
+message CallHistoryItem {
+  string call_id = 1;
+  string chat_id = 2;                 // пусто для личного
+  int64  peer_user_id = 3;            // собеседник для личного (0 для группового)
+  bool   is_group = 4;
+  CallMediaType media_type = 5;
+  CallDirection direction = 6;
+  CallEndReason end_reason = 7;
+  google.protobuf.Timestamp started_at = 8;
+  google.protobuf.Timestamp answered_at = 9;  // null, если не приняли
+  google.protobuf.Timestamp ended_at = 10;
+  int64  duration_seconds = 11;
+}
+
+enum CallHistoryFilter {
+  CALL_HISTORY_ALL    = 0;
+  CALL_HISTORY_MISSED = 1;
+}
+
+enum CallDirection {
+  CALL_DIRECTION_UNKNOWN  = 0;
+  CALL_DIRECTION_INCOMING = 1;
+  CALL_DIRECTION_OUTGOING = 2;
+}
+
+// ── Активные звонки (для join-баннера) ─────────────────────
+message GetActiveCallsRequest { repeated string chat_ids = 1; }
+message GetActiveCallsResponse { repeated ActiveCallItem calls = 1; }
+
+message ActiveCallItem {
+  string call_id = 1;
+  string chat_id = 2;
+  CallMediaType media_type = 3;
+  google.protobuf.Timestamp started_at = 4;
+  repeated int64 participant_user_ids = 5;
+}
+
 service CallsApi {
   rpc InitiateCall(InitiateCallRequest) returns (InitiateCallResponse);
   rpc JoinCall(JoinCallRequest) returns (JoinCallResponse);
@@ -136,4 +185,10 @@ service CallsApi {
 
   // Device-scope: подписка живёт до отмены, как SubscribeSecretMessages в Updates
   rpc SubscribeCallEvents(SubscribeCallEventsRequest) returns (stream CallEvent);
+
+  // История звонков пользователя (личные + групповые), курсорная пагинация
+  rpc ListCallHistory(ListCallHistoryRequest) returns (ListCallHistoryResponse);
+
+  // Активные звонки в указанных чатах (для join-баннера)
+  rpc GetActiveCalls(GetActiveCallsRequest) returns (GetActiveCallsResponse);
 }

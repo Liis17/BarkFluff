@@ -4,10 +4,13 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Calls;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Shared.Queue.Messages;
 
 using Google.Protobuf.WellKnownTypes;
 
 using Grpc.Core;
+
+using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +30,7 @@ public class CallsService
     private readonly CallQualityStore _quality;
     private readonly CallTimeoutScheduler _timeouts;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
+    private readonly IPublishEndpoint _publish;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<CallsService> _logger;
@@ -38,6 +42,7 @@ public class CallsService
         CallQualityStore quality,
         CallTimeoutScheduler timeouts,
         MessagesServerApi.MessagesServerApiClient messagesClient,
+        IPublishEndpoint publish,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<CallsService> logger)
@@ -48,6 +53,7 @@ public class CallsService
         _quality = quality;
         _timeouts = timeouts;
         _messagesClient = messagesClient;
+        _publish = publish;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -110,7 +116,22 @@ public class CallsService
             }
         };
 
-        await RingAsync(session, incoming, ct);
+        var recipients = await GetRingRecipientsAsync(session, ct);
+        await RingAsync(recipients, incoming);
+
+        // Push для background/killed app: ринг по in-process стриму доходит только до foreground-устройств.
+        if (recipients.Count > 0)
+        {
+            await _publish.Publish(new IncomingCallPushEvent
+            {
+                CallId = session.Id,
+                CallerUserId = callerId,
+                RecipientUserIds = recipients.ToList(),
+                ChatId = session.ChatId,
+                MediaType = (int)media.ToProto(),
+                StartedAt = session.StartedAt,
+            }, ct);
+        }
 
         _metrics.Increment("calls_initiated");
         _metrics.Increment(session.IsGroup ? "calls_initiated_group" : "calls_initiated_direct");
@@ -155,6 +176,9 @@ public class CallsService
         // Уведомляем инициатора и гасим ринг на остальных устройствах ответившего.
         await _subscriptions.SendToUserAsync(session.CallerUserId, accepted);
         await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+
+        // Гасим push-нотификацию входящего звонка на всех устройствах получателей.
+        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "accepted", ct);
 
         _logger.LogInformation("Звонок {CallId} принят пользователем {UserId}", session.Id, userId);
 
@@ -232,6 +256,9 @@ public class CallsService
             _metrics.Increment("calls_rejected");
         }
 
+        // Гасим push-нотификацию на устройствах отклонившего получателя.
+        await PublishDismissAsync(session, new[] { userId }, "rejected", ct);
+
         _logger.LogInformation("Звонок {CallId} отклонён пользователем {UserId}", session.Id, userId);
         return new RejectCallResponse();
     }
@@ -252,6 +279,7 @@ public class CallsService
             await _db.SaveChangesAsync(ct);
             _timeouts.Cancel(session.Id);
             await NotifyEndedAsync(session, ct);
+            await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "ended", ct);
             await PostCallSystemMessageAsync(session, ct);
             _metrics.Increment("calls_ended");
         }
@@ -296,6 +324,111 @@ public class CallsService
         return new SetCallAudioQualityResponse();
     }
 
+    // ── История и активные звонки ──────────────────────────────────────────
+
+    public async Task<ListCallHistoryResponse> ListCallHistoryAsync(ListCallHistoryRequest request, CancellationToken ct)
+    {
+        var me = _userContext.UserId;
+        var limit = request.Limit is > 0 and <= 50 ? request.Limit : 50;
+
+        // v1: личные звонки, где я участник, + групповые, инициированные мной.
+        // TODO: полная групповая история (звонки чатов, где я состою) — нужен серверный lookup чатов пользователя.
+        var query = _db.CallSessions.AsNoTracking()
+            .Where(c => c.Status == CallStatus.Ended)
+            .Where(c => (c.ChatId == null && (c.CallerUserId == me || c.CalleeUserId == me))
+                     || (c.ChatId != null && c.CallerUserId == me));
+
+        if (request.Filter == CallHistoryFilter.CallHistoryMissed)
+        {
+            query = query.Where(c => c.EndReason == CallEndReasonKind.Missed);
+        }
+
+        if (request.BeforeStartedAt is not null)
+        {
+            var before = request.BeforeStartedAt.ToDateTime();
+            query = query.Where(c => c.StartedAt < before);
+        }
+
+        var rows = await query
+            .OrderByDescending(c => c.StartedAt)
+            .Take(limit + 1)
+            .ToListAsync(ct);
+
+        var response = new ListCallHistoryResponse { HasMore = rows.Count > limit };
+        foreach (var c in rows.Take(limit))
+        {
+            response.Items.Add(ToHistoryItem(c, me));
+        }
+
+        return response;
+    }
+
+    public async Task<GetActiveCallsResponse> GetActiveCallsAsync(GetActiveCallsRequest request, CancellationToken ct)
+    {
+        var response = new GetActiveCallsResponse();
+
+        var chatIds = request.ChatIds
+            .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList();
+
+        if (chatIds.Count == 0)
+        {
+            return response;
+        }
+
+        var rows = await _db.CallSessions.AsNoTracking()
+            .Where(c => c.Status == CallStatus.Active && c.ChatId != null && chatIds.Contains(c.ChatId.Value))
+            .ToListAsync(ct);
+
+        foreach (var c in rows)
+        {
+            response.Calls.Add(new ActiveCallItem
+            {
+                CallId = c.Id.ToString(),
+                ChatId = c.ChatId!.Value.ToString(),
+                MediaType = c.Media.ToProto(),
+                StartedAt = Timestamp.FromDateTime(c.StartedAt),
+                // participant_user_ids: в v1 не тянем из LiveKit — клиент делает JoinCall.
+            });
+        }
+
+        return response;
+    }
+
+    private static CallHistoryItem ToHistoryItem(CallSession c, long me)
+    {
+        var item = new CallHistoryItem
+        {
+            CallId = c.Id.ToString(),
+            ChatId = c.ChatId?.ToString() ?? string.Empty,
+            IsGroup = c.IsGroup,
+            MediaType = c.Media.ToProto(),
+            EndReason = c.EndReason.ToProto(),
+            Direction = c.CallerUserId == me ? CallDirection.Outgoing : CallDirection.Incoming,
+            StartedAt = Timestamp.FromDateTime(c.StartedAt),
+            DurationSeconds = c.DurationSeconds,
+        };
+
+        if (!c.IsGroup)
+        {
+            item.PeerUserId = c.CallerUserId == me ? (c.CalleeUserId ?? 0) : c.CallerUserId;
+        }
+
+        if (c.AnsweredAt is { } answered)
+        {
+            item.AnsweredAt = Timestamp.FromDateTime(answered);
+        }
+
+        if (c.EndedAt is { } ended)
+        {
+            item.EndedAt = Timestamp.FromDateTime(ended);
+        }
+
+        return item;
+    }
+
     // ── Системные пути (таймаут / webhooks LiveKit) ────────────────────────
 
     /// <summary>Таймаут ринга — звонок никто не принял.</summary>
@@ -310,6 +443,7 @@ public class CallsService
         Finalize(session, CallEndReasonKind.Missed, endedByUserId: null);
         await _db.SaveChangesAsync();
         await NotifyEndedAsync(session, CancellationToken.None);
+        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, CancellationToken.None), "timeout", CancellationToken.None);
         await PostCallSystemMessageAsync(session, CancellationToken.None);
         _metrics.Increment("calls_missed");
         _logger.LogInformation("Звонок {CallId} помечен пропущенным (таймаут)", callId);
@@ -329,6 +463,7 @@ public class CallsService
         await _db.SaveChangesAsync();
         _timeouts.Cancel(session.Id);
         await NotifyEndedAsync(session, CancellationToken.None);
+        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, CancellationToken.None), "ended", CancellationToken.None);
         await PostCallSystemMessageAsync(session, CancellationToken.None);
         _metrics.Increment("calls_room_finished");
         _logger.LogInformation("Звонок {CallId} завершён по room_finished", session.Id);
@@ -359,17 +494,35 @@ public class CallsService
 
     // ── Вспомогательное ────────────────────────────────────────────────────
 
-    private async Task RingAsync(CallSession session, CallEvent incoming, CancellationToken ct)
+    /// <summary>Получатели ринга: callee для личного, члены чата кроме инициатора для группового.</summary>
+    private async Task<IReadOnlyList<long>> GetRingRecipientsAsync(CallSession session, CancellationToken ct)
     {
         if (session.IsGroup)
         {
             var members = await GetGroupMembersAsync(session.ChatId!.Value, ct);
-            await _subscriptions.SendToUsersAsync(members.Where(id => id != session.CallerUserId), incoming);
+            return members.Where(id => id != session.CallerUserId).ToList();
         }
-        else
+
+        return new[] { session.CalleeUserId!.Value };
+    }
+
+    private Task RingAsync(IReadOnlyList<long> recipients, CallEvent incoming)
+        => _subscriptions.SendToUsersAsync(recipients, incoming);
+
+    /// <summary>Погасить push-нотификацию входящего звонка на устройствах получателей.</summary>
+    private async Task PublishDismissAsync(CallSession session, IReadOnlyList<long> recipients, string reason, CancellationToken ct)
+    {
+        if (recipients.Count == 0)
         {
-            await _subscriptions.SendToUserAsync(session.CalleeUserId!.Value, incoming);
+            return;
         }
+
+        await _publish.Publish(new CallDismissPushEvent
+        {
+            CallId = session.Id,
+            RecipientUserIds = recipients.ToList(),
+            Reason = reason,
+        }, ct);
     }
 
     private async Task NotifyEndedAsync(CallSession session, CancellationToken ct)

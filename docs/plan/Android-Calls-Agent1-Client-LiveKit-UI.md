@@ -32,6 +32,16 @@
 
 ---
 
+## Статус реализации (2026-06-24)
+
+- ✅ **Этап 1** — аудит выполнен.
+- ✅ **Этап 2** — `LiveKitCallEngine` отдаёт `StateFlow<List<CallParticipant>>` (`CallParticipant.kt`): camera/screen track, mic/camera enabled, speaking, connection quality; различает `Track.Source.CAMERA`/`SCREEN_SHARE`; слушает participant/track/speaker/quality события. Renderer'ы движок не хранит. Добавлены `flipCamera`, `selectAudioDevice` (AudioSwitchHandler), `setRemoteVideoQuality`.
+- ✅ **Этап 3** — `CallActivity` + `CallTileView`: адаптивный grid (1-на-1 / группа до 2 колонок), приоритетная плитка screen-share + полоса камер, tap-to-focus, индикаторы имя/mute/speaking, плейсхолдер при выкл. камере. Renderer init один раз, привязка/release по жизненному циклу плитки.
+- ✅ **Этап 4** — контролы: переворот камеры, маршрут звука (динамик/наушник/проводная/Bluetooth), качество голоса, качество видео собеседника; `contentDescription` и selected/disabled-состояния.
+- ✅ **Этап 5** — таймер устойчив к reconnect; `CallActivity` слушает `CallEventsService.events` по своему `callId` (ENDED/REJECTED закрывают экран и foreground, в т.ч. для звонящего); идемпотентность завершения (`callEnded`) и accept/reject (`actionTaken`).
+- ✅ **Этап 6** — `:app-v1:assembleDebug` зелёный; Obsidian `Клиенты/Android.md` обновлён. Интеграционный QA на устройстве — за пользователем.
+- ⚠️ Заметки: grid построен на ручном контейнере плиток (не RecyclerView) — безопаснее для `SurfaceViewRenderer` (нет churn'а при recycle). Аватары входящего не подтягиваются (нужен lookup в Users) — fallback `caller_name`/`chat_title`/«BarkFluff». Join-баннер активных групповых звонков (`GetActiveCalls`) ещё не нарисован.
+
 ## Этапы работ
 
 ### Этап 1. Аудит текущего клиента

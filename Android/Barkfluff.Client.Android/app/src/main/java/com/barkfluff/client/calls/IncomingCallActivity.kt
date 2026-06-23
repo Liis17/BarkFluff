@@ -26,6 +26,7 @@ class IncomingCallActivity : AppCompatActivity() {
     private lateinit var callerName: String
     private lateinit var mediaType: String
     private var dismissReceiverRegistered = false
+    private var actionTaken = false
 
     private val dismissReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -126,6 +127,8 @@ class IncomingCallActivity : AppCompatActivity() {
     }
 
     private fun acceptCall() {
+        if (actionTaken) return
+        actionTaken = true
         lifecycleScope.launch {
             if (!ensureCallsClient()) return@launch
             val response = (application as BarkFluffApplication).callRepository.accept(callId)
@@ -140,12 +143,15 @@ class IncomingCallActivity : AppCompatActivity() {
                 })
                 finish()
             }.onFailure {
+                actionTaken = false
                 Toast.makeText(this@IncomingCallActivity, "Не удалось принять звонок", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun rejectCall() {
+        if (actionTaken) return
+        actionTaken = true
         lifecycleScope.launch {
             if (ensureCallsClient()) {
                 (application as BarkFluffApplication).callRepository.reject(callId)

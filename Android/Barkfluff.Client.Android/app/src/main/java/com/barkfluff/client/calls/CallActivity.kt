@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -25,7 +24,8 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.notifications.NotificationHelper
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
-import io.livekit.android.renderer.SurfaceViewRenderer
+import com.twilio.audioswitch.AudioDevice
+import io.livekit.android.room.track.VideoQuality
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,19 +40,23 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private lateinit var callEngine: LiveKitCallEngine
 
     private lateinit var statusText: TextView
-    private lateinit var waitingText: TextView
-    private lateinit var remoteRenderer: SurfaceViewRenderer
-    private lateinit var localRenderer: SurfaceViewRenderer
+    private lateinit var videoArea: LinearLayout
     private lateinit var micButton: MaterialButton
     private lateinit var cameraButton: MaterialButton
+    private lateinit var flipButton: MaterialButton
     private lateinit var screenButton: MaterialButton
 
-    private var micEnabled = true
-    private var cameraEnabled = false
-    private var screenShareEnabled = false
+    private val tileViews = HashMap<String, CallTileView>()
+    private var lastLayoutSignature: String? = null
+    private var lastParticipants: List<CallParticipant> = emptyList()
+    private var focusedKey: String? = null
+
     private var pendingCameraToggleAfterPermission = false
+    private var callEnded = false
     private var callStartedAtMs = 0L
     private var callTimerJob: Job? = null
+    private var lastForegroundCamera = false
+    private var lastForegroundScreen = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -101,6 +105,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         callEngine = LiveKitCallEngine(applicationContext, lifecycleScope, this)
         setContentView(buildContent())
+        observeParticipants()
+        observeCallEvents()
 
         if (livekitUrl.isBlank() || accessToken.isBlank()) {
             statusText.text = "Нет данных для подключения к LiveKit"
@@ -141,45 +147,12 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             addView(statusText)
         })
 
-        root.addView(FrameLayout(this).apply {
+        videoArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurfaceContainerLowest))
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
-
-            remoteRenderer = SurfaceViewRenderer(this@CallActivity).apply {
-                contentDescription = "Видео собеседника"
-                visibility = View.INVISIBLE
-            }
-            addView(remoteRenderer, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            ))
-
-            waitingText = TextView(this@CallActivity).apply {
-                text = "Ожидаем видео собеседника"
-                gravity = Gravity.CENTER
-                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-                setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
-            }
-            addView(waitingText, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER
-            ))
-
-            localRenderer = SurfaceViewRenderer(this@CallActivity).apply {
-                contentDescription = "Ваше видео"
-                visibility = View.GONE
-                setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurfaceContainerHigh))
-            }
-            addView(localRenderer, FrameLayout.LayoutParams(dp(112), dp(156), Gravity.BOTTOM or Gravity.END).apply {
-                marginEnd = dp(16)
-                bottomMargin = dp(16)
-            })
-        })
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        root.addView(videoArea)
 
         root.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -188,14 +161,17 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
             micButton = controlButton(R.drawable.ic_mic, "Выключить микрофон") { toggleMicrophone() }
             cameraButton = controlButton(R.drawable.ic_video, "Включить камеру") { toggleCamera() }
-            screenButton = controlButton(R.drawable.ic_screen_share, "Демонстрация экрана") { showMediaPicker() }
-            val qualityButton = controlButton(R.drawable.ic_tune, "Качество звонка") { showQualitySheet() }
+            flipButton = controlButton(R.drawable.ic_video, "Перевернуть камеру") { flipCamera() }.apply {
+                visibility = View.GONE
+            }
+            screenButton = controlButton(R.drawable.ic_screen_share, "Демонстрация экрана") { startScreenShare() }
+            val moreButton = controlButton(R.drawable.ic_tune, "Дополнительно") { showMoreSheet() }
             val hangupButton = controlButton(R.drawable.ic_close, "Завершить звонок") { endCallAndClose() }.apply {
                 setBackgroundColor(resolveColor(android.R.attr.colorError))
                 iconTint = ColorStateList.valueOf(resolveColor(com.google.android.material.R.attr.colorOnError))
             }
 
-            listOf(micButton, cameraButton, screenButton, qualityButton, hangupButton).forEach { button ->
+            listOf(micButton, cameraButton, flipButton, screenButton, moreButton, hangupButton).forEach { button ->
                 addView(button, LinearLayout.LayoutParams(dp(56), dp(56)).apply {
                     marginStart = dp(6)
                     marginEnd = dp(6)
@@ -206,13 +182,50 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         return root
     }
 
+    private fun observeParticipants() {
+        lifecycleScope.launch {
+            callEngine.participants.collect { participants ->
+                lastParticipants = participants
+                renderTiles(participants)
+            }
+        }
+    }
+
+    /**
+     * Реагирует на сырой стрим [CallEventsService.events] по своему [callId]: завершение/отклонение
+     * (в т.ч. инициированное собеседником или со второго устройства) закрывает экран. Работает и для
+     * звонящего, у которого [CallEventsService.currentCall] не инициализируется.
+     */
+    private fun observeCallEvents() {
+        val app = application as BarkFluffApplication
+        lifecycleScope.launch {
+            app.callEventsService.events.collect { event ->
+                val endedId = when (event.eventCase) {
+                    CallsApiOuterClass.CallEvent.EventCase.ENDED -> event.ended.callId
+                    CallsApiOuterClass.CallEvent.EventCase.REJECTED -> event.rejected.callId
+                    else -> null
+                }
+                if (endedId == callId) closeOnRemoteEnd()
+            }
+        }
+    }
+
+    private fun closeOnRemoteEnd() {
+        if (callEnded) return
+        callEnded = true
+        stopCallTimer()
+        callEngine.disconnect()
+        CallForegroundService.stop(this)
+        NotificationHelper.dismissCall(this, callId)
+        statusText.text = "Звонок завершён"
+        finish()
+    }
+
     private fun connectToLiveKit() {
         lifecycleScope.launch {
             callEngine.connect(
                 livekitUrl = livekitUrl,
                 accessToken = accessToken,
-                remoteRenderer = remoteRenderer,
-                localRenderer = localRenderer,
                 cameraOnStart = isVideoCall()
             ).onFailure {
                 statusText.text = "Не удалось подключиться к звонку"
@@ -221,15 +234,130 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
     }
 
+    // region Раскладка плиток
+
+    private fun renderTiles(participants: List<CallParticipant>) {
+        val screenTile = participants.firstOrNull { it.screenTrack != null }?.let {
+            CallTile("scr:${it.identity}", it, it.screenTrack, isScreen = true)
+        }
+        val cameraTiles = participants.map { CallTile("cam:${it.identity}", it, it.cameraTrack, isScreen = false) }
+
+        val focused = focusedKey
+        val mode: String
+        val bigTiles: List<CallTile>
+        val stripTiles: List<CallTile>
+        when {
+            focused != null && screenTile?.key == focused -> {
+                mode = "focus"; bigTiles = listOf(screenTile); stripTiles = emptyList()
+            }
+            focused != null && cameraTiles.any { it.key == focused } -> {
+                mode = "focus"; bigTiles = listOf(cameraTiles.first { it.key == focused }); stripTiles = emptyList()
+            }
+            screenTile != null -> {
+                mode = "screen"; bigTiles = listOf(screenTile); stripTiles = cameraTiles
+            }
+            else -> {
+                mode = "grid"; bigTiles = cameraTiles; stripTiles = emptyList()
+            }
+        }
+
+        val visible = bigTiles + stripTiles
+        val signature = "$mode|" + visible.joinToString(",") { it.key }
+        if (signature != lastLayoutSignature) {
+            rebuildLayout(mode, bigTiles, stripTiles)
+            lastLayoutSignature = signature
+        }
+        visible.forEach { tileViews[it.key]?.bind(it, callEngine) }
+
+        val visibleKeys = visible.map { it.key }.toSet()
+        (tileViews.keys - visibleKeys).forEach { tileViews.remove(it)?.release() }
+
+        updateControlStates(participants)
+        renderCallDuration()
+    }
+
+    private fun rebuildLayout(mode: String, bigTiles: List<CallTile>, stripTiles: List<CallTile>) {
+        videoArea.removeAllViews()
+        when (mode) {
+            "focus" -> videoArea.addView(tileFor(bigTiles.first()), weightParams(1f))
+            "screen" -> {
+                videoArea.addView(tileFor(bigTiles.first()), weightParams(3f))
+                if (stripTiles.isNotEmpty()) {
+                    val strip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                    stripTiles.forEach { strip.addView(tileFor(it), rowItemParams()) }
+                    videoArea.addView(strip, weightParams(1f))
+                }
+            }
+            else -> addGrid(bigTiles)
+        }
+    }
+
+    private fun addGrid(tiles: List<CallTile>) {
+        if (tiles.isEmpty()) return
+        val cols = if (tiles.size <= 1) 1 else 2
+        var i = 0
+        while (i < tiles.size) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            var c = 0
+            while (c < cols && i < tiles.size) {
+                row.addView(tileFor(tiles[i]), rowItemParams())
+                i++; c++
+            }
+            videoArea.addView(row, weightParams(1f))
+        }
+    }
+
+    private fun tileFor(tile: CallTile): CallTileView {
+        val view = tileViews.getOrPut(tile.key) {
+            CallTileView(this).also { v -> v.setOnClickListener { toggleFocus(tile.key) } }
+        }
+        (view.parent as? ViewGroup)?.removeView(view)
+        return view
+    }
+
+    private fun toggleFocus(key: String) {
+        focusedKey = if (focusedKey == key) null else key
+        renderTiles(lastParticipants)
+    }
+
+    private fun weightParams(weight: Float) =
+        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, weight)
+
+    private fun rowItemParams() =
+        LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
+            setMargins(dp(2), dp(2), dp(2), dp(2))
+        }
+
+    private fun updateControlStates(participants: List<CallParticipant>) {
+        val local = participants.firstOrNull { it.isLocal }
+        val micOn = local?.micEnabled ?: true
+        val cameraOn = local?.cameraEnabled ?: false
+        val screenOn = local?.screenTrack != null
+
+        micButton.setIconResource(if (micOn) R.drawable.ic_mic else R.drawable.ic_mic_off)
+        micButton.contentDescription = if (micOn) "Выключить микрофон" else "Включить микрофон"
+
+        cameraButton.isSelected = cameraOn
+        cameraButton.contentDescription = if (cameraOn) "Выключить камеру" else "Включить камеру"
+
+        flipButton.visibility = if (cameraOn) View.VISIBLE else View.GONE
+
+        screenButton.isSelected = screenOn
+        screenButton.contentDescription = if (screenOn) "Выключить демонстрацию экрана" else "Демонстрация экрана"
+
+        if (cameraOn != lastForegroundCamera || screenOn != lastForegroundScreen) {
+            lastForegroundCamera = cameraOn
+            lastForegroundScreen = screenOn
+            updateCallForegroundService(cameraOn, screenOn)
+        }
+    }
+
+    // endregion
+
     private fun toggleMicrophone() {
         lifecycleScope.launch {
-            val enabled = !micEnabled
+            val enabled = !(lastParticipants.firstOrNull { it.isLocal }?.micEnabled ?: true)
             callEngine.setMicrophoneEnabled(enabled)
-                .onSuccess {
-                    micEnabled = enabled
-                    micButton.setIconResource(if (enabled) R.drawable.ic_mic else R.drawable.ic_mic_off)
-                    micButton.contentDescription = if (enabled) "Выключить микрофон" else "Включить микрофон"
-                }
         }
     }
 
@@ -241,55 +369,69 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
 
         lifecycleScope.launch {
-            val enabled = !cameraEnabled
+            val enabled = !(lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled ?: false)
             callEngine.setCameraEnabled(enabled)
-                .onSuccess {
-                    cameraEnabled = enabled
-                    cameraButton.isSelected = enabled
-                    cameraButton.contentDescription = if (enabled) "Выключить камеру" else "Включить камеру"
-                    updateCallForegroundService()
-                }.onFailure {
-                    Toast.makeText(this@CallActivity, "Не удалось переключить камеру", Toast.LENGTH_SHORT).show()
-                }
+                .onFailure { Toast.makeText(this@CallActivity, "Не удалось переключить камеру", Toast.LENGTH_SHORT).show() }
         }
     }
 
-    private fun showMediaPicker() {
+    private fun flipCamera() {
+        callEngine.flipCamera()
+            .onFailure { Toast.makeText(this, "Не удалось перевернуть камеру", Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun startScreenShare() {
+        if (callEngine.isLocalScreenShareEnabled()) {
+            lifecycleScope.launch {
+                callEngine.setScreenShareEnabled(false)
+                    .onFailure { Toast.makeText(this@CallActivity, "Не удалось выключить демонстрацию", Toast.LENGTH_SHORT).show() }
+            }
+            return
+        }
+        val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        screenShareLauncher.launch(manager.createScreenCaptureIntent())
+    }
+
+    private fun showMoreSheet() {
         val dialog = BottomSheetDialog(this)
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), dp(20))
-            addView(TextView(this@CallActivity).apply {
-                text = "Что показать в звонке"
-                setTextAppearance(android.R.style.TextAppearance_Material_Large)
-                setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurface))
-                setPadding(0, dp(8), 0, dp(12))
+        val content = sheetContainer("Дополнительно").apply {
+            addView(sheetButton("Маршрут звука", R.drawable.ic_tune) {
+                dialog.dismiss(); showAudioRouteSheet()
             })
-            addView(sheetButton("Камера", R.drawable.ic_video) {
-                dialog.dismiss()
-                toggleCamera()
+            addView(sheetButton("Качество голоса", R.drawable.ic_tune) {
+                dialog.dismiss(); showAudioQualitySheet()
             })
-            addView(sheetButton("Экран", R.drawable.ic_screen_share) {
-                dialog.dismiss()
-                startScreenShare()
+            addView(sheetButton("Качество видео собеседника", R.drawable.ic_tune) {
+                dialog.dismiss(); showVideoQualitySheet()
             })
         }
         dialog.setContentView(content)
         dialog.show()
     }
 
-    private fun showQualitySheet() {
+    private fun showAudioRouteSheet() {
+        val devices = callEngine.availableAudioDevices()
+        if (devices.isEmpty()) {
+            Toast.makeText(this, "Нет доступных аудиоустройств", Toast.LENGTH_SHORT).show()
+            return
+        }
         val dialog = BottomSheetDialog(this)
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), dp(20))
-            addView(TextView(this@CallActivity).apply {
-                text = "Качество голоса"
-                setTextAppearance(android.R.style.TextAppearance_Material_Large)
-                setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurface))
-                setPadding(0, dp(8), 0, dp(12))
-            })
-            qualityOptions().forEach { (title, quality) ->
+        val content = sheetContainer("Маршрут звука").apply {
+            devices.forEach { device ->
+                addView(sheetButton(audioDeviceLabel(device), R.drawable.ic_tune) {
+                    dialog.dismiss()
+                    callEngine.selectAudioDevice(device)
+                })
+            }
+        }
+        dialog.setContentView(content)
+        dialog.show()
+    }
+
+    private fun showAudioQualitySheet() {
+        val dialog = BottomSheetDialog(this)
+        val content = sheetContainer("Качество голоса").apply {
+            audioQualityOptions().forEach { (title, quality) ->
                 addView(sheetButton(title, R.drawable.ic_tune) {
                     dialog.dismiss()
                     setAudioQuality(quality)
@@ -300,16 +442,18 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         dialog.show()
     }
 
-    private fun startScreenShare() {
-        if (screenShareEnabled) {
-            lifecycleScope.launch {
-                callEngine.setScreenShareEnabled(false)
-                    .onFailure { Toast.makeText(this@CallActivity, "Не удалось выключить демонстрацию", Toast.LENGTH_SHORT).show() }
+    private fun showVideoQualitySheet() {
+        val dialog = BottomSheetDialog(this)
+        val content = sheetContainer("Качество видео собеседника").apply {
+            videoQualityOptions().forEach { (title, quality) ->
+                addView(sheetButton(title, R.drawable.ic_tune) {
+                    dialog.dismiss()
+                    setRemoteVideoQuality(quality)
+                })
             }
-            return
         }
-        val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        screenShareLauncher.launch(manager.createScreenCaptureIntent())
+        dialog.setContentView(content)
+        dialog.show()
     }
 
     private fun setAudioQuality(quality: CallsApiOuterClass.CallAudioQuality) {
@@ -321,7 +465,19 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
     }
 
+    private fun setRemoteVideoQuality(quality: VideoQuality) {
+        val remotes = lastParticipants.filterNot { it.isLocal }
+        if (remotes.isEmpty()) {
+            Toast.makeText(this, "Нет удалённых участников", Toast.LENGTH_SHORT).show()
+            return
+        }
+        remotes.forEach { callEngine.setRemoteVideoQuality(it.identity, quality) }
+        Toast.makeText(this, "Качество видео обновлено", Toast.LENGTH_SHORT).show()
+    }
+
     private fun endCallAndClose() {
+        if (callEnded) return
+        callEnded = true
         lifecycleScope.launch {
             callEngine.disconnect()
             CallForegroundService.stop(this@CallActivity)
@@ -337,8 +493,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         stopCallTimer()
         callEngine.disconnect()
         CallForegroundService.stop(this)
-        runCatching { remoteRenderer.release() }
-        runCatching { localRenderer.release() }
+        tileViews.values.forEach { it.release() }
+        tileViews.clear()
         super.onDestroy()
     }
 
@@ -348,47 +504,15 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     override fun onConnected(cameraEnabled: Boolean) {
         startCallTimer()
-        this.cameraEnabled = cameraEnabled
-        cameraButton.isSelected = cameraEnabled
-        cameraButton.contentDescription = if (cameraEnabled) "Выключить камеру" else "Включить камеру"
-        updateCallForegroundService()
-    }
-
-    override fun onRemoteVideoAttached() {
-        remoteRenderer.visibility = View.VISIBLE
-        waitingText.visibility = View.GONE
-        renderCallDuration()
-    }
-
-    override fun onRemoteVideoDetached() {
-        remoteRenderer.visibility = View.INVISIBLE
-        waitingText.visibility = View.VISIBLE
-    }
-
-    override fun onLocalPreviewChanged(visible: Boolean) {
-        localRenderer.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
     override fun onReconnecting() {
-        stopCallTimer()
         statusText.text = "Восстанавливаем соединение..."
     }
 
     override fun onDisconnected() {
         stopCallTimer()
         statusText.text = "Звонок завершён"
-    }
-
-    override fun onScreenShareChanged(enabled: Boolean) {
-        screenShareEnabled = enabled
-        screenButton.isSelected = enabled
-        screenButton.contentDescription = if (enabled) "Выключить демонстрацию экрана" else "Демонстрация экрана"
-        if (enabled) {
-            statusText.text = "Демонстрация экрана включена"
-        } else {
-            renderCallDuration()
-        }
-        updateCallForegroundService()
     }
 
     override fun onError(message: String) {
@@ -430,7 +554,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         return "$minutes:$seconds"
     }
 
-    private fun updateCallForegroundService() {
+    private fun updateCallForegroundService(cameraEnabled: Boolean, screenShareEnabled: Boolean) {
         CallForegroundService.start(
             context = this,
             callId = callId,
@@ -485,6 +609,18 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             setOnClickListener { onClick() }
         }
 
+    private fun sheetContainer(title: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), dp(20))
+            addView(TextView(this@CallActivity).apply {
+                text = title
+                setTextAppearance(android.R.style.TextAppearance_Material_Large)
+                setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurface))
+                setPadding(0, dp(8), 0, dp(12))
+            })
+        }
+
     private fun sheetButton(text: String, icon: Int, onClick: () -> Unit): MaterialButton =
         MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             this.text = text
@@ -495,11 +631,24 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             setOnClickListener { onClick() }
         }
 
-    private fun qualityOptions(): List<Pair<String, CallsApiOuterClass.CallAudioQuality>> = listOf(
+    private fun audioDeviceLabel(device: AudioDevice): String = when (device) {
+        is AudioDevice.Speakerphone -> "Динамик"
+        is AudioDevice.Earpiece -> "Телефон"
+        is AudioDevice.WiredHeadset -> "Проводная гарнитура"
+        is AudioDevice.BluetoothHeadset -> device.name.ifBlank { "Bluetooth-гарнитура" }
+    }
+
+    private fun audioQualityOptions(): List<Pair<String, CallsApiOuterClass.CallAudioQuality>> = listOf(
         "Авто" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_AUTO,
         "Низкое" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_LOW,
         "Среднее" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_MEDIUM,
         "Высокое" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_HIGH
+    )
+
+    private fun videoQualityOptions(): List<Pair<String, VideoQuality>> = listOf(
+        "Низкое" to VideoQuality.LOW,
+        "Среднее" to VideoQuality.MEDIUM,
+        "Высокое" to VideoQuality.HIGH
     )
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

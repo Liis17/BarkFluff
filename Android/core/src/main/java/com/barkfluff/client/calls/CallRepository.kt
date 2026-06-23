@@ -94,6 +94,32 @@ class CallRepository(
         return requireClient().subscribeCallEvents(request)
     }
 
+    suspend fun listCallHistory(
+        filter: CallsApiOuterClass.CallHistoryFilter,
+        limit: Int = 50,
+        beforeStartedAt: com.google.protobuf.Timestamp? = null
+    ): Result<CallsApiOuterClass.ListCallHistoryResponse> = withContext(Dispatchers.IO) {
+        runCatching {
+            val builder = CallsApiOuterClass.ListCallHistoryRequest.newBuilder()
+                .setFilter(filter)
+                .setLimit(limit)
+            if (beforeStartedAt != null) {
+                builder.beforeStartedAt = beforeStartedAt
+            }
+            requireClient().listCallHistory(builder.build())
+        }
+    }
+
+    suspend fun getActiveCalls(chatIds: List<String>): Result<CallsApiOuterClass.GetActiveCallsResponse> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val request = CallsApiOuterClass.GetActiveCallsRequest.newBuilder()
+                    .addAllChatIds(chatIds)
+                    .build()
+                requireClient().getActiveCalls(request)
+            }
+        }
+
     private fun requireClient() =
         grpcManager.callsClient ?: error("Calls клиент не создан")
 }

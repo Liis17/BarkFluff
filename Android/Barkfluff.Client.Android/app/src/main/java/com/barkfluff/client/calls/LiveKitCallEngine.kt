@@ -2,17 +2,29 @@ package com.barkfluff.client.calls
 
 import android.content.Context
 import android.content.Intent
+import com.twilio.audioswitch.AudioDevice
 import io.livekit.android.LiveKit
 import io.livekit.android.events.RoomEvent
 import io.livekit.android.renderer.SurfaceViewRenderer
 import io.livekit.android.room.Room
+import io.livekit.android.room.participant.Participant
+import io.livekit.android.room.track.LocalVideoTrack
+import io.livekit.android.room.track.RemoteTrackPublication
+import io.livekit.android.room.track.Track
+import io.livekit.android.room.track.VideoQuality
 import io.livekit.android.room.track.VideoTrack
 import io.livekit.android.room.track.screencapture.ScreenCaptureParams
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Движок звонка поверх LiveKit. Отдаёт UI-модель участников ([participants]) и набор управляющих
+ * команд; renderer'ы движок не хранит — UI создаёт их per-плитка и привязывает к трекам из модели.
+ */
 class LiveKitCallEngine(
     private val context: Context,
     private val scope: CoroutineScope,
@@ -21,21 +33,16 @@ class LiveKitCallEngine(
     interface Listener {
         fun onConnecting()
         fun onConnected(cameraEnabled: Boolean)
-        fun onRemoteVideoAttached()
-        fun onRemoteVideoDetached()
-        fun onLocalPreviewChanged(visible: Boolean)
         fun onReconnecting()
         fun onDisconnected()
-        fun onScreenShareChanged(enabled: Boolean)
         fun onError(message: String)
     }
 
     private var room: Room? = null
     private var eventsJob: Job? = null
-    private var remoteRenderer: SurfaceViewRenderer? = null
-    private var localRenderer: SurfaceViewRenderer? = null
-    private var remoteVideoTrack: VideoTrack? = null
-    private var localVideoTrack: VideoTrack? = null
+
+    private val _participants = MutableStateFlow<List<CallParticipant>>(emptyList())
+    val participants: StateFlow<List<CallParticipant>> = _participants.asStateFlow()
 
     var isConnected: Boolean = false
         private set
@@ -43,33 +50,41 @@ class LiveKitCallEngine(
     suspend fun connect(
         livekitUrl: String,
         accessToken: String,
-        remoteRenderer: SurfaceViewRenderer,
-        localRenderer: SurfaceViewRenderer,
         cameraOnStart: Boolean
     ): Result<Unit> = runCatching {
         if (isConnected) return@runCatching
 
         listener.onConnecting()
-        this.remoteRenderer = remoteRenderer
-        this.localRenderer = localRenderer
 
         val newRoom = LiveKit.create(context.applicationContext)
         room = newRoom
-        newRoom.initVideoRenderer(remoteRenderer)
-        newRoom.initVideoRenderer(localRenderer)
 
         eventsJob = scope.launch {
             newRoom.events.events.collect { event ->
                 when (event) {
-                    is RoomEvent.TrackSubscribed -> attachRemoteVideo(event.track)
-                    is RoomEvent.TrackUnsubscribed -> detachRemoteVideo(event.track)
                     is RoomEvent.Reconnecting -> listener.onReconnecting()
-                    is RoomEvent.Reconnected -> listener.onConnected(localVideoTrack != null)
+                    is RoomEvent.Reconnected -> {
+                        rebuildParticipants()
+                        listener.onConnected(isLocalCameraEnabled())
+                    }
                     is RoomEvent.Disconnected -> {
                         isConnected = false
+                        _participants.value = emptyList()
                         listener.onDisconnected()
                     }
                     is RoomEvent.FailedToConnect -> listener.onError("Не удалось подключиться к звонку")
+                    is RoomEvent.ParticipantConnected,
+                    is RoomEvent.ParticipantDisconnected,
+                    is RoomEvent.ParticipantNameChanged,
+                    is RoomEvent.ActiveSpeakersChanged,
+                    is RoomEvent.ConnectionQualityChanged,
+                    is RoomEvent.TrackPublished,
+                    is RoomEvent.TrackUnpublished,
+                    is RoomEvent.TrackSubscribed,
+                    is RoomEvent.TrackUnsubscribed,
+                    is RoomEvent.LocalTrackSubscribed,
+                    is RoomEvent.TrackMuted,
+                    is RoomEvent.TrackUnmuted -> rebuildParticipants()
                     else -> Unit
                 }
             }
@@ -79,33 +94,25 @@ class LiveKitCallEngine(
         isConnected = true
         newRoom.localParticipant.setMicrophoneEnabled(true)
         if (cameraOnStart) {
-            setCameraEnabled(true).getOrThrow()
+            newRoom.localParticipant.setCameraEnabled(true)
         }
+        rebuildParticipants()
         listener.onConnected(cameraOnStart)
     }
 
+    /** Инициализирует renderer общим EGL-контекстом Room (обязательно перед привязкой трека). */
+    fun initRenderer(view: SurfaceViewRenderer) {
+        room?.initVideoRenderer(view)
+    }
+
     suspend fun setMicrophoneEnabled(enabled: Boolean): Result<Unit> = runCatching {
-        val currentRoom = requireRoom()
-        currentRoom.localParticipant.setMicrophoneEnabled(enabled)
+        requireRoom().localParticipant.setMicrophoneEnabled(enabled)
+        rebuildParticipants()
     }
 
     suspend fun setCameraEnabled(enabled: Boolean): Result<Unit> = runCatching {
-        val currentRoom = requireRoom()
-        currentRoom.localParticipant.setCameraEnabled(enabled)
-        val renderer = localRenderer
-        if (enabled && renderer != null) {
-            val track = currentRoom.localParticipant.getOrCreateDefaultVideoTrack()
-            localVideoTrack = track
-            track.addRenderer(renderer)
-            listener.onLocalPreviewChanged(true)
-        } else {
-            val track = localVideoTrack
-            if (track != null && renderer != null) {
-                track.removeRenderer(renderer)
-            }
-            localVideoTrack = null
-            listener.onLocalPreviewChanged(false)
-        }
+        requireRoom().localParticipant.setCameraEnabled(enabled)
+        rebuildParticipants()
     }
 
     suspend fun setScreenShareEnabled(enabled: Boolean, data: Intent? = null): Result<Unit> = runCatching {
@@ -116,45 +123,79 @@ class LiveKitCallEngine(
         } else {
             currentRoom.localParticipant.setScreenShareEnabled(false)
         }
-        listener.onScreenShareChanged(enabled)
+        rebuildParticipants()
+    }
+
+    /** Переключает фронтальную/тыльную камеру (если активна камера и доступно >1 устройства). */
+    fun flipCamera(): Result<Unit> = runCatching {
+        val track = requireRoom().localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? LocalVideoTrack
+            ?: error("Камера не активна")
+        track.switchCamera()
+    }
+
+    fun isLocalScreenShareEnabled(): Boolean =
+        room?.localParticipant?.getTrackPublication(Track.Source.SCREEN_SHARE)?.track != null
+
+    fun availableAudioDevices(): List<AudioDevice> =
+        room?.audioSwitchHandler?.availableAudioDevices ?: emptyList()
+
+    fun selectedAudioDevice(): AudioDevice? = room?.audioSwitchHandler?.selectedAudioDevice
+
+    fun selectAudioDevice(device: AudioDevice) {
+        room?.audioSwitchHandler?.selectDevice(device)
+    }
+
+    /** Меняет качество подписки на видео указанного удалённого участника. */
+    fun setRemoteVideoQuality(identity: String, quality: VideoQuality) {
+        val currentRoom = room ?: return
+        val participant = currentRoom.remoteParticipants.values
+            .firstOrNull { it.identity?.value == identity } ?: return
+        (participant.getTrackPublication(Track.Source.CAMERA) as? RemoteTrackPublication)
+            ?.setVideoQuality(quality)
     }
 
     fun disconnect() {
         eventsJob?.cancel()
         eventsJob = null
-        val renderer = remoteRenderer
-        val track = remoteVideoTrack
-        if (track != null && renderer != null) {
-            runCatching { track.removeRenderer(renderer) }
-        }
-        val local = localVideoTrack
-        val localView = localRenderer
-        if (local != null && localView != null) {
-            runCatching { local.removeRenderer(localView) }
-        }
-        remoteVideoTrack = null
-        localVideoTrack = null
+        _participants.value = emptyList()
         runCatching { room?.disconnect() }
         runCatching { room?.release() }
         room = null
         isConnected = false
     }
 
-    private fun attachRemoteVideo(track: io.livekit.android.room.track.Track) {
-        if (track !is VideoTrack) return
-        val renderer = remoteRenderer ?: return
-        remoteVideoTrack?.removeRenderer(renderer)
-        remoteVideoTrack = track
-        track.addRenderer(renderer)
-        listener.onRemoteVideoAttached()
+    private fun isLocalCameraEnabled(): Boolean =
+        room?.localParticipant?.getTrackPublication(Track.Source.CAMERA)?.let {
+            it.track != null && !it.muted
+        } ?: false
+
+    private fun rebuildParticipants() {
+        val currentRoom = room ?: run {
+            _participants.value = emptyList()
+            return
+        }
+        _participants.value = buildList {
+            add(toModel(currentRoom.localParticipant, isLocal = true))
+            currentRoom.remoteParticipants.values.forEach { add(toModel(it, isLocal = false)) }
+        }
     }
 
-    private fun detachRemoteVideo(track: io.livekit.android.room.track.Track) {
-        if (track != remoteVideoTrack) return
-        val renderer = remoteRenderer ?: return
-        remoteVideoTrack?.removeRenderer(renderer)
-        remoteVideoTrack = null
-        listener.onRemoteVideoDetached()
+    private fun toModel(participant: Participant, isLocal: Boolean): CallParticipant {
+        val cameraPub = participant.getTrackPublication(Track.Source.CAMERA)
+        val screenPub = participant.getTrackPublication(Track.Source.SCREEN_SHARE)
+        val micPub = participant.getTrackPublication(Track.Source.MICROPHONE)
+        val identity = participant.identity?.value ?: participant.sid.value
+        return CallParticipant(
+            identity = identity,
+            name = participant.name?.takeIf { it.isNotBlank() } ?: identity,
+            isLocal = isLocal,
+            cameraTrack = cameraPub?.track as? VideoTrack,
+            screenTrack = screenPub?.track as? VideoTrack,
+            micEnabled = micPub?.let { !it.muted } ?: false,
+            cameraEnabled = cameraPub?.let { it.track != null && !it.muted } ?: false,
+            isSpeaking = participant.isSpeaking,
+            connectionQuality = participant.connectionQuality
+        )
     }
 
     private fun requireRoom(): Room = room ?: error("LiveKit room is not connected")

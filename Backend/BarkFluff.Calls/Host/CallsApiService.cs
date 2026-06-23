@@ -48,6 +48,12 @@ public class CallsApiService : CallsApi.CallsApiBase
     public override Task<SetCallAudioQualityResponse> SetCallAudioQuality(SetCallAudioQualityRequest request, ServerCallContext context)
         => _calls.SetAudioQualityAsync(request, context.CancellationToken);
 
+    public override Task<ListCallHistoryResponse> ListCallHistory(ListCallHistoryRequest request, ServerCallContext context)
+        => _calls.ListCallHistoryAsync(request, context.CancellationToken);
+
+    public override Task<GetActiveCallsResponse> GetActiveCalls(GetActiveCallsRequest request, ServerCallContext context)
+        => _calls.GetActiveCallsAsync(request, context.CancellationToken);
+
     public override async Task SubscribeCallEvents(
         SubscribeCallEventsRequest request,
         IServerStreamWriter<CallEvent> responseStream,

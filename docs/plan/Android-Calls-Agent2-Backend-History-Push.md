@@ -32,6 +32,16 @@
 
 ---
 
+## Статус реализации (2026-06-24)
+
+- ✅ **Этап 2** — `IncomingCallPushEvent` / `CallDismissPushEvent` (`Shared/BarkFluff.Shared.Queue/Messages/`), публикация из `CallsService` (initiate + accept/reject/end/timeout/room_finished).
+- ✅ **Этап 3** — `IncomingCallPushConsumer` / `CallDismissPushConsumer` + `FirebaseService.SendIncomingCallBatchAsync`/`SendCallDismissBatchAsync`, регистрация в `Program.cs` (`incoming-call-push-handler`, `call-dismiss-push-handler`).
+- ✅ **Этап 4** — `ListCallHistory` (фильтр ALL/MISSED, курсор `before_started_at`+limit, has_more) и `GetActiveCalls(chat_ids)` в `calls_api.proto` (shared + Android core) + хендлеры в `CallsService`/`CallsApiService`. ⚠️ Групповая история v1 ограничена звонками, инициированными пользователем (TODO: lookup чатов пользователя).
+- ✅ **Этап 5** — `GetActiveCalls` реализован (контракт для join-баннера готов; participant_user_ids пуст в v1).
+- ✅ **Этап 6** — `CallRepository.listCallHistory/getActiveCalls`, `CallsFragment` + `CallHistoryAdapter` (`item_call_history.xml`): список истории, фильтр, tap→чат, quick-call. `:app-v1:assembleDebug` зелёный.
+- ✅ **Этап 7** — Obsidian обновлён ([[Calls]], [[CloudMessaging]], [[Android]]). Интеграционный QA на устройстве — за пользователем.
+- ⚠️ Mac/iOS proto не синхронизированы (вне scope Агента 2).
+
 ## Этапы работ
 
 ### Этап 1. Аудит backend Calls и CloudMessaging

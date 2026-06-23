@@ -344,7 +344,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 **Тип:** AppCompatActivity
 
-Редактирование профиля: имя, фамилия, username, bio, email, аватар (uCrop). Сохранение через Users API.
+Редактирование профиля: имя, фамилия, username, bio, email, аватар (uCrop). Сохранение через Users API. При смене username `checkUsername()` возвращает `true`, если имя уже занято; `ChangeUsername` вызывается только при `false`.
 
 **Связи:** `GrpcManager`, `GlobalParam`, `AvatarLoader`
 
