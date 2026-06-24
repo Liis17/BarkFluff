@@ -4,9 +4,10 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
-import kotlin.math.sin
+import kotlin.random.Random
 
 /**
  * Анимированный индикатор голоса — несколько вертикальных палочек, «пляшущих» как эквалайзер.
@@ -28,6 +29,10 @@ class WaveformView @JvmOverloads constructor(
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val rect = RectF()
+    private val random = Random(System.nanoTime())
+    private val currentFactors = FloatArray(barCount) { randomFactor() }
+    private val targetFactors = FloatArray(barCount) { randomFactor() }
+    private val nextTargetAt = LongArray(barCount)
 
     var barColor: Int = 0xFF43D67C.toInt()
         set(value) { field = value; paint.color = value; invalidate() }
@@ -38,7 +43,10 @@ class WaveformView @JvmOverloads constructor(
         if (active == value) return
         active = value
         visibility = if (value) VISIBLE else GONE
-        if (value) postInvalidateOnAnimation()
+        if (value) {
+            resetBars()
+            postInvalidateOnAnimation()
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -52,18 +60,41 @@ class WaveformView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         if (!active) return
-        val t = System.currentTimeMillis() % 100000L / 1000.0
+
+        val now = SystemClock.uptimeMillis()
         val centerY = height / 2f
         var x = paddingLeft.toFloat()
         for (i in 0 until barCount) {
-            // Каждая палочка со своей фазой → волнообразное движение
-            val phase = i * 0.5
-            val factor = (sin(t * 6.0 + phase) * 0.5 + 0.5).toFloat()
-            val barHeight = minBar + (maxBar - minBar) * factor
+            if (now >= nextTargetAt[i]) {
+                targetFactors[i] = randomFactor()
+                nextTargetAt[i] = now + random.nextLong(MIN_TARGET_DELAY_MS, MAX_TARGET_DELAY_MS)
+            }
+
+            currentFactors[i] += (targetFactors[i] - currentFactors[i]) * BAR_EASING
+            val barHeight = minBar + (maxBar - minBar) * currentFactors[i]
             rect.set(x, centerY - barHeight / 2f, x + barWidth, centerY + barHeight / 2f)
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
             x += barWidth + barGap
         }
         postInvalidateOnAnimation()
+    }
+
+    private fun resetBars() {
+        val now = SystemClock.uptimeMillis()
+        for (i in 0 until barCount) {
+            currentFactors[i] = randomFactor()
+            targetFactors[i] = randomFactor()
+            nextTargetAt[i] = now + random.nextLong(MIN_TARGET_DELAY_MS, MAX_TARGET_DELAY_MS)
+        }
+    }
+
+    private fun randomFactor(): Float = random.nextFloat() * (MAX_RANDOM_FACTOR - MIN_RANDOM_FACTOR) + MIN_RANDOM_FACTOR
+
+    companion object {
+        private const val BAR_EASING = 0.32f
+        private const val MIN_RANDOM_FACTOR = 0.15f
+        private const val MAX_RANDOM_FACTOR = 1f
+        private const val MIN_TARGET_DELAY_MS = 90L
+        private const val MAX_TARGET_DELAY_MS = 260L
     }
 }
