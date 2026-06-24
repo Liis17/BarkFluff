@@ -12,6 +12,8 @@ import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.calls.IncomingCallActivity
 import com.barkfluff.client.calls.CallRepository
+import com.barkfluff.client.calls.CallTelecomManager
+import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
@@ -74,6 +76,12 @@ class BarkFluffApplication : Application() {
     @Volatile
     private var presentedIncomingCallId: String? = null
 
+    fun markCallPresented(callId: String) {
+        if (callId.isNotBlank() && presentedIncomingCallId == null) {
+            presentedIncomingCallId = callId
+        }
+    }
+
     /**
      * Флаг: приложение было свёрнуто и снова развёрнуто.
      * Устанавливается в true при уходе в фон, сбрасывается компонентами при обработке.
@@ -97,6 +105,7 @@ class BarkFluffApplication : Application() {
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
         NotificationHelper.createChannels(this)
+        CallTelecomManager.registerPhoneAccount(this)
         grpcManager = GrpcManager()
         realtimeService = RealtimeService(
             applicationContext,
@@ -169,7 +178,7 @@ class BarkFluffApplication : Application() {
     private fun handleCallEvent(event: CallsApiOuterClass.CallEvent) {
         when (event.eventCase) {
             CallsApiOuterClass.CallEvent.EventCase.INCOMING -> presentIncomingCall(event.incoming)
-            CallsApiOuterClass.CallEvent.EventCase.ACCEPTED -> dismissIncomingCall(event.accepted.callId)
+            CallsApiOuterClass.CallEvent.EventCase.ACCEPTED -> acceptIncomingCall(event.accepted.callId)
             CallsApiOuterClass.CallEvent.EventCase.REJECTED -> dismissIncomingCall(event.rejected.callId)
             CallsApiOuterClass.CallEvent.EventCase.ENDED -> dismissIncomingCall(event.ended.callId)
             else -> Unit
@@ -186,6 +195,16 @@ class BarkFluffApplication : Application() {
             "audio"
         }
         val displayName = if (event.chatId.isNotBlank()) "Групповой звонок" else "Входящий звонок"
+
+        CallTelecomManager.reportIncomingCall(
+            context = applicationContext,
+            callId = event.callId,
+            callerName = displayName,
+            mediaType = mediaType,
+            callerUserId = event.callerUserId,
+            chatId = event.chatId,
+            chatTitle = displayName
+        )
 
         NotificationHelper.showIncomingCallNotification(
             context = applicationContext,
@@ -212,6 +231,18 @@ class BarkFluffApplication : Application() {
         }
     }
 
+    private fun acceptIncomingCall(callId: String) {
+        if (callId.isBlank()) return
+        val localAnsweringOrActive = CallTelecomRegistry.isAnsweringOrActive(callId)
+        val hadIncomingUi = presentedIncomingCallId == callId
+        if (hadIncomingUi) {
+            presentedIncomingCallId = null
+        }
+        NotificationHelper.clearIncomingCallAlert(applicationContext, callId)
+        if (!localAnsweringOrActive && (hadIncomingUi || CallTelecomRegistry.hasConnection(callId))) {
+            dismissIncomingCall(callId)
+        }
+    }
     private fun dismissIncomingCall(callId: String) {
         if (callId.isBlank()) return
         if (presentedIncomingCallId == callId) {

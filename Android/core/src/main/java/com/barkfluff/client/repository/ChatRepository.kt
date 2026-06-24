@@ -330,13 +330,24 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val uploadFileName = fileName?.takeIf { it.isNotBlank() } ?: defaultFileName
             val uploadContentType = mimeType?.takeIf { it.isNotBlank() } ?: defaultContentType
 
+            val header = (
+                "--$boundary\r\n" +
+                "Content-Disposition: form-data; name=\"file\"; filename=\"$uploadFileName\"\r\n" +
+                "Content-Type: $uploadContentType\r\n" +
+                "\r\n"
+            ).toByteArray(Charsets.UTF_8)
+            val footer = "\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8)
+
+            // Фиксированная длина тела → HttpURLConnection пишет напрямую в сокет, без
+            // внутреннего буфера. Без этого out.write() мгновенно уходит в память и прогресс
+            // прыгает в 100% ещё до реальной отправки. С fixed-length onProgress отражает
+            // действительную скорость загрузки на сервер.
+            connection.setFixedLengthStreamingMode(
+                (header.size + jpegImageBytes.size + footer.size).toLong()
+            )
+
             connection.outputStream.use { out ->
-                val writer = out.bufferedWriter()
-                writer.write("--$boundary\r\n")
-                writer.write("Content-Disposition: form-data; name=\"file\"; filename=\"$uploadFileName\"\r\n")
-                writer.write("Content-Type: $uploadContentType\r\n")
-                writer.write("\r\n")
-                writer.flush()
+                out.write(header)
 
                 // Записываем тело чанками, чтобы отслеживать прогресс
                 val total = jpegImageBytes.size
@@ -347,6 +358,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                     while (written < total) {
                         val len = minOf(chunk, total - written)
                         out.write(jpegImageBytes, written, len)
+                        out.flush()
                         written += len
                         val pct = (written.toLong() * 100L / total.toLong()).toInt()
                         if (pct != lastReported) {
@@ -355,10 +367,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                         }
                     }
                 }
+                out.write(footer)
                 out.flush()
-                writer.write("\r\n")
-                writer.write("--$boundary--\r\n")
-                writer.flush()
             }
 
             val responseCode = connection.responseCode

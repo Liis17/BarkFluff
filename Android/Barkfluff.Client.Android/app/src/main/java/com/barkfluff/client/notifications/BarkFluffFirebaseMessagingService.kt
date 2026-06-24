@@ -5,6 +5,7 @@ import android.util.Log
 import coil.ImageLoader
 import coil.request.ImageRequest
 import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
@@ -182,14 +183,28 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
             ?: data["chat_title"]?.takeIf { it.isNotBlank() }
             ?: "BarkFluff"
 
+        val callerUserId = data["caller_user_id"]?.toLongOrNull() ?: 0L
+        val chatId = data["chat_id"].orEmpty()
+        val chatTitle = data["chat_title"].orEmpty()
+
+        CallTelecomManager.reportIncomingCall(
+            context = applicationContext,
+            callId = callId,
+            callerName = callerName,
+            mediaType = mediaType,
+            callerUserId = callerUserId,
+            chatId = chatId,
+            chatTitle = chatTitle
+        )
+
         NotificationHelper.showIncomingCallNotification(
             context = applicationContext,
             callId = callId,
             callerName = callerName,
             mediaType = mediaType,
-            callerUserId = data["caller_user_id"]?.toLongOrNull() ?: 0L,
-            chatId = data["chat_id"].orEmpty(),
-            chatTitle = data["chat_title"].orEmpty()
+            callerUserId = callerUserId,
+            chatId = chatId,
+            chatTitle = chatTitle
         )
         Log.d(TAG, "incoming_call notification shown: callId=$callId, mediaType=$mediaType")
     }

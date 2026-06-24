@@ -1020,6 +1020,17 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
+        // URI для локального превью оптимистичного сообщения (картинки/видео показываются сразу,
+        // ещё до загрузки на сервер). Документы/стикеры превью не имеют.
+        val previewUris: List<Uri?> = attachments.map { spec ->
+            when (spec) {
+                is com.barkfluff.client.send.AttachmentSpec.RawImage -> spec.uri
+                is com.barkfluff.client.send.AttachmentSpec.EditedImage -> spec.originalUri
+                is com.barkfluff.client.send.AttachmentSpec.Video -> spec.spec.uri
+                else -> null
+            }
+        }
+
         // Генерим localId на каждое будущее сообщение и добавляем оптимистичные items в чат —
         // пользователь сразу видит карточки с прогрессом аплоада (M3 Expressive inline feedback).
         val localIds: List<String> = if (result.sendSeparately) {
@@ -1041,7 +1052,8 @@ class ChatActivity : AppCompatActivity() {
                         readStatus = ReadStatus.SENDING,
                         type = MessageType.MESSAGE,
                         localId = localIds[idx],
-                        uploadProgress = 0
+                        uploadProgress = 0,
+                        localPreviewUris = listOfNotNull(previewUris.getOrNull(idx))
                     )
                 )
             }
@@ -1056,7 +1068,8 @@ class ChatActivity : AppCompatActivity() {
                     readStatus = ReadStatus.SENDING,
                     type = MessageType.MESSAGE,
                     localId = localIds[0],
-                    uploadProgress = 0
+                    uploadProgress = 0,
+                    localPreviewUris = previewUris.filterNotNull()
                 )
             )
         }
@@ -2318,7 +2331,7 @@ class ChatActivity : AppCompatActivity() {
                 if (event.chatId != chatId) return@collect
                 when (event.state) {
                     com.barkfluff.client.send.UploadState.PREPARING -> {
-                        updateOptimisticUploadProgress(event.localId, 0)
+                        updateOptimisticUploadProgress(event.localId, event.progress)
                     }
                     com.barkfluff.client.send.UploadState.UPLOADING -> {
                         updateOptimisticUploadProgress(event.localId, event.progress)
@@ -2536,28 +2549,34 @@ class ChatActivity : AppCompatActivity() {
             .filter { it.type != MessageType.FOOTER }
             .toMutableList()
 
-        // Проверка дубликата
-        if (currentList.any { (it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM) && it.messageId == msg.id }) {
-            return
-        }
-
-        // Realtime-эхо своего сообщения может прийти раньше, чем ответ sendMessage
-        // заменит оптимистичный item по localId. Чтобы не появился дубликат — «усыновляем»
-        // ещё не заменённый оптимистичный item (по контенту) вместо добавления второго.
-        // localId сохраняем: пришедший позже ответ sendMessage найдёт item и проставит SENT.
+        // Реконсиляция своего оптимистичного сообщения. Realtime-эхо и ответ sendMessage
+        // (который проставляет messageId через clearOptimisticUploadProgress) могут прийти в
+        // любом порядке — поэтому ищем плейсхолдер ДО проверки дубликата:
+        //  • уже усыновлённый по messageId (SENT пришёл раньше эха) — иначе дубль-чек ниже
+        //    отбросил бы эхо, и плейсхолдер остался бы с пустыми вложениями (пустой bubble);
+        //  • либо ещё SENDING с совпадающим контентом (эхо раньше ответа sendMessage).
+        // Для медиа вложения у плейсхолдера пустые (есть только localPreviewUris), поэтому
+        // размер вложений не сверяем, если идёт upload.
         if (msg.senderId == currentUserId) {
             val optIdx = currentList.indexOfFirst {
-                it.type == MessageType.MESSAGE &&
-                it.localId != null &&
-                it.readStatus == ReadStatus.SENDING &&
-                it.text == (msg.content?.text ?: "") &&
-                it.attachments.size == (msg.content?.attachmentsList?.size ?: 0)
+                it.type == MessageType.MESSAGE && it.localId != null && (
+                    it.messageId == msg.id ||
+                    (it.readStatus == ReadStatus.SENDING &&
+                     it.text == (msg.content?.text ?: "") &&
+                     (it.uploadProgress != null || it.localPreviewUris.isNotEmpty() ||
+                      it.attachments.size == (msg.content?.attachmentsList?.size ?: 0)))
+                )
             }
             if (optIdx >= 0) {
                 currentList[optIdx] = toMessageItem(msg).copy(localId = currentList[optIdx].localId)
                 messageAdapter.submitList(currentList)
                 return
             }
+        }
+
+        // Проверка дубликата
+        if (currentList.any { (it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM) && it.messageId == msg.id }) {
+            return
         }
 
         val messageItem = toMessageItem(msg)

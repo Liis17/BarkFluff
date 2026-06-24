@@ -3,6 +3,7 @@ package com.barkfluff.client.calls
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.telecom.DisconnectCause
 import android.util.Log
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.data.GlobalParam
@@ -33,9 +34,11 @@ class CallActionReceiver : BroadcastReceiver() {
                 }
                 if (action == CallExtras.ACTION_END_CALL) {
                     app.callRepository.end(callId)
+                    CallTelecomRegistry.disconnect(callId, DisconnectCause.LOCAL)
                     CallForegroundService.stop(context)
                 } else {
                     app.callRepository.reject(callId)
+                    CallTelecomRegistry.disconnect(callId, DisconnectCause.REJECTED)
                 }
                 NotificationHelper.dismissCall(context, callId)
             } catch (e: Exception) {

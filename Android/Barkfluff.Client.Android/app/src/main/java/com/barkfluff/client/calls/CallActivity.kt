@@ -4,24 +4,34 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.PorterDuff
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.twilio.audioswitch.AudioDevice
@@ -39,14 +49,24 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private lateinit var callTitle: String
     private lateinit var callEngine: LiveKitCallEngine
 
+    private lateinit var callRoot: FrameLayout
+    private lateinit var callContent: FrameLayout
+    private lateinit var selfMiniContainer: FrameLayout
+    private lateinit var topBar: LinearLayout
+    private lateinit var callTitleText: TextView
     private lateinit var statusText: TextView
-    private lateinit var videoArea: LinearLayout
-    private lateinit var micButton: MaterialButton
-    private lateinit var cameraButton: MaterialButton
-    private lateinit var flipButton: MaterialButton
-    private lateinit var screenButton: MaterialButton
+    private lateinit var statusDot: View
+    private lateinit var participantBadge: LinearLayout
+    private lateinit var participantCount: TextView
+    private lateinit var controlBar: LinearLayout
+
+    private lateinit var micButton: ImageView
+    private lateinit var cameraButton: ImageView
+    private lateinit var screenButton: ImageView
 
     private val tileViews = HashMap<String, CallTileView>()
+    private val infoCache = HashMap<String, TileInfo>()
+    private val resolving = HashSet<String>()
     private var lastLayoutSignature: String? = null
     private var lastParticipants: List<CallParticipant> = emptyList()
     private var focusedKey: String? = null
@@ -57,6 +77,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private var callTimerJob: Job? = null
     private var lastForegroundCamera = false
     private var lastForegroundScreen = false
+
+    private val speakingColor = 0xFF43D67C.toInt()
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -104,7 +126,10 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
 
         callEngine = LiveKitCallEngine(applicationContext, lifecycleScope, this)
-        setContentView(buildContent())
+        setContentView(R.layout.activity_call)
+        bindViews()
+        setupWindowInsets()
+        buildControls()
         observeParticipants()
         observeCallEvents()
 
@@ -116,71 +141,118 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         requestInitialPermissionsOrConnect()
     }
 
-    private fun buildContent(): View {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurface))
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+    private fun bindViews() {
+        callRoot = findViewById(R.id.callRoot)
+        callContent = findViewById(R.id.callContent)
+        selfMiniContainer = findViewById(R.id.selfMiniContainer)
+        topBar = findViewById(R.id.topBar)
+        callTitleText = findViewById(R.id.callTitleText)
+        statusText = findViewById(R.id.statusText)
+        statusDot = findViewById(R.id.statusDot)
+        participantBadge = findViewById(R.id.participantBadge)
+        participantCount = findViewById(R.id.participantCount)
+        controlBar = findViewById(R.id.controlBar)
+
+        // Фон экрана — мягкий градиент из системных surface-цветов (адаптируется под тему)
+        callRoot.background = android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                resolveColor(com.google.android.material.R.attr.colorSurface),
+                resolveColor(com.google.android.material.R.attr.colorSurfaceContainerLow)
             )
+        )
+
+        callTitleText.text = callTitle
+        statusText.text = if (isVideoCall()) "Подключение видеозвонка..." else "Подключение аудиозвонка..."
+        statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
+
+        // Закруглённое стеклянное мини-окно «Вы»
+        selfMiniContainer.clipToOutline = true
+        selfMiniContainer.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, dp(18).toFloat())
+            }
         }
-
-        root.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(24), dp(20), dp(12))
-
-            addView(TextView(this@CallActivity).apply {
-                text = callTitle
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextAppearance(android.R.style.TextAppearance_Material_Large)
-                setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurface))
-            })
-
-            statusText = TextView(this@CallActivity).apply {
-                text = if (isVideoCall()) "Подключение видеозвонка..." else "Подключение аудиозвонка..."
-                setPadding(0, dp(4), 0, 0)
-                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-                setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
-            }
-            addView(statusText)
-        })
-
-        videoArea = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurfaceContainerLowest))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        }
-        root.addView(videoArea)
-
-        root.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(12), dp(12), dp(20))
-
-            micButton = controlButton(R.drawable.ic_mic, "Выключить микрофон") { toggleMicrophone() }
-            cameraButton = controlButton(R.drawable.ic_video, "Включить камеру") { toggleCamera() }
-            flipButton = controlButton(R.drawable.ic_video, "Перевернуть камеру") { flipCamera() }.apply {
-                visibility = View.GONE
-            }
-            screenButton = controlButton(R.drawable.ic_screen_share, "Демонстрация экрана") { startScreenShare() }
-            val moreButton = controlButton(R.drawable.ic_tune, "Дополнительно") { showMoreSheet() }
-            val hangupButton = controlButton(R.drawable.ic_close, "Завершить звонок") { endCallAndClose() }.apply {
-                setBackgroundColor(resolveColor(android.R.attr.colorError))
-                iconTint = ColorStateList.valueOf(resolveColor(com.google.android.material.R.attr.colorOnError))
-            }
-
-            listOf(micButton, cameraButton, flipButton, screenButton, moreButton, hangupButton).forEach { button ->
-                addView(button, LinearLayout.LayoutParams(dp(56), dp(56)).apply {
-                    marginStart = dp(6)
-                    marginEnd = dp(6)
-                })
-            }
-        })
-
-        return root
     }
+
+    private fun setupWindowInsets() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Светлые/тёмные иконки системных баров — по яркости системного фона (адаптация под тему MD3)
+        val lightBars = androidx.core.graphics.ColorUtils.calculateLuminance(
+            resolveColor(com.google.android.material.R.attr.colorSurface)) > 0.5
+        WindowInsetsControllerCompat(window, callRoot).apply {
+            isAppearanceLightStatusBars = lightBars
+            isAppearanceLightNavigationBars = lightBars
+        }
+        val topBarPadTop = topBar.paddingTop
+        val controlBottomMargin = (controlBar.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        ViewCompat.setOnApplyWindowInsetsListener(callRoot) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            topBar.updatePadding(top = topBarPadTop + bars.top)
+            controlBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = controlBottomMargin + bars.bottom
+            }
+            // Контент участников не залезает под верхнюю панель и панель управления
+            callContent.updatePadding(
+                top = bars.top + dp(56),
+                bottom = bars.bottom + dp(108),
+                left = dp(12),
+                right = dp(12)
+            )
+            selfMiniContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                topMargin = bars.top + dp(52)
+                marginEnd = dp(16)
+            }
+            insets
+        }
+    }
+
+    // region Панель управления
+
+    private fun buildControls() {
+        controlBar.removeAllViews()
+        micButton = addControl(R.drawable.ic_mic, "Микро") { toggleMicrophone() }
+        cameraButton = addControl(R.drawable.ic_video, "Камера") { toggleCamera() }
+        addControl(R.drawable.ic_call_end, "Завершить", big = true) { endCallAndClose() }
+        screenButton = addControl(R.drawable.ic_screen_share, "Экран") { startScreenShare() }
+        addControl(R.drawable.ic_more_vert, "Ещё") { showMoreSheet() }
+    }
+
+    private fun addControl(icon: Int, label: String, big: Boolean = false, onClick: () -> Unit): ImageView {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        val size = if (big) dp(60) else dp(52)
+        val pad = dp(if (big) 16 else 15)
+        val button = ImageView(this).apply {
+            setImageResource(icon)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundResource(if (big) R.drawable.bg_call_btn_end else R.drawable.bg_call_btn_circle)
+            setColorFilter(
+                if (big) Color.WHITE else resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant),
+                PorterDuff.Mode.SRC_IN
+            )
+            setPadding(pad, pad, pad, pad)
+            isClickable = true
+            isFocusable = true
+            contentDescription = label
+            setOnClickListener { onClick() }
+        }
+        container.addView(button, LinearLayout.LayoutParams(size, size))
+        container.addView(TextView(this).apply {
+            text = label
+            textSize = 11f
+            setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(7)
+        })
+        controlBar.addView(container, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        return button
+    }
+
+    // endregion
 
     private fun observeParticipants() {
         lifecycleScope.launch {
@@ -191,11 +263,6 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
     }
 
-    /**
-     * Реагирует на сырой стрим [CallEventsService.events] по своему [callId]: завершение/отклонение
-     * (в т.ч. инициированное собеседником или со второго устройства) закрывает экран. Работает и для
-     * звонящего, у которого [CallEventsService.currentCall] не инициализируется.
-     */
     private fun observeCallEvents() {
         val app = application as BarkFluffApplication
         lifecycleScope.launch {
@@ -237,62 +304,104 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     // region Раскладка плиток
 
     private fun renderTiles(participants: List<CallParticipant>) {
-        val screenTile = participants.firstOrNull { it.screenTrack != null }?.let {
+        val local = participants.firstOrNull { it.isLocal }
+        val remotes = participants.filter { !it.isLocal }
+        val screenParticipant = participants.firstOrNull { it.screenTrack != null }
+
+        val screenTile = screenParticipant?.let {
             CallTile("scr:${it.identity}", it, it.screenTrack, isScreen = true)
         }
         val cameraTiles = participants.map { CallTile("cam:${it.identity}", it, it.cameraTrack, isScreen = false) }
 
         val focused = focusedKey
-        val mode: String
-        val bigTiles: List<CallTile>
-        val stripTiles: List<CallTile>
+        var mode = "grid"
+        var heroTile: CallTile? = null
+        var selfTile: CallTile? = null
+        var bigTiles: List<CallTile> = emptyList()
+        var stripTiles: List<CallTile> = emptyList()
+
         when {
-            focused != null && screenTile?.key == focused -> {
-                mode = "focus"; bigTiles = listOf(screenTile); stripTiles = emptyList()
-            }
-            focused != null && cameraTiles.any { it.key == focused } -> {
-                mode = "focus"; bigTiles = listOf(cameraTiles.first { it.key == focused }); stripTiles = emptyList()
+            focused != null && (screenTile?.key == focused || cameraTiles.any { it.key == focused }) -> {
+                mode = "stage"
+                bigTiles = listOf(screenTile?.takeIf { it.key == focused } ?: cameraTiles.first { it.key == focused })
             }
             screenTile != null -> {
-                mode = "screen"; bigTiles = listOf(screenTile); stripTiles = cameraTiles
+                mode = "stage"; bigTiles = listOf(screenTile); stripTiles = cameraTiles
+            }
+            remotes.size == 1 && local != null -> {
+                mode = "single"
+                heroTile = cameraTiles.first { it.participant.identity == remotes[0].identity }
+                selfTile = cameraTiles.first { it.participant.isLocal }
             }
             else -> {
-                mode = "grid"; bigTiles = cameraTiles; stripTiles = emptyList()
+                mode = "grid"; bigTiles = cameraTiles
             }
         }
 
-        val visible = bigTiles + stripTiles
+        val visible = (bigTiles + stripTiles + listOfNotNull(heroTile, selfTile))
         val signature = "$mode|" + visible.joinToString(",") { it.key }
         if (signature != lastLayoutSignature) {
-            rebuildLayout(mode, bigTiles, stripTiles)
+            rebuildLayout(mode, bigTiles, stripTiles, heroTile, selfTile)
             lastLayoutSignature = signature
         }
-        visible.forEach { tileViews[it.key]?.bind(it, callEngine) }
+        visible.forEach { tile ->
+            tileViews[tile.key]?.bind(tile, infoFor(tile.participant), callEngine)
+        }
 
         val visibleKeys = visible.map { it.key }.toSet()
         (tileViews.keys - visibleKeys).forEach { tileViews.remove(it)?.release() }
 
+        updateTopBar(participants)
         updateControlStates(participants)
         renderCallDuration()
     }
 
-    private fun rebuildLayout(mode: String, bigTiles: List<CallTile>, stripTiles: List<CallTile>) {
-        videoArea.removeAllViews()
+    private fun rebuildLayout(
+        mode: String,
+        bigTiles: List<CallTile>,
+        stripTiles: List<CallTile>,
+        heroTile: CallTile?,
+        selfTile: CallTile?
+    ) {
+        callContent.removeAllViews()
+        selfMiniContainer.removeAllViews()
+        selfMiniContainer.visibility = View.GONE
+
         when (mode) {
-            "focus" -> videoArea.addView(tileFor(bigTiles.first()), weightParams(1f))
-            "screen" -> {
-                videoArea.addView(tileFor(bigTiles.first()), weightParams(3f))
-                if (stripTiles.isNotEmpty()) {
-                    val strip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                    stripTiles.forEach { strip.addView(tileFor(it), rowItemParams()) }
-                    videoArea.addView(strip, weightParams(1f))
+            "single" -> {
+                if (heroTile != null) {
+                    val hero = tileFor(heroTile).also { it.setHero(true) }
+                    callContent.addView(hero, FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                }
+                if (selfTile != null) {
+                    val self = tileFor(selfTile).also { it.setHero(false) }
+                    selfMiniContainer.addView(self, FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                    selfMiniContainer.visibility = View.VISIBLE
                 }
             }
-            else -> addGrid(bigTiles)
+            "stage" -> {
+                val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                column.addView(tileFor(bigTiles.first()).also { it.setHero(false) }, weightParams(3f))
+                if (stripTiles.isNotEmpty()) {
+                    val strip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                    stripTiles.forEach { strip.addView(tileFor(it).also { v -> v.setHero(false) }, rowItemParams()) }
+                    column.addView(strip, weightParams(1f))
+                }
+                callContent.addView(column, FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+            else -> {
+                val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                addGrid(column, bigTiles)
+                callContent.addView(column, FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
         }
     }
 
-    private fun addGrid(tiles: List<CallTile>) {
+    private fun addGrid(parent: LinearLayout, tiles: List<CallTile>) {
         if (tiles.isEmpty()) return
         val cols = if (tiles.size <= 1) 1 else 2
         var i = 0
@@ -300,10 +409,10 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             var c = 0
             while (c < cols && i < tiles.size) {
-                row.addView(tileFor(tiles[i]), rowItemParams())
+                row.addView(tileFor(tiles[i]).also { it.setHero(false) }, rowItemParams())
                 i++; c++
             }
-            videoArea.addView(row, weightParams(1f))
+            parent.addView(row, weightParams(1f))
         }
     }
 
@@ -325,8 +434,45 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun rowItemParams() =
         LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
-            setMargins(dp(2), dp(2), dp(2), dp(2))
+            setMargins(dp(4), dp(4), dp(4), dp(4))
         }
+
+    /** Резолвит имя/аватар участника по userId (livekit identity). Кеширует; при промахе — async-догрузка. */
+    private fun infoFor(participant: CallParticipant): TileInfo {
+        infoCache[participant.identity]?.let { return it }
+
+        val uid = participant.identity.toLongOrNull() ?: 0L
+        if (participant.isLocal) {
+            val info = TileInfo("Вы", null, uid, AvatarLoader.colorForUser(uid))
+            infoCache[participant.identity] = info
+            return info
+        }
+
+        val livekitName = participant.name.takeIf { it.isNotBlank() && it != participant.identity }
+        val placeholder = TileInfo(livekitName ?: "Участник", null, uid, AvatarLoader.colorForUser(uid))
+
+        if (uid > 0L && resolving.add(participant.identity)) {
+            lifecycleScope.launch {
+                val user = (application as BarkFluffApplication).grpcManager.getUserData(uid).getOrNull()
+                if (user != null) {
+                    val name = "${user.firstName} ${user.lastName}".trim()
+                        .ifBlank { user.username }.ifBlank { "Участник" }
+                    val url = user.profilePicturePreviewUrl.ifBlank { user.profilePictureUrl }.ifBlank { null }
+                    infoCache[participant.identity] = TileInfo(name, url, uid, AvatarLoader.colorForUser(uid))
+                    renderTiles(lastParticipants)
+                } else {
+                    resolving.remove(participant.identity)
+                }
+            }
+        }
+        return placeholder
+    }
+
+    private fun updateTopBar(participants: List<CallParticipant>) {
+        val isGroup = participants.size > 2
+        participantBadge.visibility = if (isGroup) View.VISIBLE else View.GONE
+        participantCount.text = participants.size.toString()
+    }
 
     private fun updateControlStates(participants: List<CallParticipant>) {
         val local = participants.firstOrNull { it.isLocal }
@@ -334,21 +480,36 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val cameraOn = local?.cameraEnabled ?: false
         val screenOn = local?.screenTrack != null
 
-        micButton.setIconResource(if (micOn) R.drawable.ic_mic else R.drawable.ic_mic_off)
+        micButton.setImageResource(if (micOn) R.drawable.ic_mic else R.drawable.ic_mic_off)
+        applyButtonState(micButton, active = !micOn)
         micButton.contentDescription = if (micOn) "Выключить микрофон" else "Включить микрофон"
 
-        cameraButton.isSelected = cameraOn
+        applyButtonState(cameraButton, active = cameraOn)
         cameraButton.contentDescription = if (cameraOn) "Выключить камеру" else "Включить камеру"
 
-        flipButton.visibility = if (cameraOn) View.VISIBLE else View.GONE
-
-        screenButton.isSelected = screenOn
+        applyButtonState(screenButton, active = screenOn)
         screenButton.contentDescription = if (screenOn) "Выключить демонстрацию экрана" else "Демонстрация экрана"
 
         if (cameraOn != lastForegroundCamera || screenOn != lastForegroundScreen) {
             lastForegroundCamera = cameraOn
             lastForegroundScreen = screenOn
             updateCallForegroundService(cameraOn, screenOn)
+        }
+    }
+
+    /**
+     * active=true → кнопка подсвечена системным dynamic-цветом (colorPrimary) с контрастной иконкой;
+     * иначе полупрозрачная с белой иконкой. Так панель управления адаптируется под системную тему MD3.
+     */
+    private fun applyButtonState(button: ImageView, active: Boolean) {
+        button.isSelected = active
+        if (active) {
+            button.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                resolveColor(androidx.appcompat.R.attr.colorPrimary))
+            button.setColorFilter(resolveColor(com.google.android.material.R.attr.colorOnPrimary), PorterDuff.Mode.SRC_IN)
+        } else {
+            button.backgroundTintList = null
+            button.setColorFilter(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant), PorterDuff.Mode.SRC_IN)
         }
     }
 
@@ -395,6 +556,11 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private fun showMoreSheet() {
         val dialog = BottomSheetDialog(this)
         val content = sheetContainer("Дополнительно").apply {
+            if (lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled == true) {
+                addView(sheetButton("Перевернуть камеру", R.drawable.ic_camera) {
+                    dialog.dismiss(); flipCamera()
+                })
+            }
             addView(sheetButton("Маршрут звука", R.drawable.ic_tune) {
                 dialog.dismiss(); showAudioRouteSheet()
             })
@@ -503,6 +669,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onConnected(cameraEnabled: Boolean) {
+        statusDot.background.mutate().setTint(speakingColor)
         startCallTimer()
     }
 
@@ -512,6 +679,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     override fun onDisconnected() {
         stopCallTimer()
+        statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         statusText.text = "Звонок завершён"
     }
 
@@ -595,19 +763,6 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         return app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
     }
-
-    private fun controlButton(icon: Int, description: String, onClick: () -> Unit): MaterialButton =
-        MaterialButton(this, null, com.google.android.material.R.attr.materialIconButtonStyle).apply {
-            text = ""
-            setIconResource(icon)
-            contentDescription = description
-            minWidth = dp(48)
-            minHeight = dp(48)
-            cornerRadius = dp(28)
-            insetTop = 0
-            insetBottom = 0
-            setOnClickListener { onClick() }
-        }
 
     private fun sheetContainer(title: String): LinearLayout =
         LinearLayout(this).apply {

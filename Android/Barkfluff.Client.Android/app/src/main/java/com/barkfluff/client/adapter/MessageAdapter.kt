@@ -307,7 +307,18 @@ class MessageAdapter(
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
 
-                if (displayedAttachments.isNotEmpty()) {
+                if (item.localPreviewUris.isNotEmpty()) {
+                    // Оптимистичное сообщение: вложения ещё не на сервере — рендерим локальные превью.
+                    val mediaWidthPx = calcMediaWidthPx(binding.root.context)
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = mediaWidthPx
+                    }
+                    binding.attachmentsContainer.removeAllViews()
+                    binding.attachmentsContainer.addView(
+                        buildLocalMediaGrid(binding.root.context, item.localPreviewUris, mediaWidthPx)
+                    )
+                    binding.attachmentsContainer.visibility = View.VISIBLE
+                } else if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
                         it.type == Shared.MessageAttachmentType.IMAGE ||
                         it.type == Shared.MessageAttachmentType.GIF  ||
@@ -818,6 +829,68 @@ class MessageAdapter(
             column.addView(row)
         }
 
+        return column
+    }
+
+    /**
+     * Строит медиа-сетку из локальных URI (оптимистичное сообщение, до загрузки на сервер).
+     * Использует тот же ряд-алгоритм и квадратные ячейки, что и [buildMediaGrid].
+     */
+    private fun buildLocalMediaGrid(
+        context: android.content.Context,
+        uris: List<Uri>,
+        maxWidth: Int
+    ): View {
+        val dm = context.resources.displayMetrics
+        val spacingPx = (2 * dm.density + 0.5f).toInt()
+        val capped = uris.take(10)
+        val layout = determineLayout(capped.size)
+        val isSingle = capped.size == 1
+
+        val column = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                maxWidth,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        var itemIndex = 0
+        for ((rowIdx, itemsInRow) in layout.withIndex()) {
+            val totalSpacing = spacingPx * (itemsInRow - 1)
+            val cellWidth = (maxWidth - totalSpacing) / itemsInRow
+            val cellHeight = if (isSingle) (cellWidth * 0.75f).toInt() else cellWidth
+
+            val row = android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(maxWidth, cellHeight).apply {
+                    if (rowIdx > 0) topMargin = spacingPx
+                }
+            }
+
+            for (col in 0 until itemsInRow) {
+                if (itemIndex >= capped.size) break
+                val uri = capped[itemIndex]
+                val cellView = LayoutInflater.from(context)
+                    .inflate(R.layout.item_attachment_media_cell, row, false)
+                cellView.layoutParams = android.widget.LinearLayout.LayoutParams(cellWidth, cellHeight).apply {
+                    if (col > 0) marginStart = spacingPx
+                }
+                val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
+                val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
+                val playIcon = cellView.findViewById<ImageView>(R.id.playIcon)
+                val isVideo = context.contentResolver.getType(uri)?.startsWith("video/") == true
+                videoOverlay.visibility = if (isVideo) View.VISIBLE else View.GONE
+                playIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
+                thumbnail.load(uri) {
+                    crossfade(150)
+                    error(R.drawable.ic_image_placeholder)
+                }
+                row.addView(cellView)
+                itemIndex++
+            }
+            column.addView(row)
+        }
         return column
     }
 
@@ -1507,7 +1580,9 @@ data class MessageItem(
     /** Локальный clientMessageId оптимистичных сообщений (для трекинга SENDING→SENT перехода). null для серверных. */
     val localId: String? = null,
     /** Прогресс загрузки медиа 0..100. null если не идёт upload. */
-    val uploadProgress: Int? = null
+    val uploadProgress: Int? = null,
+    /** Локальные URI медиа для превью оптимистичного сообщения (пока вложения ещё не загружены на сервер). */
+    val localPreviewUris: List<android.net.Uri> = emptyList()
 ) {
     companion object {
         fun createDateSeparator(dateText: String) = MessageItem(

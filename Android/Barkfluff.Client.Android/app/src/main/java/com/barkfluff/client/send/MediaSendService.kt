@@ -135,12 +135,19 @@ class MediaSendService : Service() {
             else -> job.localIds.firstOrNull()
         }
 
+        // Агрегированный прогресс одного inline-сообщения. При sendSeparately у каждого файла своё
+        // сообщение → прогресс пофайловый. Иначе все файлы делят один localId → показываем общий
+        // прогресс по всем N файлам, чтобы бар не сбрасывался в 0 на каждом следующем файле.
+        fun aggregateProgress(idx: Int, pct: Int): Int =
+            if (job.sendSeparately) pct
+            else ((idx * 100 + pct) / total).coerceIn(0, 100)
+
         for ((idx, att) in job.attachments.withIndex()) {
             val pos = "${idx + 1}/$total"
             val localId = localIdForAttachment(idx)
-            updateNotification(titleBase, "Подготовка $pos...", 0, indeterminate = true)
+            updateNotification(titleBase, "Подготовка $pos...", aggregateProgress(idx, 0), indeterminate = true)
             if (localId != null) {
-                uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.PREPARING))
+                uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.PREPARING, aggregateProgress(idx, 0)))
             }
             val prepared = prepareAttachment(att, job, titleBase, pos)
             if (prepared == null) {
@@ -149,16 +156,17 @@ class MediaSendService : Service() {
             }
             val (bytes, type, fileName, mime) = prepared
 
-            updateNotification(titleBase, "Загрузка $pos: 0%", 0, indeterminate = false)
+            updateNotification(titleBase, "Загрузка $pos: 0%", aggregateProgress(idx, 0), indeterminate = false)
             val uploadResult = repo.uploadFile(
                 jpegImageBytes = bytes,
                 fileType = type,
                 fileName = fileName,
                 mimeType = mime,
                 onProgress = { pct ->
-                    updateNotification(titleBase, "Загрузка $pos: $pct%", pct, indeterminate = false)
+                    val agg = aggregateProgress(idx, pct)
+                    updateNotification(titleBase, "Загрузка $pos: $pct%", agg, indeterminate = false)
                     if (localId != null) {
-                        uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.UPLOADING, pct))
+                        uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.UPLOADING, agg))
                     }
                 }
             )
