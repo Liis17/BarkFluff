@@ -29,6 +29,8 @@ import io.grpc.*
 import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
@@ -59,6 +61,11 @@ class GrpcManager {
         private val ERROR_CODE_KEY: Metadata.Key<String> =
             Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
     }
+
+    // Единый мьютекс на обновление токена — все стримы и операции (RealtimeService,
+    // CallEventsService, виджет, 401-retry) рефрешат через него, чтобы параллельные
+    // обновления не аннулировали refresh-токен друг друга (сервер ротирует refresh-токен).
+    private val tokenRefreshMutex = Mutex()
 
     // Адреса, использованные при создании каналов (для идемпотентности)
     private var navigatorAddress: String? = null
@@ -430,7 +437,7 @@ class GrpcManager {
         }
 
         Log.d(TAG, "ensureTokenValid: Token expiring soon, refreshing")
-        return refreshTokenInternal(globalParam, context)
+        return refreshTokenInternal(globalParam, context, globalParam.accessToken)
     }
 
     /**
@@ -443,23 +450,33 @@ class GrpcManager {
     suspend fun forceRefreshToken(context: Context): Boolean {
         val globalParam = GlobalParam(context)
         Log.d(TAG, "forceRefreshToken: Force refreshing token")
-        return refreshTokenInternal(globalParam, context)
+        return refreshTokenInternal(globalParam, context, globalParam.accessToken)
     }
 
-    private suspend fun refreshTokenInternal(globalParam: GlobalParam, context: Context): Boolean {
+    private suspend fun refreshTokenInternal(
+        globalParam: GlobalParam,
+        context: Context,
+        tokenBeforeRefresh: String?
+    ): Boolean = tokenRefreshMutex.withLock {
+        // Double-check после захвата лока: если access-токен уже сменился пока ждали лок —
+        // другой вызов успел обновить. Не рефрешим повторно (иначе аннулируем свежий refresh-токен).
+        if (!tokenBeforeRefresh.isNullOrBlank() && globalParam.accessToken != tokenBeforeRefresh) {
+            return@withLock true
+        }
+
         val refreshToken = globalParam.refreshToken
         if (refreshToken.isNullOrBlank()) {
             Log.e(TAG, "refreshTokenInternal: No refresh token available")
-            return false
+            return@withLock false
         }
 
         val identityAddress = globalParam.socketIdentity
         if (identityAddress.isBlank()) {
             Log.e(TAG, "refreshTokenInternal: No identity address available")
-            return false
+            return@withLock false
         }
 
-        return try {
+        try {
             // Убеждаемся что identity клиент инициализирован
             createIdentityClient(identityAddress, context, includeDeviceInfo = true)
             val result = refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)

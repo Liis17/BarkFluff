@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.twilio.audioswitch.AudioDevice
 import io.livekit.android.LiveKit
+import io.livekit.android.LiveKitOverrides
 import io.livekit.android.events.RoomEvent
 import io.livekit.android.renderer.SurfaceViewRenderer
 import io.livekit.android.room.Room
@@ -20,6 +21,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 /**
  * Движок звонка поверх LiveKit. Отдаёт UI-модель участников ([participants]) и набор управляющих
@@ -56,7 +62,13 @@ class LiveKitCallEngine(
 
         listener.onConnecting()
 
-        val newRoom = LiveKit.create(context.applicationContext)
+        // Сервер использует самоподписанный сертификат — сигнальный WebSocket LiveKit
+        // поднимается через свой OkHttp со стандартным доверием Android и падает на TLS-handshake.
+        // Передаём OkHttpClient с тем же trust-all, что и gRPC-каналы в GrpcManager.
+        val newRoom = LiveKit.create(
+            context.applicationContext,
+            overrides = LiveKitOverrides(okHttpClient = buildTrustAllOkHttpClient())
+        )
         room = newRoom
 
         eventsJob = scope.launch {
@@ -72,7 +84,10 @@ class LiveKitCallEngine(
                         _participants.value = emptyList()
                         listener.onDisconnected()
                     }
-                    is RoomEvent.FailedToConnect -> listener.onError("Не удалось подключиться к звонку")
+                    is RoomEvent.FailedToConnect -> {
+                        android.util.Log.e("LiveKitCallEngine", "FailedToConnect", event.error)
+                        listener.onError("Не удалось подключиться к звонку")
+                    }
                     is RoomEvent.ParticipantConnected,
                     is RoomEvent.ParticipantDisconnected,
                     is RoomEvent.ParticipantNameChanged,
@@ -199,4 +214,18 @@ class LiveKitCallEngine(
     }
 
     private fun requireRoom(): Room = room ?: error("LiveKit room is not connected")
+
+    private fun buildTrustAllOkHttpClient(): OkHttpClient {
+        val trustManager = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        }
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
+        return OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustManager)
+            .hostnameVerifier { _, _ -> true }
+            .build()
+    }
 }

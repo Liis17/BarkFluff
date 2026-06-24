@@ -4,10 +4,12 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.telecom.DisconnectCause
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -284,17 +286,21 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         callEngine.disconnect()
         CallForegroundService.stop(this)
         NotificationHelper.dismissCall(this, callId)
+        CallTelecomRegistry.disconnect(callId, DisconnectCause.REMOTE)
         statusText.text = "Звонок завершён"
         finish()
     }
 
     private fun connectToLiveKit() {
         lifecycleScope.launch {
+            Log.d(TAG, "connectToLiveKit: url=$livekitUrl, tokenLen=${accessToken.length}, callId=$callId")
             callEngine.connect(
                 livekitUrl = livekitUrl,
                 accessToken = accessToken,
                 cameraOnStart = isVideoCall()
             ).onFailure {
+                Log.e(TAG, "connectToLiveKit failed: callEnded=$callEnded, finishing=$isFinishing", it)
+                if (callEnded || isFinishing) return@onFailure
                 statusText.text = "Не удалось подключиться к звонку"
                 Toast.makeText(this@CallActivity, "Ошибка подключения к LiveKit", Toast.LENGTH_SHORT).show()
             }
@@ -647,6 +653,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         lifecycleScope.launch {
             callEngine.disconnect()
             CallForegroundService.stop(this@CallActivity)
+            CallTelecomRegistry.disconnect(callId, DisconnectCause.LOCAL)
             if (ensureCallsClient()) {
                 (application as BarkFluffApplication).callRepository.end(callId)
             }
@@ -659,6 +666,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         stopCallTimer()
         callEngine.disconnect()
         CallForegroundService.stop(this)
+        CallTelecomRegistry.disconnect(callId, DisconnectCause.LOCAL)
         tileViews.values.forEach { it.release() }
         tileViews.clear()
         super.onDestroy()
@@ -812,5 +820,9 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val out = android.util.TypedValue()
         theme.resolveAttribute(attr, out, true)
         return out.data
+    }
+
+    private companion object {
+        const val TAG = "CallActivity"
     }
 }

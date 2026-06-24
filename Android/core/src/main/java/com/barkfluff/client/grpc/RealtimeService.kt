@@ -12,8 +12,6 @@ import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -32,7 +30,6 @@ class RealtimeService(
 
     companion object {
         private const val TAG = "RealtimeService"
-        private const val TOKEN_BUFFER_MINUTES = 5
         private const val ONLINE_PING_INTERVAL_MS = 3000L
         private const val MAX_BACKOFF_MS = 30_000L
         private const val BASE_BACKOFF_MS = 2000L
@@ -99,7 +96,6 @@ class RealtimeService(
     // Internal state
     private val globalParam = GlobalParam(context)
     private var serviceScope: CoroutineScope? = null
-    private val tokenRefreshMutex = Mutex()
     private val seenMessageIds = LinkedHashSet<Long>()
 
     // Online subscription state
@@ -455,59 +451,13 @@ class RealtimeService(
 
     // --- Token management ---
 
+    // Обновление токена делегируется в GrpcManager — единый мьютекс на все стримы и операции,
+    // чтобы параллельные рефреши не аннулировали refresh-токен друг друга.
     private suspend fun ensureTokenValid() {
-        val expiration = globalParam.accessTokenExpiration
-        val now = System.currentTimeMillis()
-        val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
-
-        if (expiration > 0 && now + bufferMs < expiration) {
-            return // Token still valid
-        }
-
-        Log.d(TAG, "Token expiring soon, refreshing")
-        forceRefreshToken()
+        grpcManager.ensureTokenValid(context)
     }
 
     private suspend fun forceRefreshToken() {
-        tokenRefreshMutex.withLock {
-            // Double-check after acquiring lock — another stream may have already refreshed
-            val expiration = globalParam.accessTokenExpiration
-            val now = System.currentTimeMillis()
-            val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
-            if (expiration > 0 && now + bufferMs < expiration) {
-                return
-            }
-
-            val refreshToken = globalParam.refreshToken
-            if (refreshToken.isNullOrBlank()) {
-                Log.e(TAG, "No refresh token available")
-                return
-            }
-
-            val identityAddress = globalParam.socketIdentity
-            if (identityAddress.isBlank()) {
-                Log.e(TAG, "No identity address available")
-                return
-            }
-
-            try {
-                // Убеждаемся что identity клиент инициализирован в общем GrpcManager
-                grpcManager.createIdentityClient(identityAddress, context, includeDeviceInfo = true)
-                val result = grpcManager.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
-
-                if (result.isSuccess) {
-                    val tokenResult = result.getOrNull()!!
-                    globalParam.accessToken = tokenResult.accessToken
-                    globalParam.accessTokenExpiration = tokenResult.accessTokenExpiration
-                    globalParam.refreshToken = tokenResult.refreshToken
-                    globalParam.refreshTokenExpiration = tokenResult.refreshTokenExpiration
-                    Log.i(TAG, "Token refreshed successfully")
-                } else {
-                    Log.e(TAG, "Token refresh failed: ${result.exceptionOrNull()?.message}")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Token refresh error", e)
-            }
-        }
+        grpcManager.forceRefreshToken(context)
     }
 }

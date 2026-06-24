@@ -186,7 +186,7 @@ class BarkFluffApplication : Application() {
     }
 
     private fun presentIncomingCall(event: CallsApiOuterClass.IncomingCallEvent) {
-        if (event.callId.isBlank() || presentedIncomingCallId == event.callId) return
+        if (event.callId.isBlank() || presentedIncomingCallId == event.callId || CallTelecomRegistry.isAnsweringOrActive(event.callId)) return
         presentedIncomingCallId = event.callId
 
         val mediaType = if (event.mediaType == CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO) {

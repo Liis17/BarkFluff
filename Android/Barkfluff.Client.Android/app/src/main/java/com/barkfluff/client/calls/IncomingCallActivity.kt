@@ -1,5 +1,8 @@
 package com.barkfluff.client.calls
 
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
+import android.animation.ValueAnimator
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -7,19 +10,27 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.telecom.DisconnectCause
+import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import coil.request.ImageRequest
+import coil.size.Size
+import coil.transform.CircleCropTransformation
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class IncomingCallActivity : AppCompatActivity() {
 
@@ -29,6 +40,7 @@ class IncomingCallActivity : AppCompatActivity() {
     private var callerUserId: Long = 0L
     private var dismissReceiverRegistered = false
     private var actionTaken = false
+    private val ringAnimators = mutableListOf<ValueAnimator>()
 
     private val dismissReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -58,6 +70,7 @@ class IncomingCallActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_incoming_call)
         bindViews()
+        startAvatarRingAnimation()
         loadCallerInfo()
         registerDismissReceiver()
 
@@ -82,6 +95,7 @@ class IncomingCallActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        cancelAvatarRingAnimation()
         if (dismissReceiverRegistered) {
             unregisterReceiver(dismissReceiver)
             dismissReceiverRegistered = false
@@ -110,6 +124,38 @@ class IncomingCallActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.acceptButton).setOnClickListener { acceptCall() }
     }
 
+
+    private fun startAvatarRingAnimation() {
+        ringAnimators.clear()
+        startRingPulse(findViewById(R.id.avatarRingOuter), startScale = 0.5f, maxAlpha = 0.24f, startDelay = 0L)
+        startRingPulse(findViewById(R.id.avatarRingInner), startScale = 0.64f, maxAlpha = 0.36f, startDelay = RING_STAGGER_MS)
+    }
+
+    private fun startRingPulse(ring: View, startScale: Float, maxAlpha: Float, startDelay: Long) {
+        ring.scaleX = startScale
+        ring.scaleY = startScale
+        ring.alpha = 0f
+
+        val animator = ObjectAnimator.ofPropertyValuesHolder(
+            ring,
+            PropertyValuesHolder.ofFloat("scaleX", startScale, 1f),
+            PropertyValuesHolder.ofFloat("scaleY", startScale, 1f),
+            PropertyValuesHolder.ofFloat("alpha", maxAlpha, 0f)
+        ).apply {
+            duration = RING_DURATION_MS
+            this.startDelay = startDelay
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            interpolator = DecelerateInterpolator()
+            start()
+        }
+        ringAnimators += animator
+    }
+
+    private fun cancelAvatarRingAnimation() {
+        ringAnimators.forEach { it.cancel() }
+        ringAnimators.clear()
+    }
     /**
      * Подтягивает реальное имя и аватар звонящего по userId через профиль.
      * При отсутствии userId/профиля остаются инициалы из bindViews().
@@ -134,20 +180,95 @@ class IncomingCallActivity : AppCompatActivity() {
 
             val avatarFileId = user.profilePictureFileId
             if (avatarFileId.isNotBlank()) {
-                AvatarLoader.loadByFileId(
-                    imageView = avatarImage,
-                    placeholderView = avatarInitials,
-                    fileId = avatarFileId,
-                    displayName = callerName,
-                    userId = callerUserId,
-                    size = 0
-                ) {
-                    repository.getFileDownloadUrl(avatarFileId).getOrNull()
-                }
+                loadCallerAvatarWithRetry(avatarImage, avatarInitials, avatarFileId, repository)
             }
         }
     }
 
+
+    private suspend fun loadCallerAvatarWithRetry(
+        avatarImage: ImageView,
+        avatarInitials: TextView,
+        avatarFileId: String,
+        repository: ChatRepository
+    ) {
+        AvatarLoader.showPlaceholder(avatarInitials, callerName, callerUserId)
+        avatarImage.visibility = View.GONE
+
+        for (attempt in 1..AVATAR_LOAD_ATTEMPTS) {
+            val avatarUrl = resolveAvatarUrl(avatarFileId, repository, forceRefresh = attempt > 1)
+            if (!avatarUrl.isNullOrBlank() && loadAvatarUrl(avatarImage, avatarInitials, avatarFileId, avatarUrl)) {
+                return
+            }
+            AvatarLoader.urlCache.remove(avatarFileId)
+            if (attempt < AVATAR_LOAD_ATTEMPTS) {
+                delay(AVATAR_LOAD_RETRY_DELAY_MS)
+            }
+        }
+    }
+
+    private suspend fun resolveAvatarUrl(
+        avatarFileId: String,
+        repository: ChatRepository,
+        forceRefresh: Boolean
+    ): String? {
+        if (avatarFileId.startsWith("http://") || avatarFileId.startsWith("https://")) {
+            return avatarFileId
+        }
+
+        if (!forceRefresh) {
+            AvatarLoader.urlCache[avatarFileId]?.let { return it }
+            AvatarLoader.getUrlFromCache(avatarFileId)?.let {
+                AvatarLoader.urlCache[avatarFileId] = it
+                return it
+            }
+        }
+
+        val url = repository.getFileDownloadUrl(avatarFileId).getOrNull()
+        if (!url.isNullOrBlank()) {
+            AvatarLoader.urlCache[avatarFileId] = url
+            AvatarLoader.putUrlInCache(avatarFileId, url)
+        }
+        return url
+    }
+
+    private suspend fun loadAvatarUrl(
+        avatarImage: ImageView,
+        avatarInitials: TextView,
+        cacheKey: String,
+        avatarUrl: String
+    ): Boolean = suspendCancellableCoroutine { continuation ->
+        avatarImage.tag = cacheKey
+
+        val request = ImageRequest.Builder(avatarImage.context)
+            .data(avatarUrl)
+            .memoryCacheKey(cacheKey)
+            .diskCacheKey(cacheKey)
+            .crossfade(200)
+            .transformations(CircleCropTransformation())
+            .size(Size.ORIGINAL)
+            .target(
+                onSuccess = { drawable ->
+                    if (avatarImage.tag == cacheKey) {
+                        avatarImage.setImageDrawable(drawable)
+                        avatarImage.visibility = View.VISIBLE
+                        avatarInitials.visibility = View.GONE
+                    }
+                    if (continuation.isActive) continuation.resume(true)
+                },
+                onError = {
+                    if (avatarImage.tag == cacheKey) {
+                        avatarImage.visibility = View.GONE
+                        AvatarLoader.showPlaceholder(avatarInitials, callerName, callerUserId)
+                    }
+                    if (continuation.isActive) continuation.resume(false)
+                }
+            )
+            .build()
+
+        val disposable = AvatarLoader.getImageLoader(avatarImage.context).enqueue(request)
+        continuation.invokeOnCancellation { disposable.dispose() }
+    }
     private fun initialsOf(name: String): String {
         val parts = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
         return when {
@@ -163,6 +284,9 @@ class IncomingCallActivity : AppCompatActivity() {
         lifecycleScope.launch {
             if (!ensureCallsClient()) return@launch
             CallTelecomRegistry.markAnswering(callId)
+            // Обновляем токен до accept() — приложение могло проснуться из фона с истёкшим токеном,
+            // и тогда стрим событий звонка оборвётся на 401 и сервер завершит звонок.
+            (application as BarkFluffApplication).grpcManager.ensureTokenValid(this@IncomingCallActivity)
             val response = (application as BarkFluffApplication).callRepository.accept(callId)
             response.onSuccess {
                 CallTelecomRegistry.markActive(callId)
@@ -208,5 +332,12 @@ class IncomingCallActivity : AppCompatActivity() {
         }
 
         return app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
+    }
+
+    companion object {
+        private const val AVATAR_LOAD_ATTEMPTS = 3
+        private const val AVATAR_LOAD_RETRY_DELAY_MS = 700L
+        private const val RING_DURATION_MS = 1800L
+        private const val RING_STAGGER_MS = 700L
     }
 }

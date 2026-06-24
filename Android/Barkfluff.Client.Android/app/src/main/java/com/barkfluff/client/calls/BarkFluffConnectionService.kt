@@ -109,6 +109,7 @@ class BarkFluffConnectionService : ConnectionService() {
         }
 
         private fun answerFromTelecom() {
+            CallTelecomRegistry.markAnswering(callId)
             context.startActivity(baseIncomingIntent().apply {
                 action = CallExtras.ACTION_ACCEPT_CALL
             })

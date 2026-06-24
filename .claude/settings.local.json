@@ -240,7 +240,8 @@
       "Bash(npm ci *)",
       "Bash(openssl s_client -connect storage.barkfluff.com:443 -servername storage.barkfluff.com)",
       "Bash(openssl x509 *)",
-      "Bash(openssl s_client -connect storage.barkfluff.com:443 -servername storage.barkfluff.com -showcerts)"
+      "Bash(openssl s_client -connect storage.barkfluff.com:443 -servername storage.barkfluff.com -showcerts)",
+      "Bash(./gradlew :app-v1:assembleDebug --no-daemon)"
     ],
     "deny": [],
     "ask": []
