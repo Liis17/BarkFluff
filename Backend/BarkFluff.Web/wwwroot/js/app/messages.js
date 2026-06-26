@@ -178,13 +178,13 @@
                 cnt.className = 'more-count';
                 cnt.textContent = '+' + (images.length - 3);
                 wrap.appendChild(cnt);
-                wrap.addEventListener('click', (function (u2) { return function () { if (onMediaClick) onMediaClick('image', u2); }; })(url || prev));
+                wrap.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(wrap);
             } else {
                 var im = document.createElement('img');
                 im.src = prev || url; im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                im.addEventListener('click', (function (u2) { return function () { if (onMediaClick) onMediaClick('image', u2); }; })(url || prev));
+                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(im);
             }
         }
@@ -208,7 +208,7 @@
             ov.innerHTML = '<span>\u25B6</span>';
             wrap.appendChild(vid);
             wrap.appendChild(ov);
-            wrap.addEventListener('click', function () { if (onMediaClick) onMediaClick('video', url); });
+            wrap.addEventListener('click', function () { if (onMediaClick) onMediaClick('video', url, a.fileId); });
             container.appendChild(wrap);
         });
     }
@@ -301,7 +301,7 @@
      * @param {number} myUserId
      * @param {boolean} isGroupChat
      * @param {Function} [getUserFn] — async function(userId) → user
-     * @param {Function} [onMediaClick] — function(type, url)
+     * @param {Function} [onMediaClick] — function(type, url, fileId)
      * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId) }
      * @returns {Promise<HTMLElement>}
      */

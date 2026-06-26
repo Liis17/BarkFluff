@@ -1034,22 +1034,41 @@
 
     // ========== MEDIA OVERLAY ==========
 
-    function showMediaOverlay(type, url) {
+    var overlayFileToken = 0;
+
+    function applyOverlaySrc(type, url) {
         if (type === 'video') {
             overlayImage.style.display = 'none';
             overlayVideo.style.display = 'block';
-            overlayVideo.src = url;
-            overlayVideo.play();
+            overlayVideo.src = url || '';
+            if (url) overlayVideo.play();
         } else {
             overlayVideo.style.display = 'none';
             overlayImage.style.display = 'block';
-            overlayImage.src = url;
+            overlayImage.src = url || '';
         }
+    }
+
+    function showMediaOverlay(type, url, fileId) {
+        var token = ++overlayFileToken;
+        applyOverlaySrc(type, url);
         imageOverlay.classList.add('visible');
+
+        // Presigned-ссылки протухают, если чат долго открыт. При открытии полноразмерного
+        // просмотра запрашиваем свежий URL по fileId, чтобы избежать 404 на устаревшей ссылке.
+        if (fileId) {
+            BF.files.refreshFileUrl(fileId).then(function (f) {
+                if (!f || token !== overlayFileToken) return;
+                var fresh = type === 'video' ? f.url : (f.url || f.previewUrl);
+                var cur = type === 'video' ? overlayVideo.src : overlayImage.src;
+                if (fresh && fresh !== cur) applyOverlaySrc(type, fresh);
+            });
+        }
     }
 
     imageOverlay.addEventListener('click', function (e) {
         if (e.target === overlayVideo) return;
+        overlayFileToken++;
         imageOverlay.classList.remove('visible');
         overlayImage.src = '';
         overlayVideo.pause();
@@ -1152,7 +1171,7 @@
                             if (!url) return;
                             var img = document.createElement('img');
                             img.src = url; img.loading = 'lazy';
-                            img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url); });
+                            img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url, att.fileId); });
                             grid.appendChild(img);
                         });
                     });
