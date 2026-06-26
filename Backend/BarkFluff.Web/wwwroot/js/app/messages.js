@@ -179,20 +179,14 @@
                 cnt.className = 'more-count';
                 cnt.textContent = '+' + (images.length - 3);
                 wrap.appendChild(cnt);
-<<<<<<< Updated upstream
-=======
                 BF.files.bindResilientMedia(im, a.fileId, true);
->>>>>>> Stashed changes
                 wrap.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(wrap);
             } else {
                 var im = document.createElement('img');
                 im.src = prev || url; im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-<<<<<<< Updated upstream
-=======
                 BF.files.bindResilientMedia(im, a.fileId, true);
->>>>>>> Stashed changes
                 im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(im);
             }

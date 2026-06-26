@@ -1034,11 +1034,6 @@
 
     // ========== MEDIA OVERLAY ==========
 
-<<<<<<< Updated upstream
-    var overlayFileToken = 0;
-
-    function applyOverlaySrc(type, url) {
-=======
     function showMediaOverlay(type, url, fileId) {
         overlayImage.removeAttribute('data-bf-refreshed');
         overlayImage.removeAttribute('data-bf-failed');
@@ -1048,7 +1043,6 @@
             overlayImage.setAttribute('data-bf-file-id', fileId);
             overlayVideo.setAttribute('data-bf-file-id', fileId);
         }
->>>>>>> Stashed changes
         if (type === 'video') {
             overlayImage.style.display = 'none';
             overlayVideo.style.display = 'block';
@@ -1192,10 +1186,7 @@
                             if (!url) return;
                             var img = document.createElement('img');
                             img.src = url; img.loading = 'lazy';
-<<<<<<< Updated upstream
-=======
                             BF.files.bindResilientMedia(img, att.fileId, true);
->>>>>>> Stashed changes
                             img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url, att.fileId); });
                             grid.appendChild(img);
                         });
