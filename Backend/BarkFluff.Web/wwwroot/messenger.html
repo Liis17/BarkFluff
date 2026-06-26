@@ -3667,6 +3667,26 @@
             padding: 40px 0;
             font-size: 14px;
         }
+        /* Устойчивая загрузка медиа: плейсхолдер для протухших/недоступных файлов */
+        .bf-load-failed {
+            opacity: 0.6;
+            filter: grayscale(0.3);
+        }
+        img.bf-load-failed,
+        video.bf-load-failed {
+            object-fit: contain;
+            background: var(--dialog-bg, rgba(0,0,0,0.04));
+            border-radius: 8px;
+        }
+        .attach-doc.bf-load-failed,
+        .profile-file-item.bf-load-failed {
+            text-decoration: line-through;
+            pointer-events: none;
+        }
+        .audio-play-btn.bf-load-failed {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
     </style>
     <script>
     /* Theme bootstrap — runs before render to avoid flash */

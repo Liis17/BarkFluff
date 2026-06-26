@@ -144,6 +144,7 @@
             img.className = 'attach-sticker';
             img.src = url;
             img.loading = 'lazy';
+            BF.files.bindResilientMedia(img, a.fileId, false);
             container.appendChild(img);
             return;
         }
@@ -178,12 +179,20 @@
                 cnt.className = 'more-count';
                 cnt.textContent = '+' + (images.length - 3);
                 wrap.appendChild(cnt);
+<<<<<<< Updated upstream
+=======
+                BF.files.bindResilientMedia(im, a.fileId, true);
+>>>>>>> Stashed changes
                 wrap.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(wrap);
             } else {
                 var im = document.createElement('img');
                 im.src = prev || url; im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
+<<<<<<< Updated upstream
+=======
+                BF.files.bindResilientMedia(im, a.fileId, true);
+>>>>>>> Stashed changes
                 im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(im);
             }
@@ -203,6 +212,7 @@
             vid.preload = 'metadata';
             if (prev) vid.poster = prev;
             vid.src = url;
+            BF.files.bindResilientMedia(vid, a.fileId, false);
             var ov = document.createElement('div');
             ov.className = 'video-play-overlay';
             ov.innerHTML = '<span>\u25B6</span>';
@@ -250,6 +260,25 @@
 
             var audio = new Audio(url);
             audio.preload = 'metadata';
+            var refreshed = false;
+            audio.addEventListener('error', function () {
+                if (refreshed) {
+                    playBtn.disabled = true;
+                    playBtn.classList.add('bf-load-failed');
+                    nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое недоступно' : 'Аудио недоступно';
+                    return;
+                }
+                refreshed = true;
+                BF.files.refreshFileUrl(a.fileId).then(function (fd) {
+                    var fresh = fd && (fd.url || fd.previewUrl);
+                    if (fresh) audio.src = fresh;
+                    else {
+                        playBtn.disabled = true;
+                        playBtn.classList.add('bf-load-failed');
+                        nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое недоступно' : 'Аудио недоступно';
+                    }
+                });
+            });
             var item = { audio: audio, playBtn: playBtn, progressFill: progressFill, timeEl: timeEl };
 
             audio.addEventListener('loadedmetadata', function () { timeEl.textContent = u().formatDuration(audio.duration); });
@@ -285,6 +314,7 @@
             link.target = '_blank';
             link.rel = 'noopener';
             link.download = a.fileName || '';
+            BF.files.bindResilientLink(link, a.fileId);
             link.innerHTML =
                 '<span class="attach-doc-icon">' + u().docIcon(a.fileName) + '</span>' +
                 '<div class="attach-doc-info">' +

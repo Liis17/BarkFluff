@@ -1037,6 +1037,17 @@
     var overlayFileToken = 0;
 
     function applyOverlaySrc(type, url) {
+=======
+    function showMediaOverlay(type, url, fileId) {
+        overlayImage.removeAttribute('data-bf-refreshed');
+        overlayImage.removeAttribute('data-bf-failed');
+        overlayVideo.removeAttribute('data-bf-refreshed');
+        overlayVideo.removeAttribute('data-bf-failed');
+        if (fileId) {
+            overlayImage.setAttribute('data-bf-file-id', fileId);
+            overlayVideo.setAttribute('data-bf-file-id', fileId);
+        }
+>>>>>>> Stashed changes
         if (type === 'video') {
             overlayImage.style.display = 'none';
             overlayVideo.style.display = 'block';
@@ -1066,10 +1077,19 @@
         }
     }
 
+    BF.files.bindResilientMedia(overlayImage, null, false);
+    BF.files.bindResilientMedia(overlayVideo, null, false);
+
     imageOverlay.addEventListener('click', function (e) {
         if (e.target === overlayVideo) return;
         overlayFileToken++;
         imageOverlay.classList.remove('visible');
+        overlayImage.removeAttribute('data-bf-file-id');
+        overlayVideo.removeAttribute('data-bf-file-id');
+        overlayImage.removeAttribute('data-bf-refreshed');
+        overlayImage.removeAttribute('data-bf-failed');
+        overlayVideo.removeAttribute('data-bf-refreshed');
+        overlayVideo.removeAttribute('data-bf-failed');
         overlayImage.src = '';
         overlayVideo.pause();
         overlayVideo.src = '';
@@ -1171,6 +1191,10 @@
                             if (!url) return;
                             var img = document.createElement('img');
                             img.src = url; img.loading = 'lazy';
+<<<<<<< Updated upstream
+=======
+                            BF.files.bindResilientMedia(img, att.fileId, true);
+>>>>>>> Stashed changes
                             img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url, att.fileId); });
                             grid.appendChild(img);
                         });
@@ -1195,6 +1219,7 @@
                             var el = document.createElement('a');
                             el.className = 'profile-file-item';
                             el.href = fileUrl; el.target = '_blank';
+                            BF.files.bindResilientLink(el, att.fileId);
                             el.rel = 'noopener';
                             var icon = document.createElement('span');
                             icon.textContent = '\u{1F4C4}';
@@ -1341,6 +1366,7 @@
                 var img = document.createElement('img');
                 img.src = url;
                 img.alt = pack.name || '';
+                BF.files.bindResilientMedia(img, coverFid, true);
                 tab.appendChild(img);
             } else {
                 tab.textContent = (pack.name || '?')[0].toUpperCase();
@@ -1379,6 +1405,7 @@
                 img.title = s.emoji || '';
                 img.loading = 'lazy';
                 img.addEventListener('click', function () { sendSticker(s.fileId); });
+                BF.files.bindResilientMedia(img, s.fileId, false);
                 stickerGrid.appendChild(img);
             });
         });

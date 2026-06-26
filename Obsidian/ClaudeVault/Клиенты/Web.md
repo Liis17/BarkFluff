@@ -60,6 +60,20 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
 - Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и inline-SVG иконками действий.
 
+### Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер)
+
+Проблема: при долгой сессии временные ссылки на файлы/картинки/стикеры (Minio presigned из [[Backend/Files]] `GetTempDownloadUrl`) протухают → браузер грузит 404 → сломанные контролы. Решение в `js/app/files.js` (`BF.files`):
+
+- **`refreshFileUrl(fileId)`** — удаляет закешированный (протухший) URL из `urlCache`, перезапрашивает свежий через `BF.api.getTempDownloadUrl`, обновляет кеш (другие элементы по тому же `fileId` забирают свежую запись), возвращает `{fileId,url,previewUrl}|null`.
+- **`bindResilientMedia(el, fileId, preferPreview)`** — для `<img>`/`<video>`/`<audio>`: сохраняет `data-bf-file-id` на элементе, по событию `error` (404/протухание) рефрешит ссылку и перезагружает (`el.src = fresh`); при повторной неудаче — плейсхолдер. `fileId` читается из data-атрибута на момент ошибки (актуально для переиспользуемых элементов — лайтбокс `#overlayImage`/`#overlayVideo`).
+- **`bindResilientLink(el, fileId)`** — для документов (`<a>`): URL не загружается до клика, поэтому рефрешится лениво — префетч при `mouseenter`/`focus`, чтобы к моменту клика ссылка была свежей. При неудаче — заглушка.
+- **`applyPlaceholder(el)`** — заменяет элемент на векторную заглушку (inline-SVG data-URI, нейтральный серый) + класс `.bf-load-failed`: img → SVG в `src`, video → SVG в `poster` + сброс `src`, audio → сброс `src`, a → удаление `href`.
+- **Состояние** в data-атрибутах: `data-bf-file-id`, `data-bf-prefer-preview`, `data-bf-refreshed`, `data-bf-refreshing`, `data-bf-failed`. Защита от гонок: пока рефреш в полёте (`data-bf-refreshing`), повторные ошибки не показывают плейсхолдер; при сбросе элемента (закрытие лайтбокса) `data-bf-file-id` снимается — случайные ошибки игнорируются.
+
+Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`). CSS `.bf-load-failed` — во встроенном `<style>` `messenger.html`.
+
+> Аватары (`chat.picture`/`user.profilePicture`) приходят с сервера готовой ссылкой (не через `urlCache`) и этим механизмом не покрываются — их рефреш требует перезапроса чата/юзера.
+
 ## Функции
 Логин + 2FA, регистрация, fast-auth (QR), список чатов и сообщения (отправка/редактирование/удаление/закреп/прочитано, вложения, пересылка), папки, настройки (профиль/сессии/2FA/хранилище), персонализация, **звонки (аудио/видео, 1-на-1 и группы)**.
 
