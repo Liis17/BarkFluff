@@ -1034,6 +1034,7 @@
 
     // ========== MEDIA OVERLAY ==========
 
+<<<<<<< Updated upstream
     var overlayFileToken = 0;
 
     function applyOverlaySrc(type, url) {
