@@ -1033,16 +1033,15 @@
     });
 
     // ========== MEDIA OVERLAY ==========
+    var overlayFileToken = 0;
 
-    function showMediaOverlay(type, url, fileId) {
+    // Выставляет display + src для overlay-элементов; сбрасывает data-флаги resilient,
+    // чтобы при новом открытии bindResilientMedia обрабатывал ошибки с чистого старта.
+    function applyOverlaySrc(type, url) {
         overlayImage.removeAttribute('data-bf-refreshed');
         overlayImage.removeAttribute('data-bf-failed');
         overlayVideo.removeAttribute('data-bf-refreshed');
         overlayVideo.removeAttribute('data-bf-failed');
-        if (fileId) {
-            overlayImage.setAttribute('data-bf-file-id', fileId);
-            overlayVideo.setAttribute('data-bf-file-id', fileId);
-        }
         if (type === 'video') {
             overlayImage.style.display = 'none';
             overlayVideo.style.display = 'block';
@@ -1056,12 +1055,15 @@
     }
 
     function showMediaOverlay(type, url, fileId) {
+        if (fileId) {
+            overlayImage.setAttribute('data-bf-file-id', fileId);
+            overlayVideo.setAttribute('data-bf-file-id', fileId);
+        }
         var token = ++overlayFileToken;
         applyOverlaySrc(type, url);
         imageOverlay.classList.add('visible');
-
-        // Presigned-ссылки протухают, если чат долго открыт. При открытии полноразмерного
-        // просмотра запрашиваем свежий URL по fileId, чтобы избежать 404 на устаревшей ссылке.
+        // Presigned-ссылки протухают при долгой сессии. При открытии полноразмерного
+        // просмотра перезапрашиваем свежий URL по fileId, чтобы избежать 404.
         if (fileId) {
             BF.files.refreshFileUrl(fileId).then(function (f) {
                 if (!f || token !== overlayFileToken) return;
