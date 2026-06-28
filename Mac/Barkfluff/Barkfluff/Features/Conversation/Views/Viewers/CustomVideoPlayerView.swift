@@ -132,7 +132,7 @@ struct FullScreenVideoPlayer: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(.white)
-            Text("Загрузка видео...")
+            Text("conversation.viewer.video_loading")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.7))
         }
@@ -299,7 +299,7 @@ struct FullScreenVideoPlayer: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
 
-            Text("Не удалось загрузить видео")
+            Text("conversation.viewer.video_load_failed")
                 .font(.headline)
                 .foregroundStyle(.secondary)
         }

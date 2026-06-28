@@ -68,10 +68,11 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
         });
 
         // 2. Получаем все сообщения пользователя через MessagesServerApi
+        GetUserAllMessagesResponse? messagesResponse = null;
         try
         {
             var messagesRequest = new GetUserAllMessagesRequest { UserId = request.UserId };
-            var messagesResponse = await _messagesClient.GetUserAllMessagesAsync(
+            messagesResponse = await _messagesClient.GetUserAllMessagesAsync(
                 messagesRequest,
                 cancellationToken: cancellationToken);
             _metrics.Increment("messages_fetch_success");
@@ -86,7 +87,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
                         id = m.Id,
                         chatId = m.ChatId,
                         senderId = m.SenderId,
-                        sentAt = m.SentAt.ToString(),
+                        sentAt = m.SentAt?.ToString(),
                         text = m.Text,
                         contentType = m.ContentType,
                         readBy = m.ReadBy.ToList(),
@@ -141,16 +142,11 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
         // 3. Получаем все загруженные файлы пользователя через FilesServerApi
         try
         {
-            // Собираем все fileIds из сообщений
-            var messagesData = await _messagesClient.GetUserAllMessagesAsync(
-                new GetUserAllMessagesRequest { UserId = request.UserId },
-                cancellationToken: cancellationToken);
-            _metrics.Increment("messages_fetch_success");
-
+            // Собираем все fileIds из уже загруженных сообщений (без повторного gRPC-вызова)
             var fileIds = new HashSet<string>();
-            if (messagesData != null)
+            if (messagesResponse != null)
             {
-                foreach (var msg in messagesData.Messages)
+                foreach (var msg in messagesResponse.Messages)
                 {
                     foreach (var attachment in msg.Attachments)
                     {
@@ -197,8 +193,8 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
                             fileName = f.FileName,
                             fileSize = f.FileSize,
                             type = f.Type,
-                            createdAt = f.CreatedAt.ToString(),
-                            uploadedAt = f.UploadedAt.ToString(),
+                            createdAt = f.CreatedAt?.ToString(),
+                            uploadedAt = f.UploadedAt?.ToString(),
                             etag = f.Etag,
                             fileUrl = f.FileUrl,
                             previewUrl = f.PreviewUrl,

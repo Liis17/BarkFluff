@@ -44,7 +44,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 ## Метрики (`Metrics/`)
 
 - `MetricsCollector` — thread-safe counters/gauges (`ConcurrentDictionary`). Counters сбрасываются при snapshot, gauges сохраняются.
-- `MetricsReporterService` — BackgroundService, каждые 5 секунд пишет snapshot в structured log.
+- `MetricsReporterService` — BackgroundService, тикает каждые 5 секунд. При наличии активности (ненулевые counters) пишет полный snapshot. В простое (только статичные gauges) шлёт gauge-heartbeat не чаще раза в 5 минут (`IdleHeartbeatEveryTicks = 60`) — чтобы не спамить Seq, но сохранить uptime/`db_healthy` в AdminPanel.
 
 ## Логирование
 

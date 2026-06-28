@@ -39,14 +39,15 @@ struct MessageInputView: View {
     @State private var showEmojiPicker = false
     @State private var showStickerPicker = false
     @FocusState private var isTextFieldFocused: Bool
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(spacing: 0) {
             // Reply-превью — плотно над инпутом, в области градиента composer'а.
             if let reply = pendingReply {
                 ReplyPreviewView(
-                    authorName: reply.senderName ?? "Сообщение",
-                    snippet: ReplyPreviewView.makeSnippet(reply),
+                    authorName: reply.senderName ?? String(localized: "common.unknown_user"),
+                    snippet: ReplyPreviewView.makeSnippet(reply, locale: locale),
                     onCancel: { onCancelReply?() }
                 )
                 .transition(.asymmetric(
@@ -60,7 +61,7 @@ struct MessageInputView: View {
             // Edit-превью — то же место, что у reply (взаимоисключающие).
             if let editing = editingMessage {
                 EditPreviewView(
-                    snippet: ReplyPreviewView.makeSnippet(editing),
+                    snippet: ReplyPreviewView.makeSnippet(editing, locale: locale),
                     onCancel: { onCancelEdit?() }
                 )
                 .transition(.asymmetric(
@@ -109,7 +110,7 @@ struct MessageInputView: View {
                     Button {
                         openMediaPicker()
                     } label: {
-                        Label("Фото или видео", systemImage: "photo.on.rectangle")
+                        Label("conversation.attach.photo_or_video", systemImage: "photo.on.rectangle")
                     }
 
                     Divider()
@@ -117,13 +118,13 @@ struct MessageInputView: View {
                     Button {
                         openDocumentPicker()
                     } label: {
-                        Label("Файл (без сжатия)", systemImage: "doc")
+                        Label("conversation.attach.file_no_compression", systemImage: "doc")
                     }
                 }
 
                 // Поле ввода текста - Capsule с Liquid Glass + кнопка эмодзи
                 HStack(alignment: .center, spacing: 4) {
-                    TextField("Сообщение...", text: $text, axis: .vertical)
+                    TextField("conversation.input.placeholder", text: $text, axis: .vertical)
                         .textFieldStyle(.plain)
                         .lineLimit(1...6)
                         .focused($isTextFieldFocused)
@@ -211,7 +212,7 @@ struct MessageInputView: View {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.message = "Выберите файлы для отправки"
+        panel.message = String(localized: "conversation.attach.picker.files_message")
         panel.allowedContentTypes = [.item]
 
         if panel.runModal() == .OK {
@@ -228,7 +229,7 @@ struct MessageInputView: View {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.message = "Выберите фото или видео"
+        panel.message = String(localized: "conversation.attach.picker.media_message")
         panel.allowedContentTypes = [.image, .movie]
 
         if panel.runModal() == .OK {
@@ -244,7 +245,7 @@ struct MessageInputView: View {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.message = "Выберите файл"
+        panel.message = String(localized: "conversation.attach.picker.file_message")
         panel.allowedContentTypes = [.item]
 
         if panel.runModal() == .OK {

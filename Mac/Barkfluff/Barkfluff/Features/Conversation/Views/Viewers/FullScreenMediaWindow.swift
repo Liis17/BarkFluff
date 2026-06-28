@@ -231,7 +231,7 @@ struct FullScreenMediaViewerView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "xmark")
                         .font(.body)
-                    Text("Закрыть")
+                    Text("common.close")
                         .font(.subheadline)
                 }
                 .foregroundStyle(.white)
@@ -246,7 +246,7 @@ struct FullScreenMediaViewerView: View {
 
             // Счётчик
             if attachments.count > 1 {
-                Text("\(currentIndex + 1) из \(attachments.count)")
+                Text("conversation.viewer.counter \(currentIndex + 1) \(attachments.count)")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
@@ -642,7 +642,7 @@ struct FullScreenImageView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(.white)
-            Text("Загрузка...")
+            Text("conversation.viewer.loading")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.7))
         }
@@ -653,7 +653,7 @@ struct FullScreenImageView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundStyle(.white.opacity(0.7))
-            Text("Не удалось загрузить")
+            Text("conversation.media.load_failed")
                 .foregroundStyle(.white.opacity(0.7))
         }
     }

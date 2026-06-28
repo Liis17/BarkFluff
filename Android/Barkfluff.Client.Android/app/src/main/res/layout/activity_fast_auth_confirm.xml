@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Новое устройство"
+            app:title="@string/fast_auth_title"
             app:navigationIcon="@drawable/ic_arrow_back" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -38,7 +38,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:text="Новое устройство запрашивает вход в аккаунт. Проверьте информацию об устройстве и подтвердите или отклоните запрос."
+                android:text="@string/fast_auth_hint"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -80,7 +80,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Устройство"
+                                android:text="@string/fast_auth_device"
                                 android:textSize="12sp"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -124,7 +124,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Операционная система"
+                                android:text="@string/fast_auth_os"
                                 android:textSize="12sp"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -168,7 +168,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Приложение"
+                                android:text="@string/fast_auth_application"
                                 android:textSize="12sp"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -212,7 +212,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="IP-адрес"
+                                android:text="@string/fast_auth_ip"
                                 android:textSize="12sp"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -242,7 +242,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="Подтвердить вход" />
+                android:text="@string/fast_auth_confirm" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonReject"
@@ -250,7 +250,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Отклонить"
+                android:text="@string/fast_auth_reject"
                 app:strokeColor="?attr/colorError"
                 android:textColor="?attr/colorError" />
 

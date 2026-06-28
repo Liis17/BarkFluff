@@ -49,7 +49,7 @@ struct BackgroundsGrid: View {
                 Button(role: .destructive) {
                     viewModel.clearBackgroundSelection()
                 } label: {
-                    Label("Убрать фон чата", systemImage: "xmark.circle.fill")
+                    Label("settings.personalization.background.remove", systemImage: "xmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -151,7 +151,7 @@ private struct BackgroundCell: View {
                 Button(role: .destructive) {
                     onContextDelete()
                 } label: {
-                    Label("Удалить", systemImage: "trash")
+                    Label("common.delete", systemImage: "trash")
                 }
             }
     }

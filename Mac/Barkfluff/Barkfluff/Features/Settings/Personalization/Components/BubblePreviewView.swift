@@ -22,11 +22,11 @@ struct BubblePreviewView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            incoming("Привет! Как дела?")
-            outgoing("Отлично, спасибо!")
-            incoming("Что сегодня делаешь?")
-            outgoing("Доделываю клиент BarkFluff на Swift 🍎")
-            incoming("Звучит круто")
+            incoming(String(localized: "personalization.bubble_preview.msg1"))
+            outgoing(String(localized: "personalization.bubble_preview.msg2"))
+            incoming(String(localized: "personalization.bubble_preview.msg3"))
+            outgoing(String(localized: "personalization.bubble_preview.msg4"))
+            incoming(String(localized: "personalization.bubble_preview.msg5"))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.md)

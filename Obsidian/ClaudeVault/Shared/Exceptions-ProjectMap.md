@@ -43,6 +43,7 @@
 | `ResetIdNotFoundException.cs` | `5B9A8269-617E-4D4C-9696-A554C59E3A86` | Неверный идентификатор кода сброса пароля |
 | `SessionNotFoundException.cs` | `011BF29A-2DE6-4A63-BF8D-3F36AE730D9D` | Сессия не найдена |
 | `UsernameExistException.cs` | `DB157CD8-98A3-4A35-9857-33821813D422` | Пользователь с таким именем пользователя существует |
+| `UsernameInvalidFormatException.cs` | `E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47` | Имя пользователя имеет недопустимый формат (latin/цифры/_, 3–32 симв.) |
 | `UsernameOrEmailIsEmptyException.cs` | `84EC96DA-2A1A-499E-ACED-C1444E07E0E6` | Передан пустое имя пользователя или емайл |
 | `UsernameReservedException.cs` | `A3F1B2C4-7D8E-4F5A-9B6C-1E2D3F4A5B6C` | Это имя пользователя зарезервировано и не может быть использовано |
 | `UserNotFoundException.cs` | `A4DAB334-1067-4838-A782-C4257DC838F7` | Пользователь не найден |

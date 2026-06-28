@@ -50,7 +50,7 @@ struct ReplyPreviewView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help("Отменить ответ")
+            .help("conversation.reply.cancel_a11y")
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
@@ -65,13 +65,13 @@ struct ReplyPreviewView: View {
     /// Сформировать однострочный snippet для превью.
     /// Если у сообщения есть текст — берём его (обрезка по 160 симв.),
     /// иначе — emoji-резюме первого вложения.
-    static func makeSnippet(_ message: Message) -> String {
+    static func makeSnippet(_ message: Message, locale: Locale = .current) -> String {
         let text = message.content.text
         if !text.isEmpty {
             return String(text.prefix(160))
         }
         if let first = message.content.attachments.first {
-            return first.type.previewText(fileName: first.fileName)
+            return first.type.previewText(fileName: first.fileName, in: locale)
         }
         return ""
     }

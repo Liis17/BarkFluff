@@ -1,5 +1,6 @@
 using BarkFluff.WebApi.Core.MessengerData;
 
+using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
@@ -46,7 +47,6 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.BeaconChannel?.Dispose();
                 _webApi.BeaconChannel = GrpcChannel.ForAddress(gParam.SocketBeacon);
                 _webApi.BeaconAC = new Proto.Beacon.BeaconApi.BeaconApiClient(_webApi.BeaconChannel);
-                UpdateManagerClients();
                 return new ErrorReturner(true);
             }
             catch (Exception)
@@ -65,7 +65,6 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.NavigatorChannel?.Dispose();
                 _webApi.NavigatorChannel = GrpcChannel.ForAddress(WebApi.EnsureHttpPrefix(navigatorUrl));
                 _webApi.NavigatorAC = new Proto.Navigator.NavigatorApi.NavigatorApiClient(_webApi.NavigatorChannel);
-                UpdateManagerClients();
                 return new ErrorReturner(true);
             }
             catch (Exception)
@@ -152,12 +151,18 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.UpdatesChannel = GrpcChannel.ForAddress(_gParam.SocketUpdates);
                 _webApi.OnlinerChannel = GrpcChannel.ForAddress(_gParam.SocketOnliner);
 
-                var identityInvoker = _webApi.IdentityChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var userInvoker = _webApi.UserChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var filesInvoker = _webApi.FilesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var messageInvoker = _webApi.MessagesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var updatesInvoker = _webApi.UpdatesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var onlinerInvoker = _webApi.OnlinerChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var interceptors = new Interceptor[]
+                {
+                    deviceInterceptor, deviceIdInterceptor, jwtInterceptor,
+                    osInterceptor, appInterceptor, errorInterceptor, ipInterceptor
+                };
+
+                var identityInvoker = BuildInvoker(_webApi.IdentityChannel, interceptors);
+                var userInvoker = BuildInvoker(_webApi.UserChannel, interceptors);
+                var filesInvoker = BuildInvoker(_webApi.FilesChannel, interceptors);
+                var messageInvoker = BuildInvoker(_webApi.MessagesChannel, interceptors);
+                var updatesInvoker = BuildInvoker(_webApi.UpdatesChannel, interceptors);
+                var onlinerInvoker = BuildInvoker(_webApi.OnlinerChannel, interceptors);
 
                 _webApi.IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
                 _webApi.UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
@@ -165,15 +170,6 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.MessagesAC = new Proto.Messages.MessagesApi.MessagesApiClient(messageInvoker);
                 _webApi.UpdatesAC = new Proto.Updates.UpdatesApi.UpdatesApiClient(updatesInvoker);
                 _webApi.OnlinerAC = new BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient(onlinerInvoker);
-
-                try
-                {
-                    UpdateManagerClients();
-                }
-                catch (Exception ex)
-                {
-                    return new ErrorReturner(false, "ошибка в UpdateManagerClients");
-                }
 
                 return new ErrorReturner(true);
             }
@@ -201,13 +197,11 @@ namespace BarkFluff.WebApi.Core.Managers
                 var ipInterceptor = new Shared.Auth.XIpClientInterceptor(ip);
                 var errorInterceptor = new Shared.Exceptions.Interceptors.ExceptionClientInterceptor();
 
-                var invoker = _webApi.FastAuthChannel
-                    .Intercept(deviceInterceptor)
-                    .Intercept(deviceIdInterceptor)
-                    .Intercept(osInterceptor)
-                    .Intercept(appInterceptor)
-                    .Intercept(ipInterceptor)
-                    .Intercept(errorInterceptor);
+                var invoker = BuildInvoker(_webApi.FastAuthChannel, new Interceptor[]
+                {
+                    deviceInterceptor, deviceIdInterceptor, osInterceptor,
+                    appInterceptor, ipInterceptor, errorInterceptor
+                });
 
                 _webApi.FastAuthAC = new Proto.FastAuth.FastAuthApi.FastAuthApiClient(invoker);
                 return new ErrorReturner(true);
@@ -225,54 +219,12 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi.FastAuthChannel = null;
         }
 
-        /// <summary>
-        /// Обновляет ссылки на клиенты во всех менеджерах.
-        /// </summary>
-        private void UpdateManagerClients()
+        private static CallInvoker BuildInvoker(GrpcChannel channel, Interceptor[] interceptors)
         {
-            _webApi.ServerManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.TokenManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.UserManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.AuthManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.RegistrationManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.PasswordManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.MessageManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.SearchManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.FileManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.UpdateManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
-
-            _webApi.OnlinerManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
+            CallInvoker invoker = channel.CreateCallInvoker();
+            foreach (var i in interceptors)
+                invoker = invoker.Intercept(i);
+            return invoker;
         }
     }
 }

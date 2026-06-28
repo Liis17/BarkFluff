@@ -25,7 +25,7 @@ Shared-библиотека инфраструктуры. Подключаетс
 | Файл | Назначение |
 |------|-----------|
 | `MetricsCollector.cs` | Потокобезопасный сборщик метрик (`ConcurrentDictionary`). **Counters**: `Increment(name)`, `Add(name, value)` — сбрасываются при `SnapshotAndReset()`. **Gauges**: `Set(name, value)` — сохраняются между снапшотами. |
-| `MetricsReporterService.cs` | `BackgroundService`. Каждые 5 секунд вызывает `SnapshotAndReset()` и пишет структурированный лог `ServiceMetrics {@Metrics}` (ServiceName, Metrics, Timestamp). Пишет только при наличии ненулевых метрик. |
+| `MetricsReporterService.cs` | `BackgroundService`. Тикает каждые 5 секунд: `SnapshotAndReset(out hadCounterActivity)`. При активности (ненулевые counters) пишет полный `ServiceMetrics {@Metrics}` (ServiceName, Metrics, Timestamp). В простое (только статичные gauges) — gauge-heartbeat не чаще раза в 5 минут (`IdleHeartbeatEveryTicks = 60`), чтобы не спамить Seq, но сохранить uptime/`db_healthy` в AdminPanel. |
 
 ---
 

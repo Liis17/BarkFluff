@@ -1,3 +1,4 @@
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.Validators;
 
 using System.Text.RegularExpressions;
@@ -435,11 +436,11 @@ namespace BarkFluff.Client.WPF.Pages
 
             // Update requirements checklist
             var requirements = PasswordValidator.GetRequirementsStatus(password);
-            UpdateRequirementText(ReqMinLength, requirements.HasMinLength, "Минимум 8 символов");
-            UpdateRequirementText(ReqUpperCase, requirements.HasUpperCase, "Заглавные буквы");
-            UpdateRequirementText(ReqLowerCase, requirements.HasLowerCase, "Строчные буквы");
-            UpdateRequirementText(ReqDigit, requirements.HasDigit, "Цифры");
-            UpdateRequirementText(ReqSpecialChar, requirements.HasSpecialChar, "Специальные символы");
+            UpdateRequirementText(ReqMinLength, requirements.HasMinLength, L.Str("L_PwdReq_MinLength"));
+            UpdateRequirementText(ReqUpperCase, requirements.HasUpperCase, L.Str("L_PwdReq_Uppercase"));
+            UpdateRequirementText(ReqLowerCase, requirements.HasLowerCase, L.Str("L_PwdReq_Lowercase"));
+            UpdateRequirementText(ReqDigit, requirements.HasDigit, L.Str("L_PwdReq_Digits"));
+            UpdateRequirementText(ReqSpecialChar, requirements.HasSpecialChar, L.Str("L_PwdReq_Special"));
 
             // Update password match if confirm field has text
             if (!string.IsNullOrEmpty(PasswordRepeatedEnter.Password))
@@ -464,12 +465,12 @@ namespace BarkFluff.Client.WPF.Pages
 
             if (PasswordEnter.Password == PasswordRepeatedEnter.Password)
             {
-                PasswordMatchText.Text = "✓ Пароли совпадают";
+                PasswordMatchText.Text = L.Str("L_CA_Pwd_Match");
                 PasswordMatchText.Foreground = ValidColor;
             }
             else
             {
-                PasswordMatchText.Text = "✗ Пароли не совпадают";
+                PasswordMatchText.Text = L.Str("L_CA_Pwd_Mismatch");
                 PasswordMatchText.Foreground = InvalidColor;
             }
         }

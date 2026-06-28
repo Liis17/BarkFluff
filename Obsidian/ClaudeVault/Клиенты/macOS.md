@@ -59,10 +59,44 @@ Barkfluff/
 
 Views → ViewModels → Services → Repositories → gRPC
 - In-memory кеши: `InMemoryCache` (actor, generic), `OnlineStatusCache`, `FileURLCache` (presigned S3)
-- Персистентный кеш (GRDB SQLite): `Database` + миграции (`Database/Migrations.swift`), записи `CachedChatRecord`, `CachedMessageRecord`, `CachedFileRecord`
-- Локальные репозитории: `LocalChatRepository`, `LocalMessageRepository` — чтение/запись персистентного кеша из сервисов
+- Персистентный кеш (GRDB SQLite): `Database` + миграции (`Database/Migrations.swift`, последняя — `v6_current_user`), записи `CachedChatRecord`, `CachedMessageRecord`, `CachedFileRecord`, `CachedChatFolderRecord`, `CachedStickerPackRecord`, `CachedStickerRecord`, **`CachedCurrentUserRecord`** (single-row кеш текущего пользователя — id, имя, username, bio, аватар/постер, бейджи, storage limit)
+- Локальные репозитории: `LocalChatRepository`, `LocalMessageRepository`, `LocalChatFolderRepository`, **`LocalCurrentUserRepository`** (`loadCachedCurrentUser()` / `save(_:)` / `clear()` — INSERT OR REPLACE single-row семантика)
 - Кеш медиа на диске: `MediaCacheManager`, типизация — `CachedFileType`, статистика — `CacheStats`, парсинг ключей S3 — `S3URLParser`
 - `TokenRefreshCoordinator` — автоматический рефреш через `AuthInterceptor`
+
+## Стартовый флоу (stale-first + connection gate)
+
+`AppCoordinator.onAppLaunch(serverDiscovery:, authService:, tokenProvider:)`:
+
+- Нет `savedServerHost` → `.serverSelection`.
+- Нет `hasRefreshToken` → синхронный `tryReconnect` → `.authentication` или `.serverSelection`.
+- **Есть `hasRefreshToken`** → **сразу `.main`**. UI показывает `MainSplitView` с `ChatListView` (плейсхолдеры/крутилка). В фоне `Task`: `tryReconnect` → `tryRestoreSession`. OK — `coordinator.isConnectionReady = true`; refresh-токен невалиден → `handleSessionExpired()`.
+
+**Connection gate**. `isConnectionReady: Bool` — инвариант «endpoints есть И access-токен валиден». Без этого `listChats`/`onlineStatusService.track`/`getCurrentUser`/`notificationService.start` падают с «Messages не настроено» и онлайн-статусы поломаны. `waitForConnectionReady(timeout: .seconds(30))` — polling каждые 100 мс. Выставляется в `true`: фон после `tryRestoreSession`, `LoginViewModel.login`, `RegisterViewModel.completeRegistration`, FastAuth `onAuthenticated`. Сбрасывается: `handleSessionExpired`, `performLocalWipe`.
+
+`ChatListView.task` (порядок):
+1. `vm.isLoading = true` → `ChatRowPlaceholderView` в списке.
+2. `await coordinator.waitForConnectionReady()`.
+3. Параллельно `loadFolders` / `loadChats` / `loadCurrentUser`.
+4. `vm.startListeningForUpdates()`.
+5. `notificationService.start(...)` (нужен `currentUserID`).
+
+`DependencyContainer.loadCurrentUser()` — **stale-first + fire-and-forget revalidate** (с v6):
+1. Читает `cached_current_user` из SQLite через `LocalCurrentUserRepository` и мгновенно выставляет `container.currentUser` / `container.currentUserID` (если ещё nil).
+2. Запускает в фоне `Task { await revalidateCurrentUser() }` — сетевой `getCurrentUser` + write-through в SQLite. Возвращается **сразу** после п.1, не блокирует `ChatListView.task`.
+
+`revalidateCurrentUser()` — публичный write-through. Вызывается:
+- из `loadCurrentUser` в фоне;
+- из `ProfileEditViewModel.saveChanges` после `changeName/changeUsername/changeBio`;
+- из `ProfileEditViewModel.uploadCropped` после `setProfilePicture`;
+- из `PersonalizationSettingsViewModel.uploadPoster` после `setProfilePoster`.
+Гарантия: после успешного редактирования профиля свежие данные попадают и в `container.currentUser` (мгновенно для UI), и в `cached_current_user` (для следующего cold-start). Если сетевой запрос упал — кешированный юзер остаётся видимым, без сброса UI.
+
+`RootView.onChange` — только `notificationService.stop()` при выходе из `.main`. Стартовая `loadCurrentUser`/`notificationService.start` живут в `ChatListView.task` после gate.
+
+`ChatListViewModel.loadChats()` неблокирующий: показывает кеш и запускает фоновый `revalidateTask`. `revalidateChats()` (await-able) — для pull-to-refresh, `.reconnected`, нового чата, удаления последнего сообщения. `loadFolders()` — то же: кеш мгновенно, refresh в фоне.
+
+Флаг `isOffline` рисует `ErrorBannerView` (с `onRetry: { revalidateChats() }`) в `.safeAreaInset(.top)` поверх списка.
 
 ## Паттерн: logout — wipe всего, кроме адреса сервера
 
@@ -80,7 +114,7 @@ Logout строится по «server-first, fail-loud» схеме: если с
    - `userCache`/`chatCache`/`onlineStatusCache.removeAll()` — in-memory кеши.
    - `mediaCacheManager.clearAll()` — файловый медиа-кеш с диска.
    - `fileURLCache.clear()` — runtime + UserDefaults-домен `com.barkfluff.fileURLCache`.
-   - `database.truncateAll()` — SQLite (`cached_message`, `cached_chat`, `cached_file`).
+   - `database.truncateAll()` — SQLite (`cached_message`, `cached_chat`, `cached_chat_folder`, `cached_file`, `cached_sticker`, `cached_sticker_pack`, **`cached_current_user`**).
    - `tokenProvider.purgeForLogout()` — токены, даты истечения, `device_id`. **`server_host`/`server_port` сохраняются.**
    - `personalizationSettings.reset()` + `appearanceSettings.reset()` — локальные UserDefaults-настройки клиента (тема, радиус пузыря, blur/dim, фон чата) сбрасываются к дефолтам.
    - `connectionManager.shutdown()` — закрывает gRPC-соединения. `serverDiscoveryService.disconnect()` **больше не вызывается** — мы хотим оставить сам адрес.
@@ -391,12 +425,59 @@ Mac-специфика:
 - `ChatListViewModel.folders/selectedFolderID/excludeFolderChatsFromAll` + `loadFolders()`, `selectFolder(_:)`, `unreadCount(for:)`. Метод `applyFilter()` учитывает выбранную папку и флаг исключения чатов папок из «Все чаты».
 - Персонализация: два `@AppStorage` ключа `folders.compact` и `folders.excludeFromAll`. Тогглы в `PersonalizationSettingsView`.
 
+## Локализация (RU / EN)
+
+Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Resources/Localizable.xcstrings` (sourceLanguage = `ru`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`. Реализация общая с [[Клиенты/iOS]].
+
+**Инфраструктура:**
+- `App/Settings/LocalizationSettings.swift` — `@Observable @MainActor`, `enum AppLanguage { system, ru, en }`, computed `appliedLocale: Locale`, persist через UserDefaults (`localization.language`).
+- `App/DI/DependencyContainer.swift` — `let localizationSettings: LocalizationSettings`, сбрасывается в `reset()`.
+- `App/BarkfluffApp.swift` — `.environment(\.locale, container.localizationSettings.appliedLocale)` на **обеих сценах** (`WindowGroup` и `Settings`). Чтение computed из `body` делает корень реактивным к смене языка через `@Observable`.
+- Команды (`CommandGroup(after: .sidebar)`) — кнопки `"commands.chats"` / `"commands.profile"` с `keyboardShortcut`.
+- `Navigation/SettingsCategory.swift` — `case language` + `title: LocalizedStringKey`. Экран `Features/Settings/Views/LanguageSettingsView.swift` — `Picker` по `AppLanguage.allCases`.
+- `Barkfluff.xcodeproj/project.pbxproj` — `knownRegions` содержит `ru` и `en`.
+
+**Конвенция ключей:** `<area>.<screen>.<element>` snake_case через точку. iOS и macOS используют **одни и те же** ключи там, где экраны совпадают (`auth.login.*`, `conversation.*`, `chat_list.*`, `settings.*`). Mac-only screens (NSOpenPanel, viewers) — собственные ключи в том же неймспейсе.
+
+**Типы строк:**
+- `Text("key")` / `Button("key")` / `.help("key")` (Mac tooltip) / `.navigationTitle("key")` — `LocalizedStringKey` литерал.
+- `LocalizedStringResource?` — для error/state-полей в ViewModel и валидаторах (`errorMessage: LocalizedStringResource?`). `PasswordStrength.label: LocalizedStringResource`.
+- `enum.titleKey: LocalizedStringKey` — для перечислений (`AppTheme`, `NotificationMode`, `ProfileFieldVisibility`, `SettingsCategory`). `String(localized:)` из computed property **запрещён** — замораживает значение.
+- `String(localized: "key")` — только для не-SwiftUI API (NSOpenPanel.message, имена файлов при сохранении).
+
+**BFCore (общий пакет с iOS):**
+- Каталог: `Packages/BFCore/Sources/BFCore/Resources/Localizable.xcstrings`, объявлен через `resources: [.process("Resources")]` в `Package.swift`. Внутри пакета — `String(localized: "key", bundle: .module, locale: …)`. `Bundle.module` **обязателен**, иначе runtime вернёт ключ.
+- Locale-aware overloads везде, где enum/struct отдаёт user-facing строку:
+  - `OnlineStatus.displayText(in: Locale)`, `displayText` (default `.current`)
+  - `AttachmentType.displayName(in:)`, `previewText(fileName:in:)`
+  - `ChatMemberRole.displayName(in:)`, `FastAuthStatus.displayName(in:)`, `DeviceType.displayName(in:)`, `SharedMediaFilter.displayName(in:)`
+  - `BFError.errorDescription(in:)` / `recoverySuggestion(in:)`, `MediaCacheError.errorDescription(in:)`
+  - `DateFormatterHelper.formatForChatList/formatForMessage/formatLastActive(_: locale:)` — внутри собирают локаль-специфичный `DateFormatter`. `formatForChatList`: сегодня → время (`16:27`), вчера/позавчера → слово+время (`Вчера 16:27`, ключи `bfcore.date.yesterday`, `bfcore.date.day_before_yesterday`), старше → короткая дата с двузначным годом через template `ddMMyy` (`23.05.26` / `5/23/26`)
+  - `ErrorLocalizer.localize(_:locale:)` / `recoverySuggestion(for:locale:)`
+- Plurals для last-seen (`bfcore.online.last_seen_minutes/_hours/_days %lld`) — native xcstrings plural variants. RU: one/few/many; EN: one/other.
+
+**Реактивность во вьюхах:** компоненты инжектят `@Environment(\.locale) private var locale` и пробрасывают в API: `status.displayText(in: locale)`, `DateFormatterHelper.formatForChatList(date, locale: locale)`, `ReplyPreviewView.makeSnippet(message, locale: locale)`, `MessageGrouper.formatDateSeparator(_:locale:)`. Дефолт `.current` — для логов и notification center, где SwiftUI environment недоступен.
+
+**Hardcoded `Locale(identifier: "ru_RU")` запрещены** — заменены на `@Environment(\.locale)` (`Conversation/Helpers/MessageGrouper.swift`, `Features/UserProfile/Views/ProfileInfoSection.swift`).
+
 ## Code Conventions
 
 - Комментарии на русском
 - Services с `Protocol` суффиксом (`AuthServiceProtocol`)
 - ViewModels — `@Observable` классы
 - Async/await для всех асинхронных операций
+
+## Звонки
+
+Аудио/видео, 1-на-1 и групповые. Сигнализация — gRPC ([[Backend/Calls]]) через `BFNetworking.CallsRepository` + `CallEventsStreamManager` (фоновый стрим `SubscribeCallEvents`; эндпоинт Calls обнаруживается через [[Backend/Beacon]] `GetServerInfoResponse.calls`). Медиа — **LiveKit Swift SDK** в пакете `BFCalls`.
+
+- `BFCalls.CallController` (`@MainActor @Observable`) — state-машина (idle/outgoing/incoming/connecting/active/ended), LiveKit `Room`, медиа-контролы (mic/cam/screen/качество), плитки участников, резолвер имён через `UserService`. Синглтон-аксессор `DependencyContainer.callController`; старт/стоп из `RootView` по `.main`.
+- Общие SwiftUI-вью (в `BFCalls`, кросс-платформенные): `IncomingCallView` (ринг), `CallScreenView` (экран+контролы+сетка участников+self-PiP+панель качества+таймер), `CallMinimizedBar`.
+- Оверлей: `Features/Call/Views/CallOverlayView.swift` — **плавающий немодальный** поверх чата (клики мимо карточки проходят к чату), свёрнутый/развёрнутый, перетаскиваемый.
+- Точки входа: кнопки аудио/видео в `ConversationHeaderView`.
+- Разрешения: entitlements `com.apple.security.device.audio-input` + `…camera`, `NSMicrophone/NSCameraUsageDescription`.
+  - ⚠️ **Критично:** нужен ещё `com.apple.security.network.server` — иначе App Sandbox блокирует UDP-приём WebRTC и `room.connect` падает с `Code=202 (subscriber transport .failed)` (сигналинг подключается, медиа — нет). На iOS этого нет.
+  - Камера на macOS **не включается автоматически** при connect (авто-старт захвата роняет CMIO/WebRTC) — включается кнопкой внутри звонка.
 
 ## Сборка
 

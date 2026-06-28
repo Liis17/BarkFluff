@@ -43,6 +43,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, "onliner" },
         { ServiceId.CloudMessaging, "cloud-messaging" },
         { ServiceId.Web, "web" },
+        { ServiceId.Calls, "calls" },
     };
 
     /// <summary>
@@ -61,6 +62,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, 7009 },
         { ServiceId.CloudMessaging, 7011 },
         { ServiceId.Web, 7016 },
+        { ServiceId.Calls, 7025 },
     };
 
     /// <summary>
@@ -78,6 +80,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Updates, "updates" },
         { ServiceId.Onliner, "onliner" },
         { ServiceId.Web, "web" },
+        { ServiceId.Calls, "calls" },
     };
 
     /// <summary>
@@ -90,6 +93,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Files, ("FilesDb", "files") },
         { ServiceId.Messages, ("MessagesDb", "messages") },
         { ServiceId.Onliner, ("OnlinerDb", "onliner") },
+        { ServiceId.Calls, ("CallsDb", "calls") },
     };
 
     public ConfigurationDefaultsPopulator(
@@ -150,7 +154,7 @@ public class ConfigurationDefaultsPopulator
                 populatedCount++;
                 _logger.LogDebug("Авто-заполнение: [{ServiceId}] {Section}:{Key} = {Value}",
                     config.ServiceId, config.Section, config.Key,
-                    IsSensitive(config) ? "***" : defaultValue);
+                    IsSensitive(config, defaultValue) ? "***" : defaultValue);
             }
         }
 
@@ -218,11 +222,13 @@ public class ConfigurationDefaultsPopulator
                 return port.ToString();
         }
 
-        // --- RunSettings:Http1Port (Files) ---
+        // --- RunSettings:Http1Port (Files, Calls) ---
         if (config.Section == "RunSettings" && config.Key == "Http1Port")
         {
             if (serviceId == ServiceId.Files)
                 return "7006";
+            if (serviceId == ServiceId.Calls)
+                return "7026"; // HTTP/1.1-листенер для приёма LiveKit-webhooks
         }
 
         // --- JwtSettings ---
@@ -329,6 +335,18 @@ public class ConfigurationDefaultsPopulator
             };
         }
 
+        // --- LiveKit (звонки) — креды должны совпадать с keys в конфиге LiveKit-сервера ---
+        if (config.Section == "LiveKit")
+        {
+            return config.Key switch
+            {
+                "Url" => "ws://livekit:7880",
+                "ApiKey" => "devkey",
+                "ApiSecret" => "devsecret_change_me_in_production_0123456789",
+                _ => null
+            };
+        }
+
         // --- TempFiles ---
         if (config.Section == "TempFiles" && config.Key == "ExpiresAt")
         {
@@ -355,7 +373,7 @@ public class ConfigurationDefaultsPopulator
     /// </summary>
     private static string GenerateServiceToken(string secretKey, string issuer, string audience, string serviceName)
     {
-        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secretKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -391,11 +409,13 @@ public class ConfigurationDefaultsPopulator
         return result.ToString();
     }
 
-    private static bool IsSensitive(ConfigurationItem config)
+    private static bool IsSensitive(ConfigurationItem config, string? value = null)
     {
-        return config.Key is "SecretKey" or "Password" or "Token"
+        return config.Key is "SecretKey" or "Password" or "Token" or "ApiSecret"
                || config.Section.Contains("Password")
                || config.Section.Contains("Secret")
-               || config.Section.Contains("Token");
+               || config.Section.Contains("Token")
+               || config.Section.EndsWith("Db")
+               || (value?.Contains("Password=", StringComparison.OrdinalIgnoreCase) ?? false);
     }
 }

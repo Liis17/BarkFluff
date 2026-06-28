@@ -9,7 +9,7 @@
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-    app:cardCornerRadius="20dp"
+    app:cardCornerRadius="@dimen/shape_corner_large"
     app:cardElevation="0dp"
     app:strokeColor="?attr/colorOutline"
     app:strokeWidth="1dp">
@@ -20,12 +20,12 @@
         android:orientation="horizontal"
         android:padding="16dp">
 
-        <!-- Цветовой индикатор сервера с увеличенным радиусом -->
+        <!-- Цветовой индикатор сервера -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="6dp"
             android:layout_height="match_parent"
             android:layout_marginEnd="16dp"
-            app:cardBackgroundColor="#FF6B35"
+            app:cardBackgroundColor="?attr/colorPrimary"
             app:cardCornerRadius="3dp"
             app:cardElevation="0dp">
 
@@ -51,7 +51,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="Название сервера"
+                android:text="@string/server_item_name_placeholder"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -63,7 +63,7 @@
                 android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="2"
-                android:text="Описание сервера"
+                android:text="@string/server_item_description_placeholder"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -88,7 +88,7 @@
                     android:layout_marginStart="4dp"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:text="Локация • @publicname"
+                    android:text="@string/server_item_location_placeholder"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 

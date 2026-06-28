@@ -16,14 +16,14 @@ enum UsernameValidationStatus: Equatable {
     case invalid       // недопустимые символы
     case unchanged     // совпадает с текущим
 
-    var message: String {
+    var messageKey: LocalizedStringKey? {
         switch self {
-        case .checking: "Проверка..."
-        case .available: "Имя доступно"
-        case .taken: "Имя уже занято"
-        case .tooShort: "Минимум 3 символа"
-        case .invalid: "Только буквы, цифры и подчёркивание"
-        case .unchanged: ""
+        case .checking: "profile.validation.username.checking"
+        case .available: "profile.validation.username.available"
+        case .taken: "profile.validation.username.taken"
+        case .tooShort: "profile.validation.username.too_short"
+        case .invalid: "profile.validation.username.invalid"
+        case .unchanged: nil
         }
     }
 

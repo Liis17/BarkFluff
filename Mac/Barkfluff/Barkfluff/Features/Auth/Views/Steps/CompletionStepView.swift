@@ -30,23 +30,27 @@ struct CompletionStepView: View {
 
             // Текст
             VStack(spacing: Theme.Spacing.sm) {
-                Text("Добро пожаловать!")
+                Text("auth.register.step.completion.title")
                     .font(.title)
                     .fontWeight(.bold)
 
-                Text("Аккаунт успешно создан")
+                Text("auth.register.step.completion.subtitle")
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
 
             // Краткая информация о созданном аккаунте в glass-контейнере
             VStack(spacing: Theme.Spacing.md) {
-                infoRow(icon: "person.fill", label: "Имя", value: "\(data.firstName) \(data.lastName)")
-                infoRow(icon: "at", label: "Username", value: data.username)
-                infoRow(icon: "envelope.fill", label: "Email", value: data.email)
+                infoRow(icon: "person.fill", label: "auth.register.step.completion.row.name", value: "\(data.firstName) \(data.lastName)")
+                infoRow(icon: "at", label: "auth.register.step.completion.row.username", value: data.username)
+                infoRow(icon: "envelope.fill", label: "auth.register.step.completion.row.email", value: data.email)
 
                 if data.is2FAEnabled {
-                    infoRow(icon: "shield.checkered", label: "2FA", value: "Включена")
+                    infoRow(
+                        icon: "shield.checkered",
+                        label: "auth.register.step.completion.row.two_fa",
+                        valueKey: "auth.register.step.completion.row.two_fa.enabled"
+                    )
                 }
             }
             .padding(Theme.Spacing.lg)
@@ -56,7 +60,7 @@ struct CompletionStepView: View {
 
             // Кнопка продолжения
             Button(action: onComplete) {
-                Text("Начать общение")
+                Text("auth.register.step.completion.start")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }
@@ -71,7 +75,7 @@ struct CompletionStepView: View {
     }
 
     @ViewBuilder
-    private func infoRow(icon: String, label: String, value: String) -> some View {
+    private func infoRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
         HStack {
             Image(systemName: icon)
                 .frame(width: 24)
@@ -82,7 +86,25 @@ struct CompletionStepView: View {
 
             Spacer()
 
-            Text(value)
+            Text(verbatim: value)
+                .fontWeight(.medium)
+        }
+        .font(.subheadline)
+    }
+
+    @ViewBuilder
+    private func infoRow(icon: String, label: LocalizedStringKey, valueKey: LocalizedStringKey) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .frame(width: 24)
+                .foregroundStyle(.secondary)
+
+            Text(label)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(valueKey)
                 .fontWeight(.medium)
         }
         .font(.subheadline)

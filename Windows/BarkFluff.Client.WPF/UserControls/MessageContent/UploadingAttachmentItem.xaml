@@ -119,7 +119,7 @@
                     Foreground="#FFEF5350"
                     Symbol="ErrorCircle12"
                     Visibility="Collapsed"
-                    ToolTip="Ошибка загрузки. Нажмите для повтора">
+                    ToolTip="{DynamicResource L_UploadingAttachment_Error}">
                     <ui:SymbolIcon.Effect>
                         <DropShadowEffect
                             BlurRadius="3"

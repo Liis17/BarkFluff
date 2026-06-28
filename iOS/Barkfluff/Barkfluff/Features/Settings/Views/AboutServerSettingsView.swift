@@ -13,11 +13,11 @@ struct AboutServerSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Сервер навигатора") {
+            Section("settings.about_server.section.beacon") {
                 if let host = viewModel.beaconHost, let port = viewModel.beaconPort {
-                    LabeledContent("Beacon", value: "\(host):\(port)")
+                    LabeledContent("settings.about_server.beacon", value: "\(host):\(port)")
                 } else {
-                    Text("Не подключено").foregroundStyle(.secondary)
+                    Text("settings.about_server.not_connected").foregroundStyle(.secondary)
                 }
 
                 HStack {
@@ -27,7 +27,7 @@ struct AboutServerSettingsView: View {
                         if viewModel.isPinging {
                             ProgressView()
                         } else {
-                            Text("Проверить пинг")
+                            Text("settings.about_server.ping_check")
                         }
                     }
                     .disabled(viewModel.isPinging || viewModel.beaconHost == nil)
@@ -35,7 +35,7 @@ struct AboutServerSettingsView: View {
                     Spacer()
 
                     if let ms = viewModel.lastPingMillis {
-                        Text("\(ms) мс")
+                        Text("settings.about_server.ms_short \(ms)")
                             .foregroundStyle(.secondary)
                     } else if let err = viewModel.pingError {
                         Text(err)
@@ -45,9 +45,9 @@ struct AboutServerSettingsView: View {
                 }
             }
 
-            Section("Микросервисы") {
+            Section("settings.about_server.section.services_short") {
                 if viewModel.services.isEmpty {
-                    Text("Нет данных").foregroundStyle(.secondary)
+                    Text("settings.about_server.no_data").foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.services) { entry in
                         HStack {
@@ -72,7 +72,7 @@ struct AboutServerSettingsView: View {
                 }
             }
         }
-        .navigationTitle("О сервере")
+        .navigationTitle("settings.category.about_server")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container

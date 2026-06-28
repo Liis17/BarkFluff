@@ -81,6 +81,7 @@ extension ServiceKind {
         case .navigator: return "Navigator"
         case .configuration: return "Configuration"
         case .onliner: return "Onliner"
+        case .calls: return "Calls"
         }
     }
 
@@ -96,6 +97,7 @@ extension ServiceKind {
         case .navigator: return "map.fill"
         case .configuration: return "slider.horizontal.3"
         case .onliner: return "circle.fill"
+        case .calls: return "phone.fill"
         }
     }
 }

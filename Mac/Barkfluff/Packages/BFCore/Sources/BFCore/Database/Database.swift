@@ -41,6 +41,7 @@ public final class Database: @unchecked Sendable {
             try db.execute(sql: "DELETE FROM cached_file")
             try db.execute(sql: "DELETE FROM cached_sticker")
             try db.execute(sql: "DELETE FROM cached_sticker_pack")
+            try db.execute(sql: "DELETE FROM cached_current_user")
         }
     }
 

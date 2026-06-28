@@ -38,7 +38,7 @@
                 android:layout_gravity="center"
                 app:icon="@drawable/ic_delete"
                 app:iconTint="@android:color/white"
-                android:contentDescription="Удалить фон" />
+                android:contentDescription="@string/cd_remove_background" />
 
         </FrameLayout>
 

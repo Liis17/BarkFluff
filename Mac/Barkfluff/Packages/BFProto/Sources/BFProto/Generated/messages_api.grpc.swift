@@ -176,6 +176,214 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "PinMessage" metadata.
+        public enum PinMessage: Sendable {
+            /// Request type for "PinMessage".
+            public typealias Input = Barkfluff_Messages_PinMessageRequest
+            /// Response type for "PinMessage".
+            public typealias Output = Barkfluff_Messages_PinMessageResponse
+            /// Descriptor for "PinMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "PinMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "UnpinMessage" metadata.
+        public enum UnpinMessage: Sendable {
+            /// Request type for "UnpinMessage".
+            public typealias Input = Barkfluff_Messages_UnpinMessageRequest
+            /// Response type for "UnpinMessage".
+            public typealias Output = Barkfluff_Messages_UnpinMessageResponse
+            /// Descriptor for "UnpinMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "UnpinMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "ListPinnedMessages" metadata.
+        public enum ListPinnedMessages: Sendable {
+            /// Request type for "ListPinnedMessages".
+            public typealias Input = Barkfluff_Messages_ListPinnedMessagesRequest
+            /// Response type for "ListPinnedMessages".
+            public typealias Output = Barkfluff_Messages_ListPinnedMessagesResponse
+            /// Descriptor for "ListPinnedMessages".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "ListPinnedMessages",
+                type: .unary
+            )
+        }
+        /// Namespace for "UnpinAll" metadata.
+        public enum UnpinAll: Sendable {
+            /// Request type for "UnpinAll".
+            public typealias Input = Barkfluff_Messages_UnpinAllRequest
+            /// Response type for "UnpinAll".
+            public typealias Output = Barkfluff_Messages_UnpinAllResponse
+            /// Descriptor for "UnpinAll".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "UnpinAll",
+                type: .unary
+            )
+        }
+        /// Namespace for "CreatePrivateChat" metadata.
+        public enum CreatePrivateChat: Sendable {
+            /// Request type for "CreatePrivateChat".
+            public typealias Input = Barkfluff_Messages_CreatePrivateChatRequest
+            /// Response type for "CreatePrivateChat".
+            public typealias Output = Barkfluff_Messages_CreatePrivateChatResponse
+            /// Descriptor for "CreatePrivateChat".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "CreatePrivateChat",
+                type: .unary
+            )
+        }
+        /// Namespace for "AcceptPrivateChat" metadata.
+        public enum AcceptPrivateChat: Sendable {
+            /// Request type for "AcceptPrivateChat".
+            public typealias Input = Barkfluff_Messages_AcceptPrivateChatRequest
+            /// Response type for "AcceptPrivateChat".
+            public typealias Output = Barkfluff_Messages_AcceptPrivateChatResponse
+            /// Descriptor for "AcceptPrivateChat".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "AcceptPrivateChat",
+                type: .unary
+            )
+        }
+        /// Namespace for "RejectPrivateChat" metadata.
+        public enum RejectPrivateChat: Sendable {
+            /// Request type for "RejectPrivateChat".
+            public typealias Input = Barkfluff_Messages_RejectPrivateChatRequest
+            /// Response type for "RejectPrivateChat".
+            public typealias Output = Barkfluff_Messages_RejectPrivateChatResponse
+            /// Descriptor for "RejectPrivateChat".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "RejectPrivateChat",
+                type: .unary
+            )
+        }
+        /// Namespace for "SendPrivateMessage" metadata.
+        public enum SendPrivateMessage: Sendable {
+            /// Request type for "SendPrivateMessage".
+            public typealias Input = Barkfluff_Messages_SendPrivateMessageRequest
+            /// Response type for "SendPrivateMessage".
+            public typealias Output = Barkfluff_Messages_SendPrivateMessageResponse
+            /// Descriptor for "SendPrivateMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "SendPrivateMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "ListPrivateMessages" metadata.
+        public enum ListPrivateMessages: Sendable {
+            /// Request type for "ListPrivateMessages".
+            public typealias Input = Barkfluff_Messages_ListPrivateMessagesRequest
+            /// Response type for "ListPrivateMessages".
+            public typealias Output = Barkfluff_Messages_ListPrivateMessagesResponse
+            /// Descriptor for "ListPrivateMessages".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "ListPrivateMessages",
+                type: .unary
+            )
+        }
+        /// Namespace for "EditPrivateMessage" metadata.
+        public enum EditPrivateMessage: Sendable {
+            /// Request type for "EditPrivateMessage".
+            public typealias Input = Barkfluff_Messages_EditPrivateMessageRequest
+            /// Response type for "EditPrivateMessage".
+            public typealias Output = Barkfluff_Messages_EditPrivateMessageResponse
+            /// Descriptor for "EditPrivateMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "EditPrivateMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "DeletePrivateMessage" metadata.
+        public enum DeletePrivateMessage: Sendable {
+            /// Request type for "DeletePrivateMessage".
+            public typealias Input = Barkfluff_Messages_DeletePrivateMessageRequest
+            /// Response type for "DeletePrivateMessage".
+            public typealias Output = Barkfluff_Messages_DeletePrivateMessageResponse
+            /// Descriptor for "DeletePrivateMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "DeletePrivateMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "SendSecretChatInvite" metadata.
+        public enum SendSecretChatInvite: Sendable {
+            /// Request type for "SendSecretChatInvite".
+            public typealias Input = Barkfluff_Messages_SendSecretChatInviteRequest
+            /// Response type for "SendSecretChatInvite".
+            public typealias Output = Barkfluff_Messages_SendSecretChatInviteResponse
+            /// Descriptor for "SendSecretChatInvite".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "SendSecretChatInvite",
+                type: .unary
+            )
+        }
+        /// Namespace for "AcceptSecretChatInvite" metadata.
+        public enum AcceptSecretChatInvite: Sendable {
+            /// Request type for "AcceptSecretChatInvite".
+            public typealias Input = Barkfluff_Messages_AcceptSecretChatInviteRequest
+            /// Response type for "AcceptSecretChatInvite".
+            public typealias Output = Barkfluff_Messages_AcceptSecretChatInviteResponse
+            /// Descriptor for "AcceptSecretChatInvite".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "AcceptSecretChatInvite",
+                type: .unary
+            )
+        }
+        /// Namespace for "RejectSecretChatInvite" metadata.
+        public enum RejectSecretChatInvite: Sendable {
+            /// Request type for "RejectSecretChatInvite".
+            public typealias Input = Barkfluff_Messages_RejectSecretChatInviteRequest
+            /// Response type for "RejectSecretChatInvite".
+            public typealias Output = Barkfluff_Messages_RejectSecretChatInviteResponse
+            /// Descriptor for "RejectSecretChatInvite".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "RejectSecretChatInvite",
+                type: .unary
+            )
+        }
+        /// Namespace for "SendSecretMessage" metadata.
+        public enum SendSecretMessage: Sendable {
+            /// Request type for "SendSecretMessage".
+            public typealias Input = Barkfluff_Messages_SendSecretMessageRequest
+            /// Response type for "SendSecretMessage".
+            public typealias Output = Barkfluff_Messages_SendSecretMessageResponse
+            /// Descriptor for "SendSecretMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "SendSecretMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "AckSecretMessage" metadata.
+        public enum AckSecretMessage: Sendable {
+            /// Request type for "AckSecretMessage".
+            public typealias Input = Barkfluff_Messages_AckSecretMessageRequest
+            /// Response type for "AckSecretMessage".
+            public typealias Output = Barkfluff_Messages_AckSecretMessageResponse
+            /// Descriptor for "AckSecretMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "AckSecretMessage",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.messages.MessagesApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListChats.descriptor,
@@ -189,7 +397,23 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             GetPersonChatId.descriptor,
             GetChatInfo.descriptor,
             EditMessage.descriptor,
-            DeleteMessage.descriptor
+            DeleteMessage.descriptor,
+            PinMessage.descriptor,
+            UnpinMessage.descriptor,
+            ListPinnedMessages.descriptor,
+            UnpinAll.descriptor,
+            CreatePrivateChat.descriptor,
+            AcceptPrivateChat.descriptor,
+            RejectPrivateChat.descriptor,
+            SendPrivateMessage.descriptor,
+            ListPrivateMessages.descriptor,
+            EditPrivateMessage.descriptor,
+            DeletePrivateMessage.descriptor,
+            SendSecretChatInvite.descriptor,
+            AcceptSecretChatInvite.descriptor,
+            RejectSecretChatInvite.descriptor,
+            SendSecretMessage.descriptor,
+            AckSecretMessage.descriptor
         ]
     }
 }
@@ -483,6 +707,379 @@ extension Barkfluff_Messages_MessagesApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_DeleteMessageResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeleteMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "PinMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Закрепить сообщение в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_PinMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_PinMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_PinMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func pinMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_PinMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_PinMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_PinMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PinMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UnpinMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Открепить сообщение в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_UnpinMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_UnpinMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_UnpinMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func unpinMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_UnpinMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_UnpinMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_UnpinMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListPinnedMessages" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить список закреплённых сообщений в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_ListPinnedMessagesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_ListPinnedMessagesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_ListPinnedMessagesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listPinnedMessages<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_ListPinnedMessagesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_ListPinnedMessagesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_ListPinnedMessagesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPinnedMessagesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UnpinAll" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Открепить все сообщения в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_UnpinAllRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_UnpinAllRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_UnpinAllResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func unpinAll<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_UnpinAllRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_UnpinAllRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_UnpinAllResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinAllResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CreatePrivateChat" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Создать приватный чат с пользователем. Собеседник присоединится через AcceptPrivateChat
+        /// > после получения SubscribePrivateChatInvites и проверки passphrase.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_CreatePrivateChatRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_CreatePrivateChatRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_CreatePrivateChatResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func createPrivateChat<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_CreatePrivateChatRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_CreatePrivateChatRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_CreatePrivateChatResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CreatePrivateChatResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AcceptPrivateChat" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Присоединиться к приватному чату (вызывается приглашённым после успешной проверки verifier на клиенте).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_AcceptPrivateChatRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_AcceptPrivateChatRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_AcceptPrivateChatResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func acceptPrivateChat<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_AcceptPrivateChatRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_AcceptPrivateChatRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_AcceptPrivateChatResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptPrivateChatResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RejectPrivateChat" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отклонить приглашение в приватный чат (приглашённым).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_RejectPrivateChatRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_RejectPrivateChatRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_RejectPrivateChatResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func rejectPrivateChat<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_RejectPrivateChatRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_RejectPrivateChatRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_RejectPrivateChatResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectPrivateChatResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SendPrivateMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отправить шифрованное сообщение в приватный чат.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_SendPrivateMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_SendPrivateMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_SendPrivateMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func sendPrivateMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_SendPrivateMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_SendPrivateMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_SendPrivateMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendPrivateMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListPrivateMessages" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить список шифрованных сообщений приватного чата (двунаправленная пагинация по аналогии с ListMessages).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_ListPrivateMessagesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_ListPrivateMessagesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_ListPrivateMessagesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listPrivateMessages<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_ListPrivateMessagesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_ListPrivateMessagesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_ListPrivateMessagesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPrivateMessagesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "EditPrivateMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Редактировать шифрованное сообщение (новый ciphertext+nonce+AAD).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_EditPrivateMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_EditPrivateMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_EditPrivateMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func editPrivateMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_EditPrivateMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_EditPrivateMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_EditPrivateMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditPrivateMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DeletePrivateMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_DeletePrivateMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_DeletePrivateMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_DeletePrivateMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func deletePrivateMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_DeletePrivateMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_DeletePrivateMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_DeletePrivateMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeletePrivateMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SendSecretChatInvite" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отправить инвайт секретного чата. Содержит initial X3DH message (PreKeySignalMessage).
+        /// > Инвайт буферизуется на сервере (Redis, TTL 24ч) до Accept/Reject получателя.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_SendSecretChatInviteRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_SendSecretChatInviteRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_SendSecretChatInviteResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func sendSecretChatInvite<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretChatInviteRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_SendSecretChatInviteRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_SendSecretChatInviteResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretChatInviteResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AcceptSecretChatInvite" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Принять инвайт секретного чата (вызывается на устройстве получателя). После accept
+        /// > отправитель получит событие через SubscribeSecretChatAccepts и сможет отправлять SecretMessage.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_AcceptSecretChatInviteRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_AcceptSecretChatInviteRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_AcceptSecretChatInviteResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func acceptSecretChatInvite<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_AcceptSecretChatInviteRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_AcceptSecretChatInviteRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_AcceptSecretChatInviteResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptSecretChatInviteResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RejectSecretChatInvite" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отклонить инвайт секретного чата. Отправитель получает уведомление через SubscribeSecretChatAccepts
+        /// > (с флагом accepted=false). Инвайт удаляется из буфера.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_RejectSecretChatInviteRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_RejectSecretChatInviteRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_RejectSecretChatInviteResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func rejectSecretChatInvite<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_RejectSecretChatInviteRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_RejectSecretChatInviteRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_RejectSecretChatInviteResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectSecretChatInviteResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SendSecretMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отправить шифрованное сообщение секретного чата конкретному устройству собеседника.
+        /// > Envelope opaque (libsignal SignalMessage). Сервер кладёт в Redis на 24ч и шлёт push без содержимого.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_SendSecretMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_SendSecretMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_SendSecretMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func sendSecretMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_SendSecretMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_SendSecretMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AckSecretMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подтвердить доставку секретного сообщения (получатель). После ack сервер удаляет envelope из буфера.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_AckSecretMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_AckSecretMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_AckSecretMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func ackSecretMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_AckSecretMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_AckSecretMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_AckSecretMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AckSecretMessageResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -909,6 +1506,555 @@ extension Barkfluff_Messages_MessagesApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "PinMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Закрепить сообщение в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_PinMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_PinMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_PinMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func pinMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_PinMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_PinMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_PinMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PinMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.PinMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UnpinMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Открепить сообщение в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_UnpinMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_UnpinMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_UnpinMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func unpinMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_UnpinMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_UnpinMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_UnpinMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.UnpinMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListPinnedMessages" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить список закреплённых сообщений в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_ListPinnedMessagesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_ListPinnedMessagesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_ListPinnedMessagesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func listPinnedMessages<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_ListPinnedMessagesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_ListPinnedMessagesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_ListPinnedMessagesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPinnedMessagesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.ListPinnedMessages.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UnpinAll" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Открепить все сообщения в чате
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_UnpinAllRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_UnpinAllRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_UnpinAllResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func unpinAll<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_UnpinAllRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_UnpinAllRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_UnpinAllResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinAllResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.UnpinAll.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CreatePrivateChat" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Создать приватный чат с пользователем. Собеседник присоединится через AcceptPrivateChat
+        /// > после получения SubscribePrivateChatInvites и проверки passphrase.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_CreatePrivateChatRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_CreatePrivateChatRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_CreatePrivateChatResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func createPrivateChat<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_CreatePrivateChatRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_CreatePrivateChatRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_CreatePrivateChatResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CreatePrivateChatResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.CreatePrivateChat.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AcceptPrivateChat" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Присоединиться к приватному чату (вызывается приглашённым после успешной проверки verifier на клиенте).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_AcceptPrivateChatRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_AcceptPrivateChatRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_AcceptPrivateChatResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func acceptPrivateChat<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_AcceptPrivateChatRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_AcceptPrivateChatRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_AcceptPrivateChatResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptPrivateChatResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.AcceptPrivateChat.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RejectPrivateChat" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отклонить приглашение в приватный чат (приглашённым).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_RejectPrivateChatRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_RejectPrivateChatRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_RejectPrivateChatResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func rejectPrivateChat<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_RejectPrivateChatRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_RejectPrivateChatRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_RejectPrivateChatResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectPrivateChatResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.RejectPrivateChat.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SendPrivateMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отправить шифрованное сообщение в приватный чат.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_SendPrivateMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_SendPrivateMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_SendPrivateMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func sendPrivateMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_SendPrivateMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_SendPrivateMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_SendPrivateMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendPrivateMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.SendPrivateMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListPrivateMessages" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить список шифрованных сообщений приватного чата (двунаправленная пагинация по аналогии с ListMessages).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_ListPrivateMessagesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_ListPrivateMessagesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_ListPrivateMessagesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func listPrivateMessages<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_ListPrivateMessagesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_ListPrivateMessagesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_ListPrivateMessagesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPrivateMessagesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.ListPrivateMessages.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "EditPrivateMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Редактировать шифрованное сообщение (новый ciphertext+nonce+AAD).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_EditPrivateMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_EditPrivateMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_EditPrivateMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func editPrivateMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_EditPrivateMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_EditPrivateMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_EditPrivateMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditPrivateMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.EditPrivateMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DeletePrivateMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_DeletePrivateMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_DeletePrivateMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_DeletePrivateMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func deletePrivateMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_DeletePrivateMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_DeletePrivateMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_DeletePrivateMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeletePrivateMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.DeletePrivateMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SendSecretChatInvite" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отправить инвайт секретного чата. Содержит initial X3DH message (PreKeySignalMessage).
+        /// > Инвайт буферизуется на сервере (Redis, TTL 24ч) до Accept/Reject получателя.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_SendSecretChatInviteRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_SendSecretChatInviteRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_SendSecretChatInviteResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func sendSecretChatInvite<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretChatInviteRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_SendSecretChatInviteRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_SendSecretChatInviteResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretChatInviteResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.SendSecretChatInvite.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AcceptSecretChatInvite" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Принять инвайт секретного чата (вызывается на устройстве получателя). После accept
+        /// > отправитель получит событие через SubscribeSecretChatAccepts и сможет отправлять SecretMessage.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_AcceptSecretChatInviteRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_AcceptSecretChatInviteRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_AcceptSecretChatInviteResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func acceptSecretChatInvite<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_AcceptSecretChatInviteRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_AcceptSecretChatInviteRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_AcceptSecretChatInviteResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptSecretChatInviteResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.AcceptSecretChatInvite.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RejectSecretChatInvite" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отклонить инвайт секретного чата. Отправитель получает уведомление через SubscribeSecretChatAccepts
+        /// > (с флагом accepted=false). Инвайт удаляется из буфера.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_RejectSecretChatInviteRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_RejectSecretChatInviteRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_RejectSecretChatInviteResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func rejectSecretChatInvite<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_RejectSecretChatInviteRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_RejectSecretChatInviteRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_RejectSecretChatInviteResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectSecretChatInviteResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.RejectSecretChatInvite.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SendSecretMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отправить шифрованное сообщение секретного чата конкретному устройству собеседника.
+        /// > Envelope opaque (libsignal SignalMessage). Сервер кладёт в Redis на 24ч и шлёт push без содержимого.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_SendSecretMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_SendSecretMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_SendSecretMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func sendSecretMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_SendSecretMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_SendSecretMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.SendSecretMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AckSecretMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подтвердить доставку секретного сообщения (получатель). После ack сервер удаляет envelope из буфера.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_AckSecretMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_AckSecretMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_AckSecretMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func ackSecretMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_AckSecretMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_AckSecretMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_AckSecretMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AckSecretMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.AckSecretMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -1258,6 +2404,475 @@ extension Barkfluff_Messages_MessagesApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_DeleteMessageRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_DeleteMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "PinMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Закрепить сообщение в чате
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_PinMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func pinMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_PinMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PinMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.pinMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_PinMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_PinMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UnpinMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Открепить сообщение в чате
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_UnpinMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func unpinMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_UnpinMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.unpinMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_UnpinMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_UnpinMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListPinnedMessages" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить список закреплённых сообщений в чате
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_ListPinnedMessagesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listPinnedMessages<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_ListPinnedMessagesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPinnedMessagesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listPinnedMessages(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_ListPinnedMessagesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_ListPinnedMessagesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UnpinAll" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Открепить все сообщения в чате
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_UnpinAllRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func unpinAll<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_UnpinAllRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinAllResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.unpinAll(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_UnpinAllRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_UnpinAllResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreatePrivateChat" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Создать приватный чат с пользователем. Собеседник присоединится через AcceptPrivateChat
+    /// > после получения SubscribePrivateChatInvites и проверки passphrase.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_CreatePrivateChatRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createPrivateChat<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_CreatePrivateChatRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CreatePrivateChatResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.createPrivateChat(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_CreatePrivateChatRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_CreatePrivateChatResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AcceptPrivateChat" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Присоединиться к приватному чату (вызывается приглашённым после успешной проверки verifier на клиенте).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_AcceptPrivateChatRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func acceptPrivateChat<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_AcceptPrivateChatRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptPrivateChatResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.acceptPrivateChat(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_AcceptPrivateChatRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_AcceptPrivateChatResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RejectPrivateChat" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отклонить приглашение в приватный чат (приглашённым).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_RejectPrivateChatRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func rejectPrivateChat<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_RejectPrivateChatRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectPrivateChatResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.rejectPrivateChat(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_RejectPrivateChatRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_RejectPrivateChatResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SendPrivateMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отправить шифрованное сообщение в приватный чат.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_SendPrivateMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func sendPrivateMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_SendPrivateMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendPrivateMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.sendPrivateMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_SendPrivateMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_SendPrivateMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListPrivateMessages" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить список шифрованных сообщений приватного чата (двунаправленная пагинация по аналогии с ListMessages).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_ListPrivateMessagesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listPrivateMessages<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_ListPrivateMessagesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPrivateMessagesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listPrivateMessages(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_ListPrivateMessagesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_ListPrivateMessagesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "EditPrivateMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Редактировать шифрованное сообщение (новый ciphertext+nonce+AAD).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_EditPrivateMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func editPrivateMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_EditPrivateMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditPrivateMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.editPrivateMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_EditPrivateMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_EditPrivateMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeletePrivateMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_DeletePrivateMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deletePrivateMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_DeletePrivateMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeletePrivateMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deletePrivateMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_DeletePrivateMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_DeletePrivateMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SendSecretChatInvite" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отправить инвайт секретного чата. Содержит initial X3DH message (PreKeySignalMessage).
+    /// > Инвайт буферизуется на сервере (Redis, TTL 24ч) до Accept/Reject получателя.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_SendSecretChatInviteRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func sendSecretChatInvite<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretChatInviteRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretChatInviteResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.sendSecretChatInvite(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_SendSecretChatInviteRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_SendSecretChatInviteResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AcceptSecretChatInvite" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Принять инвайт секретного чата (вызывается на устройстве получателя). После accept
+    /// > отправитель получит событие через SubscribeSecretChatAccepts и сможет отправлять SecretMessage.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_AcceptSecretChatInviteRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func acceptSecretChatInvite<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_AcceptSecretChatInviteRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptSecretChatInviteResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.acceptSecretChatInvite(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_AcceptSecretChatInviteRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_AcceptSecretChatInviteResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RejectSecretChatInvite" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отклонить инвайт секретного чата. Отправитель получает уведомление через SubscribeSecretChatAccepts
+    /// > (с флагом accepted=false). Инвайт удаляется из буфера.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_RejectSecretChatInviteRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func rejectSecretChatInvite<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_RejectSecretChatInviteRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectSecretChatInviteResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.rejectSecretChatInvite(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_RejectSecretChatInviteRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_RejectSecretChatInviteResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SendSecretMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отправить шифрованное сообщение секретного чата конкретному устройству собеседника.
+    /// > Envelope opaque (libsignal SignalMessage). Сервер кладёт в Redis на 24ч и шлёт push без содержимого.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_SendSecretMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func sendSecretMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.sendSecretMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_SendSecretMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_SendSecretMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AckSecretMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подтвердить доставку секретного сообщения (получатель). После ack сервер удаляет envelope из буфера.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_AckSecretMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func ackSecretMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_AckSecretMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AckSecretMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.ackSecretMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_AckSecretMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_AckSecretMessageResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1662,6 +3277,539 @@ extension Barkfluff_Messages_MessagesApi.ClientProtocol {
             onResponse: handleResponse
         )
     }
+
+    /// Call the "PinMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Закрепить сообщение в чате
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func pinMessage<Result>(
+        _ message: Barkfluff_Messages_PinMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PinMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_PinMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.pinMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UnpinMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Открепить сообщение в чате
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func unpinMessage<Result>(
+        _ message: Barkfluff_Messages_UnpinMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_UnpinMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.unpinMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListPinnedMessages" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить список закреплённых сообщений в чате
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listPinnedMessages<Result>(
+        _ message: Barkfluff_Messages_ListPinnedMessagesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPinnedMessagesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_ListPinnedMessagesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listPinnedMessages(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UnpinAll" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Открепить все сообщения в чате
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func unpinAll<Result>(
+        _ message: Barkfluff_Messages_UnpinAllRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_UnpinAllResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_UnpinAllRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.unpinAll(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreatePrivateChat" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Создать приватный чат с пользователем. Собеседник присоединится через AcceptPrivateChat
+    /// > после получения SubscribePrivateChatInvites и проверки passphrase.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createPrivateChat<Result>(
+        _ message: Barkfluff_Messages_CreatePrivateChatRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CreatePrivateChatResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_CreatePrivateChatRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.createPrivateChat(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AcceptPrivateChat" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Присоединиться к приватному чату (вызывается приглашённым после успешной проверки verifier на клиенте).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func acceptPrivateChat<Result>(
+        _ message: Barkfluff_Messages_AcceptPrivateChatRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptPrivateChatResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_AcceptPrivateChatRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.acceptPrivateChat(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RejectPrivateChat" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отклонить приглашение в приватный чат (приглашённым).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func rejectPrivateChat<Result>(
+        _ message: Barkfluff_Messages_RejectPrivateChatRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectPrivateChatResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_RejectPrivateChatRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.rejectPrivateChat(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SendPrivateMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отправить шифрованное сообщение в приватный чат.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func sendPrivateMessage<Result>(
+        _ message: Barkfluff_Messages_SendPrivateMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendPrivateMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_SendPrivateMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.sendPrivateMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListPrivateMessages" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить список шифрованных сообщений приватного чата (двунаправленная пагинация по аналогии с ListMessages).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listPrivateMessages<Result>(
+        _ message: Barkfluff_Messages_ListPrivateMessagesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_ListPrivateMessagesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_ListPrivateMessagesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listPrivateMessages(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "EditPrivateMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Редактировать шифрованное сообщение (новый ciphertext+nonce+AAD).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func editPrivateMessage<Result>(
+        _ message: Barkfluff_Messages_EditPrivateMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditPrivateMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_EditPrivateMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.editPrivateMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeletePrivateMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deletePrivateMessage<Result>(
+        _ message: Barkfluff_Messages_DeletePrivateMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeletePrivateMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_DeletePrivateMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deletePrivateMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SendSecretChatInvite" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отправить инвайт секретного чата. Содержит initial X3DH message (PreKeySignalMessage).
+    /// > Инвайт буферизуется на сервере (Redis, TTL 24ч) до Accept/Reject получателя.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func sendSecretChatInvite<Result>(
+        _ message: Barkfluff_Messages_SendSecretChatInviteRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretChatInviteResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretChatInviteRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.sendSecretChatInvite(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AcceptSecretChatInvite" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Принять инвайт секретного чата (вызывается на устройстве получателя). После accept
+    /// > отправитель получит событие через SubscribeSecretChatAccepts и сможет отправлять SecretMessage.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func acceptSecretChatInvite<Result>(
+        _ message: Barkfluff_Messages_AcceptSecretChatInviteRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AcceptSecretChatInviteResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_AcceptSecretChatInviteRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.acceptSecretChatInvite(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RejectSecretChatInvite" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отклонить инвайт секретного чата. Отправитель получает уведомление через SubscribeSecretChatAccepts
+    /// > (с флагом accepted=false). Инвайт удаляется из буфера.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func rejectSecretChatInvite<Result>(
+        _ message: Barkfluff_Messages_RejectSecretChatInviteRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_RejectSecretChatInviteResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_RejectSecretChatInviteRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.rejectSecretChatInvite(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SendSecretMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отправить шифрованное сообщение секретного чата конкретному устройству собеседника.
+    /// > Envelope opaque (libsignal SignalMessage). Сервер кладёт в Redis на 24ч и шлёт push без содержимого.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func sendSecretMessage<Result>(
+        _ message: Barkfluff_Messages_SendSecretMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_SendSecretMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_SendSecretMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.sendSecretMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AckSecretMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подтвердить доставку секретного сообщения (получатель). После ack сервер удаляет envelope из буфера.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func ackSecretMessage<Result>(
+        _ message: Barkfluff_Messages_AckSecretMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_AckSecretMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_AckSecretMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.ackSecretMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
 }
 
 // MARK: - barkfluff.messages.MessagesServerApi
@@ -1686,9 +3834,51 @@ public enum Barkfluff_Messages_MessagesServerApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "CheckChatMembership" metadata.
+        public enum CheckChatMembership: Sendable {
+            /// Request type for "CheckChatMembership".
+            public typealias Input = Barkfluff_Messages_CheckChatMembershipRequest
+            /// Response type for "CheckChatMembership".
+            public typealias Output = Barkfluff_Messages_CheckChatMembershipResponse
+            /// Descriptor for "CheckChatMembership".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesServerApi"),
+                method: "CheckChatMembership",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetChatMemberIds" metadata.
+        public enum GetChatMemberIds: Sendable {
+            /// Request type for "GetChatMemberIds".
+            public typealias Input = Barkfluff_Messages_GetChatMemberIdsRequest
+            /// Response type for "GetChatMemberIds".
+            public typealias Output = Barkfluff_Messages_GetChatMemberIdsResponse
+            /// Descriptor for "GetChatMemberIds".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesServerApi"),
+                method: "GetChatMemberIds",
+                type: .unary
+            )
+        }
+        /// Namespace for "PostCallSystemMessage" metadata.
+        public enum PostCallSystemMessage: Sendable {
+            /// Request type for "PostCallSystemMessage".
+            public typealias Input = Barkfluff_Messages_PostCallSystemMessageRequest
+            /// Response type for "PostCallSystemMessage".
+            public typealias Output = Barkfluff_Messages_PostCallSystemMessageResponse
+            /// Descriptor for "PostCallSystemMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesServerApi"),
+                method: "PostCallSystemMessage",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.messages.MessagesServerApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
-            GetUserAllMessages.descriptor
+            GetUserAllMessages.descriptor,
+            CheckChatMembership.descriptor,
+            GetChatMemberIds.descriptor,
+            PostCallSystemMessage.descriptor
         ]
     }
 }
@@ -1729,6 +3919,75 @@ extension Barkfluff_Messages_MessagesServerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_GetUserAllMessagesResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_GetUserAllMessagesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CheckChatMembership" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отфильтровать чаты, в которых пользователь состоит (батч-проверка членства)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_CheckChatMembershipRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_CheckChatMembershipRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_CheckChatMembershipResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func checkChatMembership<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_CheckChatMembershipRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_CheckChatMembershipRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_CheckChatMembershipResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CheckChatMembershipResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetChatMemberIds" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить идентификаторы участников чата (для рассылки ринга группового звонка)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_GetChatMemberIdsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_GetChatMemberIdsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_GetChatMemberIdsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getChatMemberIds<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_GetChatMemberIdsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_GetChatMemberIdsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_GetChatMemberIdsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_GetChatMemberIdsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "PostCallSystemMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_PostCallSystemMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_PostCallSystemMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_PostCallSystemMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func postCallSystemMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_PostCallSystemMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_PostCallSystemMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_PostCallSystemMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PostCallSystemMessageResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -1781,6 +4040,108 @@ extension Barkfluff_Messages_MessagesServerApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "CheckChatMembership" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Отфильтровать чаты, в которых пользователь состоит (батч-проверка членства)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_CheckChatMembershipRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_CheckChatMembershipRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_CheckChatMembershipResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func checkChatMembership<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_CheckChatMembershipRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_CheckChatMembershipRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_CheckChatMembershipResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CheckChatMembershipResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesServerApi.Method.CheckChatMembership.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetChatMemberIds" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить идентификаторы участников чата (для рассылки ринга группового звонка)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_GetChatMemberIdsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_GetChatMemberIdsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_GetChatMemberIdsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getChatMemberIds<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_GetChatMemberIdsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_GetChatMemberIdsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_GetChatMemberIdsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_GetChatMemberIdsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesServerApi.Method.GetChatMemberIds.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "PostCallSystemMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_PostCallSystemMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_PostCallSystemMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_PostCallSystemMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func postCallSystemMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_PostCallSystemMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_PostCallSystemMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_PostCallSystemMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PostCallSystemMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesServerApi.Method.PostCallSystemMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -1811,6 +4172,93 @@ extension Barkfluff_Messages_MessagesServerApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_GetUserAllMessagesRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_GetUserAllMessagesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CheckChatMembership" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отфильтровать чаты, в которых пользователь состоит (батч-проверка членства)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_CheckChatMembershipRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func checkChatMembership<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_CheckChatMembershipRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CheckChatMembershipResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.checkChatMembership(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_CheckChatMembershipRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_CheckChatMembershipResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetChatMemberIds" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить идентификаторы участников чата (для рассылки ринга группового звонка)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_GetChatMemberIdsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getChatMemberIds<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_GetChatMemberIdsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_GetChatMemberIdsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getChatMemberIds(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_GetChatMemberIdsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_GetChatMemberIdsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "PostCallSystemMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_PostCallSystemMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func postCallSystemMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_PostCallSystemMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PostCallSystemMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.postCallSystemMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_PostCallSystemMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_PostCallSystemMessageResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1847,6 +4295,105 @@ extension Barkfluff_Messages_MessagesServerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.getUserAllMessages(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CheckChatMembership" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Отфильтровать чаты, в которых пользователь состоит (батч-проверка членства)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func checkChatMembership<Result>(
+        _ message: Barkfluff_Messages_CheckChatMembershipRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_CheckChatMembershipResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_CheckChatMembershipRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.checkChatMembership(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetChatMemberIds" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить идентификаторы участников чата (для рассылки ринга группового звонка)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getChatMemberIds<Result>(
+        _ message: Barkfluff_Messages_GetChatMemberIdsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_GetChatMemberIdsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_GetChatMemberIdsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getChatMemberIds(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "PostCallSystemMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func postCallSystemMessage<Result>(
+        _ message: Barkfluff_Messages_PostCallSystemMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_PostCallSystemMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_PostCallSystemMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.postCallSystemMessage(
             request: request,
             options: options,
             onResponse: handleResponse

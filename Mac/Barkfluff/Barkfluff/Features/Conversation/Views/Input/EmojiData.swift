@@ -8,18 +8,34 @@
 import Foundation
 
 enum EmojiCategory: String, CaseIterable, Identifiable {
-    case recent = "Недавние"
-    case smileys = "Смайлики"
-    case people = "Люди"
-    case animals = "Животные"
-    case food = "Еда"
-    case travel = "Путешествия"
-    case activities = "Активности"
-    case objects = "Предметы"
-    case symbols = "Символы"
-    case flags = "Флаги"
+    case recent
+    case smileys
+    case people
+    case animals
+    case food
+    case travel
+    case activities
+    case objects
+    case symbols
+    case flags
 
     var id: String { rawValue }
+
+    /// Локализованное имя категории — используется как tooltip в `EmojiPickerView`.
+    var displayName: String {
+        switch self {
+        case .recent: String(localized: "conversation.emoji.category.recent")
+        case .smileys: String(localized: "conversation.emoji.category.smileys")
+        case .people: String(localized: "conversation.emoji.category.people")
+        case .animals: String(localized: "conversation.emoji.category.animals")
+        case .food: String(localized: "conversation.emoji.category.food")
+        case .travel: String(localized: "conversation.emoji.category.travel")
+        case .activities: String(localized: "conversation.emoji.category.activities")
+        case .objects: String(localized: "conversation.emoji.category.objects")
+        case .symbols: String(localized: "conversation.emoji.category.symbols")
+        case .flags: String(localized: "conversation.emoji.category.flags")
+        }
+    }
 
     var icon: String {
         switch self {

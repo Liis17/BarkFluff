@@ -23,6 +23,12 @@ public class SetFirebaseTokenCommandHandler(
             return Unit.Value;
         }
 
+        if (string.IsNullOrWhiteSpace(request.FirebaseToken) || request.FirebaseToken.Length > 256)
+        {
+            logger.LogWarning("Некорректный Firebase токен длиной {Length}", request.FirebaseToken?.Length ?? 0);
+            return Unit.Value;
+        }
+
         await devicesStorage.SetFirebaseToken(deviceGuid, userContext.UserId, request.FirebaseToken);
 
         logger.LogInformation(

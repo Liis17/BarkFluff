@@ -50,6 +50,10 @@
     <string name="self_hosted_title">Свой сервер</string>
     <string name="self_hosted_description">Разверните собственный сервер BarkFluff</string>
     <string name="btn_learn_more_server">Узнать больше</string>
+    <string name="server_help_hint">Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера.</string>
+    <string name="server_item_name_placeholder">Название сервера</string>
+    <string name="server_item_description_placeholder">Описание сервера</string>
+    <string name="server_item_location_placeholder">Локация • @publicname</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Личная информация</string>
@@ -62,12 +66,152 @@
     <string name="register_step_8">Двухфакторная аутентификация</string>
     <string name="register_step_9">Готово</string>
 
+    <string name="register_title">Создание нового аккаунта</string>
+    <string name="register_step_indicator">Шаг 1 из 9</string>
+
+    <string name="register_step1_subtitle">Расскажите немного о себе</string>
+    <string name="hint_first_name_required">Имя *</string>
+    <string name="hint_last_name">Фамилия</string>
+    <string name="register_first_name_hint">Имя может содержать любые символы</string>
+    <string name="register_first_name_length">Минимум 3 символа, максимум 40</string>
+    <string name="register_last_name_hint">Фамилия может отсутствовать</string>
+
+    <string name="register_step2_subtitle">Придумайте уникальный логин</string>
+    <string name="hint_login_required">Логин *</string>
+    <string name="register_login_rules">Логин может содержать:</string>
+    <string name="register_login_rule_latin">Латинские буквы (a-z)</string>
+    <string name="register_login_rule_digits">Цифры (0-9)</string>
+    <string name="register_login_rule_symbols">Нижнее подчёркивание (_)</string>
+    <string name="register_login_max_length">Максимум 30 символов</string>
+    <string name="register_login_lowercase">Будет преобразован в нижний регистр</string>
+
+    <string name="register_step3_subtitle">Для подтверждения и восстановления доступа</string>
+    <string name="hint_email_required">Почта *</string>
+    <string name="register_email_for_2fa">Для двухфакторной аутентификации</string>
+    <string name="register_email_for_reset">Для сброса пароля</string>
+    <string name="register_email_for_login_alerts">Для уведомлений о входе</string>
+
+    <string name="register_step4_subtitle">Мы отправили код подтверждения на вашу почту</string>
+    <string name="hint_verify_code_required">Код подтверждения *</string>
+    <string name="register_check_inbox">Проверьте папку «Входящие»</string>
+    <string name="register_check_spam">Проверьте папку со спамом</string>
+
+    <string name="register_step5_subtitle">Придумайте надежный пароль</string>
+    <string name="hint_password_required">Пароль *</string>
+    <string name="hint_password_confirm_required">Подтвердите пароль *</string>
+    <string name="register_password_start_typing">Начните вводить пароль</string>
+    <string name="register_password_requirements">Требования к паролю:</string>
+    <string name="register_password_req_length">○ Минимум 8 символов</string>
+    <string name="register_password_req_upper">○ Заглавные буквы</string>
+    <string name="register_password_req_lower">○ Строчные буквы</string>
+    <string name="register_password_req_digit">○ Цифры</string>
+    <string name="register_password_req_special">○ Специальные символы</string>
+    <string name="register_password_case_hint">Используйте комбинацию букв разного регистра</string>
+    <string name="register_password_digits_hint">Добавьте цифры и специальные символы</string>
+
+    <string name="register_step6_subtitle">Добавьте фото или пропустите этот шаг</string>
+    <string name="register_pick_photo_from_gallery">Выбрать фото из галереи</string>
+    <string name="register_skip_step">Пропустить этот шаг</string>
+    <string name="register_photo_visibility_hint">Фото будет видно другим пользователям</string>
+
+    <string name="register_step7_title">Настройка профиля</string>
+    <string name="register_step7_subtitle">Расскажите о себе</string>
+    <string name="register_full_name_placeholder">Имя Фамилия</string>
+    <string name="hint_bio">О себе</string>
+    <string name="register_bio_max">Максимум 200 символов</string>
+    <string name="register_bio_optional">Можно оставить пустым</string>
+
+    <string name="register_step8_subtitle">Защитите свой аккаунт</string>
+    <string name="register_2fa_protects">2FA защищает ваш аккаунт от несанкционированного доступа</string>
+    <string name="register_2fa_authenticator_code">Код для добавления в аутентификатор:</string>
+    <string name="register_2fa_copy_code">Копировать код</string>
+    <string name="register_2fa_open_google_authenticator">Открыть Google Authenticator</string>
+    <string name="hint_otp_six_digits">Введите код из приложения (6 цифр)</string>
+
+    <string name="register_step9_title">Аккаунт создан!</string>
+    <string name="register_step9_subtitle">Ваш аккаунт успешно создан.\nДобро пожаловать!</string>
+    <string name="register_start_messaging">Начать общение</string>
+
+    <!-- Reset password -->
+    <string name="reset_password_title">Восстановление пароля</string>
+    <string name="reset_password_subtitle">Следуйте инструкциям для сброса пароля</string>
+    <string name="reset_enter_email_or_login">Введите email или имя пользователя</string>
+    <string name="reset_send_code">Отправить код</string>
+    <string name="reset_enter_verify_code">Введите код подтверждения</string>
+    <string name="reset_we_sent_code">Мы отправили 6-значный код на ваш email</string>
+    <string name="reset_confirm_code">Подтвердить код</string>
+    <string name="reset_resend_code">Отправить код повторно</string>
+    <string name="reset_create_new_password">Создайте новый пароль</string>
+    <string name="hint_new_password">Новый пароль</string>
+    <string name="hint_confirm_password">Подтвердите пароль</string>
+    <string name="reset_save_new_password">Сохранить новый пароль</string>
+    <string name="reset_password_success">Пароль успешно изменён!</string>
+    <string name="reset_password_success_subtitle">Теперь вы можете войти с новым паролем</string>
+    <string name="reset_back_to_login">Вернуться к входу</string>
+
     <!-- Chat Screen -->
     <string name="chat_search_hint">Поиск чатов</string>
     <string name="chat_empty_title">Пока что здесь пусто</string>
     <string name="chat_empty_description">Начните диалог, найдя пользователя через поиск</string>
     <string name="btn_new_chat">Новый чат</string>
     <string name="connecting">Соединение…</string>
+    <string name="chat_message_hint">Сообщение</string>
+    <string name="chat_message_edited">изменено</string>
+    <string name="chat_editing_message">Редактирование сообщения</string>
+
+    <!-- Chat content descriptions -->
+    <string name="cd_back">Назад</string>
+    <string name="cd_more_menu">Дополнительное меню</string>
+    <string name="cd_audio_call">Аудиозвонок</string>
+    <string name="cd_video_call">Видеозвонок</string>
+    <string name="cd_pinned">Закреплено</string>
+    <string name="cd_all_pinned">Все закреплённые</string>
+    <string name="cd_scroll_down">Прокрутить вниз</string>
+    <string name="cd_cancel_edit">Отменить редактирование</string>
+    <string name="cd_cancel_reply">Отменить ответ</string>
+    <string name="cd_clear_attachments">Очистить вложения</string>
+    <string name="cd_attach_file">Прикрепить файл</string>
+    <string name="cd_stickers">Стикеры</string>
+    <string name="cd_send">Отправить</string>
+    <string name="cd_sticker_preview">Предпросмотр стикера</string>
+    <string name="cd_close">Закрыть</string>
+    <string name="cd_more">Ещё</string>
+    <string name="cd_play_pause">Плей/Пауза</string>
+    <string name="cd_crop">Обрезать</string>
+    <string name="cd_rotate">Повернуть</string>
+    <string name="cd_flip">Отразить</string>
+    <string name="cd_draw">Рисование</string>
+    <string name="cd_undo">Отменить</string>
+    <string name="cd_apply">Применить</string>
+    <string name="cd_search">Поиск</string>
+    <string name="cd_create_hidden_chat">Создать скрытый чат</string>
+    <string name="cd_play">Воспроизвести</string>
+    <string name="cd_download">Скачать</string>
+    <string name="cd_download_file">Скачать файл</string>
+    <string name="cd_open_file">Открыть файл</string>
+    <string name="cd_attachment">Вложение</string>
+    <string name="cd_remove_background">Удалить фон</string>
+    <string name="cd_play_video">Воспроизвести видео</string>
+    <string name="cd_download_video">Скачать видео</string>
+    <string name="cd_read_status">Статус прочтения</string>
+
+    <!-- Encrypted / private chat -->
+    <string name="private_chat_title">Приватный чат</string>
+    <string name="private_chat_description">Шифрование по passphrase. Чат доступен на всех ваших устройствах.</string>
+    <string name="encrypted_chat_type">Тип чата</string>
+    <string name="encrypted_chat_type_private">Приватный</string>
+    <string name="encrypted_chat_type_secret">Секретный</string>
+    <string name="encrypted_chat_peer">Собеседник</string>
+    <string name="encrypted_chat_peer_device">Устройство собеседника</string>
+    <string name="encrypted_chat_create">Создать чат</string>
+    <string name="encrypted_chat_new_title">Новый зашифрованный чат</string>
+    <string name="hint_peer_user_id">ID пользователя</string>
+    <string name="hint_passphrase">Passphrase</string>
+    <string name="encrypted_chat_passphrase_helper">Минимум 6 символов. Сообщите passphrase собеседнику в безопасном канале</string>
+    <string name="encrypted_chat_initial_helper">Будет отправлено вместе с приглашением</string>
+    <string name="hint_first_message">Первое сообщение</string>
+    <string name="hint_encrypted_message">Зашифрованное сообщение</string>
+    <string name="hint_secret_message">Секретное сообщение</string>
 
     <!-- Drawer Menu -->
     <string name="drawer_favorites">Избранное</string>
@@ -78,6 +222,17 @@
     <string name="drawer_create_channel">Создать канал</string>
     <string name="drawer_settings">Настройки</string>
     <string name="drawer_help">Помощь</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Контакты</string>
+    <string name="contacts_in_development">Раздел в разработке</string>
+
+    <!-- Search -->
+    <string name="search_users_hint">Поиск пользователей</string>
+    <string name="search_nothing_found">Ничего не найдено</string>
+    <string name="search_try_different">Попробуйте изменить поисковой запрос</string>
+    <string name="search_users_title">Поиск пользователей</string>
+    <string name="search_users_hint_long">Введите имя, фамилию или username (минимум 3 символа)</string>
 
     <!-- Image Picker -->
     <string name="select_photos">Выберите фото</string>
@@ -142,7 +297,12 @@
     <string name="btn_next">Далее</string>
     <string name="btn_back">Назад</string>
     <string name="btn_done">Готово</string>
+    <string name="btn_save">Сохранить</string>
+    <string name="btn_cancel">Отмена</string>
+    <string name="btn_delete">Удалить</string>
     <string name="loading">Загрузка…</string>
+    <string name="loading_dots">Загрузка...</string>
+    <string name="error">Ошибка</string>
 
     <!-- Widget -->
     <string name="widget_pinned_chats_label">Закреплённые чаты</string>
@@ -160,4 +320,197 @@
     <string name="widget_not_placed">Не размещён на рабочем столе</string>
     <string name="widget_chats_count">%d из 3 чатов</string>
     <string name="widget_default_name">Закреплённые чаты</string>
+
+    <!-- Profile Fragment items / sections -->
+    <string name="profile_title">Профиль</string>
+    <string name="profile_user_placeholder">Пользователь</string>
+    <string name="profile_section_account_security">Аккаунт и безопасность</string>
+    <string name="profile_section_personalization">Персонализация</string>
+    <string name="profile_section_application">Приложение</string>
+    <string name="profile_section_other">Другое</string>
+    <string name="profile_item_account">Аккаунт</string>
+    <string name="profile_item_security">Безопасность</string>
+    <string name="profile_item_privacy">Приватность</string>
+    <string name="profile_item_personalization">Персонализация</string>
+    <string name="profile_item_chat_folders">Папки чатов</string>
+    <string name="profile_item_storage">Данные и кеш</string>
+    <string name="profile_item_devices">Устройства</string>
+    <string name="profile_item_notifications">Уведомления</string>
+    <string name="profile_item_update">Обновление</string>
+    <string name="profile_item_about">О приложении</string>
+    <string name="profile_item_testing">Тестирование</string>
+    <string name="profile_btn_logout">Выйти из аккаунта</string>
+    <string name="logout_dialog_title">Выход</string>
+    <string name="logout_dialog_message">Вы уверены, что хотите выйти из аккаунта?</string>
+    <string name="logout_dialog_confirm">Выйти</string>
+
+    <!-- Account Settings -->
+    <string name="account_settings_title">Аккаунт</string>
+    <string name="account_change_photo">Изменить фото</string>
+    <string name="account_first_name">Имя</string>
+    <string name="account_last_name">Фамилия</string>
+    <string name="account_username">Имя пользователя</string>
+    <string name="account_bio">О себе</string>
+
+    <!-- Security Settings -->
+    <string name="security_settings_title">Безопасность</string>
+    <string name="security_change_password">Смена пароля</string>
+    <string name="security_2fa_app">2FA по приложению</string>
+    <string name="security_2fa_email">2FA по email</string>
+
+    <!-- Privacy Settings -->
+    <string name="privacy_settings_title">Приватность</string>
+    <string name="privacy_section_profile">Профиль</string>
+    <string name="privacy_profile_on_site">Профиль на сайте</string>
+    <string name="privacy_profile_on_site_subtitle">Страница barkfluff.com/{username}</string>
+    <string name="privacy_avatar_visibility">Видимость аватара</string>
+    <string name="privacy_description_visibility">Видимость описания</string>
+    <string name="privacy_email_visibility">Видимость почты</string>
+    <string name="privacy_section_search_online">Поиск и онлайн</string>
+    <string name="privacy_search_visibility">Видимость в поиске</string>
+    <string name="privacy_online_visibility">Видимость онлайна</string>
+
+    <!-- Personalization Settings -->
+    <string name="personalization_settings_title">Персонализация</string>
+    <string name="personalization_profile_poster">Постер профиля</string>
+    <string name="personalization_set_new_poster">Установить новый постер</string>
+    <string name="personalization_chat_preview_1">Привет! Как дела? 👋</string>
+    <string name="personalization_chat_preview_2">Отлично! А у тебя?</string>
+    <string name="personalization_chat_preview_3">Тоже хорошо, спасибо 😊</string>
+    <string name="personalization_chat_preview_4">Встретимся сегодня? 🕐</string>
+    <string name="personalization_chat_preview_5">Да, конечно! В 18:00? 😄</string>
+    <string name="personalization_display_settings">Настройки отображения</string>
+    <string name="personalization_message_corner_radius">Закругление сообщений</string>
+    <string name="personalization_blur_background">Размыть фон</string>
+    <string name="personalization_blur_strength">Сила размытия</string>
+    <string name="personalization_dim_background">Затемнение фона</string>
+    <string name="personalization_folders">Папки</string>
+    <string name="personalization_compact_folders">Компактные папки</string>
+    <string name="personalization_compact_folders_subtitle">Показывать только иконку</string>
+    <string name="personalization_exclude_from_all">Убирать чаты из «Все чаты»</string>
+    <string name="personalization_exclude_from_all_subtitle">Если чат входит в папку, он не будет показан во вкладке «Все чаты»</string>
+    <string name="personalization_chat_background">Фон чатов</string>
+    <string name="personalization_add_background">Добавить фон</string>
+    <string name="personalization_no_background">Без фона</string>
+
+    <!-- Notification Settings -->
+    <string name="notification_settings_title">Уведомления</string>
+    <string name="notification_receive_push">Получать push-уведомления</string>
+    <string name="notification_disable_hint">Отключение уведомлений отключит получение push-уведомлений через Firebase только на этом устройстве. На других устройствах уведомления продолжат приходить.</string>
+
+    <!-- Chat Folders Settings -->
+    <string name="chat_folders_settings_title">Папки чатов</string>
+    <string name="chat_folders_empty_title">Пока нет папок</string>
+    <string name="chat_folders_empty_subtitle">Создайте папку, чтобы быстро переключаться между группами чатов</string>
+    <string name="chat_folders_new_folder">Новая папка</string>
+    <string name="folder_edit_title">Папка</string>
+    <string name="folder_chat_picker_title">Чаты в папке</string>
+    <string name="folder_name_hint">Название папки</string>
+    <string name="folder_icon">Иконка</string>
+    <string name="folder_manage_chats">Управлять чатами</string>
+    <string name="folder_delete">Удалить папку</string>
+    <string name="folder_save">Сохранить</string>
+
+    <!-- Storage Settings -->
+    <string name="storage_settings_title">Данные и кеш</string>
+    <string name="storage_server_storage">Хранилище на сервере</string>
+    <string name="storage_app_cache">Кеш приложения</string>
+    <string name="storage_clear_cache">Очистить кеш</string>
+
+    <!-- Devices -->
+    <string name="devices_title">Устройства</string>
+    <string name="devices_hint">Вы можете войти на другом устройстве, отсканировав QR-код в приложении BarkFluff</string>
+    <string name="devices_connect">Подключить устройство</string>
+    <string name="devices_this_device">Это устройство</string>
+    <string name="devices_terminate_others">Завершить все другие сессии</string>
+    <string name="devices_other_devices">Другие устройства</string>
+    <string name="device_section_app">Приложение</string>
+    <string name="device_section_os">ОС</string>
+    <string name="device_section_location">Местоположение</string>
+    <string name="device_rename">Переименовать устройство</string>
+    <string name="device_terminate_session">Завершить сессию</string>
+    <string name="device_id_label">ID устройства</string>
+
+    <!-- QR Scanner -->
+    <string name="qr_scanner_title">Сканирование QR-кода</string>
+    <string name="qr_scanner_hint">Наведите камеру на QR-код</string>
+
+    <!-- Fast Auth Confirm -->
+    <string name="fast_auth_title">Новое устройство</string>
+    <string name="fast_auth_ip">IP-адрес</string>
+    <string name="fast_auth_hint">Новое устройство запрашивает вход в аккаунт. Проверьте информацию об устройстве и подтвердите или отклоните запрос.</string>
+    <string name="fast_auth_device">Устройство</string>
+    <string name="fast_auth_os">Операционная система</string>
+    <string name="fast_auth_application">Приложение</string>
+    <string name="fast_auth_confirm">Подтвердить вход</string>
+    <string name="fast_auth_reject">Отклонить</string>
+
+    <!-- Update -->
+    <string name="update_settings_title">Обновление</string>
+    <string name="update_current_version">Текущая версия</string>
+    <string name="update_btn_update">Обновить</string>
+    <string name="update_downloading">Загрузка обновления...</string>
+    <string name="update_check">Проверить обновления</string>
+    <string name="update_install_problem">Проблема с установкой?</string>
+    <string name="update_install_problem_hint">Если установщик выдаёт ошибку, скачайте APK-файл с сайта и установите его вручную.</string>
+    <string name="update_open_site">Открыть сайт barkfluff.com</string>
+
+    <!-- About -->
+    <string name="about_settings_title">О приложении</string>
+    <string name="about_name">Название</string>
+    <string name="about_version">Версия</string>
+    <string name="about_device">Устройство</string>
+    <string name="about_os">Операционная система</string>
+    <string name="about_microservices">Микросервисы сервера</string>
+
+    <!-- Testing -->
+    <string name="testing_settings_title">Тестирование</string>
+    <string name="testing_section_params">Параметры</string>
+    <string name="testing_show_ids">Показывать ID в профиле</string>
+    <string name="testing_show_ids_subtitle">UserId и ChatId под статусом онлайна</string>
+    <string name="testing_secret_chats">Скрытые чаты</string>
+    <string name="testing_secret_chats_subtitle">Кнопка создания приватных и секретных чатов</string>
+
+    <!-- Pinned messages -->
+    <string name="pinned_empty">Нет закреплённых сообщений</string>
+    <string name="pinned_title">Закреплённые сообщения</string>
+    <string name="search_title">Поиск</string>
+
+    <!-- Forward -->
+    <string name="forward_title">Переслать в...</string>
+    <string name="forward_btn">Переслать</string>
+    <string name="forward_caption_hint">Добавить комментарий...</string>
+
+    <!-- User profile / chat profile -->
+    <string name="media_files">Медиафайлы</string>
+    <string name="media_tab_photos">Фото</string>
+    <string name="media_tab_videos">Видео</string>
+    <string name="media_tab_files">Файлы</string>
+    <string name="media_no_attachments">Нет вложений</string>
+
+    <!-- Sticker empty -->
+    <string name="stickers_empty">Нет стикеров</string>
+    <string name="stickers_empty_subtitle">Стикерпаки пока не добавлены</string>
+
+    <!-- Message actions popup -->
+    <string name="msg_action_reply">Ответить</string>
+    <string name="msg_action_copy_text">Копировать текст</string>
+    <string name="msg_action_copy_image">Скопировать изображение</string>
+    <string name="msg_action_save_image">Сохранить изображение</string>
+    <string name="msg_action_save_to_downloads">Сохранить в загрузки</string>
+    <string name="msg_action_edit">Изменить</string>
+    <string name="msg_action_delete">Удалить</string>
+    <string name="msg_action_forward">Переслать</string>
+    <string name="msg_action_pin">Закрепить</string>
+
+    <!-- Language Settings -->
+    <string name="language_settings_title">Язык</string>
+    <string name="language_section_title">Язык приложения</string>
+    <string name="language_option_system">🌐  Системный</string>
+    <string name="language_option_ru">🇷🇺  Русский</string>
+    <string name="language_option_en">🇬🇧  English</string>
+    <string name="language_option_de">🇩🇪  Deutsch</string>
+    <string name="language_option_es">🇪🇸  Español</string>
+    <string name="language_option_zh">🇨🇳  中文</string>
+    <string name="language_settings_hint">«Системный» использует язык устройства. Выбор языка применяется сразу.</string>
 </resources>

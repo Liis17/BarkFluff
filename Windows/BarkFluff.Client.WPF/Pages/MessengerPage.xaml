@@ -205,7 +205,7 @@
                         BorderThickness="0"
                         Click="OpenPanelClick"
                         Cursor="Hand"
-                        ToolTip="Открыть боковое меню">
+                        ToolTip="{DynamicResource L_Messenger_Tooltip_SideMenu}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border Background="{TemplateBinding Background}" CornerRadius="8">
@@ -261,7 +261,7 @@
                             ShadowBlurRadius="12"
                             ShadowOpacity="0.9"
                             Tag="UserProfile"
-                            ToolTip="Открыть мой профиль" />
+                            ToolTip="{DynamicResource L_Messenger_Tooltip_MyProfile}" />
 
                         <!--  Иконка обновления  -->
                         <Border
@@ -276,13 +276,13 @@
                             Cursor="Hand"
                             MouseLeftButtonUp="OpenCenterBlock"
                             Tag="UpdateBlock"
-                            ToolTip="Доступно обновление"
+                            ToolTip="{DynamicResource L_Messenger_Tooltip_UpdateAvailable}"
                             Visibility="Collapsed">
                             <ui:SymbolIcon
                                 FontSize="23"
                                 Foreground="#f8a644"
                                 Symbol="ArrowCircleUp16"
-                                ToolTip="Доступно обновление" />
+                                ToolTip="{DynamicResource L_Messenger_Tooltip_UpdateAvailable}" />
                         </Border>
                         <!--  Иконка проблем с сетью  -->
                         <Border
@@ -294,13 +294,13 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             CornerRadius="15"
-                            ToolTip="Проблемы с соединением"
+                            ToolTip="{DynamicResource L_Messenger_Tooltip_ConnectionIssues}"
                             Visibility="Collapsed">
                             <ui:SymbolIcon
                                 FontSize="23"
                                 Foreground="#fd354a"
                                 Symbol="CloudError32"
-                                ToolTip="Проблемы с соединением" />
+                                ToolTip="{DynamicResource L_Messenger_Tooltip_ConnectionIssues}" />
                         </Border>
                     </StackPanel>
 
@@ -366,7 +366,7 @@
                                             GotFocus="SearchTextBox_GotFocus"
                                             Icon="{ui:SymbolIcon ui:Symbol=Search48}"
                                             LostFocus="SearchTextBox_LostFocus"
-                                            PlaceholderText="Поиск"
+                                            PlaceholderText="{DynamicResource L_Messenger_Search_Placeholder}"
                                             TextChanged="SearchTextBox_TextChanged" />
 
                                         <TextBlock
@@ -376,7 +376,7 @@
                                             FontSize="14"
                                             Foreground="#FF9E9E9E"
                                             IsHitTestVisible="False"
-                                            Text="Поиск чатов...">
+                                            Text="{DynamicResource L_Messenger_Search_Hint}">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Style.Triggers>
@@ -437,7 +437,7 @@
                                 HorizontalAlignment="Center"
                                 FontWeight="Bold"
                                 Foreground="White"
-                                Text="Результаты поиска" />
+                                Text="{DynamicResource L_Messenger_Search_Results}" />
                             <StackPanel x:Name="SearchCollection" Orientation="Vertical" />
                         </StackPanel>
                     </ScrollViewer>
@@ -569,7 +569,7 @@
                                                 ShadowBlurRadius="12"
                                                 ShadowOpacity="0.9"
                                                 Tag="UserProfile"
-                                                ToolTip="Открыть профиль" />
+                                                ToolTip="{DynamicResource L_Messenger_Tooltip_OpenProfile}" />
                                             <StackPanel Orientation="Vertical">
                                                 <TextBlock
                                                     x:Name="ChatTitleUsername"
@@ -588,7 +588,7 @@
                                                     FontFamily="{DynamicResource AdwaitaSans}"
                                                     FontSize="12"
                                                     Foreground="{DynamicResource DescriptionText}"
-                                                    Text="Неизвестно" />
+                                                    Text="{DynamicResource L_Messenger_Unknown}" />
                                             </StackPanel>
                                         </StackPanel>
 
@@ -726,7 +726,7 @@
                                         FontSize="24"
                                         FontWeight="SemiBold"
                                         Foreground="White"
-                                        Text="Отпустите для добавления" />
+                                        Text="{DynamicResource L_Messenger_DragDrop_Release}" />
 
                                     <!--  Дополнительный текст  -->
                                     <TextBlock
@@ -735,7 +735,7 @@
                                         FontFamily="{DynamicResource AdwaitaSans}"
                                         FontSize="14"
                                         Foreground="#FFAAAAAA"
-                                        Text="Файлы будут добавлены к сообщению"
+                                        Text="{DynamicResource L_Messenger_DragDrop_WillAdd}"
                                         TextAlignment="Center" />
                                 </StackPanel>
                             </Border>
@@ -800,7 +800,7 @@
                                     KeyUp="TextForMessage_KeyUp"
                                     LostFocus="TextForMessage_LostFocus"
                                     PlaceholderEnabled="True"
-                                    PlaceholderText="Сообщение"
+                                    PlaceholderText="{DynamicResource L_Messenger_Input_Placeholder}"
                                     Style="{StaticResource MessageInputTextBox}"
                                     VerticalScrollBarVisibility="Auto" />
 

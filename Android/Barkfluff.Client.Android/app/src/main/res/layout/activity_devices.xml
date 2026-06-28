@@ -15,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
-            app:title="Устройства"
+            app:title="@string/devices_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="?attr/colorOnSurface" />
 
@@ -50,7 +50,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Вы можете войти на другом устройстве, отсканировав QR-код в приложении BarkFluff"
+                android:text="@string/devices_hint"
                 android:textAlignment="center"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
@@ -60,7 +60,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="12dp"
-                android:text="Подключить устройство"
+                android:text="@string/devices_connect"
                 app:icon="@drawable/ic_qr_code"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
@@ -74,7 +74,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Это устройство"
+                android:text="@string/devices_this_device"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -158,7 +158,7 @@
                 android:id="@+id/buttonTerminateAll"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:text="Завершить все другие сессии"
+                android:text="@string/devices_terminate_others"
                 app:icon="@drawable/ic_logout"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
@@ -174,7 +174,7 @@
                 android:id="@+id/textOtherDevicesTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Другие устройства"
+                android:text="@string/devices_other_devices"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnSurface"
                 android:visibility="gone" />

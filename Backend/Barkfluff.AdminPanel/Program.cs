@@ -26,6 +26,9 @@ public class Program
 
         builder.WebHost.UseUrls("http://0.0.0.0:51888");
 
+        // Allow larger uploads for mail attachments (default Kestrel limit is 30 MB; bump to 25 MB explicit for clarity)
+        builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 25 * 1024 * 1024);
+
         // Загружаем конфигурацию из сервиса конфигурации
         builder.LoadConfiguration(ServiceId.Unknown);
 
@@ -37,6 +40,8 @@ public class Program
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
+        builder.Services.Configure<LogsCompressionSettings>(builder.Configuration.GetSection(LogsCompressionSettings.SectionName));
+        builder.Services.Configure<MailSettings>(builder.Configuration.GetSection(MailSettings.SectionName));
 
         // Register LiteDB DbContexts as Singletons
         builder.Services.AddSingleton<TokenDbContext>();
@@ -71,6 +76,13 @@ public class Program
 
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
+
+
+        // Register MetricsLogCompressorService — ежедневное сжатие логов-метрик в Seq в 03:00 UTC
+        builder.Services.AddSingleton<MetricsLogCompressorService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<MetricsLogCompressorService>());
+        // Register MailService as Singleton (IMAP connection pool per mailbox)
+        builder.Services.AddSingleton<MailService>();
 
         // Register TelegramBotService as Singleton
         builder.Services.AddSingleton<TelegramBotService>();
@@ -210,6 +222,9 @@ public class Program
         // Map Logs Clear Endpoints
         app.MapLogsClearEndpoints();
 
+        // Map Logs Compression Endpoints (ручной триггер ежедневного сжатия метрик)
+        app.MapLogsCompressionEndpoints();
+
         // Map Docker Endpoints
         app.MapDockerEndpoints();
 
@@ -237,6 +252,9 @@ public class Program
         // Map Notifications Endpoints (push-рассылки)
         app.MapNotificationsEndpoints();
 
+        // Map Mail Endpoints (IMAP/SMTP для служебных ящиков)
+        app.MapMailEndpoints();
+
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -253,38 +271,37 @@ public class Program
             RequestPath = "/v2"
         });
 
-        // Root path routing based on auth and ui_version cookie
+        // Static assets (md3.css, sidebar.js) for the MD3 pages, referenced as /assets/*
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+                Path.Combine(AppContext.BaseDirectory, "Pages", "v2", "assets")),
+            RequestPath = "/assets"
+        });
+
+        // Root path routing based on auth (MD3 pages live in Pages/v2)
         app.MapGet("/", async context =>
         {
             var token = context.Items["AuthToken"] as Barkfluff.AdminPanel.Models.AuthToken;
             if (token != null)
-            {
-                if (context.Request.Cookies.TryGetValue("ui_version", out var ver) &&
-                    string.Equals(ver, "v2", StringComparison.OrdinalIgnoreCase))
-                {
-                    context.Response.Redirect("/v2/");
-                    return;
-                }
-                await ServeHtmlFile(context, "dashboard.html");
-            }
+                await ServeHtmlFile(context, Path.Combine("v2", "dashboard.html"));
             else
-            {
-                await ServeHtmlFile(context, "Login.html");
-            }
+                await ServeHtmlFile(context, Path.Combine("v2", "Login.html"));
         });
 
-        // Page routes
+        // Page routes — serve the MD3 (v2) pages
         app.MapGet("/v2/", async context => await ServeHtmlFile(context, Path.Combine("Redesigned", "index.html")));
-        app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
-        app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
-        app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
-        app.MapGet("/stickers", async context => await ServeHtmlFile(context, "stickers.html"));
-        app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
-        app.MapGet("/notifications", async context => await ServeHtmlFile(context, "notifications.html"));
-        app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, "s3-storage.html"));
-        app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, "s3-browser.html"));
-        app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));
-        app.MapGet("/updating", async context => await ServeHtmlFile(context, "updating.html"));
+        app.MapGet("/services", async context => await ServeHtmlFile(context, Path.Combine("v2", "services.html")));
+        app.MapGet("/logs", async context => await ServeHtmlFile(context, Path.Combine("v2", "logs.html")));
+        app.MapGet("/badges", async context => await ServeHtmlFile(context, Path.Combine("v2", "badges.html")));
+        app.MapGet("/stickers", async context => await ServeHtmlFile(context, Path.Combine("v2", "stickers.html")));
+        app.MapGet("/users", async context => await ServeHtmlFile(context, Path.Combine("v2", "users.html")));
+        app.MapGet("/notifications", async context => await ServeHtmlFile(context, Path.Combine("v2", "notifications.html")));
+        app.MapGet("/mail", async context => await ServeHtmlFile(context, Path.Combine("v2", "mail.html")));
+        app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-storage.html")));
+        app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-browser.html")));
+        app.MapGet("/restarting", async context => await ServeHtmlFile(context, Path.Combine("v2", "restarting.html")));
+        app.MapGet("/updating", async context => await ServeHtmlFile(context, Path.Combine("v2", "updating.html")));
 
         app.Run();
     }

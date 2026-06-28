@@ -148,13 +148,13 @@
             <TextBlock
                 Margin="0,0,0,12"
                 Style="{DynamicResource BigTitleTextStyle}"
-                Text="Добро пожаловать!" />
+                Text="{DynamicResource L_Completion_Welcome}" />
 
             <!--  Subtitle  -->
             <TextBlock
                 Margin="0,0,0,8"
                 Style="{DynamicResource DescriptionTextStyle}"
-                Text="Регистрация успешно завершена" />
+                Text="{DynamicResource L_Completion_Success}" />
 
             <!--  Description in card style  -->
             <Border Margin="0,24,0,32" Style="{DynamicResource MainStyleBorder}">
@@ -165,7 +165,7 @@
                         FontSize="20"
                         Foreground="{DynamicResource DescriptionText}"
                         Symbol="Settings24" />
-                    <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="Настраиваем ваш аккаунт..." />
+                    <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="{DynamicResource L_Completion_Configuring}" />
                 </StackPanel>
             </Border>
 
@@ -182,7 +182,7 @@
             <TextBlock
                 Margin="0,16,0,0"
                 Style="{DynamicResource DescriptionTextStyle}"
-                Text="Это займёт всего несколько секунд" />
+                Text="{DynamicResource L_Completion_FewSeconds}" />
         </StackPanel>
     </Grid>
 </UserControl>

@@ -147,7 +147,7 @@ final class UserProfilePanelViewModel {
                 memberCount = Int(result.totalCount)
             } else {
                 guard let otherMember = chat.members.first(where: { $0.userID != currentUserID }) else {
-                    profileError = "Не удалось определить собеседника"
+                    profileError = String(localized: "user_profile.error.cannot_resolve_user")
                     isLoadingProfile = false
                     return
                 }

@@ -144,6 +144,7 @@
             img.className = 'attach-sticker';
             img.src = url;
             img.loading = 'lazy';
+            BF.files.bindResilientMedia(img, a.fileId, false);
             container.appendChild(img);
             return;
         }
@@ -178,13 +179,15 @@
                 cnt.className = 'more-count';
                 cnt.textContent = '+' + (images.length - 3);
                 wrap.appendChild(cnt);
-                wrap.addEventListener('click', (function (u2) { return function () { if (onMediaClick) onMediaClick('image', u2); }; })(url || prev));
+                BF.files.bindResilientMedia(im, a.fileId, true);
+                wrap.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(wrap);
             } else {
                 var im = document.createElement('img');
                 im.src = prev || url; im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                im.addEventListener('click', (function (u2) { return function () { if (onMediaClick) onMediaClick('image', u2); }; })(url || prev));
+                BF.files.bindResilientMedia(im, a.fileId, true);
+                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
                 grid.appendChild(im);
             }
         }
@@ -203,12 +206,13 @@
             vid.preload = 'metadata';
             if (prev) vid.poster = prev;
             vid.src = url;
+            BF.files.bindResilientMedia(vid, a.fileId, false);
             var ov = document.createElement('div');
             ov.className = 'video-play-overlay';
             ov.innerHTML = '<span>\u25B6</span>';
             wrap.appendChild(vid);
             wrap.appendChild(ov);
-            wrap.addEventListener('click', function () { if (onMediaClick) onMediaClick('video', url); });
+            wrap.addEventListener('click', function () { if (onMediaClick) onMediaClick('video', url, a.fileId); });
             container.appendChild(wrap);
         });
     }
@@ -250,6 +254,25 @@
 
             var audio = new Audio(url);
             audio.preload = 'metadata';
+            var refreshed = false;
+            audio.addEventListener('error', function () {
+                if (refreshed) {
+                    playBtn.disabled = true;
+                    playBtn.classList.add('bf-load-failed');
+                    nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое недоступно' : 'Аудио недоступно';
+                    return;
+                }
+                refreshed = true;
+                BF.files.refreshFileUrl(a.fileId).then(function (fd) {
+                    var fresh = fd && (fd.url || fd.previewUrl);
+                    if (fresh) audio.src = fresh;
+                    else {
+                        playBtn.disabled = true;
+                        playBtn.classList.add('bf-load-failed');
+                        nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое недоступно' : 'Аудио недоступно';
+                    }
+                });
+            });
             var item = { audio: audio, playBtn: playBtn, progressFill: progressFill, timeEl: timeEl };
 
             audio.addEventListener('loadedmetadata', function () { timeEl.textContent = u().formatDuration(audio.duration); });
@@ -285,6 +308,7 @@
             link.target = '_blank';
             link.rel = 'noopener';
             link.download = a.fileName || '';
+            BF.files.bindResilientLink(link, a.fileId);
             link.innerHTML =
                 '<span class="attach-doc-icon">' + u().docIcon(a.fileName) + '</span>' +
                 '<div class="attach-doc-info">' +
@@ -301,7 +325,7 @@
      * @param {number} myUserId
      * @param {boolean} isGroupChat
      * @param {Function} [getUserFn] — async function(userId) → user
-     * @param {Function} [onMediaClick] — function(type, url)
+     * @param {Function} [onMediaClick] — function(type, url, fileId)
      * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId) }
      * @returns {Promise<HTMLElement>}
      */
@@ -358,11 +382,25 @@
 
         return promise.then(function () {
             var bubble = document.createElement('div');
-            var hasImages = isOutgoing && mediaAtts.some(function (a) {
-                var t = normType(a);
-                return t === 'IMAGE' || t === 'GIF';
+            var text = msg.content && msg.content.text;
+
+            var hasImg = false, hasVideo = false, hasAudio = false, hasDoc = false;
+            mediaAtts.forEach(function (a) {
+                switch (normType(a)) {
+                    case 'IMAGE': case 'GIF': hasImg = true; break;
+                    case 'STICKER': break;
+                    case 'VIDEO': hasVideo = true; break;
+                    case 'AUDIO': case 'VOICE': hasAudio = true; break;
+                    default: hasDoc = true; break;
+                }
             });
-            bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '') + (hasImages ? ' has-images' : '');
+            var hasImages = hasImg && !isSticker;
+            var imageOnly = hasImages && !hasVideo && !hasAudio && !hasDoc && !text && !fwd;
+            var docsOnly = hasDoc && !hasImg && !hasVideo && !hasAudio && !fwd;
+            bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '')
+                + (hasImages ? ' has-images' : '')
+                + (imageOnly ? ' image-only' : '')
+                + (docsOnly ? ' docs-only' : '');
 
             if (fwd) {
                 if (isReply) {
@@ -374,7 +412,6 @@
 
             if (mediaAtts.length > 0) renderAttachments(mediaAtts, bubble, onMediaClick);
 
-            var text = msg.content && msg.content.text;
             if (text) {
                 var textEl = document.createElement('div');
                 textEl.className = 'msg-text';
@@ -384,7 +421,7 @@
 
             if (!isSticker) {
                 var meta = document.createElement('div');
-                meta.className = 'msg-meta';
+                meta.className = 'msg-meta' + (imageOnly ? ' msg-img-overlay-meta' : '');
                 if (msg.isEdited) {
                     var editedEl = document.createElement('span');
                     editedEl.className = 'msg-edited';

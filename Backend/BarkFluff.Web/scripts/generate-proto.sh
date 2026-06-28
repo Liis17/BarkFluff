@@ -13,7 +13,7 @@ OUT_DIR="$PROJECT_ROOT/wwwroot/js/proto"
 rm -rf "$TEMP_DIR"
 mkdir -p "$TEMP_DIR" "$OUT_DIR"
 
-PROTOS=(shared.proto identity_api.proto users_api.proto messages_api.proto files_api.proto updates_api.proto onliner_api.proto)
+PROTOS=(shared.proto identity_api.proto users_api.proto messages_api.proto files_api.proto updates_api.proto onliner_api.proto fast_auth_api.proto calls_api.proto)
 
 echo "[1/3] protoc → $TEMP_DIR"
 ( cd "$PROTO_DIR" && \
@@ -40,6 +40,10 @@ const updatesPb   = require('./updates_api_pb.js');
 const updatesSvc  = require('./updates_api_grpc_web_pb.js');
 const onlinerPb   = require('./onliner_api_pb.js');
 const onlinerSvc  = require('./onliner_api_grpc_web_pb.js');
+const fastAuthPb  = require('./fast_auth_api_pb.js');
+const fastAuthSvc = require('./fast_auth_api_grpc_web_pb.js');
+const callsPb     = require('./calls_api_pb.js');
+const callsSvc    = require('./calls_api_grpc_web_pb.js');
 
 const barkfluff = {
     grpcWeb: grpcWeb,
@@ -56,6 +60,10 @@ const barkfluff = {
     UpdatesApiPromiseClient:    updatesSvc.UpdatesApiPromiseClient,
     OnlinerApiClient:           onlinerSvc.OnlinerApiClient            || onlinerSvc.OnlinerApiPromiseClient,
     OnlinerApiPromiseClient:    onlinerSvc.OnlinerApiPromiseClient,
+    FastAuthApiClient:          fastAuthSvc.FastAuthApiClient          || fastAuthSvc.FastAuthApiPromiseClient,
+    FastAuthApiPromiseClient:   fastAuthSvc.FastAuthApiPromiseClient,
+    CallsApiClient:             callsSvc.CallsApiClient                || callsSvc.CallsApiPromiseClient,
+    CallsApiPromiseClient:      callsSvc.CallsApiPromiseClient,
 };
 
 if (typeof window !== 'undefined') window.barkfluff = barkfluff;
@@ -71,7 +79,8 @@ if [ ! -d "$SCRIPT_DIR/node_modules/esbuild" ]; then
   "dependencies": {
     "google-protobuf": "3.21.2",
     "grpc-web": "1.5.0",
-    "esbuild": "0.24.0"
+    "esbuild": "0.24.0",
+    "livekit-client": "2.19.2"
   }
 }
 EOF

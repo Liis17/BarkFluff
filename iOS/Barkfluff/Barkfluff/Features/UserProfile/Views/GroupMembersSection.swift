@@ -15,11 +15,11 @@ struct GroupMembersSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Участники (\(viewModel.memberCount))")
+                Text("user_profile.group_members.title \(viewModel.memberCount)")
                     .font(.headline)
                 Spacer()
                 if viewModel.members.count < viewModel.memberCount && !expanded {
-                    Button("Показать всех") {
+                    Button("user_profile.group_members.show_all") {
                         expanded = true
                         Task { await viewModel.loadAllMembers() }
                     }
@@ -71,11 +71,11 @@ private struct MemberRow: View {
             }
             Spacer()
             if member.role == .owner {
-                Text("Владелец")
+                Text("user_profile.group_members.role.owner")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             } else if member.role == .admin {
-                Text("Админ")
+                Text("user_profile.group_members.role.admin")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

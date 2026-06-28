@@ -30,7 +30,7 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 ### Data Layer (LiteDB, не EF Core)
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
-- `MetricsCacheDbContext` — кеш метрик из Seq: HourlyStats, HourlyTraffic, HourlyServiceMetrics (`db/metrics_cache.db`)
+- `MetricsCacheDbContext` — кеш метрик из Seq: `HourlyStats`, `HourlyTraffic`, `HourlyServiceMetrics`, `CompressionRuns` (история ежедневного сжатия логов-метрик) (`db/metrics_cache.db`)
 
 Оба — Singleton.
 
@@ -52,9 +52,10 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 ### Services
 
 - `DockerService` — управление Docker-контейнерами
-- `SeqService` — проксирование логов из Seq (HttpClient)
+- `SeqService` — проксирование логов из Seq (HttpClient), удаление по фильтру (`Seq.Api`), запись событий в CLEF-формате
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
 - `MetricsCollectorService` — фоновый сбор метрик (IHostedService)
+- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
@@ -125,6 +126,7 @@ Auth внутри SPA: на старте `App.checkAuth()` дёргает `/api/
 | Metrics interval | 1 час |
 | HourlyStats retention | 24 часа |
 | HourlyServiceMetrics retention | 12 часов |
+| Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |
 | Sticker bucket | `message-documents` |
 
 ## Безопасность

@@ -18,59 +18,59 @@
             android:id="@+id/actionReply"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_reply"
-            android:text="Ответить" />
+            android:text="@string/msg_action_reply" />
 
         <TextView
             android:id="@+id/actionCopyText"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_copy"
-            android:text="Копировать текст"
+            android:text="@string/msg_action_copy_text"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/actionCopyImage"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_copy_content"
-            android:text="Скопировать изображение"
+            android:text="@string/msg_action_copy_image"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/actionSaveImages"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_save"
-            android:text="Сохранить изображение"
+            android:text="@string/msg_action_save_image"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/actionSaveDocs"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_download"
-            android:text="Сохранить в загрузки"
+            android:text="@string/msg_action_save_to_downloads"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/actionEdit"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_edit"
-            android:text="Изменить" />
+            android:text="@string/msg_action_edit" />
 
         <TextView
             android:id="@+id/actionDelete"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_delete"
-            android:text="Удалить" />
+            android:text="@string/msg_action_delete" />
 
         <TextView
             android:id="@+id/actionForward"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_forward"
-            android:text="Переслать" />
+            android:text="@string/msg_action_forward" />
 
         <TextView
             android:id="@+id/actionPin"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_pin"
-            android:text="Закрепить" />
+            android:text="@string/msg_action_pin" />
 
     </LinearLayout>
 

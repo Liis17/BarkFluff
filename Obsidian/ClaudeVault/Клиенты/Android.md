@@ -75,6 +75,39 @@ Package: `com.barkfluff.client`
 - `ProfileFragment` → кнопка "Выйти"
 - `DevicesActivity` → завершение сессии **текущего** устройства (если `deviceId == globalParam.deviceId`)
 
+
+## Звонки (V1)
+
+Стартовая интеграция звонков живёт только в V1 (`Android/Barkfluff.Client.Android/app`) и общем `Android/core`; V2 не менялся.
+
+- `Android/core/src/main/proto/beacon_api.proto` синхронизирован с `Shared/BarkFluff.Proto/beacon_api.proto`: добавлен `Service calls = 14` рядом с `livekit_url = 13`.
+- `GlobalParam` хранит `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
+- При применении ответа Beacon V1 не превращает пустой/offline Calls endpoint в URL, по умолчанию добавляет `https://` к адресам без схемы и пишет в Logcat raw-диагностику `Beacon calls: has/host/port/tls/livekit`.
+- `utils/ServerInfoPrefs.kt` централизует сохранение Beacon `GetServerInfo` в `GlobalParam`; `SplashActivity` при запуске требует только сохранённый `socketBeacon`, обновляет остальные endpoint'ы из Beacon и продолжает вход только если после refresh есть Identity, а `AboutActivity` при открытии refresh'ит Beacon и перерисовывает список сервисов.
+- `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
+- `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`, `ListCallHistory`, `GetActiveCalls`.
+- `core/calls/CallEventsService.kt` подключается в `BarkFluffApplication` вместе с `RealtimeService`: держит lifecycle-подписку на `SubscribeCallEvents`, публикует raw events через `SharedFlow`, текущее состояние звонка через `StateFlow`, делает reconnect/backoff и auto-reject второго входящего звонка при уже активном звонке.
+- В `BarkFluffApplication` есть foreground bridge для `CallEventsService.events`: incoming открывает `IncomingCallActivity` и показывает call notification, accepted/rejected/ended закрывают входящий экран через package-local broadcast и убирают notification. Background/killed сценарий остаётся за FCM payload `incoming_call`/`dismiss_call`.
+- `CallsFragment` (вкладка `Звонки`) показывает реальную историю из `ListCallHistory` через `CallHistoryAdapter` (`item_call_history.xml`): direction/missed-иконка, имя/чат, относительное время + длительность. Фильтр `Все`/`Пропущенные` перезагружает список; tap по строке открывает чат (личный — через `getPersonChatId`), кнопка action — повторный звонок (audio/video) через `CallActivity`. Имена резолвятся: личные — `getUserData`, групповые — из списка чатов. Пагинация v1: одна страница (limit 50), `has_more` пока не используется. Бэкенд `GetActiveCalls` доступен в репозитории, join-баннер ещё не нарисован.
+- В V1 `ChatActivity` добавлены кнопки аудио/видео звонка в верхнюю панель. Они запускают сигналинг и открывают `CallActivity` с `livekitUrl/accessToken`.
+- FCM service обрабатывает `type=incoming_call` и `type=dismiss_call`. `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle` для входящего звонка.
+- Telecom-интеграция звонков: V1 регистрирует self-managed PhoneAccount через MANAGE_OWN_CALLS и BarkFluffConnectionService, а realtime/FCM incoming_call сначала вызывает TelecomManager.addNewIncomingCall, затем показывает собственный CallStyle/full-screen UI и ringtone. Telecom не проигрывает ringtone сам для self-managed VoIP, но учитывает звонок как системный call для маршрутизации, Bluetooth и конкуренции с другими звонками.
+- Для входящего звонка `NotificationHelper.showIncomingCallNotification` дополнительно запускает системный ringtone через `RingtoneManager.TYPE_RINGTONE` + `AudioAttributes.USAGE_NOTIFICATION_RINGTONE` в loop-режиме. Входящее call-уведомление показывается в отдельном канале `incoming_calls_v2` с `IMPORTANCE_HIGH`, vibration/default vibration и без `setSilent(true)`, чтобы Android мог показать heads-up баннер поверх экрана/lockscreen; ongoing-уведомление активного звонка остаётся в `calls` и `setSilent(true)`, чтобы не было короткого notification-звука поверх ringtone. После accept используется `NotificationHelper.clearIncomingCallAlert`, чтобы остановить ringtone и убрать входящий notification без разрыва активного Telecom `Connection`; полный `NotificationHelper.dismissCall` завершает Telecom connection для realtime/FCM `dismiss_call`, reject/end.
+- Добавлены IncomingCallActivity, CallActivity, CallActionReceiver и permissions для микрофона/camera/screen-share/full-screen intent.
+- `IncomingCallActivity` показывает аватар звонящего с локальными retry-попытками загрузки (3 попытки с короткой паузой; после провала cached URL запрашивается заново через `ChatRepository.getFileDownloadUrl`) и анимированными ring-pulse кольцами вокруг аватара.
+- В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`. `LiveKitCallEngine` управляет room lifecycle, mic/camera/screen-share и **отдаёт UI-модель участников** `StateFlow<List<CallParticipant>>` (камера+экран track, mic/camera enabled, speaking, connection quality) вместо хранения renderer'ов. Движок пересобирает список по событиям Room (`ParticipantConnected/Disconnected`, `TrackPublished/Subscribed/Muted`, `ActiveSpeakersChanged`, `ConnectionQualityChanged`), различает `Track.Source.CAMERA` и `SCREEN_SHARE`. Дополнительно: `flipCamera()` (`LocalVideoTrack.switchCamera`), `selectAudioDevice()` через `AudioSwitchHandler` (динамик/наушник/проводная/Bluetooth), `setRemoteVideoQuality()` (`RemoteTrackPublication.setVideoQuality`).
+- **UI-дизайн** (`activity_call.xml` + программная отрисовка плиток). Тёмный иммерсивный экран (`bg_call_root`), edge-to-edge с обработкой `WindowInsets` (верхняя панель не залезает под статус-бар, панель управления — над навигацией). Стиль повторяет веб-референс. Режимы раскладки в `CallActivity.renderTiles`:
+  - **single** (1-на-1, нет демонстрации) — `CallTileView.setHero(true)`: крупный аватар (112dp) + имя + waveform по центру, локальный участник — в мини-окне `selfMiniContainer` (100×140, скруглённое) вверху справа;
+  - **grid** — сетка плиток до 2 колонок (ячейки через weight, не растягиваются вертикально);
+  - **stage** — демонстрация экрана/focus: крупная плитка сверху + полоса камер снизу. Tap по плитке — focus/возврат.
+- `CallTileView` (плитка/hero): аватар (картинка через Coil CircleCrop, иначе цветной круг с инициалами через `AvatarLoader`), имя, чип статуса микрофона (зелёный/красный/нейтральный), зелёная обводка говорящего, при включённой камере — `SurfaceViewRenderer` на весь размер. Имена/аватары участников резолвятся в `CallActivity.infoFor` по userId (livekit identity) через `getUserData` с кешем `infoCache` (раньше показывался сырой id без аватара).
+- **Палочки голоса** — кастомный `WaveformView` (анимированный эквалайзер с независимыми случайными высотами палочек), активен пока участник говорит (для hero под именем, для плитки вместо «молчит»).
+- **MD3 dynamic (адаптация под системную тему)**: весь хром берёт цвета из ролей темы (`Theme.Material3.DayNight` + DynamicColors) — фон-градиент `colorSurface`→`colorSurfaceContainerLow`, плитки `colorSurfaceContainerHigh`, кнопки `colorSurfaceContainerHighest`/`colorOnSurfaceVariant`, текст `colorOnSurface`/`colorOnSurfaceVariant`, панель/бейджи + `colorOutlineVariant`. Активные кнопки — `colorPrimary`/`colorOnPrimary` (`applyButtonState`). Иконки статус-бара переключаются по яркости `colorSurface` (`ColorUtils.calculateLuminance`). Семантические акценты фиксированы: зелёный «говорит» (waveform/обводка/чип), красный mute (`colorError`), красная «Завершить». Аватары — палитра `AvatarLoader.colorForUser`. Так экран следует за светлой/тёмной системной динамикой, а не всегда тёмный.
+- Контролы — стеклянная «таблетка» (`bg_call_control_pill`) с круглыми кнопками с подписями: `Микро`, `Камера`, большая красная `Завершить` (`bg_call_btn_end`), `Экран`, `Ещё`. Переворот камеры перенесён в лист `Ещё` (виден при включённой камере) вместе с `Маршрут звука` / `Качество голоса` / `Качество видео собеседника`. Бейдж количества участников в шапке для групповых (>2). Состояния кнопок и foreground service синхронизированы с моделью участников; foreground обновляется только при смене camera/screen.
+- Таймер длительности устойчив к reconnect (anchor не сбрасывается). `CallActivity` слушает `CallEventsService.events` по своему `callId`: `ENDED`/`REJECTED` (в т.ч. от собеседника или со второго устройства) закрывают экран, останавливают foreground и гасят notification — работает и для звонящего, где `currentCall` не инициализируется. Завершение идемпотентно (флаг `callEnded`); accept/reject в `IncomingCallActivity` защищены флагом `actionTaken`.
+- `CallForegroundService` держит ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; action уведомления завершает активный звонок через `CallActionReceiver`.
+
+Связанный backend-контекст: [[Backend/Calls]], [[Backend/CloudMessaging]].
 ## Firebase FCM токен
 
 `utils/FirebaseTokenHelper.kt`:
@@ -124,6 +157,15 @@ Backend заполняет эти поля при доставке сообще�
 **Что хешируется:** именно те байты, которые были бы залиты на сервер. Для картинки — уже сжатый JPEG, не оригинал из галереи. Это совпадает с тем, что хеширует backend при загрузке (`Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs`), поэтому дедупликация работает кросс-клиентно: файл, залитый с macOS-клиента, дедуплицируется при отправке с Android и наоборот.
 
 **Не покрывается этим check'ом** (заливают мимо `ChatRepository.uploadFile`): загрузка аватара через `GrpcManager.uploadAvatar`/`uploadProfilePoster` — там свой путь, дедупликация только на сервере.
+
+### Оптимистичный UI и прогресс отправки медиа
+
+При отправке фото/видео `ChatActivity.handleMediaSend` сразу добавляет оптимистичное сообщение (`MessageItem` с `localId`, `uploadProgress`, `localPreviewUris`) и кидает `SendJob` в `MediaSendService`. Сообщение видно мгновенно — с локальным превью медиа и оверлеем прогресса поверх.
+
+- **Локальное превью.** `MessageItem.localPreviewUris: List<Uri>` — URI исходных медиа (RawImage→uri, EditedImage→originalUri, Video→spec.uri; документы/стикеры превью не имеют). `MessageAdapter.buildLocalMediaGrid` рендерит ту же сетку, что и серверные вложения (`determineLayout` + `item_attachment_media_cell`, загрузка через Coil `.load(uri)`). Поэтому количество загружаемых файлов видно сразу как N миниатюр.
+- **Прогресс.** `MediaSendService.aggregateProgress(idx, pct)`: при `sendSeparately` прогресс пофайловый (у каждого файла своё сообщение/localId), иначе — агрегированный по всем N файлам одного сообщения `(idx*100+pct)/total`, чтобы бар не сбрасывался в 0 на каждом следующем файле. События идут через `MediaSendService.uploadEvents` (`UploadEvent`: PREPARING/UPLOADING/SENDING/SENT/FAILED + `progress` + `serverMessageId`).
+- **Реальная скорость.** `ChatRepository.uploadFile` ставит `connection.setFixedLengthStreamingMode(...)` и флашит каждый чанк — без этого `HttpURLConnection` буферизует тело в память и `onProgress` прыгал бы в 100% ещё до сетевой отправки.
+- **Реконсиляция (защита от дубликата/пустого сообщения).** `ChatActivity.addNewMessage` ищет оптимистичный плейсхолдер ДО проверки дубликата, в обоих порядках прихода: realtime-эхо раньше ответа `sendMessage` (матч по контенту + `uploadProgress != null`/`localPreviewUris`, т.к. вложения плейсхолдера ещё пустые) ИЛИ `SENT` раньше эха (матч по уже проставленному `messageId` + `localId`). Без этого эхо с фото добавлялось бы вторым item'ом, а `clearOptimisticUploadProgress` оставлял первый с пустыми вложениями → два item с одним `messageId` → коллизия `DiffUtil.areItemsTheSame` (сравнение по `messageId`) → пустой bubble до переоткрытия чата.
 
 ## Система кеширования
 
@@ -399,12 +441,25 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 - `res/layout/item_share_preview_thumb.xml`
 - `res/values/strings.xml` — ключи `share_*`
 
+## Локализация
+
+Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `attachBaseContext`/`BaseActivity`).
+
+- Поддержанные языки: **ru**, **en**, **de**, **es**, **zh-CN** + «Системный» (сбрасывает override).
+- Ресурсы: `res/values/strings.xml` (ru, default) + `values-en/`, `values-de/`, `values-es/`, `values-zh-rCN/`.
+- `res/xml/locales_config.xml` перечисляет все 5 локалей; `AndroidManifest.xml` ссылается через `android:localeConfig="@xml/locales_config"`.
+- `utils/LocaleManager.kt` — `apply(language)` маппит `GlobalParam.LANGUAGE_*` константы в `LocaleListCompat`; `"system"` → `getEmptyLocaleList()`.
+- Хранение: `GlobalParam.appLanguage` (обычный `SharedPreferences`, ключ `app_language`, сохраняется при `clearUserData()` — это настройка устройства, не аккаунта).
+- Применяется при старте: `BarkFluffApplication.onCreate()` вызывает `LocaleManager.apply(GlobalParam(this).appLanguage)`.
+- UI: `LanguageSettingsActivity` (`activity_language_settings.xml`) — карточка с `RadioGroup` из 6 пунктов. Каждая строка содержит **флаг-эмодзи + нативное имя языка** (🌐 Системный, 🇷🇺 Русский, 🇬🇧 English, 🇩🇪 Deutsch, 🇪🇸 Español, 🇨🇳 中文). Открывается из `ProfileFragment` → пункт «Язык».
+- При смене языка AppCompat сам пересоздаёт Activity-стек через `recreate()`.
+
 ## Файловая структура
 
 - `gradle/libs.versions.toml` — все версии зависимостей
 - `app/src/main/proto/` — 11 proto файлов
 - `app/src/main/java/com/barkfluff/client/` — все исходники
-- `docs/` — `CACHING_SYSTEM.md`, `MATERIAL3_MIGRATION.md`, `MATERIAL3_REPORT.md`, `material_you_3_guide.md`
+- `docs/` — `CACHING_SYSTEM.md`, `MATERIAL3_REPORT.md`, `material_you_3_guide.md`
 - Полная карта проекта — в Obsidian: [[Android-ProjectMap]] + [[Android-FileIndex]] (отдельного `PROJECT_MAP.md` в репозитории нет)
 
 ## Сборка

@@ -39,16 +39,16 @@
                 <ui:Button
                     Click="LoadButton_Click"
                     Style="{StaticResource RequiredButton}"
-                    ToolTip="Выбрать картинку для аватара в проводнике">
+                    ToolTip="{DynamicResource L_CropImage_Tooltip_PickFile}">
                     <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Выбрать аватар" />
+                        <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="{DynamicResource L_CropImage_SelectAvatar}" />
                         <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="ArrowDownload20" />
                     </StackPanel>
                 </ui:Button>
                 <TextBlock
                     Margin="0,10,0,0"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="или перетащите файл сюда" />
+                    Text="{DynamicResource L_CropImage_OrDrop}" />
             </StackPanel>
         </Grid>
         <Grid x:Name="CropGrid">
@@ -62,9 +62,9 @@
                         Margin="5"
                         Click="Button_Click"
                         Style="{DynamicResource RequiredButton}"
-                        ToolTip="Выбрать текущий вариант аварата и применить его для профиля">
+                        ToolTip="{DynamicResource L_CropImage_Tooltip_Apply}">
                         <StackPanel Orientation="Horizontal">
-                            <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Обрезать" />
+                            <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="{DynamicResource L_CropImage_Crop}" />
                             <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="Cut20" />
                         </StackPanel>
 
@@ -73,7 +73,7 @@
                         Margin="5"
                         Click="ResetPosition"
                         Style="{DynamicResource AdaptiveButton}"
-                        ToolTip="Вернуть картинку в исходное состояние">
+                        ToolTip="{DynamicResource L_CropImage_Tooltip_Reset}">
                         <ui:SymbolIcon
                             Margin="25,0,25,0"
                             Style="{StaticResource AdaptiveButtonIconStyle}"
@@ -83,7 +83,7 @@
                         Margin="5"
                         Click="LoadButton_Click"
                         Style="{DynamicResource AdaptiveButton}"
-                        ToolTip="Выбрать другую картинку">
+                        ToolTip="{DynamicResource L_CropImage_Tooltip_PickOther}">
                         <ui:SymbolIcon
                             Margin="25,0,25,0"
                             Filled="False"
@@ -95,7 +95,7 @@
                         Margin="5"
                         Click="CancelButton_Click"
                         Style="{DynamicResource AdaptiveButton}"
-                        ToolTip="Отменить и вернуться к выбору файла">
+                        ToolTip="{DynamicResource L_CropImage_Tooltip_Cancel}">
                         <ui:SymbolIcon
                             Margin="25,0,25,0"
                             Style="{StaticResource AdaptiveButtonIconStyle}"

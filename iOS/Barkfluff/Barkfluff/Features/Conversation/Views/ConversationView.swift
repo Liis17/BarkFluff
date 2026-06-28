@@ -9,6 +9,8 @@
 import SwiftUI
 import UIKit
 import BFCore
+import BFNetworking
+import BFCalls
 import PhotosUI
 import Nuke
 import NukeUI
@@ -23,6 +25,8 @@ struct ConversationView: View {
     @State private var messageText = ""
     @State private var scrollPosition = ScrollPositionManager()
     @State private var selectedAttachments: [SelectedAttachment] = []
+
+    @Environment(\.locale) private var locale
 
     // Для просмотра медиа
     @State private var selectedMediaAttachment: MessageAttachment?
@@ -48,8 +52,9 @@ struct ConversationView: View {
             if let viewModel {
                 messagesList(viewModel: viewModel)
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // VM ещё не создан — короткий промежуток до .task. Skeleton
+                // вместо крутилки, чтобы UI выглядел как почти-готовый чат.
+                MessagesListPlaceholderView()
             }
 
             // Слой 2: Кнопка "вниз"
@@ -98,6 +103,18 @@ struct ConversationView: View {
                 }
             }
 
+            // Кнопки звонка (аудио/видео)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { startCall(.video) } label: {
+                    Image(systemName: "video.fill")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { startCall(.audio) } label: {
+                    Image(systemName: "phone.fill")
+                }
+            }
+
             // Аватарка справа — открывает профиль собеседника / инфо группы
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -117,7 +134,7 @@ struct ConversationView: View {
                 VStack(spacing: 8) {
                     if let editing = viewModel.editingMessage {
                         EditPreviewView(
-                            snippet: ReplyPreviewView.makeSnippet(editing),
+                            snippet: ReplyPreviewView.makeSnippet(editing, locale: locale),
                             onCancel: {
                                 viewModel.cancelEdit()
                                 messageText = ""
@@ -126,8 +143,8 @@ struct ConversationView: View {
                         .padding(.horizontal, 8)
                     } else if let reply = viewModel.pendingReply {
                         ReplyPreviewView(
-                            authorName: reply.senderName ?? "Неизвестный",
-                            snippet: ReplyPreviewView.makeSnippet(reply),
+                            authorName: reply.senderName ?? String(localized: "common.unknown_user"),
+                            snippet: ReplyPreviewView.makeSnippet(reply, locale: locale),
                             onCancel: { viewModel.clearPendingReply() }
                         )
                         .padding(.horizontal, 8)
@@ -154,24 +171,24 @@ struct ConversationView: View {
             }
         }
         .confirmationDialog(
-            "Удалить сообщение?",
+            "conversation.delete.title",
             isPresented: Binding(
                 get: { deleteCandidateID != nil },
                 set: { if !$0 { deleteCandidateID = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Удалить", role: .destructive) {
+            Button("conversation.delete.button", role: .destructive) {
                 if let id = deleteCandidateID {
                     Task { await viewModel?.deleteMessage(messageID: id) }
                 }
                 deleteCandidateID = nil
             }
-            Button("Отмена", role: .cancel) {
+            Button("common.cancel", role: .cancel) {
                 deleteCandidateID = nil
             }
         } message: {
-            Text("Сообщение будет удалено для всех участников чата.")
+            Text("conversation.delete.message")
         }
         .task {
             if viewModel == nil {
@@ -234,13 +251,19 @@ struct ConversationView: View {
         if let status = viewModel?.otherUserOnlineStatus {
             switch status {
             case .online:
-                Text("онлайн")
+                Text("conversation.status.online")
                     .font(.caption2)
                     .foregroundStyle(.green)
             case .offline(let lastSeen):
-                Text(lastSeen.map { "был(а) \(formatLastSeen($0))" } ?? "не в сети")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if let lastSeen {
+                    Text("conversation.status.last_seen \(formatLastSeen(lastSeen))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("conversation.status.offline")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             case .unknown:
                 EmptyView()
             }
@@ -252,13 +275,14 @@ struct ConversationView: View {
 
         if calendar.isDateInToday(date) {
             let formatter = DateFormatter()
+            formatter.locale = locale
             formatter.dateFormat = "HH:mm"
-            return "в \(formatter.string(from: date))"
+            return String(localized: "conversation.status.last_seen.today \(formatter.string(from: date))")
         } else if calendar.isDateInYesterday(date) {
-            return "вчера"
+            return String(localized: "conversation.status.last_seen.yesterday")
         } else {
             let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "ru_RU")
+            formatter.locale = locale
             formatter.dateFormat = "d MMM"
             return formatter.string(from: date)
         }
@@ -269,15 +293,16 @@ struct ConversationView: View {
     @ViewBuilder
     private func messagesList(viewModel: ConversationViewModel) -> some View {
         if viewModel.isLoading && viewModel.messages.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            MessagesListPlaceholderView()
         } else if viewModel.messages.isEmpty {
             ContentUnavailableView(
-                viewModel.isNewConversation ? "Новый диалог" : "Нет сообщений",
+                viewModel.isNewConversation
+                    ? LocalizedStringKey("conversation.empty.new.title")
+                    : LocalizedStringKey("conversation.empty.no_messages.title"),
                 systemImage: "bubble.left.and.bubble.right",
                 description: Text(viewModel.isNewConversation
-                    ? "Напишите первое сообщение!"
-                    : "Начните диалог!")
+                    ? "conversation.empty.new.description"
+                    : "conversation.empty.no_messages.description")
             )
         } else {
             MessagesListView(
@@ -329,6 +354,24 @@ struct ConversationView: View {
                     Task { await MediaActions.saveDocuments(docs, container: container) }
                 }
             )
+        }
+    }
+
+    // MARK: - Calls
+
+    /// userID собеседника для личного звонка (первый участник, не текущий пользователь).
+    private var peerUserID: Int64? {
+        chat.members.first { $0.userID != container.currentUserID }?.userID
+    }
+
+    private func startCall(_ media: CallMediaTypeDTO) {
+        let controller = container.callController
+        Task {
+            if chat.isGroupChat {
+                await controller.startCall(calleeUserID: nil, chatID: chat.id, media: media)
+            } else if let peer = peerUserID {
+                await controller.startCall(calleeUserID: peer, chatID: nil, media: media)
+            }
         }
     }
 
@@ -514,7 +557,7 @@ struct MediaItemView: View {
                 Image(systemName: "photo")
                     .font(.system(size: 48))
                     .foregroundStyle(.white.opacity(0.7))
-                Text("Не удалось загрузить")
+                Text("conversation.media.load_failed")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
             }

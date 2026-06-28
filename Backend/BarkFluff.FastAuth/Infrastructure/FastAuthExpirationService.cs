@@ -44,7 +44,7 @@ public class FastAuthExpirationService(
                 if (session.TryExpire())
                 {
                     metrics.Increment("sessions_expired");
-                    logger.LogInformation("FastAuth session {Id} expired", session.Id);
+                    logger.LogInformation("FastAuth session {Id} expired", session.Id[..8]);
                 }
             }
 

@@ -57,7 +57,9 @@
 
         setCss('--msg-bubble-radius', radius + 'px');
         setCss('--chat-bg-blur', (blurOn ? blurR : 0) + 'px');
-        setCss('--chat-bg-dim-alpha', (Math.max(0, Math.min(100, dim)) / 100).toFixed(3));
+        // Затемнение нужно только поверх фоновой картинки; без неё — 0, иначе фон чата темнеет зря.
+        var dimAlpha = resolvedBgUrl ? (Math.max(0, Math.min(100, dim)) / 100) : 0;
+        setCss('--chat-bg-dim-alpha', dimAlpha.toFixed(3));
         setCss('--chat-bg-image', resolvedBgUrl ? ('url("' + resolvedBgUrl + '")') : 'none');
 
         listeners.forEach(function (cb) { try { cb(); } catch (e) {} });

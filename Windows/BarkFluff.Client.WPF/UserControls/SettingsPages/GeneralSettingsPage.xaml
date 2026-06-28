@@ -13,22 +13,22 @@
         <StackPanel Margin="24,16,24,24">
 
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Общие" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Sidebar_General}" />
 
             <!-- ── Тема приложения ── -->
-            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,8,0,4" Text="ВНЕШНИЙ ВИД" />
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,8,0,4" Text="{DynamicResource L_Settings_General_AppearanceHeader}" />
             <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <ui:SymbolIcon Foreground="#FF5086B5" Symbol="PaintBrush24" Margin="0,0,8,0" />
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Тема приложения" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_General_Theme_Title}" />
                     </StackPanel>
                     <StackPanel x:Name="ThemePanel" Margin="0,4,0,0">
                         <Border x:Name="ThemeLight" Padding="12" CornerRadius="6" Margin="0,2" Cursor="Hand"
                                 MouseLeftButtonUp="ThemeOption_Click" Tag="light">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Светлая"/>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="{DynamicResource L_Settings_General_Theme_Light}"/>
                                 <Ellipse x:Name="RadioLight" Grid.Column="1" Width="18" Height="18"
                                          Stroke="{DynamicResource DescriptionText}" StrokeThickness="2" Fill="Transparent"/>
                             </Grid>
@@ -37,7 +37,7 @@
                                 MouseLeftButtonUp="ThemeOption_Click" Tag="dark">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Тёмная"/>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="{DynamicResource L_Settings_General_Theme_Dark}"/>
                                 <Ellipse x:Name="RadioDark" Grid.Column="1" Width="18" Height="18"
                                          Stroke="{DynamicResource DescriptionText}" StrokeThickness="2" Fill="Transparent"/>
                             </Grid>
@@ -46,7 +46,7 @@
                                 MouseLeftButtonUp="ThemeOption_Click" Tag="system">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Системная"/>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="{DynamicResource L_Settings_General_Theme_System}"/>
                                 <Ellipse x:Name="RadioSystem" Grid.Column="1" Width="18" Height="18"
                                          Stroke="{DynamicResource DescriptionText}" StrokeThickness="2" Fill="Transparent"/>
                             </Grid>

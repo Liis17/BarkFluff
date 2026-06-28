@@ -169,7 +169,7 @@
 | `Settings/Views/GeneralSettingsView.swift` | Picker по `AppTheme` |
 | `Settings/Views/SecuritySettingsView.swift` | 2FA toggle + переключение хранилища токенов |
 | `Settings/Views/PrivacySettingsView.swift` | Видимость профиля + поиск + сообщения (через PrivacySettingsViewModel) |
-| `Settings/Views/SessionsView.swift` | Список активных сессий, terminate per-session + "Завершить все остальные" |
+| `Settings/Views/SessionsView.swift` | Список активных сессий + кнопка «Подключить устройство по QR» (NavigationLink на `FastAuthScannerView`), terminate per-session + "Завершить все остальные" |
 | `Settings/Views/CacheSettingsView.swift` | Стат + очистка |
 | `Settings/Views/CloudSettingsView.swift` | Облако: ProgressView + типы |
 | `Settings/Views/AboutAppSettingsView.swift` | Версия приложения, OS, модель устройства |
@@ -226,9 +226,38 @@
 
 ---
 
+## Features/FastAuth/
+
+iOS-сторона сканера для подключения нового устройства (паритет с Android-`QrScannerActivity`/`FastAuthConfirmActivity`).
+
+### ViewModels
+
+| Файл | Назначение |
+|------|-----------|
+| `FastAuth/ViewModels/FastAuthScannerViewModel.swift` | `@Observable @MainActor`, FSM `FastAuthScannerPhase`, запрос разрешения камеры (`AVCaptureDevice.requestAccess`), вызов `fastAuthService.scan(fastAuthID:)`, дебаунс ошибок |
+
+### Views
+
+| Файл | Назначение |
+|------|-----------|
+| `FastAuth/Views/QRCameraPreview.swift` | `UIViewControllerRepresentable` поверх `AVCaptureSession` + `AVCaptureMetadataOutput([.qr])`. Старт/стоп в фоновой `sessionQueue`, дебаунс одинаковых QR на 1.5 с |
+| `FastAuth/Views/FastAuthScannerView.swift` | Превью камеры + полупрозрачный `ScannerOverlay` с рамкой по центру + хинт-капсула. Alert «Открыть настройки» для `.needsPermission`. `.navigationDestination(item:)` пушит экран подтверждения |
+| `FastAuth/Views/FastAuthConfirmView.swift` | List с метаданными нового устройства (`deviceName`/`operationSystem`/`appName+appVersion`/`ipAddress`) + кнопки Accept (`fastAuthService.accept`) / Reject (`fastAuthService.reject`). После успеха — `dismiss()` |
+
+**Permission**: `INFOPLIST_KEY_NSCameraUsageDescription` уже в build settings.
+
+**Связанные изменения в общих пакетах** (`Mac/Barkfluff/Packages/`, влияют и на macOS):
+- `BFCore/Models/ScanFastAuthInfo.swift` (новый) — доменная модель.
+- `BFCore/Services/Protocols/FastAuthServiceProtocol.swift` — добавлены `scan`, `accept(fastAuthID:, confirmationCode:)`, `reject(...)`.
+- `BFCore/Services/Implementations/FastAuthService.swift` — реализации трёх методов.
+- `BFNetworking/DTOs.swift` — `ScanFastAuthInfo` сетевой DTO.
+- `BFNetworking/Protocols/RepositoryProtocols.swift` — `FastAuthRepositoryProtocol` обновлён: `scanFastAuth`, `acceptFastAuth(fastAuthID:, confirmationCode:)`, `rejectFastAuth(...)`.
+- `BFNetworking/Repositories/FastAuthRepository.swift` — реализация через `connectionManager.withAuthorizedClient(for: .fastauth)`.
+
+---
+
 ## Что вне scope текущей итерации
 
-- **FastAuth (QR-авторизация)** — пропущено по решению.
 - **NotificationService / push** — отложено.
 - **Полноэкранные просмотрщики медиа** (`MediaViewerView`/`ImageViewerView`/`VideoPlayerView` как у macOS) — текущий iOS использует встроенный простой viewer в ConversationView.
 - **EmojiPickerView**, **GIFAttachmentView**, **MediaPreviewCard / FilePreviewCard / SendButton** — VMs есть, UI ещё переносится.

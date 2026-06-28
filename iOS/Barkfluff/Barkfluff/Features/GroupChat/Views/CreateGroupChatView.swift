@@ -25,14 +25,14 @@ struct CreateGroupChatView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle("Новая группа")
+            .navigationTitle("group_chat.create.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Создать") {
+                    Button("group_chat.create.action") {
                         Task { await create() }
                     }
                     .disabled(viewModel?.canCreate != true)
@@ -54,13 +54,13 @@ struct CreateGroupChatView: View {
         @Bindable var vm = vm
 
         Form {
-            Section("Название группы") {
-                TextField("Введите название", text: $vm.title)
+            Section("group_chat.create.name_section") {
+                TextField("group_chat.create.name_placeholder", text: $vm.title)
                     .textInputAutocapitalization(.sentences)
             }
 
             if !vm.selectedUsers.isEmpty {
-                Section("Выбрано (\(vm.selectedUsers.count))") {
+                Section(header: Text("group_chat.create.selected_section \(vm.selectedUsers.count)")) {
                     ForEach(vm.selectedUsers) { user in
                         HStack {
                             AvatarView(
@@ -82,8 +82,8 @@ struct CreateGroupChatView: View {
                 }
             }
 
-            Section("Поиск участников") {
-                TextField("Имя или username", text: $vm.searchQuery)
+            Section("group_chat.create.search_section") {
+                TextField("group_chat.create.search_placeholder", text: $vm.searchQuery)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onChange(of: vm.searchQuery) { _, _ in

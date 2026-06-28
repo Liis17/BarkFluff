@@ -42,7 +42,11 @@ public class Program
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<MessagesContext>(c
-            => c.UseNpgsql(builder.Configuration["MessagesDb"]));
+            => c.UseNpgsql(builder.Configuration["MessagesDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddStackExchangeRedisCache(options =>
         {

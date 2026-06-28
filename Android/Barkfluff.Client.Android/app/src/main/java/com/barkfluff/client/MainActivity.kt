@@ -31,13 +31,14 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { /* granted or denied — no special handling needed */ }
 
-    // Порядок табов: Чаты (0) | Профиль (1)
+    // Порядок табов: Чаты (0) | Звонки (1) | Профиль (2)
     private val fragments = mutableMapOf<Int, Fragment>()
     private var currentTabIndex = TAB_CHATS
 
     companion object {
         private const val TAB_CHATS = 0
-        private const val TAB_PROFILE = 1
+        private const val TAB_CALLS = 1
+        private const val TAB_PROFILE = 2
         private const val KEY_CURRENT_TAB = "current_tab"
 
         /**
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
             currentTabIndex = savedInstanceState.getInt(KEY_CURRENT_TAB, TAB_CHATS)
             // Восстанавливаем ссылки на существующие фрагменты
             supportFragmentManager.findFragmentByTag("tab_$TAB_CHATS")?.let { fragments[TAB_CHATS] = it }
+            supportFragmentManager.findFragmentByTag("tab_$TAB_CALLS")?.let { fragments[TAB_CALLS] = it }
             supportFragmentManager.findFragmentByTag("tab_$TAB_PROFILE")?.let { fragments[TAB_PROFILE] = it }
         } else {
             // Первый запуск — показываем чаты
@@ -272,6 +274,7 @@ class MainActivity : AppCompatActivity() {
     private fun createFragment(tabIndex: Int): Fragment {
         return when (tabIndex) {
             TAB_CHATS -> ChatsFragment()
+            TAB_CALLS -> CallsFragment()
             TAB_PROFILE -> ProfileFragment()
             else -> ChatsFragment()
         }
@@ -280,6 +283,7 @@ class MainActivity : AppCompatActivity() {
     private fun tabIndexToMenuId(tabIndex: Int): Int {
         return when (tabIndex) {
             TAB_CHATS -> R.id.navigation_chats
+            TAB_CALLS -> R.id.navigation_calls
             TAB_PROFILE -> R.id.navigation_profile
             else -> R.id.navigation_chats
         }
@@ -288,6 +292,7 @@ class MainActivity : AppCompatActivity() {
     private fun menuIdToTabIndex(menuId: Int): Int {
         return when (menuId) {
             R.id.navigation_chats -> TAB_CHATS
+            R.id.navigation_calls -> TAB_CALLS
             R.id.navigation_profile -> TAB_PROFILE
             else -> TAB_CHATS
         }

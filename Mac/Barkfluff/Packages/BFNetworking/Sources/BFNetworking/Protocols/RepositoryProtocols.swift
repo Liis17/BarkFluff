@@ -200,7 +200,9 @@ public protocol UpdatesRepositoryProtocol: Sendable {
 public protocol FastAuthRepositoryProtocol: Sendable {
     func generateFastAuthToken(type: FastAuthType) async throws -> FastAuthTokenInfo
     func checkFastAuth(fastAuthID: String) async throws -> FastAuthStatus
-    func acceptFastAuth(fastAuthID: String) async throws
+    func scanFastAuth(fastAuthID: String) async throws -> ScanFastAuthInfo
+    func acceptFastAuth(fastAuthID: String, confirmationCode: String) async throws
+    func rejectFastAuth(fastAuthID: String, confirmationCode: String) async throws
     func subscribeFastAuthResult(fastAuthID: String) async throws -> AsyncThrowingStream<FastAuthResult, Error>
     func subscribeFastAuthRequests() async throws -> AsyncThrowingStream<FastAuthRequest, Error>
     func connectDevice(deviceToken: String) async throws

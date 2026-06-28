@@ -4,23 +4,20 @@ using Grpc.Core;
 
 namespace BarkFluff.WebApi.Core.Managers
 {
-    internal class WebApiFastAuthManager
+    internal class WebApiFastAuthManager : WebApiBase
     {
-        private readonly WebApi _webApi;
-
-        public WebApiFastAuthManager(WebApi webApi)
+        public WebApiFastAuthManager(WebApi webApi) : base(webApi)
         {
-            _webApi = webApi;
         }
 
         public async Task<(ErrorReturner, GenerateFastAuthTokenResponse?)> GenerateFastAuthToken(TokenFormat format)
         {
-            if (_webApi.FastAuthAC == null)
+            if (FastAuthAC == null)
                 return (new ErrorReturner(false, "FastAuth клиент не инициализирован"), null);
 
             try
             {
-                var response = await _webApi.FastAuthAC.GenerateFastAuthTokenAsync(
+                var response = await FastAuthAC.GenerateFastAuthTokenAsync(
                     new GenerateFastAuthTokenRequest { Format = format });
                 return (new ErrorReturner(true), response);
             }
@@ -33,13 +30,16 @@ namespace BarkFluff.WebApi.Core.Managers
         public async Task<(ErrorReturner, IAsyncEnumerable<FastAuthResult>?)> SubscribeFastAuthResult(
             string fastAuthId, CancellationToken ct)
         {
-            if (_webApi.FastAuthAC == null)
+            if (FastAuthAC == null)
                 return (new ErrorReturner(false, "FastAuth клиент не инициализирован"), null);
 
             try
             {
-                var call = _webApi.FastAuthAC.SubscribeFastAuthResult(
-                    new SubscribeFastAuthResultRequest { FastAuthId = fastAuthId });
+                // CT в сам streaming-call: без него Cancel() на CTS не закроет стрим — он
+                // продолжит висеть на сокете до тайм-аута сервера.
+                var call = FastAuthAC.SubscribeFastAuthResult(
+                    new SubscribeFastAuthResultRequest { FastAuthId = fastAuthId },
+                    headers: null, deadline: null, cancellationToken: ct);
 
                 async IAsyncEnumerable<FastAuthResult> GetStream()
                 {

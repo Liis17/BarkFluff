@@ -40,7 +40,11 @@ public class Program
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<UsersContext>(c
-            => c.UseNpgsql(builder.Configuration["UsersDb"]));
+            => c.UseNpgsql(builder.Configuration["UsersDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddTransient<UsersStorage>();
         builder.Services.AddTransient<DevicesStorage>();
@@ -50,8 +54,6 @@ public class Program
         builder.Services.AddTransient<PrekeyStorage>();
         builder.Services.AddScoped<UserInfoQueueSender>();
         builder.Services.AddSingleton<ReservedUsernamesService>();
-
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);

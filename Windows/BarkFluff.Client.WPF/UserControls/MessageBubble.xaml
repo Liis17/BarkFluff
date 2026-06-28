@@ -113,13 +113,13 @@
                 </Style>
             </ContextMenu.Resources>
 
-            <MenuItem Click="OnReplyClick" Header="Ответить">
+            <MenuItem Click="OnReplyClick" Header="{DynamicResource L_MessageBubble_Reply}">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="ArrowReply16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Click="OnForwardClick" Header="Переслать">
+            <MenuItem Click="OnForwardClick" Header="{DynamicResource L_MessageBubble_Forward}">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="ArrowForward16" />
                 </MenuItem.Icon>
@@ -127,7 +127,7 @@
 
             <MenuItem
                 Click="OnCopyClick"
-                Header="Копировать"
+                Header="{DynamicResource L_MessageBubble_Copy}"
                 InputGestureText="Ctrl+C">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="Copy16" />
@@ -136,7 +136,7 @@
 
             <MenuItem
                 Click="OnSelectAllTextClick"
-                Header="Выделить текст"
+                Header="{DynamicResource L_MessageBubble_SelectText}"
                 InputGestureText="Ctrl+A">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="SelectAllOff16" />
@@ -145,13 +145,13 @@
 
             <Separator Margin="6,4" Background="#FF505050" />
 
-            <MenuItem Click="OnPinClick" Header="Закрепить">
+            <MenuItem Click="OnPinClick" Header="{DynamicResource L_MessageBubble_Pin}">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="Pin16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Click="OnAddToFavoritesClick" Header="Добавить в избранное">
+            <MenuItem Click="OnAddToFavoritesClick" Header="{DynamicResource L_MessageBubble_AddToFavorites}">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="Star16" />
                 </MenuItem.Icon>
@@ -162,7 +162,7 @@
             <MenuItem
                 Click="OnEditClick"
                 Foreground="#FFFFB74D"
-                Header="Изменить">
+                Header="{DynamicResource L_MessageBubble_Edit}">
                 <MenuItem.Icon>
                     <ui:SymbolIcon
                         FontSize="14"
@@ -174,7 +174,7 @@
             <MenuItem
                 Click="OnDeleteClick"
                 Foreground="#FFEF5350"
-                Header="Удалить">
+                Header="{DynamicResource L_MessageBubble_Delete}">
                 <MenuItem.Icon>
                     <ui:SymbolIcon
                         FontSize="14"
@@ -383,7 +383,7 @@
                 FontSize="9"
                 FontWeight="Medium"
                 Foreground="White"
-                Text="изменено" />
+                Text="{DynamicResource L_MessageBubble_Edited}" />
         </Border>
     </Grid>
 </UserControl>

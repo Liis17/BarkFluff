@@ -13,6 +13,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
@@ -171,18 +172,7 @@ class SelectServerActivity : AppCompatActivity() {
                     val serverInfo = infoResult.getOrNull()
                     if (serverInfo != null) {
                         // Сохраняем информацию о сервере в GlobalParam
-                        globalParam.apply {
-                            serverName = serverInfo.name
-                            serverDescription = serverInfo.description
-                            socketIdentity = ensureHttpPrefix(serverInfo.identityEndpoint)
-                            socketUsers = ensureHttpPrefix(serverInfo.usersEndpoint)
-                            socketFiles = ensureHttpPrefix(serverInfo.filesEndpoint)
-                            socketMessages = ensureHttpPrefix(serverInfo.messagesEndpoint)
-                            socketUpdates = ensureHttpPrefix(serverInfo.updatesEndpoint)
-                            socketOnliner = ensureHttpPrefix(serverInfo.onlinerEndpoint)
-                            socketFastAuth = ensureHttpPrefix(serverInfo.fastAuthEndpoint)
-                            colors = serverInfo.color
-                        }
+                        globalParam.applyServerInfo(serverInfo)
 
                         Log.d(TAG, "Успешное подключение к серверу: ${serverInfo.name}")
 
@@ -278,13 +268,6 @@ class SelectServerActivity : AppCompatActivity() {
         }
     }
 
-    private fun ensureHttpPrefix(url: String): String {
-        return if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            "http://$url"
-        } else {
-            url
-        }
-    }
 
     private fun showLoading(isLoading: Boolean) {
         binding.loadingProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE

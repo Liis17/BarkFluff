@@ -53,16 +53,16 @@ final class CacheSettingsViewModel {
 extension CachedFileType {
     var displayName: String {
         switch self {
-        case .avatar: return "Аватары"
-        case .image: return "Изображения"
-        case .poster: return "Постеры"
-        case .video: return "Видео"
-        case .gif: return "GIF"
-        case .document: return "Документы"
-        case .audio: return "Аудио"
-        case .voice: return "Голосовые"
-        case .sticker: return "Стикеры"
-        case .preview: return "Превью"
+        case .avatar: return String(localized: "upload_file_type.user_avatar")
+        case .image: return String(localized: "upload_file_type.message_image")
+        case .poster: return String(localized: "cached_file_type.poster")
+        case .video: return String(localized: "upload_file_type.message_video")
+        case .gif: return String(localized: "upload_file_type.message_gif")
+        case .document: return String(localized: "upload_file_type.message_document")
+        case .audio: return String(localized: "upload_file_type.message_audio")
+        case .voice: return String(localized: "upload_file_type.message_voice")
+        case .sticker: return String(localized: "upload_file_type.message_sticker")
+        case .preview: return String(localized: "cached_file_type.preview")
         }
     }
 

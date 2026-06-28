@@ -1,0 +1,20 @@
+{
+    "data":  {
+                 "chat_id":  "019caae6-65b6-77bf-aba4-b2e92879904a"
+             },
+    "call":  "barkfluff.messages.MessagesApi/GetChatInfo",
+    "host":  "messages.barkfluff.com:443",
+    "insecure":  false,
+    "proto":  "F:\\Projects\\BarkFluff\\Tests\\LoadTests\\..\\..\\Shared\\BarkFluff.Proto\\messages_api.proto",
+    "concurrency":  50,
+    "metadata":  {
+                     "x-device-id":  "ZDY4MTdjM2MtODBjOS00ZGRiLTk1MjctM2I5MzM0MDc1MDk2",
+                     "x-app-name":  "QmFya0ZsdWZmLkxvYWRUZXN0",
+                     "x-auth-token":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ4LXVzZXItaWQiOiIxNzcyMzkzNjg1IiwieC10b2tlbi10eXBlIjoiVXNlciIsIngtZGV2aWNlLWlkIjoiZDY4MTdjM2MtODBjOS00ZGRiLTk1MjctM2I5MzM0MDc1MDk2IiwibmJmIjoxNzc5OTI1NjEyLCJleHAiOjE3Nzk5MjU5MTIsImlhdCI6MTc3OTkyNTYxMiwiaXNzIjoiQmFya0ZsdWZmIiwiYXVkIjoiQmFya0ZsdWZmTWljcm9zZXJ2aWNlcyJ9.9X2hIgS1cTkj9_phYGOux4qKJMDTq1HnepJZAdrm6LA",
+                     "x-device-name":  "TG9hZFRlc3QtUnVubmVy",
+                     "x-app-version":  "MS4wLjA=",
+                     "x-ip-address":  "MTI3LjAuMC4x",
+                     "x-os-name":  "TG9hZFRlc3Q="
+                 },
+    "total":  3000
+}

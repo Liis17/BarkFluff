@@ -36,7 +36,7 @@ struct DocumentAttachmentView: View {
                         ProgressView(value: progress)
                             .progressViewStyle(.linear)
                             .tint(.white)
-                        Text("Загрузка \(Int(progress * 100))%")
+                        Text("conversation.attachment.uploading_percent \(Int(progress * 100))")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.7))
                     } else {

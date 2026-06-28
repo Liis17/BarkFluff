@@ -19,7 +19,7 @@ final class ServerSelectionViewModel {
         case loading
         case loaded([NavigatorServer])
         case empty
-        case error(String)
+        case error(LocalizedStringResource)
     }
 
     var serverListState: ServerListState = .loading
@@ -34,8 +34,8 @@ final class ServerSelectionViewModel {
 
     // MARK: - Общее
 
-    var isLoading = false          // для ручного подключения
-    var errorMessage: String?      // общая ошибка подключения
+    var isLoading = false                            // для ручного подключения
+    var errorMessage: LocalizedStringResource?       // общая ошибка подключения
 
     // MARK: - Dependencies
 
@@ -62,7 +62,7 @@ final class ServerSelectionViewModel {
                 serverListState = .loaded(servers)
             }
         } catch {
-            serverListState = .error("Не удалось загрузить список серверов")
+            serverListState = .error(LocalizedStringResource("auth.server_selection.load_error"))
             isManualSectionExpanded = true  // Раскрыть ручной ввод при ошибке
         }
     }
@@ -80,7 +80,9 @@ final class ServerSelectionViewModel {
             coordinator.currentState = .authentication
             coordinator.authScreen = .login
         } catch {
-            errorMessage = "Не удалось подключиться к \(server.displayName): \(error.localizedDescription)"
+            errorMessage = LocalizedStringResource(
+                "auth.server_selection.connect_failed \(server.displayName) \(error.localizedDescription)"
+            )
         }
 
         connectingServerID = nil
@@ -96,11 +98,12 @@ final class ServerSelectionViewModel {
         let (host, port) = parseAddress(serverAddress)
 
         do {
-            let serverInfo = try await serverDiscoveryService.connect(host: host, port: port)
+            _ = try await serverDiscoveryService.connect(host: host, port: port)
             coordinator.currentState = .authentication
             coordinator.authScreen = .login
         } catch {
-            errorMessage = error.localizedDescription
+            // Сообщение об ошибке приходит из сервиса — оборачиваем как есть.
+            errorMessage = LocalizedStringResource(stringLiteral: error.localizedDescription)
         }
 
         isLoading = false

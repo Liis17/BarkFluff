@@ -5,6 +5,10 @@
         android:icon="@drawable/ic_chat_bubble"
         android:title="Чаты" />
     <item
+        android:id="@+id/navigation_calls"
+        android:icon="@drawable/ic_phone"
+        android:title="Звонки" />
+    <item
         android:id="@+id/navigation_profile"
         android:icon="@drawable/ic_info"
         android:title="Профиль" />

@@ -9,7 +9,7 @@ COPY . .
 WORKDIR "/src/Backend/BarkFluff.ClientStorage"
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "BarkFluff.ClientStorage.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-RUN mkdir -p /app/publish/data
+RUN mkdir -p /app/publish/data && mkdir -p /app/publish/cache
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app

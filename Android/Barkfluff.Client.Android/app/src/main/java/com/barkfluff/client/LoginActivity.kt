@@ -15,6 +15,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLoginBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -87,6 +88,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+        binding.loginButton.applySpringPress()
         binding.loginButton.setOnClickListener {
             if (isOtpMode) {
                 performOtpLogin()
