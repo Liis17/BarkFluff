@@ -1,0 +1,10 @@
+global using Xunit;
+global using FluentAssertions;
+global using Moq;
+global using MassTransit;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.Logging;
+global using BarkFluff.Files.Tests;
+global using MetricsCollector = BarkFluff.GrpcServer.Metrics.MetricsCollector;
+global using SixLabors.ImageSharp.Formats.Jpeg;
+global using SixLabors.ImageSharp.Formats.Png;

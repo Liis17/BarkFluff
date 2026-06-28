@@ -17,15 +17,15 @@
         <StackPanel Margin="24,16,24,24">
 
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Персонализация" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Personalization_Title}" />
 
             <!-- ── Постер профиля ── -->
-            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,8,0,4" Text="ПОСТЕР ПРОФИЛЯ" />
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,8,0,4" Text="{DynamicResource L_Settings_Personalization_Poster_Header}" />
             <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <ui:SymbolIcon Foreground="#FFCA34A8" Symbol="ImageBorder24" Margin="0,0,8,0"/>
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Постер" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Personalization_Poster_Title}" />
                     </StackPanel>
 
                     <!-- Превью постера 16:9 -->
@@ -46,7 +46,7 @@
                                 VerticalAlignment="Center"
                                 FontSize="12"
                                 Foreground="{DynamicResource DescriptionText}"
-                                Text="Постер не задан" />
+                                Text="{DynamicResource L_Settings_Personalization_Poster_Empty}" />
                         </Grid>
                     </Border>
 
@@ -62,13 +62,13 @@
                             Margin="0,0,4,0"
                             Click="ChangePoster_Click"
                             Style="{DynamicResource DefaultButtonStyle}"
-                            Content="Изменить постер" />
+                            Content="{DynamicResource L_Settings_Personalization_Poster_Change}" />
                         <Button
                             x:Name="RemovePosterBtn"
                             Grid.Column="1"
                             Click="RemovePoster_Click"
                             Style="{DynamicResource DefaultButtonStyle}"
-                            Content="Удалить" />
+                            Content="{DynamicResource L_Common_Delete}" />
                     </Grid>
 
                     <TextBlock
@@ -81,12 +81,12 @@
             </Border>
 
             <!-- ── Внешний вид сообщений ── -->
-            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="ВНЕШНИЙ ВИД СООБЩЕНИЙ" />
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="{DynamicResource L_Settings_Personalization_Bubbles_Header}" />
             <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <ui:SymbolIcon Foreground="#FFCA6D34" Symbol="Chat24" Margin="0,0,8,0"/>
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Скругление пузырьков"/>
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Personalization_Bubbles_Title}"/>
                     </StackPanel>
 
                     <!-- Превью пузырьков -->
@@ -98,12 +98,12 @@
                         <Border Grid.Column="0" HorizontalAlignment="Left" Padding="10,6" MaxWidth="140"
                                 Background="#FF3D86C6" Margin="0,0,4,0"
                                 CornerRadius="{Binding ElementName=CornerSlider, Path=Value, Converter={StaticResource DoubleToCornerRadiusConverter}}">
-                            <TextBlock Text="Привет! 👋" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
+                            <TextBlock Text="{DynamicResource L_Settings_Personalization_Bubbles_PreviewIncoming}" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
                         </Border>
                         <Border Grid.Column="1" HorizontalAlignment="Right" Padding="10,6" MaxWidth="140"
                                 Background="#FFDF5000" Margin="4,0,0,0"
                                 CornerRadius="{Binding ElementName=CornerSlider, Path=Value, Converter={StaticResource DoubleToCornerRadiusConverter}}">
-                            <TextBlock Text="Как дела? 😊" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
+                            <TextBlock Text="{DynamicResource L_Settings_Personalization_Bubbles_PreviewOutgoing}" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
                         </Border>
                     </Grid>
 
@@ -121,7 +121,7 @@
             </Border>
 
             <!-- ── Фон чата (локальные настройки) ── -->
-            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="ФОН ЧАТА" />
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="{DynamicResource L_Settings_Personalization_Background_Header}" />
             <Border Padding="16" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
                 <StackPanel>
                     <!-- Toggle размытия -->
@@ -131,15 +131,15 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Размытие фона"/>
-                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,2,0,0" Text="Размывает выбранную картинку фона чата"/>
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Personalization_Blur_Title}"/>
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Personalization_Blur_Description}"/>
                         </StackPanel>
                         <ui:ToggleSwitch x:Name="BlurToggle" Grid.Column="1" Checked="BlurToggle_Changed" Unchecked="BlurToggle_Changed" />
                     </Grid>
 
                     <!-- Слайдер радиуса размытия -->
                     <StackPanel x:Name="BlurRadiusPanel" Visibility="Collapsed">
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,4,0,4" Text="Радиус размытия"/>
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,4,0,4" Text="{DynamicResource L_Settings_Personalization_Blur_Radius}"/>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="1" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -153,7 +153,7 @@
                     </StackPanel>
 
                     <!-- Слайдер затемнения -->
-                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,8,0,4" Text="Затемнение фона"/>
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="11" Margin="0,8,0,4" Text="{DynamicResource L_Settings_Personalization_Background_Dim}"/>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="0%" FontSize="11" Foreground="{DynamicResource DescriptionText}" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -168,12 +168,12 @@
             </Border>
 
             <!-- ── Изображения фона ── -->
-            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="ИЗОБРАЖЕНИЯ ФОНА" />
+            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DescriptionText}" Margin="2,12,0,4" Text="{DynamicResource L_Settings_Personalization_Backgrounds_Header}" />
             <Border Padding="12" Background="{DynamicResource TextBackground}" CornerRadius="8" Margin="0,0,0,4">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <ui:SymbolIcon Foreground="#FF9B59B6" Symbol="Image24" Margin="0,0,8,0"/>
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фоновые изображения"/>
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Personalization_Backgrounds_Title}"/>
                         <TextBlock x:Name="BgStatusText" Foreground="{DynamicResource DescriptionText}" FontSize="12"
                                    VerticalAlignment="Center" Margin="8,0,0,0" Text=""/>
                     </StackPanel>
@@ -198,7 +198,7 @@
                                         MouseLeftButtonUp="Background_Click">
                                         <Border.ContextMenu>
                                             <ContextMenu>
-                                                <MenuItem Header="Удалить фон" Tag="{Binding FileId}"
+                                                <MenuItem Header="{DynamicResource L_Settings_Personalization_Backgrounds_DeleteMenu}" Tag="{Binding FileId}"
                                                           Click="DeleteBackground_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
@@ -220,7 +220,7 @@
                         HorizontalAlignment="Stretch"
                         Click="AddBackground_Click"
                         Style="{DynamicResource DefaultButtonStyle}"
-                        Content="＋  Добавить фон" />
+                        Content="{DynamicResource L_Settings_Personalization_Backgrounds_AddButton}" />
                 </StackPanel>
             </Border>
 

@@ -14,7 +14,7 @@ struct GroupInfoView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Информация") {
+                Section("group_chat.create.section.info") {
                     HStack {
                         Spacer()
                         // TODO: Показать аватар группы
@@ -24,24 +24,24 @@ struct GroupInfoView: View {
                         Spacer()
                     }
 
-                    LabeledContent("Название") {
-                        Text("Групповой чат")
+                    LabeledContent("group_chat.create.field.title") {
+                        Text("common.chat")
                     }
 
-                    LabeledContent("Участников") {
+                    LabeledContent("group_chat.create.field.members_count") {
                         Text("5")
                     }
                 }
 
-                Section("Участники") {
+                Section("group_chat.members.title") {
                     // TODO: Показать список участников
                     ForEach(0..<5, id: \.self) { _ in
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .foregroundStyle(.secondary)
-                            Text("Участник")
+                            Text("group_chat.members.member_placeholder")
                             Spacer()
-                            Text("Администратор")
+                            Text("group_chat.members.section.admins")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -49,20 +49,20 @@ struct GroupInfoView: View {
                 }
 
                 Section {
-                    Button("Добавить участника") {
+                    Button("group_chat.info.add_member") {
                         // TODO: Реализовать
                     }
 
-                    Button("Покинуть группу", role: .destructive) {
+                    Button("group_chat.info.leave_group", role: .destructive) {
                         // TODO: Реализовать
                     }
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Информация о группе")
+            .navigationTitle("group_chat.info.title")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") {
+                    Button("common.done") {
                         dismiss()
                     }
                 }

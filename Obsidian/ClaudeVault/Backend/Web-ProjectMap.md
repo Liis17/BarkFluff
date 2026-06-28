@@ -77,7 +77,7 @@
 ## Frontend — страницы
 
 ### `wwwroot/index.html`
-Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `auth.js`, `login-page.js`, proto-bundle.
+Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `auth.js`, `fast-auth.js`, `login-page.js`, `register.js`, proto-bundle. Содержит разметку модалки регистрации `#registerOverlay` и стили `.reg-*`.
 
 ### `wwwroot/messenger.html`
 Главный мессенджер. Подключает все JS-модули из `js/app/`.
@@ -114,6 +114,9 @@ TokenStore: хранит access/refresh токены в localStorage или sess
 - OTP-форма (если 2FA включён)
 - Проверка существующей сессии при загрузке страницы
 - Редирект в `/messenger` после успешного входа
+
+### `register.js` → `BF.register`
+Модальный мастер регистрации из 9 шагов на `index.html` (открывается по `#toRegisterBtn`). Самодостаточный (собственные gRPC-клиенты + ручная metadata). Шаги: имя → username → email → OTP → пароль → аватар (интерактивный кроп) → био → 2FA → готово. Подробности — [[Backend/Web#Регистрация по шагам (register.js)]].
 
 ### `clients.js` → `BF.clients`
 gRPC-Web клиенты для всех сервисов (IdentityApi, UsersApi, MessagesApi, FilesApi, UpdatesApi, OnlinerApi).
@@ -161,6 +164,15 @@ Server-streaming подписки:
 - **Поле подписи** (`#attachCaption`): автоматически растёт до 140px, prefill из текста чата (`#messageInput`), Enter — отправка, Shift+Enter — перенос, Escape — закрыть
 - Callback вызывается как `onSend(outFiles, asDocuments, caption)`; в `main.js` `sendMessageWithFiles` использует `caption` как текст сообщения и обнуляет `#messageInput`, чтобы текст не отправился отдельным сообщением
 - В шапке диалога — счётчик файлов с правильным склонением (1 файл / 2 файла / 5 файлов)
+- **Клик по превью-картинке** → `BF.imageEditor.open(item.file, cb)`; в callback заменяется `item.file`, отзывается старый `previewUrl`, перерендеривается сетка
+
+### `imageeditor.js` → `BF.imageEditor`
+Модальный canvas-редактор изображения перед отправкой (`#imgEditorOverlay`), открывается из `attach.js`:
+- `open(file, onResult)` — `onResult(newFile|null)`, результат — `File` `image/jpeg` q=0.92
+- 3 canvas-буфера в натуральных координатах: `baseCanvas` (фото после поворота/отражения), `drawCanvas` (штрихи), `#ieCanvas` (композит для показа)
+- Инструменты: свободная обрезка, поворот ±90°, отражение H/V, кисть (цвет+размер), пикселизация области, ластик (`destination-out`)
+- Поворот/отражение запекаются (`rebakeBase` + `applyDeltaToDraw`); экспорт через crop→композит→`toBlob`
+- Pointer Events (mouse+touch), `MAX_DIM=4096`, EXIF через `createImageBitmap`. Полное описание — [[Backend/Web#Редактор изображений (imageeditor.js)]]
 
 ### `settings.js` → `BF.settings`
 Многоэкранная панель настроек профиля (sliding view-stack):

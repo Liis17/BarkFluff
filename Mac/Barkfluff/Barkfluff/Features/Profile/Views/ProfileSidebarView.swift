@@ -22,7 +22,7 @@ struct ProfileSidebarView: View {
             }
 
             // Секция 2: Категории настроек
-            Section("Настройки") {
+            Section("profile.sidebar.settings") {
                 ForEach(SettingsCategory.allCases) { category in
                     Label {
                         Text(category.title)

@@ -8,12 +8,16 @@ require('./messages_api_pb.js');
 require('./files_api_pb.js');
 require('./updates_api_pb.js');
 require('./onliner_api_pb.js');
+require('./fast_auth_api_pb.js');
+require('./calls_api_pb.js');
 const identitySvc = require('./identity_api_grpc_web_pb.js');
 const usersSvc    = require('./users_api_grpc_web_pb.js');
 const messagesSvc = require('./messages_api_grpc_web_pb.js');
 const filesSvc    = require('./files_api_grpc_web_pb.js');
 const updatesSvc  = require('./updates_api_grpc_web_pb.js');
 const onlinerSvc  = require('./onliner_api_grpc_web_pb.js');
+const fastAuthSvc = require('./fast_auth_api_grpc_web_pb.js');
+const callsSvc    = require('./calls_api_grpc_web_pb.js');
 
 window.barkfluff = {
     grpcWeb,
@@ -29,4 +33,8 @@ window.barkfluff = {
     UpdatesApiPromiseClient:  updatesSvc.UpdatesApiPromiseClient,
     OnlinerApiClient:         onlinerSvc.OnlinerApiClient,
     OnlinerApiPromiseClient:  onlinerSvc.OnlinerApiPromiseClient,
+    FastAuthApiClient:        fastAuthSvc.FastAuthApiClient,
+    FastAuthApiPromiseClient: fastAuthSvc.FastAuthApiPromiseClient,
+    CallsApiClient:           callsSvc.CallsApiClient,
+    CallsApiPromiseClient:    callsSvc.CallsApiPromiseClient,
 };

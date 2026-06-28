@@ -293,7 +293,7 @@
 | `Repositories/OnlinerStreamManager.swift` | Actor, управляет стримом онлайн-статусов |
 | `Repositories/BeaconRepository.swift` | gRPC-клиент Beacon: получение информации о сервере |
 | `Repositories/NavigatorRepository.swift` | gRPC-клиент Navigator (TLS): список серверов |
-| `Repositories/FastAuthRepository.swift` | gRPC-клиент FastAuth: QR-токены |
+| `Repositories/FastAuthRepository.swift` | gRPC-клиент FastAuth: `generateFastAuthToken` + server-streaming `subscribeFastAuthResult` (генерация QR на macOS-логине) **+ `scanFastAuth`/`acceptFastAuth(fastAuthID:, confirmationCode:)`/`rejectFastAuth(...)`** для роли сканера (используются iOS-клиентом, на macOS пока не дёргаются) |
 | `Utilities/GRPCErrorMapper.swift` | Маппинг gRPC-статусов в `BFNetworkingError` |
 | `Utilities/RetryPolicy.swift` | Политика повтора запросов |
 
@@ -313,7 +313,8 @@
 | `Models/Session.swift` | Модель сессии устройства |
 | `Models/OnlineStatus.swift` / `OnlineStatusEvent.swift` | Модели онлайн-статуса |
 | `Models/Events.swift` | Модели real-time событий (NewMessage, MessageRead, etc.) |
-| `Models/FastAuthToken.swift` | Модель QR-токена FastAuth |
+| `Models/FastAuthToken.swift` | Модели FastAuth: `FastAuthToken`, `FastAuthStatus`, `FastAuthResult`, `FastAuthRequest`, `ConnectDeviceStatus`, `ConnectedDevice` |
+| `Models/ScanFastAuthInfo.swift` | Метаданные нового устройства, возвращаемые `ScanFastAuth` RPC: `deviceName`, `operationSystem`, `appName`, `appVersion`, `ipAddress`, `confirmationCode`, `expiresAt` |
 | `Models/ServerInfo.swift` | Модель информации о сервере |
 | `Models/SharedMediaFilter.swift` / `SharedMediaItem.swift` | Модели фильтрации и элементов общих медиа |
 | `Mappers/ChatMapper.swift` | Proto → Chat |
@@ -353,7 +354,7 @@
 | `Services/Implementations/FileService.swift` | Загрузка/скачивание файлов через S3 |
 | `Services/Implementations/UpdatesService.swift` | Подписка и обработка real-time событий (UpdatesStreamManager) |
 | `Services/Implementations/OnlineStatusService.swift` | Получение и отслеживание онлайн-статусов |
-| `Services/Implementations/FastAuthService.swift` | QR-авторизация |
+| `Services/Implementations/FastAuthService.swift` | QR-авторизация: `generateToken`/`subscribeToResult` (генератор на новом устройстве) + `scan(fastAuthID:)`/`accept(fastAuthID:, confirmationCode:)`/`reject(...)` (сканер на авторизованном клиенте) |
 | `Services/Implementations/ServerDiscoveryService.swift` | Обнаружение и подключение к BarkFluff-серверу |
 | `Services/Implementations/SharedMediaService.swift` | Загрузка общих медиафайлов диалога |
 | `Utilities/DateFormatters.swift` | Форматтеры дат для UI |
@@ -370,4 +371,3 @@
 | `Protos/*.proto` | Исходные proto-файлы (зеркало `Shared/BarkFluff.Proto`) |
 | `ExportOptions.plist` | Параметры экспорта архива для App Store |
 | `LiquidGlassGuide.md` | Руководство применения Liquid Glass в проекте |
-| `Mac/TZ_0_FilesRepository.md` … `TZ_4_Registration_macOS.md` | Технические задания по основным фичам |

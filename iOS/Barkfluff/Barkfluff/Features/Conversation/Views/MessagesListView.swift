@@ -85,9 +85,10 @@ struct MessagesListView: View {
                         }
                     }
 
-                    // Отступ внизу под поле ввода
+                    // Якорь для scrollToBottom (без визуального отступа —
+                    // высоту инпута уже резервирует safeAreaInset)
                     Color.clear
-                        .frame(height: 100)
+                        .frame(height: 0)
                         .id("bottom")
                 }
                 .padding(.horizontal, Theme.Spacing.sm)

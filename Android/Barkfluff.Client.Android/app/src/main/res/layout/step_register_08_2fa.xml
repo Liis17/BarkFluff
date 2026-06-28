@@ -17,7 +17,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="Двухфакторная аутентификация"
+            android:text="@string/register_step_8"
             android:textAppearance="?attr/textAppearanceHeadlineMedium"
             android:textColor="?attr/colorOnSurface" />
 
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
-            android:text="Защитите свой аккаунт"
+            android:text="@string/register_step8_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -73,7 +73,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="12dp"
                         android:layout_weight="1"
-                        android:text="2FA защищает ваш аккаунт от несанкционированного доступа"
+                        android:text="@string/register_2fa_protects"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="?attr/colorOnPrimaryContainer" />
 
@@ -85,7 +85,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Код для добавления в аутентификатор:"
+                android:text="@string/register_2fa_authenticator_code"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -119,7 +119,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginBottom="12dp"
-                android:text="Копировать код"
+                android:text="@string/register_2fa_copy_code"
                 android:textAllCaps="false"
                 app:cornerRadius="28dp"
                 app:icon="@drawable/ic_copy_content" />
@@ -129,7 +129,7 @@
                 android:id="@+id/openAuthenticatorButton"
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
-                android:text="Открыть Google Authenticator"
+                android:text="@string/register_2fa_open_google_authenticator"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:cornerRadius="32dp"
@@ -142,7 +142,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Введите код из приложения (6 цифр)"
+                android:hint="@string/hint_otp_six_digits"
                 app:boxCornerRadiusBottomEnd="16dp"
                 app:boxCornerRadiusBottomStart="16dp"
                 app:boxCornerRadiusTopEnd="16dp"
@@ -174,7 +174,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp"
-                android:text="Пропустить этот шаг"
+                android:text="@string/register_skip_step"
                 android:textAllCaps="false" />
 
             </LinearLayout>

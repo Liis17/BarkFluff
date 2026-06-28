@@ -19,6 +19,7 @@
     var updatesClient = new bf.UpdatesApiClient(origin);
     var onlinerClient = new bf.OnlinerApiClient(origin);
     var fastAuthClient = new bf.FastAuthApiClient(origin);
+    var callsClient = new bf.CallsApiClient(origin);
 
     // Known error codes from x-error-code trailer
     var ERROR_CODES = {
@@ -126,6 +127,7 @@
         updates: updatesClient,
         onliner: onlinerClient,
         fastAuth: fastAuthClient,
+        calls: callsClient,
         authCall: authCall,
         getValidToken: getValidToken,
         refreshToken: refreshToken,

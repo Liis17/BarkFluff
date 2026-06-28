@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Папки чатов"
+            app:title="@string/chat_folders_settings_title"
             app:navigationIcon="@drawable/ic_arrow_back" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -43,7 +43,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Пока нет папок"
+            android:text="@string/chat_folders_empty_title"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -51,7 +51,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Создайте папку, чтобы быстро переключаться между группами чатов"
+            android:text="@string/chat_folders_empty_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textAlignment="center"
             android:alpha="0.7"
@@ -64,7 +64,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:text="Новая папка"
+        android:text="@string/chat_folders_new_folder"
         app:icon="@drawable/ic_add" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -17,7 +17,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="Фото профиля"
+            android:text="@string/register_step_6"
             android:textAppearance="?attr/textAppearanceHeadlineMedium"
             android:textColor="?attr/colorOnSurface" />
 
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="32dp"
-            android:text="Добавьте фото или пропустите этот шаг"
+            android:text="@string/register_step6_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -97,7 +97,7 @@
                         android:id="@+id/uploadAvatarButton"
                         android:layout_width="match_parent"
                         android:layout_height="64dp"
-                        android:text="Выбрать фото из галереи"
+                        android:text="@string/register_pick_photo_from_gallery"
                         android:textAllCaps="false"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         app:cornerRadius="32dp"
@@ -112,7 +112,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:layout_marginTop="8dp"
-                        android:text="Пропустить этот шаг"
+                        android:text="@string/register_skip_step"
                         android:textAllCaps="false" />
 
                 </LinearLayout>
@@ -123,7 +123,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:gravity="center"
-                    android:text="Фото будет видно другим пользователям"
+                    android:text="@string/register_photo_visibility_hint"
                     android:textAppearance="?attr/textAppearanceBodySmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 

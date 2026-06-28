@@ -9,9 +9,10 @@ public sealed class S3DownloadResult : IDisposable
 {
     private readonly GetObjectResponse _response;
 
-    public Stream Stream        => _response.ResponseStream;
-    public string ContentType   => _response.Headers.ContentType;
-    public long   ContentLength => _response.ContentLength;
+    public Stream  Stream        => _response.ResponseStream;
+    public string  ContentType   => _response.Headers.ContentType;
+    public long    ContentLength => _response.ContentLength;
+    public string? ContentRange  => _response.Headers["Content-Range"] is { Length: > 0 } v ? v : null;
 
     internal S3DownloadResult(GetObjectResponse response)
     {
@@ -92,6 +93,15 @@ public class S3StorageService : IDisposable
                 s3ex.StatusCode, s3ex.ErrorCode, s3ex.RequestId, s3ex.Message);
             throw;
         }
+    }
+
+    public async Task DeleteAsync(string key)
+    {
+        await _client.DeleteObjectAsync(new Amazon.S3.Model.DeleteObjectRequest
+        {
+            BucketName = _bucketName,
+            Key = key
+        });
     }
 
     /// <summary>

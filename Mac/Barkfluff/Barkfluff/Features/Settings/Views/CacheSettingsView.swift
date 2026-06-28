@@ -14,7 +14,7 @@ struct CacheSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Общий объём кеша") {
+            Section("settings.cache.section.total") {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text(formatBytes(viewModel.stats.totalBytes))
@@ -36,7 +36,7 @@ struct CacheSettingsView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Распределение по типам") {
+            Section("settings.cache.section.by_type") {
                 VStack(alignment: .leading, spacing: 12) {
                     CacheStackedBarView(
                         stats: viewModel.stats,
@@ -50,7 +50,7 @@ struct CacheSettingsView: View {
 
             let nonEmptyTypes = viewModel.displayedTypes.filter { (viewModel.stats.bytesByType[$0] ?? 0) > 0 }
             if !nonEmptyTypes.isEmpty {
-                Section("Очистка по типам") {
+                Section("settings.cache.section.clear_by_type") {
                     ForEach(nonEmptyTypes, id: \.self) { type in
                         cacheRow(for: type)
                     }
@@ -63,7 +63,7 @@ struct CacheSettingsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "trash")
-                        Text("Очистить весь кеш")
+                        Text("settings.cache.clear_all")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -103,7 +103,7 @@ struct CacheSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Очистить") {
+            Button("settings.cache.clear") {
                 Task { await viewModel.clear(type) }
             }
             .buttonStyle(.borderless)
@@ -154,7 +154,7 @@ private struct FlowLegend: View {
                 }
             }
             if items.allSatisfy({ $0.size == 0 }) {
-                Text("Кеш пуст")
+                Text("settings.cache.empty")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

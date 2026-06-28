@@ -23,7 +23,7 @@ public class EncryptedMessageQueueSender
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task SendNew(EncryptedMessage message, List<long> chatMembers)
+    public virtual async Task SendNew(EncryptedMessage message, List<long> chatMembers)
     {
         var evt = new NewEncryptedMessageEvent
         {
@@ -35,7 +35,7 @@ public class EncryptedMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
-    public async Task SendEdited(EncryptedMessage message, List<long> chatMembers)
+    public virtual async Task SendEdited(EncryptedMessage message, List<long> chatMembers)
     {
         var evt = new EncryptedMessageEditedEvent
         {
@@ -47,7 +47,7 @@ public class EncryptedMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
-    public async Task SendDeleted(Guid chatId, long messageId, List<long> chatMembers)
+    public virtual async Task SendDeleted(Guid chatId, long messageId, List<long> chatMembers)
     {
         var evt = new EncryptedMessageDeletedEvent
         {
@@ -59,7 +59,7 @@ public class EncryptedMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
-    public async Task SendInvite(
+    public virtual async Task SendInvite(
         Guid chatId,
         long inviterUserId,
         long inviteeUserId,
@@ -80,7 +80,7 @@ public class EncryptedMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
-    public async Task SendInviteResolution(
+    public virtual async Task SendInviteResolution(
         Guid chatId,
         long inviterUserId,
         long inviteeUserId,

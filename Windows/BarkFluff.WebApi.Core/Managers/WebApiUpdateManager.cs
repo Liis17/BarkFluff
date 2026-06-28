@@ -17,21 +17,16 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi = webApi;
         }
 
-        public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam)
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    // Подготовка заголовков с токеном (предполагается, что токен в globalParam)
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
-                    // Вызов метода подписки с заголовками
-                    var response = UpdatesAC!.SubscribeNewMessages(new SubscribeNewMessagesRequest { }, headers);
+                    // CT прокидываем и в сам streaming-call, и в MoveNext: без этого стрим
+                    // невозможно отменить со стороны клиента — он висит на сокете до тайм-аута/обрыва
+                    // сервером и держит соединение (утечка + race со свежими стримами после TokenRefreshed).
+                    var response = UpdatesAC!.SubscribeNewMessages(new SubscribeNewMessagesRequest { }, headers: null, deadline: null, cancellationToken: ct);
 
                     // Создаём IAsyncEnumerable для стрима
                     async IAsyncEnumerable<NewMessageEvent> GetMessageStream()
@@ -43,7 +38,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                             try
                             {
-                                hasNext = await response.ResponseStream.MoveNext(CancellationToken.None);
+                                hasNext = await response.ResponseStream.MoveNext(ct);
                                 if (!hasNext)
                                 {
                                     yield break; // Стрим завершён
@@ -55,6 +50,10 @@ namespace BarkFluff.WebApi.Core.Managers
                                 var a = ex;
                                 yield break;
                             }
+                            catch (OperationCanceledException)
+                            {
+                                yield break;
+                            }
                             catch (Exception)
                             {
                                 yield break;
@@ -64,37 +63,28 @@ namespace BarkFluff.WebApi.Core.Managers
                         }
                     }
 
-                    return (new ErrorReturner(true, ""), GetMessageStream());
-                }
-                catch (RpcException)
-                {
-                    return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-                }
-                catch (Exception)
-                {
-                    return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
-                }
-            }, globalParam);
+                    return ((ErrorReturner, IAsyncEnumerable<NewMessageEvent>?))(new ErrorReturner(true, ""), GetMessageStream());
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+            }
         }
 
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(
-            GlobalParam globalParam)
+            GlobalParam globalParam, CancellationToken ct = default)
         {
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    // Подготовка заголовков с токеном
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
                     var request = new SubscribeMessagesReadRequest();
-
-                    // Вызов метода подписки с заголовками
-                    var response = UpdatesAC!.SubscribeMessagesRead(request, headers);
+                    var response = UpdatesAC!.SubscribeMessagesRead(request, headers: null, deadline: null, cancellationToken: ct);
 
                     // Создаём IAsyncEnumerable для стрима
                     async IAsyncEnumerable<MessageReadEvent> GetReadReceiptStream()
@@ -106,7 +96,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                             try
                             {
-                                hasNext = await response.ResponseStream.MoveNext(CancellationToken.None);
+                                hasNext = await response.ResponseStream.MoveNext(ct);
                                 if (!hasNext)
                                 {
                                     yield break; // Стрим завершён
@@ -114,6 +104,10 @@ namespace BarkFluff.WebApi.Core.Managers
                                 update = response.ResponseStream.Current;
                             }
                             catch (RpcException)
+                            {
+                                yield break;
+                            }
+                            catch (OperationCanceledException)
                             {
                                 yield break;
                             }
@@ -126,17 +120,17 @@ namespace BarkFluff.WebApi.Core.Managers
                         }
                     }
 
-                    return (new ErrorReturner(true, ""), GetReadReceiptStream());
-                }
-                catch (RpcException)
-                {
-                    return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-                }
-                catch (Exception)
-                {
-                    return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
-                }
-            }, globalParam);
+                    return ((ErrorReturner, IAsyncEnumerable<MessageReadEvent>?))(new ErrorReturner(true, ""), GetReadReceiptStream());
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+            }
         }
     }
 }

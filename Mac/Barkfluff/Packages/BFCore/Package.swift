@@ -17,6 +17,9 @@ let package = Package(
             dependencies: [
                 "BFNetworking",
                 .product(name: "GRDB", package: "GRDB.swift"),
+            ],
+            resources: [
+                .process("Resources")
             ]
         ),
     ]

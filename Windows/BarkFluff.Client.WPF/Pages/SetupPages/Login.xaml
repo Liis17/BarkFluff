@@ -45,12 +45,12 @@
                 <TextBlock
                     Margin="0,0,0,8"
                     Style="{DynamicResource TitleTextStyle}"
-                    Text="Добро пожаловать" />
+                    Text="{DynamicResource L_Login_Title}" />
 
                 <TextBlock
                     Margin="0,0,0,40"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Войдите в свой аккаунт" />
+                    Text="{DynamicResource L_Login_Subtitle}" />
 
                 <WrapPanel VerticalAlignment="Center">
                     <Grid>
@@ -64,7 +64,7 @@
                                         Margin="0,0,0,8"
                                         HorizontalAlignment="Left"
                                         Style="{DynamicResource DescriptionTextStyle}"
-                                        Text="Почта или username" />
+                                        Text="{DynamicResource L_Login_EmailOrUsername}" />
                                     <ui:TextBox
                                         x:Name="UsernameTextBox"
                                         LostFocus="UsernameTextBox_LostFocus"
@@ -83,7 +83,7 @@
                                         Margin="0,8,0,8"
                                         HorizontalAlignment="Left"
                                         Style="{DynamicResource DescriptionTextStyle}"
-                                        Text="Пароль" />
+                                        Text="{DynamicResource L_Login_Password}" />
                                     <ui:PasswordBox
                                         x:Name="PasswordBox"
                                         LostFocus="PasswordBox_LostFocus"
@@ -104,7 +104,7 @@
                                         Foreground="{DynamicResource TextHyperlink}"
                                         MouseLeftButtonDown="ResetPasswordClick"
                                         Style="{DynamicResource DescriptionTextStyle}"
-                                        Text="Забыли пароль?" />
+                                        Text="{DynamicResource L_Login_ForgotPassword}" />
                                 </StackPanel>
 
 
@@ -120,12 +120,12 @@
                                         <TextBlock
                                             Margin="0,0,0,10"
                                             Style="{DynamicResource TitleTextStyle}"
-                                            Text="Введите код подтверждения" />
+                                            Text="{DynamicResource L_Login_OtpHeader}" />
 
                                         <TextBlock
                                             Margin="0,0,0,25"
                                             Style="{DynamicResource DescriptionTextStyle}"
-                                            Text="Введите 6-значный код подтверждения" />
+                                            Text="{DynamicResource L_Login_OtpHint}" />
 
                                         <!--  Verification Code Input  -->
                                         <StackPanel
@@ -203,7 +203,7 @@
                                                 x:Name="SignInButtonContent"
                                                 HorizontalAlignment="Center"
                                                 Orientation="Horizontal">
-                                                <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Войти" />
+                                                <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="{DynamicResource L_Login_SignInButton}" />
                                                 <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                                             </StackPanel>
                                             <ui:ProgressRing
@@ -269,12 +269,12 @@
                         Foreground="{DynamicResource TextHyperlink}"
                         MouseLeftButtonDown="BackToServerList"
                         Style="{StaticResource DescriptionTextStyle}"
-                        Text="Изменить подключение к серверу" />
+                        Text="{DynamicResource L_Login_ChangeServer}" />
                     <Separator Margin="-5,5,-5,5" />
                     <TextBlock
                         Margin="0,0,0,15"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Еще нет аккаунта?" />
+                        Text="{DynamicResource L_Login_NoAccount}" />
 
                     <ui:Button
                         x:Name="CreateAccountButton"
@@ -282,7 +282,7 @@
                         Style="{DynamicResource AdaptiveButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{DynamicResource AdaptiveButtonTextStyle}" Text="Создать новый аккаунт" />
+                                <TextBlock Style="{DynamicResource AdaptiveButtonTextStyle}" Text="{DynamicResource L_Login_CreateAccount}" />
                                 <ui:SymbolIcon Style="{DynamicResource AdaptiveButtonIconStyle}" Symbol="ArrowRight24" />
                             </StackPanel>
                         </ui:Button.Content>
@@ -299,7 +299,7 @@
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 Foreground="#666666"
-                Text="2025 BarkFluff. Никакие права не защищены." />
+                Text="{DynamicResource L_Common_Copyright}" />
         </StackPanel>
     </Grid>
 </UserControl>

@@ -14,9 +14,9 @@ struct BadgesView: View {
     var body: some View {
         if badges.isEmpty {
             ContentUnavailableView(
-                "Нет баджей",
+                "profile.badges.empty.title",
                 systemImage: "star",
-                description: Text("У пользователя пока нет баджей")
+                description: Text("profile.badges.empty.description")
             )
         } else {
             ScrollView {

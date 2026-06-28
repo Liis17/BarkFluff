@@ -66,7 +66,9 @@ Barkfluff.AdminPanel/
 │   ├── s3-storage.html                ← конфигурация S3
 │   ├── s3-browser.html                ← браузер S3 объектов
 │   ├── restarting.html                ← заглушка перезагрузки
-│   └── updating.html                  ← заглушка обновления
+│   ├── updating.html                  ← заглушка обновления
+│   ├── Redesigned/                    ← SPA-редизайн (маршрут /v2/, отдельный эксперимент)
+│   └── v2/                            ← АКТИВНЫЙ UI: MD3-страницы (те же имена) + assets/{md3.css, sidebar.js}
 └── Properties/
     └── launchSettings.json
 ```
@@ -86,20 +88,24 @@ Barkfluff.AdminPanel/
 
 **ServeHtmlFile()** — заменяет `{{SERVER_STARTED_AT_UTC}}` в HTML-ответах.
 
-**Маршруты HTML-страниц** (статические):
+**Маршруты HTML-страниц** — с мая 2026 отдают MD3-страницы из `Pages/v2/` (старые `Pages/*.html` оставлены как бэкап, но не используются):
 ```
-GET /                  → dashboard.html
-GET /services          → services.html
-GET /logs              → logs.html
-GET /users             → users.html
-GET /badges            → badges.html
-GET /stickers          → stickers.html
-GET /s3-storage        → s3-storage.html
-GET /s3-browser        → s3-browser.html
-GET /login             → Login.html (публичный)
-GET /restarting        → restarting.html (публичный)
-GET /updating          → updating.html (публичный)
+GET /                  → v2/dashboard.html (авторизован) / v2/Login.html (нет)
+GET /services          → v2/services.html
+GET /logs              → v2/logs.html
+GET /users             → v2/users.html
+GET /badges            → v2/badges.html
+GET /stickers          → v2/stickers.html
+GET /notifications     → v2/notifications.html
+GET /mail              → v2/mail.html
+GET /s3-storage        → v2/s3-storage.html
+GET /s3-browser        → v2/s3-browser.html
+GET /restarting        → v2/restarting.html (публичный)
+GET /updating          → v2/updating.html (публичный)
+GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
 ```
+
+**Статика MD3-страниц.** v2-страницы ссылаются на `assets/md3.css` и `assets/sidebar.js` → отдаются из `Pages/v2/assets/` по `RequestPath = "/assets"` (добавлен в `Program.cs`). `TokenAuthMiddleware` пропускает `/assets/*` без авторизации (нужно для стилей страницы логина). Навигация (`sidebar.js`) использует абсолютные чистые URL. `preview-mode.js` (моки для офлайн-превью) НЕ подключён в проде — теги `<script>` удалены, страницы ходят в реальные `/api/*`.
 
 ---
 

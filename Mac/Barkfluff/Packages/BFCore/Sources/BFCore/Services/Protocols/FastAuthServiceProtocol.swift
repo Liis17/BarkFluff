@@ -15,8 +15,14 @@ public protocol FastAuthServiceProtocol: Sendable {
     /// Проверить статус быстрой авторизации
     func checkStatus(fastAuthID: String) async throws -> FastAuthStatus
 
-    /// Принять запрос быстрой авторизации
-    func accept(fastAuthID: String) async throws
+    /// Сканировать QR-код нового устройства: получить его метаданные и confirmation code.
+    func scan(fastAuthID: String) async throws -> ScanFastAuthInfo
+
+    /// Подтвердить вход нового устройства.
+    func accept(fastAuthID: String, confirmationCode: String) async throws
+
+    /// Отклонить вход нового устройства.
+    func reject(fastAuthID: String, confirmationCode: String) async throws
 
     /// Подписаться на результат быстрой авторизации
     func subscribeToResult(fastAuthID: String) async throws -> AsyncThrowingStream<FastAuthResult, Error>

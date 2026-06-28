@@ -10,6 +10,7 @@
 		7DF1B9222F3E7001007C1466 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B9212F3E7001007C1466 /* NukeUI */; };
 		7DF1B9452F3E65B0007C1466 /* BFCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B91D2F3E7000007C1466 /* BFCore */; };
 		7DF1B9462F3E65B0007C1466 /* BFNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B91E2F3E7000007C1466 /* BFNetworking */; };
+		7DCA01102F3E65B0007C1466 /* BFCalls in Frameworks */ = {isa = PBXBuildFile; productRef = 7DCA01202F3E7000007C1466 /* BFCalls */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 			files = (
 				7DF1B9452F3E65B0007C1466 /* BFCore in Frameworks */,
 				7DF1B9462F3E65B0007C1466 /* BFNetworking in Frameworks */,
+				7DCA01102F3E65B0007C1466 /* BFCalls in Frameworks */,
 				7DF1B9222F3E7001007C1466 /* NukeUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -117,6 +119,7 @@
 			packageProductDependencies = (
 				7DF1B91D2F3E7000007C1466 /* BFCore */,
 				7DF1B91E2F3E7000007C1466 /* BFNetworking */,
+				7DCA01202F3E7000007C1466 /* BFCalls */,
 				7DF1B9212F3E7001007C1466 /* NukeUI */,
 			);
 			productName = Barkfluff;
@@ -143,6 +146,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				ru,
 				Base,
 			);
 			mainGroup = 7DF1B8FC2F3E61C1007C1466;
@@ -151,6 +155,7 @@
 				7DF1B91A2F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFProto" */,
 				7DF1B91B2F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFNetworking" */,
 				7DF1B91C2F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFCore" */,
+				7DCA01302F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFCalls" */,
 				7DF1B9202F3E7001007C1466 /* XCRemoteSwiftPackageReference "Nuke" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -321,6 +326,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Barkfluff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Доступ к микрофону нужен для аудио- и видеозвонков.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Доступ к камере нужен для видеозвонков.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -360,6 +367,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Barkfluff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Доступ к микрофону нужен для аудио- и видеозвонков.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Доступ к камере нужен для видеозвонков.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -416,6 +425,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/BFCore;
 		};
+		7DCA01302F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFCalls" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/BFCalls;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -437,6 +450,10 @@
 		7DF1B91E2F3E7000007C1466 /* BFNetworking */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = BFNetworking;
+		};
+		7DCA01202F3E7000007C1466 /* BFCalls */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BFCalls;
 		};
 		7DF1B9212F3E7001007C1466 /* NukeUI */ = {
 			isa = XCSwiftPackageProductDependency;

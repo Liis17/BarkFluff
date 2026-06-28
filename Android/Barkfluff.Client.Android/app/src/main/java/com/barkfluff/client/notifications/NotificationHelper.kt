@@ -11,7 +11,11 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.media.AudioAttributes
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Build
+import android.telecom.DisconnectCause
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -21,6 +25,11 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.barkfluff.client.MainActivity
 import com.barkfluff.client.R
+import com.barkfluff.client.calls.CallActionReceiver
+import com.barkfluff.client.calls.CallActivity
+import com.barkfluff.client.calls.CallExtras
+import com.barkfluff.client.calls.CallTelecomRegistry
+import com.barkfluff.client.calls.IncomingCallActivity
 
 object NotificationHelper {
 
@@ -34,6 +43,9 @@ object NotificationHelper {
     val activeNotificationChats: MutableSet<String> =
         java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
 
+    private var incomingCallRingtone: Ringtone? = null
+    private var ringingCallId: String? = null
+
     // Группа
     private const val GROUP_ID = "barkfluff"
     private const val GROUP_NAME = "BarkFluff"
@@ -42,6 +54,16 @@ object NotificationHelper {
     const val CHANNEL_CHAT_MESSAGES = "chat_messages"
     private const val CHANNEL_CHAT_MESSAGES_NAME = "Сообщения чатов"
     private const val CHANNEL_CHAT_MESSAGES_DESC = "Уведомления о новых сообщениях в личных и групповых чатах"
+
+    // Канал: Входящие звонки (отдельный ID, чтобы старые silent-настройки calls не гасили heads-up)
+    const val CHANNEL_INCOMING_CALLS = "incoming_calls_v2"
+    private const val CHANNEL_INCOMING_CALLS_NAME = "Входящие звонки"
+    private const val CHANNEL_INCOMING_CALLS_DESC = "Всплывающие уведомления входящих звонков"
+
+    // Канал: Звонки
+    const val CHANNEL_CALLS = "calls"
+    private const val CHANNEL_CALLS_NAME = "Звонки"
+    private const val CHANNEL_CALLS_DESC = "Входящие и активные звонки"
 
     // Канал: Системные
     const val CHANNEL_SYSTEM = "system"
@@ -80,6 +102,31 @@ object NotificationHelper {
                 setShowBadge(true)
             }
 
+            val incomingCallsChannel = NotificationChannel(
+                CHANNEL_INCOMING_CALLS,
+                CHANNEL_INCOMING_CALLS_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = CHANNEL_INCOMING_CALLS_DESC
+                group = GROUP_ID
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 600, 600, 600)
+                setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+
+            val callsChannel = NotificationChannel(
+                CHANNEL_CALLS,
+                CHANNEL_CALLS_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = CHANNEL_CALLS_DESC
+                group = GROUP_ID
+                enableVibration(true)
+                setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+
             val systemChannel = NotificationChannel(
                 CHANNEL_SYSTEM,
                 CHANNEL_SYSTEM_NAME,
@@ -100,7 +147,7 @@ object NotificationHelper {
                 setShowBadge(false)
             }
 
-            manager.createNotificationChannels(listOf(chatChannel, systemChannel, otherChannel))
+            manager.createNotificationChannels(listOf(chatChannel, incomingCallsChannel, callsChannel, systemChannel, otherChannel))
             Log.d(TAG, "Notification channels created")
         }
     }
@@ -231,6 +278,172 @@ object NotificationHelper {
         }
     }
 
+
+    fun showIncomingCallNotification(
+        context: Context,
+        callId: String,
+        callerName: String,
+        mediaType: String,
+        callerUserId: Long = 0L,
+        chatId: String = "",
+        chatTitle: String = ""
+    ) {
+        if (callId.isBlank()) return
+
+        val notificationId = callId.hashCode()
+        val displayName = callerName.ifBlank { chatTitle.ifBlank { "BarkFluff" } }
+        val contentIntent = Intent(context, IncomingCallActivity::class.java).apply {
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+            putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+            putExtra(CallExtras.EXTRA_CALLER_USER_ID, callerUserId)
+            putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+            putExtra(CallExtras.EXTRA_CHAT_TITLE, chatTitle)
+            putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val acceptIntent = Intent(context, IncomingCallActivity::class.java).apply {
+            action = CallExtras.ACTION_ACCEPT_CALL
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+            putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+            putExtra(CallExtras.EXTRA_CALLER_USER_ID, callerUserId)
+            putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+            putExtra(CallExtras.EXTRA_CHAT_TITLE, chatTitle)
+            putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val acceptPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 1,
+            acceptIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val rejectIntent = Intent(context, CallActionReceiver::class.java).apply {
+            action = CallExtras.ACTION_REJECT_CALL
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+        }
+        val rejectPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 2,
+            rejectIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val person = Person.Builder()
+            .setName(displayName)
+            .setKey(if (callerUserId > 0) callerUserId.toString() else callId)
+            .setIcon(IconCompat.createWithBitmap(createPlaceholderBitmap(displayName, callerUserId.takeIf { it > 0 } ?: callId.hashCode().toLong())))
+            .build()
+
+        val title = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        startIncomingCallRingtone(context, callId)
+        val builder = NotificationCompat.Builder(context, CHANNEL_INCOMING_CALLS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(context.resources.getColor(R.color.primary, null))
+            .setContentTitle(displayName)
+            .setContentText(title)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+            .setVibrate(longArrayOf(0, 600, 600, 600))
+            .setContentIntent(contentPendingIntent)
+            .setFullScreenIntent(contentPendingIntent, true)
+            .setStyle(NotificationCompat.CallStyle.forIncomingCall(person, rejectPendingIntent, acceptPendingIntent))
+
+        warnIfFullScreenIntentUnavailable(context)
+        warnIfIncomingCallChannelNotAlerting(context)
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(TAG, "No notification permission for incoming call", e)
+        }
+    }
+
+
+    fun buildOngoingCallNotification(
+        context: Context,
+        callId: String,
+        title: String,
+        mediaType: String,
+        livekitUrl: String,
+        accessToken: String
+    ): android.app.Notification {
+        val displayName = title.ifBlank { "Звонок" }
+        val notificationId = callId.hashCode()
+        val contentIntent = Intent(context, CallActivity::class.java).apply {
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+            putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
+            putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
+            putExtra(CallExtras.EXTRA_LIVEKIT_URL, livekitUrl)
+            putExtra(CallExtras.EXTRA_ACCESS_TOKEN, accessToken)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 3,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val endIntent = Intent(context, CallActionReceiver::class.java).apply {
+            action = CallExtras.ACTION_END_CALL
+            putExtra(CallExtras.EXTRA_CALL_ID, callId)
+        }
+        val endPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 4,
+            endIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val person = Person.Builder()
+            .setName(displayName)
+            .setKey(callId)
+            .setIcon(IconCompat.createWithBitmap(createPlaceholderBitmap(displayName, callId.hashCode().toLong())))
+            .build()
+
+        val callType = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        return NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(context.resources.getColor(R.color.primary, null))
+            .setContentTitle(displayName)
+            .setContentText("$callType идёт")
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setSilent(true)
+            .setAutoCancel(false)
+            .setContentIntent(contentPendingIntent)
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(person, endPendingIntent))
+            .build()
+    }
+    fun dismissCall(context: Context, callId: String) {
+        if (callId.isBlank()) return
+        clearIncomingCallAlert(context, callId)
+        // Не разрываем Telecom-соединение если звонок уже принят локально —
+        // сервер рассылает dismiss_call на все устройства включая то, что ответило.
+        if (!CallTelecomRegistry.isAnsweringOrActive(callId)) {
+            CallTelecomRegistry.disconnect(callId, DisconnectCause.LOCAL)
+        }
+        Log.d(TAG, "Call notification dismissed: callId=$callId")
+    }
+
+    fun clearIncomingCallAlert(context: Context, callId: String) {
+        if (callId.isBlank()) return
+        stopIncomingCallRingtone(callId)
+        context.getSystemService(NotificationManager::class.java).cancel(callId.hashCode())
+    }
+
     fun dismissForChat(context: Context, chatId: String) {
         if (!activeNotificationChats.remove(chatId)) return  // уведомления нет — выход
         context.getSystemService(NotificationManager::class.java).cancel(chatId.hashCode())
@@ -267,6 +480,58 @@ object NotificationHelper {
             bitmap.copy(Bitmap.Config.ARGB_8888, false)
         } else {
             bitmap
+        }
+    }
+
+    @Synchronized
+    private fun startIncomingCallRingtone(context: Context, callId: String) {
+        val currentRingtone = incomingCallRingtone
+        if (ringingCallId == callId && currentRingtone?.isPlaying == true) return
+
+        stopIncomingCallRingtone()
+
+        val ringtoneUri = RingtoneManager.getActualDefaultRingtoneUri(
+            context,
+            RingtoneManager.TYPE_RINGTONE
+        ) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+
+        incomingCallRingtone = RingtoneManager.getRingtone(context.applicationContext, ringtoneUri)?.apply {
+            audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            isLooping = true
+            play()
+        }
+        ringingCallId = callId
+    }
+
+    @Synchronized
+    private fun stopIncomingCallRingtone(callId: String? = null) {
+        if (callId != null && ringingCallId != callId) return
+
+        runCatching { incomingCallRingtone?.stop() }
+            .onFailure { Log.w(TAG, "Failed to stop incoming call ringtone", it) }
+        incomingCallRingtone = null
+        ringingCallId = null
+    }
+
+    private fun warnIfFullScreenIntentUnavailable(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (!manager.canUseFullScreenIntent()) {
+            Log.w(TAG, "Full-screen intent permission is disabled; Android will show only an expanded call notification")
+        }
+    }
+
+    private fun warnIfIncomingCallChannelNotAlerting(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val channel = manager.getNotificationChannel(CHANNEL_INCOMING_CALLS)
+        if (channel != null && channel.importance < NotificationManager.IMPORTANCE_HIGH) {
+            Log.w(TAG, "Incoming call notification channel is not high importance; Android may keep calls only in the notification shade")
         }
     }
 

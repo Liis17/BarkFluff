@@ -170,16 +170,20 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
     case sticker
     case forwardedMessage
 
-    public var displayName: String {
+    /// Локализованное название типа вложения (системная локаль).
+    public var displayName: String { displayName(in: .current) }
+
+    /// Локализованное название типа вложения с явной локалью.
+    public func displayName(in locale: Locale) -> String {
         switch self {
-        case .image: return "Изображение"
-        case .video: return "Видео"
-        case .gif: return "GIF"
-        case .document: return "Документ"
-        case .audio: return "Аудио"
-        case .voice: return "Голосовое"
-        case .sticker: return "Стикер"
-        case .forwardedMessage: return "Пересланное"
+        case .image:            return String(localized: "bfcore.attachment.image", bundle: .module, locale: locale)
+        case .video:            return String(localized: "bfcore.attachment.video", bundle: .module, locale: locale)
+        case .gif:              return "GIF"
+        case .document:         return String(localized: "bfcore.attachment.document", bundle: .module, locale: locale)
+        case .audio:            return String(localized: "bfcore.attachment.audio", bundle: .module, locale: locale)
+        case .voice:            return String(localized: "bfcore.attachment.voice", bundle: .module, locale: locale)
+        case .sticker:          return String(localized: "bfcore.attachment.sticker", bundle: .module, locale: locale)
+        case .forwardedMessage: return String(localized: "bfcore.attachment.forwarded", bundle: .module, locale: locale)
         }
     }
 
@@ -193,16 +197,27 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
         }
     }
 
+    /// Превью-текст вложения для списков чатов и уведомлений (системная локаль).
     public func previewText(fileName: String = "") -> String {
+        previewText(fileName: fileName, in: .current)
+    }
+
+    /// Превью-текст вложения с явной локалью.
+    public func previewText(fileName: String = "", in locale: Locale) -> String {
         switch self {
-        case .image: return "\u{1F4F7} Фото"
-        case .video: return "\u{1F4F9} Видео"
-        case .gif: return "GIF"
-        case .document: return "\u{1F4CE} \(fileName.isEmpty ? "Документ" : fileName)"
-        case .audio: return "\u{1F3B5} Аудио"
-        case .voice: return "\u{1F3A4} Голосовое"
-        case .sticker: return "Стикер"
-        case .forwardedMessage: return "\u{21AA} Пересланное"
+        case .image:            return String(localized: "bfcore.attachment.preview.image", bundle: .module, locale: locale)
+        case .video:            return String(localized: "bfcore.attachment.preview.video", bundle: .module, locale: locale)
+        case .gif:              return "GIF"
+        case .document:
+            if fileName.isEmpty {
+                return String(localized: "bfcore.attachment.preview.document", bundle: .module, locale: locale)
+            } else {
+                return String(localized: "bfcore.attachment.preview.document_named \(fileName)", bundle: .module, locale: locale)
+            }
+        case .audio:            return String(localized: "bfcore.attachment.preview.audio", bundle: .module, locale: locale)
+        case .voice:            return String(localized: "bfcore.attachment.preview.voice", bundle: .module, locale: locale)
+        case .sticker:          return String(localized: "bfcore.attachment.preview.sticker", bundle: .module, locale: locale)
+        case .forwardedMessage: return String(localized: "bfcore.attachment.preview.forwarded", bundle: .module, locale: locale)
         }
     }
 }

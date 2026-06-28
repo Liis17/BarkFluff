@@ -103,6 +103,24 @@ enum Migrations {
             try db.create(indexOn: "cached_chat_folder", columns: ["sort_order"])
         }
 
+        migrator.registerMigration("v6_current_user") { db in
+            try db.create(table: "cached_current_user") { t in
+                t.column("id", .integer).primaryKey()
+                t.column("first_name", .text).notNull()
+                t.column("last_name", .text).notNull()
+                t.column("username", .text).notNull()
+                t.column("email", .text)
+                t.column("bio", .text)
+                t.column("registration_date", .integer).notNull()
+                t.column("profile_picture_url", .text)
+                t.column("profile_picture_preview_url", .text)
+                t.column("profile_poster_file_id", .text)
+                t.column("badges_json", .blob)
+                t.column("storage_limit_bytes", .integer).notNull().defaults(to: 0)
+                t.column("updated_at", .integer).notNull()
+            }
+        }
+
         return migrator
     }
 }

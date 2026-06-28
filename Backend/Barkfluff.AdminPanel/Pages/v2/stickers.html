@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Стикеры</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        .packs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .pack-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            overflow: hidden;
+            cursor: pointer;
+            transition: box-shadow .2s, border-color .2s, transform .2s;
+            display: flex; flex-direction: column;
+        }
+        .pack-card:hover { box-shadow: var(--md-elev-2); border-color: var(--md-primary); transform: translateY(-2px); }
+        .pack-cover {
+            aspect-ratio: 1;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, var(--md-primary-container), var(--md-tertiary-container));
+            color: var(--md-on-primary-container);
+        }
+        .pack-cover img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
+        .pack-cover .placeholder .msr { font-size: 56px; }
+        .pack-meta { padding: 14px 16px; }
+        .pack-meta .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+        .pack-meta .name { font-weight: 600; font-size: 15px; color: var(--md-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pack-meta .info { display: flex; gap: 12px; font-size: 12px; color: var(--md-on-surface-variant); margin-top: 8px; }
+        .pack-meta .info .item { display: inline-flex; align-items: center; gap: 4px; }
+
+        /* Sticker detail */
+        .sticker-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+            gap: 8px;
+        }
+        .sticker {
+            position: relative;
+            aspect-ratio: 1;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            border: 1px solid var(--md-outline-variant);
+        }
+        .sticker img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+        .sticker .emoji { font-size: 32px; }
+        .sticker .delete-btn {
+            position: absolute; top: 4px; right: 4px;
+            width: 24px; height: 24px;
+            opacity: 0;
+            background: rgba(0,0,0,.55);
+            color: white;
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; border: none;
+            transition: opacity .2s;
+        }
+        .sticker:hover .delete-btn { opacity: 1; }
+        .sticker .delete-btn .msr { font-size: 16px; }
+        .add-sticker {
+            aspect-ratio: 1;
+            background: var(--md-surface-container);
+            border: 2px dashed var(--md-outline);
+            border-radius: var(--md-shape-md);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--md-on-surface-variant);
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+        }
+        .add-sticker:hover { background: var(--md-surface-container-high); border-color: var(--md-primary); color: var(--md-primary); }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="stickers"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <h1>Стикеры</h1>
+            <div style="display:flex;gap:8px;">
+                <button class="md-btn md-btn-filled md-btn-square-press" onclick="openCreatePackModal()">
+                    <span class="msr size-18">add</span>
+                    Добавить пак
+                </button>
+                <button id="logoutBtn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div id="packsGrid" class="packs-grid"></div>
+            <div id="emptyState" class="md-empty" style="display:none;">
+                <span class="msr size-48">mood</span>
+                <h3>Стикерпаков пока нет</h3>
+                <p>Создайте первый стикерпак, чтобы пользователи могли его установить.</p>
+                <button class="md-btn md-btn-filled md-btn-square-press" onclick="openCreatePackModal()" style="margin-top:8px;">
+                    <span class="msr size-18">add</span>
+                    Создать пак
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Create pack modal -->
+<div id="createPackScrim" class="md-scrim" onclick="if(event.target===this)closeCreatePackModal()">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Новый стикерпак</h3>
+            <button class="md-icon-btn" onclick="closeCreatePackModal()"><span class="msr">close</span></button>
+        </div>
+        <form id="createPackForm" onsubmit="submitCreatePack(event)">
+            <div class="md-dialog-body">
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Обложка</label>
+                    <div style="display:flex;gap:16px;align-items:center;">
+                        <div id="createCoverPreviewWrapper" style="width:96px;height:96px;border-radius:var(--md-shape-md);border:2px dashed var(--md-outline);background:var(--md-surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                            <img id="createCoverPreview" src="" style="display:none;width:100%;height:100%;object-fit:contain;">
+                            <span class="msr size-40" id="createCoverIcon" style="color:var(--md-outline);">image</span>
+                        </div>
+                        <div style="flex:1;">
+                            <label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
+                                <span class="msr size-18">upload</span>
+                                Выбрать файл
+                                <input type="file" id="createCoverInput" accept="image/*" onchange="previewCreateCover(this)" style="display:none;">
+                            </label>
+                            <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">PNG/JPG/WebP. Будет конвертировано в WebP 512×512.</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Название <span style="color:var(--md-error);">*</span></label>
+                    <input type="text" id="createPackName" required maxlength="100" placeholder="Например: «Котики»" class="md-input-outlined" style="width:100%;">
+                </div>
+            </div>
+            <div class="md-dialog-actions">
+                <button type="button" class="md-btn md-btn-text" onclick="closeCreatePackModal()">Отмена</button>
+                <button type="submit" id="createPackBtn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">save</span>
+                    Создать
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Pack detail modal -->
+<div id="packDetailScrim" class="md-scrim" onclick="if(event.target===this)closePackDetailModal()">
+    <div class="md-dialog md-dialog-lg">
+        <div class="md-dialog-header">
+            <h3 id="detailPackTitle">Стикерпак</h3>
+            <div style="display:flex;gap:4px;">
+                <button class="md-icon-btn danger" onclick="deleteCurrentPack()" title="Удалить пак"><span class="msr">delete</span></button>
+                <button class="md-icon-btn" onclick="closePackDetailModal()"><span class="msr">close</span></button>
+            </div>
+        </div>
+        <div class="md-dialog-body">
+            <div style="display:flex;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--md-outline-variant);">
+                <div style="position:relative;cursor:pointer;" onclick="document.getElementById('coverChangeInput').click()">
+                    <div style="width:96px;height:96px;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);background:var(--md-surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                        <img id="detailCoverImg" src="" style="display:none;width:100%;height:100%;object-fit:contain;">
+                        <span class="msr size-40" id="detailCoverIcon" style="color:var(--md-outline);">image</span>
+                    </div>
+                    <input type="file" id="coverChangeInput" accept="image/*" style="display:none;" onchange="handleCoverChange(this)">
+                </div>
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="text" id="detailPackNameInput" maxlength="100" class="md-input-outlined" style="font-size:18px;font-weight:500;flex:1;background:transparent;border-color:transparent;">
+                        <button class="md-icon-btn" id="saveNameBtn" onclick="savePackName()" style="display:none;color:var(--md-primary);"><span class="msr">check</span></button>
+                    </div>
+                    <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;" id="detailPackInfo"></p>
+                </div>
+            </div>
+            <div id="stickersGrid" class="sticker-grid" style="margin-top:16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add sticker modal -->
+<div id="addStickerScrim" class="md-scrim" onclick="if(event.target===this)closeAddStickerModal()">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Новый стикер</h3>
+            <button class="md-icon-btn" onclick="closeAddStickerModal()"><span class="msr">close</span></button>
+        </div>
+        <form id="addStickerForm" onsubmit="submitAddSticker(event)">
+            <div class="md-dialog-body">
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Изображение стикера</label>
+                    <div style="display:flex;gap:16px;align-items:center;">
+                        <div style="width:96px;height:96px;border-radius:var(--md-shape-md);border:2px dashed var(--md-outline);background:var(--md-surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                            <img id="stickerPreview" src="" style="display:none;width:100%;height:100%;object-fit:contain;">
+                            <span class="msr size-40" id="stickerPreviewIcon" style="color:var(--md-outline);">image</span>
+                        </div>
+                        <label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
+                            <span class="msr size-18">upload</span>
+                            Выбрать файл
+                            <input type="file" id="stickerImageInput" accept="image/*" required onchange="previewStickerImage(this)" style="display:none;">
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Эмодзи <span style="color:var(--md-error);">*</span></label>
+                    <input type="text" id="stickerEmoji" required maxlength="20" placeholder="Например 😺" class="md-input-outlined" style="width:100%;font-size:18px;">
+                </div>
+            </div>
+            <div class="md-dialog-actions">
+                <button type="button" class="md-btn md-btn-text" onclick="closeAddStickerModal()">Отмена</button>
+                <button type="submit" id="addStickerBtn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">add</span>
+                    Добавить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let packs = [];
+    let currentPackId = null;
+    let currentPackData = null;
+    let originalPackName = '';
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function formatDate(s) { if (!s) return ''; return new Date(s).toLocaleDateString('ru-RU'); }
+
+    async function loadPacks() {
+        try {
+            const r = await fetch('/api/stickers/packs');
+            const data = await r.json();
+            packs = Array.isArray(data) ? data : (data.packs || []);
+            renderPacks();
+        } catch {}
+    }
+
+    function renderPacks() {
+        const grid = document.getElementById('packsGrid');
+        const empty = document.getElementById('emptyState');
+        if (!packs.length) { grid.innerHTML = ''; empty.style.display = 'flex'; return; }
+        empty.style.display = 'none';
+        grid.innerHTML = packs.map(p => `
+            <div class="pack-card" onclick="openPackDetail('${p.id}')">
+                <div class="pack-cover">
+                    ${p.coverUrl
+                        ? `<img src="${p.coverUrl}" alt="${escapeHtml(p.name)}">`
+                        : `<div class="placeholder"><span class="msr">sentiment_satisfied</span></div>`}
+                </div>
+                <div class="pack-meta">
+                    <div class="top">
+                        <div class="name">${escapeHtml(p.name)}</div>
+                    </div>
+                    <div class="info">
+                        <span class="item"><span class="msr size-18">grid_view</span>${p.stickerCount || 0} стикеров</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Create pack
+    window.openCreatePackModal = () => {
+        document.getElementById('createPackForm').reset();
+        document.getElementById('createCoverPreview').style.display = 'none';
+        document.getElementById('createCoverIcon').style.display = '';
+        document.getElementById('createPackScrim').classList.add('open');
+    };
+    window.closeCreatePackModal = () => document.getElementById('createPackScrim').classList.remove('open');
+    window.previewCreateCover = function (input) {
+        const f = input.files[0]; if (!f) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('createCoverPreview').src = e.target.result;
+            document.getElementById('createCoverPreview').style.display = '';
+            document.getElementById('createCoverIcon').style.display = 'none';
+        };
+        reader.readAsDataURL(f);
+    };
+    window.submitCreatePack = async function (e) {
+        e.preventDefault();
+        const fd = new FormData();
+        fd.append('name', document.getElementById('createPackName').value);
+        const cover = document.getElementById('createCoverInput').files[0];
+        if (cover) fd.append('image', cover);
+        const btn = document.getElementById('createPackBtn');
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/stickers/packs', { method:'POST', body: fd });
+            if (!res.ok) { alert('Не удалось создать пак: ' + (await res.text())); return; }
+            await loadPacks();
+            closeCreatePackModal();
+        } finally { btn.disabled = false; }
+    };
+
+    // Pack detail
+    window.openPackDetail = async function (id) {
+        currentPackId = id;
+        document.getElementById('packDetailScrim').classList.add('open');
+        document.getElementById('stickersGrid').innerHTML = `<div style="grid-column:1/-1;padding:32px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>`;
+        try {
+            const r = await fetch(`/api/stickers/packs/${id}`);
+            currentPackData = await r.json();
+            renderPackDetail();
+        } catch {}
+    };
+    window.closePackDetailModal = () => { document.getElementById('packDetailScrim').classList.remove('open'); currentPackId = null; currentPackData = null; };
+
+    function renderPackDetail() {
+        const p = currentPackData;
+        document.getElementById('detailPackTitle').textContent = p.name;
+        document.getElementById('detailPackNameInput').value = p.name;
+        originalPackName = p.name;
+        const cover = document.getElementById('detailCoverImg');
+        if (p.coverUrl) { cover.src = p.coverUrl; cover.style.display = ''; document.getElementById('detailCoverIcon').style.display = 'none'; }
+        else { cover.style.display = 'none'; document.getElementById('detailCoverIcon').style.display = ''; }
+        document.getElementById('detailPackInfo').textContent = `${(p.stickers || []).length} стикеров`;
+
+        const grid = document.getElementById('stickersGrid');
+        const stickersHtml = (p.stickers || []).map(s => `
+            <div class="sticker" data-sid="${s.id}">
+                ${(s.previewUrl || s.fileUrl)
+                    ? `<img src="${s.previewUrl || s.fileUrl}">`
+                    : `<span class="emoji">${escapeHtml(s.emoji || '🐱')}</span>`}
+                <button class="delete-btn" onclick="deleteSticker('${s.id}')"><span class="msr">close</span></button>
+            </div>
+        `).join('');
+        grid.innerHTML = stickersHtml + `<div class="add-sticker" onclick="openAddStickerModal()"><span class="msr size-40">add</span></div>`;
+    }
+
+    document.getElementById('detailPackNameInput').addEventListener('input', () => {
+        document.getElementById('saveNameBtn').style.display = document.getElementById('detailPackNameInput').value !== originalPackName ? '' : 'none';
+    });
+
+    window.savePackName = async function () {
+        const name = document.getElementById('detailPackNameInput').value.trim();
+        if (!name || name === originalPackName) return;
+        try { await fetch(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '' }) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
+    };
+
+    window.handleCoverChange = async function (input) {
+        const f = input.files[0]; if (!f) return;
+        const fd = new FormData(); fd.append('image', f);
+        try { await fetch(`/api/stickers/packs/${currentPackId}/cover`, { method:'PUT', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
+        input.value = '';
+    };
+
+    window.deleteCurrentPack = async function () {
+        if (!currentPackData) return;
+        if (!confirm(`Удалить пак «${currentPackData.name}»? Все стикеры будут удалены.`)) return;
+        try { await fetch(`/api/stickers/packs/${currentPackId}`, { method:'DELETE' }); } catch {}
+        packs = packs.filter(p => p.id !== currentPackId);
+        renderPacks();
+        closePackDetailModal();
+    };
+
+    window.deleteSticker = async function (sid) {
+        if (!confirm('Удалить стикер?')) return;
+        try { await fetch(`/api/stickers/${sid}`, { method:'DELETE' }); await openPackDetail(currentPackId); } catch {}
+    };
+
+    // Add sticker
+    window.openAddStickerModal = () => {
+        document.getElementById('addStickerForm').reset();
+        document.getElementById('stickerPreview').style.display = 'none';
+        document.getElementById('stickerPreviewIcon').style.display = '';
+        document.getElementById('addStickerScrim').classList.add('open');
+    };
+    window.closeAddStickerModal = () => document.getElementById('addStickerScrim').classList.remove('open');
+    window.previewStickerImage = function (input) {
+        const f = input.files[0]; if (!f) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('stickerPreview').src = e.target.result;
+            document.getElementById('stickerPreview').style.display = '';
+            document.getElementById('stickerPreviewIcon').style.display = 'none';
+        };
+        reader.readAsDataURL(f);
+    };
+    window.submitAddSticker = async function (e) {
+        e.preventDefault();
+        const fd = new FormData();
+        fd.append('image', document.getElementById('stickerImageInput').files[0]);
+        fd.append('emoji', document.getElementById('stickerEmoji').value);
+        const btn = document.getElementById('addStickerBtn');
+        btn.disabled = true;
+        try { await fetch(`/api/stickers/packs/${currentPackId}/stickers`, { method:'POST', body: fd }); await openPackDetail(currentPackId); }
+        catch {}
+        finally { btn.disabled = false; closeAddStickerModal(); }
+    };
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (!confirm('Выйти?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const auth = await checkAuth(); if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        await loadPacks();
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>

@@ -69,7 +69,7 @@ public class FirebaseService
     /// <summary>
     /// Отправляет push-уведомление батчем на список FCM-токенов одним запросом к FCM (до 500 токенов).
     /// </summary>
-    public async Task SendNotificationBatchAsync(
+    public virtual async Task SendNotificationBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string senderName,
         string messagePreview,
@@ -175,7 +175,7 @@ public class FirebaseService
     /// Отправляет data-only команду на удаление нотификации чата на всех указанных FCM-токенах.
     /// Клиент по type="dismiss_chat_notifications" вызывает NotificationManager.cancel.
     /// </summary>
-    public async Task SendDismissBatchAsync(
+    public virtual async Task SendDismissBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string chatId,
         CancellationToken cancellationToken = default)
@@ -254,13 +254,118 @@ public class FirebaseService
     }
 
     /// <summary>
+    /// Отправляет data-only high-priority push входящего звонка (type=incoming_call).
+    /// Клиент по этому payload показывает экран/нотификацию входящего звонка.
+    /// </summary>
+    public virtual async Task SendIncomingCallBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string callId,
+        long callerUserId,
+        string chatId,
+        int mediaType,
+        long startedAtUnix,
+        string callerName,
+        string? avatarUrl,
+        string? chatTitle,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping incoming_call");
+            return;
+        }
+
+        if (fcmTokens.Count == 0)
+            return;
+
+        var multicastMessage = new MulticastMessage
+        {
+            Tokens = [.. fcmTokens],
+            Data = new Dictionary<string, string>
+            {
+                ["type"] = "incoming_call",
+                ["call_id"] = callId,
+                ["caller_user_id"] = callerUserId.ToString(),
+                ["chat_id"] = chatId,
+                ["media_type"] = mediaType.ToString(),
+                ["started_at"] = startedAtUnix.ToString(),
+                ["caller_name"] = callerName,
+                ["avatar_url"] = avatarUrl ?? "",
+                ["chat_title"] = chatTitle ?? ""
+            },
+            Android = new AndroidConfig
+            {
+                Priority = Priority.High
+            }
+        };
+
+        try
+        {
+            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+            _logger.LogInformation(
+                "incoming_call push отправлен. CallId: {CallId}, Tokens: {Total}, Success: {Success}, Failed: {Failed}",
+                callId, fcmTokens.Count, response.SuccessCount, response.FailureCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Неожиданная ошибка при отправке incoming_call push. CallId: {CallId}", callId);
+        }
+    }
+
+    /// <summary>
+    /// Отправляет data-only команду погасить нотификацию входящего звонка (type=dismiss_call).
+    /// </summary>
+    public virtual async Task SendCallDismissBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string callId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping dismiss_call");
+            return;
+        }
+
+        if (fcmTokens.Count == 0)
+            return;
+
+        var multicastMessage = new MulticastMessage
+        {
+            Tokens = [.. fcmTokens],
+            Data = new Dictionary<string, string>
+            {
+                ["type"] = "dismiss_call",
+                ["call_id"] = callId,
+                ["reason"] = reason
+            },
+            Android = new AndroidConfig
+            {
+                Priority = Priority.High
+            }
+        };
+
+        try
+        {
+            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+            _logger.LogInformation(
+                "dismiss_call push отправлен. CallId: {CallId}, Reason: {Reason}, Tokens: {Total}, Success: {Success}, Failed: {Failed}",
+                callId, reason, fcmTokens.Count, response.SuccessCount, response.FailureCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Неожиданная ошибка при отправке dismiss_call push. CallId: {CallId}", callId);
+        }
+    }
+
+    /// <summary>
     /// Отправляет произвольное push-уведомление с native Notification-блоком
     /// (title/body/imageUrl) — Android-система отображает уведомление сама,
     /// без участия клиентского кода. Используется для админ-рассылок.
     /// FCM ограничивает SendEachForMulticast 500 токенами на запрос, поэтому
     /// рассылка чанкуется.
     /// </summary>
-    public async Task<(int Success, int Failure)> SendAdminBroadcastBatchAsync(
+    public virtual async Task<(int Success, int Failure)> SendAdminBroadcastBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string title,
         string body,

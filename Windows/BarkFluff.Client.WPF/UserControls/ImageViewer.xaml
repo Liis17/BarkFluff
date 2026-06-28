@@ -126,17 +126,17 @@
                 <!--  Контекстное меню  -->
                 <Image.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Click="OnSaveClick" Header="Сохранить">
+                        <MenuItem Click="OnSaveClick" Header="{DynamicResource L_ImageViewer_Menu_Save}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="Save20" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Click="OnCopyClick" Header="Копировать в буфер">
+                        <MenuItem Click="OnCopyClick" Header="{DynamicResource L_ImageViewer_Menu_Copy}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="Copy20" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Click="OnOpenInExplorerClick" Header="Открыть на диске">
+                        <MenuItem Click="OnOpenInExplorerClick" Header="{DynamicResource L_ImageViewer_Menu_OpenInExplorer}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="Folder20" />
                             </MenuItem.Icon>
@@ -157,7 +157,7 @@
             VerticalAlignment="Top"
             Click="OnCloseClick"
             Style="{StaticResource ViewerButton}"
-            ToolTip="Закрыть (Esc)">
+            ToolTip="{DynamicResource L_ImageViewer_Tooltip_Close}">
             <ui:SymbolIcon
                 FontSize="20"
                 Foreground="White"
@@ -178,7 +178,7 @@
                 Margin="0,0,15,0"
                 Click="OnPrevClick"
                 Style="{StaticResource ViewerButton}"
-                ToolTip="Предыдущее (←)">
+                ToolTip="{DynamicResource L_ImageViewer_Tooltip_Prev}">
                 <ui:SymbolIcon
                     FontSize="20"
                     Foreground="White"
@@ -205,7 +205,7 @@
                 Margin="15,0,0,0"
                 Click="OnNextClick"
                 Style="{StaticResource ViewerButton}"
-                ToolTip="Следующее (→)">
+                ToolTip="{DynamicResource L_ImageViewer_Tooltip_Next}">
                 <ui:SymbolIcon
                     FontSize="20"
                     Foreground="White"
@@ -231,7 +231,7 @@
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="14"
                     Foreground="White"
-                    Text="Загрузка полной версии..." />
+                    Text="{DynamicResource L_ImageViewer_LoadingFull}" />
             </StackPanel>
         </Grid>
     </Grid>

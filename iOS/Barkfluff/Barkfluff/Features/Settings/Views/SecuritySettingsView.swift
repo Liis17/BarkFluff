@@ -14,8 +14,8 @@ struct SecuritySettingsView: View {
 
     var body: some View {
         Form {
-            Section("Двухфакторная аутентификация") {
-                Toggle("2FA", isOn: Binding(
+            Section("settings.security.two_fa.section") {
+                Toggle("settings.security.two_fa.toggle_short", isOn: Binding(
                     get: { viewModel.twoFactorEnabled },
                     set: { newValue in
                         Task {
@@ -29,8 +29,8 @@ struct SecuritySettingsView: View {
                 ))
             }
 
-            Section("Хранилище токенов") {
-                Picker("Тип", selection: Binding(
+            Section("settings.security.storage.section") {
+                Picker("settings.security.storage.type_picker", selection: Binding(
                     get: { viewModel.selectedStorageType },
                     set: { newValue in
                         Task { await viewModel.switchTokenStorage(to: newValue) }
@@ -43,7 +43,7 @@ struct SecuritySettingsView: View {
                 if viewModel.isMigratingStorage {
                     HStack {
                         ProgressView()
-                        Text("Перенос данных…")
+                        Text("settings.security.storage.migrating_short")
                     }
                 }
                 if let error = viewModel.migrationError {
@@ -52,13 +52,13 @@ struct SecuritySettingsView: View {
                         .foregroundStyle(.red)
                 }
                 if viewModel.showRestartRequired {
-                    Text("Перезапустите приложение, чтобы изменения вступили в силу.")
+                    Text("settings.security.restart_hint")
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
             }
         }
-        .navigationTitle("Безопасность")
+        .navigationTitle("settings.category.security")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container

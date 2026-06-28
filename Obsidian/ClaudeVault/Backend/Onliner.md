@@ -4,6 +4,8 @@
 
 Принцип: **in-memory first**. Все статусы в `ConcurrentDictionary`. PostgreSQL обновляется в фоне каждые 10 минут. Real-time оповещения через gRPC server-streaming без RabbitMQ.
 
+Помимо онлайн-статусов сервис обслуживает **индикаторы набора текста** (typing) — чистый ретранслятор без БД и фоновых сервисов (см. ниже).
+
 Расположение: `Backend/BarkFluff.Onliner/`
 
 📁 **[[Backend/Onliner-ProjectMap]]** — карта всех файлов и классов проекта
@@ -38,6 +40,9 @@ Client → SetOnlineStatus (gRPC)
 | `OnlineStatusStorage` | In-memory кэш `ConcurrentDictionary<long, UserOnlineStatus>`. `UserOnlineStatus` — иммутабельный `record`; `UpdateStatus`/`SetOffline` обновляют запись через CAS (`TryGetValue` + `TryUpdate`/`TryAdd`), не мутируя существующий объект |
 | `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов по userId и subscriptionId. Дополнительно держит обратный индекс `trackedUserId → (connectionId → Stream)`, благодаря чему `GetStreamsTrackingUser` работает за O(1) |
 | `OnlineStatusNotifier` | Рассылает изменения по стримам, отслеживающим пользователя |
+| `TypingSubscriptionsManager` | Реестр typing-стримов по `chatId` (прямой индекс `subscriberId → подписки` + обратный `chatId → стримы`). Аналог `OnlineStatusSubscriptionsManager`, но ключ — чат, а обратный индекс хранит `SubscriberId`, чтобы не слать набор обратно самому печатающему |
+| `TypingNotifier` | Ретранслирует `TypingEvent` подписчикам чата (`Task.WhenAll`), исключая отправителя |
+| `ChatMembershipFilter` (Scoped) | Фильтрует `chat_ids` по членству через gRPC-клиент `MessagesServerApi.CheckChatMembership`. Fail-closed: при ошибке — пустое множество |
 
 ### Приватность онлайн-статуса
 
@@ -54,6 +59,8 @@ Client → SetOnlineStatus (gRPC)
 Полный реестр + объяснение схемы — в файле памяти `project_onliner_metrics.md`. Краткий список:
 
 - **gRPC counters:** `get_online_status_requests`, `get_online_status_user_ids_total` (кумулятивная сумма всех запрошенных user_ids — `_metrics.Add`, не Increment), `set_online_status_requests` (heartbeat), `subscribe_requests`, `change_users_in_subscription_requests`
+- **Typing counters:** `set_typing_status_requests`, `typing_heartbeats`, `typing_heartbeats_rejected_by_membership`, `typing_subscribe_requests`, `change_chats_in_typing_subscription_requests`, `typing_subscriptions_registered`, `typing_subscriptions_disconnected`, `typing_subscriptions_hidden_by_membership`, `typing_notifications_sent`, `typing_notification_errors`
+- **Membership filter:** `membership_checks`, `membership_check_errors`
 - **Подписки:** `subscriptions_registered`, `subscriptions_disconnected`, `subscriptions_hidden_by_privacy`, gauges `active_subscriptions`, `tracked_unique_users`
 - **Storage:** gauges `online_users_count`, `storage_total_count`; counters `status_changes.online`, `status_changes.offline`
 - **Notifier:** `status_notifications_sent`, `status_notification_errors`
@@ -73,6 +80,23 @@ Client → SetOnlineStatus (gRPC)
 | `GetOnlineStatus` | Unary | Статусы для списка user_ids |
 | `SubscribeToOnlineStatus` | Server Stream | Подписка на изменения; соединение до отмены |
 | `ChangeUsersInSubscription` | Unary | Обновить список отслеживаемых без переоткрытия потока |
+| `SetTypingStatus` | Unary | Heartbeat «печатает» в `chat_id` (Guid-строка). `action` (TYPING/CANCELLED; UNKNOWN→TYPING). Проверяет членство отправителя, затем ретранслирует участникам чата |
+| `SubscribeToTyping` | Server Stream | Подписка на `TypingEvent` по списку `chat_ids` (Guid-строки); соединение до отмены. Фильтрует чаты по членству |
+| `ChangeChatsInTypingSubscription` | Unary | Обновить список отслеживаемых чатов без переоткрытия потока. Фильтрует по членству |
+
+### Индикаторы набора текста (typing)
+
+**Relay-модель (Telegram-style):** сервер не хранит состояние набора и не имеет фонового экспайра. Клиент шлёт `SetTypingStatus(chatId)` периодически (~каждые 4-5 сек) пока печатает; сервер ретранслирует `TypingEvent` всем, кто подписан на этот `chatId` через `SubscribeToTyping`, **кроме самого печатающего** (фильтр по `SubscriberId` в обратном индексе). Индикатор гаснет **по локальному таймауту на клиенте** (~6 сек) или сразу при получении `action=CANCELLED` (клиент шлёт его при очистке поля ввода).
+
+`chat_id` — **Guid-строка** (как везде в платформе; `Chat.Id` в Messages — `Guid`). Обратный индекс `TypingSubscriptionsManager` ключуется по этой строке.
+
+**Почему без БД и фоновых сервисов:** typing эфемерен — нет смысла персистить. Это снимает необходимость в storage-классе и экспайр-воркере (в отличие от онлайн-статусов).
+
+**Проверка членства в чате (`ChatMembershipFilter`, Scoped):** обе стороны защищены через `MessagesServerApi.CheckChatMembership` (батч-проверка, fail-closed при ошибке gRPC):
+- **Приём** (`SubscribeToTyping` / `ChangeChatsInTypingSubscription`): список `chat_ids` фильтруется — в реестр попадают только чаты, где пользователь состоит. Закрывает утечку «кто печатает» от посторонних.
+- **Отправка** (`SetTypingStatus`): не-участник не может инжектить набор в чужой чат — heartbeat отбрасывается (`typing_heartbeats_rejected_by_membership`).
+
+Стоимость: проверка на приём — раз на открытие чата (дёшево); проверка на отправку — gRPC-вызов на каждый heartbeat (только пока пользователь печатает, индексированный `AnyAsync` по `(ChatId, UserId)`). На typing **не** распространяется `OnlineVisibility` — видимость набора определяется участием в чате, а не настройкой онлайн-приватности.
 
 ### CQRS
 
@@ -87,7 +111,10 @@ Client → SetOnlineStatus (gRPC)
 
 - `OnlinerDb` — PostgreSQL connection string
 - `UsersService:Host/Token` — gRPC-клиент для проверки `OnlineVisibility`
+- `MessagesService:Host/Token` — gRPC-клиент для проверки членства в чате (typing). **Должны быть провижены в Configuration-сервисе** (новая зависимость Onliner → Messages)
 
 ## Proto
 
-`onliner_api.proto` — 4 метода, тип `UserOnlineStatus` (user_id, status, last_seen).
+- `onliner_api.proto` (Server) — 7 методов. Типы: `UserOnlineStatus` (user_id, status, last_seen), `TypingEvent` (chat_id: string, user_id, action), enum `TypingAction` (UNKNOWN/TYPING/CANCELLED).
+- `users_api.proto` (Client) — `GetUserPrivacy` для `OnlineVisibility`.
+- `messages_api.proto` (Client) — `MessagesServerApi.CheckChatMembership` для typing.

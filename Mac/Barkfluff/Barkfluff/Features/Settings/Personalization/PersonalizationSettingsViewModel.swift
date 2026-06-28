@@ -83,7 +83,7 @@ final class PersonalizationSettingsViewModel {
         defer { isUploadingPoster = false }
 
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            errorMessage = "Ошибка обработки изображения"
+            errorMessage = String(localized: "personalization.error.process_image")
             return
         }
 
@@ -94,10 +94,10 @@ final class PersonalizationSettingsViewModel {
                 fileType: .userProfilePoster
             )
             try await userService.setProfilePoster(fileID: fileID)
-            // Перечитать текущего пользователя, чтобы шапки профиля
-            // (свой и в ProfileSidebarView) и `posterFileID` (computed
-            // из currentUser) увидели новый постер сразу.
-            await container.loadCurrentUser()
+            // Write-through: ждём сетевой ответ getCurrentUser и пишем в SQLite,
+            // чтобы шапки профиля и `posterFileID` (computed из currentUser)
+            // увидели новый постер сразу + он попал в кеш на следующий cold-start.
+            await container.revalidateCurrentUser()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -118,7 +118,7 @@ final class PersonalizationSettingsViewModel {
 
     private func addBackground(from fileURL: URL) async {
         guard fileURL.startAccessingSecurityScopedResource() else {
-            errorMessage = "Нет доступа к файлу"
+            errorMessage = String(localized: "personalization.error.file_access")
             return
         }
         defer { fileURL.stopAccessingSecurityScopedResource() }

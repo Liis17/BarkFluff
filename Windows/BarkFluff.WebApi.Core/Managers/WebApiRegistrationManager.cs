@@ -33,6 +33,10 @@ namespace BarkFluff.WebApi.Core.Managers
                     return (new ErrorReturner(true), createAccount.CodeId);
                 }, global);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameInvalidFormatException)
+            {
+                return (new ErrorReturner(false, "Имя пользователя имеет недопустимый формат: разрешены латинские буквы, цифры и подчёркивание, длина от 3 до 32 символов"), null);
+            }
             catch (BarkFluff.Shared.Exceptions.Identity.UsernameExistException)
             {
                 return (new ErrorReturner(false, "Имя пользователя уже существует"), null);

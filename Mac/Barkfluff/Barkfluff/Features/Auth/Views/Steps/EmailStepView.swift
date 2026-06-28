@@ -13,7 +13,7 @@ struct EmailStepView: View {
     @Bindable var data: RegistrationData
     let userService: UserServiceProtocol
 
-    @State private var validationError: String?
+    @State private var validationError: LocalizedStringResource?
     @State private var isChecking = false
     @State private var isAvailable: Bool?
     @State private var debounceTask: Task<Void, Never>?
@@ -33,7 +33,7 @@ struct EmailStepView: View {
             // Поле ввода в glass-контейнере
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 HStack(spacing: Theme.Spacing.sm) {
-                    TextField("Email", text: $data.email)
+                    TextField("auth.register.step.email.label", text: $data.email)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
                         .focused($isFieldFocused)
@@ -61,7 +61,7 @@ struct EmailStepView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 } else if isAvailable == true {
-                    Text("Email доступен")
+                    Text("auth.register.step.email.available")
                         .font(.caption)
                         .foregroundStyle(.green)
                 }
@@ -109,7 +109,7 @@ struct EmailStepView: View {
             let exists = try await userService.checkEmailExists(email: email)
             isAvailable = !exists
             if exists {
-                validationError = "Этот email уже зарегистрирован"
+                validationError = LocalizedStringResource("auth.register.step.email.taken")
             }
         } catch {
             // Если сервер недоступен, разрешаем продолжить

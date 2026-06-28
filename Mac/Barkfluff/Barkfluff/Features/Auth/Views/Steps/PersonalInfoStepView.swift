@@ -11,8 +11,8 @@ import SwiftUI
 struct PersonalInfoStepView: View {
     @Bindable var data: RegistrationData
 
-    @State private var firstNameError: String?
-    @State private var lastNameError: String?
+    @State private var firstNameError: LocalizedStringResource?
+    @State private var lastNameError: LocalizedStringResource?
 
     var isValid: Bool {
         firstNameError == nil && lastNameError == nil &&
@@ -30,7 +30,7 @@ struct PersonalInfoStepView: View {
             VStack(spacing: Theme.Spacing.md) {
                 // Имя
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    TextField("Имя", text: $data.firstName)
+                    TextField("auth.register.step.personal_info.first_name.label", text: $data.firstName)
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: data.firstName) { _, newValue in
                             validateFirstName(newValue)
@@ -45,7 +45,7 @@ struct PersonalInfoStepView: View {
 
                 // Фамилия
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    TextField("Фамилия", text: $data.lastName)
+                    TextField("auth.register.step.personal_info.last_name.label", text: $data.lastName)
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: data.lastName) { _, newValue in
                             validateLastName(newValue)

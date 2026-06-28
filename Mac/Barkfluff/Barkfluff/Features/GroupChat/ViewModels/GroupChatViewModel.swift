@@ -66,7 +66,7 @@ final class GroupChatViewModel {
 
     func createGroupChat() async throws -> Chat {
         guard !title.isEmpty, !selectedUserIDs.isEmpty else {
-            throw BFError.unknown(message: "Название и участники обязательны")
+            throw BFError.unknown(message: String(localized: "group_chat.create.error.title_and_members_required"))
         }
 
         return try await chatService.createGroupChat(

@@ -41,13 +41,15 @@ struct SettingsCategoryView: View {
             )
         case .general:
             GeneralSettingsView()
+        case .language:
+            LanguageSettingsView()
         case .notifications:
             ContentUnavailableView(
-                "Уведомления",
+                "settings.category.notifications",
                 systemImage: "bell.fill",
-                description: Text("Push-уведомления для iOS-клиента ещё не реализованы")
+                description: Text("settings.notifications.unavailable")
             )
-            .navigationTitle("Уведомления")
+            .navigationTitle("settings.category.notifications")
             .navigationBarTitleDisplayMode(.inline)
         case .security:
             SecuritySettingsView()

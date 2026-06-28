@@ -149,14 +149,14 @@ private struct DocumentViewerPlaceholder: View {
                     .controlSize(.large)
                     .tint(.white)
             } else if downloadedURL != nil {
-                Button("Открыть") {
+                Button("common.open") {
                     if let url = downloadedURL {
                         NSWorkspace.shared.open(url)
                     }
                 }
                 .buttonStyle(.glassProminent)
             } else {
-                Button("Скачать") {
+                Button("common.download") {
                     Task { await downloadDocument() }
                 }
                 .buttonStyle(.glassProminent)

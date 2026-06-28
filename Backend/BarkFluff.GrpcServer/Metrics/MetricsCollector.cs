@@ -38,15 +38,26 @@ public class MetricsCollector
     /// <summary>
     /// Возвращает снимок всех метрик и сбрасывает счётчики (gauges сохраняются).
     /// </summary>
-    public Dictionary<string, long> SnapshotAndReset()
+    public Dictionary<string, long> SnapshotAndReset() => SnapshotAndReset(out _);
+
+    /// <summary>
+    /// Возвращает снимок всех метрик и сбрасывает счётчики (gauges сохраняются).
+    /// <paramref name="hadCounterActivity"/> = true, если в снимке был хотя бы один ненулевой counter
+    /// (т.е. с прошлого снимка была реальная активность, а не только статичные gauges).
+    /// </summary>
+    public Dictionary<string, long> SnapshotAndReset(out bool hadCounterActivity)
     {
         var snapshot = new Dictionary<string, long>();
+        hadCounterActivity = false;
 
         foreach (var key in _counters.Keys)
         {
             var value = _counters.TryRemove(key, out var v) ? v : 0;
             if (value != 0)
+            {
                 snapshot[key] = value;
+                hadCounterActivity = true;
+            }
         }
 
         foreach (var kvp in _gauges)

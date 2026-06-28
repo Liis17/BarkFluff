@@ -35,7 +35,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 ### REST-контроллер
 
 - `POST /upload/{uploadId}` — загрузка файла (multipart, лимит 512 MB)
-- `GET /download/{fileId}` — скачивание
+- `GET /download/{fileId}` — скачивание. `DownloadFileCommandHandler` отдаёт `FileName = file.Filename` (оригинальное имя), ASP.NET `File(stream, contentType, fileName)` ставит `Content-Disposition: attachment; filename*=UTF-8''…` (кириллица ок). Раньше отдавался `{file.Id}{extension}` — браузер сохранял файл с именем-GUID.
 
 Поток: клиент получает uploadId через gRPC `GetUploadUrl`, затем загружает по HTTP.
 

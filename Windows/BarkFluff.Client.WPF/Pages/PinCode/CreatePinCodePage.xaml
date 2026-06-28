@@ -47,14 +47,14 @@
             <TextBlock
                 Margin="0,0,0,10"
                 Style="{DynamicResource TitleTextStyle}"
-                Text="Создание кода доступа" />
+                Text="{DynamicResource L_PinCreate_Title}" />
 
             <!--  Статус текст  -->
             <TextBlock
                 x:Name="statusText"
                 Margin="0,0,0,25"
                 Style="{DynamicResource DescriptionTextStyle}"
-                Text="Введите четырехзначный пин-код и подтвердите его" />
+                Text="{DynamicResource L_PinCreate_Hint}" />
 
             <!--  Индикатор шагов  -->
             <StackPanel
@@ -78,7 +78,7 @@
                         x:Name="Step1Text"
                         Margin="10,0,0,0"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Придумайте" />
+                        Text="{DynamicResource L_PinCreate_StepCreate}" />
                 </StackPanel>
 
                 <!--  Линия  -->
@@ -106,7 +106,7 @@
                         x:Name="Step2Text"
                         Margin="10,0,0,0"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Подтвердите" />
+                        Text="{DynamicResource L_PinCreate_StepConfirm}" />
                 </StackPanel>
             </StackPanel>
 
@@ -118,7 +118,7 @@
                     <TextBlock
                         Margin="0,0,0,15"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Введите комбинацию" />
+                        Text="{DynamicResource L_PinCreate_EnterCombination}" />
 
                     <StackPanel
                         x:Name="FirstPinContainer"
@@ -166,7 +166,7 @@
                     <TextBlock
                         Margin="0,0,0,15"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Повторите комбинацию" />
+                        Text="{DynamicResource L_PinCreate_RepeatCombination}" />
 
                     <StackPanel
                         x:Name="SecondPinContainer"
@@ -213,16 +213,16 @@
                             <TextBlock
                                 FontWeight="SemiBold"
                                 Style="{DynamicResource TipsStyle}"
-                                Text="Советы по безопасности:" />
+                                Text="{DynamicResource L_PinCreate_Tips_Title}" />
                         </StackPanel>
                         <TextBlock
                             Margin="0,5,0,0"
                             Style="{DynamicResource TipsStyle}"
-                            Text="• Не используйте простые комбинации (1111, 1234)" />
+                            Text="{DynamicResource L_PinCreate_Tip_Simple}" />
                         <TextBlock
                             Margin="0,2,0,0"
                             Style="{DynamicResource TipsStyle}"
-                            Text="• Используйте комбинацию, которую легко запомнить" />
+                            Text="{DynamicResource L_PinCreate_Tip_Memorable}" />
                     </StackPanel>
 
                 </StackPanel>
@@ -243,7 +243,7 @@
                 IsEnabled="False"
                 Style="{DynamicResource RequiredButton}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Продолжить" />
+                    <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="{DynamicResource L_PinCreate_Continue}" />
                     <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                 </StackPanel>
             </ui:Button>

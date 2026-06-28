@@ -43,6 +43,7 @@ public class UsersStorage
     public async Task<List<User>> GetByIds(List<long> ids)
     {
         var users = await _usersContext.Users
+            .AsNoTracking()
             .Include(u => u.Contact)
             .Where(x => ids.Contains(x.Id))
             .ToListAsync();
@@ -128,11 +129,14 @@ public class UsersStorage
             ? @" AND (p.""SearchVisible"" IS NULL OR p.""SearchVisible"" = true OR u.""Id"" = @currentUserId)"
             : string.Empty;
 
-        // SQL запрос для поиска с использованием триграмм
+        // Один запрос: данные + общий счёт через оконную функцию COUNT(*) OVER().
+        // Убирает второй тяжёлый trigram-скан и прежний баг, когда ExecuteSqlRawAsync
+        // возвращал число затронутых строк (-1 для SELECT) вместо реального COUNT(*).
         var sql = @"
             SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
-                   uc.""Email"", uc.""UserId""
+                   uc.""Email"", uc.""UserId"",
+                   COUNT(*) OVER() AS ""TotalCount""
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
             LEFT JOIN ""Privacies"" p ON u.""Id"" = p.""UserId""
@@ -147,43 +151,62 @@ public class UsersStorage
             ) DESC
             LIMIT @pageSize OFFSET @skip";
 
-        var users = await _usersContext.Users
-            .FromSqlRaw(sql,
+        var rows = await _usersContext.Database
+            .SqlQueryRaw<TrigramSearchRow>(sql,
                 new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
                 new NpgsqlParameter("@threshold", similarityThreshold),
                 new NpgsqlParameter("@pageSize", pageSize),
                 new NpgsqlParameter("@skip", skip),
                 new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value))
-            .Include(u => u.Contact)
             .ToListAsync();
 
-        // Запрос для получения общего количества
-        var countSql = @"
-            SELECT COUNT(*)
-            FROM ""Users"" u
-            LEFT JOIN ""Privacies"" p ON u.""Id"" = p.""UserId""
-            WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
-               OR similarity(u.""LastName"", @searchTerm) > @threshold
-               OR similarity(u.""Username"", @searchTerm) > @threshold)
-            AND u.""IsDraft"" = false" + privacyFilter;
+        // COUNT(*) OVER() одинаков во всех строках; при пустой выдаче — 0.
+        var totalCount = rows.Count > 0 ? (int)rows[0].TotalCount : 0;
 
-        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql,
-            new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
-            new NpgsqlParameter("@threshold", similarityThreshold),
-            new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value));
+        var users = rows.Select(r => new User
+        {
+            Id = r.Id,
+            FirstName = r.FirstName,
+            LastName = r.LastName,
+            Username = r.Username,
+            RegistrationDate = r.RegistrationDate,
+            ProfilePicture = r.ProfilePicture,
+            ProfilePicturePreviewUrl = r.ProfilePicturePreviewUrl,
+            Bio = r.Bio,
+            IsDraft = r.IsDraft,
+            StorageLimitGb = r.StorageLimitGb,
+            Contact = new UserContact { Email = r.Email ?? string.Empty, UserId = r.UserId ?? r.Id }
+        }).ToList();
 
         return (users, totalCount);
+    }
+
+    // DTO для one-shot trigram-поиска: поля User + Email/UserId контакта + COUNT(*) OVER().
+    // Немаппированный тип читается через Database.SqlQueryRaw (EF Core 8+).
+    private sealed class TrigramSearchRow
+    {
+        public long Id { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public DateTime RegistrationDate { get; set; }
+        public string? ProfilePicture { get; set; }
+        public string? ProfilePicturePreviewUrl { get; set; }
+        public string? Bio { get; set; }
+        public bool IsDraft { get; set; }
+        public int StorageLimitGb { get; set; }
+        public string? Email { get; set; }
+        public long? UserId { get; set; }
+        public long TotalCount { get; set; }
     }
 
     public async Task<User> CreateUser(string username, string firstName, string lastName, string email)
     {
         var contactUser = new UserContact { Email = email };
 
-        var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
         var user = new User
         {
-            Id = unixTimestamp,
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             Username = username,
             FirstName = firstName,
             LastName = lastName,
@@ -194,7 +217,19 @@ public class UsersStorage
 
         await _usersContext.Users.AddAsync(user);
 
-        await _usersContext.SaveChangesAsync();
+        try
+        {
+            await _usersContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" } pg)
+        {
+            // Страховка от гонки check-then-act: уникальный индекс LOWER(Email)/LOWER(Username) сработал.
+            if (pg.ConstraintName?.Contains("email", StringComparison.OrdinalIgnoreCase) == true)
+                throw new EmailExistException();
+            if (pg.ConstraintName?.Contains("username", StringComparison.OrdinalIgnoreCase) == true)
+                throw new UsernameExistException();
+            throw; // прочие нарушения уникальности (например PK по Id) — пробрасываем как есть
+        }
 
         return user;
     }
@@ -293,6 +328,23 @@ public class UsersStorage
         }
 
         return await query.ToListAsync();
+    }
+
+    public async Task<Dictionary<long, List<UserBadge>>> GetBadgesForUsersAsync(List<long> userIds)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<long, List<UserBadge>>();
+
+        var badges = await _usersContext.UserBadges
+            .Include(ub => ub.Badge)
+            .Where(ub => userIds.Contains(ub.UserId) && ub.Badge.IsActive)
+            .OrderBy(ub => ub.Priority)
+            .ThenBy(ub => ub.AssignedDate)
+            .ToListAsync();
+
+        return badges
+            .GroupBy(ub => ub.UserId)
+            .ToDictionary(g => g.Key, g => g.ToList());
     }
 
     public async Task<UserBadge> AssignBadgeToUserAsync(long userId, int badgeId, int priority)

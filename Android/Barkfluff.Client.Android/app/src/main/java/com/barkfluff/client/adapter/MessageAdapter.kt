@@ -123,6 +123,50 @@ class MessageAdapter(
         }
     }
 
+    /** Резолвит цветной theme-атрибут (?attr/colorPrimary и т.п.) в int color. */
+    private fun resolveThemeColor(ctx: Context, attr: Int): Int {
+        val tv = android.util.TypedValue()
+        ctx.theme.resolveAttribute(attr, tv, true)
+        return tv.data
+    }
+
+    /**
+     * Применяет иконку статуса доставки к ImageView. Маппинг ReadStatus → drawable + tint
+     * соответствует M3 Expressive feedback (часы → одна галочка → две → две filled primary).
+     * FAILED перекрывает текущий tint на colorError.
+     */
+    private fun applyDeliveryStatusIcon(view: ImageView, status: ReadStatus) {
+        val ctx = view.context
+        when (status) {
+            ReadStatus.NONE -> view.visibility = View.GONE
+            ReadStatus.SENDING -> {
+                view.setImageResource(R.drawable.ic_status_sending)
+                view.imageTintList = null
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.SENT -> {
+                view.setImageResource(R.drawable.ic_status_sent)
+                view.imageTintList = null
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.DELIVERED -> {
+                view.setImageResource(R.drawable.ic_status_delivered)
+                view.imageTintList = null
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.READ -> {
+                view.setImageResource(R.drawable.ic_status_read)
+                view.imageTintList = ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorPrimary))
+                view.visibility = View.VISIBLE
+            }
+            ReadStatus.FAILED -> {
+                view.setImageResource(R.drawable.ic_status_error)
+                view.imageTintList = ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorError))
+                view.visibility = View.VISIBLE
+            }
+        }
+    }
+
     /** Переопределяем submitList — footer всегда в конце списка. */
     override fun submitList(list: List<MessageItem>?) {
         val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
@@ -240,17 +284,7 @@ class MessageAdapter(
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
-                when (item.readStatus) {
-                    ReadStatus.READ -> {
-                        binding.stickerReadStatusImageView.setImageResource(R.drawable.ic_double_check)
-                        binding.stickerReadStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.SENT -> {
-                        binding.stickerReadStatusImageView.setImageResource(R.drawable.ic_check)
-                        binding.stickerReadStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.NONE -> binding.stickerReadStatusImageView.visibility = View.GONE
-                }
+                applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
@@ -271,19 +305,20 @@ class MessageAdapter(
                 binding.timeTextView.text = formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
-                when (item.readStatus) {
-                    ReadStatus.READ -> {
-                        binding.readStatusImageView.setImageResource(R.drawable.ic_double_check)
-                        binding.readStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.SENT -> {
-                        binding.readStatusImageView.setImageResource(R.drawable.ic_check)
-                        binding.readStatusImageView.visibility = View.VISIBLE
-                    }
-                    ReadStatus.NONE -> binding.readStatusImageView.visibility = View.GONE
-                }
+                applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
 
-                if (displayedAttachments.isNotEmpty()) {
+                if (item.localPreviewUris.isNotEmpty()) {
+                    // Оптимистичное сообщение: вложения ещё не на сервере — рендерим локальные превью.
+                    val mediaWidthPx = calcMediaWidthPx(binding.root.context)
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = mediaWidthPx
+                    }
+                    binding.attachmentsContainer.removeAllViews()
+                    binding.attachmentsContainer.addView(
+                        buildLocalMediaGrid(binding.root.context, item.localPreviewUris, mediaWidthPx)
+                    )
+                    binding.attachmentsContainer.visibility = View.VISIBLE
+                } else if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
                         it.type == Shared.MessageAttachmentType.IMAGE ||
                         it.type == Shared.MessageAttachmentType.GIF  ||
@@ -301,6 +336,23 @@ class MessageAdapter(
                     }
                     binding.attachmentsContainer.visibility = View.GONE
                     binding.attachmentsContainer.removeAllViews()
+                }
+
+                // Inline upload progress overlay (M3 Expressive feedback) — рендерится
+                // поверх attachmentsContainer пока активен upload.
+                val progress = item.uploadProgress
+                if (progress != null) {
+                    binding.uploadProgressOverlay.visibility = View.VISIBLE
+                    binding.uploadProgressBar.progress = progress
+                    binding.uploadProgressLabel.text = "$progress%"
+                    binding.uploadProgressOverlay.layoutParams = binding.uploadProgressOverlay.layoutParams.also {
+                        it.width = if (binding.attachmentsContainer.visibility == View.VISIBLE)
+                            binding.attachmentsContainer.layoutParams.width
+                        else ViewGroup.LayoutParams.MATCH_PARENT
+                        it.height = ViewGroup.LayoutParams.MATCH_PARENT
+                    }
+                } else {
+                    binding.uploadProgressOverlay.visibility = View.GONE
                 }
             }
         }
@@ -777,6 +829,68 @@ class MessageAdapter(
             column.addView(row)
         }
 
+        return column
+    }
+
+    /**
+     * Строит медиа-сетку из локальных URI (оптимистичное сообщение, до загрузки на сервер).
+     * Использует тот же ряд-алгоритм и квадратные ячейки, что и [buildMediaGrid].
+     */
+    private fun buildLocalMediaGrid(
+        context: android.content.Context,
+        uris: List<Uri>,
+        maxWidth: Int
+    ): View {
+        val dm = context.resources.displayMetrics
+        val spacingPx = (2 * dm.density + 0.5f).toInt()
+        val capped = uris.take(10)
+        val layout = determineLayout(capped.size)
+        val isSingle = capped.size == 1
+
+        val column = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                maxWidth,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        var itemIndex = 0
+        for ((rowIdx, itemsInRow) in layout.withIndex()) {
+            val totalSpacing = spacingPx * (itemsInRow - 1)
+            val cellWidth = (maxWidth - totalSpacing) / itemsInRow
+            val cellHeight = if (isSingle) (cellWidth * 0.75f).toInt() else cellWidth
+
+            val row = android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(maxWidth, cellHeight).apply {
+                    if (rowIdx > 0) topMargin = spacingPx
+                }
+            }
+
+            for (col in 0 until itemsInRow) {
+                if (itemIndex >= capped.size) break
+                val uri = capped[itemIndex]
+                val cellView = LayoutInflater.from(context)
+                    .inflate(R.layout.item_attachment_media_cell, row, false)
+                cellView.layoutParams = android.widget.LinearLayout.LayoutParams(cellWidth, cellHeight).apply {
+                    if (col > 0) marginStart = spacingPx
+                }
+                val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
+                val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
+                val playIcon = cellView.findViewById<ImageView>(R.id.playIcon)
+                val isVideo = context.contentResolver.getType(uri)?.startsWith("video/") == true
+                videoOverlay.visibility = if (isVideo) View.VISIBLE else View.GONE
+                playIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
+                thumbnail.load(uri) {
+                    crossfade(150)
+                    error(R.drawable.ic_image_placeholder)
+                }
+                row.addView(cellView)
+                itemIndex++
+            }
+            column.addView(row)
+        }
         return column
     }
 
@@ -1462,7 +1576,13 @@ data class MessageItem(
     val readStatus: ReadStatus = ReadStatus.NONE,
     val type: MessageType = MessageType.MESSAGE,
     val dateText: String = "",
-    val isEdited: Boolean = false
+    val isEdited: Boolean = false,
+    /** Локальный clientMessageId оптимистичных сообщений (для трекинга SENDING→SENT перехода). null для серверных. */
+    val localId: String? = null,
+    /** Прогресс загрузки медиа 0..100. null если не идёт upload. */
+    val uploadProgress: Int? = null,
+    /** Локальные URI медиа для превью оптимистичного сообщения (пока вложения ещё не загружены на сервер). */
+    val localPreviewUris: List<android.net.Uri> = emptyList()
 ) {
     companion object {
         fun createDateSeparator(dateText: String) = MessageItem(
@@ -1478,4 +1598,13 @@ data class MessageItem(
     }
 }
 
-enum class ReadStatus { NONE, SENT, READ }
+/**
+ * Статус доставки/прочтения исходящего сообщения. Расширен под M3 Expressive feedback:
+ * - NONE — для входящих и системных
+ * - SENDING — оптимистичный item, отправка в процессе (часы)
+ * - SENT — отправлено на сервер, ACK получен (одна галочка)
+ * - DELIVERED — доставлено получателю (двойная outline)
+ * - READ — прочитано получателем (двойная filled, primary tint)
+ * - FAILED — ошибка при отправке (восклицательный знак, tap to retry)
+ */
+enum class ReadStatus { NONE, SENDING, SENT, DELIVERED, READ, FAILED }

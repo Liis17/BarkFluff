@@ -8,6 +8,8 @@
 
 import SwiftUI
 import BFCore
+import BFNetworking
+import BFCalls
 import UniformTypeIdentifiers
 
 // MARK: - PreferenceKeys для измерения высот оверлеев
@@ -64,8 +66,9 @@ struct ConversationView: View {
             if let viewModel {
                 messagesList(viewModel: viewModel)
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // VM ещё не создан — короткий промежуток до .task. Показываем
+                // skeleton, чтобы не мигать пустотой/крутилкой.
+                MessagesListPlaceholderView()
             }
 
             // Слой 2: Плавающий заголовок сверху
@@ -202,6 +205,18 @@ struct ConversationView: View {
         .padding(.bottom, Theme.Spacing.xs)
         .ignoresSafeArea(edges: .top)
         .toolbarBackground(.hidden, for: .windowToolbar)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { startCall(.audio) } label: {
+                    Image(systemName: "phone.fill")
+                }
+                .help("Аудиозвонок")
+                Button { startCall(.video) } label: {
+                    Image(systemName: "video.fill")
+                }
+                .help("Видеозвонок")
+            }
+        }
         .animation(.spring(duration: 0.25), value: viewModel?.pendingReply?.id)
         .animation(.spring(duration: 0.25), value: viewModel?.editingMessage?.id)
         .onPreferenceChange(HeaderHeightKey.self) { headerHeight = $0 }
@@ -294,7 +309,7 @@ struct ConversationView: View {
             return .ignored
         }
         .confirmationDialog(
-            "Удалить сообщение?",
+            "conversation.delete.title",
             isPresented: Binding(
                 get: { pendingDeleteMessageID != nil },
                 set: { if !$0 { pendingDeleteMessageID = nil } }
@@ -302,15 +317,15 @@ struct ConversationView: View {
             titleVisibility: .visible,
             presenting: pendingDeleteMessageID
         ) { messageID in
-            Button("Удалить", role: .destructive) {
+            Button("conversation.delete.button", role: .destructive) {
                 pendingDeleteMessageID = nil
                 Task { await viewModel?.deleteMessage(messageID: messageID) }
             }
-            Button("Отмена", role: .cancel) {
+            Button("common.cancel", role: .cancel) {
                 pendingDeleteMessageID = nil
             }
         } message: { _ in
-            Text("Сообщение будет удалено у всех участников чата.")
+            Text("conversation.delete.message")
         }
         // Глобальная обработка Cmd+V для вставки файлов из буфера обмена
         .onPasteCommand(of: [.image, .fileURL, .png, .jpeg, .tiff]) { providers in
@@ -424,15 +439,16 @@ struct ConversationView: View {
     @ViewBuilder
     private func messagesList(viewModel: ConversationViewModel) -> some View {
         if viewModel.isLoading && viewModel.messages.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            MessagesListPlaceholderView()
         } else if viewModel.messages.isEmpty {
             ContentUnavailableView(
-                viewModel.isNewConversation ? "Новый диалог" : "Нет сообщений",
+                viewModel.isNewConversation
+                    ? LocalizedStringKey("conversation.empty.new.title")
+                    : LocalizedStringKey("conversation.empty.no_messages.title"),
                 systemImage: "bubble.left.and.bubble.right",
                 description: Text(viewModel.isNewConversation
-                    ? "Напишите первое сообщение!"
-                    : "Начните диалог!")
+                    ? "conversation.empty.new.description"
+                    : "conversation.empty.no_messages.description")
             )
         } else {
             MessagesListView(
@@ -483,6 +499,24 @@ struct ConversationView: View {
                     Task { await MediaActions.saveDocuments(atts, container: container) }
                 }
             )
+        }
+    }
+
+    // MARK: - Calls
+
+    /// userID собеседника для личного звонка (первый участник, не текущий пользователь).
+    private var peerUserID: Int64? {
+        chat.members.first { $0.userID != container.currentUserID }?.userID
+    }
+
+    private func startCall(_ media: CallMediaTypeDTO) {
+        let controller = container.callController
+        Task {
+            if chat.isGroupChat {
+                await controller.startCall(calleeUserID: nil, chatID: chat.id, media: media)
+            } else if let peer = peerUserID {
+                await controller.startCall(calleeUserID: peer, chatID: nil, media: media)
+            }
         }
     }
 

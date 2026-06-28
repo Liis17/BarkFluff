@@ -11,6 +11,7 @@ struct SessionsView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel = SettingsViewModel()
     @State private var showTerminateAllConfirm = false
+    @State private var showFastAuthScanner = false
 
     var body: some View {
         List {
@@ -26,6 +27,27 @@ struct SessionsView: View {
                 Section {
                     Text(err).foregroundStyle(.red).font(.footnote)
                 }
+            }
+
+            Section {
+                Button {
+                    showFastAuthScanner = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        Text("settings.sessions.connect_qr")
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
             }
 
             Section {
@@ -45,12 +67,12 @@ struct SessionsView: View {
                     Button(role: .destructive) {
                         showTerminateAllConfirm = true
                     } label: {
-                        Text("Завершить все остальные сессии")
+                        Text("settings.sessions.terminate_all_others")
                     }
                 }
             }
         }
-        .navigationTitle("Активные сессии")
+        .navigationTitle("settings.category.active_sessions")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container
@@ -59,15 +81,23 @@ struct SessionsView: View {
         .refreshable {
             await viewModel.loadSessions()
         }
+        .navigationDestination(isPresented: $showFastAuthScanner) {
+            FastAuthScannerView(isPresented: $showFastAuthScanner)
+        }
+        .onChange(of: showFastAuthScanner) { _, isPresented in
+            if !isPresented {
+                Task { await viewModel.loadSessions() }
+            }
+        }
         .confirmationDialog(
-            "Завершить все остальные сессии?",
+            "settings.sessions.terminate_all_others.confirm_title",
             isPresented: $showTerminateAllConfirm,
             titleVisibility: .visible
         ) {
-            Button("Завершить", role: .destructive) {
+            Button("settings.sessions.terminate_all_others.confirm", role: .destructive) {
                 Task { await viewModel.terminateAllOtherSessions() }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         }
     }
 }
@@ -81,10 +111,12 @@ private struct SessionRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(session.displayName.isEmpty ? "Устройство" : session.displayName)
+                    Text(session.displayName.isEmpty
+                         ? String(localized: "settings.sessions.device_default")
+                         : session.displayName)
                         .font(.body)
                     if isCurrent {
-                        Text("Текущая")
+                        Text("settings.sessions.current_short")
                             .font(.caption2)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)

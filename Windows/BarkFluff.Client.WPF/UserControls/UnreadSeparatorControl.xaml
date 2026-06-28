@@ -20,7 +20,7 @@
                 FontSize="11"
                 FontWeight="Medium"
                 Foreground="#FFCE6432"
-                Text="Непрочитанные сообщения" />
+                Text="{DynamicResource L_UnreadSeparator_Text}" />
         </Border>
     </Grid>
 </UserControl>

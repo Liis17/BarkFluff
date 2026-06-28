@@ -21,7 +21,7 @@ struct MessageTimeView: View {
                 Image(systemName: "pencil")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-                    .help("Сообщение отредактировано")
+                    .help("conversation.message.edited_a11y")
             }
 
             // Время отправки

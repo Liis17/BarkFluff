@@ -23,7 +23,7 @@ public partial class HtmlEmailTemplateParser
         { NotificationType.PasswordChangedByAdmin, "password_changed_by_admin.html"},
     };
 
-    public async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)
+    public virtual async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)
     {
         var templateName = _templatesMap[type];
 

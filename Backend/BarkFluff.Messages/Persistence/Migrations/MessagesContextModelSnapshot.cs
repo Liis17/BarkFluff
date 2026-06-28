@@ -197,6 +197,8 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChatId", "SentAt");
+
                     b.ToTable("Messages");
                 });
 

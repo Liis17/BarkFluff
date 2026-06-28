@@ -58,7 +58,7 @@
                     android:layout_marginTop="38dp"
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_circle_surface"
-                    android:contentDescription="Назад"
+                    android:contentDescription="@string/cd_back"
                     android:src="@drawable/ic_arrow_back"
                     app:tint="?attr/colorOnSurface"
                     app:layout_constraintTop_toTopOf="parent"
@@ -211,7 +211,7 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="6dp"
-                android:text="Медиафайлы"
+                android:text="@string/media_files"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -231,21 +231,21 @@
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Фото" />
+                    android:text="@string/media_tab_photos" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipVideos"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Видео" />
+                    android:text="@string/media_tab_videos" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipFiles"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Файлы" />
+                    android:text="@string/media_tab_files" />
 
             </com.google.android.material.chip.ChipGroup>
 
@@ -280,7 +280,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:text="Нет вложений"
+                    android:text="@string/media_no_attachments"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:visibility="gone" />

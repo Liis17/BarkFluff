@@ -104,3 +104,74 @@ enum MessageContentType {
   SYSTEM = 2; // Системное содержимое
 }
 
+message PinnedMessageInfo {
+
+  Message message = 1; // Закреплённое сообщение
+
+  int64 pinner_user_id = 2; // ID пользователя, закрепившего сообщение
+
+  google.protobuf.Timestamp pinned_at = 3; // Дата закрепления
+}
+
+// Тип чата.
+//   REGULAR  — обычный чат, plaintext в БД сервера (поведение по умолчанию, существующие чаты).
+//   PRIVATE  — E2E через общий passphrase: сервер хранит только шифротекст в EncryptedMessages.
+//              Чат материализуется в БД (Chat-стержень + KdfSalt + PassphraseVerifier).
+//   SECRET   — E2E Signal Double Ratchet, привязка к устройству-инициатору сессии.
+//              Сервер НЕ хранит ни сообщения, ни сам Chat — только релэит SecretEnvelope
+//              и буферизует в Redis на 24ч. Через ListChats секретные чаты НЕ возвращаются —
+//              клиент держит их в локальном хранилище.
+enum ChatType {
+  CHAT_TYPE_REGULAR = 0;
+  CHAT_TYPE_PRIVATE = 1;
+  CHAT_TYPE_SECRET = 2;
+}
+
+// Зашифрованное сообщение приватного чата.
+// Сервер хранит как opaque blob в отдельной таблице EncryptedMessages и
+// никогда не имеет ключа для расшифровки. Расшифровка только клиентами,
+// знающими passphrase (через Argon2id(passphrase, Chat.kdf_salt) → AES-256-GCM key).
+message EncryptedMessage {
+
+  int64 id = 1; // Идентификатор шифрованного сообщения (auto-increment, отдельная последовательность от Message.id)
+
+  string chat_id = 2; // Идентификатор приватного чата
+
+  int64 sender_id = 3; // Идентификатор отправителя (известен серверу — нужен для авторизации)
+
+  string sender_device_id = 4; // Идентификатор устройства-отправителя (для UI у получателя)
+
+  google.protobuf.Timestamp sent_at = 5; // Дата отправки (UTC, проставляется сервером)
+
+  bytes ciphertext = 6; // Шифротекст AES-256-GCM
+
+  bytes nonce = 7; // Уникальный nonce для AES-GCM (12 байт), генерируется отправителем
+
+  bytes associated_data = 8; // AAD для AES-GCM (например, привязка к chat_id и message_id)
+
+  bool is_edited = 9; // Признак редактирования
+
+  google.protobuf.Timestamp edited_at = 10; // Дата последнего редактирования
+
+  bool is_deleted = 11; // Soft-delete: true => сообщение скрыто, ciphertext очищен
+}
+
+// Конверт секретного сообщения (Signal Double Ratchet).
+// Сервер обращается с envelope как с opaque blob: только релэит указанному
+// recipient_device_id и буферизует в Redis (TTL 24ч) если получатель оффлайн.
+// В БД сервер НЕ сохраняет.
+message SecretEnvelope {
+
+  string message_id = 1; // Уникальный ID сообщения для ack (Guid, генерируется сервером при приёме)
+
+  int64 sender_user_id = 2; // ID пользователя-отправителя (для UX: "от кого")
+
+  string sender_device_id = 3; // ID устройства-отправителя (нужен получателю для маршрутизации в правильную ratchet-сессию)
+
+  string recipient_device_id = 4; // ID устройства-получателя (определяется отправителем при создании секретного чата)
+
+  bytes envelope = 5; // Опаковый payload libsignal (PreKeySignalMessage или SignalMessage), включает ratchet headers + ciphertext
+
+  google.protobuf.Timestamp sent_at = 6; // Дата отправки (UTC, проставляется сервером)
+}
+

@@ -20,7 +20,7 @@ public class SecretMessageQueueSender
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task SendInvite(
+    public virtual async Task SendInvite(
         string inviteId,
         long senderUserId,
         Guid senderDeviceId,
@@ -43,7 +43,7 @@ public class SecretMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
-    public async Task SendMessage(
+    public virtual async Task SendMessage(
         string messageId,
         long senderUserId,
         Guid senderDeviceId,
@@ -66,7 +66,7 @@ public class SecretMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
-    public async Task SendInviteResolution(
+    public virtual async Task SendInviteResolution(
         string inviteId,
         long senderUserId,
         Guid senderDeviceId,
@@ -93,7 +93,7 @@ public class SecretMessageQueueSender
     /// Push без содержимого: только «вам пришло секретное сообщение».
     /// Использует существующий PushNotificationEvent с пустыми полями content.
     /// </summary>
-    public async Task SendSilentPush(long recipientUserId, string contentLabel)
+    public virtual async Task SendSilentPush(long recipientUserId, string contentLabel)
     {
         var push = new PushNotificationEvent
         {

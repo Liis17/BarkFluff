@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Юзеры</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        .users-list { display: flex; flex-direction: column; gap: 6px; }
+        .user-row {
+            display: flex; align-items: center; gap: 16px;
+            padding: 12px 16px;
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-md);
+            cursor: pointer;
+            transition: background var(--md-dur-2) var(--md-easing-standard),
+                        border-color var(--md-dur-2) var(--md-easing-standard);
+        }
+        .user-row:hover { background: var(--md-surface-container); border-color: var(--md-primary); }
+        .avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: var(--md-tertiary-container);
+            color: var(--md-on-tertiary-container);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 600;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .info { flex: 1; min-width: 0; }
+        .info .name { font-weight: 500; color: var(--md-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display:flex; align-items:center; gap:8px; }
+        .info .uname { color: var(--md-on-surface-variant); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .uid { color: var(--md-on-surface-variant); font-size: 13px; flex-shrink: 0; font-family: 'Roboto Mono', monospace; }
+
+        /* Modal — poster + avatar header */
+        .modal-cover {
+            position: relative;
+            aspect-ratio: 3 / 1;
+            background: var(--md-surface-container-high);
+            background-image: linear-gradient(135deg, var(--md-primary-container), var(--md-tertiary-container));
+            display: flex; align-items: center; justify-content: center;
+            color: var(--md-on-surface-variant);
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .modal-cover .overlay {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            color: white; gap: 8px;
+            opacity: 0; transition: opacity .2s;
+            font-size: 14px; font-weight: 500;
+        }
+        .modal-cover:hover .overlay { opacity: 1; }
+        .modal-avatar-wrap {
+            position: absolute;
+            bottom: -48px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 96px; height: 96px;
+            border-radius: 50%;
+            border: 5px solid var(--md-surface-container-high);
+            background: var(--md-tertiary-container);
+            color: var(--md-on-tertiary-container);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 28px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .modal-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .modal-avatar-overlay {
+            position: absolute; inset: 0; border-radius: 50%;
+            background: rgba(0,0,0,.45);
+            display: flex; align-items: center; justify-content: center;
+            color: white; opacity: 0; transition: opacity .2s;
+        }
+        .modal-avatar-wrap:hover .modal-avatar-overlay { opacity: 1; }
+
+        .modal-body-section h4 {
+            margin: 24px 0 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--md-on-surface-variant);
+        }
+        .badge-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 12px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+            margin-bottom: 6px;
+        }
+        .session-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        .session-row:hover { background: var(--md-surface-container-high); }
+        .tfa-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+            margin-bottom: 6px;
+        }
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .field-grid .full { grid-column: 1 / -1; }
+        .field-label { font-size: 12px; font-weight: 500; color: var(--md-on-surface-variant); margin-bottom: 6px; display:block; }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="users"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <h1>Юзеры</h1>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <div class="md-search" style="width:320px;">
+                    <span class="msr">search</span>
+                    <input id="searchInput" type="text" placeholder="Поиск по username или ID...">
+                </div>
+                <button class="md-btn md-btn-tonal md-btn-square-press" onclick="openReservedNamesModal()">
+                    <span class="msr size-18">shield</span>
+                    Зарезервированные
+                </button>
+                <button id="logoutBtn" class="md-icon-btn" title="Выйти">
+                    <span class="msr">logout</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div class="users-list" id="usersList"></div>
+            <div id="emptyState" class="md-empty" style="display:none;">
+                <span class="msr size-48">group_off</span>
+                <h3>Пользователи не найдены</h3>
+                <p>Попробуйте изменить параметры поиска.</p>
+            </div>
+            <div id="loadingMore" style="text-align:center;padding:24px;display:none;color:var(--md-on-surface-variant);">
+                <div class="md-loader-expressive" style="display:inline-block;width:18px;height:18px;"></div>
+                <span style="margin-left:8px;">Загрузка...</span>
+            </div>
+            <div id="sentinel" style="height:1px;"></div>
+        </div>
+    </main>
+</div>
+
+<!-- User modal -->
+<div id="userScrim" class="md-scrim" onclick="if(event.target===this)closeUserModal()">
+    <div class="md-dialog md-dialog-xl" style="padding:0;">
+        <div class="md-dialog-header" style="padding:16px 24px;border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);">
+            <h3 id="modalUserTitle">Пользователь</h3>
+            <button class="md-icon-btn" onclick="closeUserModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body" id="modalContent" style="padding:0;"></div>
+    </div>
+</div>
+
+<!-- Device modal -->
+<div id="deviceScrim" class="md-scrim" onclick="if(event.target===this)closeDeviceModal()">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Устройство</h3>
+            <button class="md-icon-btn" onclick="closeDeviceModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body" id="deviceModalContent"></div>
+    </div>
+</div>
+
+<!-- Reserved names modal -->
+<div id="reservedScrim" class="md-scrim" onclick="if(event.target===this)closeReservedNamesModal()">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Зарезервированные юзернеймы</h3>
+            <button class="md-icon-btn" onclick="closeReservedNamesModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body" id="reservedNamesList" style="max-height:400px;overflow-y:auto;"></div>
+        <div class="md-dialog-actions" style="gap:8px;">
+            <input id="newReservedName" type="text" placeholder="Новое имя..."
+                onkeydown="if(event.key==='Enter')addReservedName()"
+                class="md-input-outlined" style="flex:1;">
+            <button class="md-btn md-btn-filled md-btn-square-press" onclick="addReservedName()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let users = [];
+    let totalCount = 0;
+    let currentOffset = 0;
+    let isLoading = false;
+    let currentQuery = '';
+    let searchTimeout = null;
+    let allBadges = [];
+    let currentUserData = null;
+    const PAGE_SIZE = 50;
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    function getInitials(f, l) { return ((f?.[0] || '') + (l?.[0] || '')).toUpperCase() || '?'; }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function formatDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleDateString('ru-RU'); }
+
+    async function loadUsers(reset = false) {
+        if (isLoading) return;
+        if (!reset && currentOffset >= totalCount && totalCount > 0) return;
+
+        isLoading = true;
+        if (reset) { currentOffset = 0; users = []; }
+        document.getElementById('loadingMore').style.display = '';
+
+        try {
+            const params = new URLSearchParams({ query: currentQuery, offset: currentOffset, size: PAGE_SIZE });
+            const res = await fetch(`/api/users?${params}`);
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            totalCount = data.totalCount;
+            users = reset ? data.users : users.concat(data.users);
+            currentOffset += data.users.length;
+            renderUsers();
+        } catch (e) { /* ignore */ }
+        finally { isLoading = false; document.getElementById('loadingMore').style.display = 'none'; }
+    }
+
+    function renderUsers() {
+        const list = document.getElementById('usersList');
+        const empty = document.getElementById('emptyState');
+        if (users.length === 0) { list.innerHTML = ''; empty.style.display = ''; return; }
+        empty.style.display = 'none';
+
+        list.innerHTML = users.map(u => `
+            <div class="user-row" onclick="openUserModal(${u.id})">
+                <div class="avatar">
+                    ${(u.profilePicturePreview || u.profilePicture)
+                        ? `<img src="${u.profilePicturePreview || u.profilePicture}">`
+                        : getInitials(u.firstName, u.lastName)}
+                </div>
+                <div class="info">
+                    <div class="name">${escapeHtml(u.firstName)} ${escapeHtml(u.lastName)}</div>
+                    <div class="uname">@${escapeHtml(u.username)}</div>
+                </div>
+                <div class="uid">ID: ${u.id}</div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', e => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => { currentQuery = e.target.value.trim(); loadUsers(true); }, 300);
+    });
+
+    const observer = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && !isLoading) loadUsers();
+    }, { threshold: 0.1 });
+
+    // ---- USER MODAL ----
+    window.openUserModal = async function (userId) {
+        document.getElementById('userScrim').classList.add('open');
+        document.getElementById('modalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
+        try {
+            const res = await fetch(`/api/users/${userId}`);
+            if (!res.ok) throw new Error();
+            currentUserData = await res.json();
+            renderUserModal(currentUserData);
+        } catch (e) {
+            document.getElementById('modalContent').innerHTML = `<div style="padding:48px;text-align:center;color:var(--md-error);">Ошибка загрузки</div>`;
+        }
+    };
+    window.closeUserModal = function () {
+        document.getElementById('userScrim').classList.remove('open');
+        currentUserData = null;
+    };
+
+    function renderUserModal(data) {
+        const p = data.profile;
+        document.getElementById('modalUserTitle').textContent = `${p.firstName} ${p.lastName}`;
+
+        let html = `
+        <section style="position:relative;">
+            <div class="modal-cover" onclick="document.getElementById('posterFileInput').click()">
+                ${p.profilePosterUrl
+                    ? `<img src="${p.profilePosterUrl}" style="width:100%;height:100%;object-fit:cover;">`
+                    : `<span class="msr size-48" style="opacity:.55;">image</span>`}
+                <div class="overlay"><span class="msr">image</span> Изменить постер</div>
+            </div>
+            <div class="modal-avatar-wrap" onclick="document.getElementById('avatarFileInput').click()">
+                ${p.profilePicture
+                    ? `<img src="${p.profilePicture}">`
+                    : `<span>${getInitials(p.firstName, p.lastName)}</span>`}
+                <div class="modal-avatar-overlay"><span class="msr">photo_camera</span></div>
+            </div>
+            <input type="file" id="posterFileInput" accept="image/*" style="display:none;" onchange="handlePosterUpload(this, ${p.id})">
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this, ${p.id})">
+        </section>
+
+        <section class="modal-body-section" style="padding:64px 24px 0;">
+            <div style="font-size:12px;color:var(--md-on-surface-variant);display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+                <span>ID: <strong>${p.id}</strong></span>
+                <span>•</span>
+                <span>Email: ${escapeHtml(data.contacts?.email || '—')}</span>
+                <span>•</span>
+                <span>Регистрация: ${p.registrationDate ? formatDate(p.registrationDate) : '—'}</span>
+            </div>
+            <div class="field-grid">
+                <div><label class="field-label">Имя</label>
+                    <input id="editFirstName" type="text" value="${escapeHtml(p.firstName)}" class="md-input-outlined" style="width:100%;"></div>
+                <div><label class="field-label">Фамилия</label>
+                    <input id="editLastName" type="text" value="${escapeHtml(p.lastName)}" class="md-input-outlined" style="width:100%;"></div>
+                <div class="full"><label class="field-label">Username</label>
+                    <div style="display:flex;align-items:stretch;">
+                        <span style="display:inline-flex;align-items:center;padding:0 12px;background:var(--md-surface-container);border:1px solid var(--md-outline);border-right:0;border-radius:var(--md-shape-sm) 0 0 var(--md-shape-sm);color:var(--md-on-surface-variant);">@</span>
+                        <input id="editUsername" type="text" value="${escapeHtml(p.username)}" class="md-input-outlined" style="flex:1;border-radius:0 var(--md-shape-sm) var(--md-shape-sm) 0;">
+                    </div>
+                </div>
+                <div class="full"><label class="field-label">Био</label>
+                    <textarea id="editBio" rows="2" class="md-input-outlined" style="width:100%;padding:10px 14px;height:auto;resize:vertical;">${escapeHtml(p.bio || '')}</textarea>
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="md-btn md-btn-filled md-btn-square-press" onclick="saveProfileChanges(${p.id})">
+                    <span class="msr size-18">save</span> Сохранить профиль
+                </button>
+            </div>
+        </section>
+
+        <section class="modal-body-section" style="padding:0 24px;">
+            <h4>Бейджи</h4>
+            <div id="userBadgesList">
+                ${(p.badges && p.badges.length > 0)
+                    ? p.badges.map(ub => `
+                        <div class="badge-row">
+                            ${ub.badge.imageUrl ? `<img src="${ub.badge.imageUrl}" style="width:24px;height:24px;object-fit:contain;">` : `<span class="msr size-20" style="color:var(--md-primary);">workspace_premium</span>`}
+                            <span style="flex:1;font-weight:500;">${escapeHtml(ub.badge.name)}</span>
+                            <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="removeUserBadge(${p.id}, ${ub.badge.id})">Удалить</button>
+                        </div>`).join('')
+                    : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Нет бейджей</div>'}
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;">
+                <select id="addBadgeSelect" class="md-input-outlined" style="flex:1;">
+                    <option value="">Выберите бейдж...</option>
+                </select>
+                <button class="md-btn md-btn-tonal md-btn-square-press" onclick="addUserBadge(${p.id})">Добавить</button>
+            </div>
+        </section>
+
+        <section class="modal-body-section" style="padding:0 24px;">
+            <h4>Устройства и сессии</h4>
+            ${(data.sessions || []).length > 0
+                ? (data.sessions || []).map(s => `
+                    <div class="session-row" onclick='showDeviceDetails(${JSON.stringify(s).replace(/'/g, "&#39;")})'>
+                        <span class="msr" style="color:var(--md-primary);">${s.appName && s.appName.includes('Desktop') ? 'desktop_mac' : 'smartphone'}</span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.customName || s.originalName || 'Устройство')}</div>
+                            <div style="font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.operationSystem || '')} • ${escapeHtml(s.appName || '')} ${s.location ? '• ' + escapeHtml(s.location) : ''}</div>
+                        </div>
+                        <span style="font-size:12px;color:var(--md-on-surface-variant);">${s.createdAt ? formatDate(s.createdAt) : ''}</span>
+                        <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="event.stopPropagation();removeSession(${p.id}, '${escapeHtml(s.deviceId)}')">Завершить</button>
+                    </div>`).join('')
+                : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Нет активных сессий</div>'}
+        </section>
+
+        <section class="modal-body-section" style="padding:0 24px;">
+            <h4>Двухфакторная аутентификация</h4>
+            ${data.twoFactor ? `
+                <div class="tfa-row">
+                    <div>
+                        <div style="font-weight:500;">Authenticator</div>
+                        <div style="font-size:12px;color:${data.twoFactor.authenticatorEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.authenticatorEnabled ? 'Включён' : 'Выключен'}</div>
+                    </div>
+                    <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
+                </div>
+                <div class="tfa-row">
+                    <div>
+                        <div style="font-weight:500;">Email</div>
+                        <div style="font-size:12px;color:${data.twoFactor.emailEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.emailEnabled ? 'Включён' : 'Выключен'}</div>
+                    </div>
+                    <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
+                </div>
+            ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
+        </section>
+
+        <section class="modal-body-section" style="padding:0 24px;">
+            <h4>Смена пароля</h4>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input id="newPasswordInput" type="password" placeholder="Новый пароль (мин. 6 символов)" class="md-input-outlined" style="flex:1;">
+                <button class="md-btn md-btn-square-press" style="background:var(--md-tertiary);color:var(--md-on-tertiary);" onclick="changeUserPassword(${p.id})">Применить</button>
+            </div>
+            <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Пользователь получит email об изменении пароля.</p>
+        </section>`;
+
+        if (data.storage) {
+            const st = data.storage;
+            const usedMb = (st.totalUsedStorage / 1048576).toFixed(1);
+            const limitGb = (st.storageLimit / 1073741824).toFixed(1);
+            const pct = st.storageLimit > 0 ? Math.min((st.totalUsedStorage / st.storageLimit) * 100, 100) : 0;
+            const overflow = st.totalUsedStorage > st.storageLimit;
+            const typeNames = { 1:'Аватарки',2:'Изображения',3:'Видео',4:'GIF',5:'Документы',6:'Обложки чатов',7:'Аудио',8:'Голосовые',9:'Стикеры',10:'Постер' };
+            html += `
+            <section class="modal-body-section" style="padding:0 24px 24px;">
+                <h4>Хранилище</h4>
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+                    <span>${usedMb} МБ / ${limitGb} ГБ</span>
+                    <span>${pct.toFixed(1)}%</span>
+                </div>
+                <div class="md-progress-linear"><div class="bar" style="width:${pct}%;${overflow?'background:var(--md-error);':''}"></div></div>
+                ${st.storageByTypes && st.storageByTypes.length ? `
+                    <table class="md-table" style="margin-top:16px;">
+                        <thead><tr><th>Тип</th><th style="text-align:right;">Занято</th></tr></thead>
+                        <tbody>${st.storageByTypes.map(t => `<tr><td>${typeNames[t.fileType] || t.fileTypeName}</td><td style="text-align:right;color:var(--md-on-surface-variant);">${formatBytes(t.usedStorage)}</td></tr>`).join('')}</tbody>
+                    </table>` : ''}
+                <div style="display:flex;gap:16px;align-items:center;margin-top:16px;">
+                    <label style="font-size:13px;color:var(--md-on-surface-variant);">Лимит:</label>
+                    <input type="range" id="storageLimitSlider" min="1" max="250" step="1" value="${p.storageLimitGb}" oninput="document.getElementById('storageLimitValue').textContent=this.value" style="flex:1;accent-color:var(--md-primary);">
+                    <span id="storageLimitValue" style="font-weight:500;min-width:24px;text-align:right;">${p.storageLimitGb}</span>
+                    <span style="font-size:13px;color:var(--md-on-surface-variant);">ГБ</span>
+                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="updateStorageLimit(${p.id})">Применить</button>
+                </div>
+            </section>`;
+        }
+
+        document.getElementById('modalContent').innerHTML = html;
+        loadAllBadgesForSelect();
+    }
+
+    function formatBytes(b) {
+        if (!b) return '0 Б';
+        if (b < 1024) return b + ' Б';
+        if (b < 1048576) return (b/1024).toFixed(1) + ' КБ';
+        if (b < 1073741824) return (b/1048576).toFixed(1) + ' МБ';
+        return (b/1073741824).toFixed(2) + ' ГБ';
+    }
+
+    async function loadAllBadgesForSelect() {
+        try {
+            if (allBadges.length === 0) {
+                const r = await fetch('/api/badges');
+                if (r.ok) allBadges = await r.json();
+            }
+            const sel = document.getElementById('addBadgeSelect');
+            if (!sel) return;
+            const existing = new Set((currentUserData?.profile?.badges || []).map(ub => ub.badge.id));
+            sel.innerHTML = '<option value="">Выберите бейдж...</option>' +
+                allBadges.filter(b => b.isActive && !existing.has(b.id)).map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+        } catch {}
+    }
+
+    window.addUserBadge = async function (uid) {
+        const sel = document.getElementById('addBadgeSelect');
+        const id = parseInt(sel.value); if (!id) return;
+        try { await fetch(`/api/users/${uid}/badges`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({badgeId:id}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+    };
+    window.removeUserBadge = async function (uid, bid) {
+        if (!confirm('Удалить бейдж?')) return;
+        try { await fetch(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+    };
+    window.removeSession = async function (uid, did) {
+        if (!confirm('Завершить сессию?')) return;
+        try { await fetch(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+    };
+    window.showDeviceDetails = function (session) {
+        const html = `
+            <p><strong>Device ID:</strong> <span style="font-family:'Roboto Mono',monospace;font-size:12px;">${escapeHtml(session.deviceId)}</span></p>
+            <p><strong>Имя:</strong> ${escapeHtml(session.customName || session.originalName || '—')}</p>
+            <p><strong>ОС:</strong> ${escapeHtml(session.operationSystem || '—')}</p>
+            <p><strong>Приложение:</strong> ${escapeHtml(session.appName || '—')}</p>
+            <p><strong>Локация:</strong> ${escapeHtml(session.location || '—')}</p>
+            <p><strong>Создана:</strong> ${session.createdAt ? new Date(session.createdAt).toLocaleString('ru-RU') : '—'}</p>
+            <p><strong>Истекает:</strong> ${session.expirationAt ? new Date(session.expirationAt).toLocaleString('ru-RU') : '—'}</p>`;
+        document.getElementById('deviceModalContent').innerHTML = html;
+        document.getElementById('deviceScrim').classList.add('open');
+    };
+    window.closeDeviceModal = function () { document.getElementById('deviceScrim').classList.remove('open'); };
+    window.disableOtp = async function (uid, otpType) {
+        const name = otpType === 1 ? 'Authenticator' : 'Email';
+        if (!confirm(`Отключить ${name} 2FA?`)) return;
+        try { await fetch(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+    };
+    window.updateStorageLimit = async function (uid) {
+        const v = parseInt(document.getElementById('storageLimitSlider').value);
+        try { await fetch(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+    };
+    window.saveProfileChanges = async function (uid) {
+        const firstName = document.getElementById('editFirstName').value.trim();
+        const lastName = document.getElementById('editLastName').value.trim();
+        const username = document.getElementById('editUsername').value.trim();
+        const bio = document.getElementById('editBio').value.trim();
+        try { await fetch(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+    };
+    window.changeUserPassword = async function (uid) {
+        const input = document.getElementById('newPasswordInput');
+        const p = input.value.trim();
+        if (!p || p.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
+        if (!confirm('Сменить пароль пользователю?')) return;
+        try { await fetch(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) }); input.value = ''; alert('Пароль изменён'); } catch (e) { alert(e.message); }
+    };
+    window.handleAvatarUpload = async function (input, uid) {
+        const f = input.files[0]; if (!f) return;
+        const fd = new FormData(); fd.append('avatar', f, f.name);
+        try { await fetch(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        input.value = '';
+    };
+    window.handlePosterUpload = async function (input, uid) {
+        const f = input.files[0]; if (!f) return;
+        const fd = new FormData(); fd.append('poster', f, f.name);
+        try { await fetch(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        input.value = '';
+    };
+
+    // ---- Reserved names ----
+    let reservedNames = [];
+    window.openReservedNamesModal = function () { document.getElementById('reservedScrim').classList.add('open'); loadReservedNames(); };
+    window.closeReservedNamesModal = function () { document.getElementById('reservedScrim').classList.remove('open'); };
+    async function loadReservedNames() {
+        const list = document.getElementById('reservedNamesList');
+        list.innerHTML = '<div style="padding:16px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
+        try {
+            const r = await fetch('/api/reserved-names');
+            reservedNames = await r.json();
+            renderReservedNames();
+        } catch { list.innerHTML = '<p style="color:var(--md-error);">Ошибка загрузки</p>'; }
+    }
+    function renderReservedNames() {
+        const list = document.getElementById('reservedNamesList');
+        if (!reservedNames.length) { list.innerHTML = '<p style="color:var(--md-on-surface-variant);font-size:13px;text-align:center;padding:16px;">Нет зарезервированных имён</p>'; return; }
+        list.innerHTML = reservedNames.map(n => `
+            <div class="badge-row">
+                <span class="msr size-18" style="color:var(--md-primary);">tag</span>
+                <span style="flex:1;font-family:'Roboto Mono',monospace;">${escapeHtml(n)}</span>
+                <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="removeReservedName('${escapeHtml(n)}')">Удалить</button>
+            </div>`).join('');
+    }
+    window.addReservedName = async function () {
+        const input = document.getElementById('newReservedName');
+        const name = input.value.trim(); if (!name) return;
+        try { await fetch('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (e) { alert(e.message); }
+    };
+    window.removeReservedName = async function (name) {
+        if (!confirm(`Удалить «${name}»?`)) return;
+        try { await fetch(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (e) { alert(e.message); }
+    };
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (!confirm('Выйти?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const auth = await checkAuth();
+        if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        await loadUsers(true);
+        observer.observe(document.getElementById('sentinel'));
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>
