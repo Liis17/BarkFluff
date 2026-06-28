@@ -52,6 +52,12 @@ public enum GRPCErrorMapper {
         case .permissionDenied:
             return .unauthorized
 
+        case .failedPrecondition:
+            // Бизнес-ошибки сервера (BaseGrpcException) приходят как FailedPrecondition
+            // с осмысленным текстом в message — пробрасываем его пользователю.
+            // Сюда попадает и UsernameInvalidFormatException (x-error-code E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47).
+            return .invalidArgument(message)
+
         default:
             return .unknown(message)
         }

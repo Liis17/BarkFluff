@@ -125,7 +125,7 @@ namespace BarkFluff.Client.WPF.Services.App
                 {
                     WPF.App.ErideMessage.AddMessage("Connecting to real-time updates stream...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
-                    var (error, stream) = await WPF.App.ServerCommunication.JustUpdate(globalParam);
+                    var (error, stream) = await WPF.App.ServerCommunication.JustUpdate(globalParam, cancellationToken);
 
                     if (!error.IsSuccess || stream == null)
                     {
@@ -393,7 +393,7 @@ namespace BarkFluff.Client.WPF.Services.App
                 {
                     WPF.App.ErideMessage.AddMessage("Connecting to read receipts stream...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
-                    var (error, stream) = await WPF.App.ServerCommunication.SubscribeToReadReceipts(globalParam);
+                    var (error, stream) = await WPF.App.ServerCommunication.SubscribeToReadReceipts(globalParam, cancellationToken);
 
                     if (!error.IsSuccess || stream == null)
                     {

@@ -51,20 +51,50 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
 
         var chats = await _chatsStorage.GetUserChats(_userContext.UserId, request.Skip, request.Size);
 
+        // Имена/аватары личных чатов берём из Redis-кэша; недостающие добираем
+        // ОДНИМ батч-запросом в Users (ListByIds) вместо GetById на каждый чат (N+1).
+        var missing = new List<(Chat Chat, long MemberId)>();
+
         foreach (var chat in chats.Where(x => !x.IsGroupChat))
         {
             var chatName = await _chatCache.GetChatName(chat.Id, _userContext.UserId);
 
             if (chatName is null)
             {
-                await LoadNameAndImageChat(chat);
+                var memberId = chat.Members![0].UserId == _userContext.UserId
+                    ? chat.Members[1].UserId
+                    : chat.Members[0].UserId;
+                missing.Add((chat, memberId));
             }
             else
             {
-                var chatImage = await _chatCache.GetChatImage(chat.Id, _userContext.UserId);
-
                 chat.Title = chatName;
-                chat.Picture = chatImage;
+                chat.Picture = await _chatCache.GetChatImage(chat.Id, _userContext.UserId);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            var memberIds = missing.Select(m => m.MemberId).Distinct().ToList();
+
+            _logger.LogDebug("Батч-загрузка {Count} пользователей для личных чатов", memberIds.Count);
+
+            var usersResponse = await _usersServerApiClient.ListByIdsAsync(
+                new ListByIdsRequest { Ids = { memberIds } });
+            var usersById = usersResponse.Users.ToDictionary(u => u.Id);
+
+            foreach (var (chat, memberId) in missing)
+            {
+                if (!usersById.TryGetValue(memberId, out var user))
+                {
+                    continue;
+                }
+
+                chat.Title = $"{user.FirstName} {user.LastName}";
+                chat.Picture = user.ProfilePicture;
+
+                await _chatCache.SetChatImage(chat.Id, _userContext.UserId, chat.Picture);
+                await _chatCache.SetChatName(chat.Id, _userContext.UserId, chat.Title);
             }
         }
 
@@ -105,24 +135,5 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
         );
 
         return new ListChatsResponse { Chats = { chats.Select(x => x.ToGrpc(filesInfoMap)) }, TotalCount = totalCount };
-    }
-
-    private async Task LoadNameAndImageChat(Chat chat)
-    {
-        var memberId = chat.Members[0].UserId == _userContext.UserId ? chat.Members[1].UserId : chat.Members[0].UserId;
-
-        _logger.LogDebug(
-            "Загрузка имени и изображения для личного чата {ChatId} с пользователем {MemberId}",
-            chat.Id,
-            memberId
-        );
-
-        var userInfo = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = memberId });
-
-        chat.Title = $"{userInfo.User.FirstName} {userInfo.User.LastName}";
-        chat.Picture = userInfo.User.ProfilePicture;
-
-        await _chatCache.SetChatImage(chat.Id, _userContext.UserId, chat.Picture);
-        await _chatCache.SetChatName(chat.Id, _userContext.UserId, chat.Title);
     }
 }

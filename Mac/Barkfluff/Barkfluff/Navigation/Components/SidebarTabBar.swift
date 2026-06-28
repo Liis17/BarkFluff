@@ -21,7 +21,7 @@ struct SidebarTabBar: View {
                 VStack(spacing: 2) {
                     Image(systemName: "message.fill")
                         .font(.system(size: 20))
-                    Text("Чаты")
+                    Text("navigation.tab.chats")
                         .font(.caption)
                 }
             }
@@ -36,7 +36,7 @@ struct SidebarTabBar: View {
                         initials: container.currentUserInitials,
                         isActive: coordinator.activeTab == .profile
                     )
-                    Text("Профиль")
+                    Text("navigation.tab.profile")
                         .font(.caption)
                 }
             }

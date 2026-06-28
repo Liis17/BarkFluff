@@ -157,11 +157,15 @@ public enum ChatMemberRole: String, Sendable, Codable, CaseIterable {
     case admin
     case member
 
-    public var displayName: String {
+    /// Локализованное название роли (системная локаль).
+    public var displayName: String { displayName(in: .current) }
+
+    /// Локализованное название роли с явной локалью.
+    public func displayName(in locale: Locale) -> String {
         switch self {
-        case .owner: return "Владелец"
-        case .admin: return "Администратор"
-        case .member: return "Участник"
+        case .owner:  return String(localized: "bfcore.chat_role.owner", bundle: .module, locale: locale)
+        case .admin:  return String(localized: "bfcore.chat_role.admin", bundle: .module, locale: locale)
+        case .member: return String(localized: "bfcore.chat_role.member", bundle: .module, locale: locale)
         }
     }
 }

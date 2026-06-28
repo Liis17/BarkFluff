@@ -13,16 +13,16 @@ namespace BarkFluff.Files.Features.UploadBadgeImage;
 public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCommand, UploadBadgeImageResponse>
 {
     private readonly BadgeImagesStorage _badgeImagesStorage;
-    private readonly S3Uploader _s3Uploader;
-    private readonly S3BucketRegistry _bucketRegistry;
+    private readonly IS3Uploader _s3Uploader;
+    private readonly IS3BucketRegistry _bucketRegistry;
     private readonly IConfiguration _configuration;
     private readonly RunSettings _runSettings;
     private readonly ILogger<UploadBadgeImageCommandHandler> _logger;
 
     public UploadBadgeImageCommandHandler(
         BadgeImagesStorage badgeImagesStorage,
-        S3Uploader s3Uploader,
-        S3BucketRegistry bucketRegistry,
+        IS3Uploader s3Uploader,
+        IS3BucketRegistry bucketRegistry,
         IConfiguration configuration,
         RunSettings runSettings,
         ILogger<UploadBadgeImageCommandHandler> logger)

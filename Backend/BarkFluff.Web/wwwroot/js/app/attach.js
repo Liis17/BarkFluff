@@ -137,6 +137,19 @@
                 var img = document.createElement('img');
                 img.src = item.previewUrl;
                 img.alt = item.file.name;
+                img.style.cursor = 'pointer';
+                img.title = 'Редактировать';
+                img.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (!window.BF.imageEditor) return;
+                    BF.imageEditor.open(item.file, function (newFile) {
+                        if (!newFile) return;
+                        if (item.previewUrl) { URL.revokeObjectURL(item.previewUrl); item.previewUrl = null; }
+                        item.file = newFile;
+                        item.isImage = true;
+                        render();
+                    });
+                });
                 div.appendChild(img);
             } else {
                 var row = document.createElement('div');

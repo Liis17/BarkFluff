@@ -20,23 +20,26 @@ struct CompletionStepView: View {
 
             // Текст
             VStack(spacing: 4) {
-                Text("Добро пожаловать!")
+                Text("auth.register.step.completion.title")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("Аккаунт успешно создан")
+                Text("auth.register.step.completion.subtitle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
             // Информация
             VStack(spacing: 8) {
-                infoRow(label: "Имя", value: data.displayName)
-                infoRow(label: "Username", value: "@\(data.username)")
-                infoRow(label: "Email", value: data.email)
+                infoRow(label: "auth.register.step.completion.row.name", value: data.displayName)
+                infoRow(label: "auth.register.step.completion.row.username", value: "@\(data.username)")
+                infoRow(label: "auth.register.step.completion.row.email", value: data.email)
 
                 if data.is2FAEnabled {
-                    infoRow(label: "2FA", value: "Включена")
+                    infoRow(
+                        label: "auth.register.step.completion.row.two_fa",
+                        valueKey: "auth.register.step.completion.row.two_fa.enabled"
+                    )
                 }
             }
             .padding()
@@ -47,7 +50,7 @@ struct CompletionStepView: View {
             Button {
                 onComplete()
             } label: {
-                Text("Начать")
+                Text("auth.register.step.completion.start")
             }
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
@@ -55,7 +58,7 @@ struct CompletionStepView: View {
     }
 
     @ViewBuilder
-    private func infoRow(label: String, value: String) -> some View {
+    private func infoRow(label: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(label)
                 .font(.subheadline)
@@ -63,7 +66,22 @@ struct CompletionStepView: View {
 
             Spacer()
 
-            Text(value)
+            Text(verbatim: value)
+                .font(.subheadline)
+                .fontWeight(.medium)
+        }
+    }
+
+    @ViewBuilder
+    private func infoRow(label: LocalizedStringKey, valueKey: LocalizedStringKey) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(valueKey)
                 .font(.subheadline)
                 .fontWeight(.medium)
         }

@@ -1,3 +1,5 @@
+using Barkfluff.AdminPanel.Models;
+
 using LiteDB;
 
 namespace Barkfluff.AdminPanel.Data;
@@ -31,11 +33,14 @@ public class MetricsCacheDbContext : IDisposable
         HourlyServiceMetrics = _db.GetCollection<HourlyServiceMetrics>("hourly_service_metrics");
         HourlyServiceMetrics.EnsureIndex(x => x.HourUtc);
         HourlyServiceMetrics.EnsureIndex(x => x.ServiceName);
+
+        CompressionRuns = _db.GetCollection<MetricsCompressionRun>("compression_runs");
     }
 
     public ILiteCollection<HourlyStats> HourlyStats { get; }
     public ILiteCollection<HourlyTraffic> HourlyTraffic { get; }
     public ILiteCollection<HourlyServiceMetrics> HourlyServiceMetrics { get; }
+    public ILiteCollection<MetricsCompressionRun> CompressionRuns { get; }
 
     public void Dispose()
     {

@@ -1,0 +1,656 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!--  Settings: general  -->
+    <system:String x:Key="L_Settings_Title">Settings</system:String>
+    <system:String x:Key="L_Settings_Default">Settings</system:String>
+
+    <!--  Settings: sidebar (categories)  -->
+    <system:String x:Key="L_Settings_Sidebar_Profile">Profile</system:String>
+    <system:String x:Key="L_Settings_Sidebar_General">General</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Notifications">Notifications and Sound</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Language">Language</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Security">Security</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Privacy">Privacy</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Personalization">Personalization</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Cloud">Cloud</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Cache">Cache</system:String>
+    <system:String x:Key="L_Settings_Sidebar_Sessions">Active Sessions</system:String>
+    <system:String x:Key="L_Settings_Sidebar_AboutApp">About App</system:String>
+    <system:String x:Key="L_Settings_Sidebar_AboutServer">About Server</system:String>
+
+    <!--  Settings: Language page  -->
+    <system:String x:Key="L_Settings_Language_Page_Title">Language</system:String>
+    <system:String x:Key="L_Settings_Language_Header">INTERFACE LANGUAGE</system:String>
+    <system:String x:Key="L_Settings_Language_Group_Title">App language</system:String>
+    <system:String x:Key="L_Settings_Language_Option_System">System</system:String>
+    <system:String x:Key="L_Settings_Language_Option_Russian">Russian</system:String>
+    <system:String x:Key="L_Settings_Language_Option_English">English</system:String>
+    <system:String x:Key="L_Settings_Language_Hint">When set to “System”, the app follows the Windows language. If the Windows language is neither Russian nor English, English is used.</system:String>
+
+    <!--  Common  -->
+    <system:String x:Key="L_Common_Save">Save</system:String>
+    <system:String x:Key="L_Common_Cancel">Cancel</system:String>
+    <system:String x:Key="L_Common_Delete">Delete</system:String>
+    <system:String x:Key="L_Common_Yes">Yes</system:String>
+    <system:String x:Key="L_Common_No">No</system:String>
+    <system:String x:Key="L_Common_OK">OK</system:String>
+    <system:String x:Key="L_Common_Loading">Loading...</system:String>
+    <system:String x:Key="L_Common_Saving">Saving...</system:String>
+    <system:String x:Key="L_Common_Uploading">Uploading...</system:String>
+    <system:String x:Key="L_Common_Removing">Removing...</system:String>
+    <system:String x:Key="L_Common_Unknown">Unknown</system:String>
+    <system:String x:Key="L_Common_NotSet">—</system:String>
+    <system:String x:Key="L_Common_Error_Prefix">Error: </system:String>
+
+    <!--  Settings: Profile  -->
+    <system:String x:Key="L_Settings_Profile_Title">Profile</system:String>
+    <system:String x:Key="L_Settings_Profile_ChangeAvatar">Change</system:String>
+    <system:String x:Key="L_Settings_Profile_FirstName_Label">First name</system:String>
+    <system:String x:Key="L_Settings_Profile_FirstName_Placeholder">First name</system:String>
+    <system:String x:Key="L_Settings_Profile_LastName_Label">Last name</system:String>
+    <system:String x:Key="L_Settings_Profile_LastName_Placeholder">Last name</system:String>
+    <system:String x:Key="L_Settings_Profile_Username_Label">Username</system:String>
+    <system:String x:Key="L_Settings_Profile_Username_Placeholder">username</system:String>
+    <system:String x:Key="L_Settings_Profile_Bio_Label">Bio</system:String>
+    <system:String x:Key="L_Settings_Profile_Bio_Placeholder">About yourself</system:String>
+    <system:String x:Key="L_Settings_Profile_NameUpdated">Name updated</system:String>
+    <system:String x:Key="L_Settings_Profile_UsernameUpdated">Username updated</system:String>
+    <system:String x:Key="L_Settings_Profile_BioUpdated">Bio updated</system:String>
+    <system:String x:Key="L_Settings_Profile_AvatarUpdated">Avatar updated</system:String>
+    <system:String x:Key="L_Settings_Profile_UploadingAvatar">Uploading avatar...</system:String>
+    <system:String x:Key="L_Settings_Profile_AvatarDialog_Title">Choose avatar</system:String>
+    <system:String x:Key="L_Settings_Profile_AvatarDialog_Filter">Images|*.jpg;*.jpeg;*.png;*.bmp</system:String>
+
+    <!--  Settings: General  -->
+    <system:String x:Key="L_Settings_General_AppearanceHeader">APPEARANCE</system:String>
+    <system:String x:Key="L_Settings_General_Theme_Title">App theme</system:String>
+    <system:String x:Key="L_Settings_General_Theme_Light">Light</system:String>
+    <system:String x:Key="L_Settings_General_Theme_Dark">Dark</system:String>
+    <system:String x:Key="L_Settings_General_Theme_System">System</system:String>
+
+    <!--  Settings: Notifications  -->
+    <system:String x:Key="L_Settings_Notifications_Title">Notifications and Sound</system:String>
+    <system:String x:Key="L_Settings_Notifications_Description">Choose what information to show in new message notifications</system:String>
+    <system:String x:Key="L_Settings_Notifications_Sound_Title">Notification sound</system:String>
+    <system:String x:Key="L_Settings_Notifications_Sound_Description">Play a sound for new messages</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_Disabled_Title">Disabled</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_Disabled_Description">Notifications will not be shown</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_HiddenContent_Title">Hidden content</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_HiddenContent_Description">Only "You have a new message"</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_SenderOnly_Title">Sender only</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_SenderOnly_Description">Sender name without message text</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullTextNoPreview_Title">Text without preview</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullTextNoPreview_Description">Name and message text, no images</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullWithPreview_Title">Full with preview</system:String>
+    <system:String x:Key="L_Settings_Notifications_Mode_FullWithPreview_Description">Name, text and image previews</system:String>
+
+    <!--  Settings: Security  -->
+    <system:String x:Key="L_Settings_Security_Title">Security</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Title">Change password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Step1_Hint">A confirmation code will be sent to your email to change the password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Step2_Hint">Enter the 6-digit code sent to your email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Step3_Hint">Enter a new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_SendCode">Send code to email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CodePlaceholder">6-digit code from the email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_ConfirmCode">Confirm code</system:String>
+    <system:String x:Key="L_Settings_Security_Password_SaveNew">Save new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_SendingCode">Sending code...</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CodeSent">Code sent to your email</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CheckingCode">Checking code...</system:String>
+    <system:String x:Key="L_Settings_Security_Password_EnterCode">Enter the confirmation code</system:String>
+    <system:String x:Key="L_Settings_Security_Password_CodeConfirmed">Code confirmed. Enter the new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_EnterNew">Enter a new password</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Mismatch">Passwords do not match</system:String>
+    <system:String x:Key="L_Settings_Security_Password_Changed">Password changed successfully</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Title">Two-factor authentication</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_DefaultHint">Click to set up 2FA</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Enabled">Enabled</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disabled">Disabled</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_OtpPlaceholder">Enter the code from the app</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Setup">Set up</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Confirm">Confirm</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disable">Disable 2FA</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_LoadingQr">Getting QR code...</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_QrError">Failed to display QR code</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_ScanHint">Scan the QR code and enter the confirmation code</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_ManualKey">Or enter the key manually: {0}</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_EnterOtp">Enter the code from the app</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Checking">Checking...</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Configured">2FA configured successfully</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disabling">Disabling 2FA...</system:String>
+    <system:String x:Key="L_Settings_Security_TwoFa_Disabled_Status">2FA disabled</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Title">Access code (PIN)</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Description">PIN code for quick app sign-in</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Save">Save PIN</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Removed">PIN code removed</system:String>
+    <system:String x:Key="L_Settings_Security_Pin_Saved">PIN code saved</system:String>
+
+    <!--  Settings: Privacy  -->
+    <system:String x:Key="L_Settings_Privacy_Title">Privacy</system:String>
+    <system:String x:Key="L_Settings_Privacy_LoadingSettings">Loading settings...</system:String>
+    <system:String x:Key="L_Settings_Privacy_LoadError">Failed to load settings: {0}</system:String>
+    <system:String x:Key="L_Settings_Privacy_SaveError">Save error: {0}</system:String>
+    <system:String x:Key="L_Settings_Privacy_Group_Profile">PROFILE</system:String>
+    <system:String x:Key="L_Settings_Privacy_PublicPage_Title">Public page</system:String>
+    <system:String x:Key="L_Settings_Privacy_PublicPage_Description">Show your profile at barkfluff.com/username</system:String>
+    <system:String x:Key="L_Settings_Privacy_SearchVisible_Title">Visible in search</system:String>
+    <system:String x:Key="L_Settings_Privacy_SearchVisible_Description">Show you in user search results</system:String>
+    <system:String x:Key="L_Settings_Privacy_Group_WhoSees">WHO CAN SEE</system:String>
+    <system:String x:Key="L_Settings_Privacy_Online_Title">Online status</system:String>
+    <system:String x:Key="L_Settings_Privacy_Online_Description">Who can see when you are online</system:String>
+    <system:String x:Key="L_Settings_Privacy_Avatar_Title">Profile photo</system:String>
+    <system:String x:Key="L_Settings_Privacy_Avatar_Description">Who can see your avatar</system:String>
+    <system:String x:Key="L_Settings_Privacy_Bio_Title">Bio</system:String>
+    <system:String x:Key="L_Settings_Privacy_Bio_Description">Who can see your profile description</system:String>
+    <system:String x:Key="L_Settings_Privacy_Email_Title">Email address</system:String>
+    <system:String x:Key="L_Settings_Privacy_Email_Description">Who can see your email</system:String>
+    <system:String x:Key="L_Settings_Privacy_Visibility_All">Everyone</system:String>
+    <system:String x:Key="L_Settings_Privacy_Visibility_Friends">Friends</system:String>
+    <system:String x:Key="L_Settings_Privacy_Visibility_Nobody">Nobody</system:String>
+
+    <!--  Settings: Personalization  -->
+    <system:String x:Key="L_Settings_Personalization_Title">Personalization</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Header">PROFILE POSTER</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Title">Poster</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Empty">Poster is not set</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Change">Change poster</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Dialog_Title">Select profile poster</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_Dialog_Filter">Images (*.jpg;*.jpeg;*.png;*.webp)|*.jpg;*.jpeg;*.png;*.webp|All files (*.*)|*.*</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_LinkError">Failed to get URL: {0}</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_UploadError">Upload error: {0}</system:String>
+    <system:String x:Key="L_Settings_Personalization_Poster_SaveError">Save error: {0}</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_Header">MESSAGE APPEARANCE</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_Title">Bubble corner radius</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_PreviewIncoming">Hi! 👋</system:String>
+    <system:String x:Key="L_Settings_Personalization_Bubbles_PreviewOutgoing">How are you? 😊</system:String>
+    <system:String x:Key="L_Settings_Personalization_Background_Header">CHAT BACKGROUND</system:String>
+    <system:String x:Key="L_Settings_Personalization_Blur_Title">Background blur</system:String>
+    <system:String x:Key="L_Settings_Personalization_Blur_Description">Blurs the selected chat background image</system:String>
+    <system:String x:Key="L_Settings_Personalization_Blur_Radius">Blur radius</system:String>
+    <system:String x:Key="L_Settings_Personalization_Background_Dim">Background dim</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_Header">BACKGROUND IMAGES</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_Title">Background images</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_AddDialog_Title">Select background image</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_AddButton">＋  Add background</system:String>
+    <system:String x:Key="L_Settings_Personalization_Backgrounds_DeleteMenu">Delete background</system:String>
+
+    <!--  Settings: Cloud  -->
+    <system:String x:Key="L_Settings_Cloud_Title">Cloud</system:String>
+    <system:String x:Key="L_Settings_Cloud_Usage_Title">Storage usage</system:String>
+    <system:String x:Key="L_Settings_Cloud_Usage_OfTotal">{0} of {1}</system:String>
+    <system:String x:Key="L_Settings_Cloud_Usage_Percent">{0:F1}% used</system:String>
+    <system:String x:Key="L_Settings_Cloud_LoadError">Failed to load data</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Images">Photos</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Videos">Videos</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Documents">Documents</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Audio">Audio</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Voice">Voice</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Gif">GIF</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Stickers">Stickers</system:String>
+    <system:String x:Key="L_Settings_Cloud_Type_Avatars">Avatars</system:String>
+
+    <!--  Settings: Cache  -->
+    <system:String x:Key="L_Settings_Cache_Title">Cache</system:String>
+    <system:String x:Key="L_Settings_Cache_Counting">Calculating...</system:String>
+    <system:String x:Key="L_Settings_Cache_DiskUsage_Title">Disk usage</system:String>
+    <system:String x:Key="L_Settings_Cache_Legend_App">Application</system:String>
+    <system:String x:Key="L_Settings_Cache_Legend_FileCache">File cache</system:String>
+    <system:String x:Key="L_Settings_Cache_Legend_Database">Database</system:String>
+    <system:String x:Key="L_Settings_Cache_ByTypes_Header">BY TYPE</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Avatars">Avatars</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Images">Images</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Videos">Videos</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Gif">GIF</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Documents">Documents</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Audio">Audio</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Messages">Messages</system:String>
+    <system:String x:Key="L_Settings_Cache_Type_Chats">Chats</system:String>
+    <system:String x:Key="L_Settings_Cache_MessagesRecords">{0} · {1} records</system:String>
+    <system:String x:Key="L_Settings_Cache_ChatsRecords">{0} · {1} chats</system:String>
+    <system:String x:Key="L_Settings_Cache_TotalUsage">Cache: {0}  ·  App: {1}</system:String>
+    <system:String x:Key="L_Settings_Cache_Menu_Clear">Clear</system:String>
+    <system:String x:Key="L_Settings_Cache_ClearAll">Clear entire cache</system:String>
+    <system:String x:Key="L_Settings_Cache_Cleared_All">Entire cache cleared</system:String>
+    <system:String x:Key="L_Settings_Cache_Cleared_Tag">"{0}" cache cleared</system:String>
+
+    <!--  Settings: Sessions  -->
+    <system:String x:Key="L_Settings_Sessions_Title">Active sessions</system:String>
+    <system:String x:Key="L_Settings_Sessions_CurrentDevice">Current device</system:String>
+    <system:String x:Key="L_Settings_Sessions_OtherSessions">Other sessions</system:String>
+    <system:String x:Key="L_Settings_Sessions_TerminateAll">Terminate all others</system:String>
+    <system:String x:Key="L_Settings_Sessions_Terminate">Terminate</system:String>
+    <system:String x:Key="L_Settings_Sessions_Now">Now</system:String>
+    <system:String x:Key="L_Settings_Sessions_CurrentInfo">{0} · {1}</system:String>
+    <system:String x:Key="L_Settings_Sessions_DetailFormat">{0} · {1}</system:String>
+    <system:String x:Key="L_Settings_Sessions_LoadError">Load error: {0}</system:String>
+    <system:String x:Key="L_Settings_Sessions_SessionTerminated">Session terminated</system:String>
+    <system:String x:Key="L_Settings_Sessions_AllTerminated">All sessions terminated</system:String>
+
+    <!--  Settings: AboutApp  -->
+    <system:String x:Key="L_Settings_AboutApp_Title">About app</system:String>
+    <system:String x:Key="L_Settings_AboutApp_AppHeader">APPLICATION</system:String>
+    <system:String x:Key="L_Settings_AboutApp_AppName">BarkFluff Desktop</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Version_Placeholder">Version: ...</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Dotnet_Placeholder">.NET: ...</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Version_Format">Version: {0} {1} ({2})</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Dotnet_Format">.NET: {0}</system:String>
+    <system:String x:Key="L_Settings_AboutApp_SystemHeader">SYSTEM</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Os">Operating system</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Os_BuildFormat">{0} {1} (build {2})</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Cpu">Processor</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Ram">Memory</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Ram_Format">{0:F1} GB</system:String>
+    <system:String x:Key="L_Settings_AboutApp_Architecture">Architecture</system:String>
+
+    <!--  Settings: AboutServer  -->
+    <system:String x:Key="L_Settings_AboutServer_Title">About server</system:String>
+    <system:String x:Key="L_Settings_AboutServer_InfoHeader">SERVER INFO</system:String>
+    <system:String x:Key="L_Settings_AboutServer_NoConnection">No connection</system:String>
+    <system:String x:Key="L_Settings_AboutServer_ConnectionHeader">CONNECTION</system:String>
+    <system:String x:Key="L_Settings_AboutServer_PingButton">Check connection</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Connecting">Connecting...</system:String>
+    <system:String x:Key="L_Settings_AboutServer_PingSuccess">Connection established · {0} ms  ·  {1}</system:String>
+    <system:String x:Key="L_Settings_AboutServer_PingException">Exception: {0}</system:String>
+    <system:String x:Key="L_Settings_AboutServer_ServicesHeader">MICROSERVICES</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_NoData">no data</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Healthy">Healthy</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Degraded">Degraded</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Unhealthy">Unavailable</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Offline">Offline</system:String>
+    <system:String x:Key="L_Settings_AboutServer_Status_Unknown">Unknown</system:String>
+
+    <!--  Common: extra  -->
+    <system:String x:Key="L_Common_Copyright">2025 BarkFluff. No rights reserved.</system:String>
+    <system:String x:Key="L_Common_BackToLogin">Back to sign in</system:String>
+    <system:String x:Key="L_Common_Continue">Continue</system:String>
+    <system:String x:Key="L_Common_Next">Next</system:String>
+    <system:String x:Key="L_Common_Skip">Skip</system:String>
+    <system:String x:Key="L_Common_Confirm">Confirm</system:String>
+    <system:String x:Key="L_Common_Send">Send</system:String>
+    <system:String x:Key="L_Common_Connect">Connect</system:String>
+    <system:String x:Key="L_Common_Connecting">Connecting...</system:String>
+    <system:String x:Key="L_Common_Search">Search</system:String>
+
+    <!--  Password rules (shared hints)  -->
+    <system:String x:Key="L_Password_StartTyping">Start typing your password</system:String>
+    <system:String x:Key="L_Password_Rule_MinLength">○ At least 8 characters</system:String>
+    <system:String x:Key="L_Password_Rule_Uppercase">○ Uppercase letters</system:String>
+    <system:String x:Key="L_Password_Rule_Lowercase">○ Lowercase letters</system:String>
+    <system:String x:Key="L_Password_Rule_Digits">○ Digits</system:String>
+    <system:String x:Key="L_Password_Rule_Special">○ Special characters</system:String>
+    <system:String x:Key="L_Password_Recommendation_Title">Password recommendations:</system:String>
+    <system:String x:Key="L_Password_Recommendation_Mix">• Use a mix of upper and lower case letters</system:String>
+    <system:String x:Key="L_Password_Recommendation_AddDigits">• Add digits and special characters</system:String>
+    <system:String x:Key="L_Password_Recommendation_NoPersonal">• Do not use personal information in the password</system:String>
+    <system:String x:Key="L_Password_Recommendation_MinLen">• Minimum password length is 8 characters</system:String>
+
+    <!--  Welcome  -->
+    <system:String x:Key="L_Welcome_Subtitle">A messenger for your pack</system:String>
+    <system:String x:Key="L_Welcome_Description">Chat with friends, share moments, and stay connected with the people who matter</system:String>
+    <system:String x:Key="L_Welcome_StartButton">Get started</system:String>
+    <system:String x:Key="L_Welcome_Footer_About">About</system:String>
+    <system:String x:Key="L_Welcome_Footer_Privacy">Privacy Policy</system:String>
+    <system:String x:Key="L_Welcome_Footer_Help">Help</system:String>
+
+    <!--  SelectServer  -->
+    <system:String x:Key="L_SelectServer_Title">Connect to server</system:String>
+    <system:String x:Key="L_SelectServer_Subtitle">Choose a public server</system:String>
+    <system:String x:Key="L_SelectServer_PublicServers">Public servers</system:String>
+    <system:String x:Key="L_SelectServer_AnotherServer">Connect to a different server</system:String>
+    <system:String x:Key="L_SelectServer_OwnServer_Question">Want to host your own server? </system:String>
+    <system:String x:Key="L_SelectServer_OwnServer_Learn">Learn more</system:String>
+    <system:String x:Key="L_SelectServer_Issues">Having trouble connecting? Check out our server setup guide.</system:String>
+    <system:String x:Key="L_ServerItem_DefaultName">Server name</system:String>
+    <system:String x:Key="L_ServerItem_DefaultDescription">Server description</system:String>
+    <system:String x:Key="L_ServerItem_DefaultLocation">Location and public name</system:String>
+
+    <!--  Login  -->
+    <system:String x:Key="L_Login_Title">Welcome</system:String>
+    <system:String x:Key="L_Login_Subtitle">Sign in to your account</system:String>
+    <system:String x:Key="L_Login_EmailOrUsername">Email or username</system:String>
+    <system:String x:Key="L_Login_Password">Password</system:String>
+    <system:String x:Key="L_Login_ForgotPassword">Forgot password?</system:String>
+    <system:String x:Key="L_Login_OtpHeader">Enter the confirmation code</system:String>
+    <system:String x:Key="L_Login_OtpHint">Enter the 6-digit confirmation code</system:String>
+    <system:String x:Key="L_Login_SignInButton">Sign in</system:String>
+    <system:String x:Key="L_Login_ChangeServer">Change server connection</system:String>
+    <system:String x:Key="L_Login_NoAccount">Don't have an account yet?</system:String>
+    <system:String x:Key="L_Login_CreateAccount">Create a new account</system:String>
+
+    <!--  CreateAccount  -->
+    <system:String x:Key="L_CreateAccount_Title">Create a new account</system:String>
+    <system:String x:Key="L_CreateAccount_StepFormat">Step {0} of {1}</system:String>
+    <system:String x:Key="L_CreateAccount_StepFormat_19">Step 1 of 9</system:String>
+    <system:String x:Key="L_CreateAccount_Personal_Title">Personal information</system:String>
+    <system:String x:Key="L_CreateAccount_FirstName_Label">First name *</system:String>
+    <system:String x:Key="L_CreateAccount_FirstName_Placeholder">Apogee</system:String>
+    <system:String x:Key="L_CreateAccount_LastName_Label">Last name</system:String>
+    <system:String x:Key="L_CreateAccount_LastName_Placeholder">Mystery</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint1">• The name can contain any characters</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint2">• Minimum is 3 characters</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint3">• First and last names are limited to 40 characters</system:String>
+    <system:String x:Key="L_CreateAccount_Name_Hint4">• Last name is optional</system:String>
+    <system:String x:Key="L_CreateAccount_Username_Title">Username</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Label">Login *</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint1">• The login can contain:</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint2">- Latin letters</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint3">- Digits</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint4">- Underscore ( _ ) and hyphen ( - )</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint5">• The login is limited to 30 characters</system:String>
+    <system:String x:Key="L_CreateAccount_Login_Hint6">• The login will be converted to lowercase</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Title">Email</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Label">Email *</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Hint1">• Email can be used for 2FA</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Hint2">• Email will be used for password reset</system:String>
+    <system:String x:Key="L_CreateAccount_Email_Hint3">• Sign-in notifications will be sent to this email</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Title">Email confirmation</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Label">Confirmation code *</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Hint1">• A message was sent to your email</system:String>
+    <system:String x:Key="L_CreateAccount_EmailConfirm_Hint2">• Check your spam folder</system:String>
+    <system:String x:Key="L_CreateAccount_Password_Title">Create password</system:String>
+    <system:String x:Key="L_CreateAccount_Password_Label">Password *</system:String>
+    <system:String x:Key="L_CreateAccount_Password_Placeholder">Enter a password</system:String>
+    <system:String x:Key="L_CreateAccount_PasswordConfirm_Label">Confirm password *</system:String>
+    <system:String x:Key="L_CreateAccount_PasswordConfirm_Placeholder">Repeat the password</system:String>
+    <system:String x:Key="L_CreateAccount_Avatar_Title">Profile picture</system:String>
+    <system:String x:Key="L_CreateAccount_Avatar_Hint">Upload a profile picture</system:String>
+    <system:String x:Key="L_CreateAccount_Profile_Title">Profile setup</system:String>
+    <system:String x:Key="L_CreateAccount_Next">Next</system:String>
+    <system:String x:Key="L_CreateAccount_Submit">Create account</system:String>
+
+    <!--  TwoFA  -->
+    <system:String x:Key="L_TwoFA_Title">Two-factor authentication</system:String>
+    <system:String x:Key="L_TwoFA_Intro">Increase your account security with Google Authenticator. Do you want to enable two-factor authentication?</system:String>
+    <system:String x:Key="L_TwoFA_NoThanks">No, thanks</system:String>
+    <system:String x:Key="L_TwoFA_YesEnable">Yes, enable</system:String>
+    <system:String x:Key="L_TwoFA_Description">Two-factor authentication significantly improves your account security. To set it up, install Google Authenticator on your phone and scan the QR code.</system:String>
+    <system:String x:Key="L_TwoFA_Subtitle">Increase your account security with Google Authenticator</system:String>
+    <system:String x:Key="L_TwoFA_ScanQrTitle">Scan the QR code</system:String>
+    <system:String x:Key="L_TwoFA_QrPlaceholder">QR CODE</system:String>
+    <system:String x:Key="L_TwoFA_OrManualKey">or enter the key manually</system:String>
+    <system:String x:Key="L_TwoFA_EnterCode_Title">Enter the code from the app</system:String>
+    <system:String x:Key="L_TwoFA_Skip">Skip</system:String>
+    <system:String x:Key="L_TwoFA_Connect">Connect</system:String>
+
+    <!--  CompletionRegistration  -->
+    <system:String x:Key="L_Completion_Welcome">Welcome!</system:String>
+    <system:String x:Key="L_Completion_Success">Registration completed successfully</system:String>
+    <system:String x:Key="L_Completion_Configuring">Setting up your account...</system:String>
+    <system:String x:Key="L_Completion_FewSeconds">This will only take a few seconds</system:String>
+
+    <!--  PasswordReset  -->
+    <system:String x:Key="L_PasswordReset_Title">Password reset</system:String>
+    <system:String x:Key="L_PasswordReset_Subtitle">Follow the instructions to reset your password</system:String>
+    <system:String x:Key="L_PasswordReset_Step1_Label">Enter email or username</system:String>
+    <system:String x:Key="L_PasswordReset_Step1_Button">Send code</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Label">Enter the confirmation code</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Hint">We sent a 6-digit code to your email</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Button">Confirm code</system:String>
+    <system:String x:Key="L_PasswordReset_Step2_Resend">Resend code</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_Title">Create a new password</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_New_Label">New password</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_Confirm_Label">Confirm password</system:String>
+    <system:String x:Key="L_PasswordReset_Step3_Button">Save new password</system:String>
+    <system:String x:Key="L_PasswordReset_Step4_Title">Password changed successfully!</system:String>
+    <system:String x:Key="L_PasswordReset_Step4_Hint">You can now sign in with your new password</system:String>
+    <system:String x:Key="L_PasswordReset_Step4_Button">Back to sign in</system:String>
+    <system:String x:Key="L_PasswordReset_BackToLogin">Back to sign in</system:String>
+
+    <!--  PinCode: Pincode (entry)  -->
+    <system:String x:Key="L_Pin_Enter_Title">Sign in to the app</system:String>
+    <system:String x:Key="L_Pin_Enter_Subtitle">Access code</system:String>
+    <system:String x:Key="L_Pin_Attempts_Label">Attempts:</system:String>
+    <system:String x:Key="L_Pin_Forgot">Forgot the access code?</system:String>
+    <system:String x:Key="L_Pin_ResetApp">Reset the app and sign out</system:String>
+    <system:String x:Key="L_Pin_DebugWindow">Debug window</system:String>
+
+    <!--  PinCode: Create  -->
+    <system:String x:Key="L_PinCreate_Title">Create an access code</system:String>
+    <system:String x:Key="L_PinCreate_Hint">Enter a four-digit PIN and confirm it</system:String>
+    <system:String x:Key="L_PinCreate_StepCreate">Create</system:String>
+    <system:String x:Key="L_PinCreate_StepConfirm">Confirm</system:String>
+    <system:String x:Key="L_PinCreate_EnterCombination">Enter the combination</system:String>
+    <system:String x:Key="L_PinCreate_RepeatCombination">Repeat the combination</system:String>
+    <system:String x:Key="L_PinCreate_Tips_Title">Security tips:</system:String>
+    <system:String x:Key="L_PinCreate_Tip_Simple">• Do not use simple combinations (1111, 1234)</system:String>
+    <system:String x:Key="L_PinCreate_Tip_Memorable">• Use a combination that is easy to remember</system:String>
+    <system:String x:Key="L_PinCreate_Continue">Continue</system:String>
+
+    <!--  SideBar  -->
+    <system:String x:Key="L_Sidebar_Archive">Archive</system:String>
+    <system:String x:Key="L_Sidebar_Favorites">Favorites</system:String>
+    <system:String x:Key="L_Sidebar_MyProfile">My profile</system:String>
+    <system:String x:Key="L_Sidebar_Status">Status</system:String>
+    <system:String x:Key="L_Sidebar_Badges">Badges</system:String>
+    <system:String x:Key="L_Sidebar_CreateGroup">Create group</system:String>
+    <system:String x:Key="L_Sidebar_CreateChannel">Create channel</system:String>
+    <system:String x:Key="L_Sidebar_Chats">Chats</system:String>
+    <system:String x:Key="L_Sidebar_Contacts">Contacts</system:String>
+    <system:String x:Key="L_Sidebar_Calls">Calls</system:String>
+    <system:String x:Key="L_Sidebar_Debug">Debug</system:String>
+    <system:String x:Key="L_Sidebar_Settings">Settings</system:String>
+    <system:String x:Key="L_Sidebar_Features">Barkfluff features</system:String>
+    <system:String x:Key="L_Sidebar_Help">Help</system:String>
+
+    <!--  MessengerPage  -->
+    <system:String x:Key="L_Messenger_Tooltip_SideMenu">Open side menu</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_MyProfile">Open my profile</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_UpdateAvailable">Update available</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_ConnectionIssues">Connection issues</system:String>
+    <system:String x:Key="L_Messenger_Search_Placeholder">Search</system:String>
+    <system:String x:Key="L_Messenger_Search_Hint">Search chats...</system:String>
+    <system:String x:Key="L_Messenger_Search_Results">Search results</system:String>
+    <system:String x:Key="L_Messenger_Tooltip_OpenProfile">Open profile</system:String>
+    <system:String x:Key="L_Messenger_Unknown">Unknown</system:String>
+    <system:String x:Key="L_Messenger_DragDrop_Release">Release to attach</system:String>
+    <system:String x:Key="L_Messenger_DragDrop_WillAdd">Files will be added to the message</system:String>
+    <system:String x:Key="L_Messenger_Input_Placeholder">Message</system:String>
+
+    <!--  UserControls: Profile  -->
+    <system:String x:Key="L_Profile_Username">Username</system:String>
+    <system:String x:Key="L_Profile_WasRecently">Last seen recently</system:String>
+    <system:String x:Key="L_Profile_About">About</system:String>
+    <system:String x:Key="L_Profile_UserId">User ID</system:String>
+    <system:String x:Key="L_Profile_RegistrationDate">Registration date</system:String>
+    <system:String x:Key="L_Profile_Tab_Photos">Photos</system:String>
+    <system:String x:Key="L_Profile_Tab_Videos">Videos</system:String>
+    <system:String x:Key="L_Profile_Tab_Files">Files</system:String>
+    <system:String x:Key="L_Profile_Tab_Voice">Voice</system:String>
+    <system:String x:Key="L_Profile_Empty_Images">No images</system:String>
+    <system:String x:Key="L_Profile_Empty_Videos">No videos</system:String>
+    <system:String x:Key="L_Profile_Empty_Files">No files</system:String>
+    <system:String x:Key="L_Profile_Empty_Voice">No voice messages</system:String>
+
+    <!--  UserControls: ProfileShare  -->
+    <system:String x:Key="L_ProfileShare_FailedTitle">Failed to share profile</system:String>
+    <system:String x:Key="L_ProfileShare_NoUsername">You don't have a username set. Set it in profile settings.</system:String>
+
+    <!--  UserControls: AttachmentPreviewOverlay  -->
+    <system:String x:Key="L_AttachmentPreview_Title">Attachment preview</system:String>
+    <system:String x:Key="L_AttachmentPreview_Send">Send</system:String>
+    <system:String x:Key="L_AttachmentPreview_SendNoCompression">Send without compression</system:String>
+    <system:String x:Key="L_AttachmentPreview_SendNoGrouping">Send without grouping</system:String>
+
+    <!--  UserControls: ChatItem (drag&drop overlay)  -->
+    <system:String x:Key="L_ChatItem_DropTitle">Send to this chat</system:String>
+    <system:String x:Key="L_ChatItem_DropHint">Release the file to send it to this chat</system:String>
+
+    <!--  UserControls: MessageBubble (context menu)  -->
+    <system:String x:Key="L_MessageBubble_Reply">Reply</system:String>
+    <system:String x:Key="L_MessageBubble_Forward">Forward</system:String>
+    <system:String x:Key="L_MessageBubble_Copy">Copy</system:String>
+    <system:String x:Key="L_MessageBubble_SelectText">Select text</system:String>
+    <system:String x:Key="L_MessageBubble_Pin">Pin</system:String>
+    <system:String x:Key="L_MessageBubble_AddToFavorites">Add to favorites</system:String>
+    <system:String x:Key="L_MessageBubble_Edit">Edit</system:String>
+    <system:String x:Key="L_MessageBubble_Delete">Delete</system:String>
+    <system:String x:Key="L_MessageBubble_Edited">edited</system:String>
+
+    <!--  UserControls: StickerPicker  -->
+    <system:String x:Key="L_StickerPicker_Loading">Loading stickers...</system:String>
+    <system:String x:Key="L_StickerPicker_Empty">No stickers found</system:String>
+
+    <!--  UserControls: UnreadSeparator  -->
+    <system:String x:Key="L_UnreadSeparator_Text">Unread messages</system:String>
+
+    <!--  UserControls: PreviewUser  -->
+    <system:String x:Key="L_PreviewUser_Loading">Loading...</system:String>
+    <system:String x:Key="L_PreviewUser_Description">Tell other users a bit about yourself</system:String>
+    <system:String x:Key="L_PreviewUser_BioPlaceholder">About yourself, work, hobbies... or leave it empty</system:String>
+    <system:String x:Key="L_PreviewUser_Save">Save</system:String>
+    <system:String x:Key="L_PreviewUser_Footer">Your bio will be visible to other users. You can change it any time in settings.</system:String>
+
+    <!--  UserControls: VideoEditor  -->
+    <system:String x:Key="L_VideoEditor_Title">Video editor</system:String>
+    <system:String x:Key="L_VideoEditor_LoadingMeta">Loading metadata...</system:String>
+    <system:String x:Key="L_VideoEditor_Quality">Quality (bitrate)</system:String>
+    <system:String x:Key="L_VideoEditor_Resolution">Resolution</system:String>
+    <system:String x:Key="L_VideoEditor_Info">Video info</system:String>
+    <system:String x:Key="L_VideoEditor_Processing">Processing video... 0%</system:String>
+    <system:String x:Key="L_VideoEditor_Cancel">Cancel</system:String>
+    <system:String x:Key="L_VideoEditor_Save">Save</system:String>
+
+    <!--  UserControls: VideoPlayer  -->
+    <system:String x:Key="L_VideoPlayer_Menu_ToggleLoop">Toggle loop</system:String>
+    <system:String x:Key="L_VideoPlayer_Menu_OpenInExplorer">Open video folder</system:String>
+    <system:String x:Key="L_VideoPlayer_Menu_CopyPath">Copy path</system:String>
+    <system:String x:Key="L_VideoPlayer_Menu_CopyFrame">Copy current frame</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Close">Close (Esc)</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_PlayPause">Play/Pause (Space)</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Loop">Loop</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Sound">Sound</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Prev">Previous (←)</system:String>
+    <system:String x:Key="L_VideoPlayer_Tooltip_Next">Next (→)</system:String>
+    <system:String x:Key="L_VideoPlayer_Loading">Loading video...</system:String>
+
+    <!--  UserControls: ImageViewer  -->
+    <system:String x:Key="L_ImageViewer_Menu_Save">Save</system:String>
+    <system:String x:Key="L_ImageViewer_Menu_Copy">Copy to clipboard</system:String>
+    <system:String x:Key="L_ImageViewer_Menu_OpenInExplorer">Open in folder</system:String>
+    <system:String x:Key="L_ImageViewer_Tooltip_Close">Close (Esc)</system:String>
+    <system:String x:Key="L_ImageViewer_Tooltip_Prev">Previous (←)</system:String>
+    <system:String x:Key="L_ImageViewer_Tooltip_Next">Next (→)</system:String>
+    <system:String x:Key="L_ImageViewer_LoadingFull">Loading full version...</system:String>
+
+    <!--  UserControls: CropImage  -->
+    <system:String x:Key="L_CropImage_SelectAvatar">Choose avatar</system:String>
+    <system:String x:Key="L_CropImage_OrDrop">or drop a file here</system:String>
+    <system:String x:Key="L_CropImage_Crop">Crop</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_PickFile">Pick an avatar image from File Explorer</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_Apply">Apply the current avatar to your profile</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_Reset">Reset the image to its initial state</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_PickOther">Pick another image</system:String>
+    <system:String x:Key="L_CropImage_Tooltip_Cancel">Cancel and return to file selection</system:String>
+
+    <!--  UserControls: PostUpdateMessage  -->
+    <system:String x:Key="L_PostUpdate_Title">App updated </system:String>
+
+    <!--  UserControls: UploadingAttachmentItem  -->
+    <system:String x:Key="L_UploadingAttachment_Error">Upload error. Click to retry</system:String>
+
+    <!--  Validators: VerificationCode (short)  -->
+    <system:String x:Key="L_Val_VC_EnterCode">Enter the 6-digit code</system:String>
+    <system:String x:Key="L_Val_VC_OnlyDigits">Digits only</system:String>
+    <system:String x:Key="L_Val_VC_NeedMore">Enter {0} more digits</system:String>
+    <system:String x:Key="L_Val_VC_TooMany">Too many digits</system:String>
+    <system:String x:Key="L_Val_VC_Valid">Code entered</system:String>
+    <!--  Validators: VerificationCode (full)  -->
+    <system:String x:Key="L_Val_VC_EnterConfirmation">Enter the confirmation code</system:String>
+    <system:String x:Key="L_Val_VC_MustBeDigits">Code must contain exactly {0} digits</system:String>
+    <system:String x:Key="L_Val_VC_OnlyDigitsFull">Code must contain digits only</system:String>
+
+    <!--  Validators: Email  -->
+    <system:String x:Key="L_Val_Email_Empty">Email cannot be empty</system:String>
+    <system:String x:Key="L_Val_Email_TooLongFull">Email is too long (max {0} characters)</system:String>
+    <system:String x:Key="L_Val_Email_Invalid">Enter a valid email address</system:String>
+    <system:String x:Key="L_Val_Email_Enter">Enter email</system:String>
+    <system:String x:Key="L_Val_Email_TooLong">Email is too long</system:String>
+    <system:String x:Key="L_Val_Email_NeedAt">@ symbol is required</system:String>
+    <system:String x:Key="L_Val_Email_BadFormat">Invalid email format</system:String>
+    <system:String x:Key="L_Val_Email_Valid">Email is valid</system:String>
+
+    <!--  Validators: Username  -->
+    <system:String x:Key="L_Val_User_Empty">Login cannot be empty</system:String>
+    <system:String x:Key="L_Val_User_LengthFull">Login must be {0} to {1} characters</system:String>
+    <system:String x:Key="L_Val_User_BadStartFull">Login cannot start with a digit or underscore</system:String>
+    <system:String x:Key="L_Val_User_NoBotFull">Login must not contain 'bot'</system:String>
+    <system:String x:Key="L_Val_User_BadCharsFull">Login contains invalid characters. Allowed: a-z, A-Z, 0-9, _</system:String>
+    <system:String x:Key="L_Val_User_Enter">Enter a login</system:String>
+    <system:String x:Key="L_Val_User_Min">At least {0} characters</system:String>
+    <system:String x:Key="L_Val_User_Max">At most {0} characters</system:String>
+    <system:String x:Key="L_Val_User_BadStart">Cannot start with digit or _</system:String>
+    <system:String x:Key="L_Val_User_NoBot">Cannot contain 'bot'</system:String>
+    <system:String x:Key="L_Val_User_BadChars">Invalid characters</system:String>
+    <system:String x:Key="L_Val_User_Valid">Login looks valid</system:String>
+
+    <!--  Validators: PersonalInfo  -->
+    <system:String x:Key="L_Val_Pers_FirstNameEmpty">First name cannot be empty</system:String>
+    <system:String x:Key="L_Val_Pers_FirstNameMin">First name must be at least {0} characters</system:String>
+    <system:String x:Key="L_Val_Pers_FirstNameMax">First name must not exceed {0} characters</system:String>
+    <system:String x:Key="L_Val_Pers_LastNameMax">Last name must not exceed {0} characters</system:String>
+
+    <!--  Validators: Password  -->
+    <system:String x:Key="L_Val_Pwd_Empty">Password cannot be empty</system:String>
+    <system:String x:Key="L_Val_Pwd_MinFull">Password must be at least {0} characters</system:String>
+    <system:String x:Key="L_Val_Pwd_NoSpaces">Password must not contain spaces</system:String>
+    <system:String x:Key="L_Val_Pwd_TooSimpleFull">Password is too simple. Use a mix of cases, digits, and special characters</system:String>
+    <system:String x:Key="L_Val_Pwd_Mismatch">Passwords do not match</system:String>
+    <system:String x:Key="L_Val_Pwd_Enter">Enter a password</system:String>
+    <system:String x:Key="L_Val_Pwd_Min">At least {0} characters</system:String>
+    <system:String x:Key="L_Val_Pwd_Spaces">Spaces are not allowed</system:String>
+    <system:String x:Key="L_Val_Pwd_TooSimple">Password is too simple</system:String>
+    <system:String x:Key="L_Val_Pwd_Valid">Password is valid</system:String>
+
+    <!--  CreateAccount dynamic  -->
+    <system:String x:Key="L_CA_FirstName_Valid">✓ First name is valid</system:String>
+    <system:String x:Key="L_CA_LastName_Valid">✓ Last name is valid</system:String>
+    <system:String x:Key="L_CA_Pwd_Match">✓ Passwords match</system:String>
+    <system:String x:Key="L_CA_Pwd_Mismatch">✗ Passwords do not match</system:String>
+    <system:String x:Key="L_CA_Email_CodeSent">● Code sent to {0}</system:String>
+    <system:String x:Key="L_CA_Attempts_Remaining">• Attempts remaining: {0}</system:String>
+    <system:String x:Key="L_CA_Attempts_LimitExceeded">• Attempt limit exceeded. Please wait.</system:String>
+
+    <!--  Password requirements (short — without ○ prefix, used from C# via FindResource)  -->
+    <system:String x:Key="L_PwdReq_MinLength">At least 8 characters</system:String>
+    <system:String x:Key="L_PwdReq_Uppercase">Uppercase letters</system:String>
+    <system:String x:Key="L_PwdReq_Lowercase">Lowercase letters</system:String>
+    <system:String x:Key="L_PwdReq_Digits">Digits</system:String>
+    <system:String x:Key="L_PwdReq_Special">Special characters</system:String>
+
+    <!--  PinCode (helper)  -->
+    <system:String x:Key="L_Pin_Helper_NoAttempts">Attempts exhausted. RIP</system:String>
+    <system:String x:Key="L_Pin_Helper_LastAttempt">Last attempt to enter the correct code\nOn failure the app will be reset...</system:String>
+    <system:String x:Key="L_Pin_Helper_DisableHint">This PIN can be disabled in settings</system:String>
+
+    <!--  Profile (dynamic)  -->
+    <system:String x:Key="L_Profile_Online">Online</system:String>
+    <system:String x:Key="L_Profile_WasLongAgo">Seen a long time ago</system:String>
+    <system:String x:Key="L_Profile_WasAt">Seen at {0}</system:String>
+    <system:String x:Key="L_Profile_WasYesterday">Seen yesterday at {0}</system:String>
+    <system:String x:Key="L_Profile_WasDay">Seen {0} at {1}</system:String>
+    <system:String x:Key="L_Profile_WasDate">Seen {0} at {1}</system:String>
+    <system:String x:Key="L_Profile_Unknown">Unknown</system:String>
+
+    <!--  ChatItem  -->
+    <system:String x:Key="L_ChatItem_Favorites">Saved messages</system:String>
+    <system:String x:Key="L_ChatItem_BadDate">Invalid date format</system:String>
+
+    <!--  AttachmentPreview dynamic  -->
+    <system:String x:Key="L_AP_SendPhotos">Send {0} photos</system:String>
+    <system:String x:Key="L_AP_SendFiles">Send {0} {1}</system:String>
+    <system:String x:Key="L_AP_File_1">file</system:String>
+    <system:String x:Key="L_AP_File_Few">files</system:String>
+    <system:String x:Key="L_AP_File_Many">files</system:String>
+    <system:String x:Key="L_AP_ClipboardImage">Image from clipboard</system:String>
+
+    <!--  AudioMessageContent  -->
+    <system:String x:Key="L_Audio_Loading">Loading...</system:String>
+
+    <!--  MessageBubble  -->
+    <system:String x:Key="L_MB_DefaultSendError">Failed to send message</system:String>
+    <system:String x:Key="L_MB_VoiceSoon">🎤 Voice message (coming soon)</system:String>
+
+</ResourceDictionary>

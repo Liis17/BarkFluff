@@ -54,7 +54,7 @@ struct ConversationHeaderView: View {
 
             // Подзаголовок: статус или информация о группе
             if chat.isGroupChat {
-                Text("\(chat.members.count) участников")
+                Text("conversation.header.group_members \(chat.members.count)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

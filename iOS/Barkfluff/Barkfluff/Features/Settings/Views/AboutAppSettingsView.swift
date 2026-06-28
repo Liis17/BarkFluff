@@ -14,21 +14,21 @@ struct AboutAppSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Приложение") {
-                LabeledContent("Название", value: info.appName)
-                LabeledContent("Версия", value: info.appVersion)
-                LabeledContent("Сборка", value: info.appBuild)
-                LabeledContent("Bundle ID", value: info.bundleID)
+            Section("settings.about_app.section.app") {
+                LabeledContent("settings.about_app.name", value: info.appName)
+                LabeledContent("settings.about_app.version", value: info.appVersion)
+                LabeledContent("settings.about_app.build", value: info.appBuild)
+                LabeledContent("settings.about_app.bundle_id", value: info.bundleID)
             }
 
-            Section("Устройство") {
-                LabeledContent("OS", value: info.osVersion)
-                LabeledContent("Модель", value: info.deviceModel)
-                LabeledContent("Имя устройства", value: info.deviceName)
-                LabeledContent("Память", value: info.memoryTotal)
+            Section("settings.about_app.section.device") {
+                LabeledContent("settings.about_app.os", value: info.osVersion)
+                LabeledContent("settings.about_app.model", value: info.deviceModel)
+                LabeledContent("settings.about_app.device_name", value: info.deviceName)
+                LabeledContent("settings.about_app.memory", value: info.memoryTotal)
             }
         }
-        .navigationTitle("О приложении")
+        .navigationTitle("settings.category.about_app")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

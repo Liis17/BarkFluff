@@ -19,11 +19,11 @@
     <color name="secondary_container">#004C7F</color>
     <color name="on_secondary_container">#D0E4FF</color>
 
-    <!-- Tertiary - третий акцент для выразительности -->
-    <color name="tertiary">#00E5D2</color>
-    <color name="on_tertiary">#003733</color>
-    <color name="tertiary_container">#00E5D2</color>
-    <color name="on_tertiary_container">#00202A</color>
+    <!-- Tertiary - amber акцент (dark theme, M3 Expressive) -->
+    <color name="tertiary">#F1C147</color>
+    <color name="on_tertiary">#3F2E00</color>
+    <color name="tertiary_container">#5B4300</color>
+    <color name="on_tertiary_container">#FFDF9C</color>
 
     <!-- Error - семантический цвет ошибок -->
     <color name="error">#FFB4AB</color>
@@ -60,16 +60,15 @@
     <!-- Shadow для elevation -->
     <color name="shadow">#000000</color>
 
+    <!-- Scrim для модалок и overlay'ев (M3 стандарт: 60% черного в dark theme) -->
+    <color name="scrim_overlay">#99000000</color>
+
     <!-- Surface Tint для динамических цветов -->
     <color name="surface_tint">#FFB5A0</color>
 
     <!-- Status bar (dark theme) -->
     <color name="status_bar">#121415</color>
 
-    <!-- Additional semantic colors -->
-    <color name="text_accent">#FFB5A0</color>
-    <color name="text_link">#96C9FF</color>
-    
     <!-- Success цвет -->
     <color name="success">#81C784</color>
     <color name="on_success">#1B5E20</color>

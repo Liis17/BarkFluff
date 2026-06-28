@@ -90,9 +90,9 @@ struct ServerSelectionView: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.7), value: appeared)
 
             VStack(spacing: 3) {
-                Text("Выбор сервера")
+                Text("auth.server_selection.title")
                     .font(.title.bold())
-                Text("Подключитесь к серверу BarkFluff")
+                Text("auth.server_selection.subtitle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -112,7 +112,7 @@ struct ServerSelectionView: View {
                 VStack(spacing: Theme.Spacing.md) {
                     ProgressView()
                         .controlSize(.large)
-                    Text("Поиск серверов...")
+                    Text("auth.server_selection.searching")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -144,10 +144,10 @@ struct ServerSelectionView: View {
                     Image(systemName: "server.rack")
                         .font(.title2)
                         .foregroundStyle(.tertiary)
-                    Text("Нет доступных серверов")
+                    Text("auth.server_selection.empty.title")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("Подключитесь вручную ниже")
+                    Text("auth.server_selection.empty.hint")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -163,7 +163,7 @@ struct ServerSelectionView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                    Button("Попробовать снова") {
+                    Button("common.retry") {
                         Task { await viewModel.loadServers() }
                     }
                     .buttonStyle(.glass)
@@ -182,7 +182,7 @@ struct ServerSelectionView: View {
             // Разделитель
             HStack(spacing: Theme.Spacing.md) {
                 Rectangle().fill(.separator).frame(height: 1)
-                Text("или вручную")
+                Text("auth.server_selection.manual.title")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .fixedSize()
@@ -197,7 +197,7 @@ struct ServerSelectionView: View {
                         .foregroundStyle(Color.accentColor)
                         .frame(width: 20)
 
-                    TextField("beacon.myserver.com:443", text: Bindable(viewModel).serverAddress)
+                    TextField("auth.server_selection.manual.placeholder", text: Bindable(viewModel).serverAddress)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .onSubmit {
@@ -210,7 +210,7 @@ struct ServerSelectionView: View {
                 // Кнопка появляется когда введены и хост и порт
                 if isAddressComplete(viewModel.serverAddress) || viewModel.isLoading {
                     ZStack {
-                        Button("Подключиться") {
+                        Button("auth.server_selection.connect") {
                             Task { await viewModel.connectManually() }
                         }
                         .buttonStyle(.glassProminent)

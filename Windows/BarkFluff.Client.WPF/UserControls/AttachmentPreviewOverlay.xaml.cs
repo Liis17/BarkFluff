@@ -1,3 +1,4 @@
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Proto.Files;
 
 using Microsoft.Win32;
@@ -84,7 +85,7 @@ namespace BarkFluff.Client.WPF.UserControls
             var item = new AttachmentPreviewItem
             {
                 FilePath = tempPath,
-                FileName = "Изображение из буфера обмена",
+                FileName = L.Str("L_AP_ClipboardImage"),
                 FileType = UploadFileType.MessageAttachmentImage,
                 IsFromClipboard = true,
                 FileSize = fileInfo.Exists ? fileInfo.Length : 0
@@ -208,7 +209,7 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             if (_attachments.Count == 0)
             {
-                HeaderTextBlock.Text = "Предпросмотр вложений";
+                HeaderTextBlock.Text = L.Str("L_AttachmentPreview_Title");
                 return;
             }
 
@@ -216,17 +217,17 @@ namespace BarkFluff.Client.WPF.UserControls
 
             if (allImages)
             {
-                HeaderTextBlock.Text = $"Отправить {_attachments.Count} фото";
+                HeaderTextBlock.Text = L.F("L_AP_SendPhotos", _attachments.Count);
             }
             else
             {
-                string suffix = "файлов";
                 int count = _attachments.Count;
+                string suffix = L.Str("L_AP_File_Many");
 
-                if (count == 1) suffix = "файл";
-                else if (count >= 2 && count <= 4) suffix = "файла";
+                if (count == 1) suffix = L.Str("L_AP_File_1");
+                else if (count >= 2 && count <= 4) suffix = L.Str("L_AP_File_Few");
 
-                HeaderTextBlock.Text = $"Отправить {count} {suffix}";
+                HeaderTextBlock.Text = L.F("L_AP_SendFiles", count, suffix);
             }
         }
 

@@ -39,7 +39,7 @@
                         x:Name="ServerTitle"
                         HorizontalAlignment="Left"
                         Style="{DynamicResource LittleTitleTextStyle}"
-                        Text="Название сервера" />
+                        Text="{DynamicResource L_ServerItem_DefaultName}" />
 
                     <!--  Описание  -->
                     <TextBlock
@@ -47,7 +47,7 @@
                         Margin="0,4,0,0"
                         HorizontalAlignment="Left"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Описание сервера"
+                        Text="{DynamicResource L_ServerItem_DefaultDescription}"
                         TextTrimming="CharacterEllipsis" />
 
                     <!--  Локация и публичное имя  -->
@@ -56,7 +56,7 @@
                         Margin="0,4,0,0"
                         HorizontalAlignment="Left"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Локация и публичное имя"
+                        Text="{DynamicResource L_ServerItem_DefaultLocation}"
                         TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>

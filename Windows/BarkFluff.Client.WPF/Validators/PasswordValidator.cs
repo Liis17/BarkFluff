@@ -1,3 +1,5 @@
+using BarkFluff.Client.WPF.Services.App;
+
 namespace BarkFluff.Client.WPF.Validators
 {
     /// <summary>
@@ -17,26 +19,26 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (string.IsNullOrEmpty(password))
             {
-                errorMessage = "Пароль не может быть пустым";
+                errorMessage = L.Str("L_Val_Pwd_Empty");
                 return false;
             }
 
             if (password.Length < MinLength)
             {
-                errorMessage = $"Пароль должен содержать минимум {MinLength} символов";
+                errorMessage = L.F("L_Val_Pwd_MinFull", MinLength);
                 return false;
             }
 
             if (password.Contains(' '))
             {
-                errorMessage = "Пароль не должен содержать пробелы";
+                errorMessage = L.Str("L_Val_Pwd_NoSpaces");
                 return false;
             }
 
             var strength = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(password);
             if (strength < MinStrengthScore)
             {
-                errorMessage = "Пароль слишком простой. Добавьте буквы разного регистра, цифры и специальные символы";
+                errorMessage = L.Str("L_Val_Pwd_TooSimpleFull");
                 return false;
             }
 
@@ -52,7 +54,7 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (password != confirmPassword)
             {
-                errorMessage = "Пароли не совпадают";
+                errorMessage = L.Str("L_Val_Pwd_Mismatch");
                 return false;
             }
 
@@ -95,26 +97,26 @@ namespace BarkFluff.Client.WPF.Validators
         {
             if (string.IsNullOrEmpty(password))
             {
-                return new ValidationResult(false, "Введите пароль", ValidationState.Empty);
+                return new ValidationResult(false, L.Str("L_Val_Pwd_Enter"), ValidationState.Empty);
             }
 
             if (password.Length < MinLength)
             {
-                return new ValidationResult(false, $"Минимум {MinLength} символов", ValidationState.TooShort);
+                return new ValidationResult(false, L.F("L_Val_Pwd_Min", MinLength), ValidationState.TooShort);
             }
 
             if (password.Contains(' '))
             {
-                return new ValidationResult(false, "Пробелы недопустимы", ValidationState.InvalidCharacters);
+                return new ValidationResult(false, L.Str("L_Val_Pwd_Spaces"), ValidationState.InvalidCharacters);
             }
 
             var strength = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(password);
             if (strength < MinStrengthScore)
             {
-                return new ValidationResult(false, "Пароль слишком простой", ValidationState.InvalidCharacters);
+                return new ValidationResult(false, L.Str("L_Val_Pwd_TooSimple"), ValidationState.InvalidCharacters);
             }
 
-            return new ValidationResult(true, "Пароль подходит", ValidationState.Valid);
+            return new ValidationResult(true, L.Str("L_Val_Pwd_Valid"), ValidationState.Valid);
         }
     }
 

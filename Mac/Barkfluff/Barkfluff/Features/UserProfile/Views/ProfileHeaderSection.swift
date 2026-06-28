@@ -48,7 +48,7 @@ struct ProfileHeaderSection: View {
                 }
 
                 if viewModel.isGroupChat {
-                    Text("\(viewModel.memberCount) участников")
+                    Text("user_profile.members_count \(viewModel.memberCount)")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }

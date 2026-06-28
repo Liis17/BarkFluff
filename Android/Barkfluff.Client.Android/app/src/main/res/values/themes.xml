@@ -59,6 +59,10 @@
         <item name="textAppearanceDisplayLarge">@style/TextAppearance.Material3.DisplayLarge</item>
         <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge</item>
         <item name="textAppearanceTitleLarge">@style/TextAppearance.Material3.TitleLarge</item>
+
+        <!-- Material 3 Expressive: spring motion для Activity-переходов -->
+        <item name="android:windowActivityTransitions">true</item>
+        <item name="android:windowContentTransitions">true</item>
     </style>
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />

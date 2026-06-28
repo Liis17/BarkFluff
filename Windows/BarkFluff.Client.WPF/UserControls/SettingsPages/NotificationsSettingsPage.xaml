@@ -12,7 +12,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Уведомления и звук" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Notifications_Title}" />
 
             <!-- Описание -->
             <TextBlock
@@ -20,7 +20,7 @@
                 Foreground="{DynamicResource DescriptionText}"
                 FontSize="12"
                 TextWrapping="Wrap"
-                Text="Выберите, какую информацию показывать в уведомлениях о новых сообщениях" />
+                Text="{DynamicResource L_Settings_Notifications_Description}" />
 
             <!-- Звук уведомлений -->
             <Border
@@ -41,8 +41,8 @@
                         Foreground="#FF57BB62"
                         Symbol="Speaker224" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Звук уведомлений" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Воспроизводить звуковой сигнал при новых сообщениях" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Notifications_Sound_Title}" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Notifications_Sound_Description}" />
                     </StackPanel>
                     <ui:ToggleSwitch
                         x:Name="SoundToggle"
@@ -79,8 +79,8 @@
                             Foreground="{DynamicResource DescriptionText}"
                             Symbol="AlertOff24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Отключены" />
-                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Уведомления не будут показываться" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Notifications_Mode_Disabled_Title}" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Notifications_Mode_Disabled_Description}" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioDisabled"
@@ -116,8 +116,8 @@
                             Foreground="{DynamicResource DescriptionText}"
                             Symbol="EyeOff24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Скрыть содержимое" />
-                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Только &quot;Вам пришло новое сообщение&quot;" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Notifications_Mode_HiddenContent_Title}" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Notifications_Mode_HiddenContent_Description}" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioHidden"
@@ -153,8 +153,8 @@
                             Foreground="{DynamicResource DescriptionText}"
                             Symbol="Person24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Только отправитель" />
-                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Имя отправителя без текста сообщения" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Notifications_Mode_SenderOnly_Title}" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Notifications_Mode_SenderOnly_Description}" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioSenderOnly"
@@ -190,8 +190,8 @@
                             Foreground="{DynamicResource DescriptionText}"
                             Symbol="TextDescription24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Текст без превью" />
-                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Имя и текст сообщения, без изображений" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Notifications_Mode_FullTextNoPreview_Title}" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Notifications_Mode_FullTextNoPreview_Description}" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioFullText"
@@ -227,8 +227,8 @@
                             Foreground="{DynamicResource DescriptionText}"
                             Symbol="Image24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Полностью с превью" />
-                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Имя, текст и превью изображений" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Notifications_Mode_FullWithPreview_Title}" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="{DynamicResource L_Settings_Notifications_Mode_FullWithPreview_Description}" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioFullPreview"

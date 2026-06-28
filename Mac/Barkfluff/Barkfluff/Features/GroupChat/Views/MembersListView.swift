@@ -15,24 +15,24 @@ struct MembersListView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Владелец") {
-                    MemberRow(name: "Владелец группы", role: .owner)
+                Section("group_chat.members.section.owner") {
+                    MemberRow(name: String(localized: "group_chat.members.owner_placeholder"), role: .owner)
                 }
 
-                Section("Администраторы") {
-                    MemberRow(name: "Админ 1", role: .admin)
+                Section("group_chat.members.section.admins") {
+                    MemberRow(name: String(localized: "group_chat.members.admin_placeholder \(1)"), role: .admin)
                 }
 
-                Section("Участники") {
+                Section("group_chat.members.section.members") {
                     ForEach(0..<3, id: \.self) { _ in
-                        MemberRow(name: "Участник", role: .member)
+                        MemberRow(name: String(localized: "group_chat.members.member_placeholder"), role: .member)
                     }
                 }
             }
-            .navigationTitle("Участники")
+            .navigationTitle("group_chat.members.title")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") {
+                    Button("common.done") {
                         dismiss()
                     }
                 }
@@ -44,6 +44,7 @@ struct MembersListView: View {
 struct MemberRow: View {
     let name: String
     let role: ChatMemberRole
+    @Environment(\.locale) private var locale
 
     var body: some View {
         HStack {
@@ -54,7 +55,7 @@ struct MemberRow: View {
 
             Spacer()
 
-            Text(role.displayName)
+            Text(role.displayName(in: locale))
                 .font(.caption)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)

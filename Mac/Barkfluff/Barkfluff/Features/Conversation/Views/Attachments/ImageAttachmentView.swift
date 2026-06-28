@@ -50,7 +50,7 @@ struct ImageAttachmentView: View {
                     )
                 }
             } label: {
-                Label("Скачать оригинал", systemImage: "arrow.down.circle")
+                Label("conversation.message.context_menu.download_original", systemImage: "arrow.down.circle")
             }
         }
     }

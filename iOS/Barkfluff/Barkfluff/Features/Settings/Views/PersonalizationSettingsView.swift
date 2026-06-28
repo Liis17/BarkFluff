@@ -28,7 +28,7 @@ struct PersonalizationSettingsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("Персонализация")
+        .navigationTitle("settings.category.personalization")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if viewModel == nil {
@@ -59,7 +59,7 @@ struct PersonalizationSettingsView: View {
                             .font(.callout)
                             .foregroundStyle(.red)
                         Spacer()
-                        Button("Скрыть") { vm.errorMessage = nil }
+                        Button("common.hide") { vm.errorMessage = nil }
                             .buttonStyle(.borderless)
                             .font(.callout)
                     }
@@ -74,13 +74,13 @@ struct PersonalizationSettingsView: View {
             }
 
             // 2. Внешний вид сообщений
-            Section("Внешний вид сообщений") {
+            Section("settings.personalization.messages_section") {
                 BubblePreviewView(cornerRadius: settings.bubbleCornerRadius)
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                     .listRowBackground(Color.clear)
 
                 HStack {
-                    Text("Закругление")
+                    Text("settings.personalization.bubble_radius")
                     Slider(
                         value: Binding(
                             get: { Double(settings.bubbleCornerRadius) },
@@ -97,12 +97,12 @@ struct PersonalizationSettingsView: View {
             }
 
             // 3. Фон чата
-            Section("Фон чата") {
-                Toggle("Размытие", isOn: $settings.backgroundBlurEnabled)
+            Section("settings.personalization.background_section") {
+                Toggle("settings.personalization.blur_toggle", isOn: $settings.backgroundBlurEnabled)
 
                 if settings.backgroundBlurEnabled {
                     HStack {
-                        Text("Радиус размытия")
+                        Text("settings.personalization.blur_radius")
                         Slider(
                             value: Binding(
                                 get: { Double(settings.backgroundBlurRadius) },
@@ -119,7 +119,7 @@ struct PersonalizationSettingsView: View {
                 }
 
                 HStack {
-                    Text("Затемнение")
+                    Text("settings.personalization.dim")
                     Slider(
                         value: Binding(
                             get: { Double(settings.backgroundDimPercent) },
@@ -136,9 +136,9 @@ struct PersonalizationSettingsView: View {
             }
 
             // 4. Папки чатов
-            Section("Папки чатов") {
-                Toggle("Компактные папки", isOn: $compactFolders)
-                Toggle("Не показывать чаты папок во «Все чаты»", isOn: $excludeFolderChatsFromAll)
+            Section("settings.personalization.folders_section") {
+                Toggle("settings.personalization.folders_compact", isOn: $compactFolders)
+                Toggle("settings.personalization.folders_exclude_from_all", isOn: $excludeFolderChatsFromAll)
             }
 
             // 5. Изображения фона
@@ -155,10 +155,10 @@ struct PersonalizationSettingsView: View {
                 }
             } header: {
                 HStack {
-                    Text("Изображения фона")
+                    Text("settings.personalization.backgrounds_header")
                     Spacer()
                     if vm.deleteMode {
-                        Button("Готово") { vm.deleteMode = false }
+                        Button("common.done") { vm.deleteMode = false }
                             .buttonStyle(.borderless)
                             .font(.callout)
                             .textCase(.none)

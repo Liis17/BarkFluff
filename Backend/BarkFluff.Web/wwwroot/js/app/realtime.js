@@ -8,7 +8,9 @@
  *  - Exponential backoff reconnection per stream
  *  - Page-visibility–aware reconnection (streams restore when tab becomes visible)
  *  - Connection-status tracking with 'connection_status' event
- *  - Keep-alive ping (SetOnlineStatus every 30 s)
+ *  - 'resync' event on any stream RE-open (backoff/watchdog/age-timer): сигнал UI
+ *    дозагрузить пропущенное за время разрыва (server-streaming не реплеит)
+ *  - Keep-alive ping (SetOnlineStatus every 3 s)
  *
  * Requires: BF.clients, BF.metadata, BF.api, window.proto
  * Exposes: BF.realtime
@@ -86,6 +88,17 @@
     var deletedConnected = false;
     var _lastEmittedStatus = null;
 
+    // Был ли поток уже открыт хотя бы раз. Нужно, чтобы отличить первое открытие
+    // (startAll) от ПЕРЕоткрытия (backoff/watchdog/age-timer/visibility). Любой реконнект
+    // означает потенциальный разрыв, за время которого мог потеряться live-event
+    // (server-streaming не реплеит пропущенное) — поэтому шлём 'resync', чтобы UI
+    // дозагрузил актуальное состояние. Без этого пропавшие сообщения видны только
+    // после ручного переоткрытия чата.
+    var updatesEverOpened = false;
+    var readEverOpened = false;
+    var editedEverOpened = false;
+    var deletedEverOpened = false;
+
     // Whether startAll() was called (used for visibility-based reconnection)
     var _started = false;
 
@@ -146,6 +159,8 @@
     function subscribeNewMessages(forceRefresh) {
         getStreamToken(forceRefresh).then(function (token) {
             if (!token) { handleNoToken(); return; }
+            if (updatesEverOpened && _started) emit('resync', { source: 'new_messages' });
+            updatesEverOpened = true;
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeNewMessagesRequest();
@@ -214,6 +229,8 @@
     function subscribeMessagesRead(forceRefresh) {
         getStreamToken(forceRefresh).then(function (token) {
             if (!token) { handleNoToken(); return; }
+            if (readEverOpened && _started) emit('resync', { source: 'messages_read' });
+            readEverOpened = true;
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesReadRequest();
@@ -278,6 +295,8 @@
     function subscribeMessagesEdited(forceRefresh) {
         getStreamToken(forceRefresh).then(function (token) {
             if (!token) { handleNoToken(); return; }
+            if (editedEverOpened && _started) emit('resync', { source: 'messages_edited' });
+            editedEverOpened = true;
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesEditedRequest();
@@ -344,6 +363,8 @@
     function subscribeMessagesDeleted(forceRefresh) {
         getStreamToken(forceRefresh).then(function (token) {
             if (!token) { handleNoToken(); return; }
+            if (deletedEverOpened && _started) emit('resync', { source: 'messages_deleted' });
+            deletedEverOpened = true;
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesDeletedRequest();
@@ -779,6 +800,10 @@
         readConnected = false;
         editedConnected = false;
         deletedConnected = false;
+        updatesEverOpened = false;
+        readEverOpened = false;
+        editedEverOpened = false;
+        deletedEverOpened = false;
         _lastEmittedStatus = null;
         currentOnlineUserIds = [];
         stopKeepAlive();

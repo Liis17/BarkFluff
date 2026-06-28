@@ -8,6 +8,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import kotlinx.coroutines.launch
 
 /**
@@ -43,6 +44,12 @@ class SplashActivity : AppCompatActivity() {
             
             if (!hasServerConfig) {
                 // Нет настроек сервера -> WelcomeActivity
+                navigateToWelcome()
+                return@launch
+            }
+
+            refreshServerInfoFromBeacon(grpcManager, globalParam)
+            if (globalParam.socketIdentity.isBlank()) {
                 navigateToWelcome()
                 return@launch
             }
@@ -85,8 +92,7 @@ class SplashActivity : AppCompatActivity() {
      * Проверяет, есть ли настройки сервера (адрес beacon)
      */
     private fun hasServerConfiguration(): Boolean {
-        return globalParam.socketBeacon.isNotBlank() &&
-               globalParam.socketIdentity.isNotBlank()
+        return globalParam.socketBeacon.isNotBlank()
     }
 
     /**

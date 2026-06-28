@@ -23,11 +23,11 @@ struct FastAuthApprovalView: View {
                 .foregroundStyle(Color.accentColor)
 
             VStack(spacing: 8) {
-                Text("Запрос на вход")
+                Text("fast_auth.approval.title")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("Кто-то пытается войти в ваш аккаунт")
+                Text("fast_auth.approval.warning")
                     .foregroundStyle(.secondary)
             }
 
@@ -36,7 +36,7 @@ struct FastAuthApprovalView: View {
                 HStack {
                     Image(systemName: "desktopcomputer")
                         .frame(width: 24)
-                    Text("Устройство:")
+                    Text("fast_auth.approval.device_label")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(request.deviceName)
@@ -46,7 +46,7 @@ struct FastAuthApprovalView: View {
                 HStack {
                     Image(systemName: "network")
                         .frame(width: 24)
-                    Text("Тип:")
+                    Text("fast_auth.approval.type_label")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(request.deviceType)
@@ -56,7 +56,7 @@ struct FastAuthApprovalView: View {
                 HStack {
                     Image(systemName: "clock")
                         .frame(width: 24)
-                    Text("Время:")
+                    Text("fast_auth.approval.time_label")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(request.requestedAt, style: .time)
@@ -73,12 +73,12 @@ struct FastAuthApprovalView: View {
                     onApprove?()
                     dismiss()
                 } label: {
-                    Text("Разрешить вход")
+                    Text("fast_auth.approval.accept")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("Отклонить", role: .destructive) {
+                Button("fast_auth.approval.reject", role: .destructive) {
                     onReject?()
                     dismiss()
                 }

@@ -14,6 +14,11 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.Property(m => m.IsDeleted).HasDefaultValue(false);
         builder.Property(m => m.IsEdited).HasDefaultValue(false);
 
+        // Все выборки сообщений фильтруют по ChatId и сортируют по SentAt
+        // (история чата, последнее сообщение, счётчик непрочитанных).
+        // Без этого индекса PostgreSQL делает sequential scan всей таблицы Messages.
+        builder.HasIndex(m => new { m.ChatId, m.SentAt });
+
         builder.OwnsOne(m => m.Content, contentBuilder =>
         {
             // Настраиваем свойства MessageContent

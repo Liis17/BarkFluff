@@ -32,9 +32,9 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
     public async Task<AddDraftUserResponse> Handle(AddDraftUserCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Создание черновика пользователя. Username: {Username}, Email: {Email}, Имя: {FirstName} {LastName}",
+            "Создание черновика пользователя. Username: {Username}, Email: {MaskedEmail}, Имя: {FirstName} {LastName}",
             request.Username,
-            request.Email,
+            MaskEmail(request.Email),
             request.FirstName,
             request.LastName
         );
@@ -44,7 +44,13 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
         var firstName = request.FirstName?.Trim();
         var lastName = request.LastName?.Trim();
 
-        _logger.LogDebug("Проверка существования email: {Email}", email);
+        if (!UsernameFormatValidator.IsValid(username))
+        {
+            _logger.LogWarning("Username {Username} имеет недопустимый формат", username);
+            throw new UsernameInvalidFormatException();
+        }
+
+        _logger.LogDebug("Проверка существования email: {MaskedEmail}", MaskEmail(email));
 
         var userByEmail = await _usersStorage.GetUserByEmail(email);
 
@@ -54,14 +60,14 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
             if (userByEmail.IsDraft)
             {
                 _logger.LogWarning(
-                    "Email {Email} уже занят черновиком пользователя {UserId}",
-                    request.Email,
+                    "Email {MaskedEmail} уже занят черновиком пользователя {UserId}",
+                    MaskEmail(request.Email),
                     userByEmail.Id
                 );
                 throw new UserIsDraftException();
             }
 
-            _logger.LogWarning("Email {Email} уже существует у пользователя {UserId}", email, userByEmail.Id);
+            _logger.LogWarning("Email {MaskedEmail} уже существует у пользователя {UserId}", MaskEmail(email), userByEmail.Id);
             throw new EmailExistException();
         }
 
@@ -102,12 +108,21 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
         var user = await _usersStorage.CreateUser(username, firstName, lastName, email);
 
         _logger.LogInformation(
-            "Черновик пользователя создан. UserId: {UserId}, Username: {Username}, Email: {Email}",
+            "Черновик пользователя создан. UserId: {UserId}, Username: {Username}, Email: {MaskedEmail}",
             user.Id,
             username,
-            email
+            MaskEmail(email)
         );
 
         return new AddDraftUserResponse { UserId = user.Id };
+    }
+
+    private static string MaskEmail(string? email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return "***";
+
+        var at = email.IndexOf('@');
+        return at > 1 ? email[..2] + "***" + email[at..] : "***";
     }
 }

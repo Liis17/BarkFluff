@@ -77,7 +77,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                     var fileInfo = new FileInfo(fileToUpload);
                     var fileSize = fileInfo.Length;
-                    System.Diagnostics.Debug.WriteLine($"WebApi: Uploading file: {Path.GetFileName(fileToUpload)}, Size: {fileSize:N0} bytes ({fileSize / 1024.0 / 1024.0:F2} MB), Type: {fileType}");
+                    System.Diagnostics.Debug.WriteLine($"WebApi: Uploading file, Size: {fileSize:N0} bytes ({fileSize / 1024.0 / 1024.0:F2} MB), Type: {fileType}");
 
                     try
                     {
@@ -91,9 +91,9 @@ namespace BarkFluff.WebApi.Core.Managers
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Storage check failed, proceeding with upload: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine("WebApi: Storage check failed, proceeding with upload");
                     }
                     progress?.Report(0.1);
 
@@ -113,9 +113,9 @@ namespace BarkFluff.WebApi.Core.Managers
                             return (new ErrorReturner(true), hashCheckResponse.FileId);
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Hash check failed, proceeding with upload: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine("WebApi: Hash check failed, proceeding with upload");
                     }
 
                     progress?.Report(0.2);
@@ -124,7 +124,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     {
                         FileType = fileType
                     });
-                    System.Diagnostics.Debug.WriteLine($"WebApi: Upload URL obtained: {getLinkUpload.Url}");
+                    System.Diagnostics.Debug.WriteLine("WebApi: Upload URL obtained");
                     progress?.Report(0.3);
 
                     await using var fileStream = File.OpenRead(fileToUpload);
@@ -150,9 +150,8 @@ namespace BarkFluff.WebApi.Core.Managers
 
                     streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
-                    var sanitizedFileName = Path.GetFileName(fileToUpload);
-                    sanitizedFileName = System.Text.RegularExpressions.Regex.Replace(sanitizedFileName, @"[^\w\.-]", "_");
-                    System.Diagnostics.Debug.WriteLine($"WebApi: Original filename: {Path.GetFileName(filePath)}, Sanitized: {sanitizedFileName}");
+                    var sanitizedFileName = SanitizeFileName(Path.GetFileName(fileToUpload), extension);
+                    System.Diagnostics.Debug.WriteLine("WebApi: Filename sanitized for upload");
 
                     formData.Add(streamContent, "file", sanitizedFileName);
 
@@ -161,13 +160,10 @@ namespace BarkFluff.WebApi.Core.Managers
                     var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
                     if (!response.IsSuccessStatusCode)
                     {
-                        var errorBody = await response.Content.ReadAsStringAsync();
                         System.Diagnostics.Debug.WriteLine($"WebApi: Upload failed with status {response.StatusCode}");
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Server error message: {errorBody}");
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Request details - File size: {fileSize} bytes, Content-Type: {contentType}, Filename: {sanitizedFileName}");
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Request Content-Type: {formData.Headers.ContentType}");
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Request details - File size: {fileSize} bytes, Content-Type: {contentType}");
 
-                        return (new ErrorReturner(false, $"Ошибка загрузки файла: {response.StatusCode} - {errorBody}"), null);
+                        return (new ErrorReturner(false, $"Ошибка загрузки файла: {response.StatusCode}"), null);
                     }
 
                     progress?.Report(1.0);
@@ -191,9 +187,9 @@ namespace BarkFluff.WebApi.Core.Managers
                     {
                         File.Delete(processedFilePath);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Failed to delete temp file: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine("WebApi: Failed to delete temp file");
                     }
                 }
             }
@@ -385,6 +381,41 @@ namespace BarkFluff.WebApi.Core.Managers
         private static bool HasValidFileUrls(Google.Protobuf.Collections.RepeatedField<Proto.Files.GetTempDownloadUrlResponse.Types.DownloadFileData>? fileUrls)
         {
             return fileUrls != null && fileUrls.Count > 0;
+        }
+
+        private const int MaxSanitizedFileNameLength = 100;
+
+        /// <summary>
+        /// Нормализует имя файла для отправки в form-data: убирает управляющие символы,
+        /// заменяет всё кроме [a-zA-Z0-9._-] на '_', обрезает длину. Если имя становится пустым —
+        /// генерирует фолбэк на основе расширения.
+        /// </summary>
+        private static string SanitizeFileName(string fileName, string extension)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return $"file{extension}";
+
+            var stripped = new System.Text.StringBuilder(fileName.Length);
+            foreach (var ch in fileName)
+            {
+                if (!char.IsControl(ch))
+                    stripped.Append(ch);
+            }
+
+            var cleaned = System.Text.RegularExpressions.Regex.Replace(stripped.ToString(), @"[^\w\.-]", "_");
+
+            if (cleaned.Length > MaxSanitizedFileNameLength)
+            {
+                var ext = Path.GetExtension(cleaned);
+                var nameOnly = Path.GetFileNameWithoutExtension(cleaned);
+                var allowedNameLength = Math.Max(1, MaxSanitizedFileNameLength - ext.Length);
+                cleaned = nameOnly.Substring(0, Math.Min(nameOnly.Length, allowedNameLength)) + ext;
+            }
+
+            if (string.IsNullOrWhiteSpace(cleaned) || cleaned.All(c => c == '_' || c == '.'))
+                return $"file{extension}";
+
+            return cleaned;
         }
     }
 }

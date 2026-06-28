@@ -8,6 +8,11 @@
 // For information on using the generated types, please see the documentation:
 //   https://github.com/apple/swift-protobuf/
 
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
 import SwiftProtobuf
 
 // If the compiler emits an error on this type, it is because this file
@@ -18,6 +23,55 @@ import SwiftProtobuf
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
   struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
   typealias Version = _2
+}
+
+/// Итог звонка для системного сообщения. Текст форматирует Messages.
+public enum Barkfluff_Messages_CallSystemResult: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unknown // = 0
+
+  /// состоялся (с длительностью)
+  case ended // = 1
+
+  /// пропущен
+  case missed // = 2
+
+  /// отклонён
+  case rejected // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unknown
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unknown
+    case 1: self = .ended
+    case 2: self = .missed
+    case 3: self = .rejected
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unknown: return 0
+    case .ended: return 1
+    case .missed: return 2
+    case .rejected: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Barkfluff_Messages_CallSystemResult] = [
+    .unknown,
+    .ended,
+    .missed,
+    .rejected,
+  ]
+
 }
 
 public struct Barkfluff_Messages_EditMessageRequest: Sendable {
@@ -78,6 +132,137 @@ public struct Barkfluff_Messages_DeleteMessageResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_PinMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор чата
+  public var chatID: String = String()
+
+  /// Идентификатор закрепляемого сообщения
+  public var messageID: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_PinMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Информация о закреплённом сообщении
+  public var pinned: Barkfluff_Shared_PinnedMessageInfo {
+    get {_pinned ?? Barkfluff_Shared_PinnedMessageInfo()}
+    set {_pinned = newValue}
+  }
+  /// Returns true if `pinned` has been explicitly set.
+  public var hasPinned: Bool {self._pinned != nil}
+  /// Clears the value of `pinned`. Subsequent reads from it will return its default value.
+  public mutating func clearPinned() {self._pinned = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _pinned: Barkfluff_Shared_PinnedMessageInfo? = nil
+}
+
+public struct Barkfluff_Messages_UnpinMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор чата
+  public var chatID: String = String()
+
+  /// Идентификатор откреплямого сообщения
+  public var messageID: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_UnpinMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_ListPinnedMessagesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор чата
+  public var chatID: String = String()
+
+  /// Пагинация
+  public var pagination: Barkfluff_Shared_PageRequest {
+    get {_pagination ?? Barkfluff_Shared_PageRequest()}
+    set {_pagination = newValue}
+  }
+  /// Returns true if `pagination` has been explicitly set.
+  public var hasPagination: Bool {self._pagination != nil}
+  /// Clears the value of `pagination`. Subsequent reads from it will return its default value.
+  public mutating func clearPagination() {self._pagination = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _pagination: Barkfluff_Shared_PageRequest? = nil
+}
+
+public struct Barkfluff_Messages_ListPinnedMessagesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Закреплённые сообщения
+  public var pinned: [Barkfluff_Shared_PinnedMessageInfo] = []
+
+  /// Общее количество закреплённых сообщений в чате
+  public var totalCount: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_UnpinAllRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор чата
+  public var chatID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_UnpinAllResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Сколько сообщений было откреплено
+  public var unpinnedCount: Int32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -448,6 +633,24 @@ public struct Barkfluff_Messages_Chat: @unchecked Sendable {
     set {_uniqueStorage()._firstUnreadMessageID = newValue}
   }
 
+  /// Тип чата (REGULAR/PRIVATE; SECRET через ListChats не возвращается)
+  public var chatType: Barkfluff_Shared_ChatType {
+    get {_storage._chatType}
+    set {_uniqueStorage()._chatType = newValue}
+  }
+
+  /// Соль для Argon2id (только для PRIVATE; пусто для REGULAR)
+  public var kdfSalt: Data {
+    get {_storage._kdfSalt}
+    set {_uniqueStorage()._kdfSalt = newValue}
+  }
+
+  /// Верификатор passphrase, HMAC от константы (только для PRIVATE; пусто для REGULAR)
+  public var passphraseVerifier: Data {
+    get {_storage._passphraseVerifier}
+    set {_uniqueStorage()._passphraseVerifier = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -666,6 +869,411 @@ public struct Barkfluff_Messages_GetChatInfoResponse: Sendable {
   public init() {}
 }
 
+public struct Barkfluff_Messages_CreatePrivateChatRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID собеседника
+  public var peerUserID: Int64 = 0
+
+  /// Соль Argon2id (32 байта, генерируется создателем)
+  public var kdfSalt: Data = Data()
+
+  /// Верификатор passphrase: HMAC-SHA256(derived_key, "BARKFLUFF_PRIVATE_CHAT_VERIFIER")
+  public var passphraseVerifier: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_CreatePrivateChatResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Созданный чат (с chat_type=PRIVATE; собеседник пока не присоединён)
+  public var chat: Barkfluff_Messages_Chat {
+    get {_chat ?? Barkfluff_Messages_Chat()}
+    set {_chat = newValue}
+  }
+  /// Returns true if `chat` has been explicitly set.
+  public var hasChat: Bool {self._chat != nil}
+  /// Clears the value of `chat`. Subsequent reads from it will return its default value.
+  public mutating func clearChat() {self._chat = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _chat: Barkfluff_Messages_Chat? = nil
+}
+
+public struct Barkfluff_Messages_AcceptPrivateChatRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID приватного чата, в который пользователь приглашён
+  public var chatID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_AcceptPrivateChatResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Чат с присоединившимся участником
+  public var chat: Barkfluff_Messages_Chat {
+    get {_chat ?? Barkfluff_Messages_Chat()}
+    set {_chat = newValue}
+  }
+  /// Returns true if `chat` has been explicitly set.
+  public var hasChat: Bool {self._chat != nil}
+  /// Clears the value of `chat`. Subsequent reads from it will return its default value.
+  public mutating func clearChat() {self._chat = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _chat: Barkfluff_Messages_Chat? = nil
+}
+
+public struct Barkfluff_Messages_RejectPrivateChatRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID приватного чата
+  public var chatID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_RejectPrivateChatResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_SendPrivateMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID приватного чата
+  public var chatID: String = String()
+
+  /// Шифротекст AES-256-GCM
+  public var ciphertext: Data = Data()
+
+  /// Уникальный nonce (12 байт), генерируется отправителем
+  public var nonce: Data = Data()
+
+  /// AAD для AES-GCM (привязка к chat_id и т.п.)
+  public var associatedData: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_SendPrivateMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Сохранённое сообщение
+  public var message: Barkfluff_Shared_EncryptedMessage {
+    get {_message ?? Barkfluff_Shared_EncryptedMessage()}
+    set {_message = newValue}
+  }
+  /// Returns true if `message` has been explicitly set.
+  public var hasMessage: Bool {self._message != nil}
+  /// Clears the value of `message`. Subsequent reads from it will return its default value.
+  public mutating func clearMessage() {self._message = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _message: Barkfluff_Shared_EncryptedMessage? = nil
+}
+
+public struct Barkfluff_Messages_ListPrivateMessagesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID приватного чата
+  public var chatID: String = String()
+
+  /// ID опорного сообщения
+  public var fromMessageID: Int64 = 0
+
+  /// Сколько сообщений до опорного (макс 50)
+  public var offsetBefore: Int32 = 0
+
+  /// Сколько сообщений после опорного (макс 50)
+  public var offsetAfter: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_ListPrivateMessagesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Шифрованные сообщения
+  public var messages: [Barkfluff_Shared_EncryptedMessage] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_EditPrivateMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID шифрованного сообщения
+  public var messageID: Int64 = 0
+
+  /// Новый шифротекст
+  public var ciphertext: Data = Data()
+
+  /// Новый nonce (обязательно отличный от старого)
+  public var nonce: Data = Data()
+
+  /// AAD
+  public var associatedData: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_EditPrivateMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Обновлённое сообщение
+  public var message: Barkfluff_Shared_EncryptedMessage {
+    get {_message ?? Barkfluff_Shared_EncryptedMessage()}
+    set {_message = newValue}
+  }
+  /// Returns true if `message` has been explicitly set.
+  public var hasMessage: Bool {self._message != nil}
+  /// Clears the value of `message`. Subsequent reads from it will return its default value.
+  public mutating func clearMessage() {self._message = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _message: Barkfluff_Shared_EncryptedMessage? = nil
+}
+
+public struct Barkfluff_Messages_DeletePrivateMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID шифрованного сообщения
+  public var messageID: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_DeletePrivateMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_SendSecretChatInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID пользователя-получателя
+  public var recipientUserID: Int64 = 0
+
+  /// ID устройства-получателя (выбирается отправителем из ListPeerDevices)
+  public var recipientDeviceID: String = String()
+
+  /// libsignal PreKeySignalMessage (opaque)
+  public var initialEnvelope: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_SendSecretChatInviteResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID инвайта (для AcceptSecretChatInvite)
+  public var inviteID: String = String()
+
+  /// Когда инвайт удалится из буфера (24ч от sent_at)
+  public var inviteExpiresAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_inviteExpiresAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_inviteExpiresAt = newValue}
+  }
+  /// Returns true if `inviteExpiresAt` has been explicitly set.
+  public var hasInviteExpiresAt: Bool {self._inviteExpiresAt != nil}
+  /// Clears the value of `inviteExpiresAt`. Subsequent reads from it will return its default value.
+  public mutating func clearInviteExpiresAt() {self._inviteExpiresAt = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _inviteExpiresAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+public struct Barkfluff_Messages_AcceptSecretChatInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID инвайта
+  public var inviteID: String = String()
+
+  /// Опционально: первое ответное сообщение (libsignal SignalMessage). Пусто = только подтверждение.
+  public var responseEnvelope: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_AcceptSecretChatInviteResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_RejectSecretChatInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID инвайта
+  public var inviteID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_RejectSecretChatInviteResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_SendSecretMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID пользователя-получателя (для маршрутизации в Updates)
+  public var recipientUserID: Int64 = 0
+
+  /// ID устройства-получателя
+  public var recipientDeviceID: String = String()
+
+  /// libsignal SignalMessage (opaque)
+  public var envelope: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_SendSecretMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID сообщения (для Ack клиентом-получателем)
+  public var messageID: String = String()
+
+  /// Когда сообщение удалится из буфера (24ч)
+  public var expiresAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_expiresAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_expiresAt = newValue}
+  }
+  /// Returns true if `expiresAt` has been explicitly set.
+  public var hasExpiresAt: Bool {self._expiresAt != nil}
+  /// Clears the value of `expiresAt`. Subsequent reads from it will return its default value.
+  public mutating func clearExpiresAt() {self._expiresAt = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _expiresAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+public struct Barkfluff_Messages_AckSecretMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ID сообщения
+  public var messageID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_AckSecretMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct Barkfluff_Messages_GetUserAllMessagesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -791,9 +1399,144 @@ public struct Barkfluff_Messages_ExportChat: Sendable {
   public init() {}
 }
 
+public struct Barkfluff_Messages_CheckChatMembershipRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// проверяемый пользователь
+  public var userID: Int64 = 0
+
+  /// идентификаторы чатов (Guid-строки)
+  public var chatIds: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_CheckChatMembershipResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// подмножество chat_ids, где пользователь состоит
+  public var memberChatIds: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_GetChatMemberIdsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// идентификатор чата (Guid-строка)
+  public var chatID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_GetChatMemberIdsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// идентификаторы участников чата
+  public var userIds: [Int64] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Цель личного звонка (системное сообщение пишется в личный чат двух пользователей).
+public struct Barkfluff_Messages_PersonCallTarget: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var callerUserID: Int64 = 0
+
+  public var calleeUserID: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_PostCallSystemMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Ровно одно из двух: групповой чат (chat_id) или личный звонок (person).
+  public var target: Barkfluff_Messages_PostCallSystemMessageRequest.OneOf_Target? = nil
+
+  /// групповой чат (Guid-строка)
+  public var chatID: String {
+    get {
+      if case .chatID(let v)? = target {return v}
+      return String()
+    }
+    set {target = .chatID(newValue)}
+  }
+
+  /// личный звонок
+  public var person: Barkfluff_Messages_PersonCallTarget {
+    get {
+      if case .person(let v)? = target {return v}
+      return Barkfluff_Messages_PersonCallTarget()
+    }
+    set {target = .person(newValue)}
+  }
+
+  /// от кого системное сообщение (инициатор звонка)
+  public var senderUserID: Int64 = 0
+
+  public var result: Barkfluff_Messages_CallSystemResult = .unknown
+
+  /// длительность разговора (0 для несостоявшихся)
+  public var durationSeconds: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  /// Ровно одно из двух: групповой чат (chat_id) или личный звонок (person).
+  public enum OneOf_Target: Equatable, Sendable {
+    /// групповой чат (Guid-строка)
+    case chatID(String)
+    /// личный звонок
+    case person(Barkfluff_Messages_PersonCallTarget)
+
+  }
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_PostCallSystemMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// false, если личного чата ещё нет (сообщение не записано)
+  public var posted: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "barkfluff.messages"
+
+extension Barkfluff_Messages_CallSystemResult: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CALL_SYSTEM_RESULT_UNKNOWN\0\u{1}CALL_SYSTEM_RESULT_ENDED\0\u{1}CALL_SYSTEM_RESULT_MISSED\0\u{1}CALL_SYSTEM_RESULT_REJECTED\0")
+}
 
 extension Barkfluff_Messages_EditMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EditMessageRequest"
@@ -913,6 +1656,263 @@ extension Barkfluff_Messages_DeleteMessageResponse: SwiftProtobuf.Message, Swift
   }
 
   public static func ==(lhs: Barkfluff_Messages_DeleteMessageResponse, rhs: Barkfluff_Messages_DeleteMessageResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_PinMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PinMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{3}message_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    if self.messageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_PinMessageRequest, rhs: Barkfluff_Messages_PinMessageRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_PinMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PinMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pinned\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._pinned) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._pinned {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_PinMessageResponse, rhs: Barkfluff_Messages_PinMessageResponse) -> Bool {
+    if lhs._pinned != rhs._pinned {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_UnpinMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UnpinMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{3}message_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    if self.messageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_UnpinMessageRequest, rhs: Barkfluff_Messages_UnpinMessageRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_UnpinMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UnpinMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_UnpinMessageResponse, rhs: Barkfluff_Messages_UnpinMessageResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_ListPinnedMessagesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListPinnedMessagesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{1}pagination\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._pagination) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    try { if let v = self._pagination {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_ListPinnedMessagesRequest, rhs: Barkfluff_Messages_ListPinnedMessagesRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs._pagination != rhs._pagination {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_ListPinnedMessagesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListPinnedMessagesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pinned\0\u{3}total_count\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.pinned) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.totalCount) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.pinned.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.pinned, fieldNumber: 1)
+    }
+    if self.totalCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.totalCount, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_ListPinnedMessagesResponse, rhs: Barkfluff_Messages_ListPinnedMessagesResponse) -> Bool {
+    if lhs.pinned != rhs.pinned {return false}
+    if lhs.totalCount != rhs.totalCount {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_UnpinAllRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UnpinAllRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_UnpinAllRequest, rhs: Barkfluff_Messages_UnpinAllRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_UnpinAllResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UnpinAllResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}unpinned_count\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.unpinnedCount) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.unpinnedCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.unpinnedCount, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_UnpinAllResponse, rhs: Barkfluff_Messages_UnpinAllResponse) -> Bool {
+    if lhs.unpinnedCount != rhs.unpinnedCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1460,7 +2460,7 @@ extension Barkfluff_Messages_ListChatsResponse: SwiftProtobuf.Message, SwiftProt
 
 extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Chat"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}picture\0\u{3}is_group_chat\0\u{3}last_message\0\u{1}members\0\u{3}count_unread\0\u{3}first_unread_message_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}picture\0\u{3}is_group_chat\0\u{3}last_message\0\u{1}members\0\u{3}count_unread\0\u{3}first_unread_message_id\0\u{3}chat_type\0\u{3}kdf_salt\0\u{3}passphrase_verifier\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -1471,6 +2471,9 @@ extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _members: [Barkfluff_Messages_ChatMember] = []
     var _countUnread: Int64 = 0
     var _firstUnreadMessageID: Int64 = 0
+    var _chatType: Barkfluff_Shared_ChatType = .regular
+    var _kdfSalt: Data = Data()
+    var _passphraseVerifier: Data = Data()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1489,6 +2492,9 @@ extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._Message
       _members = source._members
       _countUnread = source._countUnread
       _firstUnreadMessageID = source._firstUnreadMessageID
+      _chatType = source._chatType
+      _kdfSalt = source._kdfSalt
+      _passphraseVerifier = source._passphraseVerifier
     }
   }
 
@@ -1515,6 +2521,9 @@ extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 6: try { try decoder.decodeRepeatedMessageField(value: &_storage._members) }()
         case 7: try { try decoder.decodeSingularInt64Field(value: &_storage._countUnread) }()
         case 8: try { try decoder.decodeSingularInt64Field(value: &_storage._firstUnreadMessageID) }()
+        case 9: try { try decoder.decodeSingularEnumField(value: &_storage._chatType) }()
+        case 10: try { try decoder.decodeSingularBytesField(value: &_storage._kdfSalt) }()
+        case 11: try { try decoder.decodeSingularBytesField(value: &_storage._passphraseVerifier) }()
         default: break
         }
       }
@@ -1551,6 +2560,15 @@ extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._Message
       if _storage._firstUnreadMessageID != 0 {
         try visitor.visitSingularInt64Field(value: _storage._firstUnreadMessageID, fieldNumber: 8)
       }
+      if _storage._chatType != .regular {
+        try visitor.visitSingularEnumField(value: _storage._chatType, fieldNumber: 9)
+      }
+      if !_storage._kdfSalt.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._kdfSalt, fieldNumber: 10)
+      }
+      if !_storage._passphraseVerifier.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._passphraseVerifier, fieldNumber: 11)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1568,6 +2586,9 @@ extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._members != rhs_storage._members {return false}
         if _storage._countUnread != rhs_storage._countUnread {return false}
         if _storage._firstUnreadMessageID != rhs_storage._firstUnreadMessageID {return false}
+        if _storage._chatType != rhs_storage._chatType {return false}
+        if _storage._kdfSalt != rhs_storage._kdfSalt {return false}
+        if _storage._passphraseVerifier != rhs_storage._passphraseVerifier {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1988,6 +3009,785 @@ extension Barkfluff_Messages_GetChatInfoResponse: SwiftProtobuf.Message, SwiftPr
   }
 }
 
+extension Barkfluff_Messages_CreatePrivateChatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreatePrivateChatRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}peer_user_id\0\u{3}kdf_salt\0\u{3}passphrase_verifier\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.peerUserID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.kdfSalt) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.passphraseVerifier) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.peerUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.peerUserID, fieldNumber: 1)
+    }
+    if !self.kdfSalt.isEmpty {
+      try visitor.visitSingularBytesField(value: self.kdfSalt, fieldNumber: 2)
+    }
+    if !self.passphraseVerifier.isEmpty {
+      try visitor.visitSingularBytesField(value: self.passphraseVerifier, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_CreatePrivateChatRequest, rhs: Barkfluff_Messages_CreatePrivateChatRequest) -> Bool {
+    if lhs.peerUserID != rhs.peerUserID {return false}
+    if lhs.kdfSalt != rhs.kdfSalt {return false}
+    if lhs.passphraseVerifier != rhs.passphraseVerifier {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_CreatePrivateChatResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreatePrivateChatResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}chat\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._chat) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._chat {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_CreatePrivateChatResponse, rhs: Barkfluff_Messages_CreatePrivateChatResponse) -> Bool {
+    if lhs._chat != rhs._chat {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_AcceptPrivateChatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AcceptPrivateChatRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_AcceptPrivateChatRequest, rhs: Barkfluff_Messages_AcceptPrivateChatRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_AcceptPrivateChatResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AcceptPrivateChatResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}chat\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._chat) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._chat {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_AcceptPrivateChatResponse, rhs: Barkfluff_Messages_AcceptPrivateChatResponse) -> Bool {
+    if lhs._chat != rhs._chat {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_RejectPrivateChatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RejectPrivateChatRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_RejectPrivateChatRequest, rhs: Barkfluff_Messages_RejectPrivateChatRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_RejectPrivateChatResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RejectPrivateChatResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_RejectPrivateChatResponse, rhs: Barkfluff_Messages_RejectPrivateChatResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_SendPrivateMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SendPrivateMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{1}ciphertext\0\u{1}nonce\0\u{3}associated_data\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.ciphertext) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.nonce) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.associatedData) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    if !self.ciphertext.isEmpty {
+      try visitor.visitSingularBytesField(value: self.ciphertext, fieldNumber: 2)
+    }
+    if !self.nonce.isEmpty {
+      try visitor.visitSingularBytesField(value: self.nonce, fieldNumber: 3)
+    }
+    if !self.associatedData.isEmpty {
+      try visitor.visitSingularBytesField(value: self.associatedData, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_SendPrivateMessageRequest, rhs: Barkfluff_Messages_SendPrivateMessageRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.ciphertext != rhs.ciphertext {return false}
+    if lhs.nonce != rhs.nonce {return false}
+    if lhs.associatedData != rhs.associatedData {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_SendPrivateMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SendPrivateMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}message\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._message) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._message {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_SendPrivateMessageResponse, rhs: Barkfluff_Messages_SendPrivateMessageResponse) -> Bool {
+    if lhs._message != rhs._message {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_ListPrivateMessagesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListPrivateMessagesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{3}from_message_id\0\u{3}offset_before\0\u{3}offset_after\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.fromMessageID) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.offsetBefore) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.offsetAfter) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    if self.fromMessageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.fromMessageID, fieldNumber: 2)
+    }
+    if self.offsetBefore != 0 {
+      try visitor.visitSingularInt32Field(value: self.offsetBefore, fieldNumber: 3)
+    }
+    if self.offsetAfter != 0 {
+      try visitor.visitSingularInt32Field(value: self.offsetAfter, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_ListPrivateMessagesRequest, rhs: Barkfluff_Messages_ListPrivateMessagesRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.fromMessageID != rhs.fromMessageID {return false}
+    if lhs.offsetBefore != rhs.offsetBefore {return false}
+    if lhs.offsetAfter != rhs.offsetAfter {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_ListPrivateMessagesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListPrivateMessagesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}messages\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.messages) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.messages.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.messages, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_ListPrivateMessagesResponse, rhs: Barkfluff_Messages_ListPrivateMessagesResponse) -> Bool {
+    if lhs.messages != rhs.messages {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_EditPrivateMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EditPrivateMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0\u{1}ciphertext\0\u{1}nonce\0\u{3}associated_data\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.ciphertext) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.nonce) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.associatedData) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.messageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 1)
+    }
+    if !self.ciphertext.isEmpty {
+      try visitor.visitSingularBytesField(value: self.ciphertext, fieldNumber: 2)
+    }
+    if !self.nonce.isEmpty {
+      try visitor.visitSingularBytesField(value: self.nonce, fieldNumber: 3)
+    }
+    if !self.associatedData.isEmpty {
+      try visitor.visitSingularBytesField(value: self.associatedData, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_EditPrivateMessageRequest, rhs: Barkfluff_Messages_EditPrivateMessageRequest) -> Bool {
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.ciphertext != rhs.ciphertext {return false}
+    if lhs.nonce != rhs.nonce {return false}
+    if lhs.associatedData != rhs.associatedData {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_EditPrivateMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EditPrivateMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}message\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._message) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._message {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_EditPrivateMessageResponse, rhs: Barkfluff_Messages_EditPrivateMessageResponse) -> Bool {
+    if lhs._message != rhs._message {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_DeletePrivateMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeletePrivateMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.messageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_DeletePrivateMessageRequest, rhs: Barkfluff_Messages_DeletePrivateMessageRequest) -> Bool {
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_DeletePrivateMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeletePrivateMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_DeletePrivateMessageResponse, rhs: Barkfluff_Messages_DeletePrivateMessageResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_SendSecretChatInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SendSecretChatInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recipient_user_id\0\u{3}recipient_device_id\0\u{3}initial_envelope\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.recipientUserID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.recipientDeviceID) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.initialEnvelope) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.recipientUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.recipientUserID, fieldNumber: 1)
+    }
+    if !self.recipientDeviceID.isEmpty {
+      try visitor.visitSingularStringField(value: self.recipientDeviceID, fieldNumber: 2)
+    }
+    if !self.initialEnvelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.initialEnvelope, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_SendSecretChatInviteRequest, rhs: Barkfluff_Messages_SendSecretChatInviteRequest) -> Bool {
+    if lhs.recipientUserID != rhs.recipientUserID {return false}
+    if lhs.recipientDeviceID != rhs.recipientDeviceID {return false}
+    if lhs.initialEnvelope != rhs.initialEnvelope {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_SendSecretChatInviteResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SendSecretChatInviteResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}invite_id\0\u{3}invite_expires_at\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.inviteID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._inviteExpiresAt) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.inviteID.isEmpty {
+      try visitor.visitSingularStringField(value: self.inviteID, fieldNumber: 1)
+    }
+    try { if let v = self._inviteExpiresAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_SendSecretChatInviteResponse, rhs: Barkfluff_Messages_SendSecretChatInviteResponse) -> Bool {
+    if lhs.inviteID != rhs.inviteID {return false}
+    if lhs._inviteExpiresAt != rhs._inviteExpiresAt {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_AcceptSecretChatInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AcceptSecretChatInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}invite_id\0\u{3}response_envelope\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.inviteID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.responseEnvelope) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.inviteID.isEmpty {
+      try visitor.visitSingularStringField(value: self.inviteID, fieldNumber: 1)
+    }
+    if !self.responseEnvelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.responseEnvelope, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_AcceptSecretChatInviteRequest, rhs: Barkfluff_Messages_AcceptSecretChatInviteRequest) -> Bool {
+    if lhs.inviteID != rhs.inviteID {return false}
+    if lhs.responseEnvelope != rhs.responseEnvelope {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_AcceptSecretChatInviteResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AcceptSecretChatInviteResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_AcceptSecretChatInviteResponse, rhs: Barkfluff_Messages_AcceptSecretChatInviteResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_RejectSecretChatInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RejectSecretChatInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}invite_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.inviteID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.inviteID.isEmpty {
+      try visitor.visitSingularStringField(value: self.inviteID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_RejectSecretChatInviteRequest, rhs: Barkfluff_Messages_RejectSecretChatInviteRequest) -> Bool {
+    if lhs.inviteID != rhs.inviteID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_RejectSecretChatInviteResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RejectSecretChatInviteResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_RejectSecretChatInviteResponse, rhs: Barkfluff_Messages_RejectSecretChatInviteResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_SendSecretMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SendSecretMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recipient_user_id\0\u{3}recipient_device_id\0\u{1}envelope\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.recipientUserID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.recipientDeviceID) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.envelope) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.recipientUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.recipientUserID, fieldNumber: 1)
+    }
+    if !self.recipientDeviceID.isEmpty {
+      try visitor.visitSingularStringField(value: self.recipientDeviceID, fieldNumber: 2)
+    }
+    if !self.envelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.envelope, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_SendSecretMessageRequest, rhs: Barkfluff_Messages_SendSecretMessageRequest) -> Bool {
+    if lhs.recipientUserID != rhs.recipientUserID {return false}
+    if lhs.recipientDeviceID != rhs.recipientDeviceID {return false}
+    if lhs.envelope != rhs.envelope {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_SendSecretMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SendSecretMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0\u{3}expires_at\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.messageID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._expiresAt) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.messageID.isEmpty {
+      try visitor.visitSingularStringField(value: self.messageID, fieldNumber: 1)
+    }
+    try { if let v = self._expiresAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_SendSecretMessageResponse, rhs: Barkfluff_Messages_SendSecretMessageResponse) -> Bool {
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs._expiresAt != rhs._expiresAt {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_AckSecretMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AckSecretMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.messageID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.messageID.isEmpty {
+      try visitor.visitSingularStringField(value: self.messageID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_AckSecretMessageRequest, rhs: Barkfluff_Messages_AckSecretMessageRequest) -> Bool {
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_AckSecretMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AckSecretMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_AckSecretMessageResponse, rhs: Barkfluff_Messages_AckSecretMessageResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension Barkfluff_Messages_GetUserAllMessagesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetUserAllMessagesRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0")
@@ -2222,6 +4022,273 @@ extension Barkfluff_Messages_ExportChat: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.title != rhs.title {return false}
     if lhs.isGroupChat != rhs.isGroupChat {return false}
     if lhs.memberIds != rhs.memberIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_CheckChatMembershipRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckChatMembershipRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0\u{3}chat_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.userID) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.chatIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.userID != 0 {
+      try visitor.visitSingularInt64Field(value: self.userID, fieldNumber: 1)
+    }
+    if !self.chatIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.chatIds, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_CheckChatMembershipRequest, rhs: Barkfluff_Messages_CheckChatMembershipRequest) -> Bool {
+    if lhs.userID != rhs.userID {return false}
+    if lhs.chatIds != rhs.chatIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_CheckChatMembershipResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckChatMembershipResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}member_chat_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.memberChatIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.memberChatIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.memberChatIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_CheckChatMembershipResponse, rhs: Barkfluff_Messages_CheckChatMembershipResponse) -> Bool {
+    if lhs.memberChatIds != rhs.memberChatIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_GetChatMemberIdsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetChatMemberIdsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_GetChatMemberIdsRequest, rhs: Barkfluff_Messages_GetChatMemberIdsRequest) -> Bool {
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_GetChatMemberIdsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetChatMemberIdsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedInt64Field(value: &self.userIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.userIds.isEmpty {
+      try visitor.visitPackedInt64Field(value: self.userIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_GetChatMemberIdsResponse, rhs: Barkfluff_Messages_GetChatMemberIdsResponse) -> Bool {
+    if lhs.userIds != rhs.userIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_PersonCallTarget: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PersonCallTarget"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}caller_user_id\0\u{3}callee_user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.callerUserID) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.calleeUserID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.callerUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.callerUserID, fieldNumber: 1)
+    }
+    if self.calleeUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.calleeUserID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_PersonCallTarget, rhs: Barkfluff_Messages_PersonCallTarget) -> Bool {
+    if lhs.callerUserID != rhs.callerUserID {return false}
+    if lhs.calleeUserID != rhs.calleeUserID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_PostCallSystemMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PostCallSystemMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{1}person\0\u{3}sender_user_id\0\u{1}result\0\u{3}duration_seconds\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try {
+        var v: String?
+        try decoder.decodeSingularStringField(value: &v)
+        if let v = v {
+          if self.target != nil {try decoder.handleConflictingOneOf()}
+          self.target = .chatID(v)
+        }
+      }()
+      case 2: try {
+        var v: Barkfluff_Messages_PersonCallTarget?
+        var hadOneofValue = false
+        if let current = self.target {
+          hadOneofValue = true
+          if case .person(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.target = .person(v)
+        }
+      }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.senderUserID) }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.result) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.durationSeconds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    switch self.target {
+    case .chatID?: try {
+      guard case .chatID(let v)? = self.target else { preconditionFailure() }
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    }()
+    case .person?: try {
+      guard case .person(let v)? = self.target else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    }()
+    case nil: break
+    }
+    if self.senderUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.senderUserID, fieldNumber: 3)
+    }
+    if self.result != .unknown {
+      try visitor.visitSingularEnumField(value: self.result, fieldNumber: 4)
+    }
+    if self.durationSeconds != 0 {
+      try visitor.visitSingularInt64Field(value: self.durationSeconds, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_PostCallSystemMessageRequest, rhs: Barkfluff_Messages_PostCallSystemMessageRequest) -> Bool {
+    if lhs.target != rhs.target {return false}
+    if lhs.senderUserID != rhs.senderUserID {return false}
+    if lhs.result != rhs.result {return false}
+    if lhs.durationSeconds != rhs.durationSeconds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_PostCallSystemMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PostCallSystemMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}posted\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.posted) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.posted != false {
+      try visitor.visitSingularBoolField(value: self.posted, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_PostCallSystemMessageResponse, rhs: Barkfluff_Messages_PostCallSystemMessageResponse) -> Bool {
+    if lhs.posted != rhs.posted {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

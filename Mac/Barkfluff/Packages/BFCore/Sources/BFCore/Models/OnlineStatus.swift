@@ -20,50 +20,46 @@ public enum OnlineStatus: Sendable, Equatable, Hashable {
         return false
     }
 
-    /// Человекочитаемая строка для UI
-    public var displayText: String {
+    /// Человекочитаемая строка для UI (системная локаль).
+    public var displayText: String { displayText(in: .current) }
+
+    /// Человекочитаемая строка для UI с явной локалью (для реактивного UI).
+    public func displayText(in locale: Locale) -> String {
         switch self {
         case .online:
-            return "В сети"
+            return String(localized: "bfcore.online.online", bundle: .module, locale: locale)
         case .offline(let lastSeen):
-            guard let lastSeen else { return "Был(а) давно" }
-            return Self.formatLastSeen(lastSeen)
+            guard let lastSeen else {
+                return String(localized: "bfcore.online.last_seen_unknown", bundle: .module, locale: locale)
+            }
+            return Self.formatLastSeen(lastSeen, locale: locale)
         case .unknown:
             return ""
         }
     }
 
     /// Форматирование "Был(а) N минут назад" и т.д.
-    private static func formatLastSeen(_ date: Date) -> String {
+    private static func formatLastSeen(_ date: Date, locale: Locale) -> String {
         let now = Date()
         let interval = now.timeIntervalSince(date)
 
         if interval < 60 {
-            return "Был(а) только что"
+            return String(localized: "bfcore.online.last_seen_just_now", bundle: .module, locale: locale)
         } else if interval < 3600 {
             let minutes = Int(interval / 60)
-            let suffix = minutes == 1 ? "у" : (minutes < 5 ? "ы" : "")
-            return "Был(а) \(minutes) минут\(suffix) назад"
+            return String(localized: "bfcore.online.last_seen_minutes \(minutes)", bundle: .module, locale: locale)
         } else if interval < 86400 {
             let hours = Int(interval / 3600)
-            let suffix = hours == 1 ? "" : (hours < 5 ? "а" : "ов")
-            return "Был(а) \(hours) час\(suffix) назад"
+            return String(localized: "bfcore.online.last_seen_hours \(hours)", bundle: .module, locale: locale)
         } else if interval < 604800 {
             let days = Int(interval / 86400)
-            let suffix: String
-            if days == 1 {
-                suffix = "ень"
-            } else if days < 5 {
-                suffix = "ня"
-            } else {
-                suffix = "ней"
-            }
-            return "Был(а) \(days) д\(suffix) назад"
+            return String(localized: "bfcore.online.last_seen_days \(days)", bundle: .module, locale: locale)
         } else {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
             formatter.timeStyle = .short
-            return "Был(а) \(formatter.string(from: date))"
+            formatter.locale = locale
+            return String(localized: "bfcore.online.last_seen_date \(formatter.string(from: date))", bundle: .module, locale: locale)
         }
     }
 }

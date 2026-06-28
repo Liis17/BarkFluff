@@ -26,22 +26,22 @@ namespace BarkFluff.WebApi.Core.Managers
                 if (!createResult.IsSuccess || BeaconAC == null)
                     return (createResult.IsSuccess ? new ErrorReturner(false, "Beacon клиент не инициализирован") : createResult, null);
             }
-            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            try
             {
-                try
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var response = await BeaconAC!.GetServerInfoAsync(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
-                    return (new ErrorReturner(true), response);
-                }
-                catch (Grpc.Core.RpcException rpcEx)
-                {
-                    return (new ErrorReturner(false, $"Ошибка получения информации о сервере: {rpcEx.Status.StatusCode} {rpcEx.Status.Detail}"), null);
-                }
-                catch (Exception ex)
-                {
-                    return (new ErrorReturner(false, $"Ошибка получения информации о сервере: {ex.Message}"), null);
-                }
-            }, param);
+                    return ((ErrorReturner, BarkFluff.Proto.Beacon.GetServerInfoResponse?))(new ErrorReturner(true), response);
+                }, param);
+            }
+            catch (Grpc.Core.RpcException rpcEx)
+            {
+                return (new ErrorReturner(false, $"Ошибка получения информации о сервере: {rpcEx.Status.StatusCode} {rpcEx.Status.Detail}"), null);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка получения информации о сервере: {ex.Message}"), null);
+            }
         }
 
         /// <summary>

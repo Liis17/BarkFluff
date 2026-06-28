@@ -58,7 +58,7 @@ struct LoginView: View {
         VStack(spacing: 16) {
             // Логин
             VStack(alignment: .leading, spacing: 4) {
-                Text("Имя пользователя или email")
+                Text("auth.login.username_or_email")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -72,7 +72,7 @@ struct LoginView: View {
 
             // Пароль
             VStack(alignment: .leading, spacing: 4) {
-                Text("Пароль")
+                Text("auth.login.password")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -85,11 +85,11 @@ struct LoginView: View {
             // OTP (если нужен)
             if viewModel.needsOTP {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Код 2FA")
+                    Text("auth.login.otp")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
-                    TextField("000000", text: Bindable(viewModel).otpCode)
+                    TextField("auth.login.otp_placeholder", text: Bindable(viewModel).otpCode)
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.oneTimeCode)
                         .keyboardType(.numberPad)
@@ -114,7 +114,7 @@ struct LoginView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Text(viewModel.needsOTP ? "Подтвердить" : "Войти")
+                    Text(viewModel.needsOTP ? "auth.login.submit_otp" : "auth.login.submit")
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -126,7 +126,7 @@ struct LoginView: View {
                 Button {
                     viewModel.goToRegister()
                 } label: {
-                    Text("Создать аккаунт")
+                    Text("auth.login.create_account")
                         .fontWeight(.medium)
                 }
                 .buttonStyle(.bordered)
@@ -136,7 +136,7 @@ struct LoginView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "server.rack")
-                        Text("Выбрать сервер")
+                        Text("auth.login.choose_server")
                     }
                 }
                 .buttonStyle(.plain)

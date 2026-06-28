@@ -9,7 +9,7 @@
 
 | Файл | Класс | Описание |
 |------|-------|---------|
-| `Program.cs` | `Program` | Настройка хоста: gRPC, EF Core, XAuth, MassTransit, gRPC-клиент UsersServerApi, регистрация сервисов |
+| `Program.cs` | `Program` | Настройка хоста: gRPC, EF Core, XAuth, MassTransit, gRPC-клиенты UsersServerApi + MessagesServerApi (typing), регистрация сервисов |
 
 ---
 
@@ -47,6 +47,24 @@
 | `Features/ChangeUsersInSubscription/ChangeUsersInSubscriptionCommand.cs` | `ChangeUsersInSubscriptionCommand` | Команда обновления списка отслеживаемых userId без переоткрытия стрима |
 | `Features/ChangeUsersInSubscription/ChangeUsersInSubscriptionCommandHandler.cs` | `ChangeUsersInSubscriptionCommandHandler` | Обновляет `TrackedUserIds` в `OnlineStatusSubscriptionsManager`. Применяет `OnlineVisibilityFilter` |
 
+### SetTypingStatus
+| Файл | Класс | Описание |
+|------|-------|---------|
+| `Features/SetTypingStatus/SetTypingStatusCommand.cs` | `SetTypingStatusCommand` | Команда heartbeat набора: `ChatId` (string), `Action` (userId из gRPC-контекста) |
+| `Features/SetTypingStatus/SetTypingStatusCommandHandler.cs` | `SetTypingStatusCommandHandler` | Проверяет членство отправителя (`ChatMembershipFilter`); не-участник → отброс. UNKNOWN-action → TYPING, ретранслирует через `TypingNotifier`. Без БД |
+
+### SubscribeToTyping
+| Файл | Класс | Описание |
+|------|-------|---------|
+| `Features/SubscribeToTyping/SubscribeToTypingQuery.cs` | `SubscribeToTypingQuery` | Параметры стрим-подписки: `ChatIds` (List<string>), `ResponseStream`, `CancellationToken` |
+| `Features/SubscribeToTyping/SubscribeToTypingQueryHandler.cs` | `SubscribeToTypingQueryHandler` | **Scoped, не через MediatR**. Фильтрует `chat_ids` через `ChatMembershipFilter`, регистрирует подписку в `TypingSubscriptionsManager`, блокирует до отмены, чистит при отключении |
+
+### ChangeChatsInTypingSubscription
+| Файл | Класс | Описание |
+|------|-------|---------|
+| `Features/ChangeChatsInTypingSubscription/ChangeChatsInTypingSubscriptionCommand.cs` | `ChangeChatsInTypingSubscriptionCommand` | Команда обновления списка отслеживаемых chatId (List<string>) без переоткрытия стрима |
+| `Features/ChangeChatsInTypingSubscription/ChangeChatsInTypingSubscriptionCommandHandler.cs` | `ChangeChatsInTypingSubscriptionCommandHandler` | Фильтрует по членству (`ChatMembershipFilter`), обновляет `TrackedChatIds` в `TypingSubscriptionsManager`. `FailedPrecondition` если нет активных подписок |
+
 ---
 
 ## Services (Singleton / Scoped)
@@ -57,6 +75,9 @@
 | `Services/OnlineStatusSubscriptionsManager.cs` | `OnlineStatusSubscriptionsManager` | Singleton | Прямой индекс `subscriberId → (connectionId → SubscriptionData)` + обратный индекс `trackedUserId → (connectionId → Stream)` для O(1) выборки в `GetStreamsTrackingUser`. Методы: `RegisterSubscription`, `RemoveSubscription`, `GetStreamsTrackingUser`, `UpdateAllSubscriptions` |
 | `Services/OnlineStatusNotifier.cs` | `OnlineStatusNotifier` | Singleton | Рассылает изменения статусов по зарегистрированным стримам параллельно через `Task.WhenAll` |
 | `Services/OnlineVisibilityFilter.cs` | `OnlineVisibilityFilter` | Scoped | Фильтрует userId по настройке `OnlineVisibility` через gRPC-клиент `UsersServerApi`. `FRIENDS` трактуется как `NONE` (до появления сервиса отношений). Всегда пропускает самого вызывающего |
+| `Services/TypingSubscriptionsManager.cs` | `TypingSubscriptionsManager` | Singleton | Реестр typing-стримов по `chatId`. Прямой индекс `subscriberId → (connectionId → SubscriptionData)` + обратный `chatId → (connectionId → ReverseEntry{Stream, SubscriberId})`. `GetStreamsTrackingChat(chatId, exceptSubscriberId)` исключает печатающего. Методы: `RegisterSubscription`, `RemoveSubscription`, `UpdateAllSubscriptions` |
+| `Services/TypingNotifier.cs` | `TypingNotifier` | Singleton | Ретранслирует `TypingEvent` подписчикам чата параллельно через `Task.WhenAll` |
+| `Services/ChatMembershipFilter.cs` | `ChatMembershipFilter` | Scoped | `GetMemberChatIdsAsync` — батч-проверка членства через gRPC-клиент `MessagesServerApi.CheckChatMembership`. Fail-closed при ошибке |
 
 ---
 
@@ -114,6 +135,7 @@
 
 | Файл | Описание |
 |------|---------|
-| `Shared/BarkFluff.Proto/onliner_api.proto` | 4 метода: `SetOnlineStatus`, `GetOnlineStatus`, `SubscribeToOnlineStatus`, `ChangeUsersInSubscription`. Тип `UserOnlineStatus` |
+| `Shared/BarkFluff.Proto/onliner_api.proto` | 7 методов: `SetOnlineStatus`, `GetOnlineStatus`, `SubscribeToOnlineStatus`, `ChangeUsersInSubscription`, `SetTypingStatus`, `SubscribeToTyping`, `ChangeChatsInTypingSubscription`. Типы `UserOnlineStatus`, `TypingEvent`, enum `TypingAction` |
 | `Shared/BarkFluff.Proto/shared.proto` | Общие типы платформы |
 | `Shared/BarkFluff.Proto/users_api.proto` | Используется для вызова `UsersServerApi` (проверка `OnlineVisibility`) |
+| `Shared/BarkFluff.Proto/messages_api.proto` | Client — вызов `MessagesServerApi.CheckChatMembership` (проверка членства для typing) |

@@ -175,6 +175,17 @@ services:
     depends_on:
       - configuration
 
+  calls:
+    image: docker.barkfluff.com:5000/barkfluff-calls-dev:latest
+    container_name: calls
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   # === Панель администрирования ===
 
   admin-panel:
@@ -207,6 +218,23 @@ services:
       RemoteServers__Msk__Port: "${MSK_SSH_PORT:-22}"
       RemoteServers__Msk__Username: "${MSK_SSH_USER:-root}"
       RemoteServers__Msk__Password: "${MSK_SSH_PASSWORD:-}"
+      Mail__SmtpHost: "${MAIL_SMTP_HOST:-}"
+      Mail__SmtpPort: "${MAIL_SMTP_PORT:-587}"
+      Mail__ImapHost: "${MAIL_IMAP_HOST:-}"
+      Mail__ImapPort: "${MAIL_IMAP_PORT:-993}"
+      Mail__ImapSecurity: "${MAIL_IMAP_SECURITY:-SslOnConnect}"
+      Mail__SmtpSecurity: "${MAIL_SMTP_SECURITY:-Auto}"
+      Mail__AcceptInvalidCertificates: "${MAIL_ACCEPT_INVALID_CERTIFICATES:-false}"
+      Mail__Accounts__0__Address: "support@barkfluff.com"
+      Mail__Accounts__0__Password: "${MAIL_SUPPORT_PASSWORD:-}"
+      Mail__Accounts__1__Address: "help@barkfluff.com"
+      Mail__Accounts__1__Password: "${MAIL_HELP_PASSWORD:-}"
+      Mail__Accounts__2__Address: "noreply@barkfluff.com"
+      Mail__Accounts__2__Password: "${MAIL_NOREPLY_PASSWORD:-}"
+      Mail__Accounts__3__Address: "privacy@barkfluff.com"
+      Mail__Accounts__3__Password: "${MAIL_PRIVACY_PASSWORD:-}"
+      Mail__Accounts__4__Address: "security@barkfluff.com"
+      Mail__Accounts__4__Password: "${MAIL_SECURITY_PASSWORD:-}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db
@@ -274,9 +302,56 @@ services:
     networks:
       - barkfluff-network
 
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit
+    restart: always
+    command: --config /etc/livekit/livekit.yaml
+    volumes:
+      # Монтируем папку целиком, а не один файл: bind-mount одиночного файла,
+      # которого ещё нет на хосте, Docker молча подменяет каталогом.
+      - ./livekit:/etc/livekit:ro
+    ports:
+      # Dev: в локальном стеке nginx нет, поэтому сигнализацию публикуем напрямую.
+      # В проде 7880 фронтит nginx (livekit.barkfluff.com, WSS) и наружу не публикуется.
+      - "7880:7880"                     # HTTP/WS сигнализация + API
+      # WebRTC-медиа nginx проксировать не может — эти порты всегда прямые:
+      - "7881:7881"                     # ICE/TCP fallback
+      - "50000-50200:50000-50200/udp"   # RTC media (UDP)
+    networks:
+      - barkfluff-network
+
   postgres:
     image: postgres:18
     container_name: postgres_barkfluff
+    # Тюнинг под 2 ядра / 8 ГБ (БД делит машину с остальными сервисами).
+    # Значения — стартовая точка, подгоняй под реальную нагрузку.
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=150"
+      - "-c"
+      - "shared_buffers=768MB"
+      - "-c"
+      - "effective_cache_size=2GB"
+      - "-c"
+      - "maintenance_work_mem=192MB"
+      - "-c"
+      - "work_mem=12MB"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "max_wal_size=2GB"
+      - "-c"
+      - "min_wal_size=512MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_compression=on"
+      - "-c"
+      - "jit=off"
     restart: always
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"

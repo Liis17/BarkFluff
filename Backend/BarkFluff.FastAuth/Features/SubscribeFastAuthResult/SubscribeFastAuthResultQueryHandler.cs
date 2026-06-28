@@ -20,7 +20,7 @@ public class SubscribeFastAuthResultQueryHandler(
         }
 
         metrics.Increment("active_subscriptions");
-        logger.LogInformation("FastAuth subscription attached to session {Id}", session.Id);
+        logger.LogInformation("FastAuth subscription attached to session {Id}", session.Id[..8]);
 
         try
         {
@@ -31,7 +31,7 @@ public class SubscribeFastAuthResultQueryHandler(
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("FastAuth subscription on session {Id} cancelled by client", session.Id);
+            logger.LogInformation("FastAuth subscription on session {Id} cancelled by client", session.Id[..8]);
         }
         finally
         {

@@ -1,5 +1,4 @@
 using BarkFluff.GrpcServer.Metrics;
-using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.AddDraftUser;
@@ -22,6 +21,7 @@ using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.ExportData;
 using BarkFluff.Users.Features.FindByLogin;
 using BarkFluff.Users.Features.GetUser;
+using BarkFluff.Users.Features.GetUserByUsername;
 using BarkFluff.Users.Features.GetUserContacts;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
@@ -32,7 +32,6 @@ using BarkFluff.Users.Features.Personalization.SetProfilePosterServer;
 using BarkFluff.Users.Features.SetProfilePictureServer;
 using BarkFluff.Users.Features.UpdateProfileServer;
 using BarkFluff.Users.Features.UpdateStorageLimit;
-using BarkFluff.Users.Persistence.Services;
 
 using Grpc.Core;
 
@@ -46,25 +45,13 @@ namespace BarkFluff.Users.Host;
 public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 {
     private readonly IMediator _mediator;
-    private readonly UsersStorage _usersStorage;
-    private readonly PrivacyStorage _privacyStorage;
-    private readonly PersonalizationStorage _personalizationStorage;
-    private readonly FilesServerApi.FilesServerApiClient _filesClient;
     private readonly MetricsCollector _metrics;
 
     public UsersServerApiService(
         IMediator mediator,
-        UsersStorage usersStorage,
-        PrivacyStorage privacyStorage,
-        PersonalizationStorage personalizationStorage,
-        FilesServerApi.FilesServerApiClient filesClient,
         MetricsCollector metrics)
     {
         _mediator = mediator;
-        _usersStorage = usersStorage;
-        _privacyStorage = privacyStorage;
-        _personalizationStorage = personalizationStorage;
-        _filesClient = filesClient;
         _metrics = metrics;
     }
 
@@ -330,66 +317,11 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     // Получение публичной информации пользователя по юзернейму (для веб-сервера)
 
-    public override async Task<GetUserByUsernameResponse> GetUserByUsername(
+    public override Task<GetUserByUsernameResponse> GetUserByUsername(
         GetUserByUsernameRequest request, ServerCallContext context)
     {
         _metrics.Increment("public_profile_views");
-        var user = await _usersStorage.GetUserByUsername(request.Username?.Trim());
-
-        if (user is null || user.IsDraft)
-        {
-            _metrics.Increment("public_profile_not_found");
-            return new GetUserByUsernameResponse { Found = false };
-        }
-
-        // Применение настроек приватности к публичной странице профиля.
-        // FRIENDS пока трактуется как NONE — в бэкенде нет системы отношений между пользователями.
-        var privacy = await _privacyStorage.GetOrCreate(user.Id);
-
-        if (!privacy.ProfileVisibleOnSite)
-        {
-            _metrics.Increment("public_profile_hidden");
-            return new GetUserByUsernameResponse { Found = false };
-        }
-
-        var bio = privacy.BioVisibility == Domain.ProfileFieldVisibility.All
-            ? (user.Bio ?? string.Empty)
-            : string.Empty;
-
-        var avatar = privacy.AvatarVisibility == Domain.ProfileFieldVisibility.All
-            ? (user.ProfilePicture ?? string.Empty)
-            : string.Empty;
-
-        // Получаем постер профиля через персонализацию
-        var posterUrl = string.Empty;
-        try
-        {
-            var personalization = await _personalizationStorage.Get(user.Id);
-            if (!string.IsNullOrEmpty(personalization?.ProfilePosterFileId))
-            {
-                var fileDataResponse = await _filesClient.GetFileDataAsync(
-                    new GetFileDataRequest { FileId = personalization.ProfilePosterFileId });
-                posterUrl = fileDataResponse.FileInfo.FileUrl ?? string.Empty;
-                _metrics.Increment("files_fetch_success");
-            }
-        }
-        catch (Exception)
-        {
-            _metrics.Increment("files_fetch_errors");
-            // Не блокируем ответ, если постер недоступен
-            posterUrl = string.Empty;
-        }
-
-        return new GetUserByUsernameResponse
-        {
-            Found = true,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Username = user.Username,
-            Bio = bio,
-            ProfilePicture = avatar,
-            ProfilePosterUrl = posterUrl,
-        };
+        return _mediator.Send(new GetUserByUsernameQuery { Username = request.Username?.Trim() });
     }
 
     public override Task<GetUserPrivacyResponse> GetUserPrivacy(GetUserPrivacyRequest request, ServerCallContext context)

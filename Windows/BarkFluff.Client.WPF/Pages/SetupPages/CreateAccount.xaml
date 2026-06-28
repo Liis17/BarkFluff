@@ -42,7 +42,7 @@
             <TextBlock
                 Margin="0,8,0,0"
                 Style="{DynamicResource DescriptionTextStyle}"
-                Text="Создание нового аккаунта" />
+                Text="{DynamicResource L_CreateAccount_Title}" />
 
             <!--  Progress indicator  -->
             <StackPanel
@@ -53,7 +53,7 @@
                 <TextBlock
                     x:Name="StepIndicatorText"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Шаг 1 из 9" />
+                    Text="{DynamicResource L_CreateAccount_StepFormat_19}" />
                 <ProgressBar
                     x:Name="StepProgressBar"
                     Width="200"
@@ -96,7 +96,7 @@
                 <TextBlock
                     Margin="0,0,0,10"
                     Style="{StaticResource TitleTextStyle}"
-                    Text="Личная информация" />
+                    Text="{DynamicResource L_CreateAccount_Personal_Title}" />
 
                 <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
@@ -104,12 +104,12 @@
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Имя *" />
+                            Text="{DynamicResource L_CreateAccount_FirstName_Label}" />
                         <ui:TextBox
                             x:Name="FirstNameEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
-                            PlaceholderText="Апогея"
+                            PlaceholderText="{DynamicResource L_CreateAccount_FirstName_Placeholder}"
                             Style="{DynamicResource InputTextBoxStyle}"
                             Tag="Names"
                             TextChanged="FirstNameEnter_TextChanged" />
@@ -125,12 +125,12 @@
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Фамилия" />
+                            Text="{DynamicResource L_CreateAccount_LastName_Label}" />
                         <ui:TextBox
                             x:Name="LastNameEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
-                            PlaceholderText="Тайнигейпиратовна"
+                            PlaceholderText="{DynamicResource L_CreateAccount_LastName_Placeholder}"
                             Style="{DynamicResource InputTextBoxStyle}"
                             TextChanged="LastNameEnter_TextChanged" />
                         <TextBlock
@@ -146,19 +146,19 @@
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Имя может содержать любые символы" />
+                                Text="{DynamicResource L_CreateAccount_Name_Hint1}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Минимально может быть 3 символа" />
+                                Text="{DynamicResource L_CreateAccount_Name_Hint2}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Длина имени и фамилии ограничена 40 символами" />
+                                Text="{DynamicResource L_CreateAccount_Name_Hint3}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Фамилия может отсутствовать" />
+                                Text="{DynamicResource L_CreateAccount_Name_Hint4}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -176,14 +176,14 @@
                 <TextBlock
                     Margin="0,0,0,10"
                     Style="{StaticResource TitleTextStyle}"
-                    Text="Имя пользователя" />
+                    Text="{DynamicResource L_CreateAccount_Username_Title}" />
 
                 <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Логин *" />
+                            Text="{DynamicResource L_CreateAccount_Login_Label}" />
                         <ui:TextBox
                             x:Name="LoginEnter"
                             Margin="0,0,0,5"
@@ -203,30 +203,30 @@
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Логин может содержать:" />
+                                Text="{DynamicResource L_CreateAccount_Login_Hint1}" />
                             <TextBlock
                                 Margin="15,2,0,0"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="- Символы латинского алфавита" />
+                                Text="{DynamicResource L_CreateAccount_Login_Hint2}" />
                             <TextBlock
                                 Margin="15,2,0,0"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="- Цифры" />
+                                Text="{DynamicResource L_CreateAccount_Login_Hint3}" />
                             <TextBlock
                                 Margin="15,2,0,0"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="- Нижнее подчеркивание ( _ ) и тире ( - )" />
+                                Text="{DynamicResource L_CreateAccount_Login_Hint4}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Логин ограничен 30 символами" />
+                                Text="{DynamicResource L_CreateAccount_Login_Hint5}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Логин будет преобразован в нижний регистр" />
+                                Text="{DynamicResource L_CreateAccount_Login_Hint6}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -244,14 +244,14 @@
                 <TextBlock
                     Margin="0,0,0,10"
                     Style="{StaticResource TitleTextStyle}"
-                    Text="Электронная почта" />
+                    Text="{DynamicResource L_CreateAccount_Email_Title}" />
 
                 <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Почта *" />
+                            Text="{DynamicResource L_CreateAccount_Email_Label}" />
                         <ui:TextBox
                             x:Name="EmailEnter"
                             Margin="0,0,0,5"
@@ -271,15 +271,15 @@
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Почта может использоваться для 2FA" />
+                                Text="{DynamicResource L_CreateAccount_Email_Hint1}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Почта будет использоваться для сброса пароля" />
+                                Text="{DynamicResource L_CreateAccount_Email_Hint2}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• На почту будут отправляться уведомления о входе" />
+                                Text="{DynamicResource L_CreateAccount_Email_Hint3}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -297,14 +297,14 @@
                 <TextBlock
                     Margin="0,0,0,10"
                     Style="{StaticResource TitleTextStyle}"
-                    Text="Подтверждение почты" />
+                    Text="{DynamicResource L_CreateAccount_EmailConfirm_Title}" />
 
                 <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Код подтверждения *" />
+                            Text="{DynamicResource L_CreateAccount_EmailConfirm_Label}" />
                         <ui:TextBox
                             x:Name="VerificationCodeEnter"
                             Margin="0,0,0,5"
@@ -326,11 +326,11 @@
                                 x:Name="EmailHelperText"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Сообщение отправлено на вашу почту" />
+                                Text="{DynamicResource L_CreateAccount_EmailConfirm_Hint1}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Проверьте папку со спамом" />
+                                Text="{DynamicResource L_CreateAccount_EmailConfirm_Hint2}" />
                             <TextBlock
                                 x:Name="RemainingAttemptsText"
                                 HorizontalAlignment="Left"
@@ -355,7 +355,7 @@
                 <TextBlock
                     Margin="0,0,0,10"
                     Style="{StaticResource TitleTextStyle}"
-                    Text="Создание пароля" />
+                    Text="{DynamicResource L_CreateAccount_Password_Title}" />
 
                 <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
@@ -363,13 +363,13 @@
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Пароль *" />
+                            Text="{DynamicResource L_CreateAccount_Password_Label}" />
                         <ui:PasswordBox
                             x:Name="PasswordEnter"
                             Margin="0,0,0,8"
                             KeyDown="TextBox_KeyDown"
                             PasswordChanged="PasswordEnter_TextChanged"
-                            PlaceholderText="Введите пароль"
+                            PlaceholderText="{DynamicResource L_CreateAccount_Password_Placeholder}"
                             Style="{DynamicResource InputTextBoxStyle}" />
 
                         <!--  Индикатор силы пароля  -->
@@ -389,7 +389,7 @@
                             Margin="0,0,0,10"
                             HorizontalAlignment="Left"
                             Style="{StaticResource DescriptionTextStyle}"
-                            Text="Начните вводить пароль" />
+                            Text="{DynamicResource L_Password_StartTyping}" />
 
                         <!--  Password requirements checklist  -->
                         <StackPanel x:Name="PasswordRequirementsPanel" Margin="0,0,0,15">
@@ -397,40 +397,40 @@
                                 x:Name="ReqMinLength"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="○ Минимум 8 символов" />
+                                Text="{DynamicResource L_Password_Rule_MinLength}" />
                             <TextBlock
                                 x:Name="ReqUpperCase"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="○ Заглавные буквы" />
+                                Text="{DynamicResource L_Password_Rule_Uppercase}" />
                             <TextBlock
                                 x:Name="ReqLowerCase"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="○ Строчные буквы" />
+                                Text="{DynamicResource L_Password_Rule_Lowercase}" />
                             <TextBlock
                                 x:Name="ReqDigit"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="○ Цифры" />
+                                Text="{DynamicResource L_Password_Rule_Digits}" />
                             <TextBlock
                                 x:Name="ReqSpecialChar"
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="○ Специальные символы" />
+                                Text="{DynamicResource L_Password_Rule_Special}" />
                         </StackPanel>
 
                         <!--  Подтверждение пароля  -->
                         <TextBlock
                             HorizontalAlignment="Left"
                             Style="{StaticResource LittleTitleTextStyle}"
-                            Text="Подтвердите пароль *" />
+                            Text="{DynamicResource L_CreateAccount_PasswordConfirm_Label}" />
                         <ui:PasswordBox
                             x:Name="PasswordRepeatedEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PasswordChanged="PasswordRepeatedEnter_TextChanged"
-                            PlaceholderText="Повторите пароль"
+                            PlaceholderText="{DynamicResource L_CreateAccount_PasswordConfirm_Placeholder}"
                             Style="{DynamicResource InputTextBoxStyle}" />
                         <TextBlock
                             x:Name="PasswordMatchText"
@@ -444,16 +444,16 @@
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Используйте комбинацию букв разного регистра"
+                                Text="{DynamicResource L_Password_Recommendation_Mix}"
                                 TextWrapping="WrapWithOverflow" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Добавьте цифры и специальные символы" />
+                                Text="{DynamicResource L_Password_Recommendation_AddDigits}" />
                             <TextBlock
                                 HorizontalAlignment="Left"
                                 Style="{StaticResource TipsStyle}"
-                                Text="• Минимальная длина пароля 8 символов" />
+                                Text="{DynamicResource L_Password_Recommendation_MinLen}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -472,7 +472,7 @@
                 <TextBlock
                     Margin="0,0,0,10"
                     Style="{StaticResource TitleTextStyle}"
-                    Text="Фото профиля" />
+                    Text="{DynamicResource L_CreateAccount_Avatar_Title}" />
 
                 <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel HorizontalAlignment="Center">
@@ -486,7 +486,7 @@
                         <TextBlock
                             Margin="0,15,0,0"
                             Style="{StaticResource DescriptionTextStyle}"
-                            Text="Загрузите фото профиля" />
+                            Text="{DynamicResource L_CreateAccount_Avatar_Hint}" />
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -502,7 +502,7 @@
                     <TextBlock
                         Margin="0,0,0,10"
                         Style="{StaticResource TitleTextStyle}"
-                        Text="Настройка профиля" />
+                        Text="{DynamicResource L_CreateAccount_Profile_Title}" />
                     <preview:PreviewUser x:Name="PreviewUserElement" Loaded="PreviewUserElement_Loaded" />
                 </StackPanel>
 
@@ -546,7 +546,7 @@
                     Click="NextButton_Click"
                     Style="{StaticResource MainButton}">
                     <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Далее" />
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="{DynamicResource L_CreateAccount_Next}" />
                         <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight12" />
                     </StackPanel>
                 </ui:Button>
@@ -556,7 +556,7 @@
                     Click="NextButton_Click"
                     Style="{StaticResource MainButton}">
                     <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Создать аккаунт" />
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="{DynamicResource L_CreateAccount_Submit}" />
                         <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Add12" />
                     </StackPanel>
                 </ui:Button>

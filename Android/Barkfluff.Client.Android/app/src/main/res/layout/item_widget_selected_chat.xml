@@ -44,13 +44,15 @@
         android:textColor="?attr/colorOnSurface"
         tools:text="Чат" />
 
+    <!-- 48dp touch target (M3 / WCAG минимум). Визуально иконка занимает ~24dp
+         через увеличенный padding. -->
     <ImageButton
         android:id="@+id/removeButton"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@null"
-        android:padding="6dp"
+        android:padding="12dp"
         android:src="@drawable/ic_close"
         app:tint="?attr/colorOnSurfaceVariant" />
 </LinearLayout>

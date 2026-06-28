@@ -21,7 +21,7 @@
 | Файл | Авторизация | Что делает |
 |------|------------|-----------|
 | `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo, PinMessage, UnpinMessage, ListPinnedMessages, UnpinAll, **CreatePrivateChat, AcceptPrivateChat, RejectPrivateChat, SendPrivateMessage, ListPrivateMessages, EditPrivateMessage, DeletePrivateMessage, SendSecretChatInvite, AcceptSecretChatInvite, RejectSecretChatInvite, SendSecretMessage, AckSecretMessage** |
-| `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт) |
+| `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт), CheckChatMembership (проверка членства для Onliner/typing) |
 
 ---
 
@@ -56,6 +56,8 @@
 | `Features/ListChatAttachments/ListChatAttachmentsCommandHandler.cs` | Фильтрация по типу вложения, сортировка, подтягивает данные файлов из Files API |
 | `Features/ExportData/GetUserAllMessagesQuery.cs` | Service-only запрос всех сообщений пользователя |
 | `Features/ExportData/GetUserAllMessagesQueryHandler.cs` | GDPR-экспорт: возвращает все сообщения и чаты пользователя |
+| `Features/CheckChatMembership/CheckChatMembershipQuery.cs` | Service-only: `UserId` + `ChatIds` (Guid-строки) |
+| `Features/CheckChatMembership/CheckChatMembershipQueryHandler.cs` | Парсит валидные Guid, вызывает `ChatsStorage.GetMemberChatIds`, возвращает подмножество членских chat_id |
 | `Features/PinMessage/PinMessageCommand.cs` + `Handler.cs` | Закрепление сообщения: проверки доступа, лимит 100, idempotent, системное сообщение, `MessagePinnedEvent` |
 | `Features/UnpinMessage/UnpinMessageCommand.cs` + `Handler.cs` | Открепление сообщения: idempotent если не закреплено, системное сообщение, `MessageUnpinnedEvent` |
 | `Features/ListPinnedMessages/ListPinnedMessagesQuery.cs` + `Handler.cs` | Пагинированный список закреплённых; sort by `PinnedAt DESC`, фильтр `!IsDeleted`, files data из Files API |
@@ -132,7 +134,7 @@
 | Файл | Что делает |
 |------|-----------|
 | `Persistence/MessagesContext.cs` | EF Core DbContext: Chats, Messages, GroupChatInfos |
-| `Persistence/Services/ChatsStorage.cs` | Запросы к БД: GetUserChats (с CountUnread, FirstUnreadMessageId, LastMessage), CreatePersonChat, GetUserChatIdWithPerson и др. |
+| `Persistence/Services/ChatsStorage.cs` | Запросы к БД: GetUserChats (с CountUnread, FirstUnreadMessageId, LastMessage), CreatePersonChat, GetUserChatIdWithPerson, CheckAccessToChat, GetMemberChatIds (батч-проверка членства) и др. |
 | `Persistence/Services/MessagesStorage.cs` | Запросы к БД: GetChatMessages, GetChatMessagesWithOffset (двунаправленная пагинация), SaveMessage, GetChatAttachments, GetMessagesByIdsInChatAsync (для ListPinnedMessages) |
 | `Persistence/Services/PinnedMessagesStorage.cs` | CRUD по закреплённым сообщениям: GetPinByMessageIdAsync, ListByChatAsync, CountByChatAsync, AddAsync, Remove, RemoveAllByChatAsync, RemoveByMessageIdAsync |
 | `Persistence/Services/ChatCache.cs` | Redis-кеш имён и аватаров чатов. Ключи: `chat_name_{chatId}_{userId}`, `chat_image_{chatId}_{userId}` |

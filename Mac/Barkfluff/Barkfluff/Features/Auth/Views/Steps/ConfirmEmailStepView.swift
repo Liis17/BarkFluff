@@ -15,7 +15,7 @@ struct ConfirmEmailStepView: View {
     var onVerified: (() -> Void)?
 
     @State private var code: String = ""
-    @State private var validationError: String?
+    @State private var validationError: LocalizedStringResource?
     @State private var isVerifying = false
     @State private var canResend = false
     @State private var resendCooldown = 60
@@ -30,11 +30,11 @@ struct ConfirmEmailStepView: View {
 
             // Текст
             VStack(spacing: Theme.Spacing.sm) {
-                Text("Код отправлен на")
+                Text("auth.register.step.confirm_email.sent_to")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                Text(data.email)
+                Text(verbatim: data.email)
                     .font(.headline)
             }
 
@@ -54,7 +54,7 @@ struct ConfirmEmailStepView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         ProgressView()
                             .controlSize(.small)
-                        Text("Проверка кода...")
+                        Text("auth.register.step.confirm_email.verifying")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -65,7 +65,7 @@ struct ConfirmEmailStepView: View {
                         .foregroundStyle(.red)
                         .transition(.opacity)
                 } else if isVerified {
-                    Label("Email подтверждён", systemImage: "checkmark.circle.fill")
+                    Label("auth.register.step.confirm_email.verified", systemImage: "checkmark.circle.fill")
                         .font(.subheadline)
                         .foregroundStyle(.green)
                         .transition(.scale.combined(with: .opacity))
@@ -74,13 +74,13 @@ struct ConfirmEmailStepView: View {
 
             // Кнопка повторной отправки
             if canResend {
-                Button("Отправить код повторно") {
+                Button("auth.register.step.confirm_email.resend") {
                     Task { await resendCode() }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
             } else {
-                Text("Повторная отправка через \(resendCooldown) сек")
+                Text("auth.register.step.confirm_email.resend_cooldown \(resendCooldown)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -112,7 +112,7 @@ struct ConfirmEmailStepView: View {
 
     private func verifyCode(_ code: String) async {
         guard let codeID = data.codeID else {
-            validationError = "Ошибка: отсутствует codeID"
+            validationError = LocalizedStringResource("auth.register.step.confirm_email.missing_code_id")
             return
         }
 
@@ -127,7 +127,7 @@ struct ConfirmEmailStepView: View {
             // Уведомляем родителя об успешной верификации
             onVerified?()
         } catch {
-            validationError = "Неверный код. Попробуйте снова."
+            validationError = LocalizedStringResource("auth.register.step.confirm_email.invalid")
             isVerified = false
         }
     }

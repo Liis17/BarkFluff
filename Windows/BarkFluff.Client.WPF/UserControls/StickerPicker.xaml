@@ -42,7 +42,7 @@
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="13"
                     Foreground="#FFAAAAAA"
-                    Text="Загрузка стикеров..." />
+                    Text="{DynamicResource L_StickerPicker_Loading}" />
             </StackPanel>
 
             <!--  Пусто  -->
@@ -61,7 +61,7 @@
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="13"
                     Foreground="#FF777777"
-                    Text="Стикеры не найдены" />
+                    Text="{DynamicResource L_StickerPicker_Empty}" />
             </StackPanel>
 
             <!--  Список стикерпаков  -->

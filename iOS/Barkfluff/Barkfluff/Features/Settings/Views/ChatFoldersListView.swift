@@ -29,7 +29,7 @@ struct ChatFoldersListView: View {
 
             if viewModel.folders.isEmpty && !viewModel.isLoading {
                 Section {
-                    Text("Пока нет папок. Создайте первую папку, чтобы группировать чаты.")
+                    Text("settings.chat_folders.empty.short")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -52,7 +52,7 @@ struct ChatFoldersListView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Папки чатов")
+        .navigationTitle("settings.category.chat_folders")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -95,9 +95,9 @@ private struct FolderRowView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(folder.name.isEmpty ? "Без названия" : folder.name)
+                Text(folder.name.isEmpty ? String(localized: "settings.chat_folders.row.untitled") : folder.name)
                     .font(.body)
-                Text("Чатов: \(folder.chatIDs.count)")
+                Text("settings.chat_folders.row.count \(folder.chatIDs.count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

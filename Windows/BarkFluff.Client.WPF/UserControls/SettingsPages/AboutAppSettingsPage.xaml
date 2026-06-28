@@ -13,13 +13,13 @@
         <StackPanel Margin="24,16,24,24">
 
             <!-- Заголовок -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="О приложении" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_AboutApp_Title}" />
 
             <!-- Блок: приложение -->
             <TextBlock
                 FontSize="11" FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
-                Margin="2,8,0,4" Text="ПРИЛОЖЕНИЕ" />
+                Margin="2,8,0,4" Text="{DynamicResource L_Settings_AboutApp_AppHeader}" />
 
             <Border
                 Padding="16"
@@ -48,7 +48,7 @@
                             FontSize="12"
                             Foreground="{DynamicResource DescriptionText}"
                             Margin="0,3,0,0"
-                            Text="Версия: ..." />
+                            Text="{DynamicResource L_Settings_AboutApp_Version_Placeholder}" />
                         <TextBlock
                             x:Name="DotnetVersionText"
                             FontSize="12"
@@ -63,7 +63,7 @@
             <TextBlock
                 FontSize="11" FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
-                Margin="2,12,0,4" Text="СИСТЕМА" />
+                Margin="2,12,0,4" Text="{DynamicResource L_Settings_AboutApp_SystemHeader}" />
 
             <Border
                 Padding="16"
@@ -78,7 +78,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Операционная система" />
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_AboutApp_Os}" />
                             <TextBlock x:Name="OsVersionText" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..." />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF79AEDC" Symbol="Desktop24" />
@@ -91,7 +91,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Процессор" />
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_AboutApp_Cpu}" />
                             <TextBlock x:Name="CpuText" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" TextWrapping="Wrap" Text="..." />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFCA6D34" Symbol="Connected16" />
@@ -104,7 +104,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Оперативная память" />
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_AboutApp_Ram}" />
                             <TextBlock x:Name="RamText" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..." />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF57BB62" Symbol="Memory16" />
@@ -117,7 +117,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Архитектура" />
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_AboutApp_Architecture}" />
                             <TextBlock x:Name="ArchText" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..." />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF9B59B6" Symbol="DesktopPulse20" />

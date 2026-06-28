@@ -15,7 +15,7 @@
         android:id="@+id/videoOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#44000000"
+        android:background="#52000000"
         android:visibility="gone" />
 
     <!-- Иконка play для видео -->

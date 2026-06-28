@@ -85,7 +85,7 @@ struct StickerPickerView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Поиск по emoji…", text: $viewModel.searchText)
+            TextField("conversation.stickers.search_placeholder", text: $viewModel.searchText)
                 .textFieldStyle(.plain)
         }
         .padding(.horizontal, 12)
@@ -97,7 +97,7 @@ struct StickerPickerView: View {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: 28))
                 .foregroundStyle(.secondary)
-            Text("Стикерпаков пока нет")
+            Text("conversation.stickers.empty_packs")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

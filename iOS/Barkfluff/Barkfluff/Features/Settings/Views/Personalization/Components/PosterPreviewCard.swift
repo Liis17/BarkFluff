@@ -48,9 +48,9 @@ struct PosterPreviewCard: View {
             }
             .padding(.bottom, Theme.Spacing.md)
 
-            let posterButtonTitle: String = viewModel.isUploadingPoster
-                ? "Загрузка…"
-                : "Установить новый постер"
+            let posterButtonTitleKey: LocalizedStringKey = viewModel.isUploadingPoster
+                ? "settings.personalization.poster.uploading"
+                : "settings.personalization.poster.upload"
             let posterButtonDisabled = viewModel.isUploadingPoster
 
             PhotosPicker(
@@ -58,7 +58,7 @@ struct PosterPreviewCard: View {
                 matching: .images,
                 photoLibrary: .shared()
             ) {
-                Label(posterButtonTitle, systemImage: "photo.on.rectangle.angled")
+                Label(posterButtonTitleKey, systemImage: "photo.on.rectangle.angled")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -129,7 +129,9 @@ struct PosterPreviewCard: View {
     }
 
     private var displayName: String {
-        guard let user = container.currentUser else { return "Профиль" }
+        guard let user = container.currentUser else {
+            return String(localized: "settings.personalization.profile_fallback_name")
+        }
         let full = "\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespaces)
         return full.isEmpty ? user.username : full
     }

@@ -24,7 +24,7 @@ public class EmailSender
         _logger = logger;
     }
 
-    public async Task SendEmail(EmailNotification notification)
+    public virtual async Task SendEmail(EmailNotification notification)
     {
         _logger.LogInformation(
             "Начало отправки email на {Email} с темой '{Subject}'",

@@ -2137,13 +2137,27 @@ public enum Barkfluff_Identity_IdentityServerApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "ForceSetPasswordServer" metadata.
+        public enum ForceSetPasswordServer: Sendable {
+            /// Request type for "ForceSetPasswordServer".
+            public typealias Input = Barkfluff_Identity_ForceSetPasswordServerRequest
+            /// Response type for "ForceSetPasswordServer".
+            public typealias Output = Barkfluff_Identity_ForceSetPasswordServerResponse
+            /// Descriptor for "ForceSetPasswordServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "ForceSetPasswordServer",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.identity.IdentityServerApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListOtpVerificationServer.descriptor,
             DisableOtpVerificationServer.descriptor,
             GetActiveSessionsServer.descriptor,
             RemoveActiveSessionServer.descriptor,
-            CreateSessionForUserServer.descriptor
+            CreateSessionForUserServer.descriptor,
+            ForceSetPasswordServer.descriptor
         ]
     }
 }
@@ -2281,6 +2295,30 @@ extension Barkfluff_Identity_IdentityServerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CreateSessionForUserServerResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateSessionForUserServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ForceSetPasswordServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+        /// > Отправляет email-уведомление пользователю.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_ForceSetPasswordServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_ForceSetPasswordServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_ForceSetPasswordServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func forceSetPasswordServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_ForceSetPasswordServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_ForceSetPasswordServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ForceSetPasswordServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ForceSetPasswordServerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -2474,6 +2512,41 @@ extension Barkfluff_Identity_IdentityServerApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "ForceSetPasswordServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+        /// > Отправляет email-уведомление пользователю.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_ForceSetPasswordServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_ForceSetPasswordServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_ForceSetPasswordServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func forceSetPasswordServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_ForceSetPasswordServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_ForceSetPasswordServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ForceSetPasswordServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ForceSetPasswordServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.ForceSetPasswordServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -2621,6 +2694,36 @@ extension Barkfluff_Identity_IdentityServerApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_CreateSessionForUserServerRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_CreateSessionForUserServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ForceSetPasswordServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+    /// > Отправляет email-уведомление пользователю.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_ForceSetPasswordServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func forceSetPasswordServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_ForceSetPasswordServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ForceSetPasswordServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.forceSetPasswordServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_ForceSetPasswordServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_ForceSetPasswordServerResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -2790,6 +2893,40 @@ extension Barkfluff_Identity_IdentityServerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.createSessionForUserServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ForceSetPasswordServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+    /// > Отправляет email-уведомление пользователю.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func forceSetPasswordServer<Result>(
+        _ message: Barkfluff_Identity_ForceSetPasswordServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ForceSetPasswordServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_ForceSetPasswordServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.forceSetPasswordServer(
             request: request,
             options: options,
             onResponse: handleResponse

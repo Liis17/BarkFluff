@@ -61,19 +61,19 @@ struct ProfileEditView: View {
                 // Поля формы
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Имя")
+                        Text("profile.edit.first_name.label")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("Имя", text: $vm.firstName)
+                        TextField("profile.edit.first_name.label", text: $vm.firstName)
                             .textFieldStyle(.roundedBorder)
                             .textContentType(.givenName)
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Фамилия")
+                        Text("profile.edit.last_name.label")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("Фамилия", text: $vm.lastName)
+                        TextField("profile.edit.last_name.label", text: $vm.lastName)
                             .textFieldStyle(.roundedBorder)
                             .textContentType(.familyName)
                     }
@@ -83,7 +83,7 @@ struct ProfileEditView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("О себе")
+                            Text("profile.edit.bio.label")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
@@ -92,7 +92,7 @@ struct ProfileEditView: View {
                                 .foregroundStyle(.tertiary)
                         }
 
-                        TextField("Расскажите о себе", text: $vm.bio, axis: .vertical)
+                        TextField("profile.edit.bio.placeholder", text: $vm.bio, axis: .vertical)
                             .textFieldStyle(.roundedBorder)
                             .lineLimit(3...6)
                             .onChange(of: viewModel.bio) { _, newValue in
@@ -101,7 +101,7 @@ struct ProfileEditView: View {
                                 }
                             }
 
-                        Text("Любые подробности: возраст, род занятий или город")
+                        Text("profile.edit.bio.hint")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
@@ -110,14 +110,14 @@ struct ProfileEditView: View {
                         .padding(.vertical, 4)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Имя пользователя")
+                        Text("profile.edit.username.label")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
                         HStack {
                             Text("@")
                                 .foregroundStyle(.secondary)
-                            TextField("username", text: $vm.username)
+                            TextField("profile.edit.username.placeholder", text: $vm.username)
                                 .textFieldStyle(.roundedBorder)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
@@ -134,7 +134,9 @@ struct ProfileEditView: View {
                                 } else {
                                     Image(systemName: status.icon)
                                 }
-                                Text(status.message)
+                                if let key = status.messageKey {
+                                    Text(key)
+                                }
                             }
                             .font(.caption)
                             .foregroundStyle(status.color)
@@ -147,7 +149,7 @@ struct ProfileEditView: View {
                     Button(role: .destructive) {
                         Task { await performLogout() }
                     } label: {
-                        Text("Выйти из аккаунта")
+                        Text("profile.edit.logout")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
@@ -157,11 +159,11 @@ struct ProfileEditView: View {
                 .padding(.horizontal, 24)
             }
         }
-        .navigationTitle("Мой профиль")
+        .navigationTitle("profile.edit.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Сохранить") {
+                Button("common.save") {
                     Task {
                         await viewModel.saveChanges()
                     }
@@ -196,21 +198,21 @@ struct ProfileEditView: View {
                 )
             }
         }
-        .alert("Ошибка", isPresented: $vm.showError) {
-            Button("OK", role: .cancel) { }
+        .alert("profile.edit.error.title", isPresented: $vm.showError) {
+            Button("common.ok", role: .cancel) { }
         } message: {
             Text(viewModel.errorMessage)
         }
-        .alert("Не удалось разлогиниться на сервере", isPresented: $showLogoutFailureAlert) {
-            Button("Повторить") {
+        .alert("profile.edit.logout_failure.title", isPresented: $showLogoutFailureAlert) {
+            Button("common.retry") {
                 Task { await performLogout() }
             }
-            Button("Выйти всё равно", role: .destructive) {
+            Button("profile.edit.logout_failure.force", role: .destructive) {
                 Task { await performForceLogout() }
             }
-            Button("Отмена", role: .cancel) { }
+            Button("common.cancel", role: .cancel) { }
         } message: {
-            Text("\(logoutFailureMessage)\n\nЕсли выйти принудительно — сессия на сервере останется активной до истечения срока действия. Завершить её можно позже через «Активные сессии».")
+            Text("profile.edit.logout_failure.message \(logoutFailureMessage)")
         }
     }
 

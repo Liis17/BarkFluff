@@ -17,14 +17,14 @@ struct AuthSuccessView: View {
                 .font(.system(size: 72))
                 .foregroundStyle(.green)
 
-            Text("Авторизация прошла успешно!")
+            Text("auth.success.title")
                 .font(.title)
 
-            Text("Добро пожаловать в BarkFluff")
+            Text("auth.success.welcome")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            Button("Выйти") {
+            Button("auth.success.logout") {
                 Task {
                     do {
                         try await coordinator.logout(container: container)

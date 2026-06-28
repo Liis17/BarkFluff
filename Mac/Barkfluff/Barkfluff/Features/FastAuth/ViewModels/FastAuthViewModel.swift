@@ -105,7 +105,7 @@ final class FastAuthViewModel {
             currentTokenImage = decodeQRImage(from: token.token)
             startTimer(until: token.expiresAt)
         } catch {
-            errorMessage = "Не удалось получить QR-код: \(error.localizedDescription)"
+            errorMessage = String(localized: "fast_auth.qr.error.token \(error.localizedDescription)")
         }
     }
 
@@ -136,12 +136,12 @@ final class FastAuthViewModel {
                         onAuthenticated?()
                         return
                     } else {
-                        errorMessage = "Сервер вернул пустые токены"
+                        errorMessage = String(localized: "fast_auth.qr.error.empty_tokens")
                         return
                     }
 
                 case .rejected:
-                    errorMessage = "Вход через QR отклонён на мобильном устройстве"
+                    errorMessage = String(localized: "fast_auth.qr.error.rejected")
                     return
 
                 case .expired:
@@ -151,7 +151,7 @@ final class FastAuthViewModel {
             }
         } catch {
             if !Task.isCancelled {
-                errorMessage = "Ошибка подписки: \(error.localizedDescription)"
+                errorMessage = String(localized: "fast_auth.qr.error.subscribe \(error.localizedDescription)")
             }
         }
     }

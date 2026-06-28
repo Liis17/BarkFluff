@@ -55,8 +55,11 @@ public class TokenAuthMiddleware
         var pageToken = ValidateToken(context);
         if (pageToken == null)
         {
-            // No valid token - redirect to login
-            if (path != "/" && !path.Equals("/Login.html", StringComparison.OrdinalIgnoreCase))
+            // No valid token - redirect to login.
+            // Allow the login page and its static assets (md3.css, sidebar.js) through.
+            if (path != "/" &&
+                !path.Equals("/Login.html", StringComparison.OrdinalIgnoreCase) &&
+                !path.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.Redirect("/");
                 return;

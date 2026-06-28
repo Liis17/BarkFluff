@@ -82,7 +82,7 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 Подписывается на `ProcessLifecycleOwner` → при уходе в фон вызывает `realtimeService.pause()`, при возврате — `resume()`. Выставляет флаг `cameFromBackground = true`.
 
-В `onCreate()` первым делом вызывает `cleanupPendingUpdate()` — читает из [[GlobalParam]] `pendingUpdateApkPath` / `pendingUpdateDownloadId`, удаляет APK обновления из Downloads (`File.delete()`), удаляет запись из `DownloadManager.remove(id)`, чистит `cacheDir/update_pending.apk` и сбрасывает параметры (`clearPendingUpdate()`). Логика срабатывает на следующем старте после установки обновления.
+В `onCreate()` первым делом вызывает `cleanupPendingUpdate()` — читает из GlobalParam `pendingUpdateApkPath` / `pendingUpdateDownloadId`, удаляет APK обновления из Downloads (`File.delete()`), удаляет запись из `DownloadManager.remove(id)`, чистит `cacheDir/update_pending.apk` и сбрасывает параметры (`clearPendingUpdate()`). Логика срабатывает на следующем старте после установки обновления.
 
 **Связи:** Все Activity/Fragment берут `GrpcManager` и `RealtimeService` через `applicationContext as BarkFluffApplication`.
 
@@ -344,7 +344,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 **Тип:** AppCompatActivity
 
-Редактирование профиля: имя, фамилия, username, bio, email, аватар (uCrop). Сохранение через Users API.
+Редактирование профиля: имя, фамилия, username, bio, email, аватар (uCrop). Сохранение через Users API. При смене username `checkUsername()` возвращает `true`, если имя уже занято; `ChangeUsername` вызывается только при `false`.
 
 **Связи:** `GrpcManager`, `GlobalParam`, `AvatarLoader`
 
@@ -415,7 +415,7 @@ Toggle уведомлений, настройки каналов Android.
 
 Экран обновления приложения. Показывает текущую версию, changelog. Запускает скачивание APK.
 
-Скачивает APK через `DownloadManager` в `Environment.DIRECTORY_DOWNLOADS/barkfluff_{channel}_update.apk`, перед установкой копирует во внутренний `cacheDir/update_pending.apk` и запускает `Intent.ACTION_VIEW` через FileProvider. Перед стартом установки сохраняет путь к APK и `downloadId` в [[GlobalParam]] (`pendingUpdateApkPath`, `pendingUpdateDownloadId`) — чтобы [[BarkFluffApplication]] на следующем старте удалил файл, его копию из `cacheDir` и запись из БД `DownloadManager`.
+Скачивает APK через `DownloadManager` в `Environment.DIRECTORY_DOWNLOADS/barkfluff_{channel}_update.apk`, перед установкой копирует во внутренний `cacheDir/update_pending.apk` и запускает `Intent.ACTION_VIEW` через FileProvider. Перед стартом установки сохраняет путь к APK и `downloadId` в GlobalParam (`pendingUpdateApkPath`, `pendingUpdateDownloadId`) — чтобы BarkFluffApplication на следующем старте удалил файл, его копию из `cacheDir` и запись из БД `DownloadManager`.
 
 **Связи:** `UpdateChecker`, `AppVersionUtil`, `GlobalParam`, `BarkFluffApplication`
 

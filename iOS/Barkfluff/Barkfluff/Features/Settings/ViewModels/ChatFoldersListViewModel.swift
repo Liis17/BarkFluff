@@ -30,7 +30,7 @@ final class ChatFoldersListViewModel {
         do {
             folders = try await dc.chatFolderService.refresh()
         } catch {
-            errorMessage = "Не удалось загрузить папки"
+            errorMessage = String(localized: "settings.chat_folders.error.load")
         }
         isLoading = false
     }
@@ -45,7 +45,7 @@ final class ChatFoldersListViewModel {
                 try await dc.chatFolderService.delete(folderID: folder.id)
             } catch {
                 folders = previous
-                errorMessage = "Не удалось удалить папку"
+                errorMessage = String(localized: "settings.chat_folders.error.delete")
                 return
             }
         }
@@ -63,7 +63,7 @@ final class ChatFoldersListViewModel {
             folders = try await dc.chatFolderService.refresh()
         } catch {
             folders = previous
-            errorMessage = "Не удалось изменить порядок папок"
+            errorMessage = String(localized: "settings.chat_folders.error.reorder")
         }
     }
 }

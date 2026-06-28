@@ -72,6 +72,8 @@
     var imageOverlay = $('#imageOverlay');
     var overlayImage = $('#overlayImage');
     var overlayVideo = $('#overlayVideo');
+    var overlayPrev = $('#overlayPrev');
+    var overlayNext = $('#overlayNext');
 
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
@@ -206,6 +208,7 @@
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
+        messagesArea.parentElement.classList.add('visible');
         messagesArea.classList.add('visible');
         messagesInner.innerHTML = '';
         inputBar.classList.add('visible');
@@ -681,6 +684,87 @@
         _wasConnected = !!data.connected;
     });
 
+    // ── RESYNC: реконнект отдельного стрима ──────────────────────────────────
+    // realtime.js шлёт 'resync' при ЛЮБОМ переоткрытии стрима (backoff/watchdog/
+    // age-timer/visibility). Это ловит случай, когда отвалился только поток новых
+    // сообщений, а остальные живы — тогда connection_status (OR по 4 стримам) не
+    // флипается и обычный catch-up не срабатывает. За время разрыва server-streaming
+    // не реплеит пропущенное → сообщение видно лишь после ручного переоткрытия чата.
+    //
+    // Дебаунсим: при churn'е все 4 стрима реконнектятся почти одновременно — склеиваем
+    // в один проход. Дозагрузка тихая: ререндерим только если хвост реально изменился,
+    // иначе (обычный случай — за окно реконнекта ничего не пропало) DOM не трогаем.
+    var _resyncTimer = null;
+    BF.realtime.on('resync', function () {
+        if (_resyncTimer) return;
+        _resyncTimer = setTimeout(function () {
+            _resyncTimer = null;
+            if (!currentChatId) {
+                // Чат не открыт — обновлять нечего в области сообщений; освежаем сайдбар.
+                loadChats(true);
+                return;
+            }
+            // Тихо сверяем хвост открытого чата. Сайдбар трогаем только если что-то
+            // реально пропустили (тогда вероятны пропуски и в других чатах), чтобы не
+            // ререндерить список и не сбрасывать его прокрутку на каждом churn-цикле.
+            resyncCurrentChatTail();
+        }, 1200);
+    });
+
+    // Совпадает ли только что загруженный хвост с тем, что уже показано (по id, тексту,
+    // флагу isEdited, числу прочитавших и наличию удалений в окне) — тогда менять нечего.
+    function tailMatchesCurrent(fetched) {
+        var byId = new Map();
+        messages.forEach(function (m) { byId.set(String(m.id), m); });
+        var minId = Infinity, maxId = -Infinity;
+        for (var i = 0; i < fetched.length; i++) {
+            var f = fetched[i];
+            var fid = Number(f.id);
+            if (fid < minId) minId = fid;
+            if (fid > maxId) maxId = fid;
+            var cur = byId.get(String(f.id));
+            if (!cur) return false;                                   // новое сообщение
+            if (!!cur.isEdited !== !!f.isEdited) return false;        // правка
+            var ct = (cur.content && cur.content.text) || '';
+            var ft = (f.content && f.content.text) || '';
+            if (ct !== ft) return false;                              // правка текста
+            if ((cur.readBy || []).length !== (f.readBy || []).length) return false; // прочтение
+        }
+        // Удаление: есть наше сообщение в диапазоне окна, которого нет в свежей выборке.
+        var fetchedIds = new Set(fetched.map(function (m) { return String(m.id); }));
+        for (var j = 0; j < messages.length; j++) {
+            var mid = Number(messages[j].id);
+            if (mid >= minId && mid <= maxId && !fetchedIds.has(String(messages[j].id))) return false;
+        }
+        return true;
+    }
+
+    function resyncCurrentChatTail() {
+        if (!currentChatId) return;
+        if (loadingMessages.classList.contains('visible')) return; // чат ещё открывается
+        var chatId = currentChatId;
+        BF.api.getChatInfo(chatId).then(function (info) {
+            if (chatId !== currentChatId || !info || info.error) return null;
+            var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
+            return BF.api.listMessages(chatId, fromId, 30, 10).then(function (data) {
+                return { info: info, data: data };
+            });
+        }).then(function (res) {
+            if (!res || !res.data || !res.data.messages || chatId !== currentChatId) return;
+            var fetched = res.data.messages;
+            if (tailMatchesCurrent(fetched)) return; // за окно реконнекта ничего не пропало
+            currentChatInfo = res.info;
+            var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+            messages = fetched;
+            renderMessages().then(function () {
+                if (wasAtBottom) scrollToBottom();
+            });
+            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
+            // чатах: освежаем превью/счётчики непрочитанного в сайдбаре.
+            loadChats(true);
+        }).catch(function () {});
+    }
+
     // Catch-up: перезагрузка сообщений текущего чата.
     // Используется при восстановлении соединения и при возврате на вкладку,
     // чтобы синхронизировать пропущенные edit/delete/new события.
@@ -951,27 +1035,178 @@
     });
 
     // ========== MEDIA OVERLAY ==========
+    var overlayFileToken = 0;
 
-    function showMediaOverlay(type, url) {
+    // Выставляет display + src для overlay-элементов; сбрасывает data-флаги resilient,
+    // чтобы при новом открытии bindResilientMedia обрабатывал ошибки с чистого старта.
+    function applyOverlaySrc(type, url) {
+        overlayImage.removeAttribute('data-bf-refreshed');
+        overlayImage.removeAttribute('data-bf-failed');
+        overlayVideo.removeAttribute('data-bf-refreshed');
+        overlayVideo.removeAttribute('data-bf-failed');
         if (type === 'video') {
             overlayImage.style.display = 'none';
             overlayVideo.style.display = 'block';
-            overlayVideo.src = url;
-            overlayVideo.play();
+            overlayVideo.src = url || '';
+            if (url) overlayVideo.play();
         } else {
             overlayVideo.style.display = 'none';
             overlayImage.style.display = 'block';
-            overlayImage.src = url;
+            overlayImage.src = url || '';
         }
-        imageOverlay.classList.add('visible');
     }
+
+    function showMediaOverlay(type, url, fileId) {
+        if (fileId) {
+            overlayImage.setAttribute('data-bf-file-id', fileId);
+            overlayVideo.setAttribute('data-bf-file-id', fileId);
+        }
+        var token = ++overlayFileToken;
+        applyOverlaySrc(type, url);
+        imageOverlay.classList.add('visible');
+        // Presigned-ссылки протухают при долгой сессии. При открытии полноразмерного
+        // просмотра перезапрашиваем свежий URL по fileId, чтобы избежать 404.
+        if (fileId) {
+            BF.files.refreshFileUrl(fileId).then(function (f) {
+                if (!f || token !== overlayFileToken) return;
+                var fresh = type === 'video' ? f.url : (f.url || f.previewUrl);
+                var cur = type === 'video' ? overlayVideo.src : overlayImage.src;
+                if (fresh && fresh !== cur) applyOverlaySrc(type, fresh);
+            });
+        }
+        viewerInit(fileId);
+    }
+
+    // ----- Листаемый просмотрщик: картинки + видео всего чата через ListChatAttachments -----
+    var VIEWER_PAGE = 30;
+    var viewerState = { chatId: null, items: [], index: -1, offset: 0, exhausted: false, totalCount: 0, loading: null };
+
+    function viewerReset() {
+        viewerState = { chatId: null, items: [], index: -1, offset: 0, exhausted: false, totalCount: 0, loading: null };
+    }
+
+    function viewerItem(a, type) {
+        var att = a.attachment || {};
+        return { type: type, fileId: att.fileId, attachmentId: a.attachmentId, messageId: a.messageId, sentAt: a.sentAt };
+    }
+
+    // Догрузить следующую страницу медиа текущего чата (картинки type=1 + видео type=2).
+    function viewerLoadMore() {
+        if (viewerState.loading) return viewerState.loading;
+        if (viewerState.exhausted) return Promise.resolve();
+        var chatId = viewerState.chatId;
+        var off = viewerState.offset;
+        var p = Promise.all([
+            BF.api.listChatAttachments(chatId, 1, off, VIEWER_PAGE),
+            BF.api.listChatAttachments(chatId, 2, off, VIEWER_PAGE)
+        ]).then(function (res) {
+            if (viewerState.chatId !== chatId) return;
+            var imgs = res[0].attachments || [];
+            var vids = res[1].attachments || [];
+            var batch = imgs.map(function (a) { return viewerItem(a, 'image'); })
+                .concat(vids.map(function (a) { return viewerItem(a, 'video'); }));
+            var seen = {};
+            viewerState.items.forEach(function (it) { if (it.fileId) seen[it.fileId] = 1; });
+            batch.forEach(function (it) {
+                if (it.fileId && !seen[it.fileId]) { seen[it.fileId] = 1; viewerState.items.push(it); }
+            });
+            viewerState.items.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
+            viewerState.offset += VIEWER_PAGE;
+            viewerState.totalCount = (res[0].totalCount || 0) + (res[1].totalCount || 0);
+            if (imgs.length < VIEWER_PAGE && vids.length < VIEWER_PAGE) viewerState.exhausted = true;
+        }).catch(function () {}).then(function () { viewerState.loading = null; });
+        viewerState.loading = p;
+        return p;
+    }
+
+    function viewerUpdateNav() {
+        if (overlayPrev) overlayPrev.hidden = viewerState.index <= 0;
+        if (overlayNext) overlayNext.hidden = viewerState.index >= viewerState.items.length - 1 && viewerState.exhausted;
+    }
+
+    function viewerShow(index) {
+        if (index < 0 || index >= viewerState.items.length) return;
+        viewerState.index = index;
+        var it = viewerState.items[index];
+        var token = ++overlayFileToken;
+        if (it.fileId) {
+            overlayImage.setAttribute('data-bf-file-id', it.fileId);
+            overlayVideo.setAttribute('data-bf-file-id', it.fileId);
+        }
+        var fd = BF.files.getCachedFileUrl(it.fileId);
+        var url = fd && (it.type === 'video' ? fd.url : (fd.url || fd.previewUrl));
+        if (url) applyOverlaySrc(it.type, url);
+        BF.files.refreshFileUrl(it.fileId).then(function (f) {
+            if (!f || token !== overlayFileToken) return;
+            var fresh = it.type === 'video' ? f.url : (f.url || f.previewUrl);
+            if (fresh) applyOverlaySrc(it.type, fresh);
+        });
+        viewerUpdateNav();
+        if (index >= viewerState.items.length - 2 && !viewerState.exhausted) viewerLoadMore();
+    }
+
+    function viewerNav(dir) {
+        var ni = viewerState.index + dir;
+        if (ni < 0) return;
+        if (ni >= viewerState.items.length) {
+            if (viewerState.exhausted) return;
+            viewerLoadMore().then(function () {
+                if (viewerState.index + dir < viewerState.items.length) viewerShow(viewerState.index + dir);
+            });
+            return;
+        }
+        viewerShow(ni);
+    }
+
+    // Привязать открытый кадр к списку медиа чата: найти его индекс, при необходимости догружая страницы.
+    function viewerInit(fileId) {
+        var chatId = currentChatId;
+        if (!chatId || !fileId) { viewerState.index = -1; viewerUpdateNav(); return; }
+        if (viewerState.chatId !== chatId) {
+            viewerReset();
+            viewerState.chatId = chatId;
+        }
+        (function locate() {
+            for (var i = 0; i < viewerState.items.length; i++) {
+                if (viewerState.items[i].fileId === fileId) {
+                    viewerState.index = i;
+                    viewerUpdateNav();
+                    if (i >= viewerState.items.length - 2 && !viewerState.exhausted) viewerLoadMore();
+                    return;
+                }
+            }
+            if (viewerState.exhausted) { viewerState.index = -1; viewerUpdateNav(); return; }
+            viewerLoadMore().then(locate);
+        })();
+    }
+
+    BF.files.bindResilientMedia(overlayImage, null, false);
+    BF.files.bindResilientMedia(overlayVideo, null, false);
+
+    if (overlayPrev) overlayPrev.addEventListener('click', function (e) { e.stopPropagation(); viewerNav(-1); });
+    if (overlayNext) overlayNext.addEventListener('click', function (e) { e.stopPropagation(); viewerNav(1); });
+    document.addEventListener('keydown', function (e) {
+        if (!imageOverlay.classList.contains('visible')) return;
+        if (e.key === 'ArrowLeft') { e.preventDefault(); viewerNav(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); viewerNav(1); }
+    });
 
     imageOverlay.addEventListener('click', function (e) {
         if (e.target === overlayVideo) return;
+        overlayFileToken++;
         imageOverlay.classList.remove('visible');
+        overlayImage.removeAttribute('data-bf-file-id');
+        overlayVideo.removeAttribute('data-bf-file-id');
+        overlayImage.removeAttribute('data-bf-refreshed');
+        overlayImage.removeAttribute('data-bf-failed');
+        overlayVideo.removeAttribute('data-bf-refreshed');
+        overlayVideo.removeAttribute('data-bf-failed');
         overlayImage.src = '';
         overlayVideo.pause();
         overlayVideo.src = '';
+        viewerState.index = -1;
+        if (overlayPrev) overlayPrev.hidden = true;
+        if (overlayNext) overlayNext.hidden = true;
     });
 
     // ========== PROFILE OVERLAY ==========
@@ -1070,7 +1305,8 @@
                             if (!url) return;
                             var img = document.createElement('img');
                             img.src = url; img.loading = 'lazy';
-                            img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url); });
+                            BF.files.bindResilientMedia(img, att.fileId, true);
+                            img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url, att.fileId); });
                             grid.appendChild(img);
                         });
                     });
@@ -1094,6 +1330,7 @@
                             var el = document.createElement('a');
                             el.className = 'profile-file-item';
                             el.href = fileUrl; el.target = '_blank';
+                            BF.files.bindResilientLink(el, att.fileId);
                             el.rel = 'noopener';
                             var icon = document.createElement('span');
                             icon.textContent = '\u{1F4C4}';
@@ -1128,6 +1365,24 @@
         if (peerId) openProfile(peerId);
     });
 
+    // --- Call buttons (шапка чата) ---
+    function startCall(media) {
+        if (!currentChatId || !currentChatInfo) return;
+        var target;
+        if (currentChatInfo.isGroupChat) {
+            target = { chatId: currentChatId };
+        } else {
+            var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
+            if (!peerId) return;
+            target = { userId: peerId };
+        }
+        BF.calls.initiate(target, media).catch(function (e) { console.error('Не удалось начать звонок:', e); });
+    }
+    var _btnCallAudio = $('#btnCallAudio');
+    var _btnCallVideo = $('#btnCallVideo');
+    if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
+    if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
+
     profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
 
@@ -1144,6 +1399,7 @@
 
     BF.settings.init({ myUserId: myUserId });
     BF.attach.init();
+    if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
 
@@ -1165,7 +1421,7 @@
 
     document.addEventListener('click', function (e) {
         if (!stickerPicker || !stickerPicker.classList.contains('visible')) return;
-        if (!stickerPicker.contains(e.target) && e.target !== stickerBtn) {
+        if (!stickerPicker.contains(e.target) && !stickerBtn.contains(e.target)) {
             stickerPicker.classList.remove('visible');
             stickerBtn.classList.remove('active');
         }
@@ -1221,6 +1477,7 @@
                 var img = document.createElement('img');
                 img.src = url;
                 img.alt = pack.name || '';
+                BF.files.bindResilientMedia(img, coverFid, true);
                 tab.appendChild(img);
             } else {
                 tab.textContent = (pack.name || '?')[0].toUpperCase();
@@ -1259,6 +1516,7 @@
                 img.title = s.emoji || '';
                 img.loading = 'lazy';
                 img.addEventListener('click', function () { sendSticker(s.fileId); });
+                BF.files.bindResilientMedia(img, s.fileId, false);
                 stickerGrid.appendChild(img);
             });
         });
@@ -1469,6 +1727,23 @@
             }
         }
 
+        // Копировать текст — если у сообщения есть текст.
+        var copyTextBtn = msgContextMenu.querySelector('button[data-act="copy-text"]');
+        var msgText = msgObj && msgObj.content && msgObj.content.text;
+        if (copyTextBtn) copyTextBtn.style.display = (msgText && !isSystem) ? '' : 'none';
+
+        // Копировать изображение — только если ровно одно изображение и оно единственное медиа.
+        var copyImageBtn = msgContextMenu.querySelector('button[data-act="copy-image"]');
+        var singleImageFileId = null;
+        if (msgObj && msgObj.content && msgObj.content.attachments && !isSystem) {
+            var imgAtts = msgObj.content.attachments.filter(function (a) { return a.type !== 'FORWARDED_MESSAGE'; });
+            if (imgAtts.length === 1 && (imgAtts[0].type === 'IMAGE' || imgAtts[0].type === 'GIF')) {
+                singleImageFileId = imgAtts[0].fileId;
+            }
+        }
+        contextMenuTarget.imageFileId = singleImageFileId;
+        if (copyImageBtn) copyImageBtn.style.display = singleImageFileId ? '' : 'none';
+
         msgContextMenu.classList.add('visible');
 
         var vw = window.innerWidth;
@@ -1486,6 +1761,36 @@
         if (!msgContextMenu) return;
         msgContextMenu.classList.remove('visible');
         contextMenuTarget = null;
+    }
+
+    // Скопировать изображение в буфер тем же превью, что показано в облачке.
+    // Буфер принимает только image/png — при необходимости конвертируем через canvas.
+    function copyImageToClipboard(fileId) {
+        if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return;
+        var fd = BF.files.getCachedFileUrl(fileId);
+        var cached = fd && (fd.previewUrl || fd.url);
+        var urlP = cached
+            ? Promise.resolve(cached)
+            : BF.files.refreshFileUrl(fileId).then(function (f) { return f && (f.previewUrl || f.url); });
+        urlP.then(function (url) {
+            if (!url) throw new Error('no_url');
+            return fetch(url);
+        }).then(function (r) { return r.blob(); })
+            .then(function (blob) {
+                if (blob.type === 'image/png') return blob;
+                return createImageBitmap(blob).then(function (bmp) {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = bmp.width;
+                    canvas.height = bmp.height;
+                    canvas.getContext('2d').drawImage(bmp, 0, 0);
+                    return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
+                });
+            })
+            .then(function (png) {
+                if (!png) throw new Error('no_png');
+                return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+            })
+            .catch(function () {});
     }
 
     function chatAvatarMarkup(chat) {
@@ -1655,12 +1960,18 @@
             var act = btn.dataset.act;
             var msgId = contextMenuTarget.messageId;
             var isOutgoing = contextMenuTarget.isOutgoing;
+            var imageFileId = contextMenuTarget.imageFileId;
             var msg = messages.find(function (m) { return Number(m.id) === Number(msgId); });
             closeContextMenu();
             if (act === 'reply') {
                 if (msg) setPendingReply(msg);
             } else if (act === 'forward') {
                 openForwardModal(resolveForwardSourceId(msg, msgId));
+            } else if (act === 'copy-text') {
+                var t = msg && msg.content && msg.content.text;
+                if (t) navigator.clipboard.writeText(t).catch(function () {});
+            } else if (act === 'copy-image') {
+                if (imageFileId) copyImageToClipboard(imageFileId);
             } else if (act === 'edit') {
                 if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     setPendingEdit(msg);
@@ -1960,6 +2271,49 @@
     window.addEventListener('resize', closeChatContextMenu);
     if (chatListEl) chatListEl.addEventListener('scroll', closeChatContextMenu);
 
+    // ========== DEEP-LINK ИЗ COOKIE (с публичной страницы пользователя) ==========
+
+    function bfGetCookie(name) {
+        var m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)');
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function bfDeleteOpenChatCookie() {
+        var base = 'bf_open_chat=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = base;
+        if (/(^|\.)barkfluff\.com$/i.test(location.hostname)) {
+            document.cookie = base + '; domain=.barkfluff.com';
+        }
+    }
+
+    // Если на странице пользователя (barkfluff.com/<username>) нажали «Написать в браузере»,
+    // там в cookie bf_open_chat записан username. Находим пользователя -> chatId -> открываем чат.
+    // Логика повторяет Android DeepLinkActivity: SearchUsers -> точное совпадение -> GetPersonChatId.
+    function maybeOpenChatFromCookie() {
+        var uname = bfGetCookie('bf_open_chat');
+        if (!uname) return;
+        bfDeleteOpenChatCookie();          // одноразово: сразу удаляем
+        uname = uname.trim();
+        if (!uname) return;
+
+        BF.api.searchUsers(uname, 0, 20).then(function (data) {
+            var list = (data && data.users) || [];
+            var target = null;
+            for (var i = 0; i < list.length; i++) {
+                if ((list[i].username || '').toLowerCase() === uname.toLowerCase()) {
+                    target = list[i];
+                    break;
+                }
+            }
+            if (!target) return;           // точного совпадения нет — как в Android, ничего не открываем
+            return BF.api.getPersonChatId(target.id).then(function (d) {
+                if (d && d.chatId) openChat(d.chatId);
+            });
+        }).catch(function (err) {
+            console.error('maybeOpenChatFromCookie failed:', err);
+        });
+    }
+
     // ========== INIT ==========
 
     requestNotificationPermission();
@@ -1978,12 +2332,13 @@
         BF.folders.setOnChange(function () { renderChatList(); });
         BF.folders.init().then(function () {
             return loadChats(true);
-        }).then(updateTitleBadge);
+        }).then(updateTitleBadge).then(maybeOpenChatFromCookie);
     } else {
-        loadChats(true).then(updateTitleBadge);
+        loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie);
     }
 
     BF.realtime.startAll();
+    if (BF.calls && BF.calls.start) BF.calls.start();
 
     if (BF.personalization && BF.personalization.init) BF.personalization.init();
 

@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import BFNetworking
 import BFCore
+import BFCalls
 
 /// Контейнер зависимостей для всего приложения
 @Observable
@@ -57,6 +58,7 @@ final class DependencyContainer {
     let localChatRepository: LocalChatRepository
     let localChatFolderRepository: LocalChatFolderRepository
     let localMessageRepository: LocalMessageRepository
+    let localCurrentUserRepository: LocalCurrentUserRepository
 
     // MARK: - Services (BFCore)
 
@@ -78,6 +80,13 @@ final class DependencyContainer {
     let updatesStreamManager: UpdatesStreamManager
     let onlinerStreamManager: OnlinerStreamManager
 
+    // MARK: - Calls
+
+    /// gRPC-сигнализация звонков (BarkFluff.Calls).
+    let callsRepository: CallsRepository
+    /// Фоновый стрим событий звонков (ринг/принят/завершён/...).
+    let callEventsStreamManager: CallEventsStreamManager
+
     // MARK: - Notifications
 
     let appFocusState: AppFocusState
@@ -95,6 +104,11 @@ final class DependencyContainer {
     /// Локальные настройки внешнего вида (тема приложения).
     let appearanceSettings: AppearanceSettings
 
+    // MARK: - Localization
+
+    /// Локальные настройки языка интерфейса.
+    let localizationSettings: LocalizationSettings
+
     // MARK: - Stickers
 
     /// Список недавно использованных стикеров (UserDefaults).
@@ -107,6 +121,20 @@ final class DependencyContainer {
         let vm = SettingsViewModel()
         vm.dependencyContainer = self
         return vm
+    }
+
+    // MARK: - Calls Controller
+
+    @ObservationIgnored @MainActor private var _callController: CallController?
+
+    /// Лениво создаваемый синглтон CallController (живёт всю сессию, ловит входящие app-wide).
+    /// Стартует/останавливается из корневой вью по состоянию `.main`.
+    @MainActor
+    var callController: CallController {
+        if let existing = _callController { return existing }
+        let controller = CallController(callsRepository: callsRepository, eventsManager: callEventsStreamManager)
+        _callController = controller
+        return controller
     }
 
     // MARK: - Current User
@@ -194,6 +222,7 @@ final class DependencyContainer {
         self.localChatRepository = LocalChatRepository(database: database)
         self.localChatFolderRepository = LocalChatFolderRepository(database: database)
         self.localMessageRepository = LocalMessageRepository(database: database)
+        self.localCurrentUserRepository = LocalCurrentUserRepository(database: database)
 
         // Streaming
         self.updatesStreamManager = UpdatesStreamManager(
@@ -202,6 +231,13 @@ final class DependencyContainer {
         )
         self.onlinerStreamManager = OnlinerStreamManager(
             onlinerRepository: onlinerRepository,
+            tokenRefreshCoordinator: tokenRefreshCoordinator
+        )
+
+        // Calls
+        self.callsRepository = CallsRepository(connectionManager: connectionManager)
+        self.callEventsStreamManager = CallEventsStreamManager(
+            callsRepository: callsRepository,
             tokenRefreshCoordinator: tokenRefreshCoordinator
         )
 
@@ -288,6 +324,9 @@ final class DependencyContainer {
         // Appearance (тема приложения)
         self.appearanceSettings = AppearanceSettings()
 
+        // Localization (язык интерфейса)
+        self.localizationSettings = LocalizationSettings()
+
         // Stickers
         self.recentStickersStore = RecentStickersStore()
 
@@ -305,14 +344,31 @@ final class DependencyContainer {
 
     // MARK: - Current User Methods
 
-    /// Загрузить текущего пользователя и сохранить его ID
+    /// Stale-first загрузка: мгновенно вытаскиваем кеш, ревалидацию запускаем
+    /// в фоне fire-and-forget. Возвращается **сразу** после чтения из SQLite,
+    /// чтобы `ChatListView.task` не подвисал на сетевом запросе getCurrentUser.
     func loadCurrentUser() async {
+        // 1. Stale — мгновенно показываем последнего сохранённого юзера.
+        if currentUser == nil,
+           let cached = try? await localCurrentUserRepository.loadCachedCurrentUser() {
+            currentUser = cached
+            currentUserID = cached.id
+        }
+        // 2. Revalidate в фоне — не блокирует caller.
+        Task { await revalidateCurrentUser() }
+    }
+
+    /// Сетевой запрос за актуальным профилем + write-through в SQLite.
+    /// Дёргается из `loadCurrentUser` и из write-through-точек редактирования
+    /// профиля (changeName, setProfilePicture, setProfilePoster, ...).
+    func revalidateCurrentUser() async {
         do {
             let user = try await userService.getCurrentUser()
             currentUserID = user.id
             currentUser = user
+            try? await localCurrentUserRepository.save(user)
         } catch {
-            // Если не удалось получить — останется 0
+            // Сеть упала — оставляем кешированного юзера видимым.
         }
     }
 
@@ -327,6 +383,7 @@ final class DependencyContainer {
         // 1. Останавливаем все стримы и фоновые подписки
         await updatesService.stop()
         await onlineStatusService.stop()
+        await callEventsStreamManager.stop()
 
         // 2. Чистим in-memory кеши
         await userCache.removeAll()
@@ -349,6 +406,7 @@ final class DependencyContainer {
         await MainActor.run {
             personalizationSettings.reset()
             appearanceSettings.reset()
+            localizationSettings.reset()
         }
 
         // 6. Закрываем gRPC-соединения (эндпоинты будут перевыбраны через beacon при логине)

@@ -29,8 +29,26 @@ public actor FastAuthService: FastAuthServiceProtocol {
         return toDomainStatus(status)
     }
 
-    public func accept(fastAuthID: String) async throws {
-        try await fastAuthRepository.acceptFastAuth(fastAuthID: fastAuthID)
+    public func scan(fastAuthID: String) async throws -> ScanFastAuthInfo {
+        let info = try await fastAuthRepository.scanFastAuth(fastAuthID: fastAuthID)
+        return ScanFastAuthInfo(
+            fastAuthID: info.fastAuthID,
+            deviceName: info.deviceName,
+            operationSystem: info.operationSystem,
+            appName: info.appName,
+            appVersion: info.appVersion,
+            ipAddress: info.ipAddress,
+            confirmationCode: info.confirmationCode,
+            expiresAt: info.expiresAt
+        )
+    }
+
+    public func accept(fastAuthID: String, confirmationCode: String) async throws {
+        try await fastAuthRepository.acceptFastAuth(fastAuthID: fastAuthID, confirmationCode: confirmationCode)
+    }
+
+    public func reject(fastAuthID: String, confirmationCode: String) async throws {
+        try await fastAuthRepository.rejectFastAuth(fastAuthID: fastAuthID, confirmationCode: confirmationCode)
     }
 
     public func subscribeToResult(fastAuthID: String) async throws -> AsyncThrowingStream<FastAuthResult, Error> {

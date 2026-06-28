@@ -53,7 +53,7 @@
             <TextView
                 android:layout_width="100dp"
                 android:layout_height="wrap_content"
-                android:text="Приложение"
+                android:text="@string/device_section_app"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -77,7 +77,7 @@
             <TextView
                 android:layout_width="100dp"
                 android:layout_height="wrap_content"
-                android:text="ОС"
+                android:text="@string/device_section_os"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -101,7 +101,7 @@
             <TextView
                 android:layout_width="100dp"
                 android:layout_height="wrap_content"
-                android:text="Местоположение"
+                android:text="@string/device_section_location"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -125,7 +125,7 @@
             <TextView
                 android:layout_width="100dp"
                 android:layout_height="wrap_content"
-                android:text="ID устройства"
+                android:text="@string/device_id_label"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -151,7 +151,7 @@
         android:id="@+id/buttonRename"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="Переименовать устройство"
+        android:text="@string/device_rename"
         app:icon="@drawable/ic_edit"
         app:iconGravity="textStart"
         app:iconPadding="8dp"
@@ -166,7 +166,7 @@
         android:id="@+id/buttonTerminate"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="Завершить сессию"
+        android:text="@string/device_terminate_session"
         android:textColor="?attr/colorError"
         app:icon="@drawable/ic_logout"
         app:iconGravity="textStart"

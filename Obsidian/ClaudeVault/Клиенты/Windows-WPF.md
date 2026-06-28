@@ -227,3 +227,53 @@ Light/Dark XAML resource dictionaries в `Resources/Styles/Themes/`. Toggle F8 �
 6. `Expand-Archive` в `InstallPath`
 7. Ярлык + протокол `bf://` (если `IsInstalled = true`)
 8. Запуск с аргументом `--successfulupdate` → показывает `PostUpdateMessage`
+
+## Локализация (RU / EN)
+
+Полная локализация **всего пользовательского UI** (Settings + онбординг + PinCode + MessengerPage + SideBar + UserControls), мгновенное переключение без перезапуска. На первом запуске берётся `CultureInfo.CurrentUICulture`, если не `ru` — fallback на `en`. Подход — swap `ResourceDictionary` (по образцу уже существующей смены темы) + событие для C# код-бихайнда.
+
+**Покрытие (не локализованы только debug-окна):**
+- `Pages/SetupPages/` — WelcomPage, SelectServer, Login, CreateAccount (9 шагов), TwoFA, CompletionRegistration
+- `Pages/PasswordReset.xaml`
+- `Pages/PinCode/` — PincodeSecure, CreatePinCodePage
+- `Pages/MessengerPage.xaml` — поиск, тултипы, drag&drop, placeholder ввода
+- `UserControls/SideBar.xaml` — все пункты меню
+- `UserControls/` — Profile, ProfileShare, AttachmentPreviewOverlay, ChatItem (drop), MessageBubble (контекстное меню + "изменено"), StickerPicker, UnreadSeparatorControl, PreviewUser, VideoEditor, VideoPlayer, ImageViewer, CropImage, PostUpdateMessage, ServerItem, UploadingAttachmentItem
+- `Validators/` — все валидаторы (Email, Username, Password, PersonalInfo, VerificationCode)
+- Динамические строки в `.cs`: PincodeSecure helper, CreateAccount шаг/password requirements, PasswordReset password requirements, Profile (статус "В сети" / "Был(а) ..."), ChatItem ("Избранное"), AttachmentPreviewOverlay (заголовок при выборе файлов), MessageBubble (ошибка отправки), AudioMessageContent.
+
+**Хранилище языка:**
+- `Services/App/LanguageRegistryHelper.cs` — `HKCU\Software\BarkFluff\AppLanguage`. Значения: `"system"` / `"ru"` / `"en"`. Дефолт `"system"`.
+- `BarkFluff.WebApi.Core/MessengerData/GlobalParam.cs` — поле `public string AppLanguage { get; set; } = "system";`. При загрузке `GlobalParam.json` старые сохранения без поля получают `"system"`.
+
+**Словари строк:**
+- `Resources/Localization/Strings.ru.xaml`, `Strings.en.xaml` — `ResourceDictionary` с `system:String` ключами. Конвенция: `L_<Area>_<Screen>_<Element>` PascalCase (`L_Settings_Theme_Title`, `L_Settings_Language_Header`).
+- В `App.xaml` стартовый плейсхолдер `<ResourceDictionary Source="Resources/Localization/Strings.ru.xaml"/>` — будет заменён до открытия первого окна.
+- Множество ключей в `ru.xaml` и `en.xaml` обязано совпадать (нет ключа = `DynamicResource` вернёт `{DynamicResource ...}`-литерал).
+
+**App.xaml.cs:**
+- `LanguageLoader()` — читает реестр, резолвит `"system"` → `CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ru" ? "ru" : "en"`, вызывает `ApplyLanguage`.
+- `ApplyLanguage(string lang)` — удаляет из `Application.Current.Resources.MergedDictionaries` любой словарь, чей `Source.OriginalString.Contains("/Localization/")`, добавляет `Strings.{lang}.xaml`, ставит `Thread.CurrentThread.CurrentUICulture` и `CurrentCulture` в `new CultureInfo(lang)` (нужно для `DateTime.ToString("dddd")`), поднимает событие `LanguageChanged`.
+- В `OnStartup` `LanguageLoader()` вызывается **до** `ThemeLoader()`.
+
+**LanguageManager** (`Services/App/LanguageManager.cs`):
+- Singleton: `CurrentLanguage { get; }`, `event EventHandler? LanguageChanged`, метод `Apply(string requested)` — резолвит `"system"`, зовёт `BarkFluff.Client.WPF.App.ApplyLanguage(...)`, поднимает событие.
+- Событие — единственный путь обновить C# код-бихайнд после смены языка.
+- **Хелпер `L`** (статический класс в том же файле): `L.Str("L_Key")` → строка из текущего словаря; `L.F("L_Key", args...)` → `string.Format(L.Str(key), args)`. Используется во всех `.cs`, формирующих текст в коде (валидаторы, динамические заголовки и т. п.).
+
+**XAML — только `DynamicResource`:**
+- `Text="{DynamicResource L_Settings_Theme_Title}"` — `StaticResource` для локализованного ключа **запрещён**, он замораживает значение и swap не сработает.
+- Распространяется на `Text`, `Content`, `Header`, `ToolTip`, `Title` (включая `Window.Title`), `PlaceholderText`.
+- Проверка после миграции: `grep -rn 'StaticResource L_'` должен быть пуст.
+
+**C# код-бихайнд:**
+- `(string)Application.Current.FindResource("L_Greeting")` — для строк, формируемых в коде. Завёрнуто в хелпер.
+- Долгоживущие UI-элементы (`DropMessage`, `BaseSettingsPage.Title`, `ChatItem` subtitle) — подписаны на `LanguageManager.LanguageChanged` (Loaded/Unloaded — `+=`/`-=`, иначе утечка).
+
+**BaseSettingsPage.Title — переход на ключи:**
+- `virtual string TitleKey { get; }` (возвращает ключ ресурса) + `string Title => (string)Application.Current.FindResource(TitleKey)`. Реализует `INotifyPropertyChanged`, при `LanguageChanged` поднимает `PropertyChanged(nameof(Title))`. Сайдбар Settings автоматически перерисовывается.
+- Все 12 наследников переведены на `TitleKey => "L_Settings_..."`.
+
+**LanguageSettingsPage** (`UserControls/SettingsPages/LanguageSettingsPage.xaml(.cs)`):
+- 3 `Border` с `MouseLeftButtonUp`, `Tag` = `"system"` / `"ru"` / `"en"`, Ellipse-радиокнопка, заголовок `L_Settings_Language_Header`.
+- На клике: `LanguageRegistryHelper.SetLanguage(tag)` → `App.GParam.AppLanguage = tag` → `App.SaveGlobalParam()` → `LanguageManager.Instance.Apply(tag)` → `UpdateRadioVisuals(tag)`.

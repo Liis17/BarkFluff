@@ -16,14 +16,14 @@ struct AboutServerSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Информация о сервере") {
+            Section("settings.about_server.section.info") {
                 if let serverInfo = serverViewModel.serverInfo {
-                    LabeledContent("Имя", value: serverInfo.name)
+                    LabeledContent("settings.about_server.name", value: serverInfo.name)
                     if let handle = serverInfo.publicHandle {
-                        LabeledContent("Адрес", value: handle)
+                        LabeledContent("settings.about_server.address", value: handle)
                     }
                     if let location = serverInfo.location, !location.isEmpty {
-                        LabeledContent("Локация", value: location)
+                        LabeledContent("settings.about_server.location", value: location)
                     }
                     if let description = serverInfo.description, !description.isEmpty {
                         Text(description)
@@ -31,18 +31,18 @@ struct AboutServerSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Text("Не подключено")
+                    Text("settings.about_server.not_connected")
                         .foregroundStyle(.secondary)
                 }
 
                 if let host = viewModel.beaconHost, let port = viewModel.beaconPort {
-                    LabeledContent("Beacon", value: "\(host):\(port)")
+                    LabeledContent("settings.about_server.beacon", value: "\(host):\(port)")
                 }
             }
 
-            Section("Микросервисы") {
+            Section("settings.about_server.section.services") {
                 if viewModel.services.isEmpty {
-                    Text("Эндпоинты не получены")
+                    Text("settings.about_server.endpoints_empty")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.services) { service in
@@ -51,7 +51,7 @@ struct AboutServerSettingsView: View {
                 }
             }
 
-            Section("Соединение") {
+            Section("settings.about_server.section.connection") {
                 HStack(spacing: 12) {
                     Button {
                         Task { await viewModel.ping() }
@@ -63,7 +63,7 @@ struct AboutServerSettingsView: View {
                             } else {
                                 Image(systemName: "wave.3.right")
                             }
-                            Text(viewModel.isPinging ? "Пингую…" : "Пинг")
+                            Text(viewModel.isPinging ? "settings.about_server.pinging" : "settings.about_server.ping")
                         }
                     }
                     .buttonStyle(.borderedProminent)
@@ -72,7 +72,7 @@ struct AboutServerSettingsView: View {
                     Spacer()
 
                     if let ms = viewModel.lastPingMillis {
-                        Label("\(ms) мс", systemImage: "checkmark.circle.fill")
+                        Label("\(ms) settings.about_server.ms", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                     } else if let error = viewModel.pingError {
                         Label(error, systemImage: "exclamationmark.triangle.fill")

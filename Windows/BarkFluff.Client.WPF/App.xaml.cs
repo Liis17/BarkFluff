@@ -74,6 +74,7 @@ namespace BarkFluff.Client.WPF
 
             base.OnStartup(e);
 
+            LanguageLoader();
             ThemeLoader();
 
             // Проверяем регистрацию (используем ваш ProtocolHelper)
@@ -186,13 +187,6 @@ namespace BarkFluff.Client.WPF
             Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(targetPath) ?? string.Empty, "datas"));
             string filePath = Path.Combine(Path.GetDirectoryName(targetPath), "datas", "GlobalParam.json");
 
-#if (DEBUG)
-            if (Debugger.IsAttached)
-            {
-                // Увеличивает версию если в дебаге под отладкой
-                IncrementVersion();
-            }
-#endif
             MessengerWindow = new MainWindow();
             MessengerWindow.Show();
             WindowStateService.Initialize(MessengerWindow);
@@ -383,27 +377,6 @@ namespace BarkFluff.Client.WPF
                 App.MessagerTask.Value = task;
             });
         }
-        private void IncrementVersion()
-        {
-            var versionParts = AppVersion.Version.Split('.');
-            int buildNumber = int.Parse(versionParts[3]);
-            buildNumber++;
-            versionParts[3] = buildNumber.ToString();
-            AppVersion.Version = string.Join(".", versionParts);
-
-            var versionFile = "K:\\source\\BarkFluff\\Windows\\BarkFluff.Client.WPF\\Services\\App\\AppVersion.cs";
-            var lines = System.IO.File.ReadAllLines(versionFile);
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i].Contains("public static string Version"))
-                {
-                    lines[i] = $"        public static string Version {{ get; set; }} = \"{AppVersion.Version}\";";
-                    break;
-                }
-            }
-            System.IO.File.WriteAllLines(versionFile, lines);
-        }
-
         /// <summary>
         /// Метод для обновления API клиента.
         /// </summary>
@@ -541,6 +514,33 @@ namespace BarkFluff.Client.WPF
                 ? "Resources/Styles/Themes/DarkTheme.xaml"
                 : "Resources/Styles/Themes/LightTheme.xaml";
             dicts.Add(new ResourceDictionary { Source = new Uri(path, UriKind.Relative) });
+        }
+
+        /// <summary>
+        /// Подменяет словарь локализованных строк в <see cref="Application.Resources"/>.
+        /// Вызывается из <see cref="LanguageManager.Apply"/> и из <see cref="LanguageLoader"/> на старте.
+        /// </summary>
+        public static void ApplyLanguage(string effectiveLang)
+        {
+            var dicts = Application.Current.Resources.MergedDictionaries;
+            var existing = dicts.FirstOrDefault(d =>
+                d.Source?.OriginalString.Contains("/Localization/") == true);
+            if (existing != null)
+                dicts.Remove(existing);
+
+            string path = $"Resources/Localization/Strings.{effectiveLang}.xaml";
+            dicts.Add(new ResourceDictionary { Source = new Uri(path, UriKind.Relative) });
+        }
+
+        /// <summary>
+        /// Резолвит сохранённый выбор языка (реестр) с учётом значения "system"
+        /// (берётся <see cref="System.Globalization.CultureInfo.CurrentUICulture"/> с fallback на en)
+        /// и применяет результат через <see cref="LanguageManager.Apply"/>.
+        /// </summary>
+        private void LanguageLoader()
+        {
+            var stored = LanguageRegistryHelper.GetLanguage();
+            LanguageManager.Instance.Apply(stored);
         }
     }
 }

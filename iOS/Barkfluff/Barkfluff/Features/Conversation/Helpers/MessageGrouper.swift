@@ -144,16 +144,19 @@ enum MessageGrouper {
     }
 
     /// Форматировать дату для разделителя
-    static func formatDateSeparator(_ date: Date) -> String {
+    /// - Parameters:
+    ///   - date: дата
+    ///   - locale: локаль для форматирования месяца (пробрасывается из @Environment)
+    static func formatDateSeparator(_ date: Date, locale: Locale = .current) -> String {
         let calendar = Calendar.current
 
         if calendar.isDateInToday(date) {
-            return "Сегодня"
+            return String(localized: "conversation.time.today")
         } else if calendar.isDateInYesterday(date) {
-            return "Вчера"
+            return String(localized: "conversation.time.yesterday")
         } else {
             let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "ru_RU")
+            formatter.locale = locale
             formatter.dateFormat = "d MMMM"
             return formatter.string(from: date)
         }

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Логи</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        .filters {
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+            padding: 16px;
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            margin-bottom: 20px;
+        }
+        .filters > .grow { flex: 1; min-width: 200px; }
+        .level-buttons { display: flex; gap: 4px; }
+
+        .logs-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            overflow: hidden;
+        }
+        .log-row { cursor: pointer; }
+        .log-row.expanded { background: var(--md-surface-container); }
+        .log-row:hover { background: var(--md-surface-container); }
+        .log-cell-toggle { width: 32px; }
+        .log-cell-time { width: 160px; font-family: 'Roboto Mono', monospace; font-size: 12px; color: var(--md-on-surface-variant); }
+        .log-cell-level { width: 100px; }
+        .log-cell-service { width: 200px; font-size: 13px; color: var(--md-on-surface-variant); }
+        .log-cell-msg { font-family: 'Roboto Mono', monospace; font-size: 13px; }
+
+        .log-detail {
+            background: var(--md-surface-container);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            padding: 12px 16px 12px 56px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border-top: 1px solid var(--md-outline-variant);
+        }
+
+        .level-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .level-info  { color: #0B5FBF; }
+        .level-info .dot { background: #0B5FBF; }
+        .level-warning { color: #815600; }
+        .level-warning .dot { background: #B17900; }
+        .level-error { color: var(--md-error); }
+        .level-error .dot { background: var(--md-error); }
+
+        .pagination-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px;
+            font-size: 13px;
+            color: var(--md-on-surface-variant);
+        }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="logs"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <h1>Логи системы</h1>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button onclick="openExportModal()" class="md-btn md-btn-tonal md-btn-square-press">
+                    <span class="msr size-18">download</span>
+                    Экспорт
+                </button>
+                <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" style="color:var(--md-on-error-container);background:var(--md-error-container);">
+                    <span class="msr size-18">delete</span>
+                    Очистить
+                </button>
+                <button id="logoutBtn" class="md-icon-btn" title="Выйти">
+                    <span class="msr">logout</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div class="filters">
+                <div class="md-search" style="min-width:240px;flex:1;">
+                    <span class="msr">search</span>
+                    <input id="searchInput" type="text" placeholder="Поиск по сообщению...">
+                </div>
+
+                <select id="serviceFilter" class="md-input-outlined">
+                    <option value="">Все сервисы</option>
+                </select>
+
+                <div class="level-buttons">
+                    <button data-level="" class="md-chip selected">Все</button>
+                    <button data-level="Information" class="md-chip level-info">
+                        <span class="msr size-18">info</span>
+                        Info
+                    </button>
+                    <button data-level="Warning" class="md-chip level-warning">
+                        <span class="msr size-18">warning</span>
+                        Warning
+                    </button>
+                    <button data-level="Error" class="md-chip level-error">
+                        <span class="msr size-18">error</span>
+                        Error
+                    </button>
+                </div>
+
+                <label class="md-switch" title="Авто-обновление">
+                    <input id="autoRefreshToggle" type="checkbox">
+                    <span class="track"><span class="thumb"></span></span>
+                    <span style="margin-left:8px;font-size:13px;color:var(--md-on-surface-variant);">Авто (10с)</span>
+                </label>
+
+                <button id="refreshBtn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">refresh</span>
+                    Обновить
+                </button>
+            </div>
+
+            <div class="logs-card">
+                <div style="overflow:auto;">
+                    <table class="md-table">
+                        <thead>
+                            <tr>
+                                <th class="log-cell-toggle"></th>
+                                <th class="log-cell-time">Время</th>
+                                <th class="log-cell-level">Уровень</th>
+                                <th class="log-cell-service">Сервис</th>
+                                <th>Сообщение</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-row">
+                    <span id="logsCount">—</span>
+                    <div style="display:flex;gap:8px;">
+                        <button id="prevBtn" class="md-btn md-btn-text" disabled>
+                            <span class="msr size-18">chevron_left</span>
+                            Назад
+                        </button>
+                        <button id="nextBtn" class="md-btn md-btn-text">
+                            Вперёд
+                            <span class="msr size-18">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Export dialog -->
+<div id="exportScrim" class="md-scrim">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Экспорт логов</h3>
+            <button id="exportCloseBtn" class="md-icon-btn" onclick="closeExportModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body">
+            <div id="exportChoice">
+                <p style="color:var(--md-on-surface-variant);margin-bottom:12px;">Выгрузит логи из Seq в ZIP-архив.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="startExport('old')">
+                        <span class="msr size-18">history</span> Только старые (старше 2 недель)
+                    </button>
+                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="startExport('all')">
+                        <span class="msr size-18">database</span> Все логи
+                    </button>
+                </div>
+            </div>
+            <div id="exportRunning" style="display:none;text-align:center;padding:16px;">
+                <div class="md-loader-expressive" style="display:inline-block;"></div>
+                <div id="exportStage" style="margin-top:12px;font-weight:500;">Подготовка...</div>
+                <div id="exportCounter" style="margin-top:4px;color:var(--md-on-surface-variant);font-size:13px;"></div>
+            </div>
+            <div id="exportDone" style="display:none;text-align:center;padding:16px;">
+                <span class="msr size-48" style="color:var(--md-success);">check_circle</span>
+                <p style="margin-top:8px;">Архив скачан. Рекомендуется перезапустить панель.</p>
+            </div>
+            <div id="exportError" style="display:none;text-align:center;padding:16px;">
+                <span class="msr size-48" style="color:var(--md-error);">error</span>
+                <p id="exportErrorText" style="margin-top:8px;color:var(--md-error);"></p>
+            </div>
+        </div>
+        <div class="md-dialog-actions" id="exportActions">
+            <button class="md-btn md-btn-text" onclick="closeExportModal()">Закрыть</button>
+            <button id="exportRestartBtn" class="md-btn md-btn-filled md-btn-square-press" style="display:none;" onclick="restartAfterExport()">
+                <span class="msr size-18">restart_alt</span> Перезапустить
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear dialog -->
+<div id="clearScrim" class="md-scrim">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3 style="color:var(--md-error);">Очистка логов</h3>
+            <button id="clearCloseBtn" class="md-icon-btn" onclick="closeClearModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body">
+            <div id="clearChoice">
+                <p style="color:var(--md-on-surface-variant);margin-bottom:12px;">Удаление логов из Seq. Действие необратимо.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="askClearConfirm('old')">
+                        <span class="msr size-18">history</span> Удалить старые (старше 2 недель)
+                    </button>
+                    <button class="md-btn md-btn-square-press" style="background:var(--md-error);color:var(--md-on-error);" onclick="askClearConfirm('all')">
+                        <span class="msr size-18">delete_forever</span> Удалить все логи
+                    </button>
+                </div>
+            </div>
+            <div id="clearConfirm" style="display:none;">
+                <p id="clearConfirmText" style="margin-bottom:4px;"></p>
+            </div>
+            <div id="clearRunning" style="display:none;text-align:center;padding:16px;">
+                <div class="md-loader-expressive" style="display:inline-block;"></div>
+                <div id="clearStage" style="margin-top:12px;font-weight:500;">Удаление логов...</div>
+            </div>
+            <div id="clearDone" style="display:none;text-align:center;padding:16px;">
+                <span class="msr size-48" style="color:var(--md-success);">check_circle</span>
+                <p id="clearDoneText" style="margin-top:8px;">Логи успешно удалены.</p>
+            </div>
+            <div id="clearError" style="display:none;text-align:center;padding:16px;">
+                <span class="msr size-48" style="color:var(--md-error);">error</span>
+                <p id="clearErrorText" style="margin-top:8px;color:var(--md-error);"></p>
+            </div>
+        </div>
+        <div class="md-dialog-actions" id="clearActions">
+            <button class="md-btn md-btn-text" onclick="closeClearModal()">Закрыть</button>
+            <button id="clearConfirmBtn" class="md-btn md-btn-square-press" style="background:var(--md-error);color:var(--md-on-error);display:none;">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    // ---- State ----
+    let allLogs = [];          // нормализованные события, накопленные по страницам
+    let services = [];
+    let currentPage = 0;
+    const pageSize = 50;
+    let lastAfterId = null;
+    let hasMore = true;
+    let loading = false;
+    let activeLevel = '';
+    let activeService = '';
+    let searchQuery = '';
+    let autoRefreshTimer = null;
+    let searchDebounce = null;
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    function formatDate(s) {
+        if (!s) return '—';
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+
+    function levelChip(level) {
+        const l = (level || '').toLowerCase();
+        let cls = '', label = level || 'Unknown';
+        if (l === 'information' || l === 'info') { cls = 'level-info'; label = 'Info'; }
+        else if (l === 'warning' || l === 'warn') { cls = 'level-warning'; label = 'Warning'; }
+        else if (l === 'error' || l === 'fatal' || l === 'critical') { cls = 'level-error'; label = 'Error'; }
+        return `<span class="${cls}" style="display:inline-flex;align-items:center;font-weight:500;font-size:12px;">
+                    <span class="dot level-dot" style="background:currentColor;"></span>${escapeHtml(label)}</span>`;
+    }
+
+    function shortService(s) {
+        if (!s) return '';
+        const parts = s.split('.');
+        return parts.length > 1 ? parts[parts.length - 1] : s;
+    }
+
+    // ---- Нормализация события Seq (PascalCase, Properties — массив {Name,Value}) ----
+    function normalizeEvent(e) {
+        const level = e.Level || e.level || 'Information';
+        const message = e.RenderedMessage || e.renderedMessage || e.MessageTemplate || e.messageTemplate || e.Message || e.message || '';
+        const template = e.MessageTemplate || e.messageTemplate || '';
+        const timestamp = e.Timestamp || e.timestamp || e.TimestampUtc || '';
+        const exception = e.Exception || e.exception || '';
+        const id = e.Id || e.id;
+        let props = [];
+        const raw = e.Properties || e.properties;
+        if (Array.isArray(raw)) props = raw.map(p => [p.Name || p.name, p.Value !== undefined ? p.Value : p.value]);
+        else if (raw && typeof raw === 'object') props = Object.entries(raw);
+        const appProp = props.find(([k]) => k === 'Application');
+        const service = appProp ? appProp[1] : (e.Application || '');
+        return { id, level, message, template, timestamp, exception, service, props };
+    }
+
+    function extractEvents(data) {
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.Events)) return data.Events;
+        if (data && Array.isArray(data.events)) return data.events;
+        return [];
+    }
+
+    // ---- Сервисы ----
+    async function loadServices() {
+        try {
+            const r = await fetch('/api/seq/services');
+            if (r.ok) { services = await r.json(); populateServiceSelect(); }
+        } catch {}
+    }
+    function populateServiceSelect() {
+        const sel = document.getElementById('serviceFilter');
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">Все сервисы</option>' + services.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(shortService(s))}</option>`).join('');
+        sel.value = cur;
+    }
+
+    // ---- События (server-side фильтрация + пагинация через afterId) ----
+    async function fetchMore() {
+        if (loading || !hasMore) return;
+        loading = true;
+        try {
+            const params = new URLSearchParams({ count: pageSize });
+            if (activeService) params.set('application', activeService);
+            if (activeLevel) params.set('level', activeLevel);
+            if (searchQuery) params.set('search', searchQuery);
+            if (lastAfterId) params.set('afterId', lastAfterId);
+            const res = await fetch('/api/seq/events?' + params.toString());
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const raw = extractEvents(await res.json());
+            if (raw.length) lastAfterId = raw[raw.length - 1].Id || raw[raw.length - 1].id;
+            allLogs = allLogs.concat(raw.map(normalizeEvent));
+            hasMore = raw.length >= pageSize;
+        } catch (e) {
+            hasMore = false;
+            if (allLogs.length === 0)
+                document.getElementById('logsTableBody').innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--md-error);">Ошибка загрузки логов</td></tr>`;
+        } finally { loading = false; }
+    }
+
+    async function reload() {
+        allLogs = []; currentPage = 0; lastAfterId = null; hasMore = true;
+        await fetchMore();
+        render();
+    }
+
+    function render() {
+        const tbody = document.getElementById('logsTableBody');
+        const start = currentPage * pageSize;
+        const slice = allLogs.slice(start, start + pageSize);
+        if (slice.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:48px;text-align:center;color:var(--md-on-surface-variant);">
+                <div style="display:inline-flex;flex-direction:column;align-items:center;gap:8px;">
+                    <span class="msr size-48" style="opacity:.4;">inbox</span>
+                    <div>Записей не найдено</div>
+                </div>
+            </td></tr>`;
+        } else {
+            tbody.innerHTML = slice.map((log, i) => `
+                <tr class="log-row" data-idx="${start + i}" onclick="toggleExpand(this, ${start + i})">
+                    <td class="log-cell-toggle"><span class="msr size-18" style="color:var(--md-on-surface-variant);transition:transform .2s;">chevron_right</span></td>
+                    <td class="log-cell-time">${formatDate(log.timestamp)}</td>
+                    <td class="log-cell-level">${levelChip(log.level)}</td>
+                    <td class="log-cell-service">${escapeHtml(shortService(log.service))}</td>
+                    <td class="log-cell-msg">${escapeHtml(log.message)}</td>
+                </tr>
+            `).join('');
+        }
+
+        const total = allLogs.length;
+        document.getElementById('logsCount').textContent =
+            total === 0 ? 'Нет записей'
+            : `Показаны ${start + 1}–${Math.min(start + pageSize, total)} из ${total}${hasMore ? '+' : ''}`;
+        document.getElementById('prevBtn').disabled = currentPage === 0;
+        document.getElementById('nextBtn').disabled = ((currentPage + 1) * pageSize >= total) && !hasMore;
+    }
+
+    window.toggleExpand = function (row, idx) {
+        const next = row.nextElementSibling;
+        if (next && next.classList.contains('log-detail-row')) {
+            next.remove();
+            row.classList.remove('expanded');
+            row.querySelector('.msr').style.transform = '';
+            return;
+        }
+        row.classList.add('expanded');
+        row.querySelector('.msr').style.transform = 'rotate(90deg)';
+        const log = allLogs[idx];
+        const detail = document.createElement('tr');
+        detail.className = 'log-detail-row';
+        const sortedProps = [...log.props].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+        const props = sortedProps.length
+            ? sortedProps.map(([k, v]) => `<div><span style="color:var(--md-on-surface-variant);">${escapeHtml(k)}</span>: ${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : v)}</div>`).join('')
+            : '<div style="color:var(--md-on-surface-variant);">Дополнительных свойств нет</div>';
+        const tmpl = (log.template && log.template !== log.message)
+            ? `<div style="margin:8px 0;color:var(--md-on-surface-variant);">Template: ${escapeHtml(log.template)}</div>` : '';
+        const exc = log.exception
+            ? `<pre style="margin-top:8px;color:var(--md-error);white-space:pre-wrap;">${escapeHtml(log.exception)}</pre>` : '';
+        detail.innerHTML = `<td colspan="5" style="padding:0;"><div class="log-detail">
+            <div style="margin-bottom:8px;color:var(--md-on-surface);font-weight:500;">${escapeHtml(log.message)}</div>
+            ${tmpl}${props}${exc}
+        </div></td>`;
+        row.after(detail);
+    };
+
+    // ---- Filters wiring ----
+    document.getElementById('searchInput').addEventListener('input', e => {
+        searchQuery = e.target.value;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(reload, 300);
+    });
+    document.getElementById('serviceFilter').addEventListener('change', e => { activeService = e.target.value; reload(); });
+    document.querySelectorAll('.level-buttons .md-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.level-buttons .md-chip').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            activeLevel = btn.dataset.level;
+            reload();
+        });
+    });
+    document.getElementById('refreshBtn').addEventListener('click', reload);
+    document.getElementById('autoRefreshToggle').addEventListener('change', e => {
+        if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+        if (e.target.checked) autoRefreshTimer = setInterval(reload, 10000);
+    });
+    document.getElementById('prevBtn').addEventListener('click', () => { if (currentPage > 0) { currentPage--; render(); window.scrollTo(0,0); } });
+    document.getElementById('nextBtn').addEventListener('click', async () => {
+        const needed = (currentPage + 1) * pageSize;
+        if (needed >= allLogs.length && hasMore) await fetchMore();
+        if ((currentPage + 1) * pageSize < allLogs.length) { currentPage++; render(); window.scrollTo(0,0); }
+        else render();
+    });
+
+    // ---- Экспорт (асинхронный job) ----
+    let exportJobId = null, exportTimer = null;
+    function showExportState(name) {
+        ['Choice','Running','Done','Error'].forEach(s =>
+            document.getElementById('export'+s).style.display = (s.toLowerCase() === name) ? '' : 'none');
+        const running = name === 'running';
+        document.getElementById('exportCloseBtn').style.display = running ? 'none' : '';
+        document.getElementById('exportActions').style.display = running ? 'none' : '';
+        document.getElementById('exportRestartBtn').style.display = name === 'done' ? '' : 'none';
+    }
+    window.openExportModal = () => { showExportState('choice'); document.getElementById('exportScrim').classList.add('open'); };
+    window.closeExportModal = () => {
+        if (exportTimer) { clearInterval(exportTimer); exportTimer = null; }
+        exportJobId = null;
+        document.getElementById('exportScrim').classList.remove('open');
+    };
+    window.startExport = async function (scope) {
+        showExportState('running');
+        document.getElementById('exportStage').textContent = 'Подготовка экспорта...';
+        document.getElementById('exportCounter').textContent = '';
+        try {
+            const r = await fetch('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            exportJobId = (await r.json()).jobId;
+            exportTimer = setInterval(pollExport, 2000);
+            pollExport();
+        } catch (e) { showExportError(e.message); }
+    };
+    async function pollExport() {
+        if (!exportJobId) return;
+        try {
+            const r = await fetch(`/api/seq/export/${exportJobId}/status`);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const s = await r.json();
+            const num = (s.totalDownloaded || 0).toLocaleString('ru-RU');
+            const stage = document.getElementById('exportStage');
+            const counter = document.getElementById('exportCounter');
+            if (s.state === 'queued') { stage.textContent = 'Подготовка экспорта...'; counter.textContent = ''; }
+            else if (s.state === 'downloading') { stage.textContent = 'Скачивание из Seq...'; counter.textContent = `Получено ${num} логов`; }
+            else if (s.state === 'compressing') { stage.textContent = 'Сжатие архива...'; counter.textContent = `${num} логов`; }
+            else if (s.state === 'ready') {
+                if (exportTimer) { clearInterval(exportTimer); exportTimer = null; }
+                const a = document.createElement('a'); a.href = `/api/seq/export/${exportJobId}/download`; a.download = '';
+                document.body.appendChild(a); a.click(); a.remove();
+                showExportState('done');
+            } else if (s.state === 'error') {
+                if (exportTimer) { clearInterval(exportTimer); exportTimer = null; }
+                showExportError(s.error || 'Неизвестная ошибка');
+            }
+        } catch (e) { if (exportTimer) { clearInterval(exportTimer); exportTimer = null; } showExportError(e.message); }
+    }
+    function showExportError(msg) { document.getElementById('exportErrorText').textContent = msg; showExportState('error'); }
+    window.restartAfterExport = async function () {
+        try { await fetch('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        catch (e) { showExportError(e.message); }
+    };
+
+    // ---- Очистка (асинхронный job) ----
+    let clearJobId = null, clearTimer = null;
+    function showClearState(name) {
+        ['Choice','Confirm','Running','Done','Error'].forEach(s =>
+            document.getElementById('clear'+s).style.display = (s.toLowerCase() === name) ? '' : 'none');
+        const running = name === 'running';
+        document.getElementById('clearCloseBtn').style.display = running ? 'none' : '';
+        document.getElementById('clearActions').style.display = running ? 'none' : '';
+        document.getElementById('clearConfirmBtn').style.display = name === 'confirm' ? '' : 'none';
+    }
+    window.openClearModal = () => { showClearState('choice'); document.getElementById('clearScrim').classList.add('open'); };
+    window.closeClearModal = () => {
+        if (clearTimer) { clearInterval(clearTimer); clearTimer = null; }
+        clearJobId = null;
+        document.getElementById('clearScrim').classList.remove('open');
+    };
+    window.askClearConfirm = function (scope) {
+        document.getElementById('clearConfirmText').textContent = scope === 'all'
+            ? 'Будут безвозвратно удалены ВСЕ логи в Seq. Продолжить?'
+            : 'Будут безвозвратно удалены логи старше 14 дней. Продолжить?';
+        document.getElementById('clearConfirmBtn').onclick = () => startClear(scope);
+        showClearState('confirm');
+    };
+    async function startClear(scope) {
+        showClearState('running');
+        document.getElementById('clearStage').textContent = 'Удаление логов...';
+        try {
+            const r = await fetch('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            clearJobId = (await r.json()).jobId;
+            clearTimer = setInterval(pollClear, 1500);
+            pollClear();
+        } catch (e) { showClearError(e.message); }
+    }
+    async function pollClear() {
+        if (!clearJobId) return;
+        try {
+            const r = await fetch(`/api/seq/clear/${clearJobId}/status`);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const s = await r.json();
+            if (s.state === 'done') {
+                if (clearTimer) { clearInterval(clearTimer); clearTimer = null; }
+                showClearState('done');
+                reload();
+            } else if (s.state === 'error') {
+                if (clearTimer) { clearInterval(clearTimer); clearTimer = null; }
+                showClearError(s.error || 'Неизвестная ошибка');
+            } else {
+                document.getElementById('clearStage').textContent = 'Удаление логов...';
+            }
+        } catch (e) { if (clearTimer) { clearInterval(clearTimer); clearTimer = null; } showClearError(e.message); }
+    }
+    function showClearError(msg) { document.getElementById('clearErrorText').textContent = msg; showClearState('error'); }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (!confirm('Выйти из панели?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const auth = await checkAuth();
+        if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        await loadServices();
+        await reload();
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>

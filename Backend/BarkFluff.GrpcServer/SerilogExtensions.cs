@@ -2,6 +2,7 @@ using BarkFluff.GrpcServer.Metrics;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 using Serilog;
 using Serilog.Events;
@@ -11,12 +12,18 @@ namespace BarkFluff.GrpcServer;
 public static class SerilogExtensions
 {
     /// <summary>
-    /// Настраивает Serilog с выводом в консоль и Seq.
+    /// Настраивает Serilog: Seq — всегда (асинхронный батч-синк), Console — полностью
+    /// в Development и только Warning+ в Production. Синхронный stdout-синк не блокирует
+    /// горячий путь в проде, но `docker logs` по-прежнему показывает предупреждения/ошибки.
     /// Вызывать ПОСЛЕ LoadConfiguration(), чтобы Seq URL из конфигурации был доступен.
     /// </summary>
     public static WebApplicationBuilder AddBarkFluffSerilog(this WebApplicationBuilder builder, string serviceName)
     {
         var seqUrl = builder.Configuration["Seq:ServerUrl"] ?? "http://seq:5341";
+        var isDevelopment = builder.Environment.IsDevelopment();
+
+        const string consoleTemplate =
+            "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
 
         builder.Host.UseSerilog((context, loggerConfig) =>
         {
@@ -31,14 +38,23 @@ public static class SerilogExtensions
                 .Enrich.WithEnvironmentName()
                 .Enrich.WithThreadId()
                 .Enrich.WithProperty("Application", serviceName)
-                .WriteTo.Console(
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
                 .WriteTo.Seq(seqUrl,
                     bufferBaseFilename: "logs/seq-buffer",
                     bufferSizeLimitBytes: 104857600,
                     batchPostingLimit: 100,
                     period: TimeSpan.FromSeconds(2),
                     queueSizeLimit: 100000);
+
+            if (isDevelopment)
+            {
+                loggerConfig.WriteTo.Console(outputTemplate: consoleTemplate);
+            }
+            else
+            {
+                loggerConfig.WriteTo.Console(
+                    restrictedToMinimumLevel: LogEventLevel.Warning,
+                    outputTemplate: consoleTemplate);
+            }
         });
 
         return builder;

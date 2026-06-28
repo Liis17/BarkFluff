@@ -137,8 +137,8 @@ public class S3BrowserService
             {
                 Key = o.Key,
                 Name = GetFileName(o.Key, prefix),
-                Size = o.Size,
-                LastModified = o.LastModified,
+                Size = o.Size.Value,
+                LastModified = o.LastModified.Value,
                 IsFolder = false
             })
             .ToList();
@@ -158,7 +158,7 @@ public class S3BrowserService
         {
             Objects = folders.Concat(objects).ToList(),
             NextContinuationToken = response.NextContinuationToken,
-            IsTruncated = response.IsTruncated
+            IsTruncated = response.IsTruncated.Value
         };
     }
 

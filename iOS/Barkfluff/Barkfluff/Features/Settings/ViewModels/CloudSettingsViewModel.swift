@@ -38,7 +38,7 @@ final class CloudSettingsViewModel {
         do {
             info = try await dc.fileService.getStorageInfo()
         } catch {
-            errorMessage = "Не удалось загрузить информацию о хранилище"
+            errorMessage = String(localized: "settings.cloud.error.load")
         }
         isRefreshing = false
     }
@@ -58,17 +58,17 @@ final class CloudSettingsViewModel {
 extension UploadFileType {
     var displayName: String {
         switch self {
-        case .userAvatar: return "Аватары"
-        case .messageAttachmentImage: return "Изображения"
-        case .messageAttachmentVideo: return "Видео"
-        case .messageAttachmentGif: return "GIF"
-        case .messageAttachmentDocument: return "Документы"
-        case .chatPicture: return "Обложки чатов"
-        case .messageAttachmentAudio: return "Аудио"
-        case .messageAttachmentVoice: return "Голосовые"
-        case .messageAttachmentSticker: return "Стикеры"
-        case .userProfilePoster: return "Постеры профиля"
-        case .unknown: return "Прочее"
+        case .userAvatar: return String(localized: "upload_file_type.user_avatar")
+        case .messageAttachmentImage: return String(localized: "upload_file_type.message_image")
+        case .messageAttachmentVideo: return String(localized: "upload_file_type.message_video")
+        case .messageAttachmentGif: return String(localized: "upload_file_type.message_gif")
+        case .messageAttachmentDocument: return String(localized: "upload_file_type.message_document")
+        case .chatPicture: return String(localized: "upload_file_type.chat_picture")
+        case .messageAttachmentAudio: return String(localized: "upload_file_type.message_audio")
+        case .messageAttachmentVoice: return String(localized: "upload_file_type.message_voice")
+        case .messageAttachmentSticker: return String(localized: "upload_file_type.message_sticker")
+        case .userProfilePoster: return String(localized: "upload_file_type.user_poster")
+        case .unknown: return String(localized: "upload_file_type.unknown")
         }
     }
 

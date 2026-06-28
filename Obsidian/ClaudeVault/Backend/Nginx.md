@@ -49,8 +49,12 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `web.conf` | `web.barkfluff.com` → [[Web]] | 7016 | HTTP (YARP proxy) |
 | `admin-panel.conf` | `panel.barkfluff.com` → [[AdminPanel]] | 51888 | HTTP |
 | `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 | HTTP (gRPC-Web) |
+| `calls.conf` | `calls.barkfluff.com` → [[Calls]] | 7025 (gRPC) | gRPC |
+| `livekit.conf` | `livekit.barkfluff.com` → LiveKit SFU (сигнализация) | 7880 | WSS (WebSocket) |
 
-> ⚠️ Сервисы [[Configuration]] (порт 7003) и [[Notification]] (порт 7004) — **внутренние**, отдельных nginx-конфигов нет (наружу не публикуются). MinIO/S3 проксируется напрямую через провайдера (HostKey S3 в проде; в dev — Docker-сеть без nginx), `minio.conf` тоже нет.
+> ⚠️ Сервисы [[Configuration]] (порт 7003) и [[Notification]] (порт 7004) — **внутренние**, отдельных nginx-конфигов нет (наружу не публикуются).
+> ⚠️ Webhook-порт [[Calls]] (7026) — внутренний (LiveKit → Calls), через nginx не выходит.
+> ⚠️ **LiveKit-медиа** (UDP 50000-50200 + ICE/TCP 7881) nginx проксировать НЕ может — это WebRTC-транспорт, обязан публиковаться напрямую на хосте. Через nginx идёт только сигнализация/API (WSS на 7880). MinIO/S3 проксируется напрямую через провайдера (HostKey S3 в проде; в dev — Docker-сеть без nginx), `minio.conf` тоже нет.
 
 ---
 
@@ -96,6 +100,17 @@ HTTP-сервисы (не gRPC), используют `proxy_pass`:
 - `panel.barkfluff.com` → `admin-panel:51888`
 - `developers.barkfluff.com` → `developers:7020`
 
+### `calls.conf`
+gRPC по образцу `updates.conf` (`grpc://calls:7025`), но `grpc_read/send_timeout 3600s` —
+`SubscribeCallEvents` долгоживущий и должен переживать простои (доставка входящих звонков).
+Webhook-порт 7026 наружу не выходит (LiveKit достукивается до `calls:7026` по docker-сети).
+
+### `livekit.conf`
+WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` — WSS это HTTP/1.1 Upgrade),
+`proxy_pass http://livekit:7880` с `Upgrade/Connection` (через `map $http_upgrade $connection_upgrade`),
+таймауты 3600s. Клиент получает `wss://livekit.barkfluff.com` (Configuration `LiveKit:Url` → [[Beacon]]).
+**Медиа через nginx не идёт** — только сигнализация/серверный API LiveKit.
+
 ---
 
 ## Субдомены — сводная таблица
@@ -113,6 +128,8 @@ HTTP-сервисы (не gRPC), используют `proxy_pass`:
 | `web.barkfluff.com` | [[Web]] |
 | `panel.barkfluff.com` | [[AdminPanel]] |
 | `developers.barkfluff.com` | [[Developers]] |
+| `calls.barkfluff.com` | [[Calls]] (gRPC) |
+| `livekit.barkfluff.com` | LiveKit SFU (WSS-сигнализация; медиа — напрямую) |
 | `storage.barkfluff.com` | [[ClientStorage]] |
 | `barkfluff.com` / `api.barkfluff.com` | [[WebServer]] (single-server) |
 

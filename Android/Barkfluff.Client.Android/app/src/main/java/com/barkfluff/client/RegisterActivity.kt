@@ -386,9 +386,9 @@ class RegisterActivity : AppCompatActivity() {
         b.usernameEditText.doAfterTextChanged {
             username = it?.toString()?.trim()?.lowercase() ?: ""
             if (username.isNotEmpty()) {
-                val validPattern = Regex("^[a-z0-9_-]+$")
+                val validPattern = Regex("^[a-z0-9_]+$")
                 if (!username.matches(validPattern)) {
-                    b.usernameValidationText.text = "Только латиница, цифры, _ и -"
+                    b.usernameValidationText.text = "Только латиница, цифры и _"
                     b.usernameValidationText.visibility = View.VISIBLE
                 } else if (username.length > MAX_USERNAME_LENGTH) {
                     b.usernameValidationText.text = "Максимум $MAX_USERNAME_LENGTH символов"

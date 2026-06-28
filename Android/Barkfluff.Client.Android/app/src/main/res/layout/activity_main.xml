@@ -16,13 +16,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Нижняя навигация (компактный плавающий стиль, 2 элемента) -->
+    <!-- Нижняя навигация (компактный плавающий стиль, 3 элемента) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNavCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
-        app:layout_constraintWidth_max="180dp"
+        app:layout_constraintWidth_max="252dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
         app:cardCornerRadius="28dp"
         app:cardElevation="0dp"

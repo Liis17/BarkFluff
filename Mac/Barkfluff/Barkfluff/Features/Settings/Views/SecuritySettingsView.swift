@@ -21,10 +21,10 @@ struct SecuritySettingsView: View {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.8)
-                        Text("Миграция данных...")
+                        Text("settings.security.storage.migrating")
                     }
                 } else {
-                    Picker("Хранилище токенов", selection: $viewModel.selectedStorageType) {
+                    Picker("settings.security.storage.picker", selection: $viewModel.selectedStorageType) {
                         ForEach(TokenStorageType.allCases) { type in
                             HStack {
                                 Image(systemName: type.iconName)
@@ -63,14 +63,14 @@ struct SecuritySettingsView: View {
                     }
                 }
             } header: {
-                Text("Хранилище токенов")
+                Text("settings.security.storage.section")
             } footer: {
-                Text("Токены авторизации хранятся на устройстве. iCloud позволяет синхронизировать их между устройствами.")
+                Text("settings.security.storage.footer")
             }
 
             // MARK: - 2FA Section
             Section {
-                Toggle("Двухфакторная аутентификация", isOn: $viewModel.twoFactorEnabled)
+                Toggle("settings.security.two_fa.toggle", isOn: $viewModel.twoFactorEnabled)
                     .onChange(of: viewModel.twoFactorEnabled) { _, newValue in
                         Task {
                             if newValue {
@@ -81,18 +81,18 @@ struct SecuritySettingsView: View {
                         }
                     }
             } header: {
-                Text("Двухфакторная аутентификация")
+                Text("settings.security.two_fa.section")
             } footer: {
-                Text("При включении 2FA вам потребуется вводить код из приложения-аутентификатора при каждом входе")
+                Text("settings.security.two_fa.footer")
             }
 
             // MARK: - Password Section
             Section {
-                Button("Сменить пароль") {
+                Button("settings.security.password.change") {
                     showChangePassword = true
                 }
             } header: {
-                Text("Пароль")
+                Text("settings.security.password.section")
             }
         }
         .formStyle(.grouped)
@@ -101,27 +101,27 @@ struct SecuritySettingsView: View {
             ChangePasswordSheet()
         }
         .confirmationDialog(
-            "Переключить хранилище?",
+            "settings.security.storage.switch_confirm.title",
             isPresented: $showStorageChangeConfirmation,
             presenting: pendingStorageType
         ) { newType in
-            Button("Переключить") {
+            Button("settings.security.storage.switch_confirm.confirm") {
                 Task {
                     await viewModel.switchTokenStorage(to: newType)
                 }
             }
-            Button("Отмена", role: .cancel) {
+            Button("common.cancel", role: .cancel) {
                 pendingStorageType = nil
             }
         } message: { newType in
-            Text("Данные будут скопированы в \(newType.displayName). \(newType.warning ?? "")")
+            Text("settings.security.storage.switch_confirm.message \(newType.displayName) \(newType.warning ?? "")")
         }
-        .alert("Требуется перезапуск", isPresented: $viewModel.showRestartRequired) {
-            Button("OK") {
+        .alert("settings.security.restart_required.title", isPresented: $viewModel.showRestartRequired) {
+            Button("common.ok") {
                 // Пользователь должен сам перезапустить приложение
             }
         } message: {
-            Text("Хранилище токенов изменено. Пожалуйста, перезапустите приложение для применения изменений.")
+            Text("settings.security.restart_required.message")
         }
     }
 }
@@ -134,26 +134,26 @@ struct ChangePasswordSheet: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.lg) {
-            Text("Смена пароля")
+            Text("settings.security.password.change_title")
                 .font(.title2)
 
             VStack(spacing: Theme.Spacing.md) {
-                SecureField("Текущий пароль", text: $currentPassword)
+                SecureField("settings.security.password.current", text: $currentPassword)
                     .textFieldStyle(.roundedBorder)
-                SecureField("Новый пароль", text: $newPassword)
+                SecureField("settings.security.password.new", text: $newPassword)
                     .textFieldStyle(.roundedBorder)
-                SecureField("Подтвердите пароль", text: $confirmPassword)
+                SecureField("settings.security.password.confirm", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
             }
             .frame(width: 300)
 
             HStack {
-                Button("Отмена") {
+                Button("common.cancel") {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
 
-                Button("Сохранить") {
+                Button("common.save") {
                     // TODO: Change password
                     dismiss()
                 }

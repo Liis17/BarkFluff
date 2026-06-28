@@ -12,10 +12,11 @@ import BFCore
 struct ProfileInfoSection: View {
     let viewModel: UserProfilePanelViewModel
 
-    // Форматтер даты с русской локалью
-    private var russianDateFormatter: DateFormatter {
+    @Environment(\.locale) private var locale
+
+    private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = locale
         formatter.dateStyle = .long
         return formatter
     }
@@ -25,7 +26,7 @@ struct ProfileInfoSection: View {
             // О себе
             if let bio = viewModel.bio, !bio.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Label("О себе", systemImage: "text.quote")
+                    Label("user_profile.info.bio", systemImage: "text.quote")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -40,7 +41,7 @@ struct ProfileInfoSection: View {
             // Бейджи
             if !viewModel.badges.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Label("Значки", systemImage: "star.fill")
+                    Label("user_profile.info.badges", systemImage: "star.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -56,7 +57,7 @@ struct ProfileInfoSection: View {
             // ID пользователя
             if let userID = viewModel.userID {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Label("ID пользователя", systemImage: "number")
+                    Label("user_profile.info.user_id", systemImage: "number")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -71,11 +72,11 @@ struct ProfileInfoSection: View {
             // Дата регистрации
             if let registrationDate = viewModel.registrationDate {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Label("Дата регистрации", systemImage: "calendar")
+                    Label("user_profile.info.registered", systemImage: "calendar")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text(russianDateFormatter.string(from: registrationDate))
+                    Text(dateFormatter.string(from: registrationDate))
                         .font(.body)
                         .foregroundStyle(.primary)
                 }
@@ -85,13 +86,13 @@ struct ProfileInfoSection: View {
             // Лимит хранилища
             if let storageLimitGB = viewModel.storageLimitGB, storageLimitGB > 0 {
                 HStack(spacing: Theme.Spacing.xs) {
-                    Label("Хранилище", systemImage: "externaldrive")
+                    Label("user_profile.info.storage", systemImage: "externaldrive")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
                     Spacer()
 
-                    Text("\(storageLimitGB) ГБ")
+                    Text("user_profile.info.storage.gb \(storageLimitGB)")
                         .font(.callout)
                         .foregroundStyle(.primary)
                 }

@@ -34,15 +34,25 @@
         android:maxSdkVersion="32"
         tools:ignore="ScopedStorage" />
 
-    <!-- Camera permission for image picker -->
+    <!-- Camera permission for image picker and calls -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Calls -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:name=".BarkFluffApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.BarkfluffClientAndroid"
@@ -128,6 +138,20 @@
 
         <activity
             android:name=".UserProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".calls.IncomingCallActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
+
+        <activity
+            android:name=".calls.CallActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait" />
@@ -223,6 +247,12 @@
 
         <activity
             android:name=".PersonalizationSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".LanguageSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait" />
@@ -357,6 +387,21 @@
             android:name=".notifications.MarkAsReadReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".calls.CallActionReceiver"
+            android:exported="false" />
+
+        <!-- Telecom self-managed call integration -->
+        <service
+            android:name=".calls.BarkFluffConnectionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+
+
         <!-- Firebase Cloud Messaging Service -->
         <service
             android:name=".notifications.BarkFluffFirebaseMessagingService"
@@ -366,6 +411,11 @@
             </intent-filter>
         </service>
 
+        <!-- Foreground service for active calls -->
+        <service
+            android:name=".calls.CallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|camera|mediaProjection" />
         <!-- Foreground service for outgoing media (compress/upload/send queue) -->
         <service
             android:name=".send.MediaSendService"

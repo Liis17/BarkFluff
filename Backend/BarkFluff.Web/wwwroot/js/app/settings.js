@@ -432,12 +432,16 @@
         form.appendChild(saveBtn);
         body.appendChild(form);
 
+        var origFirstName = '';
+        var origLastName = '';
         var origUsername = '';
         loadCurrentUser().then(function (user) {
             if (!user) return;
             fnInput.value = user.firstName || '';
             lnInput.value = user.lastName || '';
             unInput.value = user.username || '';
+            origFirstName = user.firstName || '';
+            origLastName = user.lastName || '';
             origUsername = user.username || '';
         });
 
@@ -451,6 +455,12 @@
                 unHint.textContent = '';
                 unHint.className = 'sd-hint';
                 unAvailable = true;
+                return;
+            }
+            if (val.length < 3 || val.length > 32 || !/^[a-zA-Z0-9_]+$/.test(val)) {
+                unHint.textContent = 'Латиница, цифры, _; от 3 до 32 символов';
+                unHint.className = 'sd-hint error';
+                unAvailable = false;
                 return;
             }
             unTimer = setTimeout(function () {
@@ -476,18 +486,30 @@
             var ln = lnInput.value.trim();
             var un = unInput.value.trim();
 
-            var namePromise = BF.api.changeName(fn, ln);
-            var unPromise = (un !== origUsername && un)
-                ? BF.api.changeUsername(un)
-                : Promise.resolve();
+            var usernameChanged = un !== origUsername && un;
+            var saveChain = Promise.resolve();
+            if (fn !== origFirstName || ln !== origLastName) {
+                saveChain = saveChain.then(function () { return BF.api.changeName(fn, ln); });
+            }
+            if (usernameChanged) {
+                saveChain = saveChain.then(function () { return BF.api.changeUsername(un); });
+            }
 
-            Promise.all([namePromise, unPromise]).then(function () {
-                if (currentUser) {
-                    currentUser.firstName = fn;
-                    currentUser.lastName = ln;
-                    if (un !== origUsername) currentUser.username = un;
+            saveChain.then(function () {
+                return BF.api.getUser(myUserId);
+            }).then(function (data) {
+                var savedUser = data && data.user;
+                if (!savedUser) throw new Error('profile_not_loaded');
+                if (usernameChanged && savedUser.username !== un) {
+                    throw new Error('username_not_changed');
                 }
-                origUsername = un;
+                currentUser = savedUser;
+                fnInput.value = savedUser.firstName || '';
+                lnInput.value = savedUser.lastName || '';
+                unInput.value = savedUser.username || '';
+                origFirstName = savedUser.firstName || '';
+                origLastName = savedUser.lastName || '';
+                origUsername = savedUser.username || '';
                 saveBtn.disabled = false;
                 // Show success feedback
                 var ok = document.createElement('div');
@@ -495,8 +517,15 @@
                 ok.textContent = 'Сохранено';
                 form.appendChild(ok);
                 setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
-            }).catch(function () {
+            }).catch(function (err) {
                 saveBtn.disabled = false;
+                if (extractErrorCode(err) === 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47') {
+                    unHint.textContent = 'Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа';
+                    unHint.className = 'sd-hint error';
+                } else if (err && err.message === 'username_not_changed') {
+                    unHint.textContent = 'Сервер не подтвердил смену юзернейма';
+                    unHint.className = 'sd-hint error';
+                }
             });
         });
     }

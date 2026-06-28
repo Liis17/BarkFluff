@@ -12,7 +12,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
     public partial class PersonalizationSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Персонализация";
+        public override string TitleKey => "L_Settings_Personalization_Title";
 
         private static readonly SolidColorBrush AccentBrush      = new(Color.FromRgb(0xDF, 0x50, 0x00));
         private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
@@ -146,7 +146,8 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var (urlError, url) = await App.ServerCommunication.GetFile(App.GParam, fileId);
             if (!urlError.IsSuccess || string.IsNullOrEmpty(url))
             {
-                PosterStatusText.Text = $"Не удалось получить ссылку: {urlError.ErrorMessage}";
+                var fmt = L("L_Settings_Personalization_Poster_LinkError");
+                PosterStatusText.Text = string.Format(fmt, urlError.ErrorMessage);
                 return;
             }
 
@@ -162,27 +163,29 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var dialog = new OpenFileDialog
             {
                 Multiselect = false,
-                Filter = "Изображения (*.jpg;*.jpeg;*.png;*.webp)|*.jpg;*.jpeg;*.png;*.webp|Все файлы (*.*)|*.*",
-                Title  = "Выберите постер профиля"
+                Filter = L("L_Settings_Personalization_Poster_Dialog_Filter"),
+                Title  = L("L_Settings_Personalization_Poster_Dialog_Title")
             };
             if (dialog.ShowDialog() != true) return;
 
             ChangePosterBtn.IsEnabled = false;
-            PosterStatusText.Text = "Загрузка...";
+            PosterStatusText.Text = L("L_Common_Uploading");
             try
             {
                 var (uploadErr, fileId) = await App.ServerCommunication.UploadFileAsync(
                     App.GParam, dialog.FileName, UploadFileType.UserProfilePoster);
                 if (!uploadErr.IsSuccess || string.IsNullOrEmpty(fileId))
                 {
-                    PosterStatusText.Text = $"Ошибка загрузки: {uploadErr.ErrorMessage}";
+                    var fmt = L("L_Settings_Personalization_Poster_UploadError");
+                    PosterStatusText.Text = string.Format(fmt, uploadErr.ErrorMessage);
                     return;
                 }
 
                 var setErr = await App.ServerCommunication.SetProfilePoster(fileId, App.GParam);
                 if (!setErr.IsSuccess)
                 {
-                    PosterStatusText.Text = $"Ошибка сохранения: {setErr.ErrorMessage}";
+                    var fmt = L("L_Settings_Personalization_Poster_SaveError");
+                    PosterStatusText.Text = string.Format(fmt, setErr.ErrorMessage);
                     return;
                 }
 
@@ -192,7 +195,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             }
             catch (Exception ex)
             {
-                PosterStatusText.Text = $"Ошибка: {ex.Message}";
+                PosterStatusText.Text = L("L_Common_Error_Prefix") + ex.Message;
             }
             finally
             {
@@ -203,13 +206,13 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         private async void RemovePoster_Click(object sender, RoutedEventArgs e)
         {
             RemovePosterBtn.IsEnabled = false;
-            PosterStatusText.Text = "Удаление...";
+            PosterStatusText.Text = L("L_Common_Removing");
             try
             {
                 var err = await App.ServerCommunication.SetProfilePoster(string.Empty, App.GParam);
                 if (!err.IsSuccess)
                 {
-                    PosterStatusText.Text = $"Ошибка: {err.ErrorMessage}";
+                    PosterStatusText.Text = L("L_Common_Error_Prefix") + err.ErrorMessage;
                     return;
                 }
                 _currentPosterFileId = string.Empty;
@@ -218,7 +221,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             }
             catch (Exception ex)
             {
-                PosterStatusText.Text = $"Ошибка: {ex.Message}";
+                PosterStatusText.Text = L("L_Common_Error_Prefix") + ex.Message;
             }
         }
 
@@ -227,14 +230,14 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         // ──────────────────────────────────────────────────────────────
         private async Task LoadBackgroundsAsync()
         {
-            SetBgStatus("Загрузка...");
+            SetBgStatus(L("L_Common_Loading"));
             BackgroundsGrid.ItemsSource = null;
             _backgroundFileIds.Clear();
 
             var (error, data) = await App.ServerCommunication.GetPersonalization(App.GParam);
             if (!error.IsSuccess || data == null)
             {
-                SetBgStatus($"Ошибка: {error.ErrorMessage}");
+                SetBgStatus(L("L_Common_Error_Prefix") + error.ErrorMessage);
                 return;
             }
 
@@ -266,20 +269,21 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var dialog = new OpenFileDialog
             {
                 Multiselect = false,
-                Filter = "Изображения (*.jpg;*.jpeg;*.png;*.webp)|*.jpg;*.jpeg;*.png;*.webp|Все файлы (*.*)|*.*",
-                Title  = "Выберите фоновое изображение"
+                Filter = L("L_Settings_Personalization_Poster_Dialog_Filter"),
+                Title  = L("L_Settings_Personalization_Backgrounds_AddDialog_Title")
             };
             if (dialog.ShowDialog() != true) return;
 
             AddBackgroundBtn.IsEnabled = false;
-            SetBgStatus("Загрузка...");
+            SetBgStatus(L("L_Common_Uploading"));
             try
             {
                 var (err, fileId) = await App.ServerCommunication.UploadFileAsync(
                     App.GParam, dialog.FileName, UploadFileType.MessageAttachmentImage);
                 if (!err.IsSuccess || string.IsNullOrEmpty(fileId))
                 {
-                    SetBgStatus($"Ошибка загрузки: {err.ErrorMessage}");
+                    var fmt = L("L_Settings_Personalization_Poster_UploadError");
+                    SetBgStatus(string.Format(fmt, err.ErrorMessage));
                     return;
                 }
 
@@ -290,7 +294,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             }
             catch (Exception ex)
             {
-                SetBgStatus($"Ошибка: {ex.Message}");
+                SetBgStatus(L("L_Common_Error_Prefix") + ex.Message);
             }
             finally
             {
@@ -343,11 +347,17 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             var error = await App.ServerCommunication.UpdatePersonalization(data, App.GParam);
             if (!error.IsSuccess)
-                SetBgStatus($"Ошибка сохранения: {error.ErrorMessage}");
+            {
+                var fmt = L("L_Settings_Personalization_Poster_SaveError");
+                SetBgStatus(string.Format(fmt, error.ErrorMessage));
+            }
         }
 
         private void SetBgStatus(string msg)
             => Dispatcher.Invoke(() => BgStatusText.Text = msg);
+
+        private static string L(string key)
+            => Application.Current?.TryFindResource(key) as string ?? key;
     }
 
     internal sealed class BackgroundItem(string fileId, ImageSource? previewSource, Brush borderBrush)

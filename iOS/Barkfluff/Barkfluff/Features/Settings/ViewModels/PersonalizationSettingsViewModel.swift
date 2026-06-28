@@ -102,7 +102,7 @@ final class PersonalizationSettingsViewModel {
         do {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data) else {
-                errorMessage = "Не удалось прочитать выбранное изображение"
+                errorMessage = String(localized: "personalization.error.read_selected_image")
                 selectedPosterItem = nil
                 return
             }
@@ -125,7 +125,7 @@ final class PersonalizationSettingsViewModel {
         }
 
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            errorMessage = "Ошибка обработки изображения"
+            errorMessage = String(localized: "personalization.error.process_image")
             return
         }
 
@@ -137,9 +137,9 @@ final class PersonalizationSettingsViewModel {
             )
             try await userService.setProfilePoster(fileID: fileID)
             posterFileID = fileID
-            // Перечитать текущего пользователя, чтобы шапки профиля
-            // (в боковой панели и UserProfilePanelView) подхватили новый постер.
-            await container.loadCurrentUser()
+            // Write-through: ждём сетевой ответ getCurrentUser и пишем в SQLite,
+            // чтобы шапки профиля и кеш на следующий cold-start подхватили новый постер.
+            await container.revalidateCurrentUser()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -163,7 +163,7 @@ final class PersonalizationSettingsViewModel {
 
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                errorMessage = "Не удалось прочитать выбранное изображение"
+                errorMessage = String(localized: "personalization.error.read_selected_image")
                 return
             }
             let fileName = "background.\(item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg")"

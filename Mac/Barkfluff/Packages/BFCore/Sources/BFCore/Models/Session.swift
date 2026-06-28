@@ -41,13 +41,17 @@ public enum DeviceType: String, Sendable, Codable, CaseIterable {
     case web
     case unknown
 
-    public var displayName: String {
+    /// Локализованное название устройства (системная локаль).
+    public var displayName: String { displayName(in: .current) }
+
+    /// Локализованное название устройства с явной локалью.
+    public func displayName(in locale: Locale) -> String {
         switch self {
         case .mac: return "Mac"
         case .iphone: return "iPhone"
         case .ipad: return "iPad"
         case .web: return "Web"
-        case .unknown: return "Неизвестно"
+        case .unknown: return String(localized: "bfcore.device.unknown", bundle: .module, locale: locale)
         }
     }
 

@@ -9,7 +9,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
     public partial class CloudSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Облако";
+        public override string TitleKey => "L_Settings_Cloud_Title";
 
         public CloudSettingsPage()
         {
@@ -29,10 +29,12 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 long usedBytes = userSize.totalUsedSpace;
                 long totalBytes = userSize.totalSpace;
 
-                UsageText.Text = $"{FormatBytes(usedBytes)} из {FormatBytes(totalBytes)}";
+                var usageFmt = L("L_Settings_Cloud_Usage_OfTotal");
+                UsageText.Text = string.Format(usageFmt, FormatBytes(usedBytes), FormatBytes(totalBytes));
 
                 double percent = totalBytes > 0 ? (double)usedBytes / totalBytes * 100 : 0;
-                UsagePercentText.Text = $"{percent:F1}% использовано";
+                var percentFmt = L("L_Settings_Cloud_Usage_Percent");
+                UsagePercentText.Text = string.Format(CultureInfo.CurrentCulture, percentFmt, percent);
 
                 // Разбивка по всем типам из UploadFileType
                 long imageSize = 0, videoSize = 0, gifSize = 0, documentSize = 0,
@@ -109,7 +111,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             }
             catch
             {
-                UsageText.Text = "Не удалось загрузить данные";
+                UsageText.Text = L("L_Settings_Cloud_LoadError");
             }
         }
 
@@ -122,5 +124,8 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 return (bytes / OneGb).ToString("0.##", CultureInfo.InvariantCulture) + " GB";
             return (bytes / OneMb).ToString("0.##", CultureInfo.InvariantCulture) + " MB";
         }
+
+        private static string L(string key)
+            => Application.Current?.TryFindResource(key) as string ?? key;
     }
 }

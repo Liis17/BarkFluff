@@ -2,6 +2,8 @@ using Barkfluff.AdminPanel.Models;
 
 using Microsoft.Extensions.Options;
 
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace Barkfluff.AdminPanel.Services;
@@ -186,7 +188,10 @@ public class SeqService
         return ExtractFirstScalar(resp.Value);
     }
 
-    public async Task DeleteEventsAsync(DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
+    public async Task DeleteEventsAsync(
+        string? filter = null,
+        DateTime? fromDateUtc = null,
+        DateTime? toDateUtc = null)
     {
         // Seq HTTP API использует HATEOAS-style URL discovery, поэтому путь DELETE
         // определяется не статически, а через `/api/events/resources` → `Links["DeleteInSignal"]`.
@@ -198,7 +203,7 @@ public class SeqService
         try
         {
             await connection.Events.DeleteAsync(
-                filter: null,
+                filter: filter,
                 fromDateUtc: fromDateUtc,
                 toDateUtc: toDateUtc);
         }
@@ -206,6 +211,58 @@ public class SeqService
         {
             _logger.LogError(ex, "Seq Events.DeleteAsync failed");
             throw new InvalidOperationException($"Seq вернул ошибку: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Ingests a single event into Seq in CLEF format via POST /api/events/raw?clef.
+    /// AdminPanel сам не пишет логи через Serilog→Seq, поэтому свёртки доставляются напрямую через HTTP API.
+    /// </summary>
+    public async Task IngestEventAsync(
+        DateTime timestampUtc,
+        string level,
+        string messageTemplate,
+        IReadOnlyDictionary<string, object?> properties)
+    {
+        using var ms = new MemoryStream();
+        await using (var writer = new Utf8JsonWriter(ms))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("@t", timestampUtc.ToUniversalTime().ToString("O"));
+            writer.WriteString("@l", level);
+            writer.WriteString("@mt", messageTemplate);
+
+            foreach (var (key, value) in properties)
+            {
+                if (string.IsNullOrEmpty(key) || key.StartsWith('@')) continue;
+                writer.WritePropertyName(key);
+                JsonSerializer.Serialize(writer, value, value?.GetType() ?? typeof(object));
+            }
+
+            writer.WriteEndObject();
+        }
+        ms.WriteByte((byte)'\n');
+
+        var content = new ByteArrayContent(ms.ToArray());
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/vnd.serilog.clef");
+
+        try
+        {
+            var response = await _httpClient.PostAsync("/api/events/raw?clef", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "Seq ingest returned {StatusCode}: {Body}",
+                    (int)response.StatusCode, body);
+                throw new InvalidOperationException(
+                    $"Seq ingest failed with status {(int)response.StatusCode}: {body}");
+            }
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "Failed to ingest event into Seq");
+            throw;
         }
     }
 

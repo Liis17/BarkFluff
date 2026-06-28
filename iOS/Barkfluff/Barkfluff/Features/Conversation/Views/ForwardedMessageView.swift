@@ -77,14 +77,14 @@ struct ForwardedMessageView: View {
 
     private func forwardedAttachmentLabel(_ att: MessageAttachment) -> String {
         switch att.type {
-        case .image: return "Фото"
-        case .video: return "Видео"
-        case .gif: return "GIF"
-        case .audio: return "Аудио"
-        case .voice: return "Голосовое"
-        case .sticker: return "Стикер"
-        case .document: return att.fileName.isEmpty ? "Документ" : att.fileName
-        case .forwardedMessage: return "Пересланное"
+        case .image: return String(localized: "conversation.attach.preview.photo")
+        case .video: return String(localized: "conversation.attach.preview.video")
+        case .gif: return String(localized: "conversation.attach.preview.gif")
+        case .audio: return String(localized: "conversation.attach.preview.audio")
+        case .voice: return String(localized: "conversation.attach.preview.voice")
+        case .sticker: return String(localized: "conversation.attach.preview.sticker")
+        case .document: return att.fileName.isEmpty ? String(localized: "conversation.attach.preview.document") : att.fileName
+        case .forwardedMessage: return String(localized: "conversation.attach.preview.forwarded")
         }
     }
 }

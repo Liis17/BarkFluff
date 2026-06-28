@@ -28,9 +28,9 @@ struct MainSplitView: View {
                         .navigationTitle("")
                 } else {
                     ContentUnavailableView(
-                        "Выберите чат",
+                        "main.detail.no_chat.title",
                         systemImage: "message",
-                        description: Text("Выберите чат из списка слева")
+                        description: Text("main.detail.no_chat.description")
                     )
                     .navigationTitle("")
                 }
@@ -42,9 +42,9 @@ struct MainSplitView: View {
                         .navigationTitle("")
                 } else {
                     ContentUnavailableView(
-                        "Выберите раздел",
+                        "main.detail.no_settings.title",
                         systemImage: "sidebar.left",
-                        description: Text("Выберите раздел настроек из списка слева")
+                        description: Text("main.detail.no_settings.description")
                     )
                     .navigationTitle("")
                 }

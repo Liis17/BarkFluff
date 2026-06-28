@@ -3,7 +3,6 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("com.google.protobuf") version "0.9.4"
     id("com.google.gms.google-services")
 }
 
@@ -32,7 +31,6 @@ android {
         ndk {
             // Только arm64-v8a. minSdk = 31 (Android 12, 2021+) — все такие устройства уже 64-bit ARM.
             // armeabi-v7a добавил бы ~70 МБ libsignal_jni.so без какого-либо охвата реальных пользователей.
-            // x86/x86_64 — только эмуляторы; для них держим debug-вариант ниже при необходимости.
             abiFilters += "arm64-v8a"
         }
     }
@@ -51,9 +49,7 @@ android {
 
     buildTypes {
         release {
-            // R8 включён: shrink + optimize + obfuscate (см. proguard-rules.pro).
-            // mapping.txt появляется в app/build/outputs/mapping/release/ — храните его
-            // вместе с APK, иначе stacktrace в продакшне будет нечитаемым.
+            // R8 включён: shrink + optimize + obfuscate (см. proguard-rules.pro + core/consumer-rules.pro).
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
@@ -78,8 +74,7 @@ android {
     }
     packaging {
         resources {
-            // libsignal-client desktop JAR кладёт desktop-нативки в корень JAR;
-            // даже если зависимость случайно транзитивно протечёт — выпиливаем их из APK.
+            // libsignal-client desktop JAR кладёт desktop-нативки в корень JAR; выпиливаем их из APK.
             excludes += setOf(
                 "libsignal_jni*.dylib",
                 "libsignal_jni*.so",
@@ -90,47 +85,17 @@ android {
             )
         }
         jniLibs {
-            // libsignal-android.aar кладёт в jni/<abi>/ ДВА .so:
-            //   libsignal_jni.so          — production
-            //   libsignal_jni_testing.so  — testing build, ~75 МБ на ABI, в production не нужен.
-            // Это native libraries, на них действует jniLibs.excludes (НЕ resources.excludes).
+            // libsignal-android.aar кладёт в jni/<abi>/ libsignal_jni_testing.so (~75 МБ/ABI) — не нужен в production.
             excludes += "**/libsignal_jni_testing.so"
         }
     }
 }
 
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.25.1"
-    }
-    plugins {
-        create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.60.0"
-        }
-        create("grpckt") {
-            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.4.1:jdk8@jar"
-        }
-    }
-    generateProtoTasks {
-        all().forEach { task ->
-            task.builtins {
-                create("java") {
-                    option("lite")
-                }
-            }
-            task.plugins {
-                create("grpc") {
-                    option("lite")
-                }
-                create("grpckt") {
-                    option("lite")
-                }
-            }
-        }
-    }
-}
-
 dependencies {
+    // Общий не-UI слой (gRPC, репозитории, крипто, proto, хранилище). Транзитивно отдаёт
+    // gRPC/protobuf/coroutines-core (api), а также libsignal/argon2 native в APK.
+    implementation(project(":core"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -139,29 +104,14 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
 
-    // ProcessLifecycleOwner — используется в BarkFluffApplication для отслеживания
-    // foreground/background приложения и переподключения RealtimeService.
+    // ProcessLifecycleOwner — foreground/background tracking + RealtimeService resume/pause.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 
-    // WorkManager — периодическое обновление App Widget'ов когда приложение убито.
+    // WorkManager — периодическое обновление App Widget'ов.
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
-    // gRPC dependencies
-    implementation("io.grpc:grpc-okhttp:1.60.0")
-    implementation("io.grpc:grpc-protobuf-lite:1.60.0")
-    implementation("io.grpc:grpc-stub:1.60.0")
-    implementation("io.grpc:grpc-kotlin-stub:1.4.1")
-    implementation("com.google.protobuf:protobuf-javalite:3.25.1")
-
-    // Coroutines for gRPC
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    // Coroutines for UI (Dispatchers.Main / lifecycleScope). coroutines-core приходит через :core api.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-    // Encrypted storage for tokens
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-
-    // Required for gRPC Kotlin stub
-    compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 
     // Image cropping for avatar
     implementation("com.github.yalantis:ucrop:2.2.8")
@@ -190,19 +140,20 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
 
+    // LiveKit media engine for calls.
+    implementation("io.livekit:livekit-android:2.26.0")
+    implementation("io.livekit:livekit-android-camerax:2.26.0")
+
     // ML Kit Barcode Scanning
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
-    //firebase
+    // firebase
     implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
 
-    // E2E-шифрование: Signal Double Ratchet (секретные чаты) + Argon2id (приватные чаты).
-    // ВНИМАНИЕ: libsignal-android уже включает libsignal-client транзитивно с правильными
-    // Android-нативками. Прямое подключение libsignal-client (desktop JAR) тащит ~280 МБ
-    // ненужных native libs (Linux x86_64, macOS, Windows) — НЕ добавлять.
-    implementation(libs.libsignal.android)
-    implementation(libs.argon2kt)
+    // androidx.dynamicanimation — spring physics (SpringAnimation) для M3 Expressive motion (SpringPress).
+    implementation(libs.androidx.dynamic.animation)
+
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

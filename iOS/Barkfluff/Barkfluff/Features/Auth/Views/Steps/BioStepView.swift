@@ -18,7 +18,7 @@ struct BioStepView: View {
         VStack(spacing: 12) {
             // Текстовое поле
             VStack(alignment: .leading, spacing: 4) {
-                Text("О себе")
+                Text("auth.register.step.bio.label")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -35,19 +35,19 @@ struct BioStepView: View {
             }
 
             HStack {
-                Text("Расскажите о себе")
+                Text("auth.register.step.bio.hint_short")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                Text("\(data.bio.count)/\(maxBioLength)")
+                Text(verbatim: "\(data.bio.count)/\(maxBioLength)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             // Подсказка
-            Text("Не обязательно — можно заполнить позже в настройках")
+            Text("auth.register.step.bio.hint")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

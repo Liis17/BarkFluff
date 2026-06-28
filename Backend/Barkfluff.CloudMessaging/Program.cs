@@ -43,6 +43,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<PushNotificationConsumer>();
     x.AddConsumer<DismissPushConsumer>();
     x.AddConsumer<AdminBroadcastConsumer>();
+    x.AddConsumer<IncomingCallPushConsumer>();
+    x.AddConsumer<CallDismissPushConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -65,6 +67,16 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("admin-broadcast-handler", e =>
         {
             e.ConfigureConsumer<AdminBroadcastConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("incoming-call-push-handler", e =>
+        {
+            e.ConfigureConsumer<IncomingCallPushConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("call-dismiss-push-handler", e =>
+        {
+            e.ConfigureConsumer<CallDismissPushConsumer>(context);
         });
     });
 });

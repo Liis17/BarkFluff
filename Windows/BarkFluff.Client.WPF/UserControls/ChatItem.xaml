@@ -317,7 +317,7 @@
                         FontWeight="Bold"
                         Opacity="0.9"
                         Style="{DynamicResource LittleTitleTextStyle}"
-                        Text="Отправить в этот чат" />
+                        Text="{DynamicResource L_ChatItem_DropTitle}" />
 
                     <!--  Последнее сообщение  -->
                     <TextBlock
@@ -325,7 +325,7 @@
                         HorizontalAlignment="Left"
                         FontFamily="{DynamicResource Neucha}"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Отпустите файл чтобы отправить его в этот чат"
+                        Text="{DynamicResource L_ChatItem_DropHint}"
                         TextAlignment="Left"
                         TextWrapping="NoWrap" />
 

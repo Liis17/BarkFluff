@@ -111,7 +111,7 @@ class AccountSettingsActivity : AppCompatActivity() {
             showEditDialog("Имя пользователя", globalParam.userName) { newValue ->
                 lifecycleScope.launch {
                     val checkResult = grpcManager.checkUsername(newValue)
-                    if (checkResult.isSuccess && checkResult.getOrNull() == true) {
+                    if (checkResult.isSuccess && checkResult.getOrNull() == false) {
                         val result = grpcManager.changeUsername(newValue)
                         if (result.isSuccess) {
                             globalParam.userName = newValue

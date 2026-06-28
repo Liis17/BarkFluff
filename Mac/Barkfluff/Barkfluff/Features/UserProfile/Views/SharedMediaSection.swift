@@ -11,12 +11,13 @@ import BFCore
 /// Секция общих медиа файлов
 struct SharedMediaSection: View {
     @Bindable var viewModel: UserProfilePanelViewModel
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             // Заголовок + Segmented Picker
             HStack {
-                Label("Вложения", systemImage: "photo.on.rectangle.angled")
+                Label("user_profile.shared_media.title", systemImage: "photo.on.rectangle.angled")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -24,9 +25,9 @@ struct SharedMediaSection: View {
             }
 
             // Сегментированный переключатель: Медиа / Файлы
-            Picker("Тип", selection: $viewModel.selectedMediaFilter) {
+            Picker("user_profile.shared_media.picker.type", selection: $viewModel.selectedMediaFilter) {
                 ForEach(SharedMediaFilter.allCases, id: \.self) { filter in
-                    Text(filter.displayName).tag(filter)
+                    Text(filter.displayName(in: locale)).tag(filter)
                 }
             }
             .pickerStyle(.segmented)
@@ -37,7 +38,7 @@ struct SharedMediaSection: View {
                 if viewModel.mediaItems.isEmpty && !viewModel.isLoadingMedia {
                     emptyMediaPlaceholder(
                         icon: "photo.on.rectangle",
-                        text: "Нет медиа"
+                        textKey: "user_profile.shared_media.empty.media_short"
                     )
                 } else {
                     SharedMediaGridView(
@@ -54,7 +55,7 @@ struct SharedMediaSection: View {
                 if viewModel.documentItems.isEmpty && !viewModel.isLoadingMedia {
                     emptyMediaPlaceholder(
                         icon: "doc.text",
-                        text: "Нет файлов"
+                        textKey: "user_profile.shared_media.empty.documents_short"
                     )
                 } else {
                     SharedDocumentsListView(
@@ -75,12 +76,12 @@ struct SharedMediaSection: View {
         }
     }
 
-    private func emptyMediaPlaceholder(icon: String, text: String) -> some View {
+    private func emptyMediaPlaceholder(icon: String, textKey: LocalizedStringKey) -> some View {
         VStack(spacing: Theme.Spacing.sm) {
             Image(systemName: icon)
                 .font(.largeTitle)
                 .foregroundStyle(.quaternary)
-            Text(text)
+            Text(textKey)
                 .font(.callout)
                 .foregroundStyle(.tertiary)
         }

@@ -38,11 +38,11 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Draft-пользователи**: регистрация двухфазная — `AddDraftUser` (IsDraft=true) → `ConfirmUser` (IsDraft=false). Identity управляет процессом.
 
-**ID пользователя**: `DateTimeOffset.UtcNow.ToUnixTimeSeconds()` при создании.
+**ID пользователя**: `DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()` при создании — миллисекунды снижают шанс коллизии PK при быстрой регистрации и сохраняют монотонность по времени (важно для `OrderByDescending(u => u.Id)`). Уникальность username/email гарантируется регистронезависимыми UNIQUE-индексами `LOWER("Username")` / `LOWER("Email")` + обработкой `PostgresException 23505` в `UsersStorage.CreateUser` (страховка от гонки check-then-act).
 
 **Зарезервированные имена**: `ReservedUsernamesService` (Singleton) загружает из конфига `ReservedNames:Usernames` (через запятую).
 
-**Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy.
+**Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy. Данные и общий счёт берутся ОДНИМ запросом через оконную функцию `COUNT(*) OVER()` (`Database.SqlQueryRaw<TrigramSearchRow>` → ручной маппинг в `User`) — без второго trigram-скана.
 
 **Поиск (серверный)**: `SearchUsersServer` — через `GetAllUsersDescending` (если query пустой — все) или поиск по username/user_id. Без ограничения приватности.
 
@@ -113,7 +113,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `RegisterDevice(...)` | Зарегистрировать устройство | Upsert по DeviceId; вызывается Identity при авторизации |
 | `GetUserDevices(userId)` | Список устройств пользователя | |
 | `DeleteUserDevice(deviceId, userId)` | Удалить устройство | |
-| `GetUserByUsername(username)` | Публичная информация для веб-сервера | Применяет Privacy: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility`. Возвращает `profile_poster_url` (field 7) — получается из PersonalizationStorage + FilesServerApi.GetFileData |
+| `GetUserByUsername(username)` | Публичная информация для веб-сервера | Реализован как MediatR-фича `Features/GetUserByUsername` (Query+Handler). Применяет Privacy: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility`. Возвращает `profile_poster_url` (field 7) — получается из PersonalizationStorage + FilesServerApi.GetFileData |
 | `GetUserPrivacy(userId)` | Настройки приватности пользователя | Для других микросервисов (напр. Onliner) |
 | `SearchUsersServer(query, offset, size)` | Поиск пользователей для AdminPanel | Пустой query → все пользователи убыванию ID; макс 50 |
 | `UpdateStorageLimit(userId, storageLimit_gb)` | Обновить лимит хранилища | 1–250 ГБ |

@@ -34,7 +34,7 @@ struct ForwardChatPickerView: View {
             .navigationTitle(navigationTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }
@@ -53,9 +53,9 @@ struct ForwardChatPickerView: View {
     private var navigationTitle: String {
         let count = viewModel?.selectedChatIDs.count ?? 0
         if count > 0 {
-            return "Переслать (\(count))"
+            return String(localized: "conversation.forward.title_count \(count)")
         }
-        return "Переслать сообщение"
+        return String(localized: "conversation.forward.title")
     }
 
     @ViewBuilder
@@ -63,9 +63,9 @@ struct ForwardChatPickerView: View {
         VStack(spacing: 0) {
             if viewModel.allChats.isEmpty {
                 ContentUnavailableView(
-                    "Нет чатов",
+                    "conversation.forward.no_chats.title",
                     systemImage: "message",
-                    description: Text("Сначала откройте любой чат, затем повторите попытку.")
+                    description: Text("conversation.forward.no_chats.description")
                 )
             } else {
                 chatList(viewModel: viewModel)
@@ -104,7 +104,7 @@ struct ForwardChatPickerView: View {
         .searchable(
             text: Bindable(viewModel).searchText,
             placement: .toolbar,
-            prompt: "Поиск чата"
+            prompt: Text("conversation.forward.search_placeholder")
         )
     }
 
@@ -112,7 +112,7 @@ struct ForwardChatPickerView: View {
     private func commentBar(viewModel: ForwardChatPickerViewModel) -> some View {
         HStack(alignment: .center, spacing: Theme.Spacing.sm) {
             HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-                TextField("Комментарий…", text: Bindable(viewModel).commentText, axis: .vertical)
+                TextField("conversation.forward.comment_placeholder", text: Bindable(viewModel).commentText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
                     .onSubmit { performForward(viewModel: viewModel) }
@@ -144,7 +144,7 @@ struct ForwardChatPickerView: View {
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canSend)
-            .help("Переслать в выбранные чаты")
+            .help("conversation.forward.send_tooltip")
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)

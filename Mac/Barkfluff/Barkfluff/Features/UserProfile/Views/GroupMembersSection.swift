@@ -13,12 +13,13 @@ struct GroupMembersSection: View {
     let viewModel: UserProfilePanelViewModel
 
     @State private var showAllMembers = false
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             // Заголовок
             HStack {
-                Label("Участники", systemImage: "person.2.fill")
+                Label("user_profile.group_members.label", systemImage: "person.2.fill")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -65,7 +66,7 @@ struct GroupMembersSection: View {
 
                         // Роль
                         if member.role != .member {
-                            Text(member.role.displayName)
+                            Text(member.role.displayName(in: locale))
                                 .font(.caption2)
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 6)
@@ -85,7 +86,7 @@ struct GroupMembersSection: View {
                             await viewModel.loadAllMembers()
                         }
                     } label: {
-                        Text("Показать всех (\(viewModel.memberCount))")
+                        Text("user_profile.group_members.show_all_with_count \(viewModel.memberCount)")
                             .font(.callout)
                             .foregroundStyle(Color.accentColor)
                     }

@@ -111,7 +111,7 @@
                             </Style>
                         </ContextMenu.Resources>
 
-                        <MenuItem Click="OnToggleLoopClick" Header="Включить/выключить повтор">
+                        <MenuItem Click="OnToggleLoopClick" Header="{DynamicResource L_VideoPlayer_Menu_ToggleLoop}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon FontSize="14" Symbol="ArrowRepeatAll20" />
                             </MenuItem.Icon>
@@ -119,19 +119,19 @@
 
                         <Separator Margin="6,4" Background="#FF505050" />
 
-                        <MenuItem Click="OnOpenInExplorerClick" Header="Открыть папку с видео">
+                        <MenuItem Click="OnOpenInExplorerClick" Header="{DynamicResource L_VideoPlayer_Menu_OpenInExplorer}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon FontSize="14" Symbol="Folder20" />
                             </MenuItem.Icon>
                         </MenuItem>
 
-                        <MenuItem Click="OnCopyPathClick" Header="Скопировать путь">
+                        <MenuItem Click="OnCopyPathClick" Header="{DynamicResource L_VideoPlayer_Menu_CopyPath}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon FontSize="14" Symbol="Copy20" />
                             </MenuItem.Icon>
                         </MenuItem>
 
-                        <MenuItem Click="OnCopyFrameClick" Header="Скопировать текущий кадр">
+                        <MenuItem Click="OnCopyFrameClick" Header="{DynamicResource L_VideoPlayer_Menu_CopyFrame}">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon FontSize="14" Symbol="Screenshot20" />
                             </MenuItem.Icon>
@@ -151,7 +151,7 @@
             VerticalAlignment="Top"
             Click="OnCloseClick"
             Style="{StaticResource ViewerButton}"
-            ToolTip="Закрыть (Esc)">
+            ToolTip="{DynamicResource L_VideoPlayer_Tooltip_Close}">
             <ui:SymbolIcon
                 FontSize="20"
                 Foreground="White"
@@ -212,7 +212,7 @@
                         Margin="0,0,10,0"
                         Click="OnPlayPauseClick"
                         Style="{StaticResource ViewerButton}"
-                        ToolTip="Воспроизведение/Пауза (Пробел)">
+                        ToolTip="{DynamicResource L_VideoPlayer_Tooltip_PlayPause}">
                         <ui:SymbolIcon x:Name="PlayPauseIcon" FontSize="20" Symbol="Play24" />
                     </Button>
 
@@ -239,7 +239,7 @@
                         Margin="10,0"
                         Click="OnLoopToggle"
                         Style="{StaticResource LoopToggleButton}"
-                        ToolTip="Повтор">
+                        ToolTip="{DynamicResource L_VideoPlayer_Tooltip_Loop}">
                         <ui:SymbolIcon FontSize="16" Symbol="ArrowRepeatAll20" />
                     </ToggleButton>
 
@@ -254,7 +254,7 @@
                             Margin="0,0,10,0"
                             Click="OnVolumeMuteToggle"
                             Style="{StaticResource ViewerButton}"
-                            ToolTip="Звук">
+                            ToolTip="{DynamicResource L_VideoPlayer_Tooltip_Sound}">
                             <ui:SymbolIcon x:Name="VolumeIcon" FontSize="20" Symbol="Speaker220" />
                         </Button>
                         <Slider
@@ -284,7 +284,7 @@
                 Margin="0,0,15,0"
                 Click="OnPrevClick"
                 Style="{StaticResource ViewerButton}"
-                ToolTip="Предыдущее (←)">
+                ToolTip="{DynamicResource L_VideoPlayer_Tooltip_Prev}">
                 <ui:SymbolIcon
                     FontSize="20"
                     Foreground="White"
@@ -309,7 +309,7 @@
                 Margin="15,0,0,0"
                 Click="OnNextClick"
                 Style="{StaticResource ViewerButton}"
-                ToolTip="Следующее (→)">
+                ToolTip="{DynamicResource L_VideoPlayer_Tooltip_Next}">
                 <ui:SymbolIcon
                     FontSize="20"
                     Foreground="White"
@@ -334,7 +334,7 @@
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="14"
                     Foreground="White"
-                    Text="Загрузка видео..." />
+                    Text="{DynamicResource L_VideoPlayer_Loading}" />
             </StackPanel>
         </Grid>
     </Grid>

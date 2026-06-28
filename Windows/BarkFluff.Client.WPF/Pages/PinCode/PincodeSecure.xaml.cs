@@ -1,4 +1,5 @@
 ﻿using BarkFluff.Client.WPF.Debugs;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
@@ -32,7 +33,20 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            e.Handled = !e.Text.All(char.IsDigit);
+            if (string.IsNullOrEmpty(e.Text))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            foreach (var ch in e.Text)
+            {
+                if (char.IsControl(ch) || char.IsWhiteSpace(ch))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
         }
 
         private void PinBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -47,10 +61,11 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             }
 
             string input = currentBox.Text;
-            if (!char.IsDigit(input[0]))
+            char first = input[0];
+            if (char.IsControl(first) || char.IsWhiteSpace(first))
                 return;
 
-            pinDigits[index] = input[0];
+            pinDigits[index] = first;
 
             currentBox.TextChanged -= PinBox_TextChanged;
             currentBox.Text = "●";
@@ -64,7 +79,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             else
             {
                 string pin = new string(pinDigits);
-                if (pin.All(char.IsDigit))
+                if (pinDigits.All(c => c != '\0'))
                 {
                     if (IsValid(pin))
                     {
@@ -82,16 +97,16 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                         }
                         if (attempts == 0)
                         {
-                            helper.Text = "Попытки исчерпаны. Помянем";
+                            helper.Text = L.Str("L_Pin_Helper_NoAttempts");
                             RemoveSettings(sender, e);
                         }
                         else if (attempts == 1)
                         {
-                            helper.Text = "Последняя попытка ввести правильный код\nПри неудаче последует сброс...";
+                            helper.Text = L.Str("L_Pin_Helper_LastAttempt").Replace("\\n", "\n");
                         }
                         else if (attempts == 2)
                         {
-                            helper.Text = "Это PIN код можно отключить в настройках";
+                            helper.Text = L.Str("L_Pin_Helper_DisableHint");
                         }
                     }
                 }

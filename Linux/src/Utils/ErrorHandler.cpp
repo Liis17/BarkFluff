@@ -18,6 +18,11 @@ QString ErrorHandler::handleGrpcError(const grpc::Status& status) {
         case SC::INVALID_ARGUMENT:
             return QCoreApplication::translate("ErrorHandler", "Invalid data: %1")
                 .arg(QString::fromStdString(status.error_message()));
+        case SC::FAILED_PRECONDITION:
+            // Бизнес-ошибки сервера (BaseGrpcException) приходят как FAILED_PRECONDITION
+            // с осмысленным текстом — показываем его напрямую.
+            // Сюда попадает и UsernameInvalidFormatException (x-error-code E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47).
+            return QString::fromStdString(status.error_message());
         case SC::INTERNAL:
             return QCoreApplication::translate("ErrorHandler", "Server error. Please try again later");
         case SC::UNAVAILABLE:

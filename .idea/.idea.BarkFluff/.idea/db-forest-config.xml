@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="db-forest-configuration">
+    <data version="2">.
+	----------------------------------------
+	1:0:68c0b33f-4a88-4cdc-8031-95a2b557f4ed
+	2:0:b152f10a-230b-483b-bcad-b0861766aa80
+	3:0:3ed2605a-588d-4a91-b9bf-98579f3041d3
+	4:0:17a7a4e3-1d1f-413b-be30-e2dc4a903d59
+	5:0:dbf2ab4c-6593-4bce-aa9f-d0f18c5d9fd6
+		.</data>
+  </component>
   <component name="db-tree-configuration">
     <option name="data" value="" />
   </component>

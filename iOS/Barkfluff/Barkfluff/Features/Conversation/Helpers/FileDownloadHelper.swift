@@ -69,7 +69,7 @@ enum FileDownloadHelper {
         var errorDescription: String? {
             switch self {
             case .invalidURL:
-                return "Некорректная ссылка для скачивания"
+                return String(localized: "conversation.errors.invalid_download_url")
             }
         }
     }

@@ -6,85 +6,123 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="550"
+    d:DesignHeight="500"
     d:DesignWidth="500"
     mc:Ignorable="d">
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
-            <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Язык" />
 
+            <!--  Заголовок страницы  -->
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Language_Page_Title}" />
+
+            <!--  ── Язык интерфейса ──  -->
+            <TextBlock
+                FontSize="11"
+                FontWeight="SemiBold"
+                Foreground="{DynamicResource DescriptionText}"
+                Margin="2,8,0,4"
+                Text="{DynamicResource L_Settings_Language_Header}" />
             <Border
                 Padding="16"
                 Background="{DynamicResource TextBackground}"
                 CornerRadius="8"
-                Margin="0,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Язык интерфейса" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="Русский" />
+                Margin="0,0,0,4">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:SymbolIcon Foreground="#FF8E469A" Symbol="Globe24" Margin="0,0,8,0" />
+                        <TextBlock
+                            Foreground="{DynamicResource TitleText}"
+                            FontSize="14"
+                            FontWeight="Medium"
+                            Text="{DynamicResource L_Settings_Language_Group_Title}" />
                     </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF8E469A" Symbol="Globe24" />
-                </Grid>
+
+                    <StackPanel x:Name="LanguagePanel" Margin="0,4,0,0">
+                        <Border
+                            x:Name="LangSystem"
+                            Padding="12"
+                            CornerRadius="6"
+                            Margin="0,2"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="LanguageOption_Click"
+                            Tag="system">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="{DynamicResource L_Settings_Language_Option_System}" />
+                                <Ellipse
+                                    x:Name="RadioSystem"
+                                    Grid.Column="1"
+                                    Width="18"
+                                    Height="18"
+                                    Stroke="{DynamicResource DescriptionText}"
+                                    StrokeThickness="2"
+                                    Fill="Transparent" />
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            x:Name="LangRu"
+                            Padding="12"
+                            CornerRadius="6"
+                            Margin="0,2"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="LanguageOption_Click"
+                            Tag="ru">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="{DynamicResource L_Settings_Language_Option_Russian}" />
+                                <Ellipse
+                                    x:Name="RadioRu"
+                                    Grid.Column="1"
+                                    Width="18"
+                                    Height="18"
+                                    Stroke="{DynamicResource DescriptionText}"
+                                    StrokeThickness="2"
+                                    Fill="Transparent" />
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            x:Name="LangEn"
+                            Padding="12"
+                            CornerRadius="6"
+                            Margin="0,2"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="LanguageOption_Click"
+                            Tag="en">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="{DynamicResource L_Settings_Language_Option_English}" />
+                                <Ellipse
+                                    x:Name="RadioEn"
+                                    Grid.Column="1"
+                                    Width="18"
+                                    Height="18"
+                                    Stroke="{DynamicResource DescriptionText}"
+                                    StrokeThickness="2"
+                                    Fill="Transparent" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{DynamicResource DescriptionText}"
+                        FontSize="11"
+                        Margin="2,12,2,0"
+                        TextWrapping="Wrap"
+                        Text="{DynamicResource L_Settings_Language_Hint}" />
+                </StackPanel>
             </Border>
 
-            <Border
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Регион" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="Россия" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF8E469A" Symbol="Location24" />
-                </Grid>
-            </Border>
-
-            <Border
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Формат времени" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="24-часовой формат" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF8E469A" Symbol="Clock24" />
-                </Grid>
-            </Border>
-
-            <Border
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Формат даты" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="ДД.ММ.ГГГГ" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF8E469A" Symbol="Calendar24" />
-                </Grid>
-            </Border>
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>

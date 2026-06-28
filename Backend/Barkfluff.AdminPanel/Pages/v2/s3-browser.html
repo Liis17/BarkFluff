@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Браузер S3</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        .breadcrumbs {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+            font-size: 14px; color: var(--md-on-surface-variant);
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-md);
+        }
+        .breadcrumbs a {
+            color: var(--md-primary);
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: var(--md-shape-sm);
+            transition: background .2s;
+        }
+        .breadcrumbs a:hover { background: var(--md-surface-container-high); }
+        .breadcrumbs .sep { color: var(--md-outline); margin: 0 2px; }
+        .breadcrumbs .current { color: var(--md-on-surface); font-weight: 500; padding: 4px 10px; }
+
+        .file-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 120px 180px 96px;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            transition: background .2s;
+            cursor: pointer;
+        }
+        .file-row:hover { background: var(--md-surface-container); }
+        .file-row.folder:hover { background: var(--md-secondary-container); }
+        .file-row .name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--md-on-surface); }
+        .file-row .size { font-size: 12px; color: var(--md-on-surface-variant); font-family: 'Roboto Mono', monospace; }
+        .file-row .date { font-size: 12px; color: var(--md-on-surface-variant); }
+        .file-row .icon {
+            width: 40px; height: 40px;
+            border-radius: var(--md-shape-sm);
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--md-surface-container);
+        }
+        .file-row.folder .icon { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+        .file-row .actions { display: flex; gap: 4px; justify-content: flex-end; }
+
+        .icon-image  { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .icon-video  { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+        .icon-audio  { background: #FFE0EF; color: #5C1141; }
+        .icon-doc    { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+
+        .table-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            overflow: hidden;
+        }
+        .table-head {
+            display: grid;
+            grid-template-columns: 40px 1fr 120px 180px 96px;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--md-surface-container);
+            border-bottom: 1px solid var(--md-outline-variant);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--md-on-surface-variant);
+        }
+
+        .media-modal-content {
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        .media-modal-content img,
+        .media-modal-content video {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: var(--md-shape-lg);
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="s3"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <h1>Браузер S3</h1>
+                <span id="bucket-badge" class="md-status md-status-info">
+                    <span class="msr size-18">cloud</span>
+                    <span id="bucket-name-badge">—</span>
+                </span>
+            </div>
+            <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+        </header>
+
+        <div class="md-page">
+            <div id="breadcrumbs" class="breadcrumbs"></div>
+
+            <div class="table-card">
+                <div class="table-head">
+                    <div></div>
+                    <div>Имя</div>
+                    <div>Размер</div>
+                    <div>Дата</div>
+                    <div style="text-align:right;">Действия</div>
+                </div>
+                <div id="files-table-body"></div>
+
+                <div id="empty-state" class="md-empty" style="display:none;padding:48px 24px;">
+                    <span class="msr size-48">folder_open</span>
+                    <h3>Папка пуста</h3>
+                    <p>В этой директории нет файлов</p>
+                </div>
+
+                <div id="table-loading" style="display:none;padding:24px;text-align:center;color:var(--md-on-surface-variant);">
+                    <div class="md-loader-expressive" style="display:inline-block;"></div>
+                    <p style="margin-top:8px;font-size:13px;">Загрузка...</p>
+                </div>
+
+                <div id="scroll-sentinel" style="height:1px;"></div>
+            </div>
+
+            <div id="error-state" class="md-empty" style="display:none;color:var(--md-error);margin-top:16px;">
+                <span class="msr size-48">error</span>
+                <h3 style="color:var(--md-error);">Ошибка загрузки</h3>
+                <p id="error-message"></p>
+                <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadObjects()">
+                    <span class="msr size-18">refresh</span>
+                    Попробовать снова
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Media modal -->
+<div id="media-modal" class="md-scrim" onclick="if(event.target===this)closeMediaModal()">
+    <div class="md-dialog md-dialog-xl media-modal-content">
+        <div class="md-dialog-header">
+            <h3 id="media-title">Файл</h3>
+            <button class="md-icon-btn" onclick="closeMediaModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body" id="media-content" style="display:flex;align-items:center;justify-content:center;min-height:200px;"></div>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let currentBucket = '';
+    let currentPrefix = '';
+    let continuationToken = null;
+    let isTruncated = false;
+    let isLoading = false;
+    let allObjects = [];
+
+    function formatDate(s) {
+        if (!s || s === '0001-01-01T00:00:00') return '-';
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return '-';
+        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function formatSize(b) {
+        if (!b) return '—';
+        const units = ['Б','КБ','МБ','ГБ'];
+        let i = 0, size = b;
+        while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+        return size.toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+    }
+    function getFileType(name) {
+        const ext = name.split('.').pop().toLowerCase();
+        if (['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) return 'image';
+        if (['mp4','webm','mov','avi','mkv'].includes(ext)) return 'video';
+        if (['mp3','ogg','wav','aac','flac','opus'].includes(ext)) return 'audio';
+        return 'file';
+    }
+    function getFileIcon(name, isFolder) {
+        if (isFolder) return 'folder';
+        const t = getFileType(name);
+        if (t === 'image') return 'image';
+        if (t === 'video') return 'movie';
+        if (t === 'audio') return 'audiotrack';
+        return 'description';
+    }
+    function getFileIconCls(name, isFolder) {
+        if (isFolder) return '';
+        const t = getFileType(name);
+        if (t === 'image') return 'icon-image';
+        if (t === 'video') return 'icon-video';
+        if (t === 'audio') return 'icon-audio';
+        return 'icon-doc';
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    function renderBreadcrumbs() {
+        const el = document.getElementById('breadcrumbs');
+        const parts = (currentPrefix || '').split('/').filter(Boolean);
+        let html = `<a onclick="navigateTo('')" style="cursor:pointer;"><span class="msr size-18" style="vertical-align:middle;margin-right:4px;">home</span>${escapeHtml(currentBucket)}</a>`;
+        let acc = '';
+        for (let i = 0; i < parts.length; i++) {
+            acc += parts[i] + '/';
+            const isLast = i === parts.length - 1;
+            html += `<span class="sep">/</span>`;
+            html += isLast
+                ? `<span class="current">${escapeHtml(parts[i])}</span>`
+                : `<a onclick="navigateTo('${escapeHtml(acc)}')" style="cursor:pointer;">${escapeHtml(parts[i])}</a>`;
+        }
+        el.innerHTML = html;
+    }
+
+    window.navigateTo = function (prefix) {
+        currentPrefix = prefix;
+        continuationToken = null;
+        allObjects = [];
+        loadObjects();
+        // update URL
+        const u = new URL(window.location);
+        u.searchParams.set('prefix', prefix);
+        window.history.replaceState({}, '', u.toString());
+    };
+
+    async function loadObjects() {
+        if (isLoading) return;
+        isLoading = true;
+        renderBreadcrumbs();
+        const tbody = document.getElementById('files-table-body');
+        const empty = document.getElementById('empty-state');
+        const loading = document.getElementById('table-loading');
+        const err = document.getElementById('error-state');
+        err.style.display = 'none';
+        if (allObjects.length === 0) {
+            tbody.innerHTML = '';
+            loading.style.display = '';
+        }
+        try {
+            const params = new URLSearchParams();
+            if (currentPrefix) params.set('prefix', currentPrefix);
+            if (continuationToken) params.set('continuationToken', continuationToken);
+            params.set('maxKeys', '100');
+            const r = await fetch(`/api/s3/buckets/${encodeURIComponent(currentBucket)}/objects?${params}`);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            allObjects = allObjects.concat(data.objects || []);
+            continuationToken = data.nextContinuationToken;
+            isTruncated = data.isTruncated;
+            renderTable();
+            loading.style.display = 'none';
+            empty.style.display = allObjects.length === 0 ? 'flex' : 'none';
+        } catch (e) {
+            loading.style.display = 'none';
+            err.style.display = 'flex';
+            document.getElementById('error-message').textContent = e.message;
+        } finally { isLoading = false; }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('files-table-body');
+        if (allObjects.length === 0) { tbody.innerHTML = ''; return; }
+        tbody.innerHTML = allObjects.map(obj => {
+            const fullKey = obj.key;
+            const name = obj.isFolder
+                ? fullKey.slice(currentPrefix.length).replace(/\/$/, '')
+                : fullKey.slice(currentPrefix.length);
+            const icon = getFileIcon(name, obj.isFolder);
+            const cls = getFileIconCls(name, obj.isFolder);
+            const action = obj.isFolder ? `navigateTo('${escapeHtml(fullKey)}')` : `openFile('${escapeHtml(fullKey)}', '${escapeHtml(name)}')`;
+            return `
+                <div class="file-row ${obj.isFolder ? 'folder' : 'file'}" onclick="${action}">
+                    <div class="icon ${cls}"><span class="msr">${icon}</span></div>
+                    <div class="name">${escapeHtml(name || '/')}</div>
+                    <div class="size">${obj.isFolder ? '—' : formatSize(obj.size)}</div>
+                    <div class="date">${formatDate(obj.lastModified)}</div>
+                    <div class="actions">
+                        ${obj.isFolder ? '' : `
+                            <button class="md-icon-btn" title="Скачать" onclick="event.stopPropagation();downloadFile('${escapeHtml(fullKey)}', '${escapeHtml(name)}')"><span class="msr size-20">download</span></button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function getPresignedUrl(key) {
+        const r = await fetch(`/api/s3/buckets/${encodeURIComponent(currentBucket)}/presign?key=${encodeURIComponent(key)}`);
+        if (!r.ok) throw new Error('Не удалось получить ссылку');
+        const data = await r.json();
+        return data.url;
+    }
+
+    window.openFile = async function (key, name) {
+        const type = getFileType(name);
+        document.getElementById('media-title').textContent = name;
+        const content = document.getElementById('media-content');
+        content.innerHTML = '<div class="md-loader-expressive"></div>';
+        document.getElementById('media-modal').classList.add('open');
+        try {
+            const url = await getPresignedUrl(key);
+            if (type === 'image') content.innerHTML = `<img src="${url}" alt="${escapeHtml(name)}">`;
+            else if (type === 'video') content.innerHTML = `<video src="${url}" controls autoplay></video>`;
+            else if (type === 'audio') content.innerHTML = `<audio src="${url}" controls autoplay style="width:100%;"></audio>`;
+            else content.innerHTML = `
+                <div style="text-align:center;padding:24px;">
+                    <span class="msr size-48" style="color:var(--md-on-surface-variant);">description</span>
+                    <p style="margin-top:12px;">Предпросмотр недоступен.</p>
+                    <a class="md-btn md-btn-filled md-btn-square-press" href="${url}" target="_blank" rel="noopener" style="margin-top:12px;">
+                        <span class="msr size-18">download</span>
+                        Скачать
+                    </a>
+                </div>`;
+        } catch (e) {
+            content.innerHTML = `<p style="color:var(--md-error);">${escapeHtml(e.message)}</p>`;
+        }
+    };
+
+    window.closeMediaModal = function () { document.getElementById('media-modal').classList.remove('open'); document.getElementById('media-content').innerHTML = ''; };
+
+    window.downloadFile = async function (key, name) {
+        try {
+            const url = await getPresignedUrl(key);
+            const a = document.createElement('a');
+            a.href = url; a.download = name; a.click();
+        } catch (e) { alert(e.message); }
+    };
+
+    // Infinite scroll
+    const observer = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && isTruncated && !isLoading) loadObjects();
+    }, { threshold: 0.1 });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        if (!confirm('Выйти?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const params = new URLSearchParams(window.location.search);
+        currentBucket = params.get('bucket') || 'avatars';
+        currentPrefix = params.get('prefix') || '';
+        document.getElementById('bucket-name-badge').textContent = currentBucket;
+
+        const auth = await checkAuth(); if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+
+        await loadObjects();
+        observer.observe(document.getElementById('scroll-sentinel'));
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>

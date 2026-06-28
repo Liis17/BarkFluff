@@ -38,10 +38,23 @@ public class ChangeUsernameCommandHandler : IRequestHandler<ChangeUsernameComman
             username
         );
 
+        if (!UsernameFormatValidator.IsValid(username))
+        {
+            _logger.LogWarning("Username {Username} имеет недопустимый формат", username);
+            throw new UsernameInvalidFormatException();
+        }
+
         if (_reservedUsernamesService.IsReserved(username))
         {
             _logger.LogWarning("Username {Username} является зарезервированным именем", username);
             throw new UsernameReservedException();
+        }
+
+        var existingUser = await _usersStorage.GetUserByUsername(username);
+        if (existingUser != null && existingUser.Id != _userContext.UserId)
+        {
+            _logger.LogWarning("Username {Username} уже занят пользователем {UserId}", username, existingUser.Id);
+            throw new UsernameExistException();
         }
 
         await _usersStorage.ChangeUsername(_userContext.UserId, username);

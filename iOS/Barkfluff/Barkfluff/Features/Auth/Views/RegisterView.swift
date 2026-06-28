@@ -66,11 +66,11 @@ struct RegisterView: View {
                 .frame(width: 200)
 
             // Заголовок
-            Text(viewModel.currentStep.title)
+            Text(LocalizedStringKey(viewModel.currentStep.title))
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text(viewModel.currentStep.subtitle)
+            Text(LocalizedStringKey(viewModel.currentStep.subtitle))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -154,7 +154,7 @@ struct RegisterView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left")
-                            Text("Назад")
+                            Text("common.back")
                         }
                     }
                     .buttonStyle(.bordered)
@@ -169,7 +169,7 @@ struct RegisterView: View {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
-                            Text(nextButtonTitle(for: viewModel.currentStep))
+                            Text(nextButtonTitleKey(for: viewModel.currentStep))
                         }
                     }
                     .buttonStyle(.borderedProminent)
@@ -179,7 +179,7 @@ struct RegisterView: View {
 
             // Кнопка "Пропустить"
             if viewModel.currentStep.isOptional && viewModel.currentStep != .completion {
-                Button("Пропустить") {
+                Button("common.skip") {
                     viewModel.skipCurrentStep()
                 }
                 .buttonStyle(.plain)
@@ -192,10 +192,10 @@ struct RegisterView: View {
                 Button {
                     viewModel.goToLogin()
                 } label: {
-                    Text("Уже есть аккаунт? ")
+                    Text("auth.register.have_account.prefix")
                         .foregroundStyle(.secondary)
                     +
-                    Text("Войти")
+                    Text("auth.register.have_account.action")
                         .foregroundStyle(.blue)
                         .fontWeight(.medium)
                 }
@@ -208,14 +208,14 @@ struct RegisterView: View {
 
     // MARK: - Helpers
 
-    private func nextButtonTitle(for step: RegistrationStep) -> String {
+    private func nextButtonTitleKey(for step: RegistrationStep) -> LocalizedStringKey {
         switch step {
         case .twoFA:
-            return "Завершить"
+            return "auth.register.finish"
         case .confirmEmail:
-            return "Подтвердить"
+            return "auth.register.confirm"
         default:
-            return "Далее"
+            return "auth.register.next"
         }
     }
 

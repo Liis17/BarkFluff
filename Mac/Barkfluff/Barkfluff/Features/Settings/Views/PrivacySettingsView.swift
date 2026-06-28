@@ -23,7 +23,7 @@ struct PrivacySettingsView: View {
                 Section {
                     HStack(spacing: 8) {
                         ProgressView().scaleEffect(0.8)
-                        Text("Загрузка…")
+                        Text("common.loading")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -55,37 +55,37 @@ struct PrivacySettingsView: View {
 
     private var profileSection: some View {
         Section {
-            Toggle("Профиль на сайте", isOn: boolBinding(\.profileVisibleOnSite))
-            visibilityPicker("Видимость аватара", keyPath: \.avatarVisibility)
-            visibilityPicker("Видимость описания", keyPath: \.bioVisibility)
-            visibilityPicker("Видимость почты", keyPath: \.emailVisibility)
+            Toggle("settings.privacy.profile_visible_on_site", isOn: boolBinding(\.profileVisibleOnSite))
+            visibilityPicker("settings.privacy.avatar_visibility", keyPath: \.avatarVisibility)
+            visibilityPicker("settings.privacy.bio_visibility", keyPath: \.bioVisibility)
+            visibilityPicker("settings.privacy.email_visibility", keyPath: \.emailVisibility)
         } header: {
-            Text("Профиль")
+            Text("settings.privacy.section.profile")
         } footer: {
-            Text("«Профиль на сайте» включает публичную страницу barkfluff.com/{username}.")
+            Text("settings.privacy.profile_on_site.footer")
         }
     }
 
     private var searchOnlineSection: some View {
         Section {
-            Toggle("Видимость в поиске", isOn: boolBinding(\.searchVisible))
-            visibilityPicker("Видимость онлайна", keyPath: \.onlineVisibility)
+            Toggle("settings.privacy.search_visible", isOn: boolBinding(\.searchVisible))
+            visibilityPicker("settings.privacy.online_visibility", keyPath: \.onlineVisibility)
         } header: {
-            Text("Поиск и онлайн")
+            Text("settings.privacy.section.search_online")
         } footer: {
-            Text("«Видимость в поиске» определяет, появится ли пользователь в выдаче поиска.")
+            Text("settings.privacy.search_visible.footer")
         }
     }
 
     // MARK: - Subviews
 
     private func visibilityPicker(
-        _ title: String,
+        _ titleKey: LocalizedStringKey,
         keyPath: WritableKeyPath<PrivacySettingsInfo, ProfileFieldVisibility>
     ) -> some View {
-        Picker(title, selection: visibilityBinding(keyPath)) {
+        Picker(titleKey, selection: visibilityBinding(keyPath)) {
             ForEach(ProfileFieldVisibility.allCases, id: \.self) { value in
-                Text(value.displayName).tag(value)
+                Text(value.displayNameKey).tag(value)
             }
         }
     }
@@ -122,11 +122,11 @@ struct PrivacySettingsView: View {
 // MARK: - Display names
 
 private extension ProfileFieldVisibility {
-    var displayName: String {
+    var displayNameKey: LocalizedStringKey {
         switch self {
-        case .all: "Все"
-        case .friends: "Друзья"
-        case .none: "Никто"
+        case .all: "enum.profile_visibility.all"
+        case .friends: "enum.profile_visibility.friends"
+        case .none: "enum.profile_visibility.none"
         }
     }
 }

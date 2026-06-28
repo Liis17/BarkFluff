@@ -19,11 +19,11 @@ enum TokenStorageType: String, CaseIterable, Identifiable, Codable {
     var displayName: String {
         switch self {
         case .userDefaults:
-            return "UserDefaults (рекомендуется)"
+            return String(localized: "token_storage.user_defaults.name")
         case .keychain:
-            return "Keychain"
+            return String(localized: "token_storage.keychain.name")
         case .keychainICloud:
-            return "Keychain + iCloud"
+            return String(localized: "token_storage.keychain_icloud.name")
         }
     }
 
@@ -31,11 +31,11 @@ enum TokenStorageType: String, CaseIterable, Identifiable, Codable {
     var description: String {
         switch self {
         case .userDefaults:
-            return "Хранение в памяти приложения. Безопасно для большинства случаев."
+            return String(localized: "token_storage.user_defaults.desc")
         case .keychain:
-            return "Зашифрованное хранение в системном Keychain."
+            return String(localized: "token_storage.keychain.desc")
         case .keychainICloud:
-            return "Синхронизация токенов между устройствами через iCloud."
+            return String(localized: "token_storage.keychain_icloud.desc")
         }
     }
 

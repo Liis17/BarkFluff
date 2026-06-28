@@ -22,10 +22,16 @@ struct FolderChatPickerView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(selectedChatIDs.isEmpty ? "Выберите чаты" : "Выбрано: \(selectedChatIDs.count)")
-                    .font(.headline)
+                Group {
+                    if selectedChatIDs.isEmpty {
+                        Text("settings.chat_folders.picker.title")
+                    } else {
+                        Text("settings.chat_folders.picker.selected \(selectedChatIDs.count)")
+                    }
+                }
+                .font(.headline)
                 Spacer()
-                Button("Готово") { dismiss() }
+                Button("common.done") { dismiss() }
                     .keyboardShortcut(.return, modifiers: [.command])
             }
             .padding()
@@ -47,10 +53,12 @@ struct FolderChatPickerView: View {
                                 Image(systemName: selectedChatIDs.contains(chat.id) ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(selectedChatIDs.contains(chat.id) ? Color.accentColor : .secondary)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(chat.title.isEmpty ? "Чат" : chat.title)
+                                    Text(chat.title.isEmpty
+                                         ? String(localized: "common.chat")
+                                         : chat.title)
                                         .foregroundStyle(.primary)
                                     if chat.isGroupChat {
-                                        Text("Группа · \(chat.members.count) уч.")
+                                        Text("settings.chat_folders.picker.group_members \(chat.members.count)")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -63,7 +71,7 @@ struct FolderChatPickerView: View {
                     }
                 }
                 .listStyle(.inset)
-                .searchable(text: $searchText, prompt: "Поиск чата")
+                .searchable(text: $searchText, prompt: Text("settings.chat_folders.picker.search"))
             }
         }
         .task { await load() }
@@ -94,7 +102,7 @@ struct FolderChatPickerView: View {
             chats = page.items
         } catch {
             if chats.isEmpty {
-                errorMessage = "Не удалось загрузить чаты"
+                errorMessage = String(localized: "settings.chat_folders.picker.load_failed")
             }
         }
     }

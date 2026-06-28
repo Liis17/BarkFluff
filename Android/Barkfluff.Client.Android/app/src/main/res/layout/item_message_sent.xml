@@ -47,6 +47,39 @@
                     tools:visibility="visible"
                     tools:layout_height="120dp" />
 
+                <!-- Inline upload progress overlay: появляется поверх attachmentsContainer
+                     при загрузке медиа (M3 Expressive feedback). Управляется uploadProgress
+                     в MessageItem. -->
+                <FrameLayout
+                    android:id="@+id/uploadProgressOverlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@color/scrim_overlay"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/uploadProgressBar"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="center"
+                        android:indeterminate="false"
+                        app:indicatorColor="?attr/colorOnPrimary"
+                        app:indicatorSize="56dp"
+                        app:trackColor="?attr/colorOnPrimary"
+                        app:trackThickness="4dp" />
+
+                    <TextView
+                        android:id="@+id/uploadProgressLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorOnPrimary"
+                        tools:text="42%" />
+
+                </FrameLayout>
+
                 <!-- Текст сообщения -->
                 <TextView
                     android:id="@+id/messageTextView"
@@ -84,11 +117,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="6dp"
-                        android:text="изменено"
+                        android:text="@string/chat_message_edited"
                         android:textAppearance="?attr/textAppearanceLabelSmall"
                         android:textColor="?attr/colorOnPrimaryContainer"
-                        android:textStyle="italic"
-                        android:alpha="0.6"
+                        android:alpha="0.7"
                         android:visibility="gone"
                         tools:visibility="visible" />
 
@@ -106,7 +138,7 @@
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginStart="4dp"
-                        android:contentDescription="Статус прочтения"
+                        android:contentDescription="@string/cd_read_status"
                         android:visibility="gone"
                         app:tint="?attr/colorOnPrimaryContainer"
                         tools:src="@drawable/ic_double_check"
@@ -154,7 +186,7 @@
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:layout_marginStart="4dp"
-                android:contentDescription="Статус прочтения"
+                android:contentDescription="@string/cd_read_status"
                 android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant"
                 tools:src="@drawable/ic_double_check" />

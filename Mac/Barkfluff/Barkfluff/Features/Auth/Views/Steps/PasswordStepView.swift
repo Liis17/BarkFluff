@@ -14,7 +14,7 @@ struct PasswordStepView: View {
     let authService: AuthServiceProtocol
 
     @State private var showPassword = false
-    @State private var validationError: String?
+    @State private var validationError: LocalizedStringResource?
     @State private var isSaving = false
     @FocusState private var isFieldFocused: Bool
 
@@ -44,9 +44,9 @@ struct PasswordStepView: View {
                     HStack {
                         Group {
                             if showPassword {
-                                TextField("Пароль", text: $data.password)
+                                TextField("auth.register.step.password.placeholder", text: $data.password)
                             } else {
-                                SecureField("Пароль", text: $data.password)
+                                SecureField("auth.register.step.password.placeholder", text: $data.password)
                             }
                         }
                         .textFieldStyle(.roundedBorder)
@@ -70,7 +70,7 @@ struct PasswordStepView: View {
 
                 // Подтверждение пароля
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    SecureField("Подтвердите пароль", text: $data.confirmPassword)
+                    SecureField("auth.register.step.password.confirm.placeholder", text: $data.confirmPassword)
                         .textFieldStyle(.roundedBorder)
                         .focused($isFieldFocused)
 
@@ -78,7 +78,7 @@ struct PasswordStepView: View {
                         HStack(spacing: Theme.Spacing.xs) {
                             Image(systemName: passwordsMatch ? "checkmark.circle.fill" : "xmark.circle.fill")
                                 .foregroundStyle(passwordsMatch ? .green : .red)
-                            Text(passwordsMatch ? "Пароли совпадают" : "Пароли не совпадают")
+                            Text(passwordsMatch ? "auth.register.step.password.match" : "auth.register.step.password.mismatch")
                                 .font(.caption)
                                 .foregroundStyle(passwordsMatch ? .green : .red)
                         }
@@ -117,7 +117,7 @@ struct PasswordStepView: View {
             try await authService.setPassword(password: data.password)
             return true
         } catch {
-            validationError = error.localizedDescription
+            validationError = LocalizedStringResource(stringLiteral: error.localizedDescription)
             return false
         }
     }

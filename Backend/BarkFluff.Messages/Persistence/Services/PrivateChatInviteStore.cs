@@ -21,19 +21,19 @@ public class PrivateChatInviteStore
 
     private static string Key(Guid chatId) => $"{Prefix}:{chatId}";
 
-    public Task SetAsync(Guid chatId, long inviteeUserId)
+    public virtual Task SetAsync(Guid chatId, long inviteeUserId)
     {
         return _redis.GetDatabase().StringSetAsync(Key(chatId), inviteeUserId);
     }
 
-    public async Task<long?> GetInviteeAsync(Guid chatId)
+    public virtual async Task<long?> GetInviteeAsync(Guid chatId)
     {
         var value = await _redis.GetDatabase().StringGetAsync(Key(chatId));
         if (value.IsNullOrEmpty) return null;
         return (long)value;
     }
 
-    public Task<bool> RemoveAsync(Guid chatId)
+    public virtual Task<bool> RemoveAsync(Guid chatId)
     {
         return _redis.GetDatabase().KeyDeleteAsync(Key(chatId));
     }

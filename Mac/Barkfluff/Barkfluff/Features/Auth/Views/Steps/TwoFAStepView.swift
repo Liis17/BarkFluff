@@ -16,7 +16,7 @@ struct TwoFAStepView: View {
     @State private var otpCode: String = ""
     @State private var isEnabling = false
     @State private var isConfirming = false
-    @State private var error: String?
+    @State private var error: LocalizedStringResource?
     @State private var qrImage: NSImage?
 
     var body: some View {
@@ -54,7 +54,7 @@ struct TwoFAStepView: View {
     @ViewBuilder
     private var offerView: some View {
         VStack(spacing: Theme.Spacing.md) {
-            Text("Двухфакторная аутентификация добавляет дополнительный уровень защиты вашему аккаунту.")
+            Text("auth.register.step.two_fa.offer.description")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -65,13 +65,13 @@ struct TwoFAStepView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Text("Включить 2FA")
+                    Text("auth.register.step.two_fa.enable")
                 }
             }
             .buttonStyle(.borderedProminent)
             .disabled(isEnabling)
 
-            Text("Вы можете пропустить этот шаг и включить 2FA позже в настройках")
+            Text("auth.register.step.two_fa.enable_later")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -93,18 +93,18 @@ struct TwoFAStepView: View {
                     .overlay(ProgressView())
             }
 
-            Text("Отсканируйте QR-код в приложении Google Authenticator или аналогичном")
+            Text("auth.register.step.two_fa.scan_hint")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
             // Код для ручного ввода
             VStack(spacing: Theme.Spacing.xs) {
-                Text("Или введите код вручную:")
+                Text("auth.register.step.two_fa.manual_hint")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Text(info.secretCode)
+                Text(verbatim: info.secretCode)
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
                     .padding(Theme.Spacing.sm)
@@ -114,7 +114,7 @@ struct TwoFAStepView: View {
 
             // Поле для кода подтверждения
             VStack(spacing: Theme.Spacing.sm) {
-                Text("Введите код из приложения:")
+                Text("auth.register.step.two_fa.app_code")
                     .font(.subheadline)
 
                 OTPInputView(code: $otpCode, isError: error != nil)
@@ -142,10 +142,10 @@ struct TwoFAStepView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(.green)
 
-            Text("Двухфакторная аутентификация включена!")
+            Text("auth.register.step.two_fa.success.title")
                 .font(.headline)
 
-            Text("Теперь при входе в аккаунт вам понадобится код из приложения-аутентификатора")
+            Text("auth.register.step.two_fa.success.description")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -164,7 +164,7 @@ struct TwoFAStepView: View {
             let info = try await authService.enableOTP()
             data.otpSetupInfo = info
         } catch {
-            self.error = "Не удалось включить 2FA: \(error.localizedDescription)"
+            self.error = LocalizedStringResource("auth.register.step.two_fa.error.enable")
         }
     }
 
@@ -177,7 +177,7 @@ struct TwoFAStepView: View {
             try await authService.confirmOTP(code: code)
             data.is2FAEnabled = true
         } catch {
-            self.error = "Неверный код. Попробуйте снова."
+            self.error = LocalizedStringResource("auth.register.step.two_fa.error.invalid")
             otpCode = ""
         }
     }

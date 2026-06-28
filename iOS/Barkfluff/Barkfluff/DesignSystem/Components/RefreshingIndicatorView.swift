@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct RefreshingIndicatorView: View {
-    var label: String = "Обновление…"
+    var label: LocalizedStringKey = "refreshing.label"
 
     var body: some View {
         HStack(spacing: 6) {

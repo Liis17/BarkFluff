@@ -940,6 +940,19 @@ public enum Barkfluff_Files_FilesServerApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "UploadPosterServer" metadata.
+        public enum UploadPosterServer: Sendable {
+            /// Request type for "UploadPosterServer".
+            public typealias Input = Barkfluff_Files_UploadPosterServerRequest
+            /// Response type for "UploadPosterServer".
+            public typealias Output = Barkfluff_Files_UploadPosterServerResponse
+            /// Descriptor for "UploadPosterServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "UploadPosterServer",
+                type: .unary
+            )
+        }
         /// Namespace for "CreateStickerPack" metadata.
         public enum CreateStickerPack: Sendable {
             /// Request type for "CreateStickerPack".
@@ -1077,6 +1090,7 @@ public enum Barkfluff_Files_FilesServerApi: Sendable {
             UploadBadgeImage.descriptor,
             GetUserStorageInfoServer.descriptor,
             UploadAvatarServer.descriptor,
+            UploadPosterServer.descriptor,
             CreateStickerPack.descriptor,
             UpdateStickerPack.descriptor,
             DeleteStickerPack.descriptor,
@@ -1219,6 +1233,29 @@ extension Barkfluff_Files_FilesServerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadAvatarServerResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadAvatarServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UploadPosterServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Загрузить постер профиля пользователя (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UploadPosterServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UploadPosterServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UploadPosterServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func uploadPosterServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UploadPosterServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadPosterServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadPosterServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadPosterServerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "CreateStickerPack" method.
@@ -1603,6 +1640,40 @@ extension Barkfluff_Files_FilesServerApi {
             try await self.client.unary(
                 request: request,
                 descriptor: Barkfluff_Files_FilesServerApi.Method.UploadAvatarServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UploadPosterServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Загрузить постер профиля пользователя (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UploadPosterServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UploadPosterServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UploadPosterServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func uploadPosterServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UploadPosterServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadPosterServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadPosterServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadPosterServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.UploadPosterServer.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -2072,6 +2143,35 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UploadPosterServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Загрузить постер профиля пользователя (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_UploadPosterServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func uploadPosterServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_UploadPosterServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadPosterServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.uploadPosterServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_UploadPosterServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_UploadPosterServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "CreateStickerPack" method.
     ///
     /// > Source IDL Documentation:
@@ -2497,6 +2597,39 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.uploadAvatarServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UploadPosterServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Загрузить постер профиля пользователя (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func uploadPosterServer<Result>(
+        _ message: Barkfluff_Files_UploadPosterServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadPosterServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_UploadPosterServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.uploadPosterServer(
             request: request,
             options: options,
             onResponse: handleResponse

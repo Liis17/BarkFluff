@@ -14,15 +14,15 @@ struct SidebarView: View {
 
     var body: some View {
         List(selection: $selectedChatID) {
-            Section("Сообщения") {
+            Section("sidebar.section.messages") {
                 ContentUnavailableView(
-                    "Нет чатов",
+                    "sidebar.empty.title",
                     systemImage: "message",
-                    description: Text("Начните диалог или создайте группу")
+                    description: Text("sidebar.empty.description")
                 )
             }
         }
         .listStyle(.sidebar)
-        .searchable(text: $searchText, prompt: "Поиск чатов")
+        .searchable(text: $searchText, prompt: Text("sidebar.search.prompt"))
     }
 }

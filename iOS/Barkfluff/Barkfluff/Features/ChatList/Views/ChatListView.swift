@@ -25,7 +25,7 @@ struct ChatListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("Чаты")
+        .navigationTitle("chat_list.title")
         .task {
             if viewModel == nil {
                 let vm = ChatListViewModel(
@@ -44,14 +44,27 @@ struct ChatListView: View {
                 viewModel = vm
                 coordinator.chatListViewModel = vm
 
-                // Параллельно: текущий пользователь (для онлайн-статусов),
-                // папки (для табов сверху), чаты (для основного списка).
-                // Папки маленькие — табы появляются почти мгновенно из кеша,
-                // не дожидаясь сетевой подгрузки чатов.
-                async let userLoad: Void = container.loadCurrentUser()
+                // Ждём пока сетевой слой будет готов (beacon endpoints +
+                // refresh access-токена). До этого `listChats`/`track`/`getCurrentUser`
+                // упадут с «Messages не настроено», а пользователи будут показаны
+                // как онлайн по дефолту. Пока ждём — `isLoading=true` и UI показывает
+                // ChatRowPlaceholderView с крутилкой.
+                vm.isLoading = true
+                let ready = await coordinator.waitForConnectionReady()
+                guard ready else {
+                    // Соединение не появилось за 30 сек — VM сама покажет ошибку
+                    // при первой попытке loadChats. Снимаем сплеш, чтобы юзер
+                    // увидел экран.
+                    vm.isLoading = false
+                    coordinator.isInitialChatsLoaded = true
+                    return
+                }
+
+                // Connection готов — параллельно: чаты, папки, профиль.
                 async let foldersLoad: Void = vm.loadFolders()
                 async let chatsLoad: Void = vm.loadChats()
-                _ = await (userLoad, foldersLoad, chatsLoad)
+                async let userLoad: Void = container.loadCurrentUser()
+                _ = await (foldersLoad, chatsLoad, userLoad)
 
                 // Первая загрузка завершена (даже при ошибке — иначе сплеш повиснет;
                 // ошибка отобразится плашкой в списке чатов).
@@ -83,7 +96,7 @@ struct ChatListView: View {
 
             List {
                 if !viewModel.searchResults.isEmpty {
-                    Section("Пользователи") {
+                    Section("chat_list.search.section.users") {
                         ForEach(viewModel.searchResults) { user in
                             Button {
                                 Task {
@@ -124,9 +137,9 @@ struct ChatListView: View {
                 if !viewModel.isLoading && viewModel.chats.isEmpty
                     && viewModel.searchText.isEmpty && viewModel.errorMessage == nil {
                     ContentUnavailableView(
-                        "Нет чатов",
+                        "chat_list.empty.title",
                         systemImage: "message",
-                        description: Text("Начните диалог или создайте группу")
+                        description: Text("chat_list.empty.description")
                     )
                 } else if let error = viewModel.errorMessage, viewModel.chats.isEmpty {
                     VStack(spacing: Theme.Spacing.md) {
@@ -139,7 +152,7 @@ struct ChatListView: View {
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
 
-                        Button("Повторить") {
+                        Button("common.retry") {
                             Task { await viewModel.refresh() }
                         }
                         .buttonStyle(.bordered)
@@ -148,8 +161,18 @@ struct ChatListView: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                if viewModel.isRefreshing {
-                    RefreshingIndicatorView()
+                VStack(spacing: Theme.Spacing.xs) {
+                    if viewModel.isOffline && !viewModel.chats.isEmpty {
+                        ErrorBannerView(
+                            message: String(localized: "chat_list.offline_banner"),
+                            onDismiss: { viewModel.isOffline = false }
+                        )
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.top, Theme.Spacing.xs)
+                    }
+                    if viewModel.isRefreshing {
+                        RefreshingIndicatorView()
+                    }
                 }
             }
             .refreshable {
@@ -164,7 +187,7 @@ struct ChatListView: View {
                     viewModel.onSearchTextChanged()
                 }
             ),
-            prompt: "Поиск"
+            prompt: Text("chat_list.search.prompt")
         )
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -172,12 +195,12 @@ struct ChatListView: View {
                     Button {
                         coordinator.presentedSheet = .userSearch
                     } label: {
-                        Label("Новый чат", systemImage: "person.crop.circle.badge.plus")
+                        Label("chat_list.menu.new_chat", systemImage: "person.crop.circle.badge.plus")
                     }
                     Button {
                         coordinator.presentedSheet = .createGroupChat
                     } label: {
-                        Label("Новая группа", systemImage: "person.3.fill")
+                        Label("chat_list.menu.new_group", systemImage: "person.3.fill")
                     }
                 } label: {
                     Image(systemName: "square.and.pencil")
@@ -195,6 +218,7 @@ struct ChatRowView: View {
     let onlineStatusService: OnlineStatusServiceProtocol
 
     @State private var onlineStatus: OnlineStatus = .unknown
+    @Environment(\.locale) private var locale
 
     private var otherUserID: Int64? {
         guard !chat.isGroupChat else { return nil }
@@ -223,7 +247,7 @@ struct ChatRowView: View {
                     Spacer()
 
                     if let date = chat.lastMessageDate {
-                        Text(date, style: .time)
+                        Text(DateFormatterHelper.formatForChatList(date, locale: locale))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }

@@ -25,6 +25,7 @@ public enum ServiceKind: String, CaseIterable, Sendable, Codable {
     case navigator
     case configuration
     case onliner
+    case calls
 }
 
 public struct ServiceEndpoint: Sendable, Codable, Equatable {
@@ -202,6 +203,12 @@ public actor ConnectionManager {
             let ep = response.fastAuth.endpoint
             serviceEndpoints[.fastauth] = ServiceEndpoint(
                 host: cleanHost(ep.host), port: Int(ep.port), useTLS: response.fastAuth.tlsEnabled
+            )
+        }
+        if response.hasCalls, response.calls.hasEndpoint {
+            let ep = response.calls.endpoint
+            serviceEndpoints[.calls] = ServiceEndpoint(
+                host: cleanHost(ep.host), port: Int(ep.port), useTLS: response.calls.tlsEnabled
             )
         }
     }

@@ -52,6 +52,7 @@ struct LoginView: View {
                 vm.onAuthenticated = {
                     Task { @MainActor in
                         await containerRef.loadCurrentUser()
+                        coordinatorRef.isConnectionReady = true
                         coordinatorRef.currentState = .main
                     }
                 }
@@ -101,9 +102,9 @@ struct LoginView: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.7), value: appeared)
 
             VStack(spacing: 3) {
-                Text("BarkFluff")
+                Text(verbatim: "BarkFluff")
                     .font(.title.bold())
-                Text("Войдите в свой аккаунт")
+                Text("auth.login.subtitle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -120,18 +121,18 @@ struct LoginView: View {
         VStack(spacing: Theme.Spacing.lg) {
             // Поля ввода
             VStack(spacing: Theme.Spacing.sm) {
-                TextField("Имя пользователя или email", text: Bindable(viewModel).usernameOrEmail)
+                TextField("auth.login.username_or_email", text: Bindable(viewModel).usernameOrEmail)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .disabled(viewModel.isLoading)
 
-                SecureField("Пароль", text: Bindable(viewModel).password)
+                SecureField("auth.login.password", text: Bindable(viewModel).password)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .disabled(viewModel.isLoading)
 
                 if viewModel.needsOTP {
-                    TextField("Код подтверждения (2FA)", text: Bindable(viewModel).otpCode)
+                    TextField("auth.login.otp", text: Bindable(viewModel).otpCode)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .disabled(viewModel.isLoading)
@@ -148,7 +149,7 @@ struct LoginView: View {
             let canAttemptLogin = !viewModel.usernameOrEmail.isEmpty && !viewModel.password.isEmpty
             if canAttemptLogin || viewModel.isLoading {
                 ZStack {
-                    Button(viewModel.needsOTP ? "Подтвердить" : "Войти") {
+                    Button(viewModel.needsOTP ? "auth.login.submit_otp" : "auth.login.submit") {
                         Task { await viewModel.login() }
                     }
                     .buttonStyle(.glassProminent)
@@ -171,14 +172,14 @@ struct LoginView: View {
 
             // Нижние действия
             HStack {
-                Button("Создать аккаунт") { viewModel.goToRegister() }
+                Button("auth.login.create_account") { viewModel.goToRegister() }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.accentColor)
                     .font(.callout.weight(.medium))
 
                 Spacer()
 
-                Button("Выбрать сервер") { coordinator.currentState = .serverSelection }
+                Button("auth.login.choose_server") { coordinator.currentState = .serverSelection }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.accentColor.opacity(0.7))
                     .font(.callout)

@@ -27,6 +27,7 @@
 | [[Backend/Users]] | Профили, устройства, бейджи | 7001 |
 | [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
 | [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
+| [[Backend/Users-Rust]] | **Rust drop-in порт Users** (tonic/sqlx/lapin) — тестовый эксперимент | 7001 |
 | [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
 | [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
 | [[Backend/Messages-Metrics]] | Реестр метрик Messages (auto MediatR + доменные + consumer-метрики) | — |
@@ -53,6 +54,7 @@
 | [[Backend/ClientStorage]] | Хранилище клиентских приложений | — |
 | [[Backend/ClientStorage-ProjectMap]] | Карта всех файлов и классов ClientStorage | — |
 | [[Backend/Developers]] | Портал документации для разработчиков | 7020 |
+| [[Backend/Calls]] | Звонки (аудио/видео, 1-на-1 + группы) на LiveKit SFU | 7025 |
 | [[Backend/Nginx]] | Nginx reverse proxy — TLS, субдомены, gRPC/HTTP маршрутизация | — |
 
 ### Shared-библиотеки
@@ -79,6 +81,7 @@
 | [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
 | [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
 | [[Клиенты/Android-FileIndex]] | Индекс файлов Android-клиента с кратким описанием каждого |
+| [[Клиенты/Android-V2]] | **V2** — Jetpack Compose + Material 3 Expressive поверх общего модуля `:core` |
 | [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
 | [[Клиенты/Windows-WPF-ProjectMap]] | Карта всех файлов и классов WPF-клиента |
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
@@ -90,6 +93,7 @@
 | [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (iOS 26, на базе macOS-клиента) |
 | [[Клиенты/iOS-ProjectMap]] | Карта всех файлов iOS-клиента с описанием |
 | [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
+| [[Клиенты/Web]] | **Веб-мессенджер** — React 19 + TS SPA, Material 3 Expressive (заменил vanilla-JS) |
 
 ---
 

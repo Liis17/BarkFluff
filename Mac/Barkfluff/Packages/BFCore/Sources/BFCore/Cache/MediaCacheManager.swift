@@ -13,11 +13,13 @@ public enum MediaCacheError: Error, LocalizedError {
     case downloadFailed
     case fileMissing
 
-    public var errorDescription: String? {
+    public var errorDescription: String? { errorDescription(in: .current) }
+
+    public func errorDescription(in locale: Locale) -> String? {
         switch self {
-        case .invalidURL: return "Некорректный URL"
-        case .downloadFailed: return "Ошибка скачивания файла"
-        case .fileMissing: return "Файл не найден в кеше"
+        case .invalidURL:     return String(localized: "bfcore.cache.error.invalid_url", bundle: .module, locale: locale)
+        case .downloadFailed: return String(localized: "bfcore.cache.error.download_failed", bundle: .module, locale: locale)
+        case .fileMissing:    return String(localized: "bfcore.cache.error.file_missing", bundle: .module, locale: locale)
         }
     }
 }

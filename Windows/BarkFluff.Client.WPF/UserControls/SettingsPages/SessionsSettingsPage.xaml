@@ -12,10 +12,10 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Активные сессии" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Sessions_Title}" />
 
             <!-- Текущее устройство -->
-            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,8" Text="Текущее устройство" />
+            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,8" Text="{DynamicResource L_Settings_Sessions_CurrentDevice}" />
             <Border
                 x:Name="CurrentDeviceBorder"
                 Padding="16"
@@ -38,7 +38,7 @@
                             Foreground="{DynamicResource TitleText}"
                             FontSize="14"
                             FontWeight="Medium"
-                            Text="Загрузка..." />
+                            Text="{DynamicResource L_Common_Loading}" />
                         <TextBlock
                             x:Name="CurrentDeviceInfo"
                             Foreground="{DynamicResource DescriptionText}"
@@ -49,7 +49,7 @@
             </Border>
 
             <!-- Активные сессии -->
-            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,0,0,8" Text="Другие сессии" />
+            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,0,0,8" Text="{DynamicResource L_Settings_Sessions_OtherSessions}" />
             <StackPanel x:Name="SessionsList" />
 
             <!-- Кнопки -->
@@ -61,7 +61,7 @@
                 Cursor="Hand"
                 Background="#df5000"
                 Foreground="White"
-                Content="Завершить все остальные"
+                Content="{DynamicResource L_Settings_Sessions_TerminateAll}"
                 Visibility="Collapsed" />
 
             <!-- Статус -->

@@ -115,14 +115,15 @@ class ChatAdapter(
             }
 
             // Последнее сообщение
-            if (chat.lastMessage != null) {
-                val text = chat.lastMessage.text
+            val lastMessage = chat.lastMessage
+            if (lastMessage != null) {
+                val text = lastMessage.text
                 binding.lastMessage.text = when {
                     text.isNotBlank() -> text.trim()
                     else -> "Вложение"
                 }
                 binding.lastMessage.visibility = View.VISIBLE
-                binding.messageTime.text = formatTime(chat.lastMessage.sentAt)
+                binding.messageTime.text = formatTime(lastMessage.sentAt)
                 binding.messageTime.visibility = View.VISIBLE
             } else {
                 binding.lastMessage.text = "Нет сообщений"
@@ -146,9 +147,9 @@ class ChatAdapter(
             if (lastMsg != null && lastMsg.senderId == currentUserId) {
                 val readByOthers = lastMsg.readBy.any { it != currentUserId }
                 if (readByOthers) {
-                    binding.readStatus.setImageResource(R.drawable.ic_double_check)
+                    binding.readStatus.setImageResource(R.drawable.ic_status_read)
                 } else {
-                    binding.readStatus.setImageResource(R.drawable.ic_check)
+                    binding.readStatus.setImageResource(R.drawable.ic_status_sent)
                 }
                 binding.readStatus.visibility = View.VISIBLE
             } else {

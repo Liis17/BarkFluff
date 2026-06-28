@@ -10,10 +10,10 @@ import Foundation
 /// Результат валидации имени
 struct NameValidationResult {
     let isValid: Bool
-    let error: String?
+    let error: LocalizedStringResource?
 
     static let valid = NameValidationResult(isValid: true, error: nil)
-    static func invalid(_ error: String) -> NameValidationResult {
+    static func invalid(_ error: LocalizedStringResource) -> NameValidationResult {
         NameValidationResult(isValid: false, error: error)
     }
 }
@@ -32,22 +32,22 @@ enum NameValidator {
         let trimmed = firstName.trimmingCharacters(in: .whitespaces)
 
         if trimmed.isEmpty {
-            return .invalid("Введите имя")
+            return .invalid(LocalizedStringResource("auth.validation.name.first.empty"))
         }
 
         if trimmed.count < minFirstNameLength {
-            return .invalid("Имя должно содержать минимум \(minFirstNameLength) символа")
+            return .invalid(LocalizedStringResource("auth.validation.name.first.too_short \(minFirstNameLength)"))
         }
 
         if trimmed.count > maxFirstNameLength {
-            return .invalid("Имя не должно превышать \(maxFirstNameLength) символов")
+            return .invalid(LocalizedStringResource("auth.validation.name.first.too_long \(maxFirstNameLength)"))
         }
 
         // Проверка на допустимые символы (буквы, пробелы, дефис)
         let allowedPattern = "^[a-zA-Zа-яА-ЯёЁ\\s\\-]+$"
         let predicate = NSPredicate(format: "SELF MATCHES %@", allowedPattern)
         if !predicate.evaluate(with: trimmed) {
-            return .invalid("Имя может содержать только буквы")
+            return .invalid(LocalizedStringResource("auth.validation.name.first.invalid_chars"))
         }
 
         return .valid
@@ -63,14 +63,14 @@ enum NameValidator {
         }
 
         if trimmed.count > maxLastNameLength {
-            return .invalid("Фамилия не должна превышать \(maxLastNameLength) символов")
+            return .invalid(LocalizedStringResource("auth.validation.name.last.too_long \(maxLastNameLength)"))
         }
 
         // Проверка на допустимые символы
         let allowedPattern = "^[a-zA-Zа-яА-ЯёЁ\\s\\-]+$"
         let predicate = NSPredicate(format: "SELF MATCHES %@", allowedPattern)
         if !predicate.evaluate(with: trimmed) {
-            return .invalid("Фамилия может содержать только буквы")
+            return .invalid(LocalizedStringResource("auth.validation.name.last.invalid_chars"))
         }
 
         return .valid

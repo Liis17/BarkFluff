@@ -45,7 +45,7 @@ final class EditChatFolderViewModel {
     func save() async -> Bool {
         guard let dc = dependencyContainer else { return false }
         guard isNameValid else {
-            errorMessage = "Название должно быть от 1 до 64 символов"
+            errorMessage = String(localized: "settings.chat_folders.error.name_length")
             return false
         }
 
@@ -74,7 +74,7 @@ final class EditChatFolderViewModel {
             }
             return true
         } catch {
-            errorMessage = "Не удалось сохранить папку"
+            errorMessage = String(localized: "settings.chat_folders.error.save")
             return false
         }
     }
@@ -91,7 +91,7 @@ final class EditChatFolderViewModel {
             try await dc.chatFolderService.delete(folderID: id)
             return true
         } catch {
-            errorMessage = "Не удалось удалить папку"
+            errorMessage = String(localized: "settings.chat_folders.error.delete")
             return false
         }
     }

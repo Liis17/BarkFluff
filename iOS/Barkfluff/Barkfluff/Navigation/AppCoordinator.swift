@@ -8,6 +8,7 @@
 import SwiftUI
 import Observation
 import BFCore
+import BFNetworking
 
 /// Координатор состояния приложения.
 /// Управляет навигацией между основными экранами.
@@ -50,6 +51,12 @@ final class AppCoordinator {
     /// splash хотим видеть только на cold start.
     var isInitialChatsLoaded: Bool = false
 
+    /// Готовность сетевого слоя: beacon endpoints получены, refresh-токен валиден.
+    /// До `true` нельзя делать gRPC-вызовы (`listChats`, `getCurrentUser`,
+    /// `onlineStatusService.track`) — упадут с «Messages не настроено».
+    /// Сбрасывается в `false` при `logout`/`handleSessionExpired`.
+    var isConnectionReady: Bool = false
+
     /// Текущий экран авторизации
     var authScreen: AuthScreen = .login
 
@@ -90,32 +97,80 @@ final class AppCoordinator {
 
     // MARK: - App Lifecycle
 
-    /// Запуск приложения: auto-reconnect + auto-login
+    /// Запуск приложения.
+    ///
+    /// Если у пользователя есть refresh-токен (значит он уже логинился) —
+    /// сразу переходим в `.main` и показываем `MainTabView` с пустым `ChatListView`
+    /// и плейсхолдерами/крутилкой. В фоне делаем `tryReconnect` + `tryRestoreSession`
+    /// и выставляем `isConnectionReady = true`. До этого `ChatListView.task` ждёт
+    /// флаг (`waitForConnectionReady()`) и только потом дёргает `listChats`,
+    /// подписки, профиль и онлайн-статусы — иначе будет «Messages не настроено»
+    /// и поломанные онлайн-статусы.
+    ///
+    /// Если refresh-токена нет — обычный flow: reconnect к beacon (нужен для login)
+    /// и `.authentication`/`.serverSelection`.
     func onAppLaunch(
         serverDiscovery: ServerDiscoveryServiceProtocol,
-        authService: AuthServiceProtocol
+        authService: AuthServiceProtocol,
+        tokenProvider: any TokenProvider
     ) async {
-        // 1. Попробовать переподключиться к последнему серверу
-        let reconnected = await serverDiscovery.tryReconnect()
-        guard reconnected else {
+        let hasServerEndpoint = await tokenProvider.savedServerHost != nil
+        let hasRefreshToken = await tokenProvider.hasRefreshToken
+
+        guard hasServerEndpoint else {
             currentState = .serverSelection
             return
         }
 
-        // 2. Попробовать восстановить сессию (auto-login)
-        let restored = await authService.tryRestoreSession()
-        guard restored else {
-            currentState = .authentication
-            authScreen = .login
+        guard hasRefreshToken else {
+            // Нужны живые endpoints для login — reconnect синхронно.
+            let reconnected = await serverDiscovery.tryReconnect()
+            if reconnected {
+                currentState = .authentication
+                authScreen = .login
+            } else {
+                currentState = .serverSelection
+            }
             return
         }
 
-        // 3. Всё ОК — главный экран
+        // Refresh-токен есть → сразу в .main; UI покажет крутилку,
+        // запросы в ChatListView ждут isConnectionReady через waitForConnectionReady().
         currentState = .main
+
+        Task { [weak self] in
+            guard let self else { return }
+            let reconnected = await serverDiscovery.tryReconnect()
+            guard reconnected else {
+                // Сеть мертва — VM сама покажет «Нет соединения», isConnectionReady остаётся false.
+                return
+            }
+            let restored = await authService.tryRestoreSession()
+            guard restored else {
+                // Refresh-токен не подошёл — мягкий разлогин.
+                await MainActor.run { self.handleSessionExpired() }
+                return
+            }
+            await MainActor.run { self.isConnectionReady = true }
+        }
+    }
+
+    /// Ждёт пока сетевой слой будет готов (или истечёт таймаут).
+    /// До готовности нельзя выполнять gRPC-вызовы — упадут с network error.
+    /// Возвращает `true` если соединение готово, `false` если таймаут.
+    @discardableResult
+    func waitForConnectionReady(timeout: Duration = .seconds(30)) async -> Bool {
+        if isConnectionReady { return true }
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while !isConnectionReady, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return isConnectionReady
     }
 
     /// Сессия истекла — вернуться на логин
     func handleSessionExpired() {
+        isConnectionReady = false
         currentState = .authentication
         authScreen = .login
     }
@@ -183,6 +238,7 @@ final class AppCoordinator {
     private func performLocalWipe(container: DependencyContainer) async {
         await container.reset()
 
+        isConnectionReady = false
         selectedChat = nil
         activeTab = .chats
         presentedSheet = nil

@@ -40,7 +40,7 @@ public class SecretMessageBuffer
     /// <summary>
     /// Кладёт envelope в буфер. Возвращает (messageId, expiresAt).
     /// </summary>
-    public async Task<(string MessageId, DateTime ExpiresAt)> EnqueueMessageAsync(
+    public virtual async Task<(string MessageId, DateTime ExpiresAt)> EnqueueMessageAsync(
         long senderUserId,
         Guid senderDeviceId,
         Guid recipientDeviceId,
@@ -78,7 +78,7 @@ public class SecretMessageBuffer
     /// <summary>
     /// Подтверждает доставку секретного сообщения — удаляет envelope и запись из индекса.
     /// </summary>
-    public async Task<bool> AckMessageAsync(Guid recipientDeviceId, string messageId)
+    public virtual async Task<bool> AckMessageAsync(Guid recipientDeviceId, string messageId)
     {
         var batch = Db.CreateBatch();
         var deleteTask = batch.KeyDeleteAsync(MessageKey(recipientDeviceId, messageId));
@@ -93,7 +93,7 @@ public class SecretMessageBuffer
     /// Возвращает все pending envelope для устройства (например, после переподключения к стриму).
     /// Параллельно очищает индекс от записей, которые уже истекли по TTL.
     /// </summary>
-    public async Task<List<SecretMessageRecord>> ListPendingMessagesAsync(Guid recipientDeviceId)
+    public virtual async Task<List<SecretMessageRecord>> ListPendingMessagesAsync(Guid recipientDeviceId)
     {
         var ids = await Db.SetMembersAsync(MessageIndex(recipientDeviceId));
         if (ids.Length == 0)
@@ -141,7 +141,7 @@ public class SecretMessageBuffer
     /// <summary>
     /// Кладёт инвайт в буфер. Возвращает (inviteId, expiresAt).
     /// </summary>
-    public async Task<(string InviteId, DateTime ExpiresAt)> EnqueueInviteAsync(
+    public virtual async Task<(string InviteId, DateTime ExpiresAt)> EnqueueInviteAsync(
         long senderUserId,
         Guid senderDeviceId,
         long recipientUserId,
@@ -181,7 +181,7 @@ public class SecretMessageBuffer
     /// <summary>
     /// Получить и удалить инвайт по (recipientDeviceId, inviteId). Возвращает запись либо null если истёк.
     /// </summary>
-    public async Task<SecretInviteRecord?> ConsumeInviteAsync(Guid recipientDeviceId, string inviteId)
+    public virtual async Task<SecretInviteRecord?> ConsumeInviteAsync(Guid recipientDeviceId, string inviteId)
     {
         var key = InviteKey(recipientDeviceId, inviteId);
         var value = await Db.StringGetAsync(key);
@@ -208,7 +208,7 @@ public class SecretMessageBuffer
         }
     }
 
-    public async Task<List<SecretInviteRecord>> ListPendingInvitesAsync(Guid recipientDeviceId)
+    public virtual async Task<List<SecretInviteRecord>> ListPendingInvitesAsync(Guid recipientDeviceId)
     {
         var ids = await Db.SetMembersAsync(InviteIndex(recipientDeviceId));
         if (ids.Length == 0)

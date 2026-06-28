@@ -3,71 +3,38 @@ using Grpc.Net.Client;
 namespace BarkFluff.WebApi.Core
 {
     /// <summary>
-    /// Базовый класс для всех менеджеров WebApi, предоставляющий доступ к API клиентам и каналам.
+    /// Базовый класс для всех менеджеров WebApi. Pass-through-доступ к gRPC-клиентам
+    /// и каналам, хранящимся в единственном источнике истины — <see cref="WebApi"/>.
+    /// За счёт этого пересоздание клиентов в <see cref="Managers.WebApiClientManager"/>
+    /// автоматически видно всем менеджерам — синхронизировать вручную не требуется.
     /// </summary>
     internal abstract class WebApiBase
     {
-        protected BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC { get; set; }
-        protected BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC { get; set; }
-        protected BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC { get; set; }
-        protected BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC { get; set; }
-        protected BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC { get; set; }
-        protected BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC { get; set; }
-        protected BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC { get; set; }
-        protected BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC { get; set; }
+        private readonly WebApi _webApi;
 
-        protected GrpcChannel? BeaconChannel { get; set; }
-        protected GrpcChannel? UserChannel { get; set; }
-        protected GrpcChannel? IdentityChannel { get; set; }
-        protected GrpcChannel? FilesChannel { get; set; }
-        protected GrpcChannel? MessagesChannel { get; set; }
-        protected GrpcChannel? NavigatorChannel { get; set; }
-        protected GrpcChannel? UpdatesChannel { get; set; }
-        protected GrpcChannel? OnlinerChannel { get; set; }
+        protected BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC => _webApi.UsersAC;
+        protected BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC => _webApi.BeaconAC;
+        protected BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC => _webApi.IdentityAC;
+        protected BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC => _webApi.FilesAC;
+        protected BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC => _webApi.MessagesAC;
+        protected BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC => _webApi.NavigatorAC;
+        protected BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC => _webApi.UpdatesAC;
+        protected BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC => _webApi.OnlinerAC;
+        protected BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthAC => _webApi.FastAuthAC;
+
+        protected GrpcChannel? BeaconChannel => _webApi.BeaconChannel;
+        protected GrpcChannel? UserChannel => _webApi.UserChannel;
+        protected GrpcChannel? IdentityChannel => _webApi.IdentityChannel;
+        protected GrpcChannel? FilesChannel => _webApi.FilesChannel;
+        protected GrpcChannel? MessagesChannel => _webApi.MessagesChannel;
+        protected GrpcChannel? NavigatorChannel => _webApi.NavigatorChannel;
+        protected GrpcChannel? UpdatesChannel => _webApi.UpdatesChannel;
+        protected GrpcChannel? OnlinerChannel => _webApi.OnlinerChannel;
+        protected GrpcChannel? FastAuthChannel => _webApi.FastAuthChannel;
 
         protected WebApiBase(WebApi webApi)
         {
-            // Пустой конструктор, клиенты будут устанавливаться через SetClients
-        }
-
-        /// <summary>
-        /// Устанавливает ссылки на API клиенты и каналы из главного WebApi.
-        /// </summary>
-        internal void SetClients(
-            BarkFluff.Proto.Users.UsersApi.UsersApiClient? usersAC,
-            BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? beaconAC,
-            BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? identityAC,
-            BarkFluff.Proto.Files.FilesApi.FilesApiClient? filesAC,
-            BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? messagesAC,
-            BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? navigatorAC,
-            BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? updatesAC,
-            BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? onlinerAC,
-            GrpcChannel? beaconChannel,
-            GrpcChannel? userChannel,
-            GrpcChannel? identityChannel,
-            GrpcChannel? filesChannel,
-            GrpcChannel? messagesChannel,
-            GrpcChannel? navigatorChannel,
-            GrpcChannel? updatesChannel,
-            GrpcChannel? onlinerChannel)
-        {
-            UsersAC = usersAC;
-            BeaconAC = beaconAC;
-            IdentityAC = identityAC;
-            FilesAC = filesAC;
-            MessagesAC = messagesAC;
-            NavigatorAC = navigatorAC;
-            UpdatesAC = updatesAC;
-            OnlinerAC = onlinerAC;
-
-            BeaconChannel = beaconChannel;
-            UserChannel = userChannel;
-            IdentityChannel = identityChannel;
-            FilesChannel = filesChannel;
-            MessagesChannel = messagesChannel;
-            NavigatorChannel = navigatorChannel;
-            UpdatesChannel = updatesChannel;
-            OnlinerChannel = onlinerChannel;
+            _webApi = webApi;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.Services.App.Caching;
+﻿using BarkFluff.Client.WPF.Services.App;
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
@@ -174,8 +175,9 @@ namespace BarkFluff.Client.WPF.UserControls
         private void ConfigureSelfChatAppearance()
         {
             // Принудительно устанавливаем название
-            Title.Text = "Избранное";
-            _title = "Избранное";
+            var favTitle = L.Str("L_ChatItem_Favorites");
+            Title.Text = favTitle;
+            _title = favTitle;
 
             // Скрываем галочки прочтения
             ReadStatusPanel.Visibility = Visibility.Collapsed;
@@ -200,7 +202,7 @@ namespace BarkFluff.Client.WPF.UserControls
             // Заголовок (для self-chat принудительно «Избранное»).
             if (_isSelfChat)
             {
-                title = "Избранное";
+                title = L.Str("L_ChatItem_Favorites");
             }
             if (_title != title)
             {
@@ -421,7 +423,7 @@ namespace BarkFluff.Client.WPF.UserControls
             if (!DateTime.TryParse(input, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out DateTime dateTimeUtc))
 
             {
-                return "Неверный формат даты";
+                return L.Str("L_ChatItem_BadDate");
             }
 
             DateTime localDateTime = dateTimeUtc.ToLocalTime();

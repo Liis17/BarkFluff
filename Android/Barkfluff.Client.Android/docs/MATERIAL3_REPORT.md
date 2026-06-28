@@ -6,37 +6,28 @@
 
 ## ✅ Выполненные задачи
 
-### 1. Обновление зависимостей
+### 1. Зависимости
 
-**Файл:** `build.gradle.kts`
+**Файл:** `app/build.gradle.kts`
 
-Добавлено:
+UI построен на **View-системе** (XML-разметка + Material Components for Android), а не на Jetpack Compose. Ключевые UI-зависимости:
 ```kotlin
-// Jetpack Compose for Material 3 Expressive
-val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
-implementation(composeBom)
-implementation("androidx.compose.ui:ui")
-implementation("androidx.compose.ui:ui-graphics")
-implementation("androidx.compose.ui:ui-tooling-preview")
-implementation("androidx.compose.material3:material3")
-implementation("androidx.compose.material:material-icons-extended")
-implementation("androidx.compose.material3:material3-window-size-class")
-implementation("androidx.activity:activity-compose:1.9.3")
-implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-implementation("androidx.navigation:navigation-compose:2.8.5")
-implementation("io.coil-kt:coil-compose:2.7.0")
+implementation(libs.androidx.appcompat)
+implementation(libs.material)            // com.google.android.material — Material 3 компоненты для View
+implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+implementation("androidx.cardview:cardview:1.0.0")
+implementation(libs.androidx.recyclerview)
+implementation(libs.androidx.fragment)
 ```
 
 Включено:
 ```kotlin
 buildFeatures {
     viewBinding = true
-    compose = true  // Добавлено
-}
-composeOptions {
-    kotlinCompilerExtensionVersion = "1.5.14"
 }
 ```
+
+> Material 3 Expressive реализован через токены тем/цветов/форм (`themes.xml`, `colors.xml`, `dimens.xml`) и компоненты Material из `com.google.android.material`. Jetpack Compose в проекте не используется.
 
 ---
 
@@ -273,4 +264,4 @@ gradlew assembleRelease
 
 - [Material 3 Expressive Guidelines](https://m3.material.io/)
 - [Android 16 Developer Preview](https://developer.android.com/about/versions/16)
-- [Jetpack Compose Documentation](https://developer.android.com/jetpack/compose)
+- [Material Components for Android](https://github.com/material-components/material-components-android)

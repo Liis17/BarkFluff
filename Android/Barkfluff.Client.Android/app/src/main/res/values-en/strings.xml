@@ -1,0 +1,500 @@
+<resources>
+    <!-- App name -->
+    <string name="app_name">Barkfluff</string>
+
+    <!-- Share intent -->
+    <string name="share_pick_chat_title">Where to send?</string>
+    <string name="share_pick_chat_subtitle">Via Barkfluff</string>
+    <string name="share_preview_label">What to send</string>
+    <string name="share_no_chats">No available chats</string>
+    <string name="share_not_authorized">Sign in to Barkfluff to share here</string>
+    <string name="share_empty">Nothing to send</string>
+    <string name="share_send_to">Send to %1$s</string>
+    <string name="share_caption_hint">Add a caption…</string>
+    <string name="share_btn_send">Send</string>
+    <string name="share_sent_toast">Sent to %1$s</string>
+    <string name="share_file_count">%1$d files</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">A messenger for your pack</string>
+    <string name="welcome_description">Chat with friends, share moments, and stay connected with those who matter</string>
+    <string name="btn_start">Get started</string>
+    <string name="btn_learn_more">Learn more</string>
+    <string name="menu_about">About</string>
+    <string name="menu_privacy">Privacy</string>
+    <string name="menu_help">Help</string>
+
+    <!-- Login Screen -->
+    <string name="login_welcome">Welcome</string>
+    <string name="login_subtitle">Sign in to your account</string>
+    <string name="hint_username_or_email">Username or email</string>
+    <string name="hint_password">Password</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="btn_login">Sign in</string>
+    <string name="btn_change_server">Change server connection</string>
+    <string name="btn_create_account">Create new account</string>
+    <string name="footer_text">2025 BarkFluff. No rights reserved.</string>
+
+    <!-- 2FA / OTP -->
+    <string name="otp_title">Two-factor authentication</string>
+    <string name="otp_subtitle">Enter the code from your authenticator app</string>
+    <string name="btn_confirm">Confirm</string>
+
+    <!-- Select Server -->
+    <string name="server_title">Server connection</string>
+    <string name="server_subtitle">Choose a public server</string>
+    <string name="server_public">Public servers</string>
+    <string name="server_custom">Connect to another server</string>
+    <string name="hint_server_address">https://myserver.com:443</string>
+    <string name="btn_connect">Connect</string>
+    <string name="self_hosted_title">Your own server</string>
+    <string name="self_hosted_description">Deploy your own BarkFluff server</string>
+    <string name="btn_learn_more_server">Learn more</string>
+    <string name="server_help_hint">Having trouble connecting? Check our server setup guide.</string>
+    <string name="server_item_name_placeholder">Server name</string>
+    <string name="server_item_description_placeholder">Server description</string>
+    <string name="server_item_location_placeholder">Location • @publicname</string>
+
+    <!-- Registration Steps -->
+    <string name="register_step_1">Personal info</string>
+    <string name="register_step_2">Username</string>
+    <string name="register_step_3">Email</string>
+    <string name="register_step_4">Email verification</string>
+    <string name="register_step_5">Create password</string>
+    <string name="register_step_6">Profile picture</string>
+    <string name="register_step_7">About you</string>
+    <string name="register_step_8">Two-factor authentication</string>
+    <string name="register_step_9">Done</string>
+
+    <string name="register_title">Create new account</string>
+    <string name="register_step_indicator">Step 1 of 9</string>
+
+    <string name="register_step1_subtitle">Tell us a bit about yourself</string>
+    <string name="hint_first_name_required">First name *</string>
+    <string name="hint_last_name">Last name</string>
+    <string name="register_first_name_hint">First name can contain any characters</string>
+    <string name="register_first_name_length">Minimum 3 characters, maximum 40</string>
+    <string name="register_last_name_hint">Last name is optional</string>
+
+    <string name="register_step2_subtitle">Pick a unique login</string>
+    <string name="hint_login_required">Login *</string>
+    <string name="register_login_rules">Login can contain:</string>
+    <string name="register_login_rule_latin">Latin letters (a-z)</string>
+    <string name="register_login_rule_digits">Digits (0-9)</string>
+    <string name="register_login_rule_symbols">Underscore (_)</string>
+    <string name="register_login_max_length">Maximum 30 characters</string>
+    <string name="register_login_lowercase">Will be converted to lowercase</string>
+
+    <string name="register_step3_subtitle">For verification and account recovery</string>
+    <string name="hint_email_required">Email *</string>
+    <string name="register_email_for_2fa">For two-factor authentication</string>
+    <string name="register_email_for_reset">For password reset</string>
+    <string name="register_email_for_login_alerts">For sign-in alerts</string>
+
+    <string name="register_step4_subtitle">We sent a verification code to your email</string>
+    <string name="hint_verify_code_required">Verification code *</string>
+    <string name="register_check_inbox">Check your inbox</string>
+    <string name="register_check_spam">Check your spam folder</string>
+
+    <string name="register_step5_subtitle">Create a strong password</string>
+    <string name="hint_password_required">Password *</string>
+    <string name="hint_password_confirm_required">Confirm password *</string>
+    <string name="register_password_start_typing">Start typing your password</string>
+    <string name="register_password_requirements">Password requirements:</string>
+    <string name="register_password_req_length">○ At least 8 characters</string>
+    <string name="register_password_req_upper">○ Uppercase letters</string>
+    <string name="register_password_req_lower">○ Lowercase letters</string>
+    <string name="register_password_req_digit">○ Digits</string>
+    <string name="register_password_req_special">○ Special characters</string>
+    <string name="register_password_case_hint">Use a mix of upper- and lowercase letters</string>
+    <string name="register_password_digits_hint">Add digits and special characters</string>
+
+    <string name="register_step6_subtitle">Add a photo or skip this step</string>
+    <string name="register_pick_photo_from_gallery">Choose a photo from gallery</string>
+    <string name="register_skip_step">Skip this step</string>
+    <string name="register_photo_visibility_hint">Your photo will be visible to other users</string>
+
+    <string name="register_step7_title">Profile setup</string>
+    <string name="register_step7_subtitle">Tell us about yourself</string>
+    <string name="register_full_name_placeholder">First Last</string>
+    <string name="hint_bio">About you</string>
+    <string name="register_bio_max">Maximum 200 characters</string>
+    <string name="register_bio_optional">You can leave it empty</string>
+
+    <string name="register_step8_subtitle">Protect your account</string>
+    <string name="register_2fa_protects">2FA protects your account from unauthorized access</string>
+    <string name="register_2fa_authenticator_code">Code to add to your authenticator:</string>
+    <string name="register_2fa_copy_code">Copy code</string>
+    <string name="register_2fa_open_google_authenticator">Open Google Authenticator</string>
+    <string name="hint_otp_six_digits">Enter the 6-digit code from the app</string>
+
+    <string name="register_step9_title">Account created!</string>
+    <string name="register_step9_subtitle">Your account has been created successfully.\nWelcome!</string>
+    <string name="register_start_messaging">Start messaging</string>
+
+    <!-- Reset password -->
+    <string name="reset_password_title">Reset password</string>
+    <string name="reset_password_subtitle">Follow the instructions to reset your password</string>
+    <string name="reset_enter_email_or_login">Enter email or username</string>
+    <string name="reset_send_code">Send code</string>
+    <string name="reset_enter_verify_code">Enter verification code</string>
+    <string name="reset_we_sent_code">We sent a 6-digit code to your email</string>
+    <string name="reset_confirm_code">Confirm code</string>
+    <string name="reset_resend_code">Resend code</string>
+    <string name="reset_create_new_password">Create a new password</string>
+    <string name="hint_new_password">New password</string>
+    <string name="hint_confirm_password">Confirm password</string>
+    <string name="reset_save_new_password">Save new password</string>
+    <string name="reset_password_success">Password changed successfully!</string>
+    <string name="reset_password_success_subtitle">You can now sign in with your new password</string>
+    <string name="reset_back_to_login">Back to sign in</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_search_hint">Search chats</string>
+    <string name="chat_empty_title">It\'s empty here so far</string>
+    <string name="chat_empty_description">Start a conversation by finding a user via search</string>
+    <string name="btn_new_chat">New chat</string>
+    <string name="connecting">Connecting…</string>
+    <string name="chat_message_hint">Message</string>
+    <string name="chat_message_edited">edited</string>
+    <string name="chat_editing_message">Editing message</string>
+
+    <!-- Chat content descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_more_menu">More menu</string>
+    <string name="cd_pinned">Pinned</string>
+    <string name="cd_all_pinned">All pinned</string>
+    <string name="cd_scroll_down">Scroll down</string>
+    <string name="cd_cancel_edit">Cancel edit</string>
+    <string name="cd_cancel_reply">Cancel reply</string>
+    <string name="cd_clear_attachments">Clear attachments</string>
+    <string name="cd_attach_file">Attach file</string>
+    <string name="cd_stickers">Stickers</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_sticker_preview">Sticker preview</string>
+    <string name="cd_close">Close</string>
+    <string name="cd_more">More</string>
+    <string name="cd_play_pause">Play/Pause</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_create_hidden_chat">Create hidden chat</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_download">Download</string>
+    <string name="cd_download_file">Download file</string>
+    <string name="cd_open_file">Open file</string>
+    <string name="cd_attachment">Attachment</string>
+    <string name="cd_remove_background">Remove background</string>
+    <string name="cd_play_video">Play video</string>
+    <string name="cd_download_video">Download video</string>
+    <string name="cd_read_status">Read status</string>
+
+    <!-- Encrypted / private chat -->
+    <string name="private_chat_title">Private chat</string>
+    <string name="private_chat_description">Passphrase-based encryption. The chat is available on all your devices.</string>
+    <string name="encrypted_chat_type">Chat type</string>
+    <string name="encrypted_chat_type_private">Private</string>
+    <string name="encrypted_chat_type_secret">Secret</string>
+    <string name="encrypted_chat_peer">Peer</string>
+    <string name="encrypted_chat_peer_device">Peer device</string>
+    <string name="encrypted_chat_create">Create chat</string>
+    <string name="encrypted_chat_new_title">New encrypted chat</string>
+    <string name="hint_peer_user_id">User ID</string>
+    <string name="hint_passphrase">Passphrase</string>
+    <string name="encrypted_chat_passphrase_helper">At least 6 characters. Share the passphrase via a secure channel</string>
+    <string name="encrypted_chat_initial_helper">Will be sent along with the invitation</string>
+    <string name="hint_first_message">First message</string>
+    <string name="hint_encrypted_message">Encrypted message</string>
+    <string name="hint_secret_message">Secret message</string>
+
+    <!-- Drawer Menu -->
+    <string name="drawer_favorites">Favorites</string>
+    <string name="drawer_archive">Archive</string>
+    <string name="drawer_contacts">Contacts</string>
+    <string name="drawer_calls">Calls</string>
+    <string name="drawer_create_group">Create group</string>
+    <string name="drawer_create_channel">Create channel</string>
+    <string name="drawer_settings">Settings</string>
+    <string name="drawer_help">Help</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Contacts</string>
+    <string name="contacts_in_development">Section under development</string>
+
+    <!-- Search -->
+    <string name="search_users_hint">Search users</string>
+    <string name="search_nothing_found">Nothing found</string>
+    <string name="search_try_different">Try a different search query</string>
+    <string name="search_users_title">Search users</string>
+    <string name="search_users_hint_long">Enter first name, last name or username (at least 3 characters)</string>
+
+    <!-- Image Picker -->
+    <string name="select_photos">Choose photos</string>
+    <string name="options">Options</string>
+    <string name="send">Send</string>
+    <string name="camera">Camera</string>
+    <string name="permission_required">Permission required</string>
+    <string name="permission_required_description">Access to storage is required to view photos</string>
+    <string name="grant_permission">Grant</string>
+    <string name="no_photos">No photos</string>
+    <string name="no_photos_description">No photos found on device</string>
+    <string name="send_as_file">Send as file</string>
+    <string name="send_as_file_description">Images will be sent without compression</string>
+    <string name="send_separately">Send separately</string>
+    <string name="send_separately_description">Each image as a separate message</string>
+    <string name="selected_count">Selected: %1$d/%2$d</string>
+    <string name="send_photos">Send %1$d photos</string>
+    <string name="max_selection_reached">Maximum %1$d images</string>
+
+    <!-- Plurals for photos -->
+    <plurals name="photos_selected">
+        <item quantity="one">%d photo selected</item>
+        <item quantity="other">%d photos selected</item>
+    </plurals>
+
+    <!-- Plurals for media counts -->
+    <plurals name="photos_count">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+
+    <plurals name="videos_count">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+
+    <plurals name="files_count">
+        <item quantity="one">%d file</item>
+        <item quantity="other">%d files</item>
+    </plurals>
+
+    <!-- Paste attachments -->
+    <string name="attached_photos_count">Photos attached: %d</string>
+    <string name="attached_files_count">Files attached: %d</string>
+    <string name="attached_mixed_count">Attached: %1$d photos, %2$d files</string>
+    <string name="file_button">File</string>
+    <string name="gallery_button">Gallery</string>
+    <string name="select_media">Pick media</string>
+    <string name="add_caption_hint">Add a caption…</string>
+    <string name="compress_to_480p">Compress to 480p</string>
+
+    <!-- Common -->
+    <string name="btn_skip">Skip</string>
+    <string name="btn_next">Next</string>
+    <string name="btn_back">Back</string>
+    <string name="btn_done">Done</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_delete">Delete</string>
+    <string name="loading">Loading…</string>
+    <string name="loading_dots">Loading...</string>
+    <string name="error">Error</string>
+
+    <!-- Widget -->
+    <string name="widget_pinned_chats_label">Pinned chats</string>
+    <string name="widget_empty_title">No pinned chats</string>
+    <string name="widget_login_required">Sign in to the app</string>
+    <string name="widget_settings_title">Widgets</string>
+    <string name="widget_configure_title">Widget setup</string>
+    <string name="widget_name_hint">Widget name</string>
+    <string name="widget_chats_hint">Chats (up to 3)</string>
+    <string name="widget_max_chats_reached">You can pick at most 3 chats</string>
+    <string name="widget_no_chats_selected">Pick at least one chat</string>
+    <string name="widget_btn_save">Save</string>
+    <string name="widget_btn_pick_chats">Pick chats</string>
+    <string name="widget_empty_state">No widgets yet.\nTo add a widget, long-press the home screen and choose BarkFluff → Pinned chats.</string>
+    <string name="widget_not_placed">Not placed on home screen</string>
+    <string name="widget_chats_count">%d of 3 chats</string>
+    <string name="widget_default_name">Pinned chats</string>
+
+    <!-- Profile Fragment items / sections -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_user_placeholder">User</string>
+    <string name="profile_section_account_security">Account and security</string>
+    <string name="profile_section_personalization">Personalization</string>
+    <string name="profile_section_application">Application</string>
+    <string name="profile_section_other">Other</string>
+    <string name="profile_item_account">Account</string>
+    <string name="profile_item_security">Security</string>
+    <string name="profile_item_privacy">Privacy</string>
+    <string name="profile_item_personalization">Personalization</string>
+    <string name="profile_item_chat_folders">Chat folders</string>
+    <string name="profile_item_storage">Data and cache</string>
+    <string name="profile_item_devices">Devices</string>
+    <string name="profile_item_notifications">Notifications</string>
+    <string name="profile_item_update">Update</string>
+    <string name="profile_item_about">About</string>
+    <string name="profile_item_testing">Testing</string>
+    <string name="profile_btn_logout">Sign out</string>
+    <string name="logout_dialog_title">Sign out</string>
+    <string name="logout_dialog_message">Are you sure you want to sign out?</string>
+    <string name="logout_dialog_confirm">Sign out</string>
+
+    <!-- Account Settings -->
+    <string name="account_settings_title">Account</string>
+    <string name="account_change_photo">Change photo</string>
+    <string name="account_first_name">First name</string>
+    <string name="account_last_name">Last name</string>
+    <string name="account_username">Username</string>
+    <string name="account_bio">About you</string>
+
+    <!-- Security Settings -->
+    <string name="security_settings_title">Security</string>
+    <string name="security_change_password">Change password</string>
+    <string name="security_2fa_app">2FA via app</string>
+    <string name="security_2fa_email">2FA via email</string>
+
+    <!-- Privacy Settings -->
+    <string name="privacy_settings_title">Privacy</string>
+    <string name="privacy_section_profile">Profile</string>
+    <string name="privacy_profile_on_site">Profile on the website</string>
+    <string name="privacy_profile_on_site_subtitle">barkfluff.com/{username} page</string>
+    <string name="privacy_avatar_visibility">Avatar visibility</string>
+    <string name="privacy_description_visibility">Bio visibility</string>
+    <string name="privacy_email_visibility">Email visibility</string>
+    <string name="privacy_section_search_online">Search and online</string>
+    <string name="privacy_search_visibility">Search visibility</string>
+    <string name="privacy_online_visibility">Online visibility</string>
+
+    <!-- Personalization Settings -->
+    <string name="personalization_settings_title">Personalization</string>
+    <string name="personalization_profile_poster">Profile poster</string>
+    <string name="personalization_set_new_poster">Set a new poster</string>
+    <string name="personalization_chat_preview_1">Hi! How are you? 👋</string>
+    <string name="personalization_chat_preview_2">Great! And you?</string>
+    <string name="personalization_chat_preview_3">Doing well too, thanks 😊</string>
+    <string name="personalization_chat_preview_4">Meet up today? 🕐</string>
+    <string name="personalization_chat_preview_5">Sure! At 6 PM? 😄</string>
+    <string name="personalization_display_settings">Display settings</string>
+    <string name="personalization_message_corner_radius">Message corner radius</string>
+    <string name="personalization_blur_background">Blur background</string>
+    <string name="personalization_blur_strength">Blur strength</string>
+    <string name="personalization_dim_background">Background dimming</string>
+    <string name="personalization_folders">Folders</string>
+    <string name="personalization_compact_folders">Compact folders</string>
+    <string name="personalization_compact_folders_subtitle">Show icon only</string>
+    <string name="personalization_exclude_from_all">Hide chats from “All chats”</string>
+    <string name="personalization_exclude_from_all_subtitle">If a chat is in a folder, it won\'t show in the “All chats” tab</string>
+    <string name="personalization_chat_background">Chat background</string>
+    <string name="personalization_add_background">Add background</string>
+    <string name="personalization_no_background">No background</string>
+
+    <!-- Notification Settings -->
+    <string name="notification_settings_title">Notifications</string>
+    <string name="notification_receive_push">Receive push notifications</string>
+    <string name="notification_disable_hint">Turning notifications off disables Firebase push delivery on this device only. Other devices will keep receiving notifications.</string>
+
+    <!-- Chat Folders Settings -->
+    <string name="chat_folders_settings_title">Chat folders</string>
+    <string name="chat_folders_empty_title">No folders yet</string>
+    <string name="chat_folders_empty_subtitle">Create a folder to quickly switch between groups of chats</string>
+    <string name="chat_folders_new_folder">New folder</string>
+    <string name="folder_edit_title">Folder</string>
+    <string name="folder_chat_picker_title">Chats in folder</string>
+    <string name="folder_name_hint">Folder name</string>
+    <string name="folder_icon">Icon</string>
+    <string name="folder_manage_chats">Manage chats</string>
+    <string name="folder_delete">Delete folder</string>
+    <string name="folder_save">Save</string>
+
+    <!-- Storage Settings -->
+    <string name="storage_settings_title">Data and cache</string>
+    <string name="storage_server_storage">Server storage</string>
+    <string name="storage_app_cache">App cache</string>
+    <string name="storage_clear_cache">Clear cache</string>
+
+    <!-- Devices -->
+    <string name="devices_title">Devices</string>
+    <string name="devices_hint">You can sign in on another device by scanning a QR code in the BarkFluff app</string>
+    <string name="devices_connect">Connect a device</string>
+    <string name="devices_this_device">This device</string>
+    <string name="devices_terminate_others">Terminate all other sessions</string>
+    <string name="devices_other_devices">Other devices</string>
+    <string name="device_section_app">App</string>
+    <string name="device_section_os">OS</string>
+    <string name="device_section_location">Location</string>
+    <string name="device_rename">Rename device</string>
+    <string name="device_terminate_session">Terminate session</string>
+    <string name="device_id_label">Device ID</string>
+
+    <!-- QR Scanner -->
+    <string name="qr_scanner_title">Scan QR code</string>
+    <string name="qr_scanner_hint">Point the camera at the QR code</string>
+
+    <!-- Fast Auth Confirm -->
+    <string name="fast_auth_title">New device</string>
+    <string name="fast_auth_ip">IP address</string>
+    <string name="fast_auth_hint">A new device is requesting to sign in to your account. Check the device info and approve or reject the request.</string>
+    <string name="fast_auth_device">Device</string>
+    <string name="fast_auth_os">Operating system</string>
+    <string name="fast_auth_application">App</string>
+    <string name="fast_auth_confirm">Approve sign-in</string>
+    <string name="fast_auth_reject">Reject</string>
+
+    <!-- Update -->
+    <string name="update_settings_title">Update</string>
+    <string name="update_current_version">Current version</string>
+    <string name="update_btn_update">Update</string>
+    <string name="update_downloading">Downloading update...</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_install_problem">Installation problem?</string>
+    <string name="update_install_problem_hint">If the installer fails, download the APK from the website and install it manually.</string>
+    <string name="update_open_site">Open barkfluff.com</string>
+
+    <!-- About -->
+    <string name="about_settings_title">About</string>
+    <string name="about_name">Name</string>
+    <string name="about_version">Version</string>
+    <string name="about_device">Device</string>
+    <string name="about_os">Operating system</string>
+    <string name="about_microservices">Server microservices</string>
+
+    <!-- Testing -->
+    <string name="testing_settings_title">Testing</string>
+    <string name="testing_section_params">Parameters</string>
+    <string name="testing_show_ids">Show IDs in profile</string>
+    <string name="testing_show_ids_subtitle">UserId and ChatId under the online status</string>
+    <string name="testing_secret_chats">Hidden chats</string>
+    <string name="testing_secret_chats_subtitle">Button to create private and secret chats</string>
+
+    <!-- Pinned messages -->
+    <string name="pinned_empty">No pinned messages</string>
+    <string name="pinned_title">Pinned messages</string>
+    <string name="search_title">Search</string>
+
+    <!-- Forward -->
+    <string name="forward_title">Forward to...</string>
+    <string name="forward_btn">Forward</string>
+    <string name="forward_caption_hint">Add a comment...</string>
+
+    <!-- User profile / chat profile -->
+    <string name="media_files">Media</string>
+    <string name="media_tab_photos">Photos</string>
+    <string name="media_tab_videos">Videos</string>
+    <string name="media_tab_files">Files</string>
+    <string name="media_no_attachments">No attachments</string>
+
+    <!-- Sticker empty -->
+    <string name="stickers_empty">No stickers</string>
+    <string name="stickers_empty_subtitle">No sticker packs added yet</string>
+
+    <!-- Message actions popup -->
+    <string name="msg_action_reply">Reply</string>
+    <string name="msg_action_copy_text">Copy text</string>
+    <string name="msg_action_copy_image">Copy image</string>
+    <string name="msg_action_save_image">Save image</string>
+    <string name="msg_action_save_to_downloads">Save to downloads</string>
+    <string name="msg_action_edit">Edit</string>
+    <string name="msg_action_delete">Delete</string>
+    <string name="msg_action_forward">Forward</string>
+    <string name="msg_action_pin">Pin</string>
+
+    <!-- Language Settings -->
+    <string name="language_settings_title">Language</string>
+    <string name="language_section_title">App language</string>
+    <string name="language_option_system">🌐  System</string>
+    <string name="language_option_ru">🇷🇺  Русский</string>
+    <string name="language_option_en">🇬🇧  English</string>
+    <string name="language_option_de">🇩🇪  Deutsch</string>
+    <string name="language_option_es">🇪🇸  Español</string>
+    <string name="language_option_zh">🇨🇳  中文</string>
+    <string name="language_settings_hint">“System” uses your device language. The selected language is applied immediately.</string>
+</resources>

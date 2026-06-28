@@ -78,7 +78,7 @@
                                 x:Name="FullNameText"
                                 Margin="0,0,0,6"
                                 Style="{DynamicResource TitleTextStyle}"
-                                Text="Загрузка..." />
+                                Text="{DynamicResource L_PreviewUser_Loading}" />
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="@" />
                                 <TextBlock
@@ -93,14 +93,14 @@
                     <TextBlock
                         Margin="0,0,0,10"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Расскажите немного о себе для других пользователей" />
+                        Text="{DynamicResource L_PreviewUser_Description}" />
 
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                         <ui:TextBox
                             x:Name="AboutTextBox"
                             MinWidth="400"
                             AcceptsReturn="True"
-                            PlaceholderText="О себе, работе, хобби... или оставьте пустым"
+                            PlaceholderText="{DynamicResource L_PreviewUser_BioPlaceholder}"
                             Style="{DynamicResource InputTextBoxStyle}"
                             Text=""
                             TextWrapping="Wrap"
@@ -124,7 +124,7 @@
                         Style="{StaticResource RequiredButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Сохранить" />
+                                <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="{DynamicResource L_PreviewUser_Save}" />
                                 <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="Checkmark24" />
                             </StackPanel>
                         </ui:Button.Content>
@@ -141,7 +141,7 @@
                     <TextBlock
                         MaxWidth="420"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        Text="Информация о себе будет видна другим пользователям. Вы можете изменить её в любое время в настройках."
+                        Text="{DynamicResource L_PreviewUser_Footer}"
                         TextWrapping="WrapWithOverflow" />
                 </StackPanel>
             </StackPanel>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — MD3 Expressive</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: var(--md-surface-container-low);
+            padding: 48px 24px;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .hero {
+            display: flex; align-items: center; gap: 24px;
+            padding: 32px;
+            background: linear-gradient(135deg, var(--md-primary), var(--md-tertiary));
+            color: var(--md-on-primary);
+            border-radius: var(--md-shape-xl);
+            margin-bottom: 32px;
+            box-shadow: var(--md-elev-2);
+        }
+        .hero-icon {
+            width: 96px; height: 96px;
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            background: rgba(255,255,255,.2);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            animation: md-shape-morph 6s var(--md-easing-emphasized) infinite;
+        }
+        .hero-icon .msr { font-size: 48px; }
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 600;
+            margin: 0 0 4px;
+            letter-spacing: -0.5px;
+        }
+        .hero p {
+            margin: 0;
+            font-size: 15px;
+            opacity: .9;
+            max-width: 540px;
+            line-height: 1.5;
+        }
+
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--md-on-surface-variant);
+            margin: 32px 0 12px;
+        }
+        .section-label:first-of-type { margin-top: 0; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .page-card {
+            display: flex; align-items: center; gap: 16px;
+            padding: 20px;
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            text-decoration: none;
+            color: inherit;
+            transition: box-shadow var(--md-dur-2), border-color var(--md-dur-2), transform var(--md-dur-2);
+        }
+        .page-card:hover {
+            box-shadow: var(--md-elev-2);
+            border-color: var(--md-primary);
+            transform: translateY(-2px);
+        }
+        .page-card .icon {
+            width: 56px; height: 56px;
+            border-radius: var(--md-shape-lg);
+            background: var(--md-secondary-container);
+            color: var(--md-on-secondary-container);
+            display: inline-flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: border-radius var(--md-dur-spring) var(--md-easing-spring);
+        }
+        .page-card:hover .icon { border-radius: var(--md-shape-md); }
+        .page-card .icon .msr { font-size: 28px; }
+        .page-card.primary .icon { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+        .page-card.tertiary .icon { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+        .page-card .info h3 {
+            font-size: 16px;
+            font-weight: 500;
+            margin: 0 0 4px;
+            color: var(--md-on-surface);
+        }
+        .page-card .info p {
+            font-size: 13px;
+            color: var(--md-on-surface-variant);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .legend {
+            margin-top: 32px;
+            padding: 20px 24px;
+            background: var(--md-surface-container);
+            border-radius: var(--md-shape-lg);
+            display: flex; align-items: flex-start; gap: 16px;
+            font-size: 13px;
+            color: var(--md-on-surface-variant);
+            line-height: 1.55;
+        }
+        .legend .msr { color: var(--md-primary); flex-shrink: 0; }
+        .legend strong { color: var(--md-on-surface); font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="hero">
+        <div class="hero-icon"><span class="msr">forum</span></div>
+        <div>
+            <h1>BarkFluff Admin</h1>
+            <p>Админ-панель в стиле Material 3 Expressive: токены MD3, типографика Roboto Flex, иконки Material Symbols, морфинг форм и пружинные переходы.</p>
+        </div>
+    </div>
+
+    <div class="section-label">Точка входа</div>
+    <div class="grid">
+        <a href="Login.html" class="page-card primary">
+            <div class="icon"><span class="msr">lock</span></div>
+            <div class="info"><h3>Авторизация</h3><p>Логин через Telegram + 2FA</p></div>
+        </a>
+    </div>
+
+    <div class="section-label">Основные разделы</div>
+    <div class="grid">
+        <a href="dashboard.html" class="page-card primary">
+            <div class="icon"><span class="msr">space_dashboard</span></div>
+            <div class="info"><h3>Дашборд</h3><p>KPI, трафик, метрики сервисов</p></div>
+        </a>
+        <a href="services.html" class="page-card">
+            <div class="icon"><span class="msr">dns</span></div>
+            <div class="info"><h3>Сервисы</h3><p>Docker-контейнеры, перезапуск, обновление</p></div>
+        </a>
+        <a href="logs.html" class="page-card">
+            <div class="icon"><span class="msr">terminal</span></div>
+            <div class="info"><h3>Логи</h3><p>Системные логи с фильтрами по уровню</p></div>
+        </a>
+        <a href="users.html" class="page-card">
+            <div class="icon"><span class="msr">group</span></div>
+            <div class="info"><h3>Юзеры</h3><p>Профили, сессии, 2FA, бейджи, лимиты</p></div>
+        </a>
+        <a href="badges.html" class="page-card tertiary">
+            <div class="icon"><span class="msr">workspace_premium</span></div>
+            <div class="info"><h3>Бейджи</h3><p>Создание и управление бейджами</p></div>
+        </a>
+        <a href="stickers.html" class="page-card tertiary">
+            <div class="icon"><span class="msr">mood</span></div>
+            <div class="info"><h3>Стикеры</h3><p>Стикерпаки и наборы</p></div>
+        </a>
+        <a href="notifications.html" class="page-card">
+            <div class="icon"><span class="msr">notifications</span></div>
+            <div class="info"><h3>Уведомления</h3><p>Push-рассылка через Firebase</p></div>
+        </a>
+        <a href="mail.html" class="page-card">
+            <div class="icon"><span class="msr">mail</span></div>
+            <div class="info"><h3>Почта</h3><p>Почтовый клиент с несколькими ящиками</p></div>
+        </a>
+    </div>
+
+    <div class="section-label">Хранилище</div>
+    <div class="grid">
+        <a href="s3-storage.html" class="page-card">
+            <div class="icon"><span class="msr">cloud</span></div>
+            <div class="info"><h3>Хранилище S3</h3><p>Конфигурация бакетов и доступа</p></div>
+        </a>
+        <a href="s3-browser.html?bucket=avatars" class="page-card">
+            <div class="icon"><span class="msr">folder_open</span></div>
+            <div class="info"><h3>Браузер S3</h3><p>Просмотр файлов в бакете</p></div>
+        </a>
+    </div>
+
+    <div class="section-label">Системные состояния</div>
+    <div class="grid">
+        <a href="restarting.html" class="page-card">
+            <div class="icon"><span class="msr">restart_alt</span></div>
+            <div class="info"><h3>Перезапуск</h3><p>Экран ожидания при перезапуске</p></div>
+        </a>
+        <a href="updating.html" class="page-card">
+            <div class="icon"><span class="msr">cloud_download</span></div>
+            <div class="info"><h3>Обновление</h3><p>Экран ожидания при обновлении</p></div>
+        </a>
+    </div>
+
+    <div class="legend">
+        <span class="msr">info</span>
+        <div>
+            <strong>Превью-режим включён.</strong>
+            Все запросы к <code style="font-family:'Roboto Mono',monospace;background:var(--md-surface-container-high);padding:2px 6px;border-radius:var(--md-shape-xs);">/api/*</code>
+            перехватываются и отдают синтетические данные, чтобы страницы можно было просмотреть без бэкенда.
+            На реальном сервере подключите файлы напрямую — функциональность сохранена.
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

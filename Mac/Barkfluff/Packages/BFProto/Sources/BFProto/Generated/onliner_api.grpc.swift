@@ -72,12 +72,54 @@ public enum Barkfluff_Onliner_OnlinerApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "SetTypingStatus" metadata.
+        public enum SetTypingStatus: Sendable {
+            /// Request type for "SetTypingStatus".
+            public typealias Input = Barkfluff_Onliner_SetTypingStatusRequest
+            /// Response type for "SetTypingStatus".
+            public typealias Output = Barkfluff_Onliner_SetTypingStatusResponse
+            /// Descriptor for "SetTypingStatus".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
+                method: "SetTypingStatus",
+                type: .unary
+            )
+        }
+        /// Namespace for "SubscribeToTyping" metadata.
+        public enum SubscribeToTyping: Sendable {
+            /// Request type for "SubscribeToTyping".
+            public typealias Input = Barkfluff_Onliner_SubscribeToTypingRequest
+            /// Response type for "SubscribeToTyping".
+            public typealias Output = Barkfluff_Onliner_TypingEvent
+            /// Descriptor for "SubscribeToTyping".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
+                method: "SubscribeToTyping",
+                type: .serverStreaming
+            )
+        }
+        /// Namespace for "ChangeChatsInTypingSubscription" metadata.
+        public enum ChangeChatsInTypingSubscription: Sendable {
+            /// Request type for "ChangeChatsInTypingSubscription".
+            public typealias Input = Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest
+            /// Response type for "ChangeChatsInTypingSubscription".
+            public typealias Output = Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse
+            /// Descriptor for "ChangeChatsInTypingSubscription".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
+                method: "ChangeChatsInTypingSubscription",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.onliner.OnlinerApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             SubscribeToOnlineStatus.descriptor,
             SetOnlineStatus.descriptor,
             GetOnlineStatus.descriptor,
-            ChangeUsersInSubscription.descriptor
+            ChangeUsersInSubscription.descriptor,
+            SetTypingStatus.descriptor,
+            SubscribeToTyping.descriptor,
+            ChangeChatsInTypingSubscription.descriptor
         ]
     }
 }
@@ -170,7 +212,7 @@ extension Barkfluff_Onliner_OnlinerApi {
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Изменить список пользователей на которые ты подписан 
+        /// > Изменить список пользователей на которые ты подписан
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Onliner_ChangeUsersInSubscriptionRequest` message.
@@ -187,6 +229,75 @@ extension Barkfluff_Onliner_OnlinerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_ChangeUsersInSubscriptionResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_ChangeUsersInSubscriptionResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetTypingStatus" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Сообщить, что пользователь печатает в чате (heartbeat, ретранслируется участникам)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Onliner_SetTypingStatusRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Onliner_SetTypingStatusRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Onliner_SetTypingStatusResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setTypingStatus<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Onliner_SetTypingStatusRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Onliner_SetTypingStatusRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_SetTypingStatusResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_SetTypingStatusResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SubscribeToTyping" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подписаться на индикаторы набора текста в выбранных чатах
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Onliner_SubscribeToTypingRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Onliner_SubscribeToTypingRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Onliner_TypingEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func subscribeToTyping<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Onliner_SubscribeToTypingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Onliner_SubscribeToTypingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_TypingEvent>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Onliner_TypingEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ChangeChatsInTypingSubscription" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Изменить список чатов, для которых приходят индикаторы набора
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func changeChatsInTypingSubscription<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -310,7 +421,7 @@ extension Barkfluff_Onliner_OnlinerApi {
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Изменить список пользователей на которые ты подписан 
+        /// > Изменить список пользователей на которые ты подписан
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Onliner_ChangeUsersInSubscriptionRequest` message.
@@ -333,6 +444,106 @@ extension Barkfluff_Onliner_OnlinerApi {
             try await self.client.unary(
                 request: request,
                 descriptor: Barkfluff_Onliner_OnlinerApi.Method.ChangeUsersInSubscription.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetTypingStatus" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Сообщить, что пользователь печатает в чате (heartbeat, ретранслируется участникам)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Onliner_SetTypingStatusRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Onliner_SetTypingStatusRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Onliner_SetTypingStatusResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func setTypingStatus<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Onliner_SetTypingStatusRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Onliner_SetTypingStatusRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_SetTypingStatusResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_SetTypingStatusResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Onliner_OnlinerApi.Method.SetTypingStatus.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SubscribeToTyping" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подписаться на индикаторы набора текста в выбранных чатах
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Onliner_SubscribeToTypingRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Onliner_SubscribeToTypingRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Onliner_TypingEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func subscribeToTyping<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Onliner_SubscribeToTypingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Onliner_SubscribeToTypingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_TypingEvent>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Onliner_TypingEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Barkfluff_Onliner_OnlinerApi.Method.SubscribeToTyping.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ChangeChatsInTypingSubscription" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Изменить список чатов, для которых приходят индикаторы набора
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func changeChatsInTypingSubscription<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Onliner_OnlinerApi.Method.ChangeChatsInTypingSubscription.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -434,7 +645,7 @@ extension Barkfluff_Onliner_OnlinerApi.ClientProtocol {
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Изменить список пользователей на которые ты подписан 
+    /// > Изменить список пользователей на которые ты подписан
     ///
     /// - Parameters:
     ///   - request: A request containing a single `Barkfluff_Onliner_ChangeUsersInSubscriptionRequest` message.
@@ -454,6 +665,91 @@ extension Barkfluff_Onliner_OnlinerApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Onliner_ChangeUsersInSubscriptionRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Onliner_ChangeUsersInSubscriptionResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetTypingStatus" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Сообщить, что пользователь печатает в чате (heartbeat, ретранслируется участникам)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Onliner_SetTypingStatusRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setTypingStatus<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Onliner_SetTypingStatusRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_SetTypingStatusResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setTypingStatus(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Onliner_SetTypingStatusRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Onliner_SetTypingStatusResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeToTyping" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подписаться на индикаторы набора текста в выбранных чатах
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Onliner_SubscribeToTypingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeToTyping<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Onliner_SubscribeToTypingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Onliner_TypingEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.subscribeToTyping(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Onliner_SubscribeToTypingRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Onliner_TypingEvent>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ChangeChatsInTypingSubscription" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Изменить список чатов, для которых приходят индикаторы набора
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func changeChatsInTypingSubscription<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.changeChatsInTypingSubscription(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -564,7 +860,7 @@ extension Barkfluff_Onliner_OnlinerApi.ClientProtocol {
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Изменить список пользователей на которые ты подписан 
+    /// > Изменить список пользователей на которые ты подписан
     ///
     /// - Parameters:
     ///   - message: request message to send.
@@ -587,6 +883,103 @@ extension Barkfluff_Onliner_OnlinerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.changeUsersInSubscription(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetTypingStatus" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Сообщить, что пользователь печатает в чате (heartbeat, ретранслируется участникам)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setTypingStatus<Result>(
+        _ message: Barkfluff_Onliner_SetTypingStatusRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_SetTypingStatusResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Onliner_SetTypingStatusRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setTypingStatus(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeToTyping" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подписаться на индикаторы набора текста в выбранных чатах
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeToTyping<Result>(
+        _ message: Barkfluff_Onliner_SubscribeToTypingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Onliner_TypingEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Onliner_SubscribeToTypingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.subscribeToTyping(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ChangeChatsInTypingSubscription" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Изменить список чатов, для которых приходят индикаторы набора
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func changeChatsInTypingSubscription<Result>(
+        _ message: Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Onliner_ChangeChatsInTypingSubscriptionRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.changeChatsInTypingSubscription(
             request: request,
             options: options,
             onResponse: handleResponse

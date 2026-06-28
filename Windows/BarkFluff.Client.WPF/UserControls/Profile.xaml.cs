@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.Services.App.Caching;
+﻿using BarkFluff.Client.WPF.Services.App;
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.UserControls.Classes;
 
 using System.ComponentModel;
@@ -187,7 +188,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 }
                 else
                 {
-                    control.RegistrationDateTextBlock.Text = "Неизвестно";
+                    control.RegistrationDateTextBlock.Text = L.Str("L_Profile_Unknown");
                 }
             }
         }
@@ -514,9 +515,10 @@ namespace BarkFluff.Client.WPF.UserControls
             if (IsOnline)
             {
                 // Кешируем предыдущие значения для минимизации мерцания
-                if (OnlineStatusText.Text != "В сети")
+                var onlineStr = L.Str("L_Profile_Online");
+                if (OnlineStatusText.Text != onlineStr)
                 {
-                    OnlineStatusText.Text = "В сети";
+                    OnlineStatusText.Text = onlineStr;
                     OnlineStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
                         System.Windows.Media.Color.FromRgb(68, 214, 44));
                 }
@@ -547,7 +549,7 @@ namespace BarkFluff.Client.WPF.UserControls
             // gRPC Google.Protobuf.WellKnownTypes.Timestamp может вернуть 1970-01-01 для Unknown
             if (lastSeen.Year <= 1970 || lastSeen == DateTime.MinValue)
             {
-                return "Был(а) давно";
+                return L.Str("L_Profile_WasLongAgo");
             }
 
             // Конвертируем в локальное время для отображения
@@ -557,23 +559,23 @@ namespace BarkFluff.Client.WPF.UserControls
             // Если это сегодня - показываем только время
             if (localTime.Date == now.Date)
             {
-                return $"Был(а) в {localTime:HH:mm}";
+                return L.F("L_Profile_WasAt", localTime.ToString("HH:mm"));
             }
             // Если это вчера
             else if (localTime.Date == now.Date.AddDays(-1))
             {
-                return $"Был(а) вчера в {localTime:HH:mm}";
+                return L.F("L_Profile_WasYesterday", localTime.ToString("HH:mm"));
             }
             // Если это в пределах недели - показываем день недели
             else if ((now - localTime).TotalDays < 7)
             {
                 string dayName = localTime.ToString("dddd", System.Globalization.CultureInfo.CurrentCulture);
-                return $"Был(а) в {dayName} в {localTime:HH:mm}";
+                return L.F("L_Profile_WasDay", dayName, localTime.ToString("HH:mm"));
             }
             // Старше недели - показываем дату
             else
             {
-                return $"Был(а) {localTime:dd.MM.yyyy} в {localTime:HH:mm}";
+                return L.F("L_Profile_WasDate", localTime.ToString("dd.MM.yyyy"), localTime.ToString("HH:mm"));
             }
         }
 

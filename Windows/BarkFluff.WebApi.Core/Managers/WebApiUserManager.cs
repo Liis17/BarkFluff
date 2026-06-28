@@ -48,6 +48,10 @@ namespace BarkFluff.WebApi.Core.Managers
                     return new ErrorReturner(true);
                 }, globalParam);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameInvalidFormatException)
+            {
+                return new ErrorReturner(false, "Имя пользователя имеет недопустимый формат: разрешены латинские буквы, цифры и подчёркивание, длина от 3 до 32 символов");
+            }
             catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
             {
                 return new ErrorReturner(false, "Пользователь не подтвержден. Вы не можете изменить имя пользователя до подтверждения аккаунта.");
@@ -67,7 +71,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var getUser = await UsersAC!.CheckExistEmailAsync(new Proto.Users.CheckExistEmailRequest { Email = email.ToLower() });
+                    var getUser = await UsersAC!.CheckExistEmailAsync(new Proto.Users.CheckExistEmailRequest { Email = email.ToLowerInvariant() });
                     return (new ErrorReturner(true), getUser.Exist);
                 }, globalParam);
             }
@@ -90,7 +94,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var getUser = await UsersAC!.CheckExistUsernameAsync(new Proto.Users.CheckExistUsernameRequest { Username = username.ToLower() });
+                    var getUser = await UsersAC!.CheckExistUsernameAsync(new Proto.Users.CheckExistUsernameRequest { Username = username.ToLowerInvariant() });
                     return (new ErrorReturner(true), getUser.Exist);
                 }, globalParam);
             }

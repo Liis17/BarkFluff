@@ -88,13 +88,16 @@ ErrorReturner
 | `event TokenInvalidated` | `EventHandler?` | Если рефреш-токен умер во время авто-обновления |
 | `event TokenRefreshed` | `EventHandler?` | После каждого успешного проактивного обновления; клиент должен пересоздать стримы |
 
+**Сериализация refresh (важно!):**
+`SemaphoreSlim _refreshLock` + общий `Task<bool>? _ongoingRefresh` в `RefreshOnceAsync`. Все пути обновления (`ExecuteWithTokenRefresh`, `EnsureTokenValidAsync`, `ForceRefreshTokenAsync`, авто-таймер) идут через единый `RefreshOnceAsync` → одновременно работает максимум один `TokenUpdate`. Параллельные вызывающие дожидаются результата. Если access-токен уже сменился под lock'ом — refresh пропускается (значит другой поток уже обновил). Это закрывает race, при котором одноразовый refresh-токен с rotation инвалидировал самого себя при concurrent 401 → cascade logout.
+
 **Логика авто-обновления:**
 ```
 PeriodicTimer(30s)
   → проверить ExpirationDate AccessToken
   → если timeLeft ≤ 1 min:
-      TokenUpdate() → если ошибка → TokenInvalidated
-      AddInterceptor() (переинициализация клиентов)
+      RefreshOnceAsync() → если false → TokenInvalidated
+      (внутри: TokenUpdate + AddInterceptor под lock'ом)
       TokenRefreshed.Invoke()
 ```
 
@@ -258,8 +261,10 @@ PeriodicTimer(30s)
 
 | Метод | Сигнатура | Возвращает |
 |-------|-----------|-----------|
-| `JustUpdate` | `(GlobalParam)` | `(ErrorReturner, IAsyncEnumerable<NewMessageEvent>?)` |
-| `SubscribeToReadReceipts` | `(GlobalParam)` | `(ErrorReturner, IAsyncEnumerable<MessageReadEvent>?)` |
+| `JustUpdate` | `(GlobalParam, CancellationToken ct = default)` | `(ErrorReturner, IAsyncEnumerable<NewMessageEvent>?)` |
+| `SubscribeToReadReceipts` | `(GlobalParam, CancellationToken ct = default)` | `(ErrorReturner, IAsyncEnumerable<MessageReadEvent>?)` |
+
+**CancellationToken обязателен для отмены стрима.** `ct` прокидывается и в сам streaming-call (`cancellationToken: ct`), и в `MoveNext(ct)`. Без него стрим невозможно закрыть со стороны клиента — он висит на сокете до тайм-аута/обрыва сервером, что давало утечку соединений и race со свежими стримами после `TokenRefreshed`/`Dispose()`.
 
 **`NewMessageEvent`** — `Message`, `ChatId`
 
@@ -273,7 +278,7 @@ PeriodicTimer(30s)
 
 | Метод | Сигнатура | Возвращает |
 |-------|-----------|-----------|
-| `SubscribeToOnlineStatus` | `(List<long> userIds, GlobalParam)` | `(ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?)` |
+| `SubscribeToOnlineStatus` | `(List<long> userIds, GlobalParam, CancellationToken ct = default)` | `(ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?)` — `ct` пробрасывается в streaming-call + `MoveNext` |
 | `SetOnlineStatus` | `(GlobalParam)` | `Task<ErrorReturner>` |
 | `GetOnlineStatus` | `(List<long> userIds, GlobalParam)` | `(ErrorReturner, GetOnlineStatusResponse?)` |
 | `ChangeUsersInSubscription` | `(List<long> userIds, GlobalParam)` | `Task<ErrorReturner>` |

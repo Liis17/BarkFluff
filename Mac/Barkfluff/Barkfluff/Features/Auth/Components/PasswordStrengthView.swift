@@ -16,7 +16,7 @@ struct PasswordStrengthView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             // Название и оценка
             HStack {
-                Text("Надёжность пароля:")
+                Text("auth.password.strength.label")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -78,22 +78,22 @@ struct PasswordRequirementsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            requirementRow("Минимум 8 символов", isMet: hasMinLength)
-            requirementRow("Заглавная буква", isMet: hasUppercase)
-            requirementRow("Строчная буква", isMet: hasLowercase)
-            requirementRow("Цифра", isMet: hasDigit)
-            requirementRow("Специальный символ", isMet: hasSpecial)
+            requirementRow("auth.register.step.password.req.length", isMet: hasMinLength)
+            requirementRow("auth.register.step.password.req.uppercase", isMet: hasUppercase)
+            requirementRow("auth.register.step.password.req.lowercase", isMet: hasLowercase)
+            requirementRow("auth.register.step.password.req.digit", isMet: hasDigit)
+            requirementRow("auth.register.step.password.req.special", isMet: hasSpecial)
         }
     }
 
     @ViewBuilder
-    private func requirementRow(_ text: String, isMet: Bool) -> some View {
+    private func requirementRow(_ key: LocalizedStringKey, isMet: Bool) -> some View {
         HStack(spacing: Theme.Spacing.xs) {
             Image(systemName: isMet ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 14))
                 .foregroundStyle(isMet ? .green : .gray)
 
-            Text(text)
+            Text(key)
                 .font(.caption)
                 .foregroundStyle(isMet ? .primary : .secondary)
         }
@@ -127,10 +127,10 @@ struct PasswordWithStrengthView: View {
             // Поле пароля
             HStack {
                 if showPassword {
-                    TextField("Пароль", text: $password)
+                    TextField("auth.register.step.password.placeholder", text: $password)
                         .focused($focusedField, equals: .password)
                 } else {
-                    SecureField("Пароль", text: $password)
+                    SecureField("auth.register.step.password.placeholder", text: $password)
                         .focused($focusedField, equals: .password)
                 }
 
@@ -156,7 +156,7 @@ struct PasswordWithStrengthView: View {
             }
 
             // Подтверждение пароля
-            SecureField("Подтвердите пароль", text: $confirmPassword)
+            SecureField("auth.register.step.password.confirm.placeholder", text: $confirmPassword)
                 .focused($focusedField, equals: .confirmPassword)
                 .textFieldStyle(.roundedBorder)
 
@@ -165,7 +165,7 @@ struct PasswordWithStrengthView: View {
                 HStack(spacing: Theme.Spacing.xs) {
                     Image(systemName: confirmationResult ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .foregroundStyle(confirmationResult ? .green : .red)
-                    Text(confirmationResult ? "Пароли совпадают" : "Пароли не совпадают")
+                    Text(confirmationResult ? "auth.register.step.password.match" : "auth.register.step.password.mismatch")
                         .font(.caption)
                         .foregroundStyle(confirmationResult ? .green : .red)
                 }

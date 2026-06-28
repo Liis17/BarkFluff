@@ -11,14 +11,14 @@ namespace BarkFluff.Files.Features.DownloadFile;
 public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, DownloadFileResult>
 {
     private readonly UploadedFilesStorage _filesStorage;
-    private readonly S3Uploader _s3Uploader;
-    private readonly S3BucketRegistry _bucketRegistry;
+    private readonly IS3Uploader _s3Uploader;
+    private readonly IS3BucketRegistry _bucketRegistry;
     private readonly TempFilesStorage _tempFilesStorage;
     private readonly BadgeImagesStorage _badgeImagesStorage;
     private readonly ILogger<DownloadFileCommandHandler> _logger;
 
-    public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, S3Uploader s3Uploader,
-        S3BucketRegistry bucketRegistry, TempFilesStorage tempFilesStorage,
+    public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, IS3Uploader s3Uploader,
+        IS3BucketRegistry bucketRegistry, TempFilesStorage tempFilesStorage,
         BadgeImagesStorage badgeImagesStorage,
         ILogger<DownloadFileCommandHandler> logger)
     {
@@ -125,8 +125,6 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         // Определяем тип контента по расширению файла
         var contentType = file.Filename.GetContentType();
 
-        var extension = Path.GetExtension(file.Filename).ToLowerInvariant();
-
         // Получаем имя бакета в зависимости от типа файла
         var bucketName = _bucketRegistry.GetBucketName(file.Type);
 
@@ -154,7 +152,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         return new DownloadFileResult
         {
             FileStream = fileStream,
-            FileName = $"{file.Id}{extension}",
+            FileName = file.Filename,
             ContentType = contentType
         };
     }

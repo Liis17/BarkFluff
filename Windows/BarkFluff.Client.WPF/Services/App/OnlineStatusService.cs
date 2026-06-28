@@ -204,7 +204,7 @@ namespace BarkFluff.Client.WPF.Services.App
 
                     WPF.App.ErideMessage.AddMessage($"Подключение к потоку онлайн-статуса для {userIds.Count} пользователей...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
-                    var (error, stream) = await WPF.App.ServerCommunication.SubscribeToOnlineStatus(userIds, globalParam);
+                    var (error, stream) = await WPF.App.ServerCommunication.SubscribeToOnlineStatus(userIds, globalParam, cancellationToken);
 
                     if (!error.IsSuccess || stream == null)
                     {

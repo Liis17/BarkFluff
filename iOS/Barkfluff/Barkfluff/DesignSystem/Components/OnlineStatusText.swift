@@ -11,15 +11,16 @@ import BFCore
 /// Текстовый компонент для отображения статуса "В сети" / "Был(а) N мин. назад"
 struct OnlineStatusText: View {
     let status: OnlineStatus
+    @Environment(\.locale) private var locale
 
     var body: some View {
         switch status {
         case .online:
-            Text("В сети")
+            Text(status.displayText(in: locale))
                 .font(.caption)
                 .foregroundStyle(.green)
         case .offline:
-            Text(status.displayText)
+            Text(status.displayText(in: locale))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .unknown:

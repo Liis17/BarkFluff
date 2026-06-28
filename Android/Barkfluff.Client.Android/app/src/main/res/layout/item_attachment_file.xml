@@ -16,7 +16,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="8dp"
+        app:cardCornerRadius="@dimen/shape_corner_small"
         app:cardElevation="0dp">
 
         <ImageView

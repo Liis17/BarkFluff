@@ -14,19 +14,19 @@ struct AboutAppSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Приложение") {
-                LabeledContent("Название", value: info.appName)
-                LabeledContent("Версия", value: info.appVersion)
-                LabeledContent("Сборка", value: info.appBuild)
-                LabeledContent("Bundle ID", value: info.bundleID)
+            Section("settings.about_app.section.app") {
+                LabeledContent("settings.about_app.name", value: info.appName)
+                LabeledContent("settings.about_app.version", value: info.appVersion)
+                LabeledContent("settings.about_app.build", value: info.appBuild)
+                LabeledContent("settings.about_app.bundle_id", value: info.bundleID)
             }
 
-            Section("Система") {
-                LabeledContent("OS", value: info.osVersion)
-                LabeledContent("Имя ПК", value: info.hostName)
-                LabeledContent("Процессор", value: info.cpuModel)
-                LabeledContent("Ядра", value: "\(info.cpuCores)")
-                LabeledContent("Память", value: info.memoryTotal)
+            Section("settings.about_app.section.system") {
+                LabeledContent("settings.about_app.os", value: info.osVersion)
+                LabeledContent("settings.about_app.host", value: info.hostName)
+                LabeledContent("settings.about_app.cpu", value: info.cpuModel)
+                LabeledContent("settings.about_app.cores", value: "\(info.cpuCores)")
+                LabeledContent("settings.about_app.memory", value: info.memoryTotal)
             }
         }
         .formStyle(.grouped)

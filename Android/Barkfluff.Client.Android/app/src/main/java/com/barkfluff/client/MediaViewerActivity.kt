@@ -126,7 +126,7 @@ class MediaViewerActivity : AppCompatActivity() {
                         startProgressUpdates()
                     }
                     if (state == Player.STATE_ENDED) {
-                        binding.playPauseButton.setImageResource(R.drawable.ic_play_arrow)
+                        binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow)
                         binding.videoSeekBar.progress = 0
                         exo.seekTo(0)
                         exo.playWhenReady = false
@@ -141,7 +141,7 @@ class MediaViewerActivity : AppCompatActivity() {
 
     private fun updatePlayPauseIcon() {
         val isPlaying = player?.isPlaying == true
-        binding.playPauseButton.setImageResource(
+        binding.playPauseButton.setIconResource(
             if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
         )
     }

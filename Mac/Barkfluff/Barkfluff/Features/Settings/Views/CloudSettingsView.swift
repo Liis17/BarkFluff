@@ -15,7 +15,7 @@ struct CloudSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Использование облака") {
+            Section("settings.cloud.section.usage") {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(usedSummary)
@@ -34,11 +34,11 @@ struct CloudSettingsView: View {
                     if let info = viewModel.info, info.limitBytes > 0 {
                         ProgressView(value: viewModel.usedFraction)
                             .tint(viewModel.usedFraction > 0.9 ? .red : .accentColor)
-                        Text("Доступно: \(formatBytes(info.availableBytes))")
+                        Text("settings.cloud.available \(formatBytes(info.availableBytes))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if viewModel.info != nil {
-                        Text("Лимит не задан")
+                        Text("settings.cloud.no_limit")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -46,7 +46,7 @@ struct CloudSettingsView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Распределение по типам") {
+            Section("settings.cloud.section.by_type") {
                 VStack(alignment: .leading, spacing: 12) {
                     CloudStackedBarView(viewModel: viewModel)
                     legend
@@ -56,7 +56,7 @@ struct CloudSettingsView: View {
 
             let nonEmptyTypes = viewModel.displayedTypes.filter { (viewModel.info?.usedByType[$0] ?? 0) > 0 }
             if !nonEmptyTypes.isEmpty {
-                Section("По типам") {
+                Section("settings.cloud.section.by_type_list") {
                     ForEach(nonEmptyTypes, id: \.self) { type in
                         typeRow(type)
                     }
@@ -99,7 +99,7 @@ struct CloudSettingsView: View {
                 }
             }
             if nonZero.isEmpty {
-                Text(viewModel.info == nil ? "Загрузка…" : "Хранилище пусто")
+                Text(viewModel.info == nil ? "common.loading" : "settings.cloud.empty")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -126,9 +126,13 @@ struct CloudSettingsView: View {
     // MARK: - Helpers
 
     private var usedSummary: String {
-        guard let info = viewModel.info else { return "Загрузка…" }
+        guard let info = viewModel.info else {
+            return String(localized: "common.loading")
+        }
         if info.limitBytes > 0 {
-            return "\(formatBytes(info.usedBytes)) из \(formatBytes(info.limitBytes))"
+            return String(
+                localized: "settings.cloud.used_of \(formatBytes(info.usedBytes)) \(formatBytes(info.limitBytes))"
+            )
         } else {
             return formatBytes(info.usedBytes)
         }

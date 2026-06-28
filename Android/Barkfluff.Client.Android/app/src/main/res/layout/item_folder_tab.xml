@@ -9,7 +9,7 @@
     android:clickable="true"
     android:focusable="true"
     android:gravity="center_vertical"
-    android:minHeight="36dp"
+    android:minHeight="32dp"
     android:orientation="horizontal"
     android:paddingHorizontal="12dp"
     android:paddingVertical="6dp">
@@ -18,8 +18,8 @@
         android:id="@+id/folderIcon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:includeFontPadding="false" />
+        android:includeFontPadding="false"
+        android:textSize="16sp" />
 
     <TextView
         android:id="@+id/folderName"
@@ -30,20 +30,19 @@
         android:maxLines="1"
         android:maxWidth="160dp"
         android:textAppearance="?attr/textAppearanceLabelLarge"
-        android:textColor="?attr/colorOnSurface" />
+        android:textColor="@color/folder_tab_text_color" />
 
     <TextView
         android:id="@+id/folderUnreadBadge"
         android:layout_width="wrap_content"
-        android:layout_height="20dp"
+        android:layout_height="18dp"
         android:layout_marginStart="6dp"
         android:background="@drawable/bg_folder_unread_badge"
         android:gravity="center"
-        android:minWidth="20dp"
+        android:minWidth="18dp"
         android:paddingHorizontal="6dp"
+        android:textAppearance="?attr/textAppearanceLabelSmall"
         android:textColor="?attr/colorOnPrimary"
-        android:textSize="11sp"
-        android:textStyle="bold"
         android:visibility="gone" />
 
 </LinearLayout>

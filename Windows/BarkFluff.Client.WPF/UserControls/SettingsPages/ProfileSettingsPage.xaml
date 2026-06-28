@@ -13,7 +13,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Профиль" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Profile_Title}" />
 
             <!-- Аватар -->
             <Border
@@ -52,7 +52,7 @@
                         Click="ChangeAvatar_Click"
                         Cursor="Hand"
                         Style="{DynamicResource Win11Default}"
-                        Content="Изменить" />
+                        Content="{DynamicResource L_Settings_Profile_ChangeAvatar}" />
                 </Grid>
             </Border>
 
@@ -63,7 +63,7 @@
                 CornerRadius="8"
                 Margin="0,8">
                 <StackPanel>
-                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Имя" />
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="{DynamicResource L_Settings_Profile_FirstName_Label}" />
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -73,14 +73,14 @@
                             x:Name="FirstNameBox"
                             Grid.Column="0"
                             FontSize="14"
-                            PlaceholderText="Имя" />
+                            PlaceholderText="{DynamicResource L_Settings_Profile_FirstName_Placeholder}" />
                         <ui:Button
                             Grid.Column="1"
                             Margin="8,0,0,0"
                             Click="SaveName_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Сохранить" />
+                            Content="{DynamicResource L_Common_Save}" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -92,7 +92,7 @@
                 CornerRadius="8"
                 Margin="0,8">
                 <StackPanel>
-                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Фамилия" />
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="{DynamicResource L_Settings_Profile_LastName_Label}" />
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -102,14 +102,14 @@
                             x:Name="LastNameBox"
                             Grid.Column="0"
                             FontSize="14"
-                            PlaceholderText="Фамилия" />
+                            PlaceholderText="{DynamicResource L_Settings_Profile_LastName_Placeholder}" />
                         <ui:Button
                             Grid.Column="1"
                             Margin="8,0,0,0"
                             Click="SaveName_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Сохранить" />
+                            Content="{DynamicResource L_Common_Save}" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -121,7 +121,7 @@
                 CornerRadius="8"
                 Margin="0,8">
                 <StackPanel>
-                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Имя пользователя" />
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="{DynamicResource L_Settings_Profile_Username_Label}" />
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -131,14 +131,14 @@
                             x:Name="UsernameBox"
                             Grid.Column="0"
                             FontSize="14"
-                            PlaceholderText="username" />
+                            PlaceholderText="{DynamicResource L_Settings_Profile_Username_Placeholder}" />
                         <ui:Button
                             Grid.Column="1"
                             Margin="8,0,0,0"
                             Click="SaveUsername_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Сохранить" />
+                            Content="{DynamicResource L_Common_Save}" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -150,7 +150,7 @@
                 CornerRadius="8"
                 Margin="0,8">
                 <StackPanel>
-                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Описание" />
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="{DynamicResource L_Settings_Profile_Bio_Label}" />
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -160,7 +160,7 @@
                             x:Name="BioBox"
                             Grid.Column="0"
                             FontSize="14"
-                            PlaceholderText="О себе"
+                            PlaceholderText="{DynamicResource L_Settings_Profile_Bio_Placeholder}"
                             AcceptsReturn="True"
                             MinHeight="60"
                             TextWrapping="Wrap" />
@@ -171,7 +171,7 @@
                             Click="SaveBio_Click"
                             Cursor="Hand"
                             Style="{DynamicResource Win11Default}"
-                            Content="Сохранить" />
+                            Content="{DynamicResource L_Common_Save}" />
                     </Grid>
                 </StackPanel>
             </Border>

@@ -14,7 +14,7 @@ struct BioStepView: View {
     let userService: UserServiceProtocol
 
     @State private var isSaving = false
-    @State private var saveError: String?
+    @State private var saveError: LocalizedStringResource?
 
     let maxBioLength = 500
 
@@ -40,13 +40,13 @@ struct BioStepView: View {
                         )
 
                     HStack {
-                        Text("Расскажите о себе")
+                        Text("auth.register.step.bio.hint_short")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
                         Spacer()
 
-                        Text("\(data.bio.count)/\(maxBioLength)")
+                        Text(verbatim: "\(data.bio.count)/\(maxBioLength)")
                             .font(.caption)
                             .foregroundStyle(data.bio.count > maxBioLength ? .red : .secondary)
                     }
@@ -60,7 +60,7 @@ struct BioStepView: View {
                 }
 
                 // Подсказка
-                Text("Не обязательно — вы можете заполнить это позже в настройках профиля")
+                Text("auth.register.step.bio.hint")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -89,7 +89,7 @@ struct BioStepView: View {
             try await userService.changeBio(newBio: data.bio)
             return true
         } catch {
-            saveError = error.localizedDescription
+            saveError = LocalizedStringResource(stringLiteral: error.localizedDescription)
             return false
         }
     }

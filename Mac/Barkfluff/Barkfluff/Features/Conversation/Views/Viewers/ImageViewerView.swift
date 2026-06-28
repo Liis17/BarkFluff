@@ -86,7 +86,7 @@ struct ImageViewerView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
 
-            Text("Не удалось загрузить изображение")
+            Text("conversation.viewer.image_load_failed")
                 .font(.headline)
                 .foregroundStyle(.secondary)
         }

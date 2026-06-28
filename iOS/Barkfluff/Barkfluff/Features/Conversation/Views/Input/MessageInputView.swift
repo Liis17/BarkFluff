@@ -58,31 +58,7 @@ struct MessageInputView: View {
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, Theme.Spacing.sm)
         }
-        .background {
-            VStack(spacing: 0) {
-                // Плавный градиент сверху для размытия контента
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .mask(
-                        LinearGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: .black.opacity(0), location: 0),
-                                .init(color: .black.opacity(0.3), location: 0.3),
-                                .init(color: .black.opacity(0.7), location: 0.6),
-                                .init(color: .black.opacity(0.95), location: 0.85),
-                                .init(color: .black, location: 1.0)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(height: 50)
-
-                // Сплошной material под полем ввода
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-            }
-        }
+        .background(Color.clear)
         .animation(.spring(duration: 0.3), value: selectedAttachments.count)
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItems, maxSelectionCount: 10, matching: .any(of: [.images, .videos]))
         .onChange(of: selectedPhotoItems) { _, newItems in
@@ -109,13 +85,13 @@ struct MessageInputView: View {
             Button {
                 showPhotoPicker = true
             } label: {
-                Label("Фото или видео", systemImage: "photo.on.rectangle")
+                Label("conversation.attach.photo_or_video", systemImage: "photo.on.rectangle")
             }
 
             Button {
                 showDocumentPicker = true
             } label: {
-                Label("Файл", systemImage: "doc")
+                Label("conversation.attach.file", systemImage: "doc")
             }
 
             // Camera (if available)
@@ -126,7 +102,7 @@ struct MessageInputView: View {
             Button {
                 // Camera action handled separately
             } label: {
-                Label("Камера", systemImage: "camera")
+                Label("conversation.attach.camera", systemImage: "camera")
             }
             #endif
         } label: {
@@ -148,14 +124,14 @@ struct MessageInputView: View {
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Стикеры")
+        .accessibilityLabel(Text("conversation.input.stickers"))
     }
 
     // MARK: - Text Field
 
     private var textFieldView: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-            TextField("Сообщение...", text: $text, axis: .vertical)
+            TextField("conversation.input.placeholder", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .focused($isTextFieldFocused)

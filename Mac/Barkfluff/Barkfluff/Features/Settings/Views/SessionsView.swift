@@ -19,13 +19,13 @@ struct SessionsView: View {
                         Spacer()
                         ProgressView()
                             .controlSize(.small)
-                        Text("Загрузка сессий...")
+                        Text("settings.sessions.loading")
                             .foregroundStyle(.secondary)
                         Spacer()
                     }
                     .padding(.vertical, 8)
                 } else if viewModel.sessions.isEmpty {
-                    Text("Нет активных сессий")
+                    Text("settings.sessions.empty")
                         .foregroundStyle(.secondary)
                 } else {
                     let currentSession = viewModel.sessions.first {
@@ -44,14 +44,14 @@ struct SessionsView: View {
                     }
                 }
             } header: {
-                Text("Активные сессии")
+                Text("settings.sessions.section")
             } footer: {
-                Text("Если вы видите незнакомые устройства, завершите сессию и смените пароль")
+                Text("settings.sessions.footer")
             }
 
             if viewModel.sessions.count > 1 {
                 Section {
-                    Button("Завершить все кроме текущей", role: .destructive) {
+                    Button("settings.sessions.terminate_others", role: .destructive) {
                         Task {
                             await viewModel.terminateAllOtherSessions()
                         }
@@ -81,7 +81,7 @@ struct SessionsView: View {
         let localMeta = DeviceMetadataProvider.shared
         let name = !session.displayName.isEmpty
             ? session.displayName
-            : (isCurrent ? localMeta.deviceName : "Неизвестное устройство")
+            : (isCurrent ? localMeta.deviceName : String(localized: "settings.sessions.unknown_device"))
         let os = !session.operationSystem.isEmpty
             ? session.operationSystem
             : (isCurrent ? localMeta.osName : "")
@@ -101,7 +101,7 @@ struct SessionsView: View {
                         .font(.headline)
 
                     if isCurrent {
-                        Text("Текущая")
+                        Text("settings.sessions.current_badge")
                             .font(.caption2)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
@@ -141,7 +141,7 @@ struct SessionsView: View {
             Spacer()
 
             if !isCurrent {
-                Button("Завершить", role: .destructive) {
+                Button("settings.sessions.terminate", role: .destructive) {
                     Task {
                         await viewModel.terminateSession(deviceID: session.deviceId)
                     }

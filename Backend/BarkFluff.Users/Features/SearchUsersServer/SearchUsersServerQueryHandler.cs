@@ -57,29 +57,33 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
             totalCount = Math.Max(usersResult.TotalCount, 0);
         }
 
-        // Конвертируем и загружаем бейджи для каждого пользователя
+        // Конвертируем и загружаем бейджи всех пользователей одним батч-запросом
+        var badgesByUser = await _usersStorage.GetBadgesForUsersAsync(users.Select(u => u.Id).ToList());
+
         var protoUsers = new List<User>();
         foreach (var user in users)
         {
             var protoUser = user.ToGrpc();
 
-            var badges = await _usersStorage.GetUserBadgesAsync(user.Id);
-            foreach (var ub in badges)
+            if (badgesByUser.TryGetValue(user.Id, out var badges))
             {
-                protoUser.Badges.Add(new UserBadge
+                foreach (var ub in badges)
                 {
-                    Badge = new Badge
+                    protoUser.Badges.Add(new UserBadge
                     {
-                        Id = ub.Badge.Id,
-                        Name = ub.Badge.Name,
-                        Description = ub.Badge.Description ?? string.Empty,
-                        ImageUrl = ub.Badge.ImageUrl ?? string.Empty,
-                        IsActive = ub.Badge.IsActive,
-                        CreatedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.Badge.CreatedDate, DateTimeKind.Utc))
-                    },
-                    Priority = ub.Priority,
-                    AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc))
-                });
+                        Badge = new Badge
+                        {
+                            Id = ub.Badge.Id,
+                            Name = ub.Badge.Name,
+                            Description = ub.Badge.Description ?? string.Empty,
+                            ImageUrl = ub.Badge.ImageUrl ?? string.Empty,
+                            IsActive = ub.Badge.IsActive,
+                            CreatedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.Badge.CreatedDate, DateTimeKind.Utc))
+                        },
+                        Priority = ub.Priority,
+                        AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc))
+                    });
+                }
             }
 
             protoUsers.Add(protoUser);

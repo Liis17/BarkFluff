@@ -15,9 +15,9 @@ struct SettingsPlaceholderView: View {
             Label(category.title, systemImage: category.icon)
                 .foregroundStyle(category.iconColor)
         } description: {
-            Text("Этот раздел находится в разработке")
+            Text("settings.placeholder.in_development")
         } actions: {
-            Text("Скоро здесь появятся новые возможности")
+            Text("settings.placeholder.coming_soon")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

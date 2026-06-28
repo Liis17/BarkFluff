@@ -17,20 +17,20 @@ struct OTPVerificationView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(Color.accentColor)
 
-            Text("Подтверждение")
+            Text("auth.otp.title")
                 .font(.title)
 
-            Text("Введите код подтверждения, отправленный на вашу почту")
+            Text("auth.otp.subtitle")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            TextField("Код подтверждения", text: $code)
+            TextField("auth.otp.placeholder", text: $code)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 200)
                 .multilineTextAlignment(.center)
 
-            Button("Подтвердить") {
+            Button("auth.otp.submit") {
                 // TODO: Implement verification
                 isLoading = true
             }

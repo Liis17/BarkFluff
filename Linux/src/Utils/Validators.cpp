@@ -55,10 +55,10 @@ ValidationResult UsernameValidator::validate(const QString& username) {
         return ValidationResult::invalid(QObject::tr("Username must not exceed %1 characters").arg(MaxLength));
     }
     
-    // Check first character - cannot start with digit, underscore or hyphen
-    QRegularExpression invalidStartPattern("^[0-9_-]");
+    // Check first character - cannot start with digit or underscore
+    QRegularExpression invalidStartPattern("^[0-9_]");
     if (invalidStartPattern.match(trimmed).hasMatch()) {
-        return ValidationResult::invalid(QObject::tr("Username cannot start with a digit, underscore or hyphen"));
+        return ValidationResult::invalid(QObject::tr("Username cannot start with a digit or underscore"));
     }
     
     // Check for "bot" (case insensitive)
@@ -66,10 +66,10 @@ ValidationResult UsernameValidator::validate(const QString& username) {
         return ValidationResult::invalid(QObject::tr("Username cannot contain 'bot'"));
     }
     
-    // Check valid characters: a-zA-Z0-9_-
-    QRegularExpression validPattern("^[a-zA-Z0-9_-]+$");
+    // Check valid characters: a-zA-Z0-9_
+    QRegularExpression validPattern("^[a-zA-Z0-9_]+$");
     if (!validPattern.match(trimmed).hasMatch()) {
-        return ValidationResult::invalid(QObject::tr("Username can only contain letters, digits, underscores and hyphens"));
+        return ValidationResult::invalid(QObject::tr("Username can only contain letters, digits and underscores"));
     }
     
     return ValidationResult::valid();

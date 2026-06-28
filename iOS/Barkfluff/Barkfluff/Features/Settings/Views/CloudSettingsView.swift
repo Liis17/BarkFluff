@@ -18,12 +18,12 @@ struct CloudSettingsView: View {
 
             if let info = viewModel.info {
                 Section {
-                    LabeledContent("Использовано") {
+                    LabeledContent("settings.cloud.used") {
                         Text(formatBytes(info.usedBytes))
                             .foregroundStyle(.secondary)
                     }
                     if info.limitBytes > 0 {
-                        LabeledContent("Лимит") {
+                        LabeledContent("settings.cloud.limit") {
                             Text(formatBytes(info.limitBytes))
                                 .foregroundStyle(.secondary)
                         }
@@ -33,7 +33,7 @@ struct CloudSettingsView: View {
 
                 let nonEmptyTypes = viewModel.displayedTypes.filter { (info.usedByType[$0] ?? 0) > 0 }
                 if !nonEmptyTypes.isEmpty {
-                    Section("По типам") {
+                    Section("settings.cloud.section.by_type") {
                         ForEach(nonEmptyTypes, id: \.self) { type in
                             let bytes = info.usedByType[type] ?? 0
                             HStack {
@@ -57,7 +57,7 @@ struct CloudSettingsView: View {
                     .font(.footnote)
             }
         }
-        .navigationTitle("Облако")
+        .navigationTitle("settings.category.cloud")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container

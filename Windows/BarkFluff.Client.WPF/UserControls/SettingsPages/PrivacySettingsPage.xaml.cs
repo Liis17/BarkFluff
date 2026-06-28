@@ -11,7 +11,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     /// </summary>
     public partial class PrivacySettingsPage : BaseSettingsPage
     {
-        public override string Title => "Конфиденциальность";
+        public override string TitleKey => "L_Settings_Privacy_Title";
 
         /// <summary>Флаг подавления событий SelectionChanged/Checked во время программной загрузки.</summary>
         private bool _loading = false;
@@ -33,12 +33,13 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var gParam = App.GParam;
             if (webApi == null || gParam == null) return;
 
-            SetStatus("Загрузка настроек...");
+            SetStatus(L("L_Settings_Privacy_LoadingSettings"));
 
             var (error, settings) = await webApi.GetPrivacySettings(gParam);
             if (!error.IsSuccess || settings == null)
             {
-                SetStatus($"Не удалось загрузить настройки: {error.ErrorMessage}");
+                var fmt = L("L_Settings_Privacy_LoadError");
+                SetStatus(string.Format(fmt, error.ErrorMessage));
                 return;
             }
 
@@ -80,7 +81,15 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             };
 
             var error = await webApi.UpdatePrivacySettings(settings, gParam);
-            SetStatus(error.IsSuccess ? string.Empty : $"Ошибка сохранения: {error.ErrorMessage}");
+            if (error.IsSuccess)
+            {
+                SetStatus(string.Empty);
+            }
+            else
+            {
+                var fmt = L("L_Settings_Privacy_SaveError");
+                SetStatus(string.Format(fmt, error.ErrorMessage));
+            }
         }
 
         // --- Обработчики событий UI ---
@@ -123,5 +132,8 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         {
             Dispatcher.Invoke(() => StatusText.Text = message);
         }
+
+        private static string L(string key)
+            => Application.Current?.TryFindResource(key) as string ?? key;
     }
 }

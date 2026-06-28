@@ -46,7 +46,7 @@ public class GenerateFastAuthTokenCommandHandler(
 
         logger.LogInformation(
             "FastAuth session {Id} created for device {DeviceName} ({Os}, {AppName} v.{AppVersion}), expires at {ExpiresAt:O}",
-            session.Id, session.DeviceName, session.OperationSystem,
+            session.Id[..8], session.DeviceName, session.OperationSystem,
             session.AppName, session.AppVersion, session.ExpiresAt);
 
         var format = request.Format == TokenFormat.Unknown ? TokenFormat.Qr : request.Format;

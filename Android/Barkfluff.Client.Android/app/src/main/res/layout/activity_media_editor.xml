@@ -39,15 +39,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/closeButton"
+            style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/bg_editor_round_button"
-            android:src="@drawable/ic_close"
-            android:contentDescription="@null"
-            android:scaleType="centerInside"
-            app:tint="#FFFFFFFF" />
+            android:contentDescription="@string/cd_close"
+            app:icon="@drawable/ic_close"
+            app:iconTint="#FFFFFFFF" />
 
         <Space
             android:layout_width="0dp"
@@ -114,18 +113,15 @@
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginVertical="40dp" />
 
-    <ImageButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/confirmFab"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_editor_confirm_fab"
+        android:contentDescription="@string/cd_apply"
         android:src="@drawable/ic_check"
-        android:contentDescription="@null"
-        android:scaleType="centerInside"
         android:visibility="gone"
-        android:elevation="6dp"
         app:tint="#FFFFFFFF"
         app:layout_constraintTop_toBottomOf="@id/topBar"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -144,77 +140,86 @@
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/toolsBar"
+        app:layout_constraintBottom_toTopOf="@id/toolsBarCard"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
-        android:id="@+id/toolsBar"
-        android:layout_width="0dp"
+    <!-- M3 Expressive Floating Toolbar — pill-карточка с инструментами -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/toolsBarCard"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:paddingVertical="6dp"
+        android:layout_marginBottom="8dp"
+        app:cardBackgroundColor="#33000000"
+        app:cardCornerRadius="@dimen/shape_corner_full"
+        app:cardElevation="6dp"
+        app:strokeColor="#1AFFFFFF"
+        app:strokeWidth="1dp"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <ImageButton
-            android:id="@+id/btnCrop"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_editor_round_button"
-            android:src="@drawable/ic_crop"
-            android:scaleType="centerInside"
-            android:contentDescription="@null"
-            app:tint="#FFFFFFFF" />
+        <LinearLayout
+            android:id="@+id/toolsBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp">
 
-        <ImageButton
-            android:id="@+id/btnRotate"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_editor_round_button"
-            android:src="@drawable/ic_rotate"
-            android:scaleType="centerInside"
-            android:contentDescription="@null"
-            app:tint="#FFFFFFFF" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCrop"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_margin="2dp"
+                android:contentDescription="@string/cd_crop"
+                app:icon="@drawable/ic_crop"
+                app:iconTint="#FFFFFFFF" />
 
-        <ImageButton
-            android:id="@+id/btnFlip"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_editor_round_button"
-            android:src="@drawable/ic_flip"
-            android:scaleType="centerInside"
-            android:contentDescription="@null"
-            app:tint="#FFFFFFFF" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRotate"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_margin="2dp"
+                android:contentDescription="@string/cd_rotate"
+                app:icon="@drawable/ic_rotate"
+                app:iconTint="#FFFFFFFF" />
 
-        <ImageButton
-            android:id="@+id/btnDraw"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_editor_round_button"
-            android:src="@drawable/ic_brush"
-            android:scaleType="centerInside"
-            android:contentDescription="@null"
-            app:tint="#FFFFFFFF" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlip"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_margin="2dp"
+                android:contentDescription="@string/cd_flip"
+                app:icon="@drawable/ic_flip"
+                app:iconTint="#FFFFFFFF" />
 
-        <ImageButton
-            android:id="@+id/btnUndo"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_editor_round_button"
-            android:src="@drawable/ic_undo"
-            android:scaleType="centerInside"
-            android:contentDescription="@null"
-            android:visibility="gone"
-            app:tint="#FFFFFFFF" />
-    </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDraw"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_margin="2dp"
+                android:contentDescription="@string/cd_draw"
+                app:icon="@drawable/ic_brush"
+                app:iconTint="#FFFFFFFF" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUndo"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_margin="2dp"
+                android:contentDescription="@string/cd_undo"
+                android:visibility="gone"
+                app:icon="@drawable/ic_undo"
+                app:iconTint="#FFFFFFFF" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <LinearLayout
         android:id="@+id/bottomBar"
@@ -244,17 +249,15 @@
             android:imeOptions="actionDone"
             android:textSize="15sp" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/sendButton"
+            style="@style/Widget.Material3.Button.IconButton.Filled"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginStart="8dp"
-            android:background="@drawable/bg_editor_send_button"
-            android:src="@drawable/ic_send_filled"
-            android:contentDescription="@null"
-            android:scaleType="centerInside"
-            android:padding="10dp"
-            app:tint="#FFFFFFFF" />
+            android:contentDescription="@string/cd_send"
+            app:icon="@drawable/ic_send_filled"
+            app:iconTint="#FFFFFFFF" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

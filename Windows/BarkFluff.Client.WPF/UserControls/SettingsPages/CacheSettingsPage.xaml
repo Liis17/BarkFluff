@@ -14,7 +14,7 @@
         <StackPanel Margin="24,16,24,24">
 
             <!-- Заголовок -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Кеш" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Cache_Title}" />
 
             <!-- Статус -->
             <TextBlock
@@ -22,7 +22,7 @@
                 FontSize="12"
                 Foreground="{DynamicResource DescriptionText}"
                 Margin="2,4,0,8"
-                Text="Подсчёт..." />
+                Text="{DynamicResource L_Settings_Cache_Counting}" />
 
             <!-- Прогресс-бар общего использования диска -->
             <Border
@@ -33,7 +33,7 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <ui:SymbolIcon Foreground="#FF68A540" Symbol="DatabaseStack16" Margin="0,0,8,0" />
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Использование диска" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Cache_DiskUsage_Title}" />
                     </StackPanel>
                     <TextBlock
                         x:Name="TotalUsageText"
@@ -47,11 +47,11 @@
                     <!-- Легенда -->
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Opacity="0.85">
                         <Ellipse Width="8" Height="8" Fill="#FF3D86C6" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBlock FontSize="11" Foreground="{DynamicResource DescriptionText}" Text="Приложение" Margin="0,0,12,0"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource DescriptionText}" Text="{DynamicResource L_Settings_Cache_Legend_App}" Margin="0,0,12,0"/>
                         <Ellipse Width="8" Height="8" Fill="#FF68A540" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBlock FontSize="11" Foreground="{DynamicResource DescriptionText}" Text="Файловый кеш" Margin="0,0,12,0"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource DescriptionText}" Text="{DynamicResource L_Settings_Cache_Legend_FileCache}" Margin="0,0,12,0"/>
                         <Ellipse Width="8" Height="8" Fill="#FFCA6D34" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBlock FontSize="11" Foreground="{DynamicResource DescriptionText}" Text="База данных" Margin="0,0,12,0"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource DescriptionText}" Text="{DynamicResource L_Settings_Cache_Legend_Database}" Margin="0,0,12,0"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -61,7 +61,7 @@
                 FontSize="11" FontWeight="SemiBold"
                 Foreground="{DynamicResource DescriptionText}"
                 Margin="2,12,0,4"
-                Text="ПО ТИПАМ" />
+                Text="{DynamicResource L_Settings_Cache_ByTypes_Header}" />
 
             <!-- 2-столбиковая сетка типов кеша -->
             <UniformGrid Columns="2">
@@ -75,7 +75,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Аватары"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Avatars}"/>
                             <TextBlock x:Name="AvatarSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="AvatarMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -94,7 +94,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Изображения"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Images}"/>
                             <TextBlock x:Name="ImageSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="ImageMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -113,7 +113,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Видео"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Videos}"/>
                             <TextBlock x:Name="VideoSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="VideoMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -132,7 +132,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="GIF"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Gif}"/>
                             <TextBlock x:Name="GifSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="GifMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -151,7 +151,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Документы"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Documents}"/>
                             <TextBlock x:Name="DocSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="DocMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -170,7 +170,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Аудио"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Audio}"/>
                             <TextBlock x:Name="AudioSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="AudioMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -189,7 +189,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Сообщения"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Messages}"/>
                             <TextBlock x:Name="MsgSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="MsgMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -208,7 +208,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="Чаты"/>
+                            <TextBlock FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TitleText}" Text="{DynamicResource L_Settings_Cache_Type_Chats}"/>
                             <TextBlock x:Name="ChatSize" FontSize="12" Foreground="{DynamicResource DescriptionText}" Margin="0,3,0,0" Text="..."/>
                         </StackPanel>
                         <Button x:Name="ChatMenu" Grid.Column="1" VerticalAlignment="Top"
@@ -227,7 +227,7 @@
                 Click="ClearAll_Click"
                 Background="#df5000"
                 Foreground="White"
-                Content="Очистить весь кеш"
+                Content="{DynamicResource L_Settings_Cache_ClearAll}"
                 Style="{DynamicResource DefaultButtonStyle}" />
 
         </StackPanel>

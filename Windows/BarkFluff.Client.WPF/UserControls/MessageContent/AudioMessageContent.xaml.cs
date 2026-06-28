@@ -1,3 +1,4 @@
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
@@ -95,7 +96,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 DownloadProgressBar.Visibility = Visibility.Visible;
                 TimelineSlider.Visibility = Visibility.Collapsed;
                 ProgressPercentText.Visibility = Visibility.Visible;
-                TimeDisplay.Text = "Загрузка...";
+                TimeDisplay.Text = L.Str("L_Audio_Loading");
             }
             else if (_isCached)
             {

@@ -15,9 +15,9 @@ struct NotificationsSettingsView: View {
         @Bindable var settings = container.notificationSettings
 
         Form {
-            Section("Уведомления") {
-                Toggle("Показывать уведомления", isOn: $settings.showNotifications)
-                Toggle("Звук уведомлений", isOn: $settings.playSound)
+            Section("settings.notifications.section") {
+                Toggle("settings.notifications.show", isOn: $settings.showNotifications)
+                Toggle("settings.notifications.sound", isOn: $settings.playSound)
                     .disabled(!settings.showNotifications)
             }
         }

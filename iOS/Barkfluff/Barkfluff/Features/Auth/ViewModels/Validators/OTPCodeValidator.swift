@@ -10,10 +10,10 @@ import Foundation
 /// Результат валидации OTP кода
 struct OTPCodeValidationResult {
     let isValid: Bool
-    let error: String?
+    let error: LocalizedStringResource?
 
     static let valid = OTPCodeValidationResult(isValid: true, error: nil)
-    static func invalid(_ error: String) -> OTPCodeValidationResult {
+    static func invalid(_ error: LocalizedStringResource) -> OTPCodeValidationResult {
         OTPCodeValidationResult(isValid: false, error: error)
     }
 }
@@ -28,14 +28,14 @@ enum OTPCodeValidator {
         let trimmed = code.trimmingCharacters(in: .whitespaces)
 
         if trimmed.isEmpty {
-            return .invalid("Введите код")
+            return .invalid(LocalizedStringResource("auth.validation.otp.empty"))
         }
 
         // Удаляем все нецифровые символы
         let digitsOnly = trimmed.filter { $0.isNumber }
 
         if digitsOnly.count != codeLength {
-            return .invalid("Код должен содержать \(codeLength) цифр")
+            return .invalid(LocalizedStringResource("auth.validation.otp.wrong_length \(codeLength)"))
         }
 
         return .valid

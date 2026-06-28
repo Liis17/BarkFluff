@@ -17,6 +17,9 @@ final class ChatListViewModel {
     /// (stale-while-revalidate). Используется для индикатора «Обновление…».
     var isRefreshing = false
     var errorMessage: String?
+    /// Последняя ревалидация с сервера упала по сети, но в UI остался валидный кеш.
+    /// Используется для ненавязчивого «оффлайн»-баннера поверх списка.
+    var isOffline = false
     var searchText = ""
     var searchResults: [User] = []
     var isSearching = false
@@ -54,6 +57,8 @@ final class ChatListViewModel {
     private var deletedMessagesTask: Task<Void, Never>?
     private var connectionEventsTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
+    /// Текущая фоновая ревалидация чатов с сервера — чтобы не запускать параллельно несколько.
+    private var revalidateTask: Task<Void, Never>?
 
     init(
         chatService: ChatServiceProtocol,
@@ -75,29 +80,63 @@ final class ChatListViewModel {
 
     // MARK: - Loading
 
+    /// Стартовая загрузка чатов. Не блокирует UI: показывает кеш сразу
+    /// (если есть) и запускает фоновую ревалидацию с сервера.
+    /// Возвращает управление как только готов первый кадр для отрисовки.
     func loadChats() async {
         errorMessage = nil
 
         // 1. Stale: показать кешированные чаты сразу (если есть и список ещё пуст).
-        var hasCachedData = false
-        if allChats.isEmpty, let local = localChatRepository {
-            if let cached = try? await local.loadCachedChats(), !cached.isEmpty {
-                allChats = cached
-                applyFilter()
-                hasCachedData = true
-            }
-        } else if !allChats.isEmpty {
-            hasCachedData = true
+        if allChats.isEmpty, let local = localChatRepository,
+           let cached = try? await local.loadCachedChats(), !cached.isEmpty {
+            allChats = cached
+            applyFilter()
         }
 
+        // 2. Revalidate в фоне — не задерживаем splash/лоадер на сетевой пагинации.
+        startRevalidate()
+    }
+
+    /// Ревалидация чатов с сервера (вся пагинация). Используется на старте (в фоне),
+    /// при reconnect, при удалении/новых чатах и при pull-to-refresh.
+    /// Pull-to-refresh вызывает `revalidateChats()` напрямую и ждёт окончания —
+    /// для индикатора pull-to-refresh.
+    func revalidateChats() async {
+        // Если уже идёт ревалидация — присоединяемся к ней.
+        if let existing = revalidateTask {
+            await existing.value
+            return
+        }
+        let task = Task { [weak self] in
+            await self?.performRevalidate()
+            self?.revalidateTask = nil
+        }
+        revalidateTask = task
+        await task.value
+    }
+
+    /// Запустить ревалидацию в фоне без ожидания результата.
+    private func startRevalidate() {
+        guard revalidateTask == nil else { return }
+        revalidateTask = Task { [weak self] in
+            await self?.performRevalidate()
+            self?.revalidateTask = nil
+        }
+    }
+
+    private func performRevalidate() async {
+        let hasCachedData = !allChats.isEmpty
         if hasCachedData {
             isRefreshing = true
         } else {
             isLoading = true
         }
+        defer {
+            isLoading = false
+            isRefreshing = false
+        }
 
-        // 2. Revalidate: тянем актуальные данные с сервера.
-        // Грузим ВСЕ страницы за один проход (как в macOS), иначе сортировка
+        // Грузим ВСЕ страницы за один проход — иначе сортировка
         // по `lastMessage.sentAt` применяется только к первой странице, и при
         // дозагрузке более свежие чаты «прыгают» наверх.
         do {
@@ -118,8 +157,10 @@ final class ChatListViewModel {
 
             allChats = accumulated
             applyFilter()
+            isOffline = false
+            errorMessage = nil
 
-            // 3. Сохраняем актуальный снимок в БД.
+            // Сохраняем актуальный снимок в БД.
             if let local = localChatRepository {
                 try? await local.replaceAll(accumulated)
             }
@@ -128,25 +169,27 @@ final class ChatListViewModel {
             let userIDs = collectUserIDsFromChats()
             await onlineStatusService.start(initialUserIDs: userIDs)
         } catch {
-            // Ошибку показываем только если кеш пустой; иначе кэш виден в UI.
             if allChats.isEmpty {
+                // Пустой кеш и нет сети — показываем полноэкранную ошибку.
                 errorMessage = error.localizedDescription
+                isOffline = false
+            } else {
+                // Кеш виден — показываем ненавязчивый «оффлайн»-баннер поверх списка.
+                isOffline = true
             }
         }
-
-        isLoading = false
-        isRefreshing = false
     }
 
     func refresh() async {
-        async let chats: Void = loadChats()
+        async let chats: Void = revalidateChats()
         async let folders: Void = loadFolders()
         _ = await (chats, folders)
     }
 
     // MARK: - Folders
 
-    /// Stale-while-revalidate загрузка папок.
+    /// Stale-while-revalidate загрузка папок. Не блокирует UI: показывает кеш
+    /// сразу и запускает сетевую ревалидацию в фоне.
     func loadFolders() async {
         guard let service = chatFolderService else { return }
 
@@ -157,12 +200,18 @@ final class ChatListViewModel {
             applyFilter()
         }
 
-        do {
-            folders = try await service.refresh()
-            sanitizeSelectedFolder()
-            applyFilter()
-        } catch {
-            // Молча — кешированные папки (если были) останутся в UI.
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let refreshed = try await service.refresh()
+                await MainActor.run {
+                    self.folders = refreshed
+                    self.sanitizeSelectedFolder()
+                    self.applyFilter()
+                }
+            } catch {
+                // Молча — кешированные папки (если были) останутся в UI.
+            }
         }
     }
 
@@ -285,7 +334,7 @@ final class ChatListViewModel {
         } else {
             // Новый чат — перезагружаем список. Tracking нового собеседника
             // произойдёт автоматически когда его row появится в List.
-            Task { await loadChats() }
+            Task { await revalidateChats() }
         }
     }
 
@@ -297,7 +346,7 @@ final class ChatListViewModel {
         switch event {
         case .reconnected:
             Task {
-                async let chats: Void = loadChats()
+                async let chats: Void = revalidateChats()
                 async let folders: Void = loadFolders()
                 _ = await (chats, folders)
             }
@@ -335,7 +384,7 @@ final class ChatListViewModel {
     private func handleDeletedMessage(_ event: BFCore.MessageDeletedEvent) {
         guard let index = allChats.firstIndex(where: { $0.id == event.chatID }) else { return }
         if allChats[index].lastMessage?.id == event.messageID {
-            Task { await loadChats() }
+            Task { await revalidateChats() }
         }
     }
 

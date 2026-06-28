@@ -13,7 +13,7 @@
     <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
-            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Облако" />
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="{DynamicResource L_Settings_Cloud_Title}" />
 
             <!-- Общее использование -->
             <Border
@@ -24,14 +24,14 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <ui:SymbolIcon Foreground="#FF79AEDC" Symbol="Cloud24" Margin="0,0,8,0" />
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Использование хранилища" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Usage_Title}" />
                     </StackPanel>
                     <TextBlock
                         x:Name="UsageText"
                         Foreground="{DynamicResource DescriptionText}"
                         FontSize="12"
                         Margin="0,0,0,8"
-                        Text="Загрузка..." />
+                        Text="{DynamicResource L_Common_Loading}" />
                     <controls:MultiSegmentProgressUserControl
                         x:Name="StorageProgress"
                         EmptyBrush="{DynamicResource ButtonBackground}" />
@@ -64,7 +64,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Фото" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Images}" />
                             <TextBlock x:Name="ImagesSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF57BB62" Symbol="Image24" />
@@ -85,7 +85,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Видео" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Videos}" />
                             <TextBlock x:Name="VideosSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF3D50B7" Symbol="Video24" />
@@ -106,7 +106,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Документы" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Documents}" />
                             <TextBlock x:Name="DocumentsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFCA6D34" Symbol="Document24" />
@@ -127,7 +127,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Аудио" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Audio}" />
                             <TextBlock x:Name="AudioSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF9B59B6" Symbol="MusicNote124" />
@@ -148,7 +148,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Голосовые" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Voice}" />
                             <TextBlock x:Name="VoiceSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF1ABC9C" Symbol="Mic24" />
@@ -169,7 +169,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="GIF" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Gif}" />
                             <TextBlock x:Name="GifSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFE8A838" Symbol="Gif24" />
@@ -190,7 +190,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Стикеры" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Stickers}" />
                             <TextBlock x:Name="StickersSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFEC6396" Symbol="Sticker24" />
@@ -211,7 +211,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Аватары" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="{DynamicResource L_Settings_Cloud_Type_Avatars}" />
                             <TextBlock x:Name="AvatarsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
                         </StackPanel>
                         <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF79AEDC" Symbol="Person24" />

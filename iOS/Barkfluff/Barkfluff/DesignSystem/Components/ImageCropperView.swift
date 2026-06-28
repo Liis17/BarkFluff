@@ -48,15 +48,15 @@ struct ImageCropperView: View {
                         .allowsHitTesting(false)
                 }
             }
-            .navigationTitle("Обрезать фото")
+            .navigationTitle("cropper.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { onCancel() }
+                    Button("common.cancel") { onCancel() }
                         .foregroundStyle(.white)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") {
+                    Button("common.done") {
                         NotificationCenter.default.post(name: .imageCropperRequestCrop, object: nil)
                     }
                     .foregroundStyle(.white)

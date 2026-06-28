@@ -81,7 +81,7 @@
                         FontSize="18"
                         Foreground="White"
                         TextAlignment="Center"
-                        Text="Не удалось поделиться профилем" />
+                        Text="{DynamicResource L_ProfileShare_FailedTitle}" />
 
                     <TextBlock
                         Margin="0,8,0,0"
@@ -89,7 +89,7 @@
                         FontSize="14"
                         Foreground="#888888"
                         TextAlignment="Center"
-                        Text="У вас не установлен username. Задайте его в настройках профиля." />
+                        Text="{DynamicResource L_ProfileShare_NoUsername}" />
                 </StackPanel>
 
                 <!--  Основной контент с QR  -->

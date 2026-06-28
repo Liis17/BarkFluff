@@ -43,7 +43,7 @@ struct AudioAttachmentView: View {
                         ProgressView(value: uploadProg)
                             .progressViewStyle(.linear)
                             .tint(.white)
-                        Text("Загрузка \(Int(uploadProg * 100))%")
+                        Text("conversation.attachment.uploading_percent \(Int(uploadProg * 100))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {

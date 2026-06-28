@@ -24,7 +24,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
-                <TextBlock x:Name="TitleText" Style="{DynamicResource PostUpdateStyleText}" Text="Приложение обновлено " />
+                <TextBlock x:Name="TitleText" Style="{DynamicResource PostUpdateStyleText}" Text="{DynamicResource L_PostUpdate_Title}" />
                 <TextBlock
                     x:Name="VersionText"
                     FontSize="20"

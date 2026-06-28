@@ -34,6 +34,8 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 - **`UserProfileService`** — gRPC запросы профилей, кеш 30 мин (не найденных — 5 мин, `IMemoryCache`). Возвращает `UserProfileData` включая `ProfilePosterUrl`.
 - **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%`. Специальная обработка: если username == `li_is` (без учёта регистра), отдаётся `html/UniqueUsers/paws.page.html` с анимированными лапками на фоне.
+
+> **Кнопка «Написать в браузере» (`#webChatBtn`)** в обоих шаблонах (`userpage.html` + `paws.page.html`): при клике пишет cookie `bf_open_chat=<username>` (`domain=.barkfluff.com`, `max-age=300`, `SameSite=Lax`) и редиректит на `https://web.barkfluff.com`. Веб-мессенджер [[Backend/Web]] после загрузки читает эту cookie и открывает чат с пользователем (см. `maybeOpenChatFromCookie` в `main.js`). Логика повторяет deep-link Android (`bf://user-username=<username>`).
 - **`LegalPageService`** — файлы из `html/legal/` по имени страницы; также обрабатывает `selfhosted.html`
 - **`SupportChatService`** — in-memory сессии чата (`ConcurrentDictionary`)
 - **`TelegramService`** — Telegram-бот для уведомлений чата поддержки. Ответ администратора — reply, первая строка — GUID чата

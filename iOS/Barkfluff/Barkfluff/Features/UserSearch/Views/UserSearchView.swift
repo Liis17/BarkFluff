@@ -19,11 +19,11 @@ struct UserSearchView: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle("Поиск")
+                .navigationTitle("user_search.title")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Отмена") { dismiss() }
+                        Button("common.cancel") { dismiss() }
                     }
                 }
         }
@@ -42,9 +42,9 @@ struct UserSearchView: View {
             List {
                 if vm.searchQuery.isEmpty {
                     ContentUnavailableView(
-                        "Поиск пользователей",
+                        "user_search.idle.title",
                         systemImage: "person.magnifyingglass",
-                        description: Text("Введите имя или username для поиска")
+                        description: Text("user_search.idle.description")
                     )
                 } else if vm.isLoading {
                     HStack {
@@ -54,9 +54,9 @@ struct UserSearchView: View {
                     }
                 } else if vm.searchResults.isEmpty, vm.searchQuery.count >= 3 {
                     ContentUnavailableView(
-                        "Ничего не найдено",
+                        "user_search.empty.title",
                         systemImage: "person.slash",
-                        description: Text("Попробуйте изменить запрос")
+                        description: Text("user_search.empty.description")
                     )
                 } else {
                     ForEach(vm.searchResults) { user in
@@ -77,7 +77,7 @@ struct UserSearchView: View {
                     }
                 }
             }
-            .searchable(text: $vm.searchQuery, prompt: "Имя или username")
+            .searchable(text: $vm.searchQuery, prompt: Text("user_search.prompt"))
             .onChange(of: vm.searchQuery) { _, _ in
                 vm.search()
             }

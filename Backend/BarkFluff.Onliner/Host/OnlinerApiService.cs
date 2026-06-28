@@ -1,8 +1,11 @@
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Onliner.Features.ChangeChatsInTypingSubscription;
 using BarkFluff.Onliner.Features.ChangeUsersInSubscription;
 using BarkFluff.Onliner.Features.GetOnlineStatus;
 using BarkFluff.Onliner.Features.SetOnlineStatus;
+using BarkFluff.Onliner.Features.SetTypingStatus;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
+using BarkFluff.Onliner.Features.SubscribeToTyping;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Shared.Identity;
 
@@ -19,15 +22,18 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
 {
     private readonly IMediator _mediator;
     private readonly SubscribeToOnlineStatusQueryHandler _subscribeHandler;
+    private readonly SubscribeToTypingQueryHandler _typingSubscribeHandler;
     private readonly MetricsCollector _metrics;
 
     public OnlinerApiService(
         IMediator mediator,
         SubscribeToOnlineStatusQueryHandler subscribeHandler,
+        SubscribeToTypingQueryHandler typingSubscribeHandler,
         MetricsCollector metrics)
     {
         _mediator = mediator;
         _subscribeHandler = subscribeHandler;
+        _typingSubscribeHandler = typingSubscribeHandler;
         _metrics = metrics;
     }
 
@@ -86,6 +92,53 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         var command = new ChangeUsersInSubscriptionCommand
         {
             UserIds = request.UserIds.ToList()
+        };
+
+        return await _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<SetTypingStatusResponse> SetTypingStatus(
+        SetTypingStatusRequest request,
+        ServerCallContext context)
+    {
+        _metrics.Increment("set_typing_status_requests");
+
+        var command = new SetTypingStatusCommand
+        {
+            ChatId = request.ChatId,
+            Action = request.Action
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override async Task SubscribeToTyping(
+        SubscribeToTypingRequest request,
+        IServerStreamWriter<TypingEvent> responseStream,
+        ServerCallContext context)
+    {
+        _metrics.Increment("typing_subscribe_requests");
+
+        var query = new SubscribeToTypingQuery
+        {
+            ChatIds = request.ChatIds.ToList(),
+            ResponseStream = responseStream,
+            CancellationToken = context.CancellationToken
+        };
+
+        // Не используем MediatR для streaming - прямой вызов handler
+        await _typingSubscribeHandler.Handle(query);
+    }
+
+    public override async Task<ChangeChatsInTypingSubscriptionResponse> ChangeChatsInTypingSubscription(
+        ChangeChatsInTypingSubscriptionRequest request,
+        ServerCallContext context)
+    {
+        _metrics.Increment("change_chats_in_typing_subscription_requests");
+
+        var command = new ChangeChatsInTypingSubscriptionCommand
+        {
+            ChatIds = request.ChatIds.ToList()
         };
 
         return await _mediator.Send(command, context.CancellationToken);

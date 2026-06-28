@@ -36,7 +36,7 @@ struct VideoPlayerView: View {
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Готово") {
+                Button("common.done") {
                     player?.pause()
                     dismiss()
                 }
@@ -59,11 +59,11 @@ struct VideoPlayerView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
 
-            Text("Не удалось загрузить видео")
+            Text("conversation.viewer.video_load_failed")
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Button("Закрыть") {
+            Button("common.close") {
                 dismiss()
             }
             .buttonStyle(.glassProminent)

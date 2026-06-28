@@ -157,6 +157,10 @@ final class ProfileEditViewModel {
                 container.currentUser = user
             }
 
+            // Write-through: ревалидация дёргает getCurrentUser и записывает
+            // свежий profile в SQLite, чтобы следующий cold-start показал его сразу.
+            await container.revalidateCurrentUser()
+
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -213,7 +217,7 @@ final class ProfileEditViewModel {
         do {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data) else {
-                errorMessage = "Не удалось прочитать выбранное изображение"
+                errorMessage = String(localized: "profile.edit.error.read_image")
                 showError = true
                 return
             }
@@ -235,7 +239,7 @@ final class ProfileEditViewModel {
         }
 
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            errorMessage = "Ошибка обработки изображения"
+            errorMessage = String(localized: "profile.edit.error.process_image")
             showError = true
             return
         }
@@ -248,6 +252,8 @@ final class ProfileEditViewModel {
             )
             try await userService.setProfilePicture(fileID: fileID)
             await loadProfile()
+            // Write-through: новый аватар попадает в SQLite-кеш.
+            await container.revalidateCurrentUser()
         } catch {
             errorMessage = error.localizedDescription
             showError = true

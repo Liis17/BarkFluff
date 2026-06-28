@@ -5,7 +5,7 @@
 //  Enum для шагов регистрации
 //
 
-import Foundation
+import SwiftUI
 
 /// Шаги регистрации (9 шагов)
 enum RegistrationStep: Int, CaseIterable, Identifiable {
@@ -21,51 +21,51 @@ enum RegistrationStep: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
-    /// Заголовок шага
-    var title: String {
+    /// Локализованный заголовок шага
+    var title: LocalizedStringKey {
         switch self {
         case .personalInfo:
-            return "Личные данные"
+            return "auth.register.step.personal_info.title"
         case .username:
-            return "Имя пользователя"
+            return "auth.register.step.username.title"
         case .email:
-            return "Email"
+            return "auth.register.step.email.title"
         case .confirmEmail:
-            return "Подтверждение"
+            return "auth.register.step.confirm_email.title"
         case .password:
-            return "Пароль"
+            return "auth.register.step.password.title"
         case .avatar:
-            return "Аватар"
+            return "auth.register.step.avatar.title"
         case .bio:
-            return "О себе"
+            return "auth.register.step.bio.title"
         case .twoFA:
-            return "Двухфакторная аутентификация"
+            return "auth.register.step.two_fa.title"
         case .completion:
-            return "Готово!"
+            return "auth.register.step.completion.header"
         }
     }
 
-    /// Подзаголовок шага
-    var subtitle: String {
+    /// Локализованный подзаголовок шага
+    var subtitle: LocalizedStringKey {
         switch self {
         case .personalInfo:
-            return "Как вас зовут?"
+            return "auth.register.step.personal_info.subtitle"
         case .username:
-            return "Выберите уникальное имя пользователя"
+            return "auth.register.step.username.subtitle"
         case .email:
-            return "Укажите ваш email"
+            return "auth.register.step.email.subtitle"
         case .confirmEmail:
-            return "Введите код из письма"
+            return "auth.register.step.confirm_email.subtitle"
         case .password:
-            return "Придумайте надёжный пароль"
+            return "auth.register.step.password.subtitle"
         case .avatar:
-            return "Загрузите фото профиля"
+            return "auth.register.step.avatar.subtitle"
         case .bio:
-            return "Расскажите о себе"
+            return "auth.register.step.bio.subtitle"
         case .twoFA:
-            return "Добавьте дополнительную защиту"
+            return "auth.register.step.two_fa.subtitle"
         case .completion:
-            return "Аккаунт создан"
+            return "auth.register.step.completion.subtitle_header"
         }
     }
 

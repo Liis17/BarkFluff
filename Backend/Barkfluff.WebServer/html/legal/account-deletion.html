@@ -5,537 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Удаление аккаунта — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg-0: #14070a; --bg-1: #1c0d0a; --bg-2: #241310; --bg-3: #2d1914;
-      --line: rgba(255, 240, 220, 0.08);
-      --line-strong: rgba(255, 240, 220, 0.14);
-      --ink: #fef6ea; --ink-dim: #c9a893; --ink-mute: #8a6a5b;
-      --brand: #ff7a29; --brand-2: #e25a12; --brand-deep: #8a2e06;
-      --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
-      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { min-height: 100%; }
-    body {
-      background: var(--bg-1); color: var(--ink);
-      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-      font-feature-settings: "ss01", "cv11";
-      -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.65;
-    }
-    .bg-mesh {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
-        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
-        radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
-        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
-    }
-    .bg-grain {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      opacity: 0.22; mix-blend-mode: overlay;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-    }
-    .grid-overlay {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background-image:
-        linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
-      background-size: 80px 80px;
-      mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
-      -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
-    }
-    .page { position: relative; z-index: 2; }
-    .legal-page { max-width: 920px; margin: 0 auto; padding: 40px 32px 60px; }
-
-    .legal-topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
-    }
-    .brand-mark {
-      display: inline-flex; align-items: center; gap: 10px;
-      font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
-      color: var(--ink); text-decoration: none;
-    }
-    .brand-mark .glyph {
-      width: 28px; height: 28px; border-radius: 8px;
-      background: linear-gradient(135deg, #ff8a3c, #c23f07);
-      display: grid; place-items: center; position: relative;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(255,122,41,0.5);
-    }
-    .brand-mark .glyph::before {
-      content: ""; position: absolute; inset: 0; border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.18);
-    }
-    .brand-mark .glyph svg { width: 16px; height: 16px; fill: #fff; }
-
-    .back-link {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 14px; border-radius: 12px;
-      background: rgba(255,240,220,0.04); border: 1px solid var(--line-strong);
-      color: var(--ink-dim); text-decoration: none; font-size: 13px; font-weight: 600;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-    }
-    .back-link:hover { color: var(--ink); background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
-    .back-link svg { width: 14px; height: 14px; }
-
-    .legal-nav {
-      display: flex; flex-wrap: wrap; gap: 6px; padding: 6px;
-      background: rgba(10,5,6,0.5); border: 1px solid var(--line);
-      border-radius: 14px; margin-bottom: 28px;
-    }
-    .legal-nav a {
-      flex: 1 1 auto; min-width: 140px;
-      padding: 10px 14px; border-radius: 10px;
-      font-size: 12.5px; font-weight: 600;
-      color: var(--ink-mute); text-decoration: none; text-align: center;
-      transition: background 0.2s, color 0.2s;
-    }
-    .legal-nav a:hover { color: var(--ink-dim); background: rgba(255,240,220,0.04); }
-    .legal-nav a.active {
-      color: #ffb47a;
-      background: rgba(255,122,41,0.12);
-      box-shadow: inset 0 0 0 1px rgba(255,122,41,0.25);
-    }
-
-    .legal-card {
-      background: linear-gradient(180deg, rgba(45,25,20,0.55), rgba(22,11,9,0.55));
-      border: 1px solid var(--line); border-radius: 24px;
-      padding: 40px 44px; box-shadow: var(--shadow-card); position: relative;
-    }
-    .legal-card::before {
-      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-      background: linear-gradient(135deg, rgba(255,122,41,0.18), transparent 35%, transparent 65%, rgba(255,122,41,0.08));
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
-    }
-
-    .legal-header { padding-bottom: 24px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
-    .legal-eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
-      color: #ffb47a; padding: 5px 11px; border-radius: 999px;
-      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
-      margin-bottom: 16px;
-    }
-    .legal-title {
-      font-size: clamp(28px, 4vw, 40px); font-weight: 800;
-      line-height: 1.1; letter-spacing: -0.02em; color: var(--ink);
-    }
-    .legal-meta {
-      display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px;
-      font-size: 12px; color: var(--ink-mute);
-    }
-    .legal-meta span {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 10px; border-radius: 999px;
-      background: rgba(255,240,220,0.04); border: 1px solid var(--line);
-    }
-    .legal-meta b { color: var(--ink-dim); font-weight: 700; }
-
-    .legal-content { color: var(--ink-dim); font-size: 15px; line-height: 1.7; }
-    .legal-content h2 {
-      font-size: 22px; font-weight: 800; letter-spacing: -0.01em;
-      color: var(--ink); margin: 36px 0 14px;
-    }
-    .legal-content h2:first-child { margin-top: 0; }
-    .legal-content h3 {
-      font-size: 17px; font-weight: 700; color: var(--ink); margin: 26px 0 10px;
-    }
-    .legal-content h4 {
-      font-size: 14px; font-weight: 700; color: #ffb47a; margin: 20px 0 8px;
-      letter-spacing: 0.01em;
-    }
-    .legal-content p { margin: 10px 0; }
-    .legal-content ul, .legal-content ol { margin: 10px 0; padding-left: 22px; }
-    .legal-content li { margin: 6px 0; }
-    .legal-content strong { color: var(--ink); font-weight: 700; }
-    .legal-content em { color: var(--ink-dim); font-style: italic; }
-    .legal-content a {
-      color: #ffb47a; text-decoration: none;
-      border-bottom: 1px dashed rgba(255,180,122,0.4);
-      transition: color 0.2s, border-color 0.2s;
-    }
-    .legal-content a:hover { color: #ffd1a8; border-bottom-color: #ffd1a8; }
-
-    .legal-content code {
-      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
-      background: rgba(0,0,0,0.45); padding: 2px 7px; border-radius: 6px;
-      color: #f4c48a; border: 1px solid var(--line);
-    }
-    .legal-content pre {
-      background: rgba(0,0,0,0.5); border: 1px solid var(--line);
-      border-radius: 12px; padding: 16px; overflow-x: auto; margin: 16px 0;
-      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.55;
-      color: #f4c48a;
-    }
-    .legal-content pre code { background: transparent; padding: 0; border: none; color: inherit; font-size: inherit; }
-
-    .legal-content blockquote {
-      border-left: 3px solid var(--brand); padding: 14px 18px; margin: 18px 0;
-      background: rgba(255,122,41,0.06); border-radius: 0 12px 12px 0;
-      color: var(--ink-dim);
-    }
-    .legal-content blockquote p { margin: 6px 0; }
-    .legal-content blockquote strong { color: var(--ink); }
-
-    .legal-content table {
-      width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0;
-      background: rgba(10,5,6,0.45); border: 1px solid var(--line);
-      border-radius: 12px; overflow: hidden; font-size: 13.5px;
-    }
-    .legal-content th, .legal-content td {
-      padding: 12px 14px; text-align: left;
-      border-bottom: 1px solid var(--line); vertical-align: top;
-    }
-    .legal-content th {
-      background: rgba(255,122,41,0.08); color: var(--ink); font-weight: 700;
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-    }
-    .legal-content tr:last-child td { border-bottom: none; }
-    .legal-content tr:hover td { background: rgba(255,240,220,0.025); }
-
-    .legal-footer {
-      margin-top: 28px; padding: 20px 4px;
-      display: flex; flex-wrap: wrap; gap: 14px;
-      align-items: center; justify-content: space-between;
-      font-size: 12px; color: var(--ink-mute);
-    }
-    .legal-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
-    .legal-footer-links a {
-      color: var(--ink-dim); text-decoration: none; transition: color 0.2s;
-    }
-    .legal-footer-links a:hover { color: var(--ink); }
-
-    @media (max-width: 700px) {
-      .legal-page { padding: 24px 16px 40px; }
-      .legal-card { padding: 24px 20px; border-radius: 18px; }
-      .legal-content { font-size: 14px; }
-      .legal-content h2 { font-size: 19px; }
-      .legal-content h3 { font-size: 15.5px; }
-      .legal-content table { font-size: 12.5px; }
-      .legal-content th, .legal-content td { padding: 10px 12px; }
-      .legal-content pre, .legal-content code { font-size: 12px; }
-      .legal-nav a { min-width: 0; padding: 9px 10px; font-size: 11.5px; }
-      .legal-meta { font-size: 11px; }
-    }
-    @supports (padding: max(0px)) {
-      @media (max-width: 700px) {
-        .legal-page {
-          padding-left: max(16px, env(safe-area-inset-left));
-          padding-right: max(16px, env(safe-area-inset-right));
-        }
-      }
-    }
+    :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
+    main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
+    header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+    a { color:var(--brand); text-decoration:none; }
+    nav { margin:24px 0; padding:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); }
+    nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
+    nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
+    article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
+    h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
+    h2 { margin-top:32px; font-size:22px; }
+    p, li, td { color:var(--muted); }
+    code { color:#ffd0a0; background:rgba(0,0,0,.35); border:1px solid var(--line); border-radius:6px; padding:1px 5px; }
+    table { width:100%; border-collapse:collapse; margin:16px 0; }
+    th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
+    th { color:var(--text); background:rgba(255,122,41,.08); }
+    footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
   </style>
 </head>
 <body>
-  <div class="bg-mesh"></div>
-  <div class="grid-overlay"></div>
-  <div class="bg-grain"></div>
+  <main>
+    <header>
+      <a href="/"><strong>barkfluff</strong></a>
+      <a href="/">На главную</a>
+    </header>
+    <nav>
+      <a href="/legal/privacy-policy">Конфиденциальность</a>
+      <a href="/legal/terms-of-service">Условия использования</a>
+      <a href="/legal/account-deletion" class="active">Удаление аккаунта</a>
+      <a href="/legal/encryption">Шифрование</a>
+    </nav>
+    <article>
+      <h1>Политика удаления аккаунта</h1>
+      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
 
-  <div class="page">
-    <div class="legal-page">
+      <h2>1. Введение</h2>
+      <p>Эта страница описывает, как запросить удаление аккаунта Barkfluff и какие категории данных обрабатываются при таком запросе.</p>
 
-      <header class="legal-topbar">
-        <a href="/" class="brand-mark">
-          <span class="glyph">
-            <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
-          </span>
-          <span>barkfluff</span>
-        </a>
-        <a href="/" class="back-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          На главную
-        </a>
-      </header>
+      <h2>2. Как запросить удаление аккаунта</h2>
+      <p>Отправьте запрос на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a> с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
+      <ul>
+        <li>username;</li>
+        <li>email, использованный при регистрации;</li>
+        <li>краткое описание запроса;</li>
+        <li>дополнительные сведения для подтверждения владения аккаунтом, если доступа к email нет.</li>
+      </ul>
+      <p>Ответ по запросам удаления: до 7 рабочих дней.</p>
 
-      <nav class="legal-nav">
-        <a href="/legal/privacy-policy">Конфиденциальность</a>
-        <a href="/legal/terms-of-service">Условия использования</a>
-        <a href="/legal/account-deletion" class="active">Удаление аккаунта</a>
-        <a href="/legal/encryption">Шифрование</a>
-      </nav>
+      <h2>3. Какие данные относятся к аккаунту</h2>
+      <table>
+        <thead><tr><th>Категория</th><th>Примеры</th><th>Сервис</th></tr></thead>
+        <tbody>
+          <tr><td>Профиль</td><td>username, email, имя, фамилия, био, аватар, постер, настройки приватности</td><td>Users, Files</td></tr>
+          <tr><td>Аутентификация</td><td>хеш пароля, 2FA-настройки, коды подтверждения, refresh-токены</td><td>Identity</td></tr>
+          <tr><td>Устройства</td><td>Device ID, имя устройства, ОС, приложение, Firebase token, активные сессии</td><td>Users, Identity</td></tr>
+          <tr><td>Сообщения</td><td>обычные сообщения, encrypted-сообщения, read receipts, чаты</td><td>Messages</td></tr>
+          <tr><td>Файлы</td><td>аватары, постеры, вложения, превью</td><td>Files / Minio</td></tr>
+          <tr><td>Онлайн-статус</td><td>статус «в сети», last seen</td><td>Onliner</td></tr>
+        </tbody>
+      </table>
 
-      <article class="legal-card">
-        <div class="legal-header">
-          <span class="legal-eyebrow">Юридическая информация</span>
-          <h1 class="legal-title">Политика удаления аккаунта</h1>
-          <div class="legal-meta">
-            <span><b>Действует с</b>&nbsp;24 января 2026 г.</span>
-            <span><b>Обновлено</b>&nbsp;14 мая 2026 г.</span>
-          </div>
-        </div>
+      <h2>4. Что происходит с сообщениями</h2>
+      <ul>
+        <li>Обычные сообщения поддерживают удаление через Messages API.</li>
+        <li>Приватные encrypted-сообщения при удалении помечаются как удаленные, а шифротекст очищается.</li>
+        <li>Секретные сообщения не сохраняются как обычная история на сервере: сервер ретранслирует envelope и временно буферизует его до доставки или истечения TTL.</li>
+        <li>Если сообщение уже доставлено другому пользователю или включено в историю чата, обработка запроса учитывает целостность истории для других участников и применимые юридические обязанности.</li>
+      </ul>
 
-        <div class="legal-content">
-          <h2>1. Введение</h2>
-          <p>В Barkfluff мы уважаем ваше право на контроль над персональными данными. В соответствии с требованиями <strong>GDPR</strong> и других законов о защите данных, вы имеете право в любое время удалить свой аккаунт и связанные с ним данные.</p>
-          <p>Настоящий документ подробно описывает:</p>
-          <ul>
-            <li>Как удалить свой аккаунт</li>
-            <li>Какие данные удаляются и какие сохраняются (и почему)</li>
-            <li>Возможность восстановления аккаунта</li>
-            <li>Опции полного удаления всех данных</li>
-          </ul>
+      <h2>5. Экспорт данных перед удалением</h2>
+      <p>В Barkfluff есть gRPC-метод <code>Users.ExportData</code>. Он формирует JSON-данные:</p>
+      <ul>
+        <li><code>profile.json</code> — профиль пользователя;</li>
+        <li><code>messages.json</code> — сообщения и чаты, где пользователь является участником;</li>
+        <li><code>files.json</code> — метаданные файлов, связанных с профилем и сообщениями.</li>
+      </ul>
+      <p>Если вам нужен экспорт перед удалением, укажите это в обращении на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
 
-          <h2>2. Как удалить аккаунт</h2>
+      <h2>6. Частичное удаление и отзыв доступа</h2>
+      <ul>
+        <li>Сообщения можно удалять через функции клиента, использующие Messages API.</li>
+        <li>Активные сессии можно завершать через управление устройствами.</li>
+        <li>Firebase token хранится на устройстве в Users.UserDevices и используется для push-уведомлений.</li>
+        <li>Аватар и постер профиля меняются или очищаются через функции профиля и персонализации.</li>
+      </ul>
 
-          <h3>2.1 Через клиентское приложение</h3>
-          <p><strong>Доступно во всех нативных клиентах</strong> (Windows WPF, Android, macOS) и в веб-клиенте:</p>
-          <ol>
-            <li>Откройте <strong>Настройки</strong></li>
-            <li>Перейдите в раздел <strong>Аккаунт</strong></li>
-            <li>Прокрутите вниз до секции <strong>Удаление аккаунта</strong></li>
-            <li>Нажмите кнопку <strong>«Удалить мой аккаунт»</strong></li>
-            <li>Подтвердите действие, введя свой <strong>пароль</strong></li>
-            <li>Прочитайте предупреждение о последствиях удаления</li>
-            <li>Нажмите <strong>«Да, удалить навсегда»</strong></li>
-          </ol>
-          <p><em>Конкретное расположение пунктов меню может незначительно отличаться между платформами, но шаги одинаковы.</em></p>
-
-          <h3>2.2 Через API (для разработчиков)</h3>
-          <p>Открытые .proto-контракты доступны на <a href="https://developers.barkfluff.com" target="_blank">developers.barkfluff.com</a>. gRPC-метод удаления аккаунта расположен в Identity-сервисе:</p>
-          <pre><code>service IdentityServerApi {
-  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
-}
-
-message DeleteAccountRequest {
-  string password = 1; // Подтверждение пароля
-  string reason = 2;   // Опциональная причина удаления
-}</code></pre>
-
-          <h3>2.3 Через службу поддержки</h3>
-          <p>Если у вас нет доступа к аккаунту (забыт пароль, утерян доступ к email):</p>
-          <ol>
-            <li>Отправьте запрос на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
-            <li>Укажите:
-              <ul>
-                <li>Имя пользователя (Username)</li>
-                <li>Email, использованный при регистрации</li>
-                <li>Причину, по которой вы не можете войти</li>
-                <li>Доказательства владения аккаунтом (опционально: скриншоты, информация о последних сообщениях)</li>
-              </ul>
-            </li>
-            <li>Мы проверим запрос и удалим аккаунт в течение <strong>7 рабочих дней</strong></li>
-          </ol>
-
-          <h2>3. Двухэтапный процесс удаления</h2>
-          <p>Barkfluff использует <strong>двухэтапную систему удаления</strong> для защиты от случайного удаления и обеспечения возможности восстановления.</p>
-
-          <h3>Этап 1: Soft Delete — 30 дней</h3>
-          <p><strong>Что происходит:</strong></p>
-          <ul>
-            <li>Аккаунт помечается флагом <code>IsDeleted = true</code> в базе данных</li>
-            <li>Вход в систему <strong>заблокирован</strong></li>
-            <li>Ваш профиль <strong>скрыт</strong> от других пользователей</li>
-            <li>Вы <strong>не отображаетесь</strong> в поиске пользователей</li>
-            <li>Онлайн-статус <strong>не обновляется</strong></li>
-            <li>Push-уведомления о новых сообщениях <strong>не отправляются</strong></li>
-          </ul>
-
-          <p><strong>Что НЕ происходит:</strong></p>
-          <ul>
-            <li>Данные <strong>не удаляются</strong> физически (остаются в базе данных)</li>
-            <li>Сообщения <strong>не удаляются</strong> (другие участники чатов всё ещё видят их)</li>
-            <li>Файлы <strong>не удаляются</strong> из Minio</li>
-          </ul>
-
-          <p><strong>Период восстановления:</strong> 30 дней с момента удаления.</p>
-
-          <p><strong>Как восстановить аккаунт:</strong></p>
-          <ol>
-            <li>Отправьте запрос на <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
-            <li>Укажите Username, Email и причину восстановления (опционально)</li>
-            <li>Мы проверим запрос и <strong>восстановим аккаунт в течение 48 часов</strong></li>
-          </ol>
-
-          <h3>Этап 2: Hard Delete — после 30 дней</h3>
-          <p>По истечении 30-дневного периода начинается <strong>автоматическое необратимое удаление данных</strong>.</p>
-
-          <p><strong>Что удаляется полностью:</strong></p>
-          <table>
-            <thead>
-              <tr><th>Данные</th><th>Статус</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><strong>Данные аутентификации (Identity)</strong></td><td>Удалены: Password Hash, Refresh Tokens, OTP-секреты, коды подтверждения</td></tr>
-              <tr><td><strong>Профиль (Users.UserProfiles)</strong></td><td>Удалён: Username, FirstName, LastName, Bio, Email</td></tr>
-              <tr><td><strong>Аватар и постер</strong></td><td>Удалены из Minio + метаданные из PostgreSQL</td></tr>
-              <tr><td><strong>Активные сессии (Identity.RefreshTokens)</strong></td><td>Удалены: Refresh Tokens, Device IDs</td></tr>
-              <tr><td><strong>Зарегистрированные устройства (Users.UserDevices)</strong></td><td>Удалены: названия, push-токены, OS, Location</td></tr>
-              <tr><td><strong>Личные файлы</strong></td><td>Удалены: файлы, загруженные только вами и не прикреплённые к сообщениям</td></tr>
-              <tr><td><strong>Настройки конфиденциальности</strong></td><td>Удалены</td></tr>
-              <tr><td><strong>Онлайн-статус (Onliner)</strong></td><td>Удалён</td></tr>
-            </tbody>
-          </table>
-
-          <p><strong>Что сохраняется:</strong></p>
-          <table>
-            <thead>
-              <tr><th>Данные</th><th>Причина</th><th>Что изменяется</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><strong>Сообщения в групповых чатах</strong></td><td>Целостность истории чатов для других участников</td><td><code>SenderId</code> заменяется на <code>NULL</code> или отображается как <strong>[Удалённый пользователь]</strong></td></tr>
-              <tr><td><strong>Сообщения в приватных чатах</strong></td><td>Доступ к истории для второго участника</td><td><code>SenderId</code> заменяется на <code>NULL</code>, отображается как <strong>[Удалённый пользователь]</strong></td></tr>
-              <tr><td><strong>Вложения в сообщениях</strong></td><td>Целостность сообщений</td><td>Остаются доступными для других участников чатов</td></tr>
-              <tr><td><strong>Журналы безопасности (180 дней)</strong></td><td>Требования законодательства, расследование инцидентов</td><td>Ничего не меняется</td></tr>
-            </tbody>
-          </table>
-
-          <p><strong>Почему сообщения сохраняются?</strong></p>
-          <ul>
-            <li><strong>Технические причины:</strong> удаление всех ваших сообщений нарушит <strong>целостность истории чатов</strong> для других участников</li>
-            <li><strong>Юридические причины:</strong> некоторые юрисдикции требуют <strong>хранения коммуникаций</strong> в течение определённого периода</li>
-          </ul>
-
-          <h2>4. Экспорт данных перед удалением</h2>
-          <p>Перед удалением аккаунта мы <strong>настоятельно рекомендуем</strong> экспортировать свои данные.</p>
-
-          <h3>4.1 Как экспортировать данные</h3>
-          <ol>
-            <li>Откройте <strong>Настройки → Аккаунт → Конфиденциальность</strong></li>
-            <li>Нажмите <strong>«Экспортировать мои данные»</strong></li>
-            <li>Дождитесь подготовки архива (может занять несколько минут)</li>
-            <li>Скачайте ZIP-файл</li>
-          </ol>
-
-          <h3>4.2 Что входит в экспорт</h3>
-          <p><strong>Формат:</strong> JSON + вложенные файлы (ZIP-архив)</p>
-          <p><strong>Содержимое:</strong></p>
-          <ul>
-            <li>Данные профиля (userId, username, email, firstName, lastName, bio)</li>
-            <li>Все ваши сообщения с текстом и вложениями</li>
-            <li>Список чатов с участниками</li>
-            <li>Загруженные файлы со ссылками для скачивания</li>
-            <li>История сессий (устройства)</li>
-          </ul>
-
-          <h2>5. Последствия удаления аккаунта</h2>
-
-          <h3>5.1 Что происходит с вашими данными</h3>
-          <table>
-            <thead>
-              <tr><th>Элемент</th><th>Последствие</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><strong>Вход в систему</strong></td><td>Невозможен (username и email освобождаются и могут быть зарегистрированы снова)</td></tr>
-              <tr><td><strong>Профиль</strong></td><td>Удалён, недоступен для поиска</td></tr>
-              <tr><td><strong>Аватар и постер</strong></td><td>Удалены</td></tr>
-              <tr><td><strong>Приватные сообщения</strong></td><td>Отображаются у других пользователей как <code>[Удалённый пользователь]</code></td></tr>
-              <tr><td><strong>Групповые сообщения</strong></td><td>Отображаются как <code>[Удалённый пользователь]</code></td></tr>
-              <tr><td><strong>Файлы в чатах</strong></td><td>Остаются доступными (опция полного удаления — по запросу)</td></tr>
-              <tr><td><strong>Активные сессии</strong></td><td>Все устройства разлогинены</td></tr>
-              <tr><td><strong>Push-уведомления (FCM)</strong></td><td>Отключаются, токен удаляется из CloudMessaging</td></tr>
-            </tbody>
-          </table>
-
-          <h3>5.2 Что происходит с чатами</h3>
-          <ul>
-            <li><strong>Приватные чаты:</strong> остаются в списке чатов у второго участника, но ваш профиль отображается как <code>[Удалённый пользователь]</code></li>
-            <li><strong>Групповые чаты:</strong> вы автоматически <strong>покидаете</strong> все групповые чаты, но сообщения остаются</li>
-          </ul>
-
-          <h3>5.3 Повторная регистрация</h3>
-          <ul>
-            <li>Вы <strong>можете зарегистрироваться снова</strong> с тем же email или username (после завершения hard-delete)</li>
-            <li>Вы <strong>не восстановите</strong> старые данные (сообщения, чаты, файлы)</li>
-            <li>Вы <strong>не сможете связать</strong> новый аккаунт со старым</li>
-          </ul>
-          <p><strong>Это будет полностью новый аккаунт без связи с предыдущим.</strong></p>
-
-          <h2>6. Частичное удаление данных</h2>
-          <p>Если вы не хотите удалять аккаунт полностью, но хотите удалить определённые данные:</p>
-
-          <h3>6.1 Удаление отдельных сообщений</h3>
-          <ol>
-            <li>Откройте чат</li>
-            <li>Нажмите и удерживайте сообщение</li>
-            <li>Выберите <strong>«Удалить»</strong></li>
-            <li>Выберите опцию:
-              <ul>
-                <li><strong>«Удалить для себя»</strong> — сообщение удаляется только у вас</li>
-                <li><strong>«Удалить для всех»</strong> — сообщение удаляется у всех участников (доступно в течение 48 часов после отправки)</li>
-              </ul>
-            </li>
-          </ol>
-
-          <h3>6.2 Удаление файлов</h3>
-          <ol>
-            <li>Откройте <strong>Настройки → Файлы и медиа</strong></li>
-            <li>Выберите файлы для удаления</li>
-            <li>Нажмите <strong>«Удалить»</strong></li>
-          </ol>
-
-          <h3>6.3 Удаление устройства / выход из сессии</h3>
-          <p>Если потеряли доступ к одному из устройств — отзовите его сессию:</p>
-          <ol>
-            <li>Откройте <strong>Настройки → Безопасность → Активные сессии</strong></li>
-            <li>Найдите устройство в списке</li>
-            <li>Нажмите <strong>«Завершить сессию»</strong> — refresh-токен и push-токен будут удалены</li>
-          </ol>
-
-          <h2>7. Ответы на частые вопросы (FAQ)</h2>
-
-          <p><strong>Q1: Могу ли я восстановить аккаунт после hard-delete?</strong><br>
-          <strong>A:</strong> Нет, после hard-delete (через 30 дней) восстановление невозможно.</p>
-
-          <p><strong>Q2: Смогут ли другие пользователи видеть мои сообщения после удаления аккаунта?</strong><br>
-          <strong>A:</strong> Да, но ваше имя будет отображаться как <code>[Удалённый пользователь]</code>.</p>
-
-          <p><strong>Q3: Что происходит с групповыми чатами, которые я создал?</strong><br>
-          <strong>A:</strong> Администраторские права автоматически передаются следующему участнику.</p>
-
-          <p><strong>Q4: Удаляются ли мои данные из резервных копий?</strong><br>
-          <strong>A:</strong> Резервные копии удаляются в соответствии с нашей политикой хранения (обычно в течение 90 дней).</p>
-
-          <p><strong>Q5: Могу ли я удалить аккаунт, если забыл пароль?</strong><br>
-          <strong>A:</strong> Да, обратитесь в службу поддержки: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
-
-          <p><strong>Q6: Сколько времени занимает полное удаление?</strong><br>
-          <strong>A:</strong> Soft-delete — мгновенно. Hard-delete — автоматически через 30 дней.</p>
-
-          <p><strong>Q7: Останется ли FCM-токен в Firebase после удаления аккаунта?</strong><br>
-          <strong>A:</strong> Нет, токен удаляется из <code>Users.UserDevices</code> на этапе hard-delete и больше не используется CloudMessaging для рассылки push-уведомлений.</p>
-
-          <h2>8. Юридическая информация</h2>
-
-          <h3>8.1 Соответствие GDPR</h3>
-          <p>Настоящая Политика удаления разработана в соответствии с:</p>
-          <ul>
-            <li><strong>GDPR Article 17</strong> — Right to Erasure («Right to be Forgotten»)</li>
-            <li><strong>GDPR Article 20</strong> — Right to Data Portability</li>
-            <li><strong>CCPA</strong> — California Consumer Privacy Act</li>
-            <li><strong>ФЗ-152</strong> «О персональных данных» (Российская Федерация)</li>
-          </ul>
-
-          <h2>9. Контактная информация</h2>
-          <p><strong>По вопросам удаления аккаунта:</strong> <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></p>
-          <p><strong>Техническая поддержка:</strong> <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></p>
-          <p><strong>Время ответа:</strong> до 7 рабочих дней.</p>
-
-          <blockquote>
-            <p><strong>Спасибо, что были с Barkfluff!</strong></p>
-            <p>Мы уважаем ваше решение и сожалеем, что вы покидаете нас.</p>
-          </blockquote>
-          <p><em>Документ действителен с 24 января 2026 г.</em></p>
-        </div>
-      </article>
-
-      <footer class="legal-footer">
-        <div>© 2026 Barkfluff</div>
-        <div class="legal-footer-links">
-          <a href="/">Главная</a>
-          <a href="/legal/privacy-policy">Конфиденциальность</a>
-          <a href="/legal/terms-of-service">Условия</a>
-          <a href="/legal/account-deletion">Удаление аккаунта</a>
-          <a href="/legal/encryption">Шифрование</a>
-        </div>
-      </footer>
-
-    </div>
-  </div>
+      <h2>7. Контакты</h2>
+      <ul>
+        <li>Удаление и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+      </ul>
+    </article>
+    <footer>© 2026 Barkfluff</footer>
+  </main>
 </body>
 </html>

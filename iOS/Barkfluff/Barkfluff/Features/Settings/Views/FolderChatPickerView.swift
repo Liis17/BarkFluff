@@ -42,11 +42,13 @@ struct FolderChatPickerView: View {
                             Image(systemName: selectedChatIDs.contains(chat.id) ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(selectedChatIDs.contains(chat.id) ? Color.accentColor : .secondary)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(chat.title.isEmpty ? "Чат" : chat.title)
+                                Text(chat.title.isEmpty
+                                     ? String(localized: "common.chat")
+                                     : chat.title)
                                     .font(.body)
                                     .foregroundStyle(.primary)
                                 if chat.isGroupChat {
-                                    Text("Группа · \(chat.members.count) уч.")
+                                    Text("settings.chat_folders.picker.group_members \(chat.members.count)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -57,12 +59,14 @@ struct FolderChatPickerView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .searchable(text: $searchText, prompt: "Поиск чата")
-        .navigationTitle(selectedChatIDs.isEmpty ? "Выберите чаты" : "Выбрано: \(selectedChatIDs.count)")
+        .searchable(text: $searchText, prompt: Text("settings.chat_folders.picker.search"))
+        .navigationTitle(selectedChatIDs.isEmpty
+                         ? Text("settings.chat_folders.picker.title")
+                         : Text("settings.chat_folders.picker.selected \(selectedChatIDs.count)"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Готово") { dismiss() }
+                Button("common.done") { dismiss() }
             }
         }
         .task { await load() }
@@ -93,7 +97,7 @@ struct FolderChatPickerView: View {
             chats = page.items
         } catch {
             if chats.isEmpty {
-                errorMessage = "Не удалось загрузить чаты"
+                errorMessage = String(localized: "settings.chat_folders.picker.load_failed")
             }
         }
     }

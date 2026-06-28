@@ -22,7 +22,8 @@ public class Program
 
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.FastAuth");
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -37,7 +38,8 @@ public class Program
 
         var app = builder.Build();
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
 
         app.UseRouting();
 

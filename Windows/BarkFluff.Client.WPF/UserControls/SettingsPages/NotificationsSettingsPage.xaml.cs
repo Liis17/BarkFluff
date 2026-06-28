@@ -12,7 +12,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     /// </summary>
     public partial class NotificationsSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Уведомления и звук";
+        public override string TitleKey => "L_Settings_Notifications_Title";
 
         private static readonly SolidColorBrush AccentBrush = new(Color.FromRgb(0xB3, 0x58, 0x44));
         private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);

@@ -12,7 +12,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     /// </summary>
     public partial class ProfileSettingsPage : BaseSettingsPage
     {
-        public override string Title => "Профиль";
+        public override string TitleKey => "L_Settings_Sidebar_Profile";
 
         public ProfileSettingsPage()
         {
@@ -71,7 +71,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 App.GParam.FirstName = FirstNameBox.Text;
                 App.GParam.LastName = LastNameBox.Text;
                 AvatarNameText.Text = $"{FirstNameBox.Text} {LastNameBox.Text}".Trim();
-                StatusText.Text = "Имя обновлено";
+                StatusText.Text = L("L_Settings_Profile_NameUpdated");
             }
         }
 
@@ -80,16 +80,16 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             var username = UsernameBox.Text?.Trim();
             if (string.IsNullOrEmpty(username)) return;
 
-            StatusText.Text = "Сохранение...";
+            StatusText.Text = L("L_Common_Saving");
             var error = await App.ServerCommunication.ChangeUsername(username, App.GParam);
             if (error.IsSuccess)
             {
                 App.GParam.UserName = username;
-                StatusText.Text = "Имя пользователя обновлено";
+                StatusText.Text = L("L_Settings_Profile_UsernameUpdated");
             }
             else
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
             }
         }
 
@@ -97,16 +97,16 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         {
             var bio = BioBox.Text ?? "";
 
-            StatusText.Text = "Сохранение...";
+            StatusText.Text = L("L_Common_Saving");
             var error = await App.ServerCommunication.ChangeBio(bio, App.GParam);
             if (error.IsSuccess)
             {
                 App.GParam.Description = bio;
-                StatusText.Text = "Описание обновлено";
+                StatusText.Text = L("L_Settings_Profile_BioUpdated");
             }
             else
             {
-                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
             }
         }
 
@@ -114,30 +114,33 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp",
-                Title = "Выберите аватар"
+                Filter = L("L_Settings_Profile_AvatarDialog_Filter"),
+                Title = L("L_Settings_Profile_AvatarDialog_Title")
             };
 
             if (dialog.ShowDialog() != true) return;
 
             try
             {
-                StatusText.Text = "Загрузка аватара...";
+                StatusText.Text = L("L_Settings_Profile_UploadingAvatar");
                 var bytes = await File.ReadAllBytesAsync(dialog.FileName);
                 var error = await App.ServerCommunication.UploadUserAvatarAsync(App.GParam, bytes);
                 if (error.IsSuccess)
                 {
-                    StatusText.Text = "Аватар обновлён";
+                    StatusText.Text = L("L_Settings_Profile_AvatarUpdated");
                 }
                 else
                 {
-                    StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+                    StatusText.Text = L("L_Common_Error_Prefix") + error.ErrorMessage;
                 }
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Ошибка: {ex.Message}";
+                StatusText.Text = L("L_Common_Error_Prefix") + ex.Message;
             }
         }
+
+        private static string L(string key)
+            => Application.Current?.TryFindResource(key) as string ?? key;
     }
 }

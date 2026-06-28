@@ -101,7 +101,7 @@ final class ForwardChatPickerViewModel {
 
         let failures = chatIDs.count - successes
         if successes == 0 && failures > 0 {
-            errorMessage = "Не удалось переслать"
+            errorMessage = String(localized: "conversation.errors.forward_failed")
         }
         return ForwardResult(success: successes, failure: failures)
     }

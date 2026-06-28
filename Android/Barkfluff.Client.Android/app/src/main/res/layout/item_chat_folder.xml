@@ -8,7 +8,7 @@
     android:clickable="true"
     android:focusable="true"
     app:cardBackgroundColor="?attr/colorSurfaceContainer"
-    app:cardCornerRadius="14dp"
+    app:cardCornerRadius="@dimen/shape_corner_medium"
     app:cardElevation="0dp"
     app:strokeWidth="0dp">
 
@@ -28,7 +28,7 @@
             android:gravity="center"
             android:layout_marginEnd="14dp"
             android:textSize="24sp"
-            android:background="@drawable/bg_circle_btn" />
+            android:background="@drawable/background_color_indicator" />
 
         <LinearLayout
             android:layout_width="0dp"

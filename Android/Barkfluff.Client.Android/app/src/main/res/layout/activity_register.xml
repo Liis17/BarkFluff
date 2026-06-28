@@ -53,7 +53,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="8dp"
-                android:text="Создание нового аккаунта"
+                android:text="@string/register_title"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorPrimary" />
 
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="15dp"
-                android:text="Шаг 1 из 9"
+                android:text="@string/register_step_indicator"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -101,11 +101,11 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/nextButton"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="Далее"
+                android:layout_height="@dimen/button_height_default"
+                android:text="@string/btn_next"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
-                app:cornerRadius="28dp" />
+                app:cornerRadius="@dimen/shape_corner_full" />
         </LinearLayout>
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

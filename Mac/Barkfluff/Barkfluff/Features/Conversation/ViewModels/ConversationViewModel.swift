@@ -614,7 +614,7 @@ final class ConversationViewModel {
             fileName: "",
             fileSize: 0,
             forwarded: ForwardedMessagePayload(
-                authorName: original.senderName ?? "Неизвестный",
+                authorName: original.senderName ?? String(localized: "common.unknown_user"),
                 originalMessageID: original.id,
                 text: snippet,
                 attachments: []
@@ -738,7 +738,7 @@ final class ConversationViewModel {
                 }
             }
         } catch {
-            errorMessage = "Не удалось получить информацию о чате"
+            errorMessage = String(localized: "conversation.errors.chat_info_failed")
         }
     }
 

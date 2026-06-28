@@ -161,6 +161,12 @@
 | `SendSecretMessage` | Отправить SignalMessage конкретному устройству. Буферизуется в Redis (24ч), push без содержимого |
 | `AckSecretMessage` | Подтвердить доставку — сервер удаляет envelope из буфера |
 
+#### `MessagesServerApi` (service token)
+| RPC | Описание |
+|-----|----------|
+| `GetUserAllMessages` | Все сообщения + чаты пользователя для GDPR-экспорта |
+| `CheckChatMembership` | Батч-проверка членства: `user_id` + `chat_ids[]` (Guid-строки) → `member_chat_ids[]` (подмножество, где состоит). Невалидные Guid отбрасываются. Используется [[Backend/Onliner]] для typing |
+
 **Ключевые типы:** `Chat` (поля 9-11: chat_type, kdf_salt, passphrase_verifier — последние два только для PRIVATE), `ChatMember`, `OutgoingMessage` (text + files_ids), `ChatAttachmentInfo`. Для приватных используется `barkfluff.shared.EncryptedMessage`, для секретных — `barkfluff.shared.SecretEnvelope`.
 
 ---
@@ -236,9 +242,14 @@
 | `SetOnlineStatus` | unary | Установить статус "В сети" (heartbeat) |
 | `GetOnlineStatus` | unary | Получить статусы нескольких пользователей |
 | `ChangeUsersInSubscription` | unary | Обновить список пользователей в подписке (полная замена массива) |
+| `SetTypingStatus` | unary | Heartbeat «печатает» в `chat_id` (string/Guid, `action`: TYPING/CANCELLED); проверка членства + ретрансляция участникам |
+| `SubscribeToTyping` | server streaming | Подписка на `TypingEvent` по списку `chat_ids` (string/Guid); фильтр по членству |
+| `ChangeChatsInTypingSubscription` | unary | Обновить список чатов в typing-подписке (полная замена массива); фильтр по членству |
 
 **Enum `StatusTypeId`:** UNKNOWN, STATUS_ONLINE, STATUS_OFFLINE
+**Enum `TypingAction`:** TYPING_ACTION_UNKNOWN, TYPING_ACTION_TYPING, TYPING_ACTION_CANCELLED
 **`UserOnlineStatus`:** user_id + status + last_seen timestamp
+**`TypingEvent`:** chat_id (string) + user_id + action
 
 ---
 
@@ -330,7 +341,7 @@
 |-------|-----------------|-------------------|
 | `identity_api.proto` | `IdentityApi` | `IdentityServerApi` |
 | `users_api.proto` | `UsersApi` | `UsersServerApi` |
-| `messages_api.proto` | `MessagesApi` | — |
+| `messages_api.proto` | `MessagesApi` | `MessagesServerApi` |
 | `files_api.proto` | `FilesApi` | `FilesServerApi` |
 | `fast_auth_api.proto` | `FastAuthApi` | `FastAuthServerApi` |
 | `updates_api.proto` | `UpdatesApi` | — |

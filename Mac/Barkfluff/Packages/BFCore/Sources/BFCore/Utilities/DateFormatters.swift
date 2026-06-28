@@ -9,7 +9,7 @@ import Foundation
 
 /// Утилиты для форматирования дат
 public enum DateFormatterHelper {
-    /// Форматтер для отображения времени сообщений
+    /// Форматтер для отображения времени сообщений (системная локаль).
     nonisolated(unsafe) public static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
@@ -17,7 +17,7 @@ public enum DateFormatterHelper {
         return formatter
     }()
 
-    /// Форматтер для отображения даты сообщений
+    /// Форматтер для отображения даты сообщений (системная локаль).
     nonisolated(unsafe) public static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -25,7 +25,7 @@ public enum DateFormatterHelper {
         return formatter
     }()
 
-    /// Форматтер для отображения даты и времени
+    /// Форматтер для отображения даты и времени (системная локаль).
     nonisolated(unsafe) public static let dateTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -40,53 +40,96 @@ public enum DateFormatterHelper {
         return formatter
     }()
 
-    /// Форматтер для относительного отображения времени
-    nonisolated(unsafe) public static let relativeFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
+    // MARK: - Locale-aware форматтеры
 
-    /// Отформатировать дату для отображения в списке чатов
-    public static func formatForChatList(_ date: Date) -> String {
+    private static func makeTimeFormatter(locale: Locale) -> DateFormatter {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        f.locale = locale
+        return f
+    }
+
+    private static func makeDateFormatter(locale: Locale) -> DateFormatter {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .none
+        f.locale = locale
+        return f
+    }
+
+    private static func makeDateTimeFormatter(locale: Locale) -> DateFormatter {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        f.locale = locale
+        return f
+    }
+
+    /// Короткая дата с двузначным годом для списка чатов: «ДД.ММ.ГГ» в ru, «M/d/yy» в en.
+    private static func makeShortDateFormatter(locale: Locale) -> DateFormatter {
+        let f = DateFormatter()
+        f.locale = locale
+        f.setLocalizedDateFormatFromTemplate("ddMMyy")
+        return f
+    }
+
+    /// Отформатировать дату для отображения в списке чатов.
+    ///
+    /// Сегодня — только время («16:27»), вчера/позавчера — слово + время («Вчера 16:27»),
+    /// старше — короткая дата с двузначным годом («23.05.26»).
+    /// - Parameter locale: локаль для текстов и форматирования времени/даты.
+    public static func formatForChatList(_ date: Date, locale: Locale = .current) -> String {
         let calendar = Calendar.current
         let now = Date()
 
         if calendar.isDateInToday(date) {
-            return timeFormatter.string(from: date)
-        } else if calendar.isDateInYesterday(date) {
-            return "Вчера"
-        } else if let daysAgo = calendar.dateComponents([.day], from: date, to: now).day, daysAgo < 7 {
-            return relativeFormatter.localizedString(for: date, relativeTo: now)
-        } else {
-            return dateFormatter.string(from: date)
+            return makeTimeFormatter(locale: locale).string(from: date)
         }
+
+        let timeStr = makeTimeFormatter(locale: locale).string(from: date)
+
+        if calendar.isDateInYesterday(date) {
+            let word = String(localized: "bfcore.date.yesterday", bundle: .module, locale: locale)
+            return "\(word) \(timeStr)"
+        }
+
+        let startOfDate = calendar.startOfDay(for: date)
+        let startOfNow = calendar.startOfDay(for: now)
+        if calendar.dateComponents([.day], from: startOfDate, to: startOfNow).day == 2 {
+            let word = String(localized: "bfcore.date.day_before_yesterday", bundle: .module, locale: locale)
+            return "\(word) \(timeStr)"
+        }
+
+        return makeShortDateFormatter(locale: locale).string(from: date)
     }
 
-    /// Отформатировать дату для отображения в сообщении
-    public static func formatForMessage(_ date: Date) -> String {
+    /// Отформатировать дату для отображения в сообщении.
+    public static func formatForMessage(_ date: Date, locale: Locale = .current) -> String {
         let calendar = Calendar.current
 
         if calendar.isDateInToday(date) {
-            return timeFormatter.string(from: date)
+            return makeTimeFormatter(locale: locale).string(from: date)
         } else if calendar.isDateInYesterday(date) {
-            return "Вчера, \(timeFormatter.string(from: date))"
+            let time = makeTimeFormatter(locale: locale).string(from: date)
+            return String(localized: "bfcore.date.yesterday_at \(time)", bundle: .module, locale: locale)
         } else {
-            return dateTimeFormatter.string(from: date)
+            return makeDateTimeFormatter(locale: locale).string(from: date)
         }
     }
 
-    /// Отформатировать дату последней активности
-    public static func formatLastActive(_ date: Date) -> String {
+    /// Отформатировать дату последней активности.
+    public static func formatLastActive(_ date: Date, locale: Locale = .current) -> String {
         let calendar = Calendar.current
         let now = Date()
 
         if let minutes = calendar.dateComponents([.minute], from: date, to: now).minute, minutes < 5 {
-            return "В сети"
+            return String(localized: "bfcore.online.online", bundle: .module, locale: locale)
         } else if calendar.isDateInToday(date) {
-            return "Сегодня, \(timeFormatter.string(from: date))"
+            let time = makeTimeFormatter(locale: locale).string(from: date)
+            return String(localized: "bfcore.date.today_at \(time)", bundle: .module, locale: locale)
         } else {
-            return dateTimeFormatter.string(from: date)
+            return makeDateTimeFormatter(locale: locale).string(from: date)
         }
     }
 }

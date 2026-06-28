@@ -21,11 +21,11 @@ struct PersonalInfoStepView: View {
         VStack(spacing: 16) {
             // Имя
             VStack(alignment: .leading, spacing: 4) {
-                Text("Имя")
+                Text("auth.register.step.personal_info.first_name.label")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                TextField("Иван", text: $data.firstName)
+                TextField("auth.register.step.personal_info.first_name.placeholder", text: $data.firstName)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.givenName)
                     .focused($focusedField, equals: .firstName)
@@ -33,11 +33,11 @@ struct PersonalInfoStepView: View {
 
             // Фамилия
             VStack(alignment: .leading, spacing: 4) {
-                Text("Фамилия")
+                Text("auth.register.step.personal_info.last_name.label")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                TextField("Иванов", text: $data.lastName)
+                TextField("auth.register.step.personal_info.last_name.placeholder", text: $data.lastName)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.familyName)
                     .focused($focusedField, equals: .lastName)

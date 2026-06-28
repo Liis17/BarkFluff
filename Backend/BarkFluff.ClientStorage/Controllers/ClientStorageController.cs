@@ -302,20 +302,31 @@ public class ClientStorageController : ControllerBase
 
         // Кеша нет → стримим напрямую из S3
         _logger.LogWarning("Кеш отсутствует для {ClientType} {Channel}, стриминг из S3", clientType, releaseChannel);
+        S3DownloadResult? result = null;
         try
         {
-            var rangeHeader = Request.Headers.Range.FirstOrDefault();
-            var result      = await _s3.DownloadAsync(clientFile.S3Key, rangeHeader);
-            return new FileStreamResult(result.Stream, clientFile.ContentType)
-            {
-                FileDownloadName      = clientFile.OriginalFileName,
-                EnableRangeProcessing = true
-            };
+            result = await _s3.DownloadAsync(clientFile.S3Key, Request.Headers.Range.FirstOrDefault());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка стриминга из S3 для {S3Key}", clientFile.S3Key);
+            _logger.LogError(ex, "Ошибка получения объекта из S3 для {S3Key}", clientFile.S3Key);
             return StatusCode(500, new { error = "Ошибка при скачивании файла" });
+        }
+
+        using (result)
+        {
+            Response.ContentType   = clientFile.ContentType;
+            Response.ContentLength = result.ContentLength;
+            Response.Headers["Content-Disposition"] = $"attachment; filename=\"{clientFile.OriginalFileName}\"";
+
+            if (!string.IsNullOrEmpty(result.ContentRange))
+            {
+                Response.StatusCode              = StatusCodes.Status206PartialContent;
+                Response.Headers["Content-Range"] = result.ContentRange;
+            }
+
+            await result.Stream.CopyToAsync(Response.Body);
+            return new EmptyResult();
         }
     }
 
@@ -337,6 +348,7 @@ public class ClientStorageController : ControllerBase
         var tempPath = Path.Combine(tempDir, s3Key);
         string checksum;
 
+        bool s3Succeeded = false;
         try
         {
             // 1) принимаем файл с попутным SHA-256
@@ -362,6 +374,7 @@ public class ClientStorageController : ControllerBase
                 tempPath,
                 s3Key,
                 file.ContentType ?? "application/octet-stream");
+            s3Succeeded = true;
         }
         catch (Amazon.S3.AmazonS3Exception s3ex)
         {
@@ -377,10 +390,14 @@ public class ClientStorageController : ControllerBase
         }
         finally
         {
-            try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); }
-            catch (Exception ex)
+            // На успешном пути temp отдаём фоновой задаче — она сама его удалит после прогрева кэша
+            if (!s3Succeeded)
             {
-                _logger.LogWarning(ex, "Не удалось удалить temp-файл {Path}", tempPath);
+                try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось удалить temp-файл {Path}", tempPath);
+                }
             }
         }
 
@@ -406,7 +423,7 @@ public class ClientStorageController : ControllerBase
         await _db.SaveChangesAsync();
 
         // Обновляем кеш асинхронно — не задерживаем ответ клиенту
-        _ = UpdateCacheInBackgroundAsync(s3Key, clientType, releaseChannel);
+        _ = UpdateCacheInBackgroundAsync(s3Key, clientType, releaseChannel, tempPath);
 
         return Ok(new
         {
@@ -418,8 +435,27 @@ public class ClientStorageController : ControllerBase
         });
     }
 
-    private async Task UpdateCacheInBackgroundAsync(string s3Key, ClientType clientType, ReleaseChannel channel)
+    private async Task UpdateCacheInBackgroundAsync(string s3Key, ClientType clientType, ReleaseChannel channel,
+        string? tempPath = null)
     {
+        if (tempPath != null && System.IO.File.Exists(tempPath))
+        {
+            try
+            {
+                await _cache.UpdateFromFileAsync(clientType, channel, tempPath);
+                _logger.LogInformation("Кеш обновлён из temp-файла: {ClientType} {Channel}", clientType, channel);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось обновить кеш из temp-файла, скачиваем из S3");
+            }
+            finally
+            {
+                try { System.IO.File.Delete(tempPath); } catch { }
+            }
+        }
+
         try
         {
             using var result = await _s3.DownloadAsync(s3Key);

@@ -48,6 +48,7 @@
             --msg-incoming-bg: var(--msg-in-bg);
             --msg-outgoing-bg: var(--msg-out-bg);
             --sidebar-width: 340px;
+            --chat-content-width: 800px;
         }
         [data-theme="dark"] {
             --bg: #141210;
@@ -166,64 +167,46 @@
         /* === SIDEBAR === */
 
         .sidebar {
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            bottom: 3px;
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
             background: var(--sidebar-bg);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            border-right: 1px solid var(--card-border);
+            /* M3 Expressive: corner.extra-large (20dp) для card-like панелей */
+            border-radius: 20px;
+            /* Elevation 2 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.10);
             display: flex;
             flex-direction: column;
-        }
-
-        .sidebar-header {
-            padding: 16px;
-            border-bottom: 1px solid var(--card-border);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .sidebar-header .logo-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        .sidebar-header .logo-text {
-            font-size: 18px;
-            font-weight: 700;
-            background: var(--logo-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            flex: 1;
+            z-index: 10;
         }
 
         /* === SIDEBAR NAV (floating) === */
 
-        .sidebar {
-            position: relative;
-        }
-
         .chat-list {
-            padding-bottom: 68px;
+            padding-bottom: 80px;
         }
 
         .sidebar-nav {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
             height: 60px;
             display: flex;
             background: var(--nav-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-top: 1px solid var(--card-border);
+            /* M3 Expressive: Floating Toolbar — pill shape (corner.full) */
+            border-radius: 9999px;
+            /* Elevation 3 */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 6px 18px rgba(0,0,0,0.12);
             z-index: 10;
+            overflow: hidden;
         }
 
         .nav-btn {
@@ -232,28 +215,47 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 3px;
+            gap: 4px;
             border: none;
             background: none;
             font-family: 'Inter', sans-serif;
             font-size: 11px;
+            font-weight: 500;
             color: var(--text-sub);
             cursor: pointer;
             padding: 6px;
             transition: color 0.2s;
         }
 
+        /* M3 Expressive: nav indicator pill под иконкой */
         .nav-btn .nav-icon {
-            font-size: 20px;
-            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 20px;
+            border-radius: 9999px;
+            transition: background 0.2s;
+        }
+
+        .nav-btn .nav-icon svg {
+            width: 22px;
+            height: 22px;
         }
 
         .nav-btn.active {
             color: var(--primary);
         }
 
+        .nav-btn.active .nav-icon {
+            background: var(--primary-alpha);
+        }
+
+        .nav-btn:hover:not(.active) .nav-icon {
+            background: rgba(0,0,0,0.05);
+        }
+
         .search-container {
-            padding: 12px 16px;
+            padding: 16px 16px 12px;
         }
 
         .search-input {
@@ -443,6 +445,21 @@
             background: var(--chat-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+            padding-left: calc(var(--sidebar-width) + 6px);
+        }
+
+        /* Контент чата над фоновыми слоями (.messages-bg-layer / .messages-bg-dim) */
+        .chat-area > .connection-banner,
+        .chat-area > .chat-header,
+        .chat-area > .pinned-bar,
+        .chat-area > .chat-empty,
+        .chat-area > .loading-messages,
+        .chat-area > .messages-area-wrap,
+        .chat-area > .input-bar {
+            position: relative;
+            z-index: 1;
         }
 
         .connection-banner {
@@ -489,12 +506,19 @@
         }
 
         .chat-header {
-            padding: 14px 20px;
-            border-bottom: 1px solid var(--card-border);
+            width: calc(100% - 40px);
+            max-width: var(--chat-content-width);
+            margin: 12px auto 0;
+            padding: 12px 14px;
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
             background: var(--header-bg);
             display: none;
             align-items: center;
             gap: 12px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
         }
 
         .chat-header.visible { display: flex; }
@@ -521,19 +545,265 @@
             object-fit: cover;
         }
 
-        .chat-header-info { flex: 1; }
+        .chat-header-info { flex: 1; min-width: 0; }
         .chat-header-name { font-size: 16px; font-weight: 600; cursor: pointer; }
         .chat-header-status { font-size: 12px; color: var(--text-sub); }
         .chat-header-status.online { color: var(--online-color); }
 
+        /* --- Calls UI --- */
+        .chat-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .btn-call {
+            width: 40px; height: 40px; background: transparent; border: none; color: var(--text-sub);
+            cursor: pointer; padding: 8px; border-radius: 14px;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: color 0.2s, background 0.2s; flex-shrink: 0;
+        }
+        .btn-call svg { width: 20px; height: 20px; }
+        .btn-call:hover { color: var(--primary); background: rgba(140, 53, 28, 0.08); }
+        .btn-call:disabled { opacity: .4; cursor: default; }
+
+        @keyframes callPulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(1.85); opacity: 0; }
+        }
+
+        /* Ring overlay (incoming) */
+        .call-ring-overlay {
+            display: none; position: fixed; inset: 0; z-index: 1200;
+            background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+        }
+        .call-ring-overlay.visible { display: flex; }
+        .call-ring-card {
+            background: var(--dialog-bg); border-radius: 20px; padding: 28px 32px;
+            width: 320px; max-width: 90%; text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .call-ring-avatar {
+            width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 34px; font-weight: 700; color: #fff; overflow: hidden;
+            position: relative;
+        }
+        .call-ring-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-ring-avatar.pulsing::before, .call-ring-avatar.pulsing::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            border: 2px solid rgba(200,126,91,0.7); animation: callPulse 1.8s ease-out infinite;
+        }
+        .call-ring-avatar.pulsing::after { animation-delay: 0.9s; }
+        .call-ring-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+        .call-ring-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 24px; }
+        .call-ring-actions { display: flex; justify-content: center; gap: 40px; }
+        .call-round-btn {
+            width: 60px; height: 60px; border-radius: 50%; border: none;
+            cursor: pointer; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform .15s, filter .15s;
+        }
+        .call-round-btn svg { width: 26px; height: 26px; }
+        .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+        .call-btn-accept { background: #2e9e5b; }
+        .call-btn-reject, .call-ctl-end { background: #d83a3a; }
+
+        /* Active call screen */
+        .call-screen {
+            display: none; position: fixed; inset: 0; z-index: 1150;
+            background: #11100f; flex-direction: column;
+        }
+        .call-screen.visible { display: flex; }
+        .call-screen-top {
+            padding: 16px 24px; display: flex; align-items: center; gap: 12px; color: #fff;
+        }
+        .call-screen-title { font-size: 16px; font-weight: 600; }
+        .call-screen-timer { font-size: 13px; color: rgba(255,255,255,0.7); }
+
+        /* Компактные тайлы в линию по центру; не растягиваются на всю ширину,
+           помещаются в окно, с отступами (снизу больше — под контролами). */
+        .call-grid {
+            flex: 1; min-height: 0; overflow: hidden;
+            display: flex; flex-wrap: wrap; gap: 12px;
+            align-items: center; align-content: center; justify-content: center;
+            padding: 12px 16px 28px;
+        }
+        .call-tile {
+            position: relative; flex: 0 0 auto; cursor: pointer;
+            width: clamp(200px, 30vw, 340px); aspect-ratio: 3 / 2; max-height: 100%;
+            background: #1c1b19; border-radius: 12px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        /* Обводка говорящего — поверх видео (inset-тень прячется под видео в режиме демонстрации). */
+        .call-tile.speaking::after {
+            content: ''; position: absolute; inset: 0; border: 3px solid #3ddc84;
+            border-radius: 12px; pointer-events: none; z-index: 2;
+        }
+        .call-tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        /* Демонстрация экрана — целиком (без обрезки). */
+        .call-tile.screen video { object-fit: contain; }
+        /* Подсказка «развернуть» (по наведению) и кнопка свернуть (в развёрнутом). */
+        .call-tile-hint {
+            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+            border-radius: 8px; background: rgba(0,0,0,0.45); color: #fff; opacity: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity .15s; pointer-events: none; z-index: 3;
+        }
+        .call-tile:hover .call-tile-hint { opacity: 1; }
+        .call-tile-hint svg { width: 16px; height: 16px; }
+        .call-tile.expanded .call-tile-hint { display: none; }
+        .call-tile-close {
+            position: absolute; top: 14px; right: 16px; width: 42px; height: 42px;
+            border-radius: 50%; border: none; background: rgba(0,0,0,0.55); color: #fff;
+            cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 1160;
+        }
+        .call-tile.expanded .call-tile-close { display: flex; }
+        .call-tile-close svg { width: 20px; height: 20px; }
+        /* Развёрнутый на весь экран блок (контролы остаются слоем выше). */
+        .call-tile.expanded {
+            position: fixed; inset: 0; width: auto; height: auto; max-height: none;
+            aspect-ratio: auto; border-radius: 0; background: #000; z-index: 1158;
+            cursor: default; animation: tileExpand .2s ease;
+        }
+        .call-tile.expanded video { object-fit: contain; }
+        .call-tile.expanded .call-tile-label { left: 16px; bottom: 90px; font-size: 14px; max-width: 60%; }
+        @keyframes tileExpand { from { opacity: .4; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+        .call-tile-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; font-weight: 700; color: #fff; overflow: hidden;
+        }
+        .call-tile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .call-tile-label {
+            position: absolute; left: 10px; bottom: 8px;
+            background: rgba(0,0,0,0.5); color: #fff; font-size: 12px;
+            padding: 3px 8px; border-radius: 6px; max-width: 80%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        /* Waiting for peer */
+        .call-waiting {
+            display: none; flex: 1; flex-direction: column;
+            align-items: center; justify-content: center; gap: 14px; color: #fff;
+        }
+        .call-screen.waiting .call-waiting { display: flex; }
+        .call-waiting-avatar {
+            width: 120px; height: 120px; border-radius: 50%; position: relative;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 46px; font-weight: 700; color: #fff; overflow: hidden;
+        }
+        .call-waiting-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-waiting-avatar::before, .call-waiting-avatar::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            border: 2px solid rgba(200,126,91,0.65); animation: callPulse 1.8s ease-out infinite;
+        }
+        .call-waiting-avatar::after { animation-delay: 0.9s; }
+        .call-waiting-name { font-size: 20px; font-weight: 700; }
+        .call-waiting-sub { font-size: 14px; color: rgba(255,255,255,0.6); }
+        /* Локальное превью (PiP) — всегда в углу, только при включённой камере */
+        .call-self-pip {
+            display: none; position: absolute; right: 20px; bottom: 104px;
+            width: 160px; height: 120px; border-radius: 12px; overflow: hidden;
+            background: #1c1b19; box-shadow: 0 4px 16px rgba(0,0,0,0.45); z-index: 5;
+        }
+        .call-self-pip.on { display: block; }
+        .call-self-pip video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .call-self-pip-label {
+            position: absolute; left: 8px; bottom: 6px; background: rgba(0,0,0,0.5);
+            color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px;
+        }
+        /* Во время ожидания удалённых нет — пустую сетку прячем (себя видно в PiP). */
+        .call-screen.waiting .call-grid { display: none; }
+        /* При развороте блока на весь экран PiP не нужен. */
+        .call-screen.has-expanded .call-self-pip { display: none; }
+
+        /* Контролы — слоем выше развёрнутого блока (z 1158). */
+        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 16px; padding: 20px; position: relative; z-index: 1159; }
+        .call-ctl {
+            position: relative;
+            width: 56px; height: 56px; border-radius: 50%; border: none;
+            cursor: pointer;
+            background: rgba(255,255,255,0.12); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .15s, color .15s;
+        }
+        .call-ctl svg { width: 24px; height: 24px; }
+        .call-ctl:hover { background: rgba(255,255,255,0.22); }
+        .call-ctl.off { background: #d83a3a; color: #fff; }
+        .call-ctl.active { background: var(--primary); color: #fff; }
+        /* Кнопка завершения — всегда красная (включая hover). */
+        .call-ctl-end:hover { background: #e24b4b; }
+        /* Спиннер «применяю качество» поверх кнопки качества. */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .call-ctl.busy svg { opacity: .3; }
+        .call-ctl.busy::after {
+            content: ''; position: absolute; top: 50%; left: 50%; margin: -12px 0 0 -12px;
+            width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
+        }
+
+        /* Quality popover */
+        .call-quality-panel {
+            display: none; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+            background: #232220; border-radius: 14px; padding: 14px 16px; z-index: 4;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 260px;
+        }
+        .call-quality-panel.open { display: block; }
+        .call-quality-group + .call-quality-group { margin-top: 12px; }
+        .call-quality-title {
+            color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase;
+            letter-spacing: .04em; margin-bottom: 7px;
+        }
+        .call-quality-chips { display: flex; gap: 6px; }
+        .call-chip {
+            flex: 1; border: 1px solid rgba(255,255,255,0.15); background: transparent;
+            color: rgba(255,255,255,0.8); border-radius: 8px; padding: 7px 6px;
+            font-size: 12px; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+        }
+        .call-chip:hover { background: rgba(255,255,255,0.1); }
+        .call-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        /* Применение качества идёт с задержкой — гасим чипы и крутим спиннер у заголовка. */
+        .call-quality-title { position: relative; }
+        .call-quality-group.pending .call-chip { opacity: .5; pointer-events: none; }
+        .call-quality-group.pending .call-quality-title::after {
+            content: ''; position: absolute; right: 0; top: -1px; width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+            border-radius: 50%; animation: spin .8s linear infinite;
+        }
+
+        /* Выбор устройства (карет на кнопке микрофона/камеры) */
+        .call-ctl-wrap { position: relative; display: flex; }
+        .call-ctl-caret {
+            position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px;
+            border-radius: 50%; border: 2px solid #11100f; background: #3a3836; color: #fff;
+            padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .call-ctl-caret svg { width: 12px; height: 12px; }
+        .call-ctl-caret:hover { background: #4a4744; }
+        .call-ctl-menu {
+            display: none; position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%);
+            background: #232220; border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 6;
+        }
+        .call-ctl-menu.open { display: block; }
+        .call-ctl-menu-item {
+            display: block; width: 100%; text-align: left; border: none; background: transparent;
+            color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .call-ctl-menu-item:hover { background: rgba(255,255,255,0.1); }
+        .call-ctl-menu-item.active { background: var(--primary); color: #fff; }
+        .call-ctl-menu-empty { color: rgba(255,255,255,0.5); padding: 8px 10px; font-size: 13px; }
+
         .messages-area-wrap {
             flex: 1;
             position: relative;
-            display: flex;
+            display: none;
             flex-direction: column;
             min-height: 0;
             overflow: hidden;
         }
+
+        .messages-area-wrap.visible { display: flex; }
 
         .messages-bg-layer {
             position: absolute;
@@ -569,7 +839,7 @@
         }
 
         .messages-inner {
-            max-width: 800px;
+            max-width: var(--chat-content-width);
             width: 100%;
             margin: 0 auto;
             display: flex;
@@ -621,8 +891,40 @@
             padding: 4px 12px;
         }
 
-        .msg-bubble.outgoing.has-images {
+        /* Облачко с картинками/документами — медиа вплотную к краям, без двойной рамки */
+        .msg-bubble.has-images,
+        .msg-bubble.docs-only {
             padding: 2px;
+        }
+
+        /* Только картинки без текста — медиа на всю площадь облачка */
+        .msg-bubble.image-only {
+            padding: 0;
+            overflow: hidden;
+        }
+        .msg-bubble.image-only .msg-attachments { margin-bottom: 0; }
+        .msg-bubble.image-only .attach-image-grid { border-radius: inherit; }
+
+        /* Картинки/документы + текст — сетка сверху без полей, текст и время со своим отступом */
+        .msg-bubble.has-images:not(.image-only) .msg-text { padding: 4px 10px 0; }
+        .msg-bubble.has-images:not(.image-only) .msg-meta { padding: 0 10px 4px; }
+        .msg-bubble.docs-only .msg-text { padding: 0 8px; }
+        .msg-bubble.docs-only .msg-meta { padding: 0 8px 2px; }
+
+        /* Время + галочки полупрозрачным бейджем поверх картинки */
+        .msg-meta.msg-img-overlay-meta {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            margin: 0;
+            padding: 2px 7px;
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 10px;
+        }
+        .msg-img-overlay-meta .msg-time,
+        .msg-img-overlay-meta .msg-status,
+        .msg-img-overlay-meta .msg-edited {
+            color: #fff;
         }
 
         .msg-bubble.sticker {
@@ -856,46 +1158,68 @@
 
         .input-bar {
             position: relative;
-            padding: 12px 20px;
-            border-top: 1px solid var(--card-border);
-            background: var(--inputbar-bg);
+            padding: 10px 20px 14px;
             display: none;
         }
 
         .input-bar.visible { display: block; }
 
+        .input-bar-stack {
+            max-width: var(--chat-content-width);
+            width: 100%;
+            margin: 0 auto;
+            padding: 8px;
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            background: var(--inputbar-bg);
+            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.10);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
         .input-bar-inner {
             display: flex;
             align-items: flex-end;
             gap: 10px;
-            max-width: 800px;
             width: 100%;
-            margin: 0 auto;
             position: relative;
         }
 
-        .btn-attach {
-            background: none;
+        .btn-attach,
+        .btn-sticker {
+            width: 40px;
+            height: 40px;
+            background: transparent;
             border: none;
             color: var(--text-sub);
             cursor: pointer;
             padding: 8px;
-            border-radius: 8px;
-            font-size: 20px;
+            border-radius: 14px;
             transition: color 0.2s, background 0.2s;
             flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .btn-attach:hover {
+        .btn-attach:hover,
+        .btn-sticker:hover {
             color: var(--primary);
             background: rgba(140, 53, 28, 0.08);
+        }
+
+        .btn-attach svg,
+        .btn-sticker svg,
+        .btn-send svg {
+            width: 22px;
+            height: 22px;
         }
 
         .input-text {
             flex: 1;
             background: var(--input-bg);
             border: 1px solid var(--input-border);
-            border-radius: 12px;
+            border-radius: 18px;
             color: var(--text-main);
             font-size: 14px;
             font-family: 'Inter', sans-serif;
@@ -922,8 +1246,7 @@
             color: white;
             cursor: pointer;
             padding: 10px;
-            border-radius: 10px;
-            font-size: 18px;
+            border-radius: 16px;
             transition: transform 0.15s, box-shadow 0.15s;
             flex-shrink: 0;
             display: flex;
@@ -1088,6 +1411,29 @@
             object-fit: contain;
             border-radius: 8px;
         }
+
+        .overlay-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.45);
+            color: #fff;
+            font-size: 30px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay-nav.prev { left: 16px; }
+        .overlay-nav.next { right: 16px; }
+        .overlay-nav:hover { background: rgba(0, 0, 0, 0.7); }
+        .overlay-nav[hidden] { display: none; }
 
         /* Profile panel */
         .profile-overlay {
@@ -2112,6 +2458,169 @@
             border-top: 1px solid var(--card-border);
         }
 
+        /* === Image editor === */
+        .ie-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 260;
+            background: rgba(0, 0, 0, 0.78);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            backdrop-filter: blur(4px);
+        }
+        .ie-overlay.visible { display: flex; }
+        .ie-dialog {
+            background: var(--dialog-bg);
+            border-radius: 14px;
+            max-width: 880px;
+            width: 100%;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+        }
+        .ie-header {
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .ie-header-title {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .ie-header-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            line-height: 1;
+            color: var(--text-sub);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .ie-header-close:hover { background: var(--card-border); color: var(--text-main); }
+        .ie-toolbar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .ie-tool-group { display: flex; align-items: center; gap: 4px; }
+        .ie-divider {
+            width: 1px;
+            align-self: stretch;
+            margin: 2px 6px;
+            background: var(--card-border);
+        }
+        .ie-tool-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .ie-tool-btn svg { width: 18px; height: 18px; display: block; }
+        .ie-tool-btn:hover { background: var(--primary-alpha); color: var(--text-main); }
+        .ie-tool-btn.active {
+            background: var(--primary-alpha);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        .ie-color-wrap, .ie-size-wrap { display: flex; align-items: center; gap: 6px; }
+        .ie-color-wrap input[type=color] {
+            width: 34px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: var(--input-bg);
+            cursor: pointer;
+        }
+        .ie-size-wrap input[type=range] {
+            width: 110px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .ie-size-val {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            min-width: 44px;
+        }
+        .ie-stage {
+            position: relative;
+            flex: 1;
+            min-height: 320px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 12px;
+            user-select: none;
+        }
+        .ie-canvas-wrap { position: relative; line-height: 0; }
+        .ie-canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            touch-action: none;
+        }
+        .ie-crop-frame {
+            position: absolute;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            cursor: move;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        .ie-crop-frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px);
+            background-size: 33.333% 33.333%;
+            pointer-events: none;
+        }
+        .ie-crop-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        .ie-crop-handle.tl { top: -7px; left: -7px; cursor: nwse-resize; }
+        .ie-crop-handle.tr { top: -7px; right: -7px; cursor: nesw-resize; }
+        .ie-crop-handle.bl { bottom: -7px; left: -7px; cursor: nesw-resize; }
+        .ie-crop-handle.br { bottom: -7px; right: -7px; cursor: nwse-resize; }
+        .ie-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            padding: 12px 18px;
+            border-top: 1px solid var(--card-border);
+        }
+
         /* === About rows === */
         .sd-about-row {
             display: flex;
@@ -2266,23 +2775,6 @@
 
         /* === STICKER BUTTON === */
 
-        .btn-sticker {
-            background: none;
-            border: none;
-            color: var(--text-sub);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            font-size: 20px;
-            transition: color 0.2s, background 0.2s;
-            flex-shrink: 0;
-        }
-
-        .btn-sticker:hover {
-            color: var(--primary);
-            background: rgba(140, 53, 28, 0.08);
-        }
-
         .btn-sticker.active { color: var(--primary); }
 
         /* === STICKER PICKER === */
@@ -2297,9 +2789,13 @@
             background: var(--sidebar-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-top: 1px solid var(--card-border);
+            border: 1px solid var(--card-border);
+            border-radius: 22px;
             flex-direction: column;
             z-index: 30;
+            margin-bottom: 12px;
+            overflow: hidden;
+            box-shadow: 0 14px 42px rgba(0, 0, 0, 0.16);
         }
 
         .sticker-picker.visible { display: flex; }
@@ -2407,14 +2903,14 @@
             .sidebar {
                 width: 100%;
                 min-width: 100%;
-                border-right: none;
-                /* Slide in/out */
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                position: absolute;
-                top: 0;
+                border-radius: 0;
+                box-shadow: none;
                 left: 0;
+                top: 0;
                 bottom: 0;
                 z-index: 5;
+                /* Slide in/out */
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
 
             .chat-area {
@@ -2424,6 +2920,7 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
+                padding-left: 0;
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 /* Start offscreen to the right */
                 transform: translateX(100%);
@@ -2491,6 +2988,21 @@
             .scroll-to-bottom-btn {
                 bottom: 72px;
                 right: 16px;
+            }
+
+            .chat-header {
+                width: calc(100% - 24px);
+                margin-top: 10px;
+                border-radius: 22px;
+                padding: 10px 12px;
+            }
+
+            .input-bar {
+                padding: 8px 12px 12px;
+            }
+
+            .input-bar-stack {
+                border-radius: 22px;
             }
         }
 
@@ -2561,15 +3073,12 @@
             display: none;
             align-items: center;
             gap: 10px;
-            padding: 8px 12px;
+            padding: 8px 10px 10px;
             margin-bottom: 8px;
-            border-radius: 10px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
+            border-radius: 18px;
+            background: var(--primary-alpha);
+            border: 1px solid transparent;
             border-left: 3px solid var(--primary);
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
         }
         .reply-preview-bar.visible { display: flex; }
         .reply-preview-bar .rpb-content {
@@ -2592,13 +3101,15 @@
             text-overflow: ellipsis;
         }
         .reply-preview-bar .rpb-close {
-            background: none;
+            width: 34px;
+            height: 34px;
+            background: transparent;
             border: none;
             color: var(--text-sub);
             cursor: pointer;
             font-size: 20px;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 0;
+            border-radius: 12px;
             margin-left: auto;
             flex-shrink: 0;
         }
@@ -2612,15 +3123,12 @@
             display: none;
             align-items: center;
             gap: 10px;
-            padding: 8px 12px;
+            padding: 8px 10px 10px;
             margin-bottom: 8px;
-            border-radius: 10px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
+            border-radius: 18px;
+            background: var(--primary-alpha);
+            border: 1px solid transparent;
             border-left: 3px solid var(--primary);
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
         }
         .edit-preview-bar.visible { display: flex; }
         .edit-preview-bar .rpb-content { flex: 1; min-width: 0; }
@@ -2640,13 +3148,15 @@
             text-overflow: ellipsis;
         }
         .edit-preview-bar .rpb-close {
-            background: none;
+            width: 34px;
+            height: 34px;
+            background: transparent;
             border: none;
             color: var(--text-sub);
             cursor: pointer;
             font-size: 20px;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 0;
+            border-radius: 12px;
             margin-left: auto;
             flex-shrink: 0;
         }
@@ -3212,6 +3722,26 @@
             padding: 40px 0;
             font-size: 14px;
         }
+        /* Устойчивая загрузка медиа: плейсхолдер для протухших/недоступных файлов */
+        .bf-load-failed {
+            opacity: 0.6;
+            filter: grayscale(0.3);
+        }
+        img.bf-load-failed,
+        video.bf-load-failed {
+            object-fit: contain;
+            background: var(--dialog-bg, rgba(0,0,0,0.04));
+            border-radius: 8px;
+        }
+        .attach-doc.bf-load-failed,
+        .profile-file-item.bf-load-failed {
+            text-decoration: line-through;
+            pointer-events: none;
+        }
+        .audio-play-btn.bf-load-failed {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
     </style>
     <script>
     /* Theme bootstrap — runs before render to avoid flash */
@@ -3245,11 +3775,6 @@
 
     <div class="app">
         <div class="sidebar">
-            <div class="sidebar-header">
-                <img src="/favicon.ico" class="logo-icon" alt="BarkFluff">
-                <span class="logo-text">BarkFluff</span>
-            </div>
-
             <div class="search-container">
                 <div class="search-wrapper">
                     <span class="search-icon">&#128269;</span>
@@ -3262,17 +3787,23 @@
             <div class="chat-list" id="chatList"></div>
             <div class="sidebar-nav" id="sidebarNav">
                 <button class="nav-btn active" id="navChats">
-                    <span class="nav-icon">&#128172;</span>
+                    <span class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </span>
                     <span>Чаты</span>
                 </button>
                 <button class="nav-btn" id="navSettings">
-                    <span class="nav-icon">&#9881;&#65039;</span>
+                    <span class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </span>
                     <span>Настройки</span>
                 </button>
             </div>
         </div>
 
         <div class="chat-area">
+            <div class="messages-bg-layer" id="messagesBgLayer"></div>
+            <div class="messages-bg-dim" id="messagesBgDim"></div>
             <div class="connection-banner" id="connectionBanner">
                 <span class="connection-banner-icon">&#9888;</span>
                 <span>Подключение к серверу...</span>
@@ -3283,6 +3814,10 @@
                 <div class="chat-header-info">
                     <div class="chat-header-name" id="chatHeaderName"></div>
                     <div class="chat-header-status" id="chatHeaderStatus"></div>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="btn-call" id="btnCallAudio" title="Аудиозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
+                    <button class="btn-call" id="btnCallVideo" title="Видеозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
                 </div>
             </div>
 
@@ -3302,8 +3837,6 @@
 
             <div class="loading-messages" id="loadingMessages">Загрузка...</div>
             <div class="messages-area-wrap">
-                <div class="messages-bg-layer" id="messagesBgLayer"></div>
-                <div class="messages-bg-dim" id="messagesBgDim"></div>
                 <div class="messages-area" id="messagesArea">
                     <div class="messages-inner" id="messagesInner"></div>
                 </div>
@@ -3311,30 +3844,47 @@
             <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" title="К последнему сообщению">&#8595;</button>
 
             <div class="input-bar" id="inputBar">
-                <div class="reply-preview-bar" id="replyPreviewBar">
-                    <div class="rpb-content">
-                        <div class="rpb-author" id="rpbAuthor"></div>
-                        <div class="rpb-text" id="rpbText"></div>
+                <div class="input-bar-stack">
+                    <div class="reply-preview-bar" id="replyPreviewBar">
+                        <div class="rpb-content">
+                            <div class="rpb-author" id="rpbAuthor"></div>
+                            <div class="rpb-text" id="rpbText"></div>
+                        </div>
+                        <button class="rpb-close" id="rpbClose" title="Отменить ответ">&times;</button>
                     </div>
-                    <button class="rpb-close" id="rpbClose" title="Отменить ответ">&times;</button>
-                </div>
-                <div class="edit-preview-bar" id="editPreviewBar">
-                    <div class="rpb-content">
-                        <div class="rpb-author">Редактирование</div>
-                        <div class="rpb-text" id="epbText"></div>
+                    <div class="edit-preview-bar" id="editPreviewBar">
+                        <div class="rpb-content">
+                            <div class="rpb-author">Редактирование</div>
+                            <div class="rpb-text" id="epbText"></div>
+                        </div>
+                        <button class="rpb-close" id="epbClose" title="Отменить редактирование">&times;</button>
                     </div>
-                    <button class="rpb-close" id="epbClose" title="Отменить редактирование">&times;</button>
-                </div>
-                <div class="input-bar-inner">
-                    <div class="sticker-picker" id="stickerPicker">
-                        <div class="sticker-packs-bar" id="stickerPacksBar"></div>
-                        <div class="sticker-grid" id="stickerGrid"></div>
+                    <div class="input-bar-inner">
+                        <div class="sticker-picker" id="stickerPicker">
+                            <div class="sticker-packs-bar" id="stickerPacksBar"></div>
+                            <div class="sticker-grid" id="stickerGrid"></div>
+                        </div>
+                        <button class="btn-attach" id="attachBtn" title="Прикрепить файл" aria-label="Прикрепить файл">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21.4 11.1 12 20.5a6 6 0 0 1-8.5-8.5l9.8-9.8a4.2 4.2 0 0 1 5.9 5.9l-9.8 9.8a2.4 2.4 0 1 1-3.4-3.4l8.9-8.9"/>
+                            </svg>
+                        </button>
+                        <input type="file" id="fileInput" multiple style="display:none">
+                        <button class="btn-sticker" id="stickerBtn" title="Стикеры" aria-label="Стикеры">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"/>
+                                <path d="M8.5 10h.01"/>
+                                <path d="M15.5 10h.01"/>
+                                <path d="M8.5 14.5c1.6 1.4 5.4 1.4 7 0"/>
+                            </svg>
+                        </button>
+                        <textarea class="input-text" id="messageInput" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
+                        <button class="btn-send" id="sendBtn" title="Отправить" aria-label="Отправить">
+                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M3.8 4.3c-.7-.3-1.4.4-1.1 1.1l2.6 6.1c.1.3.1.6 0 .9l-2.6 6.1c-.3.8.4 1.5 1.1 1.1l17-7.3c.8-.3.8-1.5 0-1.8l-17-7.2Zm2 3.1 9.9 4.2-9.9 4.2 1.3-3.1c.2-.5.2-1.1 0-1.6L5.8 7.4Z"/>
+                            </svg>
+                        </button>
                     </div>
-                    <button class="btn-attach" id="attachBtn" title="Прикрепить файл">&#128206;</button>
-                    <input type="file" id="fileInput" multiple style="display:none">
-                    <button class="btn-sticker" id="stickerBtn" title="Стикеры">&#128578;</button>
-                    <textarea class="input-text" id="messageInput" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
-                    <button class="btn-send" id="sendBtn" title="Отправить">&#10148;</button>
                 </div>
             </div>
         </div>
@@ -3377,8 +3927,73 @@
     </div>
 
     <div class="image-overlay" id="imageOverlay">
+        <button class="overlay-nav prev" id="overlayPrev" aria-label="Предыдущее" hidden>&#8249;</button>
         <img id="overlayImage" src="" alt="">
         <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+        <button class="overlay-nav next" id="overlayNext" aria-label="Следующее" hidden>&#8250;</button>
+    </div>
+
+    <!-- Входящий звонок (ring) -->
+    <div class="call-ring-overlay" id="callRingOverlay">
+        <div class="call-ring-card">
+            <div class="call-ring-avatar" id="callRingAvatar"></div>
+            <div class="call-ring-name" id="callRingName">Входящий звонок</div>
+            <div class="call-ring-sub" id="callRingSub"></div>
+            <div class="call-ring-actions">
+                <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 8.63 19.24M5 5a2 2 0 0 0-1 .54 19.5 19.5 0 0 0-3 8.63 2 2 0 0 0 .54 1.84"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button>
+                <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Активный звонок -->
+    <div class="call-screen" id="callScreen">
+        <div class="call-screen-top">
+            <div class="call-screen-title" id="callScreenTitle">Звонок</div>
+            <div class="call-screen-timer" id="callScreenTimer"></div>
+        </div>
+        <div class="call-waiting" id="callWaiting">
+            <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
+            <div class="call-waiting-name" id="callWaitingName"></div>
+            <div class="call-waiting-sub" id="callWaitingSub"></div>
+        </div>
+        <div class="call-grid" id="callGrid"></div>
+        <div class="call-self-pip" id="callSelfPip"><div class="call-self-pip-label">Вы</div></div>
+        <div class="call-quality-panel" id="callQualityPanel">
+            <div class="call-quality-group" id="callAudioQualityGroup">
+                <div class="call-quality-title">Голос · для всех</div>
+                <div class="call-quality-chips" id="callAudioChips">
+                    <button class="call-chip" data-q="0">Авто</button>
+                    <button class="call-chip" data-q="1">Низкое</button>
+                    <button class="call-chip" data-q="2">Среднее</button>
+                    <button class="call-chip" data-q="3">Высокое</button>
+                </div>
+            </div>
+            <div class="call-quality-group" id="callVideoQualityGroup">
+                <div class="call-quality-title">Видео · ваш стрим</div>
+                <div class="call-quality-chips" id="callVideoChips">
+                    <button class="call-chip" data-q="0">Авто</button>
+                    <button class="call-chip" data-q="1">Низкое</button>
+                    <button class="call-chip" data-q="2">Среднее</button>
+                    <button class="call-chip" data-q="3">Высокое</button>
+                </div>
+            </div>
+        </div>
+        <div class="call-controls">
+            <div class="call-ctl-wrap">
+                <button class="call-ctl off" id="callToggleMic" title="Микрофон"></button>
+                <button class="call-ctl-caret" id="callMicCaret" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
+                <div class="call-ctl-menu" id="callMicMenu"></div>
+            </div>
+            <div class="call-ctl-wrap">
+                <button class="call-ctl" id="callToggleCam" title="Камера"></button>
+                <button class="call-ctl-caret" id="callCamCaret" title="Выбрать камеру" aria-label="Выбрать камеру"></button>
+                <div class="call-ctl-menu" id="callCamMenu"></div>
+            </div>
+            <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана"></button>
+            <button class="call-ctl" id="callToggleQuality" title="Качество"></button>
+            <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить"></button>
+        </div>
     </div>
 
     <div class="profile-overlay" id="profileOverlay">
@@ -3415,6 +4030,8 @@
     <div class="msg-context-menu" id="msgContextMenu">
         <button data-act="reply"><span class="cm-icon">&#8617;</span><span class="cm-label">Ответить</span></button>
         <button data-act="forward"><span class="cm-icon">&#8618;</span><span class="cm-label">Переслать</span></button>
+        <button data-act="copy-text"><span class="cm-icon">&#128203;</span><span class="cm-label">Копировать текст</span></button>
+        <button data-act="copy-image"><span class="cm-icon">&#128247;</span><span class="cm-label">Копировать изображение</span></button>
         <button data-act="pin"><span class="cm-icon">&#128204;</span><span class="cm-label">Закрепить</span></button>
         <button data-act="edit"><span class="cm-icon">&#9998;</span><span class="cm-label">Изменить</span></button>
         <button data-act="delete" class="cm-danger"><span class="cm-icon">&#128465;</span><span class="cm-label">Удалить</span></button>
@@ -3525,6 +4142,70 @@
         </div>
     </div>
 
+    <!-- Image editor dialog -->
+    <div class="ie-overlay" id="imgEditorOverlay">
+        <div class="ie-dialog">
+            <div class="ie-header">
+                <div class="ie-header-title">Редактор изображения</div>
+                <button class="ie-header-close" id="ieEditorClose" title="Закрыть">&times;</button>
+            </div>
+            <div class="ie-toolbar">
+                <div class="ie-tool-group">
+                    <button class="ie-tool-btn" id="ieCrop" type="button" title="Обрезка">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieRotateLeft" type="button" title="Повернуть влево">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieRotateRight" type="button" title="Повернуть вправо">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieFlipH" type="button" title="Отразить по горизонтали">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><polygon points="3 8 9 12 3 16" fill="currentColor" stroke="none"/><polygon points="21 8 15 12 21 16" fill="currentColor" stroke="none"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieFlipV" type="button" title="Отразить по вертикали">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="12" x2="22" y2="12"/><polygon points="8 3 12 9 16 3" fill="currentColor" stroke="none"/><polygon points="8 21 12 15 16 21" fill="currentColor" stroke="none"/></svg>
+                    </button>
+                </div>
+                <div class="ie-divider"></div>
+                <div class="ie-tool-group">
+                    <button class="ie-tool-btn" id="ieBrush" type="button" title="Кисть">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="iePixelate" type="button" title="Пикселизация (скрыть приватное)">
+                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="3" width="5" height="5"/><rect x="14" y="3" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/><rect x="3" y="14" width="5" height="5"/><rect x="16" y="16" width="5" height="5"/></svg>
+                    </button>
+                    <button class="ie-tool-btn" id="ieEraser" type="button" title="Ластик">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8.5l-5-5a2 2 0 0 1 0-2.83l8.34-8.34a2 2 0 0 1 2.83 0l5.5 5.5a2 2 0 0 1 0 2.83L13.5 20"/><line x1="6.5" y1="11.5" x2="14" y2="19"/></svg>
+                    </button>
+                </div>
+                <div class="ie-divider"></div>
+                <div class="ie-color-wrap" id="ieColorWrap">
+                    <input type="color" id="ieColor" value="#000000" title="Цвет кисти">
+                </div>
+                <div class="ie-size-wrap" id="ieSizeWrap">
+                    <input type="range" id="ieSize" min="4" max="80" value="24" title="Размер кисти">
+                    <span class="ie-size-val" id="ieSizeVal">24 px</span>
+                </div>
+            </div>
+            <div class="ie-stage" id="ieStage">
+                <div class="ie-canvas-wrap" id="ieCanvasWrap">
+                    <canvas class="ie-canvas" id="ieCanvas"></canvas>
+                    <div class="ie-crop-frame" id="ieCropFrame">
+                        <div class="ie-crop-handle tl" data-handle="tl"></div>
+                        <div class="ie-crop-handle tr" data-handle="tr"></div>
+                        <div class="ie-crop-handle bl" data-handle="bl"></div>
+                        <div class="ie-crop-handle br" data-handle="br"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="ie-actions">
+                <button class="sd-btn-secondary" id="ieCancel" type="button">Отмена</button>
+                <button class="sd-btn sd-btn-primary" id="ieApply" type="button">Готово</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Mobile responsive navigation -->
     <script>
     (function () {
@@ -3604,6 +4285,8 @@
 
     <!-- gRPC-Web bundle -->
     <script src="/js/proto/barkfluff.bundle.js?v=folders-pins-1"></script>
+    <!-- LiveKit JS SDK (window.LivekitClient) -->
+    <script src="/js/vendor/livekit-client.bundle.js?v=calls-1"></script>
     <!-- App modules -->
     <script src="/js/app/device.js"></script>
     <script src="/js/app/tokens.js"></script>
@@ -3611,15 +4294,18 @@
     <script src="/js/app/clients.js"></script>
     <script src="/js/app/utils.js"></script>
     <script src="/js/app/api.js?v=personalization-2"></script>
-    <script src="/js/app/files.js"></script>
-    <script src="/js/app/messages.js?v=folders-pins-1"></script>
+    <script src="/js/app/files.js?v=resilient-media-1"></script>
+    <script src="/js/app/messages.js?v=resilient-media-1"></script>
     <script src="/js/app/realtime.js?v=folders-pins-1"></script>
+    <script src="/js/app/calls.js?v=calls-3"></script>
+    <script src="/js/app/calls-ui.js?v=calls-6"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
+    <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
-    <script src="/js/app/main.js?v=personalization-2"></script>
+    <script src="/js/app/main.js?v=resilient-media-1"></script>
     <script>
     /* Inject theme picker into settings dialog */
     (function () {

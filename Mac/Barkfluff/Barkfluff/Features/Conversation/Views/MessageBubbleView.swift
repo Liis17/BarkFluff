@@ -93,6 +93,24 @@ struct MessageBubbleView: View {
     }
 
     var body: some View {
+        if message.isSystem {
+            systemMessageView
+        } else {
+            regularMessageView
+        }
+    }
+
+    private var systemMessageView: some View {
+        Text(message.content.text)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.vertical, Theme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var regularMessageView: some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.xxs) {
             if isOwn {
                 Spacer(minLength: 0)
@@ -101,7 +119,7 @@ struct MessageBubbleView: View {
             VStack(alignment: isOwn ? .trailing : .leading, spacing: 2) {
                 // Имя отправителя (только для групповых чатов, первое в группе)
                 if !isOwn && showSenderName && groupInfo.isFirstInGroup {
-                    Text(message.senderName ?? "Неизвестный")
+                    Text(message.senderName ?? String(localized: "common.unknown_user"))
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
@@ -128,15 +146,15 @@ struct MessageBubbleView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.caption2)
                             .foregroundStyle(.red)
-                        Text("Ошибка отправки")
+                        Text("conversation.errors.send_failed")
                             .font(.caption2)
                             .foregroundStyle(.red)
                     }
                     .padding(.horizontal, Theme.Spacing.sm)
                     .contextMenu {
                         if let localID = message.localID {
-                            Button("Повторить") { onRetry?(localID) }
-                            Button("Удалить", role: .destructive) { onDeleteFailed?(localID) }
+                            Button("conversation.message.context_menu.retry") { onRetry?(localID) }
+                            Button("conversation.message.context_menu.delete_short", role: .destructive) { onDeleteFailed?(localID) }
                         }
                     }
                 }
@@ -159,8 +177,8 @@ struct MessageBubbleView: View {
         .padding(.vertical, 1)
         .contextMenu {
             if isFailed, let localID = message.localID {
-                Button("Повторить отправку") { onRetry?(localID) }
-                Button("Удалить сообщение", role: .destructive) { onDeleteFailed?(localID) }
+                Button("conversation.message.context_menu.retry_send") { onRetry?(localID) }
+                Button("conversation.message.context_menu.delete_message", role: .destructive) { onDeleteFailed?(localID) }
             } else if !message.isSystem && message.id > 0 {
                 let attachments = message.content.attachments
                 let imageAttachments = attachments.filter { $0.type == .image }
@@ -174,27 +192,27 @@ struct MessageBubbleView: View {
                     Button {
                         onEdit?(message)
                     } label: {
-                        Label("Изменить", systemImage: "pencil")
+                        Label("conversation.message.context_menu.edit", systemImage: "pencil")
                     }
                 }
 
                 Button {
                     onReply?(message)
                 } label: {
-                    Label("Ответить", systemImage: "arrowshape.turn.up.left")
+                    Label("conversation.message.context_menu.reply", systemImage: "arrowshape.turn.up.left")
                 }
                 Button {
                     // Если сообщение само пересланное — пересылаем оригинал, не wrapper
                     onForward?(message.forwardSourceID)
                 } label: {
-                    Label("Переслать", systemImage: "arrowshape.turn.up.right")
+                    Label("conversation.message.context_menu.forward", systemImage: "arrowshape.turn.up.right")
                 }
 
                 if !message.content.text.isEmpty {
                     Button {
                         onCopyText?(message.content.text)
                     } label: {
-                        Label("Копировать текст", systemImage: "doc.on.doc")
+                        Label("conversation.message.context_menu.copy_text", systemImage: "doc.on.doc")
                     }
                 }
 
@@ -202,16 +220,18 @@ struct MessageBubbleView: View {
                     Button {
                         onCopyImage?(one)
                     } label: {
-                        Label("Скопировать изображение", systemImage: "photo.on.rectangle")
+                        Label("conversation.message.context_menu.copy_image", systemImage: "photo.on.rectangle")
                     }
                 }
 
                 if !imageAttachments.isEmpty {
-                    let title = imageAttachments.count == 1 ? "Сохранить изображение" : "Сохранить изображения"
+                    let titleKey: LocalizedStringKey = imageAttachments.count == 1
+                        ? "conversation.message.context_menu.save_image"
+                        : "conversation.message.context_menu.save_images"
                     Button {
                         onSaveImages?(imageAttachments)
                     } label: {
-                        Label(title, systemImage: "square.and.arrow.down")
+                        Label(titleKey, systemImage: "square.and.arrow.down")
                     }
                 }
 
@@ -219,7 +239,7 @@ struct MessageBubbleView: View {
                     Button {
                         onSaveDocuments?(documentAttachments)
                     } label: {
-                        Label("Сохранить в загрузки", systemImage: "arrow.down.doc")
+                        Label("conversation.message.context_menu.save_to_downloads", systemImage: "arrow.down.doc")
                     }
                 }
 
@@ -228,7 +248,7 @@ struct MessageBubbleView: View {
                     Button(role: .destructive) {
                         onDelete?(message.id)
                     } label: {
-                        Label("Удалить", systemImage: "trash")
+                        Label("conversation.message.context_menu.delete", systemImage: "trash")
                     }
                 }
             }
@@ -237,16 +257,7 @@ struct MessageBubbleView: View {
 
     @ViewBuilder
     private var bubbleContent: some View {
-        // Текст сообщения
-        if message.isSystem {
-            // Системное сообщение
-            Text(message.content.text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.Spacing.lg)
-                .padding(.vertical, Theme.Spacing.md)
-        } else if isOwn {
+        if isOwn {
             // Исходящее сообщение — синий пузырь
             let showTail = groupInfo.isLastInGroup
             let padding = isMediaOnly ? CGFloat(4) : Theme.Spacing.md

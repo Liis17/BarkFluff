@@ -44,13 +44,30 @@ struct ChatListView: View {
                 viewModel = vm
                 // Устанавливаем ссылку в координатор для уведомлений о прочтении
                 coordinator.chatListViewModel = vm
-                // Параллельно: выгрузка текущего пользователя (нужна для онлайн-статусов)
-                // и загрузка чатов (сразу из кэша + revalidate с сервера).
-                async let userLoad: Void = container.loadCurrentUser()
-                async let chatsLoad: Void = vm.loadChats()
+                // Ждём пока сетевой слой готов (beacon endpoints + refresh access-токена).
+                // До этого `listChats`/`track`/`getCurrentUser` упадут с «Messages
+                // не настроено», а онлайн-статусы будут пустые. Пока ждём —
+                // `isLoading=true` и UI показывает ChatRowPlaceholderView.
+                vm.isLoading = true
+                let ready = await coordinator.waitForConnectionReady()
+                guard ready else {
+                    vm.isLoading = false
+                    return
+                }
+
+                // Connection готов — параллельно: чаты, папки, профиль.
                 async let foldersLoad: Void = vm.loadFolders()
-                _ = await (userLoad, chatsLoad, foldersLoad)
+                async let chatsLoad: Void = vm.loadChats()
+                async let userLoad: Void = container.loadCurrentUser()
+                _ = await (foldersLoad, chatsLoad, userLoad)
+
                 await vm.startListeningForUpdates()
+
+                // Системные уведомления — после loadCurrentUser, нужен currentUserID.
+                await container.notificationService.start(
+                    coordinator: coordinator,
+                    currentUserID: container.currentUserID
+                )
             }
         }
         .onChange(of: excludeFolderChatsFromAll) { _, newValue in
@@ -78,6 +95,25 @@ struct ChatListView: View {
     }
 
     @ViewBuilder
+    private func topInset(viewModel: ChatListViewModel) -> some View {
+        VStack(spacing: Theme.Spacing.xs) {
+            if viewModel.isOffline && !viewModel.chats.isEmpty {
+                ErrorBannerView(
+                    message: LocalizedStringResource("chat_list.offline_banner"),
+                    onRetry: { Task { await viewModel.revalidateChats() } }
+                )
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.top, Theme.Spacing.xs)
+                .transition(.opacity)
+            }
+            if viewModel.isRefreshing && !viewModel.chats.isEmpty {
+                RefreshingIndicatorView()
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    @ViewBuilder
     private func chatListContentInner(viewModel: ChatListViewModel) -> some View {
         List(selection: Binding(
             get: { coordinator.selectedChat?.id },
@@ -91,7 +127,7 @@ struct ChatListView: View {
         )) {
             // Search results section
             if !viewModel.searchResults.isEmpty {
-                Section("Пользователи") {
+                Section("chat_list.search.section.users") {
                     ForEach(viewModel.searchResults) { user in
                         Button {
                             Task {
@@ -109,19 +145,19 @@ struct ChatListView: View {
             }
 
             // Chats section
-            Section("Сообщения") {
+            Section("chat_list.section.messages") {
                 if viewModel.isLoading && viewModel.chats.isEmpty {
                     ForEach(0..<5, id: \.self) { _ in
                         ChatRowPlaceholderView()
                     }
                 } else if viewModel.chats.isEmpty && !viewModel.isLoading {
                     if viewModel.searchText.isEmpty {
-                        Text("Нет чатов")
+                        Text("chat_list.empty.title")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, Theme.Spacing.xl)
                     } else {
-                        Text("Ничего не найдено")
+                        Text("user_search.empty.title")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, Theme.Spacing.xl)
@@ -145,19 +181,17 @@ struct ChatListView: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .top, spacing: 0) {
-            if viewModel.isRefreshing && !viewModel.chats.isEmpty {
-                RefreshingIndicatorView()
-                    .transition(.opacity)
-            }
+            topInset(viewModel: viewModel)
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.isRefreshing)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isOffline)
         .searchable(text: Binding(
             get: { viewModel.searchText },
             set: { newValue in
                 viewModel.searchText = newValue
                 viewModel.onSearchTextChanged()
             }
-        ), placement: .sidebar, prompt: "Поиск")
+        ), placement: .sidebar, prompt: Text("chat_list.search.prompt"))
         .overlay {
             if let error = viewModel.errorMessage, viewModel.chats.isEmpty {
                 VStack(spacing: Theme.Spacing.md) {
@@ -170,7 +204,7 @@ struct ChatListView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
-                    Button("Повторить") {
+                    Button("common.retry") {
                         Task { await viewModel.refresh() }
                     }
                     .buttonStyle(.bordered)

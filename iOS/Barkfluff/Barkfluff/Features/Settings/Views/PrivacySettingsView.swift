@@ -24,39 +24,39 @@ struct PrivacySettingsView: View {
             }
 
             if viewModel.settings != nil {
-                Section("Видимость профиля") {
+                Section("settings.privacy.section.profile") {
                     visibilityPicker(
-                        title: "Аватар",
+                        title: "settings.privacy.avatar_visibility",
                         binding: visibility(\.avatarVisibility)
                     )
                     visibilityPicker(
-                        title: "Био",
+                        title: "settings.privacy.bio_visibility",
                         binding: visibility(\.bioVisibility)
                     )
                     visibilityPicker(
-                        title: "Email",
+                        title: "settings.privacy.email_visibility",
                         binding: visibility(\.emailVisibility)
                     )
                     visibilityPicker(
-                        title: "Был(а) в сети",
+                        title: "settings.privacy.online_visibility",
                         binding: visibility(\.onlineVisibility)
                     )
                 }
 
-                Section("Прочее") {
-                    Toggle("Профиль виден на сайте", isOn: bool(\.profileVisibleOnSite))
-                    Toggle("Показывать в поиске", isOn: bool(\.searchVisible))
+                Section("settings.privacy.section.search_online") {
+                    Toggle("settings.privacy.profile_visible_on_site", isOn: bool(\.profileVisibleOnSite))
+                    Toggle("settings.privacy.search_visible", isOn: bool(\.searchVisible))
                 }
 
                 if viewModel.isSaving {
                     HStack {
                         ProgressView().scaleEffect(0.7)
-                        Text("Сохранение…").font(.caption).foregroundStyle(.secondary)
+                        Text("common.loading").font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
         }
-        .navigationTitle("Приватность")
+        .navigationTitle("settings.category.privacy")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.dependencyContainer = container
@@ -91,11 +91,23 @@ struct PrivacySettingsView: View {
     }
 
     @ViewBuilder
-    private func visibilityPicker(title: String, binding: Binding<ProfileFieldVisibility>) -> some View {
+    private func visibilityPicker(title: LocalizedStringKey, binding: Binding<ProfileFieldVisibility>) -> some View {
         Picker(title, selection: binding) {
-            Text("Все").tag(ProfileFieldVisibility.all)
-            Text("Друзья").tag(ProfileFieldVisibility.friends)
-            Text("Никто").tag(ProfileFieldVisibility.none)
+            ForEach(ProfileFieldVisibility.allCases, id: \.self) { value in
+                Text(value.displayNameKey).tag(value)
+            }
+        }
+    }
+}
+
+// MARK: - Display names
+
+private extension ProfileFieldVisibility {
+    var displayNameKey: LocalizedStringKey {
+        switch self {
+        case .all: "enum.profile_visibility.all"
+        case .friends: "enum.profile_visibility.friends"
+        case .none: "enum.profile_visibility.none"
         }
     }
 }

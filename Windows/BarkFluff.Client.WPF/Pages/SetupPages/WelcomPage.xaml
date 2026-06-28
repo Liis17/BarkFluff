@@ -61,7 +61,7 @@
                     Margin="0,0,0,6"
                     Opacity="0"
                     Style="{DynamicResource SubtitleTextStyle}"
-                    Text="Мессенджер для твоей стаи">
+                    Text="{DynamicResource L_Welcome_Subtitle}">
                     <TextBlock.RenderTransform>
                         <TranslateTransform Y="20" />
                     </TextBlock.RenderTransform>
@@ -73,7 +73,7 @@
                     Margin="0,0,0,20"
                     Opacity="0"
                     Style="{DynamicResource DescriptionTextStyle}"
-                    Text="Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен">
+                    Text="{DynamicResource L_Welcome_Description}">
                     <TextBlock.RenderTransform>
                         <TranslateTransform Y="20" />
                     </TextBlock.RenderTransform>
@@ -90,7 +90,7 @@
                     </ui:Button.RenderTransform>
                     <ui:Button.Content>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Начать" />
+                            <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="{DynamicResource L_Welcome_StartButton}" />
                             <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                         </StackPanel>
                     </ui:Button.Content>
@@ -109,17 +109,17 @@
             <TextBlock
                 MouseLeftButtonDown="ClickFooter"
                 Style="{StaticResource FooterLinkStyle}"
-                Text="О проекте" />
+                Text="{DynamicResource L_Welcome_Footer_About}" />
             <TextBlock Style="{StaticResource FooterSeparatorStyle}" Text="•" />
             <TextBlock
                 MouseLeftButtonDown="ClickPrivacyPolicyAndTermsOfUse"
                 Style="{StaticResource FooterLinkStyle}"
-                Text="Политика конфиденциальности" />
+                Text="{DynamicResource L_Welcome_Footer_Privacy}" />
             <TextBlock Style="{StaticResource FooterSeparatorStyle}" Text="•" />
             <TextBlock
                 MouseLeftButtonDown="ClickFooter"
                 Style="{StaticResource FooterLinkStyle}"
-                Text="Справка" />
+                Text="{DynamicResource L_Welcome_Footer_Help}" />
         </StackPanel>
     </Grid>
 </UserControl>

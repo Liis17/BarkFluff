@@ -1,0 +1,84 @@
+# Web
+
+Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** (без фреймворка и бандлера приложения), раздаётся хостом [[Backend/BarkFluff.Web]].
+
+Расположение: `Backend/BarkFluff.Web/wwwroot/` (разметка `messenger.html`, модули `js/app/*.js`).
+
+> ⚠️ Раньше существовало React-переписывание (`Frontend/Web/`), но оно было **намеренно откатано** (коммиты «возвращаемся на старую вебверсию» / «Восстановить веб-версию мессенджера (vanilla, до React)»). Актуальный и развиваемый клиент — этот vanilla-вариант. React-доку считать неактуальной.
+
+## Tech Stack
+
+| Технология | Версия | Назначение |
+|------------|--------|-----------|
+| grpc-web | 1.5.0 | gRPC-Web клиенты (`protoc-gen-grpc-web`, callback-style) |
+| google-protobuf | 3.21.2 | runtime сообщений |
+| esbuild | 0.24.0 | сборка proto-бандла и LiveKit-бандла в IIFE-глобал |
+| livekit-client | 2.19.2 | WebRTC SDK для звонков ([[Backend/Calls]]) |
+
+Приложение — обычные `<script>`-модули, каждый оборачивает себя в IIFE и вешает API на глобал `window.BF.*`.
+
+## Сборка
+
+```bash
+cd Backend/BarkFluff.Web
+# proto-бандл (window.barkfluff + window.proto.barkfluff.*)
+pwsh scripts/generate-proto.ps1      # Windows
+bash scripts/generate-proto.sh       # Linux/macOS (нужен protoc-gen-grpc-web в PATH)
+# LiveKit JS SDK (window.LivekitClient)
+pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
+```
+
+Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списках в `Dockerfile`/`Dockerfile.slim`.
+
+## Архитектура
+
+### Транспорт и авторизация
+- gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(origin)`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`).
+- `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16).
+- `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`).
+- `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
+
+### Real-time
+- `js/app/realtime.js` (`BF.realtime`) — server-streaming подписки [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/...) и [[Backend/Onliner|OnlinerApi]]. Реконнект с backoff 2→30с, превентивный age-timer (180с), watchdog по молчанию (90с), реакция на `visibilitychange`, forced refresh при коде 16, событие `resync` для дозагрузки пропущенного.
+- События раздаются через `BF.realtime.on(event, cb)`; UI слушает их в `js/app/main.js`.
+
+### Файлы и медиа
+- `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).
+- `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
+- ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `main.js` при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
+
+### Звонки (см. [[Backend/Calls]])
+- `js/app/calls.js` (`BF.calls`) — сигнализация: device-scope стрим `SubscribeCallEvents` (паттерн `realtime.js`), call-control `InitiateCall/Accept/Reject/Join/End` + `SetCallAudioQuality`, машина состояний одного звонка, события `incoming/connect/peer_accepted/peer_rejected/ring_dismiss/ended/member/audio_quality_changed`. Запускается в `main.js` рядом с `BF.realtime.startAll()`.
+- `js/app/calls-ui.js` (`BF.callsUI`) — UI: ринг-оверлей входящего, полноэкранный экран активного звонка (сетка плиток + контролы микро/камера/демонстрация/сброс), рингтон (WebAudio), медиа через `window.LivekitClient` (Room: connect, публикация треков, привязка `TrackSubscribed`/`ParticipantConnected` к плиткам). Имя/аватар участника резолвится через `BF.api.getUser` (identity LiveKit-токена = userId). Кнопки — inline-SVG (не эмодзи), перечёркивание во всех off-иконках в одну сторону (↘). Микрофон: выключенный = красный перечёркнутый (mute). Камера/демонстрация: обычная иконка пока не транслируешь, красная перечёркнутая — кнопка остановки активной трансляции. Завершение — сплошная «трубка отбоя» (`phoneEnd`), всегда красная. Говорящий участник обводится через overlay `::after` поверх видео (видно и в режиме демонстрации). Детекция речи — **client-side WebAudio** (`AnalyserNode` + RMS time-domain по `track.mediaStreamTrack`, порог `SPEAK_THRESHOLD`, удержание `SPEAK_HOLD_MS`, общий rAF-цикл), а не серверный `ActiveSpeakersChanged` — это даёт низкую задержку и реакцию на любой звук. Тайлы сетки — компактные (`flex-wrap`, `clamp` ширина, `aspect-ratio:3/2`), по центру, помещаются в окно, с именем участника внизу блока. **Камера и демонстрация экрана — отдельные равноправные блоки** одного участника (ключ плитки: камера `identity`, экран `identity#screen`; экран — `object-fit:contain`), показываются одновременно для всех. Любой блок **разворачивается на весь экран по клику** (класс `.expanded`, `position:fixed`, анимация `tileExpand`); контролы остаются слоем выше (`z-index` контролов > `z` развёрнутого блока), есть кнопка «свернуть». Своя камера — отдельный PiP в углу (`#callSelfPip`), показывается только при включённой камере (выключил камеру → блок исчезает, кадр сбрасывается `srcObject=null`); в сетке только удалённые участники + своя демонстрация экрана. Пока собеседник не подключился — компактный экран ожидания (аватар + pulse-анимация). **Выбор устройства** — карет (▾) на кнопке микрофона/камеры открывает in-app меню `enumerateDevices`, переключение на лету через `room.switchActiveDevice`. ⚠️ Окно/экран для демонстрации выбирается **только нативным пикером браузера** (`getDisplayMedia`) — заменить его in-app UI нельзя (ограничение безопасности браузера). **Качество** (поповер-ползунки): «Голос · для всех» → `BF.calls.setAudioQuality` (общее, через сервер, применяется по событию `audio_quality_changed` переопубликацией микрофона с `audioPreset`); «Видео · ваш стрим» (видно только при включённой камере) → локально меняет разрешение+битрейт своей камеры (republish, на сервер не ходит). Смена качества идёт с задержкой (republish ~секунды) — инициатору показывается спиннер (`.busy`/`.pending`).
+- Кнопки звонка — в шапке чата (`#chatHeader`), обработчики в `main.js` (1-на-1 → `callee_user_id`, группа → `chat_id`).
+- LiveKit-бандл: `wwwroot/js/vendor/livekit-client.bundle.js` (esbuild IIFE, `window.LivekitClient`).
+
+### Хост и маршрутизация
+- [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
+
+### Темы
+- 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
+- Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и inline-SVG иконками действий.
+
+### Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер)
+
+Проблема: при долгой сессии временные ссылки на файлы/картинки/стикеры (Minio presigned из [[Backend/Files]] `GetTempDownloadUrl`) протухают → браузер грузит 404 → сломанные контролы. Решение в `js/app/files.js` (`BF.files`):
+
+- **`refreshFileUrl(fileId)`** — удаляет закешированный (протухший) URL из `urlCache`, перезапрашивает свежий через `BF.api.getTempDownloadUrl`, обновляет кеш (другие элементы по тому же `fileId` забирают свежую запись), возвращает `{fileId,url,previewUrl}|null`.
+- **`bindResilientMedia(el, fileId, preferPreview)`** — для `<img>`/`<video>`/`<audio>`: сохраняет `data-bf-file-id` на элементе, по событию `error` (404/протухание) рефрешит ссылку и перезагружает (`el.src = fresh`); при повторной неудаче — плейсхолдер. `fileId` читается из data-атрибута на момент ошибки (актуально для переиспользуемых элементов — лайтбокс `#overlayImage`/`#overlayVideo`).
+- **`bindResilientLink(el, fileId)`** — для документов (`<a>`): URL не загружается до клика, поэтому рефрешится лениво — префетч при `mouseenter`/`focus`, чтобы к моменту клика ссылка была свежей. При неудаче — заглушка.
+- **`applyPlaceholder(el)`** — заменяет элемент на векторную заглушку (inline-SVG data-URI, нейтральный серый) + класс `.bf-load-failed`: img → SVG в `src`, video → SVG в `poster` + сброс `src`, audio → сброс `src`, a → удаление `href`.
+- **Состояние** в data-атрибутах: `data-bf-file-id`, `data-bf-prefer-preview`, `data-bf-refreshed`, `data-bf-refreshing`, `data-bf-failed`. Защита от гонок: пока рефреш в полёте (`data-bf-refreshing`), повторные ошибки не показывают плейсхолдер; при сбросе элемента (закрытие лайтбокса) `data-bf-file-id` снимается — случайные ошибки игнорируются.
+
+Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`). CSS `.bf-load-failed` — во встроенном `<style>` `messenger.html`.
+
+> Аватары (`chat.picture`/`user.profilePicture`) приходят с сервера готовой ссылкой (не через `urlCache`) и этим механизмом не покрываются — их рефреш требует перезапроса чата/юзера.
+
+## Функции
+Логин + 2FA, регистрация, fast-auth (QR), список чатов и сообщения (отправка/редактирование/удаление/закреп/прочитано, вложения, пересылка), папки, настройки (профиль/сессии/2FA/хранилище), персонализация, **звонки (аудио/видео, 1-на-1 и группы)**.
+
+## Связи
+- [[Backend/BarkFluff.Web]] — хост (YARP gRPC-Web↔gRPC + статика).
+- [[Backend/Calls]] — бэкенд звонков (LiveKit SFU), первый клиент которого — этот веб.
+- [[Backend/Updates]], [[Backend/Onliner]] — источники real-time стримов.
+- [[Архитектура]] — общий tech stack, XAuth.

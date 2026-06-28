@@ -14,6 +14,7 @@ struct MembersListView: View {
     let chat: Chat
 
     @Environment(DependencyContainer.self) private var container
+    @Environment(\.locale) private var locale
     @State private var viewModel: UserProfilePanelViewModel?
 
     var body: some View {
@@ -34,7 +35,7 @@ struct MembersListView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(member.role.displayName)
+                            Text(member.role.displayName(in: locale))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -52,7 +53,7 @@ struct MembersListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("Участники")
+        .navigationTitle("group_chat.members.title")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if viewModel == nil {

@@ -49,15 +49,16 @@ struct PosterPreviewCard: View {
             }
             .padding(.bottom, Theme.Spacing.md)
 
+            let posterButtonTitleKey: LocalizedStringKey = viewModel.isUploadingPoster
+                ? "settings.personalization.poster.uploading"
+                : "settings.personalization.poster.upload"
+
             Button {
                 print("[BarkFluff] poster button tapped")
                 openPosterPicker()
             } label: {
-                Label(
-                    viewModel.isUploadingPoster ? "Загрузка…" : "Установить новый постер",
-                    systemImage: "photo.on.rectangle.angled"
-                )
-                .padding(.horizontal, 8)
+                Label(posterButtonTitleKey, systemImage: "photo.on.rectangle.angled")
+                    .padding(.horizontal, 8)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -95,7 +96,7 @@ struct PosterPreviewCard: View {
         do {
             let data = try Data(contentsOf: url)
             guard let image = NSImage(data: data) else {
-                viewModel.errorMessage = "Не удалось прочитать изображение"
+                viewModel.errorMessage = String(localized: "personalization.error.read_image")
                 return
             }
             CropperWindowController.shared.present(

@@ -8,11 +8,18 @@
 import SwiftUI
 
 struct ErrorBannerView: View {
-    let message: String
-    let onRetry: (() -> Void)?
+    private let message: LocalizedStringResource
+    private let onRetry: (() -> Void)?
 
-    init(message: String, onRetry: (() -> Void)? = nil) {
+    init(message: LocalizedStringResource, onRetry: (() -> Void)? = nil) {
         self.message = message
+        self.onRetry = onRetry
+    }
+
+    /// Обёртка для случая, когда сообщение приходит в виде обычной строки
+    /// (например, `error.localizedDescription` из системных ошибок).
+    init(message: String, onRetry: (() -> Void)? = nil) {
+        self.message = LocalizedStringResource(stringLiteral: message)
         self.onRetry = onRetry
     }
 
@@ -28,7 +35,7 @@ struct ErrorBannerView: View {
             Spacer()
 
             if let onRetry = onRetry {
-                Button("Повторить") {
+                Button("common.retry") {
                     onRetry()
                 }
                 .buttonStyle(.bordered)
@@ -43,8 +50,8 @@ struct ErrorBannerView: View {
 
 #Preview {
     VStack(spacing: 16) {
-        ErrorBannerView(message: "Ошибка сети")
-        ErrorBannerView(message: "Не удалось загрузить данные", onRetry: {
+        ErrorBannerView(message: LocalizedStringResource(stringLiteral: "Ошибка сети"))
+        ErrorBannerView(message: LocalizedStringResource(stringLiteral: "Не удалось загрузить данные"), onRetry: {
             print("Retry tapped")
         })
     }

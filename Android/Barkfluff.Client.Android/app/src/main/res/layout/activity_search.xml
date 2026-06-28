@@ -22,7 +22,7 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             app:navigationIconTint="?attr/colorOnSurface"
-            app:title="Поиск"
+            app:title="@string/search_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="?attr/colorOnSurface" />
 
@@ -52,7 +52,7 @@
                 android:id="@+id/searchEditText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Поиск пользователей"
+                android:hint="@string/search_users_hint"
                 android:inputType="text"
                 android:maxLines="1"
                 android:paddingVertical="14dp"
@@ -118,7 +118,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Ничего не найдено"
+            android:text="@string/search_nothing_found"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -127,7 +127,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:alpha="0.7"
-            android:text="Попробуйте изменить поисковой запрос"
+            android:text="@string/search_try_different"
             android:textAlignment="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
@@ -169,7 +169,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Поиск пользователей"
+            android:text="@string/search_users_title"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -178,19 +178,19 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:alpha="0.7"
-            android:text="Введите имя, фамилию или username (минимум 3 символа)"
+            android:text="@string/search_users_hint_long"
             android:textAlignment="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 
-    <!-- Индикатор загрузки -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <!-- Индикатор загрузки (M3 Expressive LoadingIndicator с морфингом) -->
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingIndicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:indeterminate="true"
+        android:layout_marginTop="16dp"
         android:visibility="gone"
         app:indicatorColor="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"

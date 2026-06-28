@@ -126,6 +126,7 @@ object WidgetUpdater {
             }
         }
 
+        grpcManager.ensureTokenValid(context)
         val result = grpcManager.getChats(offset = 0, size = 100)
         return if (result.isSuccess) {
             val list = result.getOrNull().orEmpty()

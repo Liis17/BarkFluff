@@ -37,7 +37,9 @@ RUN mkdir -p gen && cd proto && protoc \
     messages_api.proto \
     files_api.proto \
     updates_api.proto \
-    onliner_api.proto
+    onliner_api.proto \
+    fast_auth_api.proto \
+    calls_api.proto
 
 RUN cp gen-index.js gen/index.js && \
     mkdir -p bundle && \

@@ -40,7 +40,7 @@
                 android:id="@+id/messageEditText"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:hint="Зашифрованное сообщение"
+                android:hint="@string/hint_encrypted_message"
                 android:background="@android:color/transparent"
                 android:padding="12dp"
                 android:maxLines="6"

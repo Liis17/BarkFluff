@@ -415,4 +415,7 @@ object AvatarLoader {
         val index = (userId.hashCode() and 0x7FFFFFFF) % PLACEHOLDER_COLORS.size
         return PLACEHOLDER_COLORS[index]
     }
+
+    /** Публичный доступ к цвету плейсхолдера по userId (для аватаров в звонках и т.п.). */
+    fun colorForUser(userId: Long): Int = getColorForId(userId)
 }

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перезапуск админ-панели</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .wait-card {
+            text-align: center;
+            max-width: 480px;
+            background: var(--md-surface-container-lowest);
+            border-radius: var(--md-shape-xl);
+            box-shadow: var(--md-elev-2);
+            padding: 48px 32px;
+        }
+        .wait-card h1 {
+            font-size: 26px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            margin: 24px 0 8px;
+            animation: pulse-soft 2.4s var(--md-easing-emphasized) infinite;
+        }
+        @keyframes pulse-soft { 0%,100%{opacity:1} 50%{opacity:.7} }
+        .wait-card p { margin: 0 0 12px; color: var(--md-on-surface-variant); }
+        .wait-card .hint {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; color: var(--md-on-surface-variant); margin-top: 4px;
+        }
+        .timer-chip {
+            display: inline-flex; align-items: center; gap: 8px;
+            margin-top: 28px;
+            padding: 8px 16px;
+            background: var(--md-primary-container);
+            color: var(--md-on-primary-container);
+            border-radius: var(--md-shape-full);
+            font-size: 14px; font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="wait-card">
+        <div class="md-loader-expressive" style="margin: 0 auto;"></div>
+        <h1>Админ-панель перезапускается</h1>
+        <p>Пожалуйста, подождите...</p>
+        <span class="hint">
+            <span class="msr size-18">refresh</span>
+            Проверка доступности каждые 3 секунды
+        </span>
+        <div class="timer-chip">
+            <span class="msr size-18">schedule</span>
+            <span id="timer">0</span> сек
+        </div>
+    </div>
+
+    <script>
+        let seconds = 0;
+        const timerEl = document.getElementById('timer');
+        let successCount = 0;
+        const requiredSuccessCount = 2;
+
+        setInterval(() => { seconds++; timerEl.textContent = seconds; }, 1000);
+
+        async function checkServer() {
+            try {
+                const r = await fetch('/api/auth/me', { cache: 'no-cache' });
+                if (r.ok) {
+                    successCount++;
+                    if (successCount >= requiredSuccessCount) {
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        window.location.href = '/services';
+                    }
+                } else successCount = 0;
+            } catch { successCount = 0; }
+        }
+        setInterval(checkServer, 3000);
+        setTimeout(checkServer, 5000);
+    </script>
+</body>
+</html>

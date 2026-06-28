@@ -11,10 +11,12 @@ import SwiftUI
 struct MessageDateSeparatorView: View {
     let date: Date
 
+    @Environment(\.locale) private var locale
+
     var body: some View {
         HStack {
             Spacer()
-            Text(formattedDate)
+            Text(MessageGrouper.formatDateSeparator(date, locale: locale))
                 .font(.caption)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
@@ -27,10 +29,6 @@ struct MessageDateSeparatorView: View {
             Spacer()
         }
         .padding(.vertical, Theme.Spacing.sm)
-    }
-
-    private var formattedDate: String {
-        MessageGrouper.formatDateSeparator(date)
     }
 }
 

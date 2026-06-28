@@ -28,6 +28,7 @@
 | OtpCodeNeedException | `C1576884-12D8-4722-A7EE-9F9789AD1265` |
 | NotValidOtpCodeException | `803B632C-4457-4B05-9435-9C3DD0F41E00` |
 | InvalidLoginOrPasswordException | `21BFB9B5-C377-45D1-9B15-6B7F3432B397` |
+| UsernameInvalidFormatException | `E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47` |
 | UserNotFoundException | `A4DAB334-1067-4838-A782-C4257DC838F7` |
 | SessionNotFoundException | `011BF29A-2DE6-4A63-BF8D-3F36AE730D9D` |
 | FastAuthSessionNotFoundException | `A5E94C7D-1B82-4F36-9CDE-78B1F4A7E2C5` |
@@ -35,6 +36,12 @@
 | NoAccessToChatException | `604DD334-0484-4C6B-8113-354B9D2FDF2A` |
 
 Полный список — [[Shared/Exceptions-ProjectMap]]
+
+## Контракт формата username
+
+Сервер (`BarkFluff.Users`, `UsernameFormatValidator`) проверяет username по regex `^[a-zA-Z0-9_]{3,32}$` (латиница, цифры, подчёркивание; дефис запрещён). При нарушении методы `AddDraftUser` (регистрация) и `ChangeUsername` (смена) бросают `UsernameInvalidFormatException` (`E7A4C9D2-…`).
+
+Все клиенты ([[Клиенты/Windows-WPF|WPF]], [[Клиенты/Android|Android]] V1/V2, [[Клиенты/iOS|iOS]], [[Клиенты/macOS|macOS]], [[Клиенты/Linux-Qt|Linux]], [[Клиенты/Developers-Web|Web]]) приводят клиентскую валидацию к этому же набору символов (дефис убран) и показывают понятное сообщение по коду `E7A4C9D2-…`. Клиенты на gRPC StatusCode (iOS/macOS/Linux) показывают серверный текст при `FailedPrecondition`.
 
 ## ExceptionClientInterceptor
 

@@ -21,35 +21,36 @@ struct ProfileView: View {
                 }
             }
 
-            Section("Аккаунт и безопасность") {
+            Section("profile.section.account_security") {
                 categoryLink(.security)
                 categoryLink(.privacy)
             }
 
-            Section("Персонализация") {
+            Section("profile.section.personalization") {
                 categoryLink(.personalization)
             }
 
-            Section("Чаты") {
+            Section("profile.section.chats") {
                 categoryLink(.chatFolders)
             }
 
-            Section("Приложение") {
+            Section("profile.section.app") {
                 categoryLink(.cloud)
                 categoryLink(.cache)
                 categoryLink(.activeSessions)
                 categoryLink(.notifications)
             }
 
-            Section("Другое") {
+            Section("profile.section.other") {
                 categoryLink(.general)
+                categoryLink(.language)
                 categoryLink(.aboutApp)
                 categoryLink(.aboutServer)
                 categoryLink(.testing)
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Профиль")
+        .navigationTitle("profile.title")
         .navigationDestination(for: ProfileDestination.self) { destination in
             switch destination {
             case .edit:

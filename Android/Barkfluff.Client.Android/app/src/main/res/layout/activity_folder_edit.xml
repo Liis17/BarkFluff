@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorSurface"
-        app:title="Папка"
+        app:title="@string/folder_edit_title"
         app:navigationIcon="@drawable/ic_arrow_back"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -34,7 +34,7 @@
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Название папки"
+                android:hint="@string/folder_name_hint"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 app:counterEnabled="true"
                 app:counterMaxLength="64">
@@ -52,7 +52,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Иконка"
+                android:text="@string/folder_icon"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -70,7 +70,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Управлять чатами" />
+                android:text="@string/folder_manage_chats" />
 
             <TextView
                 android:id="@+id/chatsCount"
@@ -87,7 +87,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="Удалить папку"
+                android:text="@string/folder_delete"
                 android:textColor="?attr/colorError"
                 android:visibility="gone"
                 app:strokeColor="?attr/colorError" />
@@ -99,7 +99,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:text="Сохранить"
+        android:text="@string/folder_save"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

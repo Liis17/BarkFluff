@@ -1,3 +1,5 @@
+using BarkFluff.Client.WPF.Services.App;
+
 namespace BarkFluff.Client.WPF.Validators
 {
     /// <summary>
@@ -17,7 +19,7 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (string.IsNullOrWhiteSpace(firstName))
             {
-                errorMessage = "Имя не может быть пустым";
+                errorMessage = L.Str("L_Val_Pers_FirstNameEmpty");
                 return false;
             }
 
@@ -25,13 +27,13 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (trimmedName.Length < MinFirstNameLength)
             {
-                errorMessage = $"Имя должно содержать минимум {MinFirstNameLength} символа";
+                errorMessage = L.F("L_Val_Pers_FirstNameMin", MinFirstNameLength);
                 return false;
             }
 
             if (trimmedName.Length > MaxNameLength)
             {
-                errorMessage = $"Имя не должно превышать {MaxNameLength} символов";
+                errorMessage = L.F("L_Val_Pers_FirstNameMax", MaxNameLength);
                 return false;
             }
 
@@ -52,7 +54,7 @@ namespace BarkFluff.Client.WPF.Validators
 
             if (lastName.Length > MaxNameLength)
             {
-                errorMessage = $"Фамилия не должна превышать {MaxNameLength} символов";
+                errorMessage = L.F("L_Val_Pers_LastNameMax", MaxNameLength);
                 return false;
             }
 

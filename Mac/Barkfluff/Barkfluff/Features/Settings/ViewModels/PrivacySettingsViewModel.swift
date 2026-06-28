@@ -30,7 +30,7 @@ final class PrivacySettingsViewModel {
         do {
             settings = try await dc.userService.getPrivacySettings()
         } catch {
-            errorMessage = "Не удалось загрузить настройки приватности"
+            errorMessage = String(localized: "settings.privacy.error.load")
         }
         isLoading = false
     }
@@ -50,7 +50,7 @@ final class PrivacySettingsViewModel {
             errorMessage = nil
         } catch {
             settings = previous
-            errorMessage = "Не удалось сохранить настройки"
+            errorMessage = String(localized: "settings.privacy.error.save")
         }
         isSaving = false
     }

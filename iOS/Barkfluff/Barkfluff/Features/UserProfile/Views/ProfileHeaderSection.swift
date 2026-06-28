@@ -61,7 +61,7 @@ struct ProfileHeaderSection: View {
                         Button {
                             copyToPasteboard("@\(username)")
                         } label: {
-                            Label("Скопировать", systemImage: "doc.on.doc")
+                            Label("user_profile.copy", systemImage: "doc.on.doc")
                         }
                     }
                 }
@@ -70,7 +70,7 @@ struct ProfileHeaderSection: View {
                     OnlineStatusText(status: viewModel.onlineStatus)
                         .font(.caption)
                 } else {
-                    Text("\(viewModel.memberCount) участников")
+                    Text("user_profile.members_count \(viewModel.memberCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

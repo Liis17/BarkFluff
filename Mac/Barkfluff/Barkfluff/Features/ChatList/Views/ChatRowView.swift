@@ -14,6 +14,7 @@ struct ChatRowView: View {
     let onlineStatusService: OnlineStatusServiceProtocol
 
     @State private var onlineStatus: OnlineStatus = .unknown
+    @Environment(\.locale) private var locale
 
     private var otherUserID: Int64? {
         guard !chat.isGroupChat else { return nil }
@@ -39,7 +40,7 @@ struct ChatRowView: View {
                     Spacer()
 
                     if let date = chat.lastMessageDate {
-                        Text(DateFormatterHelper.formatForChatList(date))
+                        Text(DateFormatterHelper.formatForChatList(date, locale: locale))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -52,7 +53,7 @@ struct ChatRowView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     } else {
-                        Text("Нет сообщений")
+                        Text("chat_list.row.no_messages")
                             .font(.subheadline)
                             .foregroundStyle(.tertiary)
                     }

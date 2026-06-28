@@ -17,7 +17,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="Имя пользователя"
+            android:text="@string/register_step_2"
             android:textAppearance="?attr/textAppearanceHeadlineMedium"
             android:textColor="?attr/colorOnSurface" />
 
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
-            android:text="Придумайте уникальный логин"
+            android:text="@string/register_step2_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -52,7 +52,7 @@
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Логин *"
+                    android:hint="@string/hint_login_required"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
@@ -96,7 +96,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Логин может содержать:"
+                            android:text="@string/register_login_rules"
                             android:textAppearance="?attr/textAppearanceLabelLarge"
                             android:textColor="?attr/colorOnSurface" />
 
@@ -121,7 +121,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="12dp"
-                                    android:text="Латинские буквы (a-z)"
+                                    android:text="@string/register_login_rule_latin"
                                     android:textAppearance="?attr/textAppearanceBodySmall"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -143,7 +143,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="12dp"
-                                    android:text="Цифры (0-9)"
+                                    android:text="@string/register_login_rule_digits"
                                     android:textAppearance="?attr/textAppearanceBodySmall"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -165,7 +165,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="12dp"
-                                    android:text="Нижнее подчёркивание (_) и тире (-)"
+                                    android:text="@string/register_login_rule_symbols"
                                     android:textAppearance="?attr/textAppearanceBodySmall"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -193,7 +193,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="12dp"
-                                android:text="Максимум 30 символов"
+                                android:text="@string/register_login_max_length"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -215,7 +215,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="12dp"
-                                android:text="Будет преобразован в нижний регистр"
+                                android:text="@string/register_login_lowercase"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 

@@ -13,7 +13,7 @@ namespace BarkFluff.Files.Infrastructure;
 /// Реестр S3 бакетов. Управляет конфигурацией бакетов и клиентами S3 для каждого бакета.
 /// Каждый бакет может находиться на отдельном S3-совместимом хранилище со своими учетными данными.
 /// </summary>
-public class S3BucketRegistry : IDisposable
+public class S3BucketRegistry : IS3BucketRegistry
 {
     /// <summary>
     /// Идентификатор бакета для картинок бейджей
