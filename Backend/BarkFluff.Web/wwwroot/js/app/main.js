@@ -72,6 +72,8 @@
     var imageOverlay = $('#imageOverlay');
     var overlayImage = $('#overlayImage');
     var overlayVideo = $('#overlayVideo');
+    var overlayPrev = $('#overlayPrev');
+    var overlayNext = $('#overlayNext');
 
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
@@ -1072,10 +1074,122 @@
                 if (fresh && fresh !== cur) applyOverlaySrc(type, fresh);
             });
         }
+        viewerInit(fileId);
+    }
+
+    // ----- Листаемый просмотрщик: картинки + видео всего чата через ListChatAttachments -----
+    var VIEWER_PAGE = 30;
+    var viewerState = { chatId: null, items: [], index: -1, offset: 0, exhausted: false, totalCount: 0, loading: null };
+
+    function viewerReset() {
+        viewerState = { chatId: null, items: [], index: -1, offset: 0, exhausted: false, totalCount: 0, loading: null };
+    }
+
+    function viewerItem(a, type) {
+        var att = a.attachment || {};
+        return { type: type, fileId: att.fileId, attachmentId: a.attachmentId, messageId: a.messageId, sentAt: a.sentAt };
+    }
+
+    // Догрузить следующую страницу медиа текущего чата (картинки type=1 + видео type=2).
+    function viewerLoadMore() {
+        if (viewerState.loading) return viewerState.loading;
+        if (viewerState.exhausted) return Promise.resolve();
+        var chatId = viewerState.chatId;
+        var off = viewerState.offset;
+        var p = Promise.all([
+            BF.api.listChatAttachments(chatId, 1, off, VIEWER_PAGE),
+            BF.api.listChatAttachments(chatId, 2, off, VIEWER_PAGE)
+        ]).then(function (res) {
+            if (viewerState.chatId !== chatId) return;
+            var imgs = res[0].attachments || [];
+            var vids = res[1].attachments || [];
+            var batch = imgs.map(function (a) { return viewerItem(a, 'image'); })
+                .concat(vids.map(function (a) { return viewerItem(a, 'video'); }));
+            var seen = {};
+            viewerState.items.forEach(function (it) { if (it.fileId) seen[it.fileId] = 1; });
+            batch.forEach(function (it) {
+                if (it.fileId && !seen[it.fileId]) { seen[it.fileId] = 1; viewerState.items.push(it); }
+            });
+            viewerState.items.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
+            viewerState.offset += VIEWER_PAGE;
+            viewerState.totalCount = (res[0].totalCount || 0) + (res[1].totalCount || 0);
+            if (imgs.length < VIEWER_PAGE && vids.length < VIEWER_PAGE) viewerState.exhausted = true;
+        }).catch(function () {}).then(function () { viewerState.loading = null; });
+        viewerState.loading = p;
+        return p;
+    }
+
+    function viewerUpdateNav() {
+        if (overlayPrev) overlayPrev.hidden = viewerState.index <= 0;
+        if (overlayNext) overlayNext.hidden = viewerState.index >= viewerState.items.length - 1 && viewerState.exhausted;
+    }
+
+    function viewerShow(index) {
+        if (index < 0 || index >= viewerState.items.length) return;
+        viewerState.index = index;
+        var it = viewerState.items[index];
+        var token = ++overlayFileToken;
+        if (it.fileId) {
+            overlayImage.setAttribute('data-bf-file-id', it.fileId);
+            overlayVideo.setAttribute('data-bf-file-id', it.fileId);
+        }
+        var fd = BF.files.getCachedFileUrl(it.fileId);
+        var url = fd && (it.type === 'video' ? fd.url : (fd.url || fd.previewUrl));
+        if (url) applyOverlaySrc(it.type, url);
+        BF.files.refreshFileUrl(it.fileId).then(function (f) {
+            if (!f || token !== overlayFileToken) return;
+            var fresh = it.type === 'video' ? f.url : (f.url || f.previewUrl);
+            if (fresh) applyOverlaySrc(it.type, fresh);
+        });
+        viewerUpdateNav();
+        if (index >= viewerState.items.length - 2 && !viewerState.exhausted) viewerLoadMore();
+    }
+
+    function viewerNav(dir) {
+        var ni = viewerState.index + dir;
+        if (ni < 0) return;
+        if (ni >= viewerState.items.length) {
+            if (viewerState.exhausted) return;
+            viewerLoadMore().then(function () {
+                if (viewerState.index + dir < viewerState.items.length) viewerShow(viewerState.index + dir);
+            });
+            return;
+        }
+        viewerShow(ni);
+    }
+
+    // Привязать открытый кадр к списку медиа чата: найти его индекс, при необходимости догружая страницы.
+    function viewerInit(fileId) {
+        var chatId = currentChatId;
+        if (!chatId || !fileId) { viewerState.index = -1; viewerUpdateNav(); return; }
+        if (viewerState.chatId !== chatId) {
+            viewerReset();
+            viewerState.chatId = chatId;
+        }
+        (function locate() {
+            for (var i = 0; i < viewerState.items.length; i++) {
+                if (viewerState.items[i].fileId === fileId) {
+                    viewerState.index = i;
+                    viewerUpdateNav();
+                    if (i >= viewerState.items.length - 2 && !viewerState.exhausted) viewerLoadMore();
+                    return;
+                }
+            }
+            if (viewerState.exhausted) { viewerState.index = -1; viewerUpdateNav(); return; }
+            viewerLoadMore().then(locate);
+        })();
     }
 
     BF.files.bindResilientMedia(overlayImage, null, false);
     BF.files.bindResilientMedia(overlayVideo, null, false);
+
+    if (overlayPrev) overlayPrev.addEventListener('click', function (e) { e.stopPropagation(); viewerNav(-1); });
+    if (overlayNext) overlayNext.addEventListener('click', function (e) { e.stopPropagation(); viewerNav(1); });
+    document.addEventListener('keydown', function (e) {
+        if (!imageOverlay.classList.contains('visible')) return;
+        if (e.key === 'ArrowLeft') { e.preventDefault(); viewerNav(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); viewerNav(1); }
+    });
 
     imageOverlay.addEventListener('click', function (e) {
         if (e.target === overlayVideo) return;
@@ -1090,6 +1204,9 @@
         overlayImage.src = '';
         overlayVideo.pause();
         overlayVideo.src = '';
+        viewerState.index = -1;
+        if (overlayPrev) overlayPrev.hidden = true;
+        if (overlayNext) overlayNext.hidden = true;
     });
 
     // ========== PROFILE OVERLAY ==========
@@ -1610,6 +1727,23 @@
             }
         }
 
+        // Копировать текст — если у сообщения есть текст.
+        var copyTextBtn = msgContextMenu.querySelector('button[data-act="copy-text"]');
+        var msgText = msgObj && msgObj.content && msgObj.content.text;
+        if (copyTextBtn) copyTextBtn.style.display = (msgText && !isSystem) ? '' : 'none';
+
+        // Копировать изображение — только если ровно одно изображение и оно единственное медиа.
+        var copyImageBtn = msgContextMenu.querySelector('button[data-act="copy-image"]');
+        var singleImageFileId = null;
+        if (msgObj && msgObj.content && msgObj.content.attachments && !isSystem) {
+            var imgAtts = msgObj.content.attachments.filter(function (a) { return a.type !== 'FORWARDED_MESSAGE'; });
+            if (imgAtts.length === 1 && (imgAtts[0].type === 'IMAGE' || imgAtts[0].type === 'GIF')) {
+                singleImageFileId = imgAtts[0].fileId;
+            }
+        }
+        contextMenuTarget.imageFileId = singleImageFileId;
+        if (copyImageBtn) copyImageBtn.style.display = singleImageFileId ? '' : 'none';
+
         msgContextMenu.classList.add('visible');
 
         var vw = window.innerWidth;
@@ -1627,6 +1761,36 @@
         if (!msgContextMenu) return;
         msgContextMenu.classList.remove('visible');
         contextMenuTarget = null;
+    }
+
+    // Скопировать изображение в буфер тем же превью, что показано в облачке.
+    // Буфер принимает только image/png — при необходимости конвертируем через canvas.
+    function copyImageToClipboard(fileId) {
+        if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return;
+        var fd = BF.files.getCachedFileUrl(fileId);
+        var cached = fd && (fd.previewUrl || fd.url);
+        var urlP = cached
+            ? Promise.resolve(cached)
+            : BF.files.refreshFileUrl(fileId).then(function (f) { return f && (f.previewUrl || f.url); });
+        urlP.then(function (url) {
+            if (!url) throw new Error('no_url');
+            return fetch(url);
+        }).then(function (r) { return r.blob(); })
+            .then(function (blob) {
+                if (blob.type === 'image/png') return blob;
+                return createImageBitmap(blob).then(function (bmp) {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = bmp.width;
+                    canvas.height = bmp.height;
+                    canvas.getContext('2d').drawImage(bmp, 0, 0);
+                    return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
+                });
+            })
+            .then(function (png) {
+                if (!png) throw new Error('no_png');
+                return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+            })
+            .catch(function () {});
     }
 
     function chatAvatarMarkup(chat) {
@@ -1796,12 +1960,18 @@
             var act = btn.dataset.act;
             var msgId = contextMenuTarget.messageId;
             var isOutgoing = contextMenuTarget.isOutgoing;
+            var imageFileId = contextMenuTarget.imageFileId;
             var msg = messages.find(function (m) { return Number(m.id) === Number(msgId); });
             closeContextMenu();
             if (act === 'reply') {
                 if (msg) setPendingReply(msg);
             } else if (act === 'forward') {
                 openForwardModal(resolveForwardSourceId(msg, msgId));
+            } else if (act === 'copy-text') {
+                var t = msg && msg.content && msg.content.text;
+                if (t) navigator.clipboard.writeText(t).catch(function () {});
+            } else if (act === 'copy-image') {
+                if (imageFileId) copyImageToClipboard(imageFileId);
             } else if (act === 'edit') {
                 if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     setPendingEdit(msg);

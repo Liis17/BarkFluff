@@ -382,11 +382,25 @@
 
         return promise.then(function () {
             var bubble = document.createElement('div');
-            var hasImages = isOutgoing && mediaAtts.some(function (a) {
-                var t = normType(a);
-                return t === 'IMAGE' || t === 'GIF';
+            var text = msg.content && msg.content.text;
+
+            var hasImg = false, hasVideo = false, hasAudio = false, hasDoc = false;
+            mediaAtts.forEach(function (a) {
+                switch (normType(a)) {
+                    case 'IMAGE': case 'GIF': hasImg = true; break;
+                    case 'STICKER': break;
+                    case 'VIDEO': hasVideo = true; break;
+                    case 'AUDIO': case 'VOICE': hasAudio = true; break;
+                    default: hasDoc = true; break;
+                }
             });
-            bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '') + (hasImages ? ' has-images' : '');
+            var hasImages = hasImg && !isSticker;
+            var imageOnly = hasImages && !hasVideo && !hasAudio && !hasDoc && !text && !fwd;
+            var docsOnly = hasDoc && !hasImg && !hasVideo && !hasAudio && !fwd;
+            bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '')
+                + (hasImages ? ' has-images' : '')
+                + (imageOnly ? ' image-only' : '')
+                + (docsOnly ? ' docs-only' : '');
 
             if (fwd) {
                 if (isReply) {
@@ -398,7 +412,6 @@
 
             if (mediaAtts.length > 0) renderAttachments(mediaAtts, bubble, onMediaClick);
 
-            var text = msg.content && msg.content.text;
             if (text) {
                 var textEl = document.createElement('div');
                 textEl.className = 'msg-text';
@@ -408,7 +421,7 @@
 
             if (!isSticker) {
                 var meta = document.createElement('div');
-                meta.className = 'msg-meta';
+                meta.className = 'msg-meta' + (imageOnly ? ' msg-img-overlay-meta' : '');
                 if (msg.isEdited) {
                     var editedEl = document.createElement('span');
                     editedEl.className = 'msg-edited';

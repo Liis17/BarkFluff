@@ -125,8 +125,6 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         // Определяем тип контента по расширению файла
         var contentType = file.Filename.GetContentType();
 
-        var extension = Path.GetExtension(file.Filename).ToLowerInvariant();
-
         // Получаем имя бакета в зависимости от типа файла
         var bucketName = _bucketRegistry.GetBucketName(file.Type);
 
@@ -154,7 +152,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         return new DownloadFileResult
         {
             FileStream = fileStream,
-            FileName = $"{file.Id}{extension}",
+            FileName = file.Filename,
             ContentType = contentType
         };
     }

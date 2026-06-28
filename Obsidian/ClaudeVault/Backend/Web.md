@@ -61,7 +61,7 @@ docker-compose -f docker-compose-dev.yml up web
 - `utils.js` — форматирование, escapeHtml, parseJwt
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
-- `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`
+- `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`. **Компоновка вложений** (`buildMessageElement`): флаги `hasImages`/`imageOnly`/`docsOnly` (по типам вложений, независимо от направления) → классы пузыря `has-images`/`image-only`/`docs-only`. `image-only` (только картинки без текста/forward) — медиа на всю площадь пузыря (`padding:0`), время+галочки полупрозрачным бейджем поверх картинки (`.msg-meta.msg-img-overlay-meta`); с текстом — сетка сверху без полей, время снизу. `docs-only` — компактный padding без двойной рамки. CSS — в `messenger.html` рядом с `.msg-bubble`.
 - `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status)
 - `folders.js` — `BF.folders`: папки чатов (горизонтальные вкладки `#folderTabs` над списком чатов, drag-and-drop реордер, контекстное меню чата `#chatContextMenu` с «Добавить/Удалить из папки», модалка `#folderEditOverlay` с emoji-сеткой 7×3). `init()` обязательно ДО `loadChats` — гайд требует «сперва папки, потом чаты».
 - `pinned.js` — `BF.pinned`: закреплённые сообщения. Плашка `#pinnedBar` под `.chat-header` Telegram-style (`1/N` слева, превью текущего, клик → переключение по кругу + scroll к оригиналу). Большая модалка `#pinnedListOverlay` со всеми пинами (рендер через `BF.messages.buildMessageElement`) + кнопка «Открепить все» с подтверждением.
@@ -110,12 +110,22 @@ docker-compose -f docker-compose-dev.yml up web
 ## Редактирование и удаление сообщений (`main.js`)
 
 - Контекстное меню сообщения (`#msgContextMenu`): пункты **Изменить** / **Удалить** видны только для своих не-системных сообщений (фильтрация в `openContextMenu`).
+- **Копировать текст** (`data-act="copy-text"`) — виден если у сообщения есть текст (`navigator.clipboard.writeText`). **Копировать изображение** (`data-act="copy-image"`) — виден только если ровно одно изображение и оно единственное медиа; `copyImageToClipboard(fileId)` берёт превью из кэша → `fetch` → конвертация в `image/png` через canvas → `ClipboardItem`. `imageFileId` снимается из `contextMenuTarget` до `closeContextMenu()`.
 - **Edit**: `setPendingEdit(msg)` кладёт текст в `#messageInput`, показывает блок `#editPreviewBar`. `sendMessage()` вместо `SendMessage` вызывает `BF.api.editMessage(messageId, text, keepFileIds)`. `keepFileIds` — все не-forward вложения исходного сообщения (forward-снапшоты не редактируются на бэке).
 - **Delete**: `requestDelete(messageId)` показывает `#deleteMsgConfirmOverlay`, по подтверждению — `BF.api.deleteMessage(messageId)`.
 - `applyMessageEdit/applyMessageDelete` обновляют локальный `messages[]`, перерендеривают bubble (через `BF.messages.buildMessageElement`) или удаляют DOM-узел; обновляют `chat.lastMessage` в чат-листе.
 - Realtime: подписки `BF.realtime.on('message_edited' | 'message_deleted', ...)` зеркалируют изменения с других устройств.
 - Во время `pendingEdit` attach-flow (`sendMessageWithFiles`) заблокирован, чтобы drop/paste не отправил новое сообщение поверх правки.
 - В обработчике клика по `#msgContextMenu` `isOutgoing` снимается из `contextMenuTarget` **до** `closeContextMenu()` (иначе `contextMenuTarget = null` обнуляется и условия для edit/delete всегда падают). Сопоставление сообщения — `Number(m.id) === Number(msgId)`, чтобы пережить возможное расхождение типов int64.
+
+## Полноэкранный просмотрщик медиа (`main.js`)
+
+Оверлей `#imageOverlay` (img/video) с листанием по всем медиа чата. Кнопки `#overlayPrev`/`#overlayNext` (`.overlay-nav`) + стрелки клавиатуры (`ArrowLeft`/`ArrowRight`, активны пока оверлей виден).
+
+- `viewerState = {chatId, items, index, offset, exhausted, totalCount, loading}` — кэш списка на текущий чат; сбрасывается при смене `currentChatId`.
+- Источник — `BF.api.listChatAttachments(chatId, type, offset, size)` (`api.js`): отдельно картинки (`type=1`) и видео (`type=2`), `VIEWER_PAGE=30`, склейка без дублей по `fileId`, сортировка по `sentAt DESC`. **Не** дёргает `ListMessages`.
+- `showMediaOverlay` после показа кадра вызывает `viewerInit(fileId)` — ищет индекс кликнутого медиа, при ненахождении догружает страницы (`viewerLoadMore`) до нахождения/`exhausted`.
+- `viewerNav(dir)`/`viewerShow(index)` — переключение с пре-загрузкой соседних страниц у конца списка; `refreshFileUrl` против протухания presigned. Видео листается наравне с фото.
 
 ## Контекст вкладки браузера (`main.js`)
 

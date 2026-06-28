@@ -891,8 +891,40 @@
             padding: 4px 12px;
         }
 
-        .msg-bubble.outgoing.has-images {
+        /* Облачко с картинками/документами — медиа вплотную к краям, без двойной рамки */
+        .msg-bubble.has-images,
+        .msg-bubble.docs-only {
             padding: 2px;
+        }
+
+        /* Только картинки без текста — медиа на всю площадь облачка */
+        .msg-bubble.image-only {
+            padding: 0;
+            overflow: hidden;
+        }
+        .msg-bubble.image-only .msg-attachments { margin-bottom: 0; }
+        .msg-bubble.image-only .attach-image-grid { border-radius: inherit; }
+
+        /* Картинки/документы + текст — сетка сверху без полей, текст и время со своим отступом */
+        .msg-bubble.has-images:not(.image-only) .msg-text { padding: 4px 10px 0; }
+        .msg-bubble.has-images:not(.image-only) .msg-meta { padding: 0 10px 4px; }
+        .msg-bubble.docs-only .msg-text { padding: 0 8px; }
+        .msg-bubble.docs-only .msg-meta { padding: 0 8px 2px; }
+
+        /* Время + галочки полупрозрачным бейджем поверх картинки */
+        .msg-meta.msg-img-overlay-meta {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            margin: 0;
+            padding: 2px 7px;
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 10px;
+        }
+        .msg-img-overlay-meta .msg-time,
+        .msg-img-overlay-meta .msg-status,
+        .msg-img-overlay-meta .msg-edited {
+            color: #fff;
         }
 
         .msg-bubble.sticker {
@@ -1379,6 +1411,29 @@
             object-fit: contain;
             border-radius: 8px;
         }
+
+        .overlay-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.45);
+            color: #fff;
+            font-size: 30px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay-nav.prev { left: 16px; }
+        .overlay-nav.next { right: 16px; }
+        .overlay-nav:hover { background: rgba(0, 0, 0, 0.7); }
+        .overlay-nav[hidden] { display: none; }
 
         /* Profile panel */
         .profile-overlay {
@@ -3872,8 +3927,10 @@
     </div>
 
     <div class="image-overlay" id="imageOverlay">
+        <button class="overlay-nav prev" id="overlayPrev" aria-label="Предыдущее" hidden>&#8249;</button>
         <img id="overlayImage" src="" alt="">
         <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+        <button class="overlay-nav next" id="overlayNext" aria-label="Следующее" hidden>&#8250;</button>
     </div>
 
     <!-- Входящий звонок (ring) -->
@@ -3973,6 +4030,8 @@
     <div class="msg-context-menu" id="msgContextMenu">
         <button data-act="reply"><span class="cm-icon">&#8617;</span><span class="cm-label">Ответить</span></button>
         <button data-act="forward"><span class="cm-icon">&#8618;</span><span class="cm-label">Переслать</span></button>
+        <button data-act="copy-text"><span class="cm-icon">&#128203;</span><span class="cm-label">Копировать текст</span></button>
+        <button data-act="copy-image"><span class="cm-icon">&#128247;</span><span class="cm-label">Копировать изображение</span></button>
         <button data-act="pin"><span class="cm-icon">&#128204;</span><span class="cm-label">Закрепить</span></button>
         <button data-act="edit"><span class="cm-icon">&#9998;</span><span class="cm-label">Изменить</span></button>
         <button data-act="delete" class="cm-danger"><span class="cm-icon">&#128465;</span><span class="cm-label">Удалить</span></button>
