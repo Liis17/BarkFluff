@@ -24,6 +24,7 @@ public static class SeqEndpoints
         "BarkFluff.Web",
         "BarkFluff.Configuration",
         "BarkFluff.Developers",
+        "BarkFluff.Calls",
         // Инфраструктурные сервисы
         "Seq",
         "Minio",
@@ -48,6 +49,7 @@ public static class SeqEndpoints
             { "BarkFluff.CloudMessaging","cloud-messaging" },
             { "BarkFluff.Web",           "web" },
             { "BarkFluff.Developers",    "developers" },
+            { "BarkFluff.Calls",         "calls" },
             { "Seq",                     "seq" },
             { "Minio",                   "minio" },
             { "RabbitMQ",                "rabbitmq" },
@@ -117,7 +119,12 @@ public static class SeqEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            return Results.Ok(KnownServices);
+            // Только микросервисы BarkFluff — инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
+            // логи в Seq не отдаёт, поэтому в фильтре логов её не показываем.
+            var logServices = KnownServices
+                .Where(s => s.StartsWith("BarkFluff.", StringComparison.Ordinal))
+                .ToArray();
+            return Results.Ok(logServices);
         })
         .WithName("GetSeqServices")
         .WithOpenApi();
@@ -557,30 +564,46 @@ public static class SeqEndpoints
             }
 
             var now = DateTime.UtcNow;
-            var result = KnownServices.Concat(serviceData.Keys).Distinct()
-                .Select(name =>
+
+            object BuildEntry(string name, string? dockerState)
+            {
+                serviceData.TryGetValue(name, out var data);
+                bool isActive = dockerState != null
+                    ? dockerState == "running"
+                    : data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5;
+                return new
                 {
-                    serviceData.TryGetValue(name, out var data);
+                    name,
+                    isActive,
+                    dockerState,
+                    lastSeen = data.lastSeen?.ToString("o"),
+                    errorCount = data.errorCount,
+                    eventCount = data.eventCount
+                };
+            }
 
-                    string? dockerState = null;
-                    if (containerStates != null && ServiceToContainerMap.TryGetValue(name, out var containerName))
-                        containerStates.TryGetValue(containerName, out dockerState);
+            List<object> result;
+            if (containerStates != null)
+            {
+                // Динамически: показываем только реально присутствующие контейнеры известных сервисов.
+                // Так на проде не светятся сервисы, которых нет в развёрнутом compose (например Minio,
+                // если используется арендованный S3).
+                var containerToService = ServiceToContainerMap
+                    .ToDictionary(kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
 
-                    bool isActive = dockerState != null
-                        ? dockerState == "running"
-                        : data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5;
-
-                    return new
-                    {
-                        name,
-                        isActive,
-                        dockerState,
-                        lastSeen = data.lastSeen?.ToString("o"),
-                        errorCount = data.errorCount,
-                        eventCount = data.eventCount
-                    };
-                })
-                .ToList();
+                result = containerStates
+                    .Where(cs => containerToService.ContainsKey(cs.Key))
+                    .OrderBy(cs => containerToService[cs.Key], StringComparer.Ordinal)
+                    .Select(cs => BuildEntry(containerToService[cs.Key], cs.Value))
+                    .ToList();
+            }
+            else
+            {
+                // Docker недоступен — fallback на данные Seq.
+                result = KnownServices.Concat(serviceData.Keys).Distinct()
+                    .Select(name => BuildEntry(name, null))
+                    .ToList();
+            }
 
             return Results.Ok(result);
         })
