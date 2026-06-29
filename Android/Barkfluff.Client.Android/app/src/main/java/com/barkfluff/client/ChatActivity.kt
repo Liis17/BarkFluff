@@ -95,6 +95,9 @@ class ChatActivity : AppCompatActivity() {
     private var otherUserId: Long = 0L
     private var currentUserId: Long = 0L
 
+    // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, fileId аватара)
+    private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
+
     // Пагинация сообщений
     private var isLoadingMessages = false
     private var hasMoreMessagesUp = true
@@ -243,22 +246,32 @@ class ChatActivity : AppCompatActivity() {
         binding.btnMore.setOnClickListener { /* TODO: доп. меню */ }
 
         binding.btnAudioCall.applySpringPress()
-        binding.btnVideoCall.applySpringPress()
         binding.btnAudioCall.setOnClickListener { startCall(video = false) }
-        binding.btnVideoCall.setOnClickListener { startCall(video = true) }
 
-        // Клик на карточку с информацией о чате (аватар + имя) — открывает профиль
+        // Клик на карточку с информацией о чате (аватар + имя):
+        // для групп — управление группой, для ЛС — профиль пользователя.
         binding.chatInfoCard.setOnClickListener {
-            startActivity(
-                UserProfileActivity.createIntent(
-                    this,
-                    chatId = chatId,
-                    otherUserId = otherUserId,
-                    isGroupChat = isGroupChat,
-                    chatTitle = chatTitle,
-                    chatAvatarFileId = chatAvatarFileId
+            if (isGroupChat) {
+                startActivity(
+                    GroupInfoActivity.createIntent(
+                        this,
+                        chatId = chatId,
+                        chatTitle = chatTitle,
+                        chatAvatarFileId = chatAvatarFileId
+                    )
                 )
-            )
+            } else {
+                startActivity(
+                    UserProfileActivity.createIntent(
+                        this,
+                        chatId = chatId,
+                        otherUserId = otherUserId,
+                        isGroupChat = isGroupChat,
+                        chatTitle = chatTitle,
+                        chatAvatarFileId = chatAvatarFileId
+                    )
+                )
+            }
         }
     }
 
@@ -490,8 +503,13 @@ class ChatActivity : AppCompatActivity() {
             },
             onReplyQuoteClick = { originalMessageId ->
                 scrollToAndHighlightMessage(originalMessageId)
-            }
+            },
+            senderInfoProvider = { senderId -> groupMemberInfoCache[senderId] }
         )
+
+        if (isGroupChat) {
+            loadGroupMemberInfo()
+        }
 
         binding.messagesRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@ChatActivity).apply {
@@ -542,6 +560,27 @@ class ChatActivity : AppCompatActivity() {
         // Обработчик клика на кнопку прокрутки вниз
         binding.scrollToBottomButton.setOnClickListener {
             scrollToLatestMessages()
+        }
+    }
+
+    /**
+     * Загружает имена и аватары участников группы в кэш, после чего обновляет список
+     * сообщений, чтобы у чужих сообщений отрисовались мини-аватарки.
+     */
+    private fun loadGroupMemberInfo() {
+        lifecycleScope.launch {
+            val members = grpcManager.listChatMembers(chatId).getOrNull() ?: return@launch
+
+            for (member in members) {
+                if (member.userId == currentUserId) continue
+                val name = "${member.firstName} ${member.lastName}".trim().ifBlank { "ID ${member.userId}" }
+                val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { u ->
+                    u.profilePicturePreviewFileId.ifBlank { u.profilePictureFileId }
+                }?.ifBlank { null }
+                groupMemberInfoCache[member.userId] = name to avatarFileId
+            }
+
+            messageAdapter.notifyDataSetChanged()
         }
     }
 
@@ -1648,10 +1687,12 @@ class ChatActivity : AppCompatActivity() {
             popupView,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            true
+            false
         ).apply {
             isOutsideTouchable = true
-            isFocusable = true
+            // focusable=false — чтобы открытие меню не сбрасывало фокус с поля ввода и не скрывало клавиатуру.
+            // Закрытие по тапу вне меню обеспечивается isOutsideTouchable=true + ненулевым фоном ниже.
+            isFocusable = false
             elevation = 12f * resources.displayMetrics.density
             // Прозрачный фон, чтобы скругления MaterialCardView были видны
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))

@@ -165,6 +165,12 @@
     <string name="cd_audio_call">Аудиозвонок</string>
     <string name="cd_video_call">Видеозвонок</string>
     <string name="cd_pinned">Закреплено</string>
+    <string name="group_info_title">Информация о группе</string>
+    <string name="group_members">Участники</string>
+    <string name="group_add_member">Добавить участника</string>
+    <string name="group_remove_member">Удалить участника</string>
+    <string name="group_change_avatar">Изменить аватар</string>
+    <string name="group_change_name">Изменить название</string>
     <string name="cd_all_pinned">Все закреплённые</string>
     <string name="cd_scroll_down">Прокрутить вниз</string>
     <string name="cd_cancel_edit">Отменить редактирование</string>
