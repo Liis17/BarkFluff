@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Удаление аккаунта — Barkfluff</title>
+  <title data-ru="Удаление аккаунта — Barkfluff" data-en="Account Deletion — Barkfluff">Удаление аккаунта — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <style>
     :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
     * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
+    body.lang-ready { opacity:1; }
     main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
     header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
     a { color:var(--brand); text-decoration:none; }
@@ -16,6 +17,7 @@
     nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
     nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
     article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
+    article[data-lang] { display:none; }
     h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
     h2 { margin-top:32px; font-size:22px; }
     p, li, td { color:var(--muted); }
@@ -24,21 +26,25 @@
     th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
     th { color:var(--text); background:rgba(255,122,41,.08); }
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
+    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
+    .lang-btn:hover { color:var(--text); }
   </style>
+  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
 <body>
   <main>
     <header>
       <a href="/"><strong>barkfluff</strong></a>
-      <a href="/">На главную</a>
+      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+      <button class="lang-btn" id="langToggle" type="button">EN</button>
     </header>
     <nav>
-      <a href="/legal/privacy-policy">Конфиденциальность</a>
-      <a href="/legal/terms-of-service">Условия использования</a>
-      <a href="/legal/account-deletion" class="active">Удаление аккаунта</a>
-      <a href="/legal/encryption">Шифрование</a>
+      <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+      <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+      <a href="/legal/account-deletion" class="active" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+      <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article>
+    <article data-lang="ru">
       <h1>Политика удаления аккаунта</h1>
       <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
 
@@ -99,7 +105,90 @@
         <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
       </ul>
     </article>
+    <article data-lang="en">
+      <h1>Account Deletion Policy</h1>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+
+      <h2>1. Introduction</h2>
+      <p>This page describes how to request deletion of a Barkfluff account and which categories of data are processed for such a request.</p>
+
+      <h2>2. How to request account deletion</h2>
+      <p>Send a request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a> from the address associated with the account, or provide details that help confirm ownership of the account.</p>
+      <ul>
+        <li>username;</li>
+        <li>the email used at registration;</li>
+        <li>a brief description of the request;</li>
+        <li>additional details to confirm account ownership if you no longer have access to the email.</li>
+      </ul>
+      <p>Response time for deletion requests: up to 7 business days.</p>
+
+      <h2>3. What data belongs to the account</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Examples</th><th>Service</th></tr></thead>
+        <tbody>
+          <tr><td>Profile</td><td>username, email, first name, last name, bio, avatar, poster, privacy settings</td><td>Users, Files</td></tr>
+          <tr><td>Authentication</td><td>password hash, 2FA settings, confirmation codes, refresh tokens</td><td>Identity</td></tr>
+          <tr><td>Devices</td><td>Device ID, device name, OS, app, Firebase token, active sessions</td><td>Users, Identity</td></tr>
+          <tr><td>Messages</td><td>regular messages, encrypted messages, read receipts, chats</td><td>Messages</td></tr>
+          <tr><td>Files</td><td>avatars, posters, attachments, previews</td><td>Files / Minio</td></tr>
+          <tr><td>Online status</td><td>“online” status, last seen</td><td>Onliner</td></tr>
+        </tbody>
+      </table>
+
+      <h2>4. What happens to messages</h2>
+      <ul>
+        <li>Regular messages support deletion via the Messages API.</li>
+        <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
+        <li>Secret messages are not stored as regular history on the server: the server relays the envelope and buffers it temporarily until delivery or TTL expiry.</li>
+        <li>If a message has already been delivered to another user or included in chat history, processing the request takes into account history integrity for other participants and applicable legal obligations.</li>
+      </ul>
+
+      <h2>5. Data export before deletion</h2>
+      <p>Barkfluff provides the gRPC method <code>Users.ExportData</code>. It produces JSON data:</p>
+      <ul>
+        <li><code>profile.json</code> — the user profile;</li>
+        <li><code>messages.json</code> — messages and chats where the user is a participant;</li>
+        <li><code>files.json</code> — metadata of files associated with the profile and messages.</li>
+      </ul>
+      <p>If you need an export before deletion, mention it in your request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
+
+      <h2>6. Partial deletion and access revocation</h2>
+      <ul>
+        <li>Messages can be deleted through client features that use the Messages API.</li>
+        <li>Active sessions can be terminated via device management.</li>
+        <li>The Firebase token is stored on the device in Users.UserDevices and used for push notifications.</li>
+        <li>The profile avatar and poster are changed or cleared through profile and personalization features.</li>
+      </ul>
+
+      <h2>7. Contacts</h2>
+      <ul>
+        <li>Deletion and privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+      </ul>
+    </article>
     <footer>© 2026 Barkfluff</footer>
   </main>
+  <script>
+    (function () {
+      function applyLang(lang) {
+        document.documentElement.lang = lang;
+        localStorage.setItem('bf_lang', lang);
+        document.querySelectorAll('[data-ru]').forEach(function (el) {
+          el.textContent = el.getAttribute('data-' + lang);
+        });
+        document.querySelectorAll('article[data-lang]').forEach(function (a) {
+          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
+        });
+        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
+      }
+      var saved = localStorage.getItem('bf_lang');
+      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+      document.getElementById('langToggle').addEventListener('click', function () {
+        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
+      });
+      applyLang(saved || detected);
+      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
+    })();
+  </script>
 </body>
 </html>
