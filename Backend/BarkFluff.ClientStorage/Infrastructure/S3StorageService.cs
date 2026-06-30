@@ -94,6 +94,9 @@ public class S3StorageService : IDisposable
                 FilePath    = filePath,
                 ContentType = contentType,
                 PartSize    = _partSize,
+                // Cloudflare R2 не реализует STREAMING-AWS4-HMAC-SHA256-PAYLOAD (chunked signing).
+                // UNSIGNED-PAYLOAD совместим с R2/MinIO/S3; целостность обеспечивает TLS.
+                DisablePayloadSigning = true,
             };
             await transferUtility.UploadAsync(request);
         }
