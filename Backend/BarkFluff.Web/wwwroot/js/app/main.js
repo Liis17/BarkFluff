@@ -171,12 +171,17 @@
                 : avatarInitial;
 
             var lm = chat.lastMessage;
-            var preview = '';
+            var previewHtml = '';
             if (lm) {
                 var text = (lm.content && lm.content.text) || '';
                 var ac = (lm.content && lm.content.attachments && lm.content.attachments.length) || 0;
-                if (text) preview = u.truncate(text, 50);
-                else if (ac > 0) preview = u.attachmentEmoji(lm.content.attachments[0].type);
+                if (lm.type === 2 || lm.type === 'SYSTEM') {
+                    previewHtml = u.callPreviewHtml(text, lm.senderId === myUserId) || u.escapeHtml(u.truncate(text, 50));
+                } else if (text) {
+                    previewHtml = u.escapeHtml(u.truncate(text, 50));
+                } else if (ac > 0) {
+                    previewHtml = u.attachmentPreviewHtml(lm.content.attachments[0].type);
+                }
             }
 
             var time = (lm && lm.sentAt) ? u.formatTime(lm.sentAt) : '';
@@ -195,7 +200,7 @@
                 '<div class="chat-info"><div class="chat-info-top">' +
                 '<span class="chat-name">' + u.escapeHtml(chat.title || 'Чат') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
-                '<div class="chat-info-bottom"><span class="chat-preview">' + u.escapeHtml(preview) + '</span>' +
+                '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
 
             el.addEventListener('click', function () { openChat(chat.id); });
