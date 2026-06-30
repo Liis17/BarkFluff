@@ -38,6 +38,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TG_MESSAGE: |
             ❌ *Сборка невозможна: .NET 10.0 SDK не установлен на раннере*
 
@@ -45,10 +46,7 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TG_CHAT}" \
-            --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=${TG_MESSAGE}"
+          bash .github/scripts/send-telegram.sh
           exit 1
 
   # ═══════════════════════════════════════════════════════════════
@@ -139,6 +137,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TG_MESSAGE: |
             ✅ *Сборка успешна*
 
@@ -148,16 +147,14 @@ jobs:
             👤 Автор: *${{ github.actor }}*
             🏷️ Тег: `${{ steps.vars.outputs.tag_sha }}`
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TG_CHAT}" \
-            --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=${TG_MESSAGE}"
+          bash .github/scripts/send-telegram.sh
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TG_MESSAGE: |
             ❌ *Сборка провалена*
 
@@ -166,7 +163,4 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TG_CHAT}" \
-            --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=${TG_MESSAGE}",
+          bash .github/scripts/send-telegram.sh,
