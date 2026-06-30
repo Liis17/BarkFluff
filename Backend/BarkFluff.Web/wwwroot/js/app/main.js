@@ -120,6 +120,22 @@
     var profileMediaContent = $('#profileMediaContent');
     var currentProfileUserId = null;
 
+    // Group info panel elements
+    var groupOverlay = $('#groupOverlay');
+    var groupClose = $('#groupClose');
+    var groupAvatar = $('#groupAvatar');
+    var groupAvatarEdit = $('#groupAvatarEdit');
+    var groupAvatarInput = $('#groupAvatarInput');
+    var groupName = $('#groupName');
+    var groupNameEdit = $('#groupNameEdit');
+    var groupCount = $('#groupCount');
+    var groupMembersEl = $('#groupMembers');
+    var groupAddBtn = $('#groupAddBtn');
+    var groupAddBox = $('#groupAddBox');
+    var groupAddInput = $('#groupAddInput');
+    var groupAddResults = $('#groupAddResults');
+    var groupMediaContent = $('#groupMediaContent');
+
     // ========== CHAT LIST ==========
 
     function loadChats(reset) {
@@ -1279,6 +1295,10 @@
     }
 
     function loadProfileMedia(type) {
+        renderChatMedia(type, profileMediaContent);
+    }
+
+    function renderChatMedia(type, profileMediaContent) {
         profileMediaContent.innerHTML = '';
         if (!currentChatId) return;
 
@@ -1353,17 +1373,14 @@
         });
     });
 
-    chatHeaderAvatar.addEventListener('click', function () {
-        if (!currentChatInfo || currentChatInfo.isGroupChat) return;
+    function onChatHeaderClick() {
+        if (!currentChatInfo) return;
+        if (currentChatInfo.isGroupChat) { openGroupInfo(); return; }
         var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
         if (peerId) openProfile(peerId);
-    });
-
-    chatHeaderName.addEventListener('click', function () {
-        if (!currentChatInfo || currentChatInfo.isGroupChat) return;
-        var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-        if (peerId) openProfile(peerId);
-    });
+    }
+    chatHeaderAvatar.addEventListener('click', onChatHeaderClick);
+    chatHeaderName.addEventListener('click', onChatHeaderClick);
 
     // --- Call buttons (шапка чата) ---
     function startCall(media) {
@@ -1385,6 +1402,196 @@
 
     profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
+
+    // ========== GROUP INFO PANEL ==========
+
+    function groupToast(text) {
+        if (!soonToastEl) return;
+        soonToastEl.textContent = text;
+        soonToastEl.classList.add('visible');
+        if (groupToast._t) clearTimeout(groupToast._t);
+        groupToast._t = setTimeout(function () {
+            soonToastEl.classList.remove('visible');
+            soonToastEl.textContent = 'Скоро будет';
+        }, 1800);
+    }
+
+    function renderGroupAvatar(picture, title) {
+        if (picture) {
+            var img = document.createElement('img');
+            img.src = picture; img.alt = '';
+            groupAvatar.replaceChildren(img);
+        } else {
+            groupAvatar.textContent = (title || '?')[0].toUpperCase();
+        }
+    }
+
+    function openGroupInfo() {
+        if (!currentChatInfo || !currentChatId) return;
+        groupName.textContent = currentChatInfo.title || 'Группа';
+        renderGroupAvatar(currentChatInfo.picture, currentChatInfo.title);
+        groupAddBox.classList.add('hidden');
+        groupAddInput.value = '';
+        groupAddResults.innerHTML = '';
+        loadGroupMembers();
+        document.querySelectorAll('.group-media-tab').forEach(function (t, i) { t.classList.toggle('active', i === 0); });
+        renderChatMedia('media', groupMediaContent);
+        groupOverlay.classList.add('visible');
+    }
+
+    function loadGroupMembers() {
+        var chatId = currentChatId;
+        groupMembersEl.innerHTML = '';
+        BF.api.listChatMembers(chatId).then(function (data) {
+            if (chatId !== currentChatId) return;
+            var members = (data && data.members) || [];
+            groupCount.textContent = members.length + ' участников';
+            members.forEach(function (m) {
+                var fullName = ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || ('ID ' + m.userId);
+
+                var row = document.createElement('div');
+                row.className = 'group-member';
+
+                var av = document.createElement('div');
+                av.className = 'group-member-avatar';
+                av.textContent = (fullName || '?')[0].toUpperCase();
+                row.appendChild(av);
+
+                var nm = document.createElement('div');
+                nm.className = 'group-member-name';
+                nm.textContent = m.userId === myUserId ? (fullName + ' (вы)') : fullName;
+                row.appendChild(nm);
+
+                if (m.userId !== myUserId) {
+                    var rm = document.createElement('button');
+                    rm.className = 'group-member-remove';
+                    rm.innerHTML = '&times;';
+                    rm.title = 'Удалить';
+                    rm.addEventListener('click', function () { confirmRemoveMember(m, fullName); });
+                    row.appendChild(rm);
+                }
+
+                groupMembersEl.appendChild(row);
+
+                getUser(m.userId).then(function (user) {
+                    if (!user) return;
+                    var pic = user.profilePicturePreview || user.profilePicture;
+                    if (pic) {
+                        var img = document.createElement('img');
+                        img.src = pic; img.alt = '';
+                        av.replaceChildren(img);
+                    }
+                }).catch(function () {});
+            });
+        }).catch(function () { groupToast('Ошибка загрузки участников'); });
+    }
+
+    function confirmRemoveMember(member, name) {
+        if (!window.confirm('Удалить ' + name + ' из группы?')) return;
+        BF.api.kickUser(currentChatId, member.userId)
+            .then(function () { loadGroupMembers(); })
+            .catch(function () { groupToast('Не удалось удалить участника'); });
+    }
+
+    function renameGroup() {
+        var current = currentChatInfo ? currentChatInfo.title : '';
+        var next = window.prompt('Название группы', current || '');
+        if (next == null) return;
+        next = next.trim();
+        if (!next) { groupToast('Название не может быть пустым'); return; }
+        BF.api.updateGroupChat(currentChatId, next, null).then(function (res) {
+            var title = (res && res.chat && res.chat.title) || next;
+            if (currentChatInfo) currentChatInfo.title = title;
+            groupName.textContent = title;
+            chatHeaderName.textContent = title;
+            var c = chats.find(function (x) { return x.id === currentChatId; });
+            if (c) { c.title = title; renderChatList(); }
+            groupToast('Название обновлено');
+        }).catch(function () { groupToast('Не удалось изменить название'); });
+    }
+
+    function addGroupMember(userId, name) {
+        BF.api.addUser(currentChatId, userId).then(function () {
+            groupAddBox.classList.add('hidden');
+            groupAddInput.value = '';
+            groupAddResults.innerHTML = '';
+            loadGroupMembers();
+            groupToast(name + ' добавлен(а)');
+        }).catch(function () { groupToast('Не удалось добавить участника'); });
+    }
+
+    groupClose.addEventListener('click', function () { groupOverlay.classList.remove('visible'); });
+    groupOverlay.addEventListener('click', function (e) { if (e.target === groupOverlay) groupOverlay.classList.remove('visible'); });
+    groupNameEdit.addEventListener('click', renameGroup);
+
+    groupAvatarEdit.addEventListener('click', function () { groupAvatarInput.click(); });
+    groupAvatarInput.addEventListener('change', function () {
+        var file = groupAvatarInput.files[0];
+        groupAvatarInput.value = '';
+        if (!file) return;
+        groupToast('Загрузка…');
+        BF.files.uploadFile(file, 6 /* CHAT_PICTURE */).then(function (fileId) {
+            return BF.api.updateGroupChat(currentChatId, null, fileId);
+        }).then(function (res) {
+            var pic = res && res.chat && res.chat.picture;
+            if (pic) {
+                if (currentChatInfo) currentChatInfo.picture = pic;
+                renderGroupAvatar(pic, currentChatInfo && currentChatInfo.title);
+                chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(pic) + '" alt="">';
+                var c = chats.find(function (x) { return x.id === currentChatId; });
+                if (c) { c.picture = pic; renderChatList(); }
+            }
+            groupToast('Аватар обновлён');
+        }).catch(function () { groupToast('Не удалось обновить аватар'); });
+    });
+
+    groupAddBtn.addEventListener('click', function () {
+        groupAddBox.classList.toggle('hidden');
+        if (!groupAddBox.classList.contains('hidden')) groupAddInput.focus();
+    });
+
+    var groupSearchTimer = null;
+    groupAddInput.addEventListener('input', function () {
+        var q = groupAddInput.value.trim();
+        if (groupSearchTimer) clearTimeout(groupSearchTimer);
+        if (!q) { groupAddResults.innerHTML = ''; return; }
+        groupSearchTimer = setTimeout(function () {
+            BF.api.searchUsers(q, 0, 20).then(function (data) {
+                groupAddResults.innerHTML = '';
+                (data.users || []).forEach(function (user) {
+                    var fullName = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || user.username;
+                    var row = document.createElement('div');
+                    row.className = 'group-add-result';
+
+                    var av = document.createElement('div');
+                    av.className = 'group-member-avatar';
+                    var pic = user.profilePicturePreview || user.profilePicture;
+                    if (pic) {
+                        var img = document.createElement('img');
+                        img.src = pic; img.alt = '';
+                        av.appendChild(img);
+                    } else { av.textContent = (fullName || '?')[0].toUpperCase(); }
+                    row.appendChild(av);
+
+                    var nm = document.createElement('div');
+                    nm.className = 'group-member-name';
+                    nm.textContent = fullName;
+                    row.appendChild(nm);
+
+                    row.addEventListener('click', function () { addGroupMember(user.id, fullName); });
+                    groupAddResults.appendChild(row);
+                });
+            }).catch(function () {});
+        }, 300);
+    });
+
+    document.querySelectorAll('.group-media-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.group-media-tab').forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            renderChatMedia(tab.dataset.type, groupMediaContent);
+        });
+    });
 
     // ========== SCROLL TO BOTTOM BUTTON ==========
 
