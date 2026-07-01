@@ -208,6 +208,10 @@
                                 <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')"><span class="msr size-20">visibility</span></button>
                             </div>
                         </div>
+                        <div class="field-row">
+                            <label class="label">Region</label>
+                            <input type="text" value="${escapeHtml(params.region || '')}" placeholder="auto (для Cloudflare R2, необязательно)" data-bucket="${bucketId}" data-key="region" oninput="onFieldChange('${bucketId}')" class="md-input-outlined">
+                        </div>
                     </div>
                     <div class="bucket-foot">
                         <span class="meta"><span class="msr size-18">schedule</span>Обновлено: ${formatDate(params.editedAt)}</span>

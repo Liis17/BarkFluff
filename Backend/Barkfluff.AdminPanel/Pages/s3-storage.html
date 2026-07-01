@@ -497,18 +497,6 @@
                                     </button>
                                 </div>
                             </div>
-
-                            <!-- Region -->
-                            <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Region</label>
-                                <input type="text"
-                                       value="${escapeHtml(params.region || '')}"
-                                       placeholder="auto (для Cloudflare R2, необязательно)"
-                                       data-bucket="${bucketId}"
-                                       data-key="region"
-                                       onchange="onFieldChange('${bucketId}')"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            </div>
                         </div>
 
                         <!-- Save Button (reserved space) -->
