@@ -51,10 +51,10 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
         var uploadUrl = FileUrlHelper.GenerateUploadUrl(baseUrl, file.Id);
 
         _logger.LogInformation(
-            "URL для загрузки создан. FileId: {FileId}, Тип: {FileType}, URL: {UploadUrl}",
+            "URL для загрузки создан. FileId: {FileId}, Тип: {FileType}, Token: {MaskedToken}",
             file.Id,
             request.Type,
-            uploadUrl
+            FileUrlHelper.MaskCapabilityToken(file.Id)
         );
 
         return new GetUploadUrlResponse()

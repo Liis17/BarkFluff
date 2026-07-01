@@ -66,9 +66,9 @@ public class GetTempDownloadUrlCommandHandler : IRequestHandler<GetTempDownloadU
             var url = FileUrlHelper.GenerateDownloadUrl(baseUrl, tempFile.Id);
 
             _logger.LogDebug(
-                "Создана временная ссылка для файла {FileId}: {TempFileId}",
+                "Создана временная ссылка для файла {FileId}: {MaskedToken}",
                 tempFile.OriginalFileId,
-                tempFile.Id
+                FileUrlHelper.MaskCapabilityToken(tempFile.Id)
             );
 
             response.FileUrls.Add(new GetTempDownloadUrlResponse.Types.DownloadFileData()

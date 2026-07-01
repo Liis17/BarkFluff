@@ -70,12 +70,14 @@
 **Проблема:** `POST /upload/{uploadId}` анонимен: авторизация держится на том, что GUID-слот создаётся только аутентифицированным `GetUploadUrl`. Но сам аплоад не проверяет личность загружающего — любой, кто узнал `uploadId`, может залить содержимое в чужой слот, пока он пуст (`Etag` не задан).
 **Почему это проблема:** Capability-URL модель: утечка upload-URL (логи, прокси, история) позволяет подменить содержимое чужого ожидающего файла.
 **Рекомендация:** Признать осознанным выбором или привязать аплоад к идентичности (короткоживущий подписанный токен на конкретный `uploadId`+пользователя).
+**Статус: ❌ Неактуально** — HTTP-клиенты не шлют auth-заголовок на upload-эндпоинт, идентичность физически негде проверить без правки протокола/клиентов. Проверены Android, Windows, Mac/iOS (общий пакет `BFNetworking`) — все потребляют upload-URL как opaque capability-токен. Если атакующий перехватывает upload-URL (MITM/логи), он перехватывает и остальной трафик (в т.ч. refresh-токен) — этот вектор не даёт дополнительной поверхности атаки. Риск принят.
 
 ### S8. Capability-URL загрузки логируются в Seq — Low
 **Файл:** `Backend/BarkFluff.Files/Features/GetUploadUrl/GetUploadUrlCommandHandler.cs:53-58` (Information); смежно `GetTempDownloadUrl/GetTempDownloadUrlCommandHandler.cs:66-79` (Debug)
 **Проблема:** Полный upload-URL (содержит секретный GUID-слот) пишется на уровне Information; temp-download URL — на Debug.
 **Почему это проблема:** URL — это capability-токен (см. S7). Его попадание в централизованные логи расширяет поверхность утечки.
 **Рекомендация:** Логировать только `FileId`/`TempFileId`, не полный URL; либо понизить уровень и маскировать токен.
+**Статус: ✅ Исправлено** — добавлен `FileUrlHelper.MaskCapabilityToken(Guid)` (первые 8 hex-символов + `-****`), применён в `GetUploadUrlCommandHandler` (Information) и `GetTempDownloadUrlCommandHandler` (Debug) вместо полного URL/TempFileId.
 
 ## Производительность
 
