@@ -25,5 +25,5 @@ public class User
 
     public string? ProfilePicturePreviewUrl { get; set; }
 
-    public int StorageLimitGb { get; set; } = 5;
+    public int StorageLimitGb { get; set; } = 1;
 }

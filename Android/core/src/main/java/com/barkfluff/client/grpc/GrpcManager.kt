@@ -1265,6 +1265,136 @@ class GrpcManager {
     }
 
     /**
+     * Получает список участников группового чата
+     */
+    suspend fun listChatMembers(chatId: String, offset: Int = 0, size: Int = 50): Result<List<ChatMemberInfo>> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val pagination = Shared.PageRequest.newBuilder()
+                .setOffset(offset)
+                .setSize(size)
+                .build()
+
+            val request = MessagesApiOuterClass.ListChatMembersRequest.newBuilder()
+                .setChatId(chatId)
+                .setPagination(pagination)
+                .build()
+
+            val response = messagesClient!!.listChatMembers(request)
+
+            val members = response.chatMembersList.map { m ->
+                ChatMemberInfo(
+                    userId = m.generalInfo.userId,
+                    firstName = m.firstName,
+                    lastName = m.lastName
+                )
+            }
+
+            Result.success(members)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения участников чата $chatId", e)
+            Result.failure(Exception("Ошибка получения участников чата: ${e.message}"))
+        }
+    }
+
+    /**
+     * Исключает пользователя из группового чата
+     */
+    suspend fun kickUser(chatId: String, userId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val request = MessagesApiOuterClass.KickUserRequest.newBuilder()
+                .setChatId(chatId)
+                .setUserId(userId)
+                .build()
+
+            messagesClient!!.kickUser(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка исключения пользователя $userId из чата $chatId", e)
+            Result.failure(Exception("Ошибка исключения пользователя: ${e.message}"))
+        }
+    }
+
+    /**
+     * Добавляет пользователя в групповой чат
+     */
+    suspend fun addUser(chatId: String, userId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val request = MessagesApiOuterClass.AddUserRequest.newBuilder()
+                .setChatId(chatId)
+                .setUserId(userId)
+                .build()
+
+            messagesClient!!.addUser(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка добавления пользователя $userId в чат $chatId", e)
+            Result.failure(Exception("Ошибка добавления пользователя: ${e.message}"))
+        }
+    }
+
+    /**
+     * Изменяет групповой чат (название и/или аватар).
+     * Пустые параметры (null) — не менять соответствующее поле.
+     */
+    suspend fun updateGroupChat(chatId: String, title: String? = null, pictureFileId: String? = null): Result<ChatData> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val request = MessagesApiOuterClass.UpdateGroupChatRequest.newBuilder()
+                .setChatId(chatId)
+                .setTitle(title ?: "")
+                .setPictureFileId(pictureFileId ?: "")
+                .build()
+
+            val response = messagesClient!!.updateGroupChat(request)
+            val chat = response.chat
+
+            val lastMsg = if (chat.hasLastMessage()) {
+                val msg = chat.lastMessage
+                LastMessageData(
+                    id = msg.id,
+                    senderId = msg.senderId,
+                    text = msg.content?.text ?: "",
+                    sentAt = msg.sentAt.seconds * 1000,
+                    readBy = msg.readByList
+                )
+            } else null
+
+            Result.success(
+                ChatData(
+                    id = chat.id,
+                    title = chat.title,
+                    picture = chat.picture,
+                    pictureFileId = extractGuidFromUrl(chat.picture),
+                    picturePreviewFileId = extractGuidFromUrl(chat.picture),
+                    isGroupChat = chat.isGroupChat,
+                    lastMessage = lastMsg,
+                    memberIds = chat.membersList.map { it.userId },
+                    countUnread = chat.countUnread,
+                    firstUnreadMessageId = chat.firstUnreadMessageId
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка изменения группового чата $chatId", e)
+            Result.failure(Exception("Ошибка изменения чата: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает данные пользователя по ID
      */
     suspend fun getUserData(userId: Long): Result<UserData> = withContext(Dispatchers.IO) {
@@ -2128,6 +2258,12 @@ class GrpcManager {
         val text: String,
         val sentAt: Long,
         val readBy: List<Long>
+    )
+
+    data class ChatMemberInfo(
+        val userId: Long,
+        val firstName: String,
+        val lastName: String
     )
 
     data class ChatFolder(

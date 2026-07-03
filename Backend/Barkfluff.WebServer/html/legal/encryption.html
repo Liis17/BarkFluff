@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Шифрование — Barkfluff</title>
+  <title data-ru="Шифрование — Barkfluff" data-en="Encryption — Barkfluff">Шифрование — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <style>
     :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
     * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
+    body.lang-ready { opacity:1; }
     main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
     header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
     a { color:var(--brand); text-decoration:none; }
@@ -16,6 +17,7 @@
     nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
     nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
     article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
+    article[data-lang] { display:none; }
     h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
     h2 { margin-top:32px; font-size:22px; }
     h3 { margin-top:22px; font-size:17px; }
@@ -25,21 +27,25 @@
     th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
     th { color:var(--text); background:rgba(255,122,41,.08); }
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
+    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
+    .lang-btn:hover { color:var(--text); }
   </style>
+  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
 <body>
   <main>
     <header>
       <a href="/"><strong>barkfluff</strong></a>
-      <a href="/">На главную</a>
+      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+      <button class="lang-btn" id="langToggle" type="button">EN</button>
     </header>
     <nav>
-      <a href="/legal/privacy-policy">Конфиденциальность</a>
-      <a href="/legal/terms-of-service">Условия использования</a>
-      <a href="/legal/account-deletion">Удаление аккаунта</a>
-      <a href="/legal/encryption" class="active">Шифрование</a>
+      <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+      <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+      <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+      <a href="/legal/encryption" class="active" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article>
+    <article data-lang="ru">
       <h1>Техническое описание шифрования</h1>
       <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
 
@@ -111,7 +117,101 @@
         <li>Приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
     </article>
+    <article data-lang="en">
+      <h1>Technical Encryption Overview</h1>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+
+      <h2>1. Introduction</h2>
+      <p>This page describes only the protection and encryption mechanisms present in the current Barkfluff architecture.</p>
+
+      <h2>2. Data transfer and authorization</h2>
+      <ul>
+        <li>Clients interact with the backend via gRPC or gRPC-Web.</li>
+        <li>External HTTP/gRPC traffic goes over HTTPS/TLS on the public perimeter.</li>
+        <li>Internal events between services are transmitted via RabbitMQ / MassTransit.</li>
+        <li>gRPC request authorization uses XAuth metadata, including <code>x-auth-token</code> and device headers.</li>
+      </ul>
+
+      <h2>3. JWT, refresh tokens and 2FA</h2>
+      <ul>
+        <li>Access token — a JWT signed with a key from the Identity configuration.</li>
+        <li>The access token lifetime is set by <code>JwtSettings:ExpiryMinutes</code>.</li>
+        <li>The refresh token is stored in <code>Identity.RefreshTokens</code> and bound to the Device ID.</li>
+        <li>Sessions can be viewed and revoked via <code>GetActiveSessions</code> and <code>RemoveActiveSession</code>.</li>
+        <li>2FA supports a TOTP authenticator and email codes.</li>
+      </ul>
+
+      <h2>4. Regular messages</h2>
+      <p>Regular private and group messages are stored in the Messages service. Server logic uses this data for the chat list, message history, read receipts, editing, deletion, export and realtime updates.</p>
+
+      <h2>5. Private chats</h2>
+      <p>Private chats are 1-to-1 encrypted chats secured by a passphrase.</p>
+      <ul>
+        <li>The client generates a <code>kdf_salt</code> and a <code>passphrase_verifier</code>.</li>
+        <li>The key is derived on the client from the passphrase and chat salt.</li>
+        <li>A message is sent as <code>ciphertext</code>, <code>nonce</code> and <code>associated_data</code>.</li>
+        <li>The server stores <code>EncryptedMessage</code> as an opaque blob and never receives the passphrase.</li>
+        <li>Editing a private message replaces the ciphertext/nonce/AAD.</li>
+        <li>Deleting a private message marks it as deleted and clears the ciphertext.</li>
+      </ul>
+
+      <h2>6. Secret chats</h2>
+      <p>Secret chats are 1-to-1 chats between specific devices.</p>
+      <ul>
+        <li>Devices register a prekey bundle: identity key, signed prekey and one-time prekeys.</li>
+        <li>The initiator fetches the peer device's prekey bundle via <code>FetchPrekeyBundle</code>.</li>
+        <li>Messages are transmitted as an opaque <code>SecretEnvelope</code>.</li>
+        <li>The server does not create a regular Chat and does not store secret chat history in the Messages DB.</li>
+        <li>The envelope is relayed to the recipient and buffered temporarily with a 24-hour TTL if the recipient is offline.</li>
+        <li>After <code>AckSecretMessage</code>, the envelope is removed from the buffer.</li>
+      </ul>
+
+      <h2>7. Files</h2>
+      <p>Files, avatars, posters, attachments and previews are served by the Files service and stored in a Minio/S3-compatible storage. File metadata is used for downloading, previews, export and display in chats.</p>
+
+      <h2>8. Client local storage</h2>
+      <table>
+        <thead><tr><th>Client</th><th>What is used</th></tr></thead>
+        <tbody>
+          <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN protection, local client settings</td></tr>
+          <tr><td>Android</td><td><code>GlobalParam</code>, local settings, Firebase token, key/prekey data for encrypted/secret chats</td></tr>
+          <tr><td>macOS</td><td>Keychain for tokens and local app settings</td></tr>
+          <tr><td>Web</td><td>gRPC-Web, cookies only for technical web-client scenarios and the transition from a public profile page</td></tr>
+        </tbody>
+      </table>
+
+      <h2>9. Push notifications</h2>
+      <p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging. For secret messages, the push does not contain the message text.</p>
+
+      <h2>10. Contacts</h2>
+      <ul>
+        <li>Security: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+        <li>Privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+      </ul>
+    </article>
     <footer>© 2026 Barkfluff</footer>
   </main>
+  <script>
+    (function () {
+      function applyLang(lang) {
+        document.documentElement.lang = lang;
+        localStorage.setItem('bf_lang', lang);
+        document.querySelectorAll('[data-ru]').forEach(function (el) {
+          el.textContent = el.getAttribute('data-' + lang);
+        });
+        document.querySelectorAll('article[data-lang]').forEach(function (a) {
+          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
+        });
+        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
+      }
+      var saved = localStorage.getItem('bf_lang');
+      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+      document.getElementById('langToggle').addEventListener('click', function () {
+        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
+      });
+      applyLang(saved || detected);
+      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
+    })();
+  </script>
 </body>
 </html>

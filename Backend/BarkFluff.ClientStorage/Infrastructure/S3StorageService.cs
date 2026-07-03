@@ -26,12 +26,18 @@ public class S3StorageService : IDisposable
 {
     private readonly IAmazonS3 _client;
     private readonly string _bucketName;
+    private readonly long _partSize;
     private readonly ILogger<S3StorageService> _logger;
 
     public S3StorageService(IConfiguration configuration, ILogger<S3StorageService> logger)
     {
         _logger = logger;
         _bucketName = configuration["S3_BUCKET_NAME"] ?? "client-storage";
+
+        // Размер части multipart-заливки. По умолчанию 16 MB. Для Cloudflare R2 рекомендуется 100 MB.
+        _partSize = long.TryParse(configuration["REGISTRY_STORAGE_S3_CHUNKSIZE"], out var chunk) && chunk > 0
+            ? chunk
+            : 16 * 1024 * 1024;
 
         var config = new AmazonS3Config
         {
@@ -42,6 +48,11 @@ public class S3StorageService : IDisposable
             RequestChecksumCalculation  = Amazon.Runtime.RequestChecksumCalculation.WHEN_REQUIRED,
             ResponseChecksumValidation  = Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED
         };
+
+        // Cloudflare R2 требует region для SigV4-подписи (значение "auto"). MinIO/dev — необязательно.
+        var region = configuration["S3_REGION"];
+        if (!string.IsNullOrWhiteSpace(region))
+            config.AuthenticationRegion = region;
 
         var accessKey = configuration["S3_ACCESS_KEY"]
             ?? throw new InvalidOperationException("S3_ACCESS_KEY environment variable is required");
@@ -82,7 +93,10 @@ public class S3StorageService : IDisposable
                 Key         = key,
                 FilePath    = filePath,
                 ContentType = contentType,
-                PartSize    = 16 * 1024 * 1024, // 16 MB parts
+                PartSize    = _partSize,
+                // Cloudflare R2 не реализует STREAMING-AWS4-HMAC-SHA256-PAYLOAD (chunked signing).
+                // UNSIGNED-PAYLOAD совместим с R2/MinIO/S3; целостность обеспечивает TLS.
+                DisablePayloadSigning = true,
             };
             await transferUtility.UploadAsync(request);
         }

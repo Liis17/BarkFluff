@@ -27,6 +27,11 @@ public class BucketS3Options
     public string BucketName { get; set; }
 
     /// <summary>
+    /// Регион для SigV4-подписи. Cloudflare R2 требует значение "auto". MinIO/HostKey — необязательно.
+    /// </summary>
+    public string? Region { get; set; }
+
+    /// <summary>
     /// Использовать path-style доступ (необходимо для MinIO)
     /// </summary>
     public bool ForcePathStyle => true;

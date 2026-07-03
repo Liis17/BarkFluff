@@ -31,4 +31,13 @@ public static class FileUrlHelper
     {
         return $"{baseUrl}/download/{fileId}";
     }
+
+    /// <summary>
+    /// Маскирует GUID capability-токена для логирования: оставляет первый сегмент,
+    /// остальное скрывает, чтобы попадание в лог (Seq) не давало рабочую ссылку.
+    /// </summary>
+    public static string MaskCapabilityToken(Guid id)
+    {
+        return $"{id.ToString()[..8]}-****";
+    }
 }

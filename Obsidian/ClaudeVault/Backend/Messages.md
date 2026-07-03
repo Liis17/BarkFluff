@@ -30,6 +30,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
+| `AddUser` | Добавление участника в группу (зеркало `KickUser`): проверка прав по `GroupChatInfo.UsersCanKick`, проверка что не состоит (`UserAlreadyMemberChatException`), системное сообщение, рассылка членам + новому |
+| `UpdateGroupChat` | Смена названия и/или аватара группы. Права по `GroupChatInfo.UsersCanKick`. Аватар валидируется через Files (`UploadFileType.ChatPicture`→URL). Системное сообщение, рассылка, возвращает обновлённый `Chat` |
 | `MarkAsRead` | PostgreSQL array операции, публикует `MessageReadEvent` |
 | `GetPersonChatId` | Получить или создать обычный личный чат (поддерживает self-chat); при дублях выбирает чат с самым свежим неудалённым сообщением |
 | `GetChatInfo` | Счётчик непрочитанных, последнее сообщение |

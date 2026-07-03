@@ -33,12 +33,14 @@ public class S3BucketInitializer
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при инициализации бакета {BucketName}", bucketName);
-                throw;
+                // S3 может быть временно недоступна — не роняем старт сервиса.
+                // Чаты/сообщения и метаданные файлов (БД) продолжат работать,
+                // недоступны будут только загрузка/скачивание содержимого из S3.
+                _logger.LogError(ex, "Ошибка при инициализации бакета {BucketName}. Сервис продолжит запуск без гарантии доступности S3.", bucketName);
             }
         }
 
-        _logger.LogInformation("Инициализация S3 бакетов успешно завершена");
+        _logger.LogInformation("Инициализация S3 бакетов завершена");
     }
 
     /// <summary>
@@ -46,22 +48,29 @@ public class S3BucketInitializer
     /// </summary>
     private async Task EnsureBucketExistsAsync(IAmazonS3 client, string bucketName)
     {
+        // Проверяем существование бакета через попытку получить его локацию
         try
         {
-            // Проверяем существование бакета через попытку получить его локацию
-            try
-            {
-                await client.GetBucketLocationAsync(bucketName);
-                _logger.LogInformation("Бакет {BucketName} уже существует", bucketName);
-                return;
-            }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                // Бакет не найден, продолжаем создание
-            }
+            await client.GetBucketLocationAsync(bucketName);
+            _logger.LogInformation("Бакет {BucketName} уже существует", bucketName);
+            return;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Бакет не найден, продолжаем создание
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            // Токен без прав администрирования бакетов (например, R2 API-токен только на чтение/запись
+            // объектов) не может проверить существование бакета. Считаем, что бакет создан заранее вручную.
+            _logger.LogWarning("Нет прав на проверку бакета {BucketName} (403 Forbidden) — токен ограничен правами объектов, бакет должен быть создан заранее вручную", bucketName);
+            return;
+        }
 
-            // Создаем бакет
-            _logger.LogInformation("Создание бакета {BucketName}...", bucketName);
+        // Создаем бакет
+        _logger.LogInformation("Создание бакета {BucketName}...", bucketName);
+        try
+        {
             var putBucketRequest = new PutBucketRequest
             {
                 BucketName = bucketName,
@@ -70,53 +79,15 @@ public class S3BucketInitializer
 
             await client.PutBucketAsync(putBucketRequest);
             _logger.LogInformation("Бакет {BucketName} успешно создан", bucketName);
-
-            // Устанавливаем политику доступа для публичного чтения
-            await SetBucketPolicyAsync(client, bucketName);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
             // Бакет уже существует (может быть создан параллельно)
             _logger.LogWarning("Бакет {BucketName} уже существует (конфликт при создании)", bucketName);
         }
-    }
-
-    /// <summary>
-    /// Устанавливает политику публичного чтения для бакета
-    /// </summary>
-    private async Task SetBucketPolicyAsync(IAmazonS3 client, string bucketName)
-    {
-        try
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            var policy = $$"""
-            {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Principal": {
-                            "AWS": "*"
-                        },
-                        "Action": "s3:GetObject",
-                        "Resource": "arn:aws:s3:::{{bucketName}}/*"
-                    }
-                ]
-            }
-            """;
-
-            var request = new PutBucketPolicyRequest
-            {
-                BucketName = bucketName,
-                Policy = policy
-            };
-
-            await client.PutBucketPolicyAsync(request);
-            _logger.LogInformation("Политика доступа для бакета {BucketName} установлена", bucketName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Не удалось установить политику доступа для бакета {BucketName}", bucketName);
-            // Не бросаем исключение, так как бакет уже создан
+            _logger.LogWarning("Нет прав на создание бакета {BucketName} (403 Forbidden) — создайте бакет вручную в S3-хранилище", bucketName);
         }
     }
 }

@@ -24,6 +24,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 
   <style>
+    /* ===== LANG FADE-IN (скрываем до применения локализации) ===== */
+    body { opacity: 0; transition: opacity .45s ease; }
+    body.lang-ready { opacity: 1; }
+
     /* ===== BASE (styles.css) ===== */
     :root {
       --bg-0: #14070a;
@@ -580,6 +584,7 @@
     .pc-version-row svg { flex-shrink: 0; }
     .pc-version-beta { color: var(--ink-mute); }
   </style>
+  <noscript><style>body { opacity: 1 !important; }</style></noscript>
 </head>
 <body>
 
@@ -1331,6 +1336,8 @@
       const detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
       window.__lang  = saved || detected;
       applyLang(window.__lang);
+      /* Локализация применена — плавно показываем страницу */
+      requestAnimationFrame(() => document.body.classList.add('lang-ready'));
       loadVersions();
 
       /* ── Platform auto-detection ────────────────────── */

@@ -83,37 +83,23 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | `stickers.html` | Управление стикерпаками |
 | `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
 | `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
-| `s3-storage.html` | Конфигурация S3/Minio бакетов |
-| `s3-browser.html` | Браузер S3-объектов с presigned URL |
-| `restarting.html` | Заглушка на время перезагрузки |
-| `updating.html` | Заглушка на время обновления |
-| `Redesigned/` | Новая SPA-версия (`/v2`) — index.html + app.js + screen-*.js + styles.css |
+| `s3-storage.html` | (мёртвый, не роутится) старая плоская страница конфигурации S3 |
+| `s3-browser.html` | (мёртвый, не роутится) старый браузер S3-объектов |
+| `Redesigned/` | (устарел, superseded) SPA-версия — index.html + app.js + screen-*.js, доступна только по `/v2/` |
+| `v2/` | **Актуальная версия** (MD3-дизайн) — многостраничная, `dashboard.html`/`services.html`/`s3-storage.html`/и т.д. |
 
-### SPA-экраны (Pages/Redesigned)
+### Актуальная версия — Pages/v2 (MD3)
 
-| `data-screen` | Группа | Файл | Назначение |
-|---------------|--------|------|-----------|
-| `login` | Auth | `screen-login.js` | Telegram-вход |
-| `dashboard` | Observability | `screen-dashboard.js` | KPI, трафик |
-| `services` | Observability | `screen-services.js` | Docker-сервисы |
-| `logs` | Observability | `screen-logs.js` | Логи Seq |
-| `badges` | Content | `screen-content.js` | Бейджи |
-| `stickers` | Content | `screen-content.js` | Стикерпаки |
-| `users` | Content | `screen-content.js` | Пользователи |
-| `notifications` | Engagement | `screen-notifications.js` | Рассылка push на Android (forму + Android-preview) |
-| `s3-storage` | Storage | `screen-s3.js` | Конфигурация бакетов |
-| `s3-browser` | Storage | `screen-s3.js` | Файлы в бакете |
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/notifications`, `/mail`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
-### Параллельная UI v2 (Redesigned)
+**Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 
-В `Pages/Redesigned/` живёт SPA-вариант админки (одна страница со screen-*.js модулями). Обслуживается на маршруте `/v2`:
-- `app.MapGet("/v2", ...)` отдаёт `Pages/Redesigned/index.html` через `ServeHtmlFile` (placeholder `{{SERVER_STARTED_AT_UTC}}` подставляется).
-- Второй `UseStaticFiles` с `RequestPath = "/v2"` маппится на `Pages/Redesigned/`.
-- Cookie `ui_version=v2` на корневом `/`: при наличии — редирект на `/v2`. На /v2 можно зайти и без cookie (если есть auth_token).
-- Кнопки переключения: «Новая версия» в шапке `dashboard.html` ставит cookie + редирект на /v2; «Старая версия» в topbar redesigned ui стирает cookie + редирект на /.
-- Старые маршруты (`/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/s3-storage`, `/s3-browser`) продолжают работать независимо.
+### Устаревшие/мёртвые версии (не трогать)
 
-Auth внутри SPA: на старте `App.checkAuth()` дёргает `/api/auth/me`; при 401 → `screen-login` (Telegram-флоу `/api/auth/request` + polling `/api/auth/status`). Все экраны используют те же `/api/*` endpoints что и старая версия.
+- **`Pages/Redesigned/`** — старый SPA-вариант (screen-*.js модули), superseded веткой v2. Обслуживается только на `/v2/` (URL, не путать с папкой `Pages/v2/`) через `app.MapGet("/v2/", ...)` → `Redesigned/index.html` + `UseStaticFiles(RequestPath="/v2")` → `Pages/Redesigned/`. Живой код, но не актуальный UI — не дорабатывать.
+- **`Pages/*.html`** (плоские файлы верхнего уровня — `s3-storage.html`, `s3-browser.html` и т.п.) — исторически первая версия. Ни один именованный маршрут на них больше не указывает; технически ещё раздаются как статика (`UseStaticFiles(RequestPath="")` на `Pages/`), но по прямому `.html`-URL, на который никто не ссылается. Мёртвый код — не дорабатывать.
+
+Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-флоу (`/api/auth/request` + polling `/api/auth/status`). Все версии используют одни и те же `/api/*` endpoints.
 
 ## Важные константы
 

@@ -69,10 +69,11 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 - **ImageCompressor** — SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%. Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%.
 - **FileTypeDetector** — тип по magic bytes (JPEG, PNG, WebP, GIF, MP4, WebM, AVI, MOV, MP3, WAV, FLAC, M4A, OGG). OGG → `Voice`, остальное аудио → `Audio`.
+- **VideoThumbnailExtractor** — FFMpegCore, статический бинарь `ffmpeg`/`ffprobe` (`mwader/static-ffmpeg`, копируется в образ в Dockerfile, путь `/usr/local/bin` через `GlobalFFOptions`/`Ffmpeg:BinaryFolder`). Для `MessageAttachmentVideo`: кадр на 5-й секунде (или середина, если короче) → тот же `ImageCompressor`-пайплайн превью (1024px JPEG). Видео всегда буферизуется на диск при загрузке (FFmpeg читает файл по пути, не по стриму). Длительность видео не извлекается и не хранится (нет поля в proto).
 
 ### Метаданные изображений
 
-При загрузке файлов графических типов (`UserAvatar`, `MessageAttachmentImage`, `MessageAttachmentGif`, `ChatPicture`, `MessageAttachmentSticker`, `UserProfilePoster`) автоматически извлекаются и сохраняются размеры изображения через `Image.IdentifyAsync()` (SixLabors.ImageSharp). Значения `ImageWidth`/`ImageHeight` возвращаются во всех ответах `UploadFileInfo` (`GetFileData`, `GetFilesData`). Для не-графических файлов и старых записей возвращается `0`.
+При загрузке файлов графических типов (`UserAvatar`, `MessageAttachmentImage`, `MessageAttachmentGif`, `ChatPicture`, `MessageAttachmentSticker`, `UserProfilePoster`) автоматически извлекаются и сохраняются размеры изображения через `Image.IdentifyAsync()` (SixLabors.ImageSharp). Для `MessageAttachmentVideo` `ImageWidth`/`ImageHeight` берутся из декодированного превью-кадра (см. VideoThumbnailExtractor выше). Значения `ImageWidth`/`ImageHeight` возвращаются во всех ответах `UploadFileInfo` (`GetFileData`, `GetFilesData`). Для не-графических файлов и старых записей возвращается `0`.
 
 ## Конфигурация
 

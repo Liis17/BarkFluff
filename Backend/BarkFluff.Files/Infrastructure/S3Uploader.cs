@@ -23,7 +23,10 @@ public class S3Uploader : IS3Uploader
             AutoCloseStream = false,
             AutoResetStreamPosition = false,
             ContentType = contentType,
-            Metadata = { ["original-filename"] = Path.GetFileName(key) }
+            Metadata = { ["original-filename"] = Path.GetFileName(key) },
+            // Cloudflare R2 не реализует STREAMING-AWS4-HMAC-SHA256-PAYLOAD (chunked signing).
+            // UNSIGNED-PAYLOAD совместим с R2/MinIO/HostKey; целостность обеспечивает TLS.
+            DisablePayloadSigning = true,
         };
 
         var response = await client.PutObjectAsync(request);

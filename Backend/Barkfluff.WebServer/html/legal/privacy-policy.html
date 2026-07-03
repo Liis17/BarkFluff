@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Политика конфиденциальности — Barkfluff</title>
+  <title data-ru="Политика конфиденциальности — Barkfluff" data-en="Privacy Policy — Barkfluff">Политика конфиденциальности — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <style>
     :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
     * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
+    body.lang-ready { opacity:1; }
     main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
     header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
     a { color:var(--brand); text-decoration:none; }
@@ -16,6 +17,7 @@
     nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
     nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
     article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
+    article[data-lang] { display:none; }
     h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
     h2 { margin-top:32px; font-size:22px; }
     h3 { margin-top:22px; font-size:17px; }
@@ -25,21 +27,25 @@
     th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
     th { color:var(--text); background:rgba(255,122,41,.08); }
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
+    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
+    .lang-btn:hover { color:var(--text); }
   </style>
+  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
 <body>
   <main>
     <header>
       <a href="/"><strong>barkfluff</strong></a>
-      <a href="/">На главную</a>
+      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+      <button class="lang-btn" id="langToggle" type="button">EN</button>
     </header>
     <nav>
-      <a href="/legal/privacy-policy" class="active">Конфиденциальность</a>
-      <a href="/legal/terms-of-service">Условия использования</a>
-      <a href="/legal/account-deletion">Удаление аккаунта</a>
-      <a href="/legal/encryption">Шифрование</a>
+      <a href="/legal/privacy-policy" class="active" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+      <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+      <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+      <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article>
+    <article data-lang="ru">
       <h1>Политика конфиденциальности</h1>
       <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
 
@@ -174,7 +180,164 @@
         <li>Сайт: <a href="https://barkfluff.com">https://barkfluff.com</a></li>
       </ul>
     </article>
+    <article data-lang="en">
+      <h1>Privacy Policy</h1>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+
+      <h2>1. Introduction</h2>
+      <p>This Policy describes the data processed in the current Barkfluff platform: account, profile, devices, messages, files, client versions, public profile pages, and the website support chat.</p>
+
+      <h2>2. What data is processed</h2>
+      <h3>2.1 Account and profile</h3>
+      <table>
+        <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
+        <tbody>
+          <tr><td>Email</td><td>Registration, login, confirmations, access recovery, notifications</td><td>Users / Identity</td></tr>
+          <tr><td>Username</td><td>Login, search, public profile page, display in chats</td><td>Users</td></tr>
+          <tr><td>Password hash</td><td>Password verification; the plaintext password is not stored</td><td>Identity</td></tr>
+          <tr><td>First name, last name, bio</td><td>User profile and public profile data</td><td>Users</td></tr>
+          <tr><td>Avatar and profile poster</td><td>Profile and public page styling</td><td>Files / Minio + Users metadata</td></tr>
+          <tr><td>Privacy and personalization settings</td><td>Display of profile data and client appearance</td><td>Users</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 Devices and sessions</h3>
+      <table>
+        <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
+        <tbody>
+          <tr><td>Device ID</td><td>Refresh token binding, active sessions list, session revocation</td><td>Identity.RefreshTokens, Users.UserDevices</td></tr>
+          <tr><td>Device name</td><td>Device display and renaming</td><td>Users.UserDevices</td></tr>
+          <tr><td>OS, app name</td><td>Client compatibility and device list</td><td>Users.UserDevices</td></tr>
+          <tr><td>Location</td><td>Device display in the sessions list</td><td>Users.UserDevices</td></tr>
+          <tr><td>Firebase token</td><td>Push notifications via Firebase Cloud Messaging</td><td>Users.UserDevices</td></tr>
+          <tr><td>Refresh token</td><td>Session renewal and sign-out from device</td><td>Identity.RefreshTokens</td></tr>
+        </tbody>
+      </table>
+      <p>The IP address is passed in gRPC service metadata headers and is used to process current requests.</p>
+
+      <h3>2.3 Messages, chats and files</h3>
+      <table>
+        <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
+        <tbody>
+          <tr><td>Regular messages</td><td>Private and group chats, sync, read receipts, editing and deletion</td><td>Messages / PostgreSQL</td></tr>
+          <tr><td>Private encrypted chats</td><td>1-to-1 chats with client-side encryption</td><td>Messages stores ciphertext and chat metadata</td></tr>
+          <tr><td>Secret chats</td><td>1-to-1 chats between specific devices</td><td>The server relays the envelope and buffers it temporarily</td></tr>
+          <tr><td>Attachments and previews</td><td>Transfer of files, images, video, documents, audio and avatars</td><td>Files / Minio + PostgreSQL metadata</td></tr>
+          <tr><td>Read statuses</td><td>Display of read messages</td><td>Messages</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.4 Online statuses and updates</h3>
+      <p>Onliner stores and serves the online status and last activity time. Updates delivers realtime events to clients via gRPC streaming.</p>
+
+      <h3>2.5 Website and support</h3>
+      <p>WebServer serves the main page, public profile pages, legal pages, install scripts, client versions and the public profile REST API. Messages from the website support form are stored in the WebServer process memory and forwarded to the administrator via the Telegram Bot API.</p>
+      <p>On clicking “Message in browser” on a public profile page, WebServer creates a short-lived cookie <code>bf_open_chat</code> so the web client opens a chat with the selected user.</p>
+
+      <h2>3. What the data is used for</h2>
+      <ul>
+        <li>registration, login, 2FA, password recovery and session management;</li>
+        <li>profiles, user search, public pages and privacy settings;</li>
+        <li>delivery of messages, files, read receipts, realtime updates and push notifications;</li>
+        <li>user data export via <code>Users.ExportData</code>;</li>
+        <li>user support via the website, email and the Telegram bot;</li>
+        <li>logging of errors, metrics and security events.</li>
+      </ul>
+
+      <h2>4. Data protection</h2>
+      <h3>4.1 Data transfer</h3>
+      <ul>
+        <li>Clients and microservices use gRPC/HTTP/2 and HTTPS/TLS on the external perimeter.</li>
+        <li>gRPC request authorization uses XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
+        <li>Internal asynchronous events go through RabbitMQ / MassTransit.</li>
+      </ul>
+
+      <h3>4.2 Passwords, tokens and 2FA</h3>
+      <ul>
+        <li>Passwords are stored as hashes.</li>
+        <li>Access token — a JWT in the <code>x-auth-token</code> header; its lifetime is set by the Identity configuration.</li>
+        <li>Refresh token is bound to the Device ID and stored in Identity.</li>
+        <li>2FA supports a TOTP authenticator and email codes.</li>
+      </ul>
+
+      <h3>4.3 Encrypted chats</h3>
+      <ul>
+        <li><strong>Private chats:</strong> the server stores the <code>EncryptedMessage</code> ciphertext, nonce and AAD; the key is derived on the client from the passphrase and chat salt.</li>
+        <li><strong>Secret chats:</strong> the server works with an opaque envelope bound to devices, relays it to the recipient and buffers it with a 24-hour TTL.</li>
+        <li><strong>Regular chats:</strong> messages are stored in the Messages service and accessible to server logic, which provides sync, export and chat features.</li>
+      </ul>
+      <p>For details, see the <a href="/legal/encryption">“Encryption”</a> page.</p>
+
+      <h2>5. Sharing with third parties</h2>
+      <p>We do not sell personal data. Data is shared with external providers only to operate current features:</p>
+      <ul>
+        <li><strong>SMTP:</strong> email notifications, confirmation codes, access recovery.</li>
+        <li><strong>Firebase Cloud Messaging:</strong> push notifications to devices with a Firebase token.</li>
+        <li><strong>Telegram Bot API:</strong> handling messages from the website support chat.</li>
+        <li><strong>Hosting and infrastructure:</strong> hosting of services, databases, file storage, RabbitMQ, Redis and Seq.</li>
+      </ul>
+
+      <h2>6. User rights</h2>
+      <ul>
+        <li><strong>Access and export:</strong> export returns the JSON files <code>profile.json</code>, <code>messages.json</code> and <code>files.json</code>.</li>
+        <li><strong>Correction:</strong> profile, bio, avatar, poster, privacy, devices and password can be changed through client features where available.</li>
+        <li><strong>Deletion:</strong> a request to delete your account and associated personal data can be sent to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</li>
+        <li><strong>Session revocation:</strong> an active session can be terminated via device management features.</li>
+      </ul>
+
+      <h2>7. Deletion of messages and data</h2>
+      <ul>
+        <li>Regular messages support deletion via the Messages API.</li>
+        <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
+        <li>Secret messages are removed from the temporary buffer after delivery confirmation or TTL expiry.</li>
+        <li>For deletion of an account and data not covered by client features, use a support request.</li>
+      </ul>
+
+      <h2>8. Cookies and local storage</h2>
+      <ul>
+        <li>Native clients use local storage for tokens, settings and caches.</li>
+        <li>The Windows client stores <code>GlobalParam.json</code> and can protect it with a PIN.</li>
+        <li>The macOS client uses the Keychain for tokens.</li>
+        <li>WebServer uses the <code>bf_open_chat</code> cookie only for the transition from a public profile page to the web client.</li>
+      </ul>
+
+      <h2>9. Children</h2>
+      <p>Barkfluff is not intended for users under 13. If you believe a child under 13 has created an account, contact us: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
+
+      <h2>10. Policy changes</h2>
+      <p>When this policy changes, the “Updated” date at the top of the document is updated. Significant changes may be communicated via the app or email.</p>
+
+      <h2>11. Contacts</h2>
+      <ul>
+        <li>Privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+        <li>Security: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+        <li>Website: <a href="https://barkfluff.com">https://barkfluff.com</a></li>
+      </ul>
+    </article>
     <footer>© 2026 Barkfluff</footer>
   </main>
+  <script>
+    (function () {
+      function applyLang(lang) {
+        document.documentElement.lang = lang;
+        localStorage.setItem('bf_lang', lang);
+        document.querySelectorAll('[data-ru]').forEach(function (el) {
+          el.textContent = el.getAttribute('data-' + lang);
+        });
+        document.querySelectorAll('article[data-lang]').forEach(function (a) {
+          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
+        });
+        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
+      }
+      var saved = localStorage.getItem('bf_lang');
+      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+      document.getElementById('langToggle').addEventListener('click', function () {
+        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
+      });
+      applyLang(saved || detected);
+      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
+    })();
+  </script>
 </body>
 </html>

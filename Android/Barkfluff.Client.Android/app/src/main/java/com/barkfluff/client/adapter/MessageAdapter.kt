@@ -71,7 +71,9 @@ class MessageAdapter(
     /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
     private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
-    private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null
+    private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
+    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, fileId аватара). null = брать из самого MessageItem. */
+    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     /** Проверяет, есть ли сообщение с указанным ID в текущем загруженном списке (для эвристики reply vs forward). */
@@ -390,13 +392,20 @@ class MessageAdapter(
 
             if (isGroupChat) {
                 binding.senderInfoLayout.visibility = View.VISIBLE
-                binding.senderNameTextView.text = item.senderName
 
-                if (!item.senderAvatarFileId.isNullOrBlank()) {
+                // Имя и аватар отправителя берём из резолвера (кэш участников чата),
+                // с фолбэком на поля самого сообщения.
+                val resolved = senderInfoProvider?.invoke(item.senderId)
+                val senderName = resolved?.first ?: item.senderName
+                val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
+
+                binding.senderNameTextView.text = senderName
+
+                if (!senderAvatarFileId.isNullOrBlank()) {
                     binding.senderAvatarPlaceholder.visibility = View.GONE
                     binding.senderAvatarImageView.visibility = View.VISIBLE
                     scope.launch {
-                        val url = getFileUrl(item.senderAvatarFileId)
+                        val url = getFileUrl(senderAvatarFileId)
                         if (url != null) {
                             withContext(Dispatchers.Main) {
                                 binding.senderAvatarImageView.load(url) {
@@ -411,7 +420,7 @@ class MessageAdapter(
                     binding.senderAvatarImageView.visibility = View.GONE
                     AvatarLoader.showPlaceholder(
                         binding.senderAvatarPlaceholder,
-                        item.senderName ?: "",
+                        senderName ?: "",
                         item.senderId
                     )
                 }

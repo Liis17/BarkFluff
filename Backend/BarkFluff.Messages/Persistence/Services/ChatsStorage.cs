@@ -248,6 +248,27 @@ public class ChatsStorage
             .FirstOrDefaultAsync(x => x.Id == chatId);
     }
 
+    public async Task UpdateGroupChat(Guid chatId, string? title, string? picture)
+    {
+        var chat = await _context.Chats.FirstOrDefaultAsync(x => x.Id == chatId);
+        if (chat is null)
+        {
+            return;
+        }
+
+        if (title is not null)
+        {
+            chat.Title = title;
+        }
+
+        if (picture is not null)
+        {
+            chat.Picture = picture;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task RemoveChatMember(Guid chatId, long userId)
     {
         var chatMember = await _context.ChatMembers.FirstOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId);
