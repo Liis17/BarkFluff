@@ -1405,6 +1405,24 @@
     if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
     if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
 
+    // --- Call buttons (шапка чата) ---
+    function startCall(media) {
+        if (!currentChatId || !currentChatInfo) return;
+        var target;
+        if (currentChatInfo.isGroupChat) {
+            target = { chatId: currentChatId };
+        } else {
+            var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
+            if (!peerId) return;
+            target = { userId: peerId };
+        }
+        BF.calls.initiate(target, media).catch(function (e) { console.error('Не удалось начать звонок:', e); });
+    }
+    var _btnCallAudio = $('#btnCallAudio');
+    var _btnCallVideo = $('#btnCallVideo');
+    if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
+    if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
+
     profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
 
