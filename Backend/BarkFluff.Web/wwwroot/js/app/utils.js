@@ -61,6 +61,47 @@
         }
     }
 
+    // Inline-SVG иконки для превью списка чатов (24×24, currentColor).
+    var PREVIEW_ICONS = {
+        image: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+        video: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+        audio: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+        voice: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+        document: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        sticker: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 12v3a6 6 0 0 1-6 6h-3"/><path d="M12 21a9 9 0 0 0 9-9"/></svg>',
+        attach: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+        // Трубка со стрелкой направления.
+        callIn: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><polyline points="15 9 21 3"/><polyline points="21 8 21 3 16 3"/></svg>',
+        callOut: '<svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><polyline points="16 8 22 2"/><polyline points="17 2 22 2 22 7"/></svg>'
+    };
+
+    // HTML превью вложения: SVG-иконка + текстовая подпись.
+    function attachmentPreviewHtml(type) {
+        var icon, label;
+        switch (type) {
+            case 'IMAGE': case 'GIF': icon = PREVIEW_ICONS.image; label = 'Фото'; break;
+            case 'VIDEO': icon = PREVIEW_ICONS.video; label = 'Видео'; break;
+            case 'AUDIO': icon = PREVIEW_ICONS.audio; label = 'Аудио'; break;
+            case 'VOICE': icon = PREVIEW_ICONS.voice; label = 'Голосовое'; break;
+            case 'DOCUMENT': icon = PREVIEW_ICONS.document; label = 'Документ'; break;
+            case 'STICKER': icon = PREVIEW_ICONS.sticker; label = 'Стикер'; break;
+            default: icon = PREVIEW_ICONS.attach; label = 'Вложение';
+        }
+        return icon + '<span class="preview-text">' + escapeHtml(label) + '</span>';
+    }
+
+    // HTML превью звонка по тексту системного сообщения. null — если это не звонок.
+    function callPreviewHtml(text, isOutgoing) {
+        if (!text) return null;
+        var isMissed = text.indexOf('Пропущенный звонок') === 0 || text.indexOf('Звонок отклонён') === 0;
+        var isEnded = text.indexOf('Звонок') === 0;
+        if (!isMissed && !isEnded) return null;
+        var icon = isOutgoing ? PREVIEW_ICONS.callOut : PREVIEW_ICONS.callIn;
+        var cls = isMissed ? 'preview-call-missed' : 'preview-call';
+        return '<span class="' + cls + '">' + icon + '</span>' +
+            '<span class="preview-text">' + escapeHtml(truncate(text, 50)) + '</span>';
+    }
+
     function docIcon(fileName) {
         if (!fileName) return '\u{1F4C4}';
         var ext = fileName.split('.').pop().toLowerCase();
@@ -130,6 +171,8 @@
         escapeHtml: escapeHtml,
         formatDuration: formatDuration,
         attachmentEmoji: attachmentEmoji,
+        attachmentPreviewHtml: attachmentPreviewHtml,
+        callPreviewHtml: callPreviewHtml,
         docIcon: docIcon,
         parseJwtPayload: parseJwtPayload,
         isStatusOnline: isStatusOnline,

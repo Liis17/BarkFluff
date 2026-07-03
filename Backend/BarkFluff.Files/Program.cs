@@ -58,7 +58,12 @@ public class Program
         builder.Services.AddScoped<StickerPacksStorage>();
         builder.Services.AddScoped<StickersStorage>();
         builder.Services.AddSingleton<ImageCompressor>();
+        builder.Services.AddSingleton<VideoThumbnailExtractor>();
         builder.Services.AddHostedService<TempFileCleanupService>();
+
+        // Путь к бинарям ffmpeg/ffprobe в образе (см. Dockerfile). По умолчанию — /usr/local/bin.
+        FFMpegCore.GlobalFFOptions.Configure(o =>
+            o.BinaryFolder = builder.Configuration["Ffmpeg:BinaryFolder"] ?? "/usr/local/bin");
 
         builder.Services.AddMinioS3(builder.Configuration);
         builder.Services.AddFileTypeDetection();

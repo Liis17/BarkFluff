@@ -26,7 +26,13 @@ service MessagesApi {
   
   // Убрать пользователя из группового чата
   rpc KickUser(KickUserRequest) returns(KickUserResponse);
-  
+
+  // Добавить пользователя в групповой чат
+  rpc AddUser(AddUserRequest) returns(AddUserResponse);
+
+  // Изменить групповой чат (название и/или аватар)
+  rpc UpdateGroupChat(UpdateGroupChatRequest) returns(UpdateGroupChatResponse);
+
   // Отментить сообщения как прочитанные
   rpc MarkAsRead(MarkAsReadRequest) returns(MarkAsReadResponse);
 
@@ -176,6 +182,23 @@ message KickUserRequest {
 }
 
 message KickUserResponse { }
+
+message AddUserRequest {
+  string chat_id = 1; // Идентификатор чата
+  int64 user_id = 2; // Пользователь которого необходимо добавить
+}
+
+message AddUserResponse { }
+
+message UpdateGroupChatRequest {
+  string chat_id = 1; // Идентификатор чата
+  string title = 2; // Новое название (пусто = не менять)
+  string picture_file_id = 3; // Идентификатор нового файла обложки (пусто = не менять)
+}
+
+message UpdateGroupChatResponse {
+  Chat chat = 1; // Обновлённый чат
+}
 
 message CreateGroupChatRequest {
   

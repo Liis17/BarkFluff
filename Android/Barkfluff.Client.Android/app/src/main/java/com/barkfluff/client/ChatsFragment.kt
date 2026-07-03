@@ -410,8 +410,9 @@ class ChatsFragment : Fragment() {
                 allChats.filter { it.id in ids }
             }
         }
+        val sorted = filtered.sortedByDescending { it.lastMessage?.sentAt ?: 0L }
         viewLifecycleOwner.lifecycleScope.launch {
-            val displayItems = filtered.map { chat -> resolveDisplayItem(chat) }
+            val displayItems = sorted.map { chat -> resolveDisplayItem(chat) }
             chatAdapter.submitList(displayItems)
             showEmptyState(displayItems.isEmpty())
         }
@@ -561,7 +562,7 @@ class ChatsFragment : Fragment() {
                 countUnread = if (isOwn) 0L else 1L,
                 firstUnreadMessageId = if (isOwn) 0L else messageId
             )
-            allChats = allChats + newChat
+            allChats = (allChats + newChat).sortedByDescending { it.lastMessage?.sentAt ?: 0L }
             return
         }
         val existing = allChats[idx]
@@ -577,6 +578,7 @@ class ChatsFragment : Fragment() {
             countUnread = if (isOwn) existing.countUnread else existing.countUnread + 1
         )
         allChats = allChats.toMutableList().also { it[idx] = updated }
+            .sortedByDescending { it.lastMessage?.sentAt ?: 0L }
     }
 
     private fun mirrorReadInAllChats(chatId: String) {

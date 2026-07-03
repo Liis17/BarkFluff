@@ -1,6 +1,7 @@
 using BarkFluff.Messages.Features.AcceptPrivateChat;
 using BarkFluff.Messages.Features.AcceptSecretChatInvite;
 using BarkFluff.Messages.Features.AckSecretMessage;
+using BarkFluff.Messages.Features.AddUser;
 using BarkFluff.Messages.Features.CreateGroupChat;
 using BarkFluff.Messages.Features.CreatePrivateChat;
 using BarkFluff.Messages.Features.DeleteMessage;
@@ -26,6 +27,7 @@ using BarkFluff.Messages.Features.SendSecretChatInvite;
 using BarkFluff.Messages.Features.SendSecretMessage;
 using BarkFluff.Messages.Features.UnpinAll;
 using BarkFluff.Messages.Features.UnpinMessage;
+using BarkFluff.Messages.Features.UpdateGroupChat;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Files;
@@ -186,6 +188,55 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         await _mediator.Send(command);
 
         return new KickUserResponse();
+    }
+
+    public override async Task<AddUserResponse> AddUser(AddUserRequest request, ServerCallContext context)
+    {
+        var hasValidGuid = Guid.TryParse(request.ChatId, out Guid chatId);
+
+        if (!hasValidGuid)
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new AddUserCommand()
+        {
+            UserId = request.UserId,
+            ChatId = chatId
+        };
+
+        await _mediator.Send(command);
+
+        return new AddUserResponse();
+    }
+
+    public override async Task<UpdateGroupChatResponse> UpdateGroupChat(UpdateGroupChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out Guid chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        Guid? pictureFileId = null;
+
+        if (!string.IsNullOrEmpty(request.PictureFileId))
+        {
+            if (!Guid.TryParse(request.PictureFileId, out Guid pictureFileIdTmp))
+            {
+                throw new NotValidFileIdException();
+            }
+
+            pictureFileId = pictureFileIdTmp;
+        }
+
+        var command = new UpdateGroupChatCommand()
+        {
+            ChatId = chatId,
+            Title = string.IsNullOrEmpty(request.Title) ? null : request.Title,
+            PictureFileId = pictureFileId
+        };
+
+        return await _mediator.Send(command);
     }
 
     public override async Task<MarkAsReadResponse> MarkAsRead(MarkAsReadRequest request, ServerCallContext context)

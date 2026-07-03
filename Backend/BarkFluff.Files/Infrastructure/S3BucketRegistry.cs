@@ -104,7 +104,14 @@ public class S3BucketRegistry : IS3BucketRegistry
                 {
                     ServiceURL = opts.ServiceUrl,
                     ForcePathStyle = opts.ForcePathStyle,
+                    // MinIO/HostKey/R2 обычно не поддерживают новые SDK-чексуммы по умолчанию.
+                    RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                    ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
                 };
+
+                // Cloudflare R2 требует region для SigV4-подписи (значение "auto"). MinIO/HostKey — необязательно.
+                if (!string.IsNullOrWhiteSpace(opts.Region))
+                    config.AuthenticationRegion = opts.Region;
 
                 client = new AmazonS3Client(new BasicAWSCredentials(opts.AccessKey, opts.SecretKey), config);
                 clientCache[clientKey] = client;

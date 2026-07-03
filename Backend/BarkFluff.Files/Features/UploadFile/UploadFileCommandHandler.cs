@@ -23,6 +23,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
     private readonly IS3BucketRegistry _bucketRegistry;
     private readonly ImageCompressor _imageCompressor;
     private readonly FileTypeDetector _fileTypeDetector;
+    private readonly VideoThumbnailExtractor _videoThumbnailExtractor;
     private readonly ILogger<UploadFileCommandHandler> _logger;
 
 
@@ -69,6 +70,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         IS3BucketRegistry bucketRegistry,
         ImageCompressor imageCompressor,
         FileTypeDetector fileTypeDetector,
+        VideoThumbnailExtractor videoThumbnailExtractor,
         ILogger<UploadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
@@ -77,6 +79,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         _bucketRegistry = bucketRegistry;
         _imageCompressor = imageCompressor;
         _fileTypeDetector = fileTypeDetector;
+        _videoThumbnailExtractor = videoThumbnailExtractor;
         _logger = logger;
     }
 
@@ -116,16 +119,22 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             or UploadFileType.MessageAttachmentImage
             or UploadFileType.ChatPicture
             or UploadFileType.MessageAttachmentGif;
+        var isVideoType = file.Type == UploadFileType.MessageAttachmentVideo;
 
         Stream originalStream;
+        // Путь к временному файлу на диске. Нужен для видео (FFmpeg читает файл по пути),
+        // также используется для буферизации больших не-графических файлов. null = буфер в памяти.
+        string? tempFilePath = null;
 
-        if (!isImageType && fileSize > 100 * 1024 * 1024)
+        if (isVideoType || (!isImageType && fileSize > 100 * 1024 * 1024))
         {
-            // Большие не-графические файлы — буферизация через временный файл на диске
+            // Видео и большие не-графические файлы — буферизация через временный файл на диске
+            tempFilePath = Path.GetTempFileName();
             _logger.LogInformation("Файл {FileId} ({Size} МБ) буферизуется через диск", request.FileId, fileSize / 1024 / 1024);
+            // FileShare.Read — чтобы процесс ffmpeg/ffprobe мог открыть файл параллельно нашему стриму.
             var tempStream = new FileStream(
-                Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite,
-                FileShare.None, 81920, FileOptions.DeleteOnClose);
+                tempFilePath, FileMode.Create, FileAccess.ReadWrite,
+                FileShare.Read, 81920, FileOptions.None);
             await request.FileStream.CopyToAsync(tempStream, cancellationToken);
             tempStream.Position = 0;
             originalStream = tempStream;
@@ -304,6 +313,44 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 }
             }
 
+            // Видео: кадр-обложка на 5-й секунде → тот же pipeline превью, что и для картинок.
+            // tempFilePath может быть null, если тип определился как видео только после детекции
+            // содержимого (буферизация на диск решается до неё) — в этом случае превью пропускается.
+            if (file.Type == UploadFileType.MessageAttachmentVideo && tempFilePath is not null)
+            {
+                try
+                {
+                    var frameBytes = await _videoThumbnailExtractor.ExtractFrameJpegAsync(
+                        tempFilePath, VideoThumbnailExtractor.DefaultFramePosition, cancellationToken);
+
+                    using var frameStream = new MemoryStream(frameBytes);
+                    var previewWidth = _customFileTypeWidth.GetValueOrDefault(file.Type, 1024);
+                    var frameResult = await _imageCompressor.ProcessImageAllInOneAsync(
+                        frameStream, enforceOriginalLimits: false, previewWidth, cancellationToken);
+
+                    file.ImageWidth = frameResult.Width;
+                    file.ImageHeight = frameResult.Height;
+
+                    if (frameResult.PreviewBytes is not null)
+                    {
+                        previewId = Guid.NewGuid();
+                        previewBytes = frameResult.PreviewBytes;
+                    }
+
+                    _logger.LogInformation(
+                        "Сгенерировано превью видео {FileId}: {Width}x{Height}",
+                        file.Id, frameResult.Width, frameResult.Height);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось сгенерировать превью видео {FileId}", file.Id);
+                }
+                finally
+                {
+                    originalStream.Position = 0;
+                }
+            }
+
             // Загружаем файл в S3 напрямую из стрима
             var etag = await _s3Uploader.UploadAsync(
                 bucketName, // Имя бакета на основе типа файла
@@ -347,6 +394,19 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         {
             // Обязательно закрываем поток в конце работы
             await originalStream.DisposeAsync();
+
+            if (tempFilePath is not null)
+            {
+                try
+                {
+                    if (File.Exists(tempFilePath))
+                        File.Delete(tempFilePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось удалить временный файл {TempPath}", tempFilePath);
+                }
+            }
         }
 
         // Сохраняем изменения
