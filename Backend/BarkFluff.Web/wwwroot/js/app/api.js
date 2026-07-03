@@ -251,6 +251,54 @@
         });
     }
 
+    function listChatMembers(chatId, offset, size) {
+        var req = new (msgPb().ListChatMembersRequest)();
+        req.setChatId(chatId);
+        var pg = new (sharedPb().PageRequest)();
+        pg.setOffset(offset || 0);
+        pg.setSize(Math.min(size || 50, 50));
+        req.setPagination(pg);
+        return c().authCall(messages().listChatMembers.bind(messages()), req).then(function (resp) {
+            return {
+                members: resp.getChatMembersList().map(function (m) {
+                    var gi = m.getGeneralInfo();
+                    return {
+                        userId: gi ? gi.getUserId() : 0,
+                        firstName: m.getFirstName(),
+                        lastName: m.getLastName(),
+                        joinedAt: gi && gi.getJoinedAt ? tsToMs(gi.getJoinedAt()) : null
+                    };
+                }),
+                totalCount: resp.getTotalCount()
+            };
+        });
+    }
+
+    function addUser(chatId, userId) {
+        var req = new (msgPb().AddUserRequest)();
+        req.setChatId(chatId);
+        req.setUserId(userId);
+        return c().authCall(messages().addUser.bind(messages()), req);
+    }
+
+    function kickUser(chatId, userId) {
+        var req = new (msgPb().KickUserRequest)();
+        req.setChatId(chatId);
+        req.setUserId(userId);
+        return c().authCall(messages().kickUser.bind(messages()), req);
+    }
+
+    function updateGroupChat(chatId, title, pictureFileId) {
+        var req = new (msgPb().UpdateGroupChatRequest)();
+        req.setChatId(chatId);
+        req.setTitle(title || '');
+        req.setPictureFileId(pictureFileId || '');
+        return c().authCall(messages().updateGroupChat.bind(messages()), req).then(function (resp) {
+            var ch = resp.getChat();
+            return { chat: ch ? { id: ch.getId(), title: ch.getTitle(), picture: ch.getPicture() } : null };
+        });
+    }
+
     function searchUsers(query, offset, size) {
         var req = new (usrPb().SearchUsersRequest)();
         req.setQuery(query || '');
@@ -686,6 +734,10 @@
         editMessage: editMessage,
         deleteMessage: deleteMessage,
         listChatAttachments: listChatAttachments,
+        listChatMembers: listChatMembers,
+        addUser: addUser,
+        kickUser: kickUser,
+        updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
         getUser: getUser,
         getUploadUrl: getUploadUrl,

@@ -44,6 +44,7 @@ public static class ConfigurationEndpoints
                             bucketName = g.FirstOrDefault(c => c.Key == "BucketName")?.Value ?? "",
                             accessKey = g.FirstOrDefault(c => c.Key == "AccessKey")?.Value ?? "",
                             secretKey = g.FirstOrDefault(c => c.Key == "SecretKey")?.Value ?? "",
+                            region = g.FirstOrDefault(c => c.Key == "Region")?.Value ?? "",
                             editedAt = g.MaxBy(c => c.EditedAt)?.EditedAt?.ToDateTime().ToString("o") ?? DateTime.UtcNow.ToString("o")
                         }
                     );
@@ -126,6 +127,22 @@ public static class ConfigurationEndpoints
                         Section = section,
                         Key = "SecretKey",
                         Value = secretKey,
+                        ServiceId = (int)ServiceId.Files,
+                        EditedBy = token.Name,
+                        EditedFrom = context.Connection.RemoteIpAddress?.ToString() ?? "admin-panel"
+                    });
+
+                    if (!result.Success)
+                        return Results.BadRequest(new { message = result.Message });
+                }
+
+                if (request.Parameters.TryGetValue("region", out var region))
+                {
+                    var result = await configClient.UpdateConfigurationAsync(new UpdateConfigurationRequest
+                    {
+                        Section = section,
+                        Key = "Region",
+                        Value = region,
                         ServiceId = (int)ServiceId.Files,
                         EditedBy = token.Name,
                         EditedFrom = context.Connection.RemoteIpAddress?.ToString() ?? "admin-panel"

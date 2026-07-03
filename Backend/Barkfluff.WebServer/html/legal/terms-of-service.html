@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Условия использования — Barkfluff</title>
+  <title data-ru="Условия использования — Barkfluff" data-en="Terms of Service — Barkfluff">Условия использования — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <style>
     :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
     * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
+    body.lang-ready { opacity:1; }
     main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
     header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
     a { color:var(--brand); text-decoration:none; }
@@ -16,25 +17,30 @@
     nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
     nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
     article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
+    article[data-lang] { display:none; }
     h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
     h2 { margin-top:32px; font-size:22px; }
     p, li { color:var(--muted); }
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
+    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
+    .lang-btn:hover { color:var(--text); }
   </style>
+  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
 <body>
   <main>
     <header>
       <a href="/"><strong>barkfluff</strong></a>
-      <a href="/">На главную</a>
+      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+      <button class="lang-btn" id="langToggle" type="button">EN</button>
     </header>
     <nav>
-      <a href="/legal/privacy-policy">Конфиденциальность</a>
-      <a href="/legal/terms-of-service" class="active">Условия использования</a>
-      <a href="/legal/account-deletion">Удаление аккаунта</a>
-      <a href="/legal/encryption">Шифрование</a>
+      <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+      <a href="/legal/terms-of-service" class="active" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+      <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+      <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article>
+    <article data-lang="ru">
       <h1>Пользовательское соглашение</h1>
       <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
 
@@ -118,7 +124,113 @@
       <h2>13. Согласие</h2>
       <p>Используя Barkfluff, вы подтверждаете, что прочитали соглашение, согласны соблюдать правила и достигли возраста 13 лет.</p>
     </article>
+    <article data-lang="en">
+      <h1>Terms of Service</h1>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+
+      <h2>1. Acceptance of terms</h2>
+      <p>Welcome to <strong>Barkfluff</strong> — a messaging platform.</p>
+      <p>By using Barkfluff, you agree to these Terms of Service and the related documents: the <a href="/legal/privacy-policy">Privacy Policy</a>, <a href="/legal/account-deletion">Account Deletion</a> and <a href="/legal/encryption">Encryption</a>.</p>
+
+      <h2>2. The service</h2>
+      <p>Barkfluff includes backend microservices, the Windows, Android, macOS and web clients, the public WebServer site, the gRPC-Web proxy, the developer portal, the file system, realtime updates, push notifications, email notifications and the support chat.</p>
+      <ul>
+        <li><strong>Account</strong> — a user account with email, username, password, profile and devices.</li>
+        <li><strong>Content</strong> — messages, files, images, avatars, posters, reactions, settings and other data you create or upload.</li>
+        <li><strong>Client</strong> — the Barkfluff application or web interface that uses the gRPC/gRPC-Web API.</li>
+      </ul>
+
+      <h2>3. Usage requirements</h2>
+      <ul>
+        <li>You must be at least 13 years old.</li>
+        <li>At registration you must provide a valid email and username.</li>
+        <li>You are responsible for safeguarding your password, 2FA codes and the devices with an active session.</li>
+        <li>If a device is lost, you can terminate the active session via device management features.</li>
+      </ul>
+
+      <h2>4. Permitted use</h2>
+      <ul>
+        <li>personal and work communication;</li>
+        <li>private and group chats;</li>
+        <li>file and media sharing;</li>
+        <li>private encrypted chats and secret chats;</li>
+        <li>use of public profile pages and the web client;</li>
+        <li>use of open proto/API materials via the developer portal.</li>
+      </ul>
+
+      <h2>5. Prohibited use</h2>
+      <ul>
+        <li>breaking the law, fraud, phishing, malware and attempts at unauthorized access;</li>
+        <li>threats, harassment, doxxing, impersonation of another person;</li>
+        <li>mass unsolicited messaging, spam automation and overloading the services;</li>
+        <li>publishing or transmitting illegal content;</li>
+        <li>bypassing security restrictions, exploiting vulnerabilities and interfering with the infrastructure.</li>
+      </ul>
+      <p>In case of violations we may restrict access, remove the offending content, terminate sessions, block or delete the account, and contact the competent authorities where required by law.</p>
+
+      <h2>6. Content and rights</h2>
+      <ul>
+        <li>You retain the rights to your content.</li>
+        <li>You grant Barkfluff the right to store, transmit, synchronize, display and process your content to the extent necessary to operate the service features.</li>
+        <li>All rights to the Barkfluff code, design, name, logos and infrastructure belong to the project owners or the respective licensors.</li>
+        <li>Open components and proto contracts are used under the terms of the respective licenses and documentation.</li>
+      </ul>
+
+      <h2>7. Privacy and security</h2>
+      <ul>
+        <li>Regular messages are stored and synchronized by the Messages service.</li>
+        <li>Private chats store only ciphertext and technical metadata on the server.</li>
+        <li>Secret chats use temporary delivery of an opaque envelope between devices.</li>
+        <li>Files are stored in Files / Minio, metadata in PostgreSQL.</li>
+        <li>Push notifications are delivered via Firebase Cloud Messaging.</li>
+      </ul>
+
+      <h2>8. Availability and service changes</h2>
+      <p>Barkfluff is provided “as is”. Outages, maintenance, and client or backend service errors are possible. We may change existing service features to maintain reliability, security and client compatibility.</p>
+
+      <h2>9. Limitation of liability</h2>
+      <p>We are not liable for indirect damages, data loss caused by user actions, device or password compromise, third-party actions, and the unavailability of external providers, including email, Firebase, Telegram, hosting and network infrastructure.</p>
+
+      <h2>10. Changes to the agreement</h2>
+      <p>When the agreement changes, the “Updated” date is updated. By continuing to use Barkfluff after an update, you accept the new revision.</p>
+
+      <h2>11. Dispute resolution</h2>
+      <p>For legal matters, send your request to <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a>. The response time for a request is up to 30 days.</p>
+
+      <h2>12. Contacts</h2>
+      <ul>
+        <li>Legal matters: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
+        <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+        <li>Security: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+        <li>Website: <a href="https://barkfluff.com">https://barkfluff.com</a></li>
+      </ul>
+
+      <h2>13. Consent</h2>
+      <p>By using Barkfluff, you confirm that you have read the agreement, agree to follow the rules and are at least 13 years old.</p>
+    </article>
     <footer>© 2026 Barkfluff</footer>
   </main>
+  <script>
+    (function () {
+      function applyLang(lang) {
+        document.documentElement.lang = lang;
+        localStorage.setItem('bf_lang', lang);
+        document.querySelectorAll('[data-ru]').forEach(function (el) {
+          el.textContent = el.getAttribute('data-' + lang);
+        });
+        document.querySelectorAll('article[data-lang]').forEach(function (a) {
+          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
+        });
+        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
+      }
+      var saved = localStorage.getItem('bf_lang');
+      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+      document.getElementById('langToggle').addEventListener('click', function () {
+        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
+      });
+      applyLang(saved || detected);
+      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
+    })();
+  </script>
 </body>
 </html>

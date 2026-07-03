@@ -372,9 +372,26 @@
         if (!isOutgoing && isGroupChat && getUserFn) {
             promise = getUserFn(msg.senderId).then(function (sender) {
                 if (sender) {
+                    var fullName = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username;
                     var nameEl = document.createElement('div');
                     nameEl.className = 'msg-sender';
-                    nameEl.textContent = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username;
+
+                    var avEl = document.createElement('span');
+                    avEl.className = 'msg-sender-avatar';
+                    var pic = sender.profilePicturePreview || sender.profilePicture;
+                    if (pic) {
+                        var img = document.createElement('img');
+                        img.src = pic; img.alt = '';
+                        avEl.appendChild(img);
+                    } else {
+                        avEl.textContent = (fullName || '?')[0].toUpperCase();
+                    }
+                    nameEl.appendChild(avEl);
+
+                    var nameText = document.createElement('span');
+                    nameText.textContent = fullName;
+                    nameEl.appendChild(nameText);
+
                     group.appendChild(nameEl);
                 }
             });

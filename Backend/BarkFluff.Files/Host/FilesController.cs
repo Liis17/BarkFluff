@@ -13,11 +13,13 @@ public class FilesController : Controller
 {
     private readonly IMediator _mediator;
     private readonly MetricsCollector _metrics;
+    private readonly ILogger<FilesController> _logger;
 
-    public FilesController(IMediator mediator, MetricsCollector metrics)
+    public FilesController(IMediator mediator, MetricsCollector metrics, ILogger<FilesController> logger)
     {
         _mediator = mediator;
         _metrics = metrics;
+        _logger = logger;
     }
 
     [HttpPost("upload/{uploadId}")]
@@ -71,7 +73,8 @@ public class FilesController : Controller
         }
         catch (Exception ex)
         {
-            return NotFound($"Ошибка при скачивании файла: {ex.Message}");
+            _logger.LogError(ex, "Ошибка при скачивании файла {FileId}", fileId);
+            return NotFound("Файл недоступен");
         }
     }
 }

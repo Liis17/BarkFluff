@@ -77,6 +77,13 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 ## Функции
 Логин + 2FA, регистрация, fast-auth (QR), список чатов и сообщения (отправка/редактирование/удаление/закреп/прочитано, вложения, пересылка), папки, настройки (профиль/сессии/2FA/хранилище), персонализация, **звонки (аудио/видео, 1-на-1 и группы)**.
 
+### Управление групповыми чатами (паритет с Android)
+Клик по шапке группового чата открывает инфо-панель `#groupOverlay` (`messenger.html`, переиспользует CSS `.profile-*`; логика в `main.js` — `openGroupInfo`). Возможности:
+- смена названия (карандаш → `BF.api.updateGroupChat(chatId, title)`) и аватара (`BF.files.uploadFile(file, 6 /*CHAT_PICTURE*/)` → `updateGroupChat(chatId, null, fileId)`);
+- список участников (`BF.api.listChatMembers`, аватары резолвятся через `getUser`), добавление через инлайн-поиск (`searchUsers` → `addUser`) и удаление (`kickUser`);
+- вкладки Медиа/Файлы (общая `renderChatMedia(type, container)`, бывшая `loadProfileMedia`).
+Аватарки чужих сообщений в группах (`messages.js` → `.msg-sender-avatar`). API-обёртки `listChatMembers/addUser/kickUser/updateGroupChat` — в `api.js`. Бэкенд-методы готовы в [[Backend/Messages]], proto-bundle уже сгенерирован. Live-обновление шапки/состава у других участников не делается — приходит системное сообщение (паритет с Android).
+
 ## Связи
 - [[Backend/BarkFluff.Web]] — хост (YARP gRPC-Web↔gRPC + статика).
 - [[Backend/Calls]] — бэкенд звонков (LiveKit SFU), первый клиент которого — этот веб.

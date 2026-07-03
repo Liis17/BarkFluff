@@ -364,13 +364,13 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | Метод | Путь | Query | Описание |
 |-------|------|-------|---------|
 | GET | `/api/seq/events` | application, count, fromUtc, level, search, afterId | Логи из Seq |
-| GET | `/api/seq/services` | — | Известные сервисы (KnownServices) |
+| GET | `/api/seq/services` | — | Сервисы для фильтра логов — только микросервисы (`KnownServices`, где имя начинается с `BarkFluff.`). Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) исключена: она не пишет логи в Seq |
 | GET | `/api/seq/dashboard/kpis` | hours (def 24) | KPI из кеша или Seq |
 | GET | `/api/seq/dashboard/traffic` | hours, interval | `{ all, errors, warnings }` |
 | GET | `/api/seq/dashboard/metrics` | — | ServiceMetrics логи |
 | GET | `/api/seq/dashboard/service-metrics` | hours (def 12) | Метрики по сервисам |
 | GET | `/api/seq/dashboard/service-metrics/{name}` | hours | Метрики одного сервиса |
-| GET | `/api/seq/services/status` | — | Статус сервисов (Seq + Docker) |
+| GET | `/api/seq/services/status` | — | Статус сервисов. Список строится **динамически из реально присутствующих Docker-контейнеров** (`GetContainersAsync` + reverse-map `ServiceToContainerMap`): показываются только известные сервисы, чей контейнер существует. Так на проде не светятся сервисы вне развёрнутого compose (напр. Minio при арендованном S3). Метрики (eventCount/errorCount/lastSeen) подмешиваются из Seq. Fallback на `KnownServices` ∪ Seq, если Docker недоступен |
 
 ### /api/seq/export — LogsExportEndpoints.cs
 
@@ -563,7 +563,7 @@ JS-flow:
 
 `knownServices` (список сервисов в карусели метрик) — **12 сервисов**:
 `Identity, Users, Messages, Files, Updates, Notification, Beacon, FastAuth, Onliner, Configuration, Web, ClientStorage`.
-Backend `KnownServices` (`SeqEndpoints.cs`) шире (включает CloudMessaging, Developers и инфраструктуру) — он используется для `/api/seq/services` и статуса контейнеров; для метрик dashboard сознательно урезан.
+Backend `KnownServices` (`SeqEndpoints.cs`) шире (включает CloudMessaging, Developers, Calls и инфраструктуру). Из него `/api/seq/services` отдаёт только микросервисы `BarkFluff.*` (для фильтра логов), а `/services/status` теперь строится динамически из Docker-контейнеров; для метрик dashboard `knownServices` сознательно урезан.
 
 **Группировка метрик по типу.** В каждой карточке сервиса — 4 таба, между которыми переключаются мини-графики Chart.js:
 

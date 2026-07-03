@@ -390,11 +390,27 @@
         .chat-preview {
             font-size: 13px;
             color: var(--text-sub);
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .chat-preview .preview-text {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            flex: 1;
         }
+
+        .chat-preview .preview-icon {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        .chat-preview .preview-call { color: var(--success); display: inline-flex; }
+        .chat-preview .preview-call-missed { color: var(--error); display: inline-flex; }
 
         .chat-unread {
             background: var(--unread-badge-bg);
@@ -869,7 +885,26 @@
             color: var(--link);
             margin-bottom: 2px;
             margin-left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
+
+        .msg-sender-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .msg-sender-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
         .msg-bubble {
             padding: 10px 14px;
@@ -1680,6 +1715,153 @@
         }
 
         .profile-file-item:hover { background: rgba(0, 0, 0, 0.06); }
+
+        /* === GROUP INFO PANEL === */
+
+        .group-avatar-wrap { position: relative; }
+
+        .group-avatar-edit {
+            position: absolute;
+            right: -2px;
+            bottom: -2px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--profile-bg);
+            background: var(--primary);
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .group-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .group-name-edit {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 15px;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .group-name-edit:hover { background: rgba(0, 0, 0, 0.05); }
+
+        .group-section {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .group-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .group-section-title {
+            font-size: 13px;
+            color: var(--text-sub);
+            font-weight: 600;
+        }
+
+        .group-add-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 6px;
+            border-radius: 6px;
+        }
+        .group-add-btn:hover { background: rgba(140, 53, 28, 0.08); }
+
+        .group-member {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+
+        .group-member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .group-member-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .group-member-name {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .group-member-remove {
+            background: none;
+            border: none;
+            color: var(--danger, #d14343);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .group-member-remove:hover { background: rgba(209, 67, 67, 0.1); }
+
+        .group-add-box { margin-top: 10px; }
+        .group-add-box.hidden { display: none; }
+
+        .group-add-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: var(--dialog-bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .group-add-results {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .group-add-result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .group-add-result:hover { background: rgba(0, 0, 0, 0.05); }
 
         /* === SETTINGS OVERLAY === */
 
@@ -4024,6 +4206,45 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Group info panel -->
+    <div class="profile-overlay" id="groupOverlay">
+        <div class="profile-panel">
+            <button class="profile-close" id="groupClose">&times;</button>
+            <div class="profile-header">
+                <div class="group-avatar-wrap">
+                    <div class="profile-avatar" id="groupAvatar"></div>
+                    <button class="group-avatar-edit" id="groupAvatarEdit" title="Сменить фото">&#128247;</button>
+                </div>
+                <div class="group-name-row">
+                    <div class="profile-name" id="groupName"></div>
+                    <button class="group-name-edit" id="groupNameEdit" title="Переименовать">&#9998;</button>
+                </div>
+                <div class="profile-status-line" id="groupCount"></div>
+            </div>
+            <div class="group-section">
+                <div class="group-section-head">
+                    <span class="group-section-title">Участники</span>
+                    <button class="group-add-btn" id="groupAddBtn">+ Добавить</button>
+                </div>
+                <div class="group-add-box hidden" id="groupAddBox">
+                    <input type="text" class="group-add-input" id="groupAddInput" placeholder="Поиск пользователя…" autocomplete="off">
+                    <div class="group-add-results" id="groupAddResults"></div>
+                </div>
+                <div id="groupMembers"></div>
+            </div>
+            <div class="profile-media-section">
+                <div class="profile-media-tabs">
+                    <button class="profile-media-tab group-media-tab active" data-type="media">Медиа</button>
+                    <button class="profile-media-tab group-media-tab" data-type="files">Файлы</button>
+                </div>
+                <div id="groupMediaContent">
+                    <div class="profile-media-grid"></div>
+                </div>
+            </div>
+        </div>
+        <input type="file" id="groupAvatarInput" accept="image/*" style="display:none">
     </div>
 
     <!-- Message context menu -->

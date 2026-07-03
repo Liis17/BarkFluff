@@ -95,6 +95,9 @@ class ChatActivity : AppCompatActivity() {
     private var otherUserId: Long = 0L
     private var currentUserId: Long = 0L
 
+    // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, fileId аватара)
+    private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
+
     // Пагинация сообщений
     private var isLoadingMessages = false
     private var hasMoreMessagesUp = true
@@ -243,23 +246,88 @@ class ChatActivity : AppCompatActivity() {
         binding.btnMore.setOnClickListener { /* TODO: доп. меню */ }
 
         binding.btnAudioCall.applySpringPress()
-        binding.btnVideoCall.applySpringPress()
         binding.btnAudioCall.setOnClickListener { startCall(video = false) }
-        binding.btnVideoCall.setOnClickListener { startCall(video = true) }
 
-        // Клик на карточку с информацией о чате (аватар + имя) — открывает профиль
+        // Клик на карточку с информацией о чате (аватар + имя):
+        // для групп — управление группой, для ЛС — профиль пользователя.
         binding.chatInfoCard.setOnClickListener {
-            startActivity(
-                UserProfileActivity.createIntent(
-                    this,
-                    chatId = chatId,
-                    otherUserId = otherUserId,
-                    isGroupChat = isGroupChat,
-                    chatTitle = chatTitle,
-                    chatAvatarFileId = chatAvatarFileId
+            if (isGroupChat) {
+                startActivity(
+                    GroupInfoActivity.createIntent(
+                        this,
+                        chatId = chatId,
+                        chatTitle = chatTitle,
+                        chatAvatarFileId = chatAvatarFileId
+                    )
                 )
-            )
+            } else {
+                startActivity(
+                    UserProfileActivity.createIntent(
+                        this,
+                        chatId = chatId,
+                        otherUserId = otherUserId,
+                        isGroupChat = isGroupChat,
+                        chatTitle = chatTitle,
+                        chatAvatarFileId = chatAvatarFileId
+                    )
+                )
+            }
         }
+    }
+
+
+    private fun startCall(video: Boolean) {
+        lifecycleScope.launch {
+            if (!ensureCallsClient()) return@launch
+
+            val app = application as BarkFluffApplication
+            val mediaType = if (video) {
+                CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
+            } else {
+                CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO
+            }
+
+            val result = if (isGroupChat) {
+                app.callRepository.initiateGroup(chatId, mediaType)
+            } else {
+                if (otherUserId <= 0L) {
+                    Toast.makeText(this@ChatActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                app.callRepository.initiateDirect(otherUserId, mediaType)
+            }
+
+            result.onSuccess { response ->
+                startActivity(Intent(this@ChatActivity, CallActivity::class.java).apply {
+                    putExtra(CallExtras.EXTRA_CALL_ID, response.callId)
+                    putExtra(CallExtras.EXTRA_CALLER_NAME, chatTitle)
+                    putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+                    putExtra(CallExtras.EXTRA_MEDIA_TYPE, if (video) "video" else "audio")
+                    putExtra(CallExtras.EXTRA_LIVEKIT_URL, response.livekitUrl.ifBlank { globalParam.livekitUrl })
+                    putExtra(CallExtras.EXTRA_ACCESS_TOKEN, response.accessToken)
+                })
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to start call", error)
+                Toast.makeText(this@ChatActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun ensureCallsClient(): Boolean {
+        val app = application as BarkFluffApplication
+        if (app.grpcManager.callsClient != null) return true
+
+        val callsAddress = globalParam.socketCalls
+        if (callsAddress.isBlank()) {
+            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
+        if (result.isFailure) {
+            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
+        }
+        return result.isSuccess
     }
 
 
@@ -490,8 +558,13 @@ class ChatActivity : AppCompatActivity() {
             },
             onReplyQuoteClick = { originalMessageId ->
                 scrollToAndHighlightMessage(originalMessageId)
-            }
+            },
+            senderInfoProvider = { senderId -> groupMemberInfoCache[senderId] }
         )
+
+        if (isGroupChat) {
+            loadGroupMemberInfo()
+        }
 
         binding.messagesRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@ChatActivity).apply {
@@ -542,6 +615,27 @@ class ChatActivity : AppCompatActivity() {
         // Обработчик клика на кнопку прокрутки вниз
         binding.scrollToBottomButton.setOnClickListener {
             scrollToLatestMessages()
+        }
+    }
+
+    /**
+     * Загружает имена и аватары участников группы в кэш, после чего обновляет список
+     * сообщений, чтобы у чужих сообщений отрисовались мини-аватарки.
+     */
+    private fun loadGroupMemberInfo() {
+        lifecycleScope.launch {
+            val members = grpcManager.listChatMembers(chatId).getOrNull() ?: return@launch
+
+            for (member in members) {
+                if (member.userId == currentUserId) continue
+                val name = "${member.firstName} ${member.lastName}".trim().ifBlank { "ID ${member.userId}" }
+                val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { u ->
+                    u.profilePicturePreviewFileId.ifBlank { u.profilePictureFileId }
+                }?.ifBlank { null }
+                groupMemberInfoCache[member.userId] = name to avatarFileId
+            }
+
+            messageAdapter.notifyDataSetChanged()
         }
     }
 
@@ -1648,10 +1742,12 @@ class ChatActivity : AppCompatActivity() {
             popupView,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            true
+            false
         ).apply {
             isOutsideTouchable = true
-            isFocusable = true
+            // focusable=false — чтобы открытие меню не сбрасывало фокус с поля ввода и не скрывало клавиатуру.
+            // Закрытие по тапу вне меню обеспечивается isOutsideTouchable=true + ненулевым фоном ниже.
+            isFocusable = false
             elevation = 12f * resources.displayMetrics.density
             // Прозрачный фон, чтобы скругления MaterialCardView были видны
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
