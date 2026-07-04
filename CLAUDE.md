@@ -34,15 +34,6 @@
 
 ## Быстрые команды
 
-### Backend (Docker)
-
-```bash
-cd Backend
-docker-compose -f docker-compose-dev.yml up -d
-docker-compose -f docker-compose-dev.yml ps
-docker-compose -f docker-compose-dev.yml down
-```
-
 ### Сборка сервиса
 
 ```bash
@@ -61,6 +52,12 @@ cd Android/Barkfluff.Client.Android
 ```bash
 dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 ```
+
+## Правила работы с Git репозиторием
+
+- Запрещено создавать ветки для работы со своей задачей, всегда работать с текущей веткой, если явно не сказано работать в отдельной
+
+- Если большая задача с планом то после каждого этапа делать комит со своими изменениями, пуш не делать если явно не сказано
 
 ## Поведенческие правила
 
