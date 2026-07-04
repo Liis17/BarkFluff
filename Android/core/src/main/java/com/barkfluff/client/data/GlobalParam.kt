@@ -189,6 +189,18 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_FIREBASE_TOKEN, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_FIREBASE_TOKEN, value).apply()
 
+    /** Локальный кэш chatId замьюченных чатов — guard для подавления локальных уведомлений. */
+    var mutedChatIds: Set<String>
+        get() = sharedPreferences.getStringSet(KEY_MUTED_CHAT_IDS, emptySet()) ?: emptySet()
+        set(value) = sharedPreferences.edit().putStringSet(KEY_MUTED_CHAT_IDS, value).apply()
+
+    /** Добавить/убрать один чат из локального кэша mute. */
+    fun setChatMutedLocal(chatId: String, muted: Boolean) {
+        val current = mutedChatIds.toMutableSet()
+        if (muted) current.add(chatId) else current.remove(chatId)
+        mutedChatIds = current
+    }
+
     // --- Персонализация (локальные параметры) ---
 
     /** Закругление пузырей сообщений, 0..30 (dp). По умолчанию 20. */
@@ -347,6 +359,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_REGISTRATION_DATE = "registration_date"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
         private const val KEY_FIREBASE_TOKEN = "firebase_token"
+        private const val KEY_MUTED_CHAT_IDS = "muted_chat_ids"
 
         // Персонализация
         private const val KEY_CHAT_CORNER_RADIUS = "chat_corner_radius"

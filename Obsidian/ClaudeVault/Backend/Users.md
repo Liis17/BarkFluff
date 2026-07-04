@@ -215,6 +215,17 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `MessagesService:Host/Token` | gRPC-клиент Messages |
 | `ReservedNames:Usernames` | Зарезервированные имена (через запятую) |
 
+## Per-chat mute (отключение уведомлений для чата)
+
+Отключение push-уведомлений на уровне **отдельного чата** (в отличие от `UserDevice.NotificationsEnabled`, который глушит всё устройство).
+
+- **Entity** `Domain/ChatMute.cs`: `Id`, `UserId` (FK→User Cascade), `ChatId` (Guid), `MutedUntil` (DateTime?, `null` = навсегда). Уникальный индекс `(UserId, ChatId)`. Таблица `ChatMutes` (миграция `AddChatMutes`).
+- **Семантика muted:** строка есть И (`MutedUntil == null` ИЛИ `MutedUntil > UtcNow`). Снятие mute удаляет строку.
+- **Storage** `Persistence/Services/ChatMuteStorage.cs`: `SetMuted/Unmute/GetActiveMutes/GetMutedChatIds`.
+- **RPC `UsersApi`:** `SetChatMuted(chat_id, muted, muted_until)`, `GetMutedChats()`.
+- **RPC `UsersServerApi`:** `GetMutedChatIds(user_id, chat_ids)` — батч для флага `muted` в [[Backend/Messages]].
+- **Push-фильтр:** `DevicesStorage.GetDevicesWithFirebaseTokens(userIds, mutedChatFilter)` — при заданном `chat_id` исключает замьютивших. `GetDevicesWithFirebaseTokensRequest` получил поле `chat_id`; [[Backend/CloudMessaging]] пробрасывает туда `ChatId` события.
+
 ## Proto
 
 - `users_api.proto` — Server

@@ -24,6 +24,8 @@ public class UsersContext : DbContext
 
     public DbSet<ChatFolder> ChatFolders { get; set; }
 
+    public DbSet<ChatMute> ChatMutes { get; set; }
+
     public DbSet<DevicePrekeyBundle> DevicePrekeyBundles { get; set; }
 
     public DbSet<OneTimePrekey> OneTimePrekeys { get; set; }
@@ -95,6 +97,17 @@ public class UsersContext : DbContext
 
         modelBuilder.Entity<ChatFolder>()
             .HasIndex(f => f.FolderId)
+            .IsUnique();
+
+        // Настройка связей для ChatMute (1:Many с User; уникальный индекс (UserId, ChatId))
+        modelBuilder.Entity<ChatMute>()
+            .HasOne(m => m.User)
+            .WithMany()
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatMute>()
+            .HasIndex(m => new { m.UserId, m.ChatId })
             .IsUnique();
 
         // DevicePrekeyBundle (1:1 с UserDevice; PK = DeviceId)

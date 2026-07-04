@@ -90,6 +90,7 @@ class ChatActivity : AppCompatActivity() {
 
     private var chatId: String = ""
     private var chatTitle: String = ""
+    private var isChatMuted: Boolean = false
     private var chatAvatarFileId: String? = null
     private var isGroupChat: Boolean = false
     private var otherUserId: Long = 0L
@@ -242,8 +243,8 @@ class ChatActivity : AppCompatActivity() {
             finish()
         }
 
-        // Кнопка меню (три точки) — пока ничего не делает
-        binding.btnMore.setOnClickListener { /* TODO: доп. меню */ }
+        // Кнопка меню (три точки) — контекстное меню чата
+        binding.btnMore.setOnClickListener { showChatMenu(it) }
 
         binding.btnAudioCall.applySpringPress()
         binding.btnAudioCall.setOnClickListener { startCall(video = false) }
@@ -273,61 +274,6 @@ class ChatActivity : AppCompatActivity() {
                 )
             }
         }
-    }
-
-
-    private fun startCall(video: Boolean) {
-        lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
-
-            val app = application as BarkFluffApplication
-            val mediaType = if (video) {
-                CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
-            } else {
-                CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO
-            }
-
-            val result = if (isGroupChat) {
-                app.callRepository.initiateGroup(chatId, mediaType)
-            } else {
-                if (otherUserId <= 0L) {
-                    Toast.makeText(this@ChatActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                app.callRepository.initiateDirect(otherUserId, mediaType)
-            }
-
-            result.onSuccess { response ->
-                startActivity(Intent(this@ChatActivity, CallActivity::class.java).apply {
-                    putExtra(CallExtras.EXTRA_CALL_ID, response.callId)
-                    putExtra(CallExtras.EXTRA_CALLER_NAME, chatTitle)
-                    putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
-                    putExtra(CallExtras.EXTRA_MEDIA_TYPE, if (video) "video" else "audio")
-                    putExtra(CallExtras.EXTRA_LIVEKIT_URL, response.livekitUrl.ifBlank { globalParam.livekitUrl })
-                    putExtra(CallExtras.EXTRA_ACCESS_TOKEN, response.accessToken)
-                })
-            }.onFailure { error ->
-                Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@ChatActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
-
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) {
-            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
-        if (result.isFailure) {
-            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
-        }
-        return result.isSuccess
     }
 
 
@@ -1974,6 +1920,10 @@ class ChatActivity : AppCompatActivity() {
                     isGroupChat = chatInfo.isGroupChat
                     firstUnreadMessageId = chatInfo.firstUnreadMessageId
 
+                    // Синхронизируем состояние mute (для меню и локального guard уведомлений)
+                    isChatMuted = chatInfo.muted
+                    GlobalParam(this@ChatActivity).setChatMutedLocal(chatId, chatInfo.muted)
+
                     // Определяем otherUserId из участников чата (если не был передан через intent)
                     if (!isGroupChat && otherUserId == 0L && chatInfo.memberIds.isNotEmpty()) {
                         otherUserId = chatInfo.memberIds.firstOrNull { it != currentUserId } ?: 0L
@@ -1993,6 +1943,37 @@ class ChatActivity : AppCompatActivity() {
 
             // Загружаем сообщения (вокруг первого непрочитанного, если есть)
             loadMessages()
+        }
+    }
+
+    /** Контекстное меню чата (кнопка «три точки»): переключение уведомлений. */
+    private fun showChatMenu(anchor: View) {
+        val popup = android.widget.PopupMenu(this, anchor)
+        val muteTitle = if (isChatMuted) getString(R.string.chat_menu_unmute) else getString(R.string.chat_menu_mute)
+        val muteItem = popup.menu.add(muteTitle)
+        popup.setOnMenuItemClickListener { item ->
+            if (item === muteItem) {
+                toggleChatMute()
+                true
+            } else {
+                false
+            }
+        }
+        popup.show()
+    }
+
+    private fun toggleChatMute() {
+        val newMuted = !isChatMuted
+        lifecycleScope.launch {
+            val result = grpcManager.setChatMuted(chatId, newMuted)
+            if (result.isSuccess) {
+                isChatMuted = newMuted
+                GlobalParam(this@ChatActivity).setChatMutedLocal(chatId, newMuted)
+                val msg = if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted)
+                android.widget.Toast.makeText(this@ChatActivity, msg, android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                android.widget.Toast.makeText(this@ChatActivity, getString(R.string.chat_mute_error), android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
