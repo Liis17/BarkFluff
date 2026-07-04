@@ -471,6 +471,19 @@
     <string name="media_tab_videos">Videos</string>
     <string name="media_tab_files">Dateien</string>
     <string name="media_no_attachments">Keine Anhänge</string>
+    <string name="profile_action_message">Nachricht</string>
+    <string name="profile_action_call">Anruf</string>
+    <string name="profile_action_notifications">Benachrichtigungen</string>
+    <string name="profile_user_id_label">Benutzer-ID</string>
+    <string name="profile_chat_id_label">Chat-ID</string>
+    <string name="profile_registration_label">Registrierungsdatum</string>
+    <string name="profile_attachments_title">Chat-Anhänge</string>
+    <string name="profile_tab_media">Medien</string>
+    <string name="profile_tab_voice">Sprachnachrichten</string>
+    <string name="profile_no_voice">Keine Sprachnachrichten</string>
+    <string name="profile_copied">Kopiert</string>
+    <string name="group_online_count">%1$d Mitglieder · %2$d online</string>
+    <string name="group_members_count">%1$d Mitglieder</string>
 
     <!-- Sticker empty -->
     <string name="stickers_empty">Keine Sticker</string>

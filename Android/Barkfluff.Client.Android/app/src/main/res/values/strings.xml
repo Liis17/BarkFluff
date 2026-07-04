@@ -493,6 +493,19 @@
     <string name="media_tab_videos">Видео</string>
     <string name="media_tab_files">Файлы</string>
     <string name="media_no_attachments">Нет вложений</string>
+    <string name="profile_action_message">Сообщение</string>
+    <string name="profile_action_call">Звонок</string>
+    <string name="profile_action_notifications">Уведомления</string>
+    <string name="profile_user_id_label">ID пользователя</string>
+    <string name="profile_chat_id_label">ID чата</string>
+    <string name="profile_registration_label">Дата регистрации</string>
+    <string name="profile_attachments_title">Вложения чата</string>
+    <string name="profile_tab_media">Медиа</string>
+    <string name="profile_tab_voice">Голосовые</string>
+    <string name="profile_no_voice">Нет голосовых</string>
+    <string name="profile_copied">Скопировано</string>
+    <string name="group_online_count">%1$d участников · %2$d в сети</string>
+    <string name="group_members_count">%1$d участников</string>
 
     <!-- Sticker empty -->
     <string name="stickers_empty">Нет стикеров</string>
