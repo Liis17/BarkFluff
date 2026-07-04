@@ -77,6 +77,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `SetPassword` | `SetPasswordRequest → SetPasswordResponse` | `TokenType.User` | Установить/изменить пароль |
 | `Logout` | `LogoutRequest → LogoutResponse` | `TokenType.User` | Разлогиниться с текущего устройства |
 
+> ⚠️ `identity_api.proto` также определяет `rpc FastAuth(FastAuthRequest) returns(AuthResponse)` в `IdentityApi`, но `IdentityApiService.cs` его не переопределяет — вызов вернёт `Unimplemented`. Похоже на легаси от более раннего дизайна быстрой авторизации, до выделения отдельного сервиса [[Backend/FastAuth]] (который использует `CreateSessionForUserServer`, а не этот RPC).
+
 ### IdentityServerApiService (service-to-service, только `TokenType.Service`)
 
 | Метод | Параметры | Описание |

@@ -115,6 +115,8 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |
 | Sticker bucket | `message-documents` |
 
+`Pages/v2/s3-storage.html` — редактор параметров бакетов включает поле `Region` (для Cloudflare R2 обычно `auto`, для MinIO/S3 необязательно). Соответствует `S3_REGION`/`AuthenticationRegion` в [[Backend/ClientStorage]] и [[Backend/Files]].
+
 ## Безопасность
 
 Полный аудит в `SECURITY_AUDIT.md` (проект). Критические проблемы:

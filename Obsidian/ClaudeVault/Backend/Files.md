@@ -47,7 +47,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 ### S3-инфраструктура
 
 - **S3BucketRegistry** (singleton) — реестр бакетов, маппинг `UploadFileType → bucketId`, S3-клиенты с кешированием
-- **S3BucketInitializer** — автосоздание бакетов при старте с политикой публичного чтения
+- **S3BucketInitializer** — автосоздание бакетов при старте. Публичная политика чтения удалена (security fix, коммит `03a8dd5e`); ошибки S3 при старте логируются и не роняют сервис; 403 Forbidden при проверке/создании бакета трактуется как «бакет уже создан вручную» (нужно для R2-токенов с правами только на объекты)
 - **S3Uploader** — upload/download через `IAmazonS3`
 
 Бакеты: `profile-pictures`, `message-images`, `message-videos`, `message-documents`, `message-audio`, `chat-pictures`, `badge-images`, `barkfluff-uploads` (fallback).

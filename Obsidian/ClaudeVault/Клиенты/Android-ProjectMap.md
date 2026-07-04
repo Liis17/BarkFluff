@@ -4,7 +4,9 @@
 > Исходный проект: `Android/Barkfluff.Client.Android/`
 > См. также: [[Android]]
 
-> Версия: 2026-04-11. Этот файл предназначен для агентов/AI-сессий — позволяет понять архитектуру без полного перечитывания исходников.
+> Версия: 2026-04-11 (актуализирована частично 2026-07-04). Этот файл предназначен для агентов/AI-сессий — позволяет понять архитектуру без полного перечитывания исходников.
+
+> ⚠️ **Устарело относительно V2:** после появления модуля `Android/core/` (общий для V1 `app` и V2 `Barkfluff.ClientV2.Android`) пакеты `grpc/`, `data/`, `repository/`, часть `utils/`, `calls/` (сетевой слой) и `crypto/` (примитивы) физически переехали из `app/src/main/java/com/barkfluff/client/` в `core/src/main/java/com/barkfluff/client/`. Этот файл всё ещё описывает их как часть `app` — по сути (классы, методы) описание верно, но путь неточен. Точное распределение по модулям файл-за-файлом → [[Android-FileIndex]]. Архитектура `:core`/V2 → [[Android-V2]]. Также не описаны новые пакеты `editor/`, `send/`, `share/`, `widget/`, `dialog/` и полный состав `calls/` (звонки на LiveKit) — см. [[Android-FileIndex]].
 
 ---
 
@@ -936,7 +938,8 @@ Object. Создаёт каналы уведомлений Android и показ
 
 | Файл                      | Описание                                                                                                                      |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `beacon_api.proto`        | Информация о сервере (эндпоинты, название)                                                                                    |
+| `beacon_api.proto`        | Информация о сервере (эндпоинты, название, `livekit_url`, сервис `calls`)                                                     |
+| `calls_api.proto`         | Звонки на LiveKit SFU: InitiateCall/JoinCall/AcceptCall/RejectCall/EndCall, SubscribeCallEvents, ListCallHistory, GetActiveCalls |
 | `configuration_api.proto` | Централизованная конфигурация                                                                                                 |
 | `fast_auth_api.proto`     | QR-авторизация                                                                                                                |
 | `files_api.proto`         | Загрузка/скачивание файлов, preview, URL                                                                                      |

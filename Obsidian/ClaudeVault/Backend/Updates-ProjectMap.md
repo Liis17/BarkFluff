@@ -12,7 +12,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `Program.cs` | Точка запуска сервиса. Регистрирует gRPC, XAuth, MassTransit (16 consumer-ов), Serilog, Metrics. Монтирует `UpdatesApiService`. |
-| `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует **16 `StreamSubscriptionsManager`** (7 базовых + 5 user-scope для приватных + 3 device-scope для секретных) и `PendingPushTracker` как Singleton, подключает MediatR. |
+| `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует **15 `StreamSubscriptionsManager`** (7 базовых + 5 user-scope для приватных + 3 device-scope для секретных) и `PendingPushTracker` как Singleton, подключает MediatR. |
 | `appsettings.json` | Базовая конфигурация: порт `7015`, адрес Configuration-сервиса. |
 | `appsettings.Development.json` | Переопределения для разработки. |
 | `Properties/launchSettings.json` | Профили запуска (IDE). |
