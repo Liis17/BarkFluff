@@ -1470,51 +1470,55 @@
         .overlay-nav:hover { background: rgba(0, 0, 0, 0.7); }
         .overlay-nav[hidden] { display: none; }
 
-        /* Profile panel */
+        /* Profile modal (centered) */
         .profile-overlay {
             display: none;
             position: fixed;
             inset: 0;
             z-index: 90;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.45);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
         }
 
-        .profile-overlay.visible { display: block; }
+        .profile-overlay.visible { display: flex; }
 
         .profile-panel {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 380px;
-            height: 100%;
+            position: relative;
+            width: 420px;
+            max-width: 95vw;
+            max-height: 88vh;
             background: var(--profile-bg);
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.18);
+            border-radius: 24px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.28);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            animation: slideInRight 0.25s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+            animation: fadeScaleIn 0.2s ease-out;
         }
 
         .profile-close {
             position: absolute;
             top: 12px;
-            right: 12px;
-            background: none;
+            left: 12px;
+            width: 36px;
+            height: 36px;
+            background: rgba(20, 10, 6, 0.32);
             border: none;
-            font-size: 24px;
-            color: var(--text-sub);
+            font-size: 22px;
+            line-height: 1;
+            color: #fff;
             cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-            z-index: 1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+            backdrop-filter: blur(6px);
         }
 
-        .profile-close:hover { background: rgba(0, 0, 0, 0.05); }
+        .profile-close:hover { background: rgba(20, 10, 6, 0.5); }
 
         .profile-poster {
             width: 100%;
@@ -1611,6 +1615,50 @@
             color: var(--text-main);
             font-weight: 500;
         }
+
+        .profile-info-copy {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-size: 14px;
+            padding: 0 0 0 8px;
+            line-height: 1;
+        }
+        .profile-info-copy:hover { color: var(--primary); }
+
+        .profile-actions {
+            display: flex;
+            gap: 8px;
+            padding: 16px 24px 4px;
+        }
+
+        .profile-action-btn {
+            flex: 1;
+            height: 44px;
+            border: none;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.15s;
+        }
+        .profile-action-btn:hover { background: rgba(0, 0, 0, 0.09); }
+
+        .profile-action-btn.primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .profile-action-btn.primary:hover { background: var(--primary-hover, var(--primary)); }
+
+        .profile-action-btn.icon-only { flex: 0 0 44px; width: 44px; }
 
         .profile-badges {
             display: flex;
@@ -1715,6 +1763,31 @@
         }
 
         .profile-file-item:hover { background: rgba(0, 0, 0, 0.06); }
+
+        .profile-audio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+        }
+
+        .profile-audio-item audio {
+            flex: 1;
+            min-width: 0;
+            height: 34px;
+        }
+
+        .profile-audio-name {
+            font-size: 13px;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 120px;
+            flex-shrink: 0;
+        }
 
         /* === GROUP INFO PANEL === */
 
@@ -3131,9 +3204,17 @@
                 justify-content: center;
             }
 
-            /* Adjust profile panel on mobile */
+            /* Profile modal becomes a bottom sheet on mobile */
+            .profile-overlay {
+                align-items: flex-end;
+                padding: 0;
+            }
             .profile-panel {
                 width: 100%;
+                max-width: 100%;
+                max-height: 92vh;
+                border-radius: 20px 20px 0 0;
+                margin-top: auto;
             }
 
             /* Sticker grid: fewer columns on mobile */
@@ -4190,7 +4271,26 @@
                 <div class="profile-bio" id="profileBio"></div>
                 <div class="profile-badges" id="profileBadges"></div>
             </div>
+            <div class="profile-actions">
+                <button class="profile-action-btn primary" id="profileMsgBtn">Сообщение</button>
+                <button class="profile-action-btn icon-only" id="profileCallAudioBtn" title="Аудиозвонок">&#128222;</button>
+                <button class="profile-action-btn icon-only" id="profileCallVideoBtn" title="Видеозвонок">&#127909;</button>
+            </div>
             <div class="profile-info-section">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">ID пользователя</span>
+                    <span class="profile-info-value">
+                        <span id="profileUserId"></span>
+                        <button class="profile-info-copy" data-copy="profileUserId" title="Копировать">&#128203;</button>
+                    </span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">ID чата</span>
+                    <span class="profile-info-value">
+                        <span id="profileChatId"></span>
+                        <button class="profile-info-copy" data-copy="profileChatId" title="Копировать">&#128203;</button>
+                    </span>
+                </div>
                 <div class="profile-info-item">
                     <span class="profile-info-label">Регистрация</span>
                     <span class="profile-info-value" id="profileRegDate"></span>
@@ -4200,6 +4300,8 @@
                 <div class="profile-media-tabs">
                     <button class="profile-media-tab active" data-type="media">Медиа</button>
                     <button class="profile-media-tab" data-type="files">Файлы</button>
+                    <button class="profile-media-tab" data-type="audio">Аудио</button>
+                    <button class="profile-media-tab" data-type="voice">Голосовые</button>
                 </div>
                 <div id="profileMediaContent">
                     <div class="profile-media-grid" id="profileMediaGrid"></div>
@@ -4223,6 +4325,15 @@
                 </div>
                 <div class="profile-status-line" id="groupCount"></div>
             </div>
+            <div class="profile-info-section">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">ID чата</span>
+                    <span class="profile-info-value">
+                        <span id="groupChatId"></span>
+                        <button class="profile-info-copy" data-copy="groupChatId" title="Копировать">&#128203;</button>
+                    </span>
+                </div>
+            </div>
             <div class="group-section">
                 <div class="group-section-head">
                     <span class="group-section-title">Участники</span>
@@ -4238,6 +4349,8 @@
                 <div class="profile-media-tabs">
                     <button class="profile-media-tab group-media-tab active" data-type="media">Медиа</button>
                     <button class="profile-media-tab group-media-tab" data-type="files">Файлы</button>
+                    <button class="profile-media-tab group-media-tab" data-type="audio">Аудио</button>
+                    <button class="profile-media-tab group-media-tab" data-type="voice">Голосовые</button>
                 </div>
                 <div id="groupMediaContent">
                     <div class="profile-media-grid"></div>
