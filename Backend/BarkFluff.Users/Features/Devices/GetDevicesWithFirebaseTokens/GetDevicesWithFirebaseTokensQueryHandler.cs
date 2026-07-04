@@ -16,7 +16,7 @@ public class GetDevicesWithFirebaseTokensQueryHandler(
             "Получение Firebase токенов для {Count} пользователей",
             request.UserIds.Count);
 
-        var tokens = await devicesStorage.GetDevicesWithFirebaseTokens(request.UserIds);
+        var tokens = await devicesStorage.GetDevicesWithFirebaseTokens(request.UserIds, request.MutedChatFilter);
 
         var response = new GetDevicesWithFirebaseTokensResponse();
         foreach (var (userId, deviceId, firebaseToken) in tokens)

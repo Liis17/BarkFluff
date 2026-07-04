@@ -674,6 +674,58 @@ class GrpcManager {
     }
 
     /**
+     * Заглушить/включить уведомления для конкретного чата (per-chat mute).
+     * mutedUntilEpochSeconds == null при muted=true => замьютить навсегда.
+     */
+    suspend fun setChatMuted(
+        chatId: String,
+        muted: Boolean,
+        mutedUntilEpochSeconds: Long? = null
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val builder = UsersApiOuterClass.SetChatMutedRequest.newBuilder()
+                .setChatId(chatId)
+                .setMuted(muted)
+
+            if (muted && mutedUntilEpochSeconds != null) {
+                builder.mutedUntil = com.google.protobuf.Timestamp.newBuilder()
+                    .setSeconds(mutedUntilEpochSeconds)
+                    .build()
+            }
+
+            usersClient!!.setChatMuted(builder.build())
+            Log.d(TAG, "Mute чата $chatId обновлён: muted=$muted")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления mute чата", e)
+            Result.failure(Exception("Ошибка обновления mute чата: ${e.message}"))
+        }
+    }
+
+    /**
+     * Возвращает набор идентификаторов замьюченных чатов текущего пользователя.
+     */
+    suspend fun getMutedChats(): Result<Set<String>> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val response = usersClient!!.getMutedChats(
+                UsersApiOuterClass.GetMutedChatsRequest.getDefaultInstance()
+            )
+            Result.success(response.chatsList.map { it.chatId }.toSet())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения списка замьюченных чатов", e)
+            Result.failure(Exception("Ошибка получения списка замьюченных чатов: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает список серверов из навигатора
      * Аналог GetServerList в WebApiServerManager
      */
