@@ -467,6 +467,19 @@
     <string name="media_tab_videos">视频</string>
     <string name="media_tab_files">文件</string>
     <string name="media_no_attachments">没有附件</string>
+    <string name="profile_action_message">消息</string>
+    <string name="profile_action_call">通话</string>
+    <string name="profile_action_notifications">通知</string>
+    <string name="profile_user_id_label">用户 ID</string>
+    <string name="profile_chat_id_label">聊天 ID</string>
+    <string name="profile_registration_label">注册日期</string>
+    <string name="profile_attachments_title">聊天附件</string>
+    <string name="profile_tab_media">媒体</string>
+    <string name="profile_tab_voice">语音</string>
+    <string name="profile_no_voice">没有语音消息</string>
+    <string name="profile_copied">已复制</string>
+    <string name="group_online_count">%1$d 名成员 · %2$d 在线</string>
+    <string name="group_members_count">%1$d 名成员</string>
 
     <!-- Sticker empty -->
     <string name="stickers_empty">没有贴纸</string>

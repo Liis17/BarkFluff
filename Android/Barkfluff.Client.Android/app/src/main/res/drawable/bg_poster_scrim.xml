@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Градиентное затемнение поверх постера профиля -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#48140A06"
+        android:centerColor="#00140A06"
+        android:endColor="#52140A06"
+        android:type="linear" />
+</shape>

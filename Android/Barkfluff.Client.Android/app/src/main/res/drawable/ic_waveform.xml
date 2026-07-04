@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Декоративная форма волны для голосовых -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="24dp"
+    android:viewportWidth="120"
+    android:viewportHeight="24">
+    <path android:fillColor="@android:color/black" android:pathData="M2,9h3v6h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M10,5h3v14h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M18,10h3v4h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M26,3h3v18h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M34,8h3v8h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M42,6h3v12h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M50,11h3v2h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M58,4h3v16h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M66,9h3v6h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M74,7h3v10h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M82,10h3v4h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M90,5h3v14h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M98,9h3v6h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M106,7h3v10h-3z" />
+    <path android:fillColor="@android:color/black" android:pathData="M114,10h3v4h-3z" />
+</vector>
