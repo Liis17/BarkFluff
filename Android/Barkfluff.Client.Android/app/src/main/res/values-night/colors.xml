@@ -81,6 +81,19 @@
     <color name="warning_container">#F57C00</color>
     <color name="on_warning_container">#FFE0B2</color>
 
+    <!-- Profile screens palette (terracotta, dark вариант из веб-макетов) -->
+    <color name="profile_accent">#C07A52</color>
+    <color name="profile_on_accent">#241309</color>
+    <color name="profile_surface">#17100C</color>
+    <color name="profile_elem">#1F1612</color>
+    <color name="profile_elem_2">#2A1E18</color>
+    <color name="profile_accent_soft">#2A1C14</color>
+    <color name="profile_text">#F2E6DE</color>
+    <color name="profile_text_dim">#B19C90</color>
+    <color name="profile_outline">#38271F</color>
+    <color name="profile_chip_text">#D3B6A4</color>
+    <color name="profile_presence_online">#3EC46D</color>
+
     <!-- Widget colors — Material You dark theme -->
     <color name="widget_background_color">@android:color/system_neutral1_900</color>
     <color name="widget_text_primary">@android:color/system_neutral1_50</color>
