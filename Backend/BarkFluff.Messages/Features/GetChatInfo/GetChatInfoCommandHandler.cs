@@ -128,6 +128,19 @@ public class GetChatInfoCommandHandler : IRequestHandler<GetChatInfoCommand, Get
             response.MembersId.AddRange(chatWithMembers.Members.Select(m => m.UserId));
         }
 
+        // Флаг отключённых уведомлений для этого чата (только для пользовательского контекста)
+        if (_userContext.TokenType != BarkFluff.Shared.Identity.TokenType.Service)
+        {
+            var mutedResponse = await _usersServerApiClient.GetMutedChatIdsAsync(
+                new GetMutedChatIdsRequest
+                {
+                    UserId = _userContext.UserId,
+                    ChatIds = { request.ChatId.ToString() }
+                });
+
+            response.Muted = mutedResponse.MutedChatIds.Count > 0;
+        }
+
         _logger.LogInformation(
             "Информация о чате {ChatId} успешно получена. Непрочитанных: {CountUnread}",
             request.ChatId,

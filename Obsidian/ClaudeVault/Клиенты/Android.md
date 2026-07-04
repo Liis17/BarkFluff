@@ -463,6 +463,14 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 - `docs/` — `CACHING_SYSTEM.md`, `MATERIAL3_REPORT.md`, `material_you_3_guide.md`
 - Полная карта проекта — в Obsidian: [[Android-ProjectMap]] + [[Android-FileIndex]] (отдельного `PROJECT_MAP.md` в репозитории нет)
 
+## Per-chat mute (отключение уведомлений чата)
+
+- `ChatActivity` — пункт меню «три точки» (`btnMore` → `showChatMenu`) переключает mute через `GrpcManager.setChatMuted(chatId, muted, until?)`. Состояние читается из `GetChatInfo.muted`.
+- `GrpcManager`: `setChatMuted()`, `getMutedChats()` (Set<chatId>).
+- `ChatRepository.ChatInfo.muted` — маппится из proto `GetChatInfoResponse.muted`.
+- `GlobalParam.mutedChatIds` (StringSet) + `setChatMutedLocal()` — локальный кэш; `BarkFluffFirebaseMessagingService.onMessageReceived` пропускает уведомление, если `chatId` в кэше (guard от гонок кэша токенов; сервер и так подавляет push).
+- Строки: `chat_menu_mute/unmute`, `chat_muted/unmuted`, `chat_mute_error` (все 5 локалей). Серверная часть — [[Backend/Users]] → Per-chat mute.
+
 ## Сборка
 
 ```bash

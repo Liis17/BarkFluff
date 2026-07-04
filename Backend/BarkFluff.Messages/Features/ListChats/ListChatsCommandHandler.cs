@@ -134,6 +134,31 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
             chats.Count
         );
 
-        return new ListChatsResponse { Chats = { chats.Select(x => x.ToGrpc(filesInfoMap)) }, TotalCount = totalCount };
+        var grpcChats = chats.Select(x => x.ToGrpc(filesInfoMap)).ToList();
+
+        // Отмечаем чаты, у которых пользователь отключил уведомления (per-chat mute).
+        if (grpcChats.Count > 0)
+        {
+            var mutedResponse = await _usersServerApiClient.GetMutedChatIdsAsync(
+                new GetMutedChatIdsRequest
+                {
+                    UserId = _userContext.UserId,
+                    ChatIds = { grpcChats.Select(c => c.Id) }
+                });
+
+            if (mutedResponse.MutedChatIds.Count > 0)
+            {
+                var mutedSet = mutedResponse.MutedChatIds.ToHashSet();
+                foreach (var grpcChat in grpcChats)
+                {
+                    if (mutedSet.Contains(grpcChat.Id))
+                    {
+                        grpcChat.Muted = true;
+                    }
+                }
+            }
+        }
+
+        return new ListChatsResponse { Chats = { grpcChats }, TotalCount = totalCount };
     }
 }

@@ -206,7 +206,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                     lastMessageId = response.lastMessageId,
                     firstUnreadMessageId = response.firstUnreadMessageId,
                     countUnread = response.countUnread,
-                    memberIds = response.membersIdList
+                    memberIds = response.membersIdList,
+                    muted = response.muted
                 )
             )
         } catch (e: Exception) {
@@ -499,7 +500,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         val lastMessageId: Long,
         val firstUnreadMessageId: Long,
         val countUnread: Long,
-        val memberIds: List<Long>
+        val memberIds: List<Long>,
+        val muted: Boolean = false
     )
 
     data class UploadUrlResult(
