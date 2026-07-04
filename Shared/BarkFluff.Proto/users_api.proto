@@ -52,6 +52,12 @@ service UsersApi {
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
 
+  // Заглушить/включить уведомления для конкретного чата (per-chat mute)
+  rpc SetChatMuted(SetChatMutedRequest) returns(SetChatMutedResponse);
+
+  // Получить список замьюченных чатов текущего пользователя
+  rpc GetMutedChats(GetMutedChatsRequest) returns(GetMutedChatsResponse);
+
   // Получить настройки приватности текущего пользователя
   rpc GetPrivacySettings(GetPrivacySettingsRequest) returns(GetPrivacySettingsResponse);
 
@@ -200,6 +206,9 @@ service UsersServerApi {
 
   // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
   rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
+
+  // Получить подмножество чатов, замьюченных пользователем (для флага muted в Messages)
+  rpc GetMutedChatIds(GetMutedChatIdsRequest) returns(GetMutedChatIdsResponse);
 
   // Обновить профиль пользователя (для админ-панели)
   rpc UpdateProfileServer(UpdateProfileServerRequest) returns(UpdateProfileServerResponse);
@@ -628,6 +637,7 @@ message SetFirebaseTokenResponse { }
 
 message GetDevicesWithFirebaseTokensRequest {
   repeated int64 user_ids = 1; // идентификаторы пользователей
+  string chat_id = 2; // если задан (Guid-строка) — исключить пользователей, замьютивших этот чат; пусто = без фильтра
 }
 
 message GetDevicesWithFirebaseTokensByDeviceIdsRequest {
@@ -654,6 +664,38 @@ message SetNotificationsEnabledRequest {
 }
 
 message SetNotificationsEnabledResponse { }
+
+// Заглушить/включить уведомления для конкретного чата
+
+message SetChatMutedRequest {
+  string chat_id = 1;                        // идентификатор чата (Guid-строка)
+  bool muted = 2;                            // true = замьютить; false = снять mute (удалить запись)
+  google.protobuf.Timestamp muted_until = 3; // до какого времени mute (пусто при muted=true => навсегда)
+}
+
+message SetChatMutedResponse { }
+
+message GetMutedChatsRequest { }
+
+message MutedChat {
+  string chat_id = 1;                        // идентификатор чата (Guid-строка)
+  google.protobuf.Timestamp muted_until = 2; // до какого времени mute (пусто => навсегда)
+}
+
+message GetMutedChatsResponse {
+  repeated MutedChat chats = 1; // активные муьюты текущего пользователя
+}
+
+// Батч-запрос замьюченных чатов (внутренний, для сервиса Messages)
+
+message GetMutedChatIdsRequest {
+  int64 user_id = 1;             // идентификатор пользователя
+  repeated string chat_ids = 2;  // проверяемые чаты (Guid-строки)
+}
+
+message GetMutedChatIdsResponse {
+  repeated string muted_chat_ids = 1; // подмножество chat_ids с активным mute
+}
 
 // Настройки приватности пользователя
 

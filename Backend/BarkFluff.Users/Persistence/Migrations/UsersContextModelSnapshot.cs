@@ -94,6 +94,31 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("ChatFolders");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.ChatMute", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("MutedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ChatId")
+                        .IsUnique();
+
+                    b.ToTable("ChatMutes");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
                 {
                     b.Property<Guid>("DeviceId")
@@ -364,6 +389,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.ChatMute", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

@@ -519,4 +519,10 @@
     <string name="language_option_es">🇪🇸  Español</string>
     <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">«Системный» использует язык устройства. Выбор языка применяется сразу.</string>
+    <!-- Per-chat mute -->
+    <string name="chat_menu_mute">Отключить уведомления</string>
+    <string name="chat_menu_unmute">Включить уведомления</string>
+    <string name="chat_muted">Уведомления отключены</string>
+    <string name="chat_unmuted">Уведомления включены</string>
+    <string name="chat_mute_error">Не удалось изменить настройку</string>
 </resources>

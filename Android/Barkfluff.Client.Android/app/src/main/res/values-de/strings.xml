@@ -497,4 +497,10 @@
     <string name="language_option_es">🇪🇸  Español</string>
     <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">„System“ verwendet die Gerätesprache. Die gewählte Sprache wird sofort angewendet.</string>
+    <!-- Per-chat mute -->
+    <string name="chat_menu_mute">Benachrichtigungen stummschalten</string>
+    <string name="chat_menu_unmute">Benachrichtigungen aktivieren</string>
+    <string name="chat_muted">Benachrichtigungen stummgeschaltet</string>
+    <string name="chat_unmuted">Benachrichtigungen aktiviert</string>
+    <string name="chat_mute_error">Einstellung konnte nicht geändert werden</string>
 </resources>

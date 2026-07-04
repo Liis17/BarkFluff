@@ -10,6 +10,8 @@ using BarkFluff.Users.Features.ChatFolders.GetChatFolders;
 using BarkFluff.Users.Features.ChatFolders.RemoveChatFromFolder;
 using BarkFluff.Users.Features.ChatFolders.ReorderChatFolders;
 using BarkFluff.Users.Features.ChatFolders.UpdateChatFolder;
+using BarkFluff.Users.Features.ChatMutes.GetMutedChats;
+using BarkFluff.Users.Features.ChatMutes.SetChatMuted;
 using BarkFluff.Users.Features.ChangeName;
 using BarkFluff.Users.Features.ChangeUsername;
 using BarkFluff.Users.Features.CheckExistEmail;
@@ -225,6 +227,27 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         await _mediator.Send(command);
 
         return new SetNotificationsEnabledResponse();
+    }
+
+    public override async Task<SetChatMutedResponse> SetChatMuted(SetChatMutedRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_mute_toggles");
+        var command = new SetChatMutedCommand
+        {
+            ChatId = ParseChatGuid(request.ChatId),
+            Muted = request.Muted,
+            MutedUntil = request.MutedUntil?.ToDateTime(),
+        };
+
+        await _mediator.Send(command);
+
+        return new SetChatMutedResponse();
+    }
+
+    public override Task<GetMutedChatsResponse> GetMutedChats(GetMutedChatsRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_mute_lookups");
+        return _mediator.Send(new GetMutedChatsQuery());
     }
 
     public override Task<GetPrivacySettingsResponse> GetPrivacySettings(GetPrivacySettingsRequest request, ServerCallContext context)

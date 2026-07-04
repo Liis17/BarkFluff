@@ -92,10 +92,21 @@ public class DevicesStorage(UsersContext context)
         await context.SaveChangesAsync();
     }
 
-    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokens(List<long> userIds)
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokens(List<long> userIds, Guid? mutedChatFilter = null)
     {
-        return await context.UserDevices
-            .Where(d => userIds.Contains(d.UserId) && d.FirebaseDeviceToken != null && d.NotificationsEnabled)
+        var now = DateTime.UtcNow;
+        var query = context.UserDevices
+            .Where(d => userIds.Contains(d.UserId) && d.FirebaseDeviceToken != null && d.NotificationsEnabled);
+
+        // Исключаем пользователей, замьютивших этот чат (активный mute).
+        if (mutedChatFilter is Guid chatId)
+        {
+            query = query.Where(d => !context.ChatMutes.Any(m =>
+                m.UserId == d.UserId && m.ChatId == chatId
+                && (m.MutedUntil == null || m.MutedUntil > now)));
+        }
+
+        return await query
             .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
             .ToListAsync();
     }

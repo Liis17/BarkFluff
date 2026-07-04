@@ -9,6 +9,7 @@ using BarkFluff.Users.Features.Badges.Queries;
 using BarkFluff.Users.Features.Badges.RemoveUserBadge;
 using BarkFluff.Users.Features.Badges.UpdateBadge;
 using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
+using BarkFluff.Users.Features.ChatMutes.GetMutedChatIds;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
@@ -329,6 +330,16 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         return _mediator.Send(new GetUserPrivacyServerQuery { UserId = request.UserId });
     }
 
+    public override Task<GetMutedChatIdsResponse> GetMutedChatIds(GetMutedChatIdsRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_mute_lookups");
+        return _mediator.Send(new GetMutedChatIdsQuery
+        {
+            UserId = request.UserId,
+            ChatIds = request.ChatIds.ToList(),
+        });
+    }
+
     // Поиск пользователей (для админ-панели)
 
     public override Task<SearchUsersServerResponse> SearchUsersServer(SearchUsersServerRequest request, ServerCallContext context)
@@ -374,7 +385,8 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         _metrics.Increment("device_lookups");
         var query = new GetDevicesWithFirebaseTokensQuery
         {
-            UserIds = request.UserIds.ToList()
+            UserIds = request.UserIds.ToList(),
+            MutedChatFilter = Guid.TryParse(request.ChatId, out var chatId) ? chatId : null,
         };
 
         return _mediator.Send(query);

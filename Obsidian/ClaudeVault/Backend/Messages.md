@@ -163,6 +163,10 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 ```
 
+## Флаг muted в chat-info
+
+`Chat` (ListChats) и `GetChatInfoResponse` (GetChatInfo) содержат `muted` (+ `muted_until`) — отключены ли уведомления чата для текущего пользователя. Заполняется через батч-вызов `UsersServerApi.GetMutedChatIds(userId, chatIds)` (см. [[Backend/Users]] → Per-chat mute). Для сервисного токена (вызов из CloudMessaging) флаг не считается. Клиенты используют флаг, чтобы не показывать локальное уведомление.
+
 ## Proto
 
 - `messages_api.proto` — Server

@@ -78,7 +78,8 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
             var tokensResponse = await _usersClient.GetDevicesWithFirebaseTokensAsync(
                 new GetDevicesWithFirebaseTokensRequest
                 {
-                    UserIds = { message.RecipientUserIds }
+                    UserIds = { message.RecipientUserIds },
+                    ChatId = message.ChatId.ToString() // исключаем получателей, замьютивших этот чат
                 },
                 cancellationToken: context.CancellationToken);
 

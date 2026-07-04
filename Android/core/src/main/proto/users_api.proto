@@ -52,6 +52,12 @@ service UsersApi {
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
 
+  // Заглушить/включить уведомления для конкретного чата (per-chat mute)
+  rpc SetChatMuted(SetChatMutedRequest) returns(SetChatMutedResponse);
+
+  // Получить список замьюченных чатов текущего пользователя
+  rpc GetMutedChats(GetMutedChatsRequest) returns(GetMutedChatsResponse);
+
   // Получить настройки приватности текущего пользователя
   rpc GetPrivacySettings(GetPrivacySettingsRequest) returns(GetPrivacySettingsResponse);
 
@@ -654,6 +660,27 @@ message SetNotificationsEnabledRequest {
 }
 
 message SetNotificationsEnabledResponse { }
+
+// Заглушить/включить уведомления для конкретного чата
+
+message SetChatMutedRequest {
+  string chat_id = 1;                        // идентификатор чата (Guid-строка)
+  bool muted = 2;                            // true = замьютить; false = снять mute
+  google.protobuf.Timestamp muted_until = 3; // до какого времени mute (пусто при muted=true => навсегда)
+}
+
+message SetChatMutedResponse { }
+
+message GetMutedChatsRequest { }
+
+message MutedChat {
+  string chat_id = 1;                        // идентификатор чата (Guid-строка)
+  google.protobuf.Timestamp muted_until = 2; // до какого времени mute (пусто => навсегда)
+}
+
+message GetMutedChatsResponse {
+  repeated MutedChat chats = 1; // активные муьюты текущего пользователя
+}
 
 // Настройки приватности пользователя
 
