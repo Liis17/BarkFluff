@@ -64,6 +64,7 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 - `Features/{GenerateFastAuthToken,ScanFastAuth,AcceptFastAuth,RejectFastAuth}` — MediatR handlers.
 - `Features/SubscribeFastAuthResult` — прямой handler (без MediatR), читает `Channel` → пишет в `IServerStreamWriter`.
 - `Host/{FastAuthApiService,FastAuthServerApiService}.cs` — gRPC overrides с `[AllowAnonymous]` / `[Authorize(User|Service)]`.
+- `DependencyInjection.cs` — `AddFastAuthServices()`: регистрирует `FastAuthSessionsManager`, `QrCodeGenerator`, `FastAuthExpirationService` (hosted), MediatR.
 
 ## Защиты
 
@@ -72,6 +73,13 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 - Все state-переходы идут через `lock` внутри `FastAuthSession`.
 - TTL принудительно закрывает стрим даже если клиент не отвалился.
 - `Accept` сверяет `userId` с тем, который зафиксирован при `Scan` — другой пользователь не может подтвердить.
+
+### Security-аудит (S-серия)
+
+- **S1/D2** — rate limit на анонимные эндпоинты (`GenerateFastAuthToken`, `SubscribeFastAuthResult`) в nginx, зона `fastauth_anon` (2 req/s) + `limit_conn_zone` на стримы. См. [[Backend/Nginx]].
+- **S4** — во всех логах `session.Id` маскируется до первых 8 символов (`session.Id[..8]`) вместо полного GUID.
+- **S5** — компенсация race condition при параллельном `AcceptFastAuth` на одну сессию.
+- **S6** — gRPC reflection включён только при `Environment.IsDevelopment()`.
 
 ## Метрики
 

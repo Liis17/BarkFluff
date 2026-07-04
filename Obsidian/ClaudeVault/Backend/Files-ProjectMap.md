@@ -86,7 +86,7 @@
 | Файл | Описание |
 |------|----------|
 | `Infrastructure/S3BucketRegistry.cs` | Singleton. Реестр S3-бакетов: маппинг `UploadFileType → bucketId`, создание и кеширование `IAmazonS3` клиентов. Каждый бакет может быть на отдельном S3-хранилище. Бакеты: `profile-pictures`, `message-images`, `message-videos`, `message-documents`, `message-audio`, `chat-pictures`, `badge-images`, `barkfluff-uploads`. |
-| `Infrastructure/S3BucketInitializer.cs` | Singleton. При старте создаёт бакеты если не существуют, выставляет публичную политику чтения. |
+| `Infrastructure/S3BucketInitializer.cs` | Singleton. При старте создаёт бакеты если не существуют. Публичная политика чтения удалена (security fix); ошибки логируются и не роняют старт сервиса; 403 Forbidden при работе с R2-токеном без прав администрирования бакетов трактуется как «бакет создан заранее вручную». |
 | `Infrastructure/S3Uploader.cs` | Transient. Upload/download файлов через `IAmazonS3`. Используется в handlers загрузки. |
 
 ---

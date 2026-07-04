@@ -33,9 +33,9 @@ NAVIGATOR_PORT=7010 dotnet run
 
 ## Domain/ServerInfo
 
-Поля: `Id` (long, ключ), `CreatedAt` (DateTime), `AddedBy` (string — UserId или "Anonymous"), `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex`, `ColorMainHex`, `ColorHardHex`, `AccountsCount`.
+Поля: `Id` (long, ключ), `CreatedAt` (DateTime), `AddedBy` (string — UserId или "Anonymous"), `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex`, `ColorMainHex`, `ColorHardHex`. **`AccountsCount` в доменной модели нет** — это поле существует только в proto-ответе (см. ниже) и всегда возвращается как `0`.
 
-В proto `ServerInfo` адрес маяка передаётся как `beacon_uri: ServiceEndpoint` (а не отдельные host/port), плюс поле `accounts_count`.
+В proto `ServerInfo` адрес маяка передаётся как `beacon_uri: ServiceEndpoint` (а не отдельные host/port), плюс поле `accounts_count` (жёстко `0` — не подсчитывается сервером, вычислять при необходимости на клиенте/из другого источника).
 
 ## Валидация при регистрации
 

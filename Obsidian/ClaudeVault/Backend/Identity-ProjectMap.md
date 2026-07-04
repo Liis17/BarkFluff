@@ -15,7 +15,6 @@
 | `appsettings.Development.json` | Конфигурация для локальной разработки |
 | `Dockerfile` | Docker-образ сервиса |
 | `Dockerfile.slim` | Облегчённый Docker-образ |
-| `SECURITY_AUDIT.md` | Заметки по аудиту безопасности |
 
 ---
 
@@ -110,8 +109,8 @@ gRPC-сервисы — точки входа в сервис.
 |------|-----------|
 | `JwtService.cs` | Генерация JWT-токенов: `GenerateUserToken(userId, deviceId)` и `GenerateServiceToken(serviceId)`. Использует `JwtSettings`. |
 | `PasswordHasher.cs` | Хэширование пароля: SHA-256 → Base64. Статический метод `HashPassword(password)`. |
-| `CodeGenerator.cs` | Генерация 6-значного цифрового кода (для email OTP / регистрации). |
-| `RefreshTokenGenerator.cs` | Генерация refresh token — 20-символьная случайная строка. |
+| `CodeGenerator.cs` | `GenerateDigitalCode(length)` — цифровой код произвольной длины (для email OTP / регистрации используется 6 знаков). |
+| `RefreshTokenGenerator.cs` | Генерация refresh token — 32 случайных байта → Base64Url без padding = 43 символа. |
 
 ---
 

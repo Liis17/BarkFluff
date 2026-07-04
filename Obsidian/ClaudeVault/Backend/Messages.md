@@ -39,6 +39,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ListChatAttachments` | Вложения по типу, фильтрация + сортировка |
 | `GetUserAllMessages` | Service-only: экспорт данных пользователя (GDPR) |
 | `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` + `chat_ids[]` → подмножество, где состоит). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMemberChatIds`. Потребитель — [[Backend/Onliner]] (typing) |
+| `GetChatMemberIds` | Service-only: все `UserId` участников чата по `ChatId`. Невалидный Guid → пустой список. Потребитель — [[Backend/Calls]] (ринг группового звонка) |
+| `PostCallSystemMessage` | Service-only: пишет системное сообщение об итоге звонка (`CallSystemResult`: Ended/Missed/Rejected) в существующий чат — групповой по `ChatId` или личный по паре Caller/Callee (чат не создаётся, если его нет). Публикует `NewMessageEvent`. Потребитель — [[Backend/Calls]] |
 | `PinMessage` | Закрепление сообщения в чате. Любой участник чата. Лимит: 100 закрепов на чат. Системное сообщение + `MessagePinnedEvent`. Idempotent при повторе |
 | `UnpinMessage` | Открепление сообщения. Любой участник. Системное сообщение + `MessageUnpinnedEvent`. Idempotent: noop если не был закреплён |
 | `ListPinnedMessages` | Пагинированный список закреплённых сообщений (sort by `PinnedAt DESC`). Soft-deleted фильтруются |
