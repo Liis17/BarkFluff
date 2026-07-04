@@ -51,6 +51,7 @@
 | `Templates/successful_registration.html` | `SuccessfulRegistration` — успешная регистрация |
 | `Templates/successful_login.html` | `SuccessfulLogin` — успешный вход |
 | `Templates/password_changed.html` | `PasswordChanged` — смена пароля |
+| `Templates/password_changed_by_admin.html` | `PasswordChangedByAdmin` — принудительная смена пароля администратором (см. `ForceSetPasswordServer` в [[Backend/Identity]]) |
 | `Templates/two_factor_method_changed.html` | `TwoFactorMethodChanged` — смена метода 2FA |
 
 ### Конфигурационные файлы

@@ -179,6 +179,14 @@
 
 ---
 
+## Features/Call/
+
+| Файл | Назначение |
+|------|-----------|
+| `Views/CallOverlayView.swift` | Плавающий немодальный оверлей звонка поверх чата (клики мимо карточки проходят к чату под ней); сворачивается в компактную плашку, разворачивается в полноэкранный `CallScreenView` из [[macOS-ProjectMap#Пакет BFCalls\|BFCalls]]; перетаскивается |
+
+---
+
 ## Features/Profile/
 
 | Файл | Назначение |
@@ -258,6 +266,7 @@
 | `Sources/BFProto/Generated/fast_auth_api.*` | Proto-код FastAuth (QR-авторизация) |
 | `Sources/BFProto/Generated/configuration_api.*` | Proto-код Configuration |
 | `Sources/BFProto/Generated/developers_api.*` | Proto-код Developers |
+| `Sources/BFProto/Generated/calls_api.*` | Proto-код Calls (звонки на LiveKit SFU) |
 | `Sources/BFProto/Generated/shared.*` | Общие proto-типы |
 | `Protos/*.proto` | Исходные .proto файлы (копии из `Shared/BarkFluff.Proto`) |
 
@@ -294,8 +303,21 @@
 | `Repositories/BeaconRepository.swift` | gRPC-клиент Beacon: получение информации о сервере |
 | `Repositories/NavigatorRepository.swift` | gRPC-клиент Navigator (TLS): список серверов |
 | `Repositories/FastAuthRepository.swift` | gRPC-клиент FastAuth: `generateFastAuthToken` + server-streaming `subscribeFastAuthResult` (генерация QR на macOS-логине) **+ `scanFastAuth`/`acceptFastAuth(fastAuthID:, confirmationCode:)`/`rejectFastAuth(...)`** для роли сканера (используются iOS-клиентом, на macOS пока не дёргаются) |
+| `Repositories/CallsRepository.swift` | gRPC-клиент Calls: InitiateCall/JoinCall/AcceptCall/RejectCall/EndCall/SetCallAudioQuality, server-streaming `subscribeCallEvents`, ListCallHistory, GetActiveCalls |
 | `Utilities/GRPCErrorMapper.swift` | Маппинг gRPC-статусов в `BFNetworkingError` |
 | `Utilities/RetryPolicy.swift` | Политика повтора запросов |
+
+---
+
+## Пакет BFCalls
+
+Расположение: `Packages/BFCalls/`. Кроссплатформенный (macOS + iOS) слой звонков поверх LiveKit SDK.
+
+| Файл | Назначение |
+|------|-----------|
+| `BFCalls.swift` | Общие типы: `CallPhase`, `ActiveCallInfo`, `CallTile`, `CallParticipantDisplay`, `CallVideoQualityLevel` |
+| `CallController.swift` | `CallController` — state machine звонка поверх LiveKit `Room` (подключение, треки, mute/camera/screen-share, `RoomDelegateAdapter`) |
+| `CallViews.swift` | SwiftUI-компоненты: `IncomingCallView`, `CallScreenView`, `CallMinimizedBar` — используются идентично в macOS и iOS клиентах (см. `Features/Call/Views/CallOverlayView.swift` в каждом) |
 
 ---
 

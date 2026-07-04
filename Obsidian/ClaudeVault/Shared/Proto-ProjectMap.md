@@ -67,6 +67,7 @@
 | `GetActiveSessionsServer` | Сессии пользователя по user_id |
 | `RemoveActiveSessionServer` | Удалить сессию пользователя |
 | `CreateSessionForUserServer` | Создать сессию (access+refresh) для пользователя из другого сервиса (FastAuth). Регистрирует устройство в Users, отправляет уведомление о входе. |
+| `ForceSetPasswordServer` | Принудительно сменить пароль пользователя без OTP (админ-панель). Отправляет email-уведомление |
 
 **Ключевые типы:** `Token` (value + expiration_date), `OtpTypeId` (Authenticator/Email), `AuthRequest` (oneof login)
 
@@ -120,6 +121,11 @@
 | `UpdateStorageLimit` | Обновить лимит хранилища пользователя |
 | `SetProfilePictureServer` | Установить аватарку (для AdminPanel) |
 | `GetDevicesWithFirebaseTokens` | Устройства с Firebase токенами (для CloudMessaging) |
+| `GetDevicesWithFirebaseTokensByDeviceIds` | Устройства с Firebase токенами по списку device_id (админ-рассылка) |
+| `GetAllDevicesWithFirebaseTokens` | Все устройства с Firebase токенами (админ-рассылка на всех) |
+| `GetUserPrivacy` | Настройки приватности пользователя (для других микросервисов, напр. Onliner) |
+| `UpdateProfileServer` | Обновить профиль пользователя (админ-панель) |
+| `SetProfilePosterServer` / `GetProfilePosterServer` | Установить/получить постер профиля (админ-панель) |
 
 ---
 
@@ -136,6 +142,8 @@
 | `ListChatMembers` | Участники чата с пагинацией |
 | `SendMessage` | Отправить сообщение. `oneof source_id`: chat_id ИЛИ user_id |
 | `CreateGroupChat` | Создать групповой чат |
+| `AddUser` | Добавить участника в групповой чат (проверка прав по `GroupChatInfo.UsersCanKick`, системное сообщение) |
+| `UpdateGroupChat` | Изменить название и/или аватар группового чата (валидация аватара через Files, системное сообщение) |
 | `KickUser` | Удалить пользователя из группового чата |
 | `MarkAsRead` | Пометить сообщения прочитанными |
 | `ListChatAttachments` | Вложения чата с фильтрацией по типу и пагинацией |
@@ -166,6 +174,8 @@
 |-----|----------|
 | `GetUserAllMessages` | Все сообщения + чаты пользователя для GDPR-экспорта |
 | `CheckChatMembership` | Батч-проверка членства: `user_id` + `chat_ids[]` (Guid-строки) → `member_chat_ids[]` (подмножество, где состоит). Невалидные Guid отбрасываются. Используется [[Backend/Onliner]] для typing |
+| `GetChatMemberIds` | ID всех участников чата — используется [[Backend/Calls]] для ринга участников группового звонка |
+| `PostCallSystemMessage` | Записать системное сообщение об итоге звонка (`oneof target`: chat_id ИЛИ `PersonCallTarget` для личного звонка; `CallSystemResult`: ENDED/MISSED/REJECTED) — вызывается [[Backend/Calls]] |
 
 **Ключевые типы:** `Chat` (поля 9-11: chat_type, kdf_salt, passphrase_verifier — последние два только для PRIVATE), `ChatMember`, `OutgoingMessage` (text + files_ids), `ChatAttachmentInfo`. Для приватных используется `barkfluff.shared.EncryptedMessage`, для секретных — `barkfluff.shared.SecretEnvelope`.
 
@@ -195,6 +205,7 @@
 | `CreateStickerPack` / `UpdateStickerPack` / `DeleteStickerPack` | CRUD стикерпаков |
 | `AddSticker` / `RemoveSticker` / `UpdateSticker` / `GetStickers` | CRUD стикеров |
 | `UploadStickerImage` | Загрузить изображение стикера (AdminPanel) |
+| `UploadPosterServer` | Загрузить постер профиля пользователя (админ-панель) |
 
 **Ключевые типы:** `UploadFileInfo` (id, uploaders, etag, type, image_width field 12, image_height field 13), `UploadFileType` enum (включая `USER_PROFILE_POSTER = 10`)
 
@@ -285,7 +296,8 @@
 |-----|----------|
 | `GetServerInfo` | Имя, описание, цвета сервера + `Service` для каждого микросервиса (endpoint + tls_enabled + status) |
 
-**Сервисы в ответе:** identity, users, files, messages, updates, onliner, fast_auth
+**Сервисы в ответе:** identity, users, files, messages, updates, onliner, fast_auth, calls
+**`GetServerInfoResponse.livekit_url`** (field 13) — WSS-адрес LiveKit SFU для звонков (пусто, если звонки не настроены)
 **`ServiceStatus` enum:** Unknown, Healthy, Degraded, Unhealthy, Offline
 
 ---
@@ -335,6 +347,29 @@
 
 ---
 
+### `calls_api.proto`
+**Namespace:** `BarkFluff.Proto.Calls`
+**Звонки (1-на-1 и групповые) поверх LiveKit SFU.**
+Импортирует: `google/protobuf/timestamp.proto`
+
+#### `CallsApi` (один сервис, User token)
+| RPC | Описание |
+|-----|----------|
+| `InitiateCall` | Начать звонок. `oneof target`: `callee_user_id` (личный) ИЛИ `chat_id` (групповой). Возвращает `call_id`, `livekit_url`, `access_token` |
+| `JoinCall` | Присоединиться к идущему групповому звонку (или со второго устройства) |
+| `AcceptCall` | Принять входящий звонок |
+| `RejectCall` | Отклонить входящий звонок |
+| `EndCall` | Завершить звонок |
+| `SetCallAudioQuality` | Сменить общее качество голоса звонка (применяется всем участникам) |
+| `SubscribeCallEvents` | Server streaming, device-scoped (как `SubscribeSecretMessages` в Updates). Событие `CallEvent` (`oneof`): `IncomingCallEvent`, `CallAcceptedEvent`, `CallRejectedEvent`, `CallEndedEvent`, `ParticipantEvent`, `CallAudioQualityChangedEvent` |
+| `ListCallHistory` | История звонков пользователя, курсорная пагинация (`before_started_at`, лимит ≤50), фильтр `CallHistoryFilter` (ALL/MISSED) |
+| `GetActiveCalls` | Активные звонки в указанных чатах (для join-баннера в групповых чатах) |
+
+**Ключевые enum:** `CallMediaType` (AUDIO/VIDEO), `CallEndReason` (HANGUP/REJECTED/MISSED/BUSY/FAILED), `ParticipantAction` (JOINED/LEFT), `CallAudioQuality` (AUTO/LOW/MEDIUM/HIGH — AUTO это дефолт SDK), `CallDirection` (INCOMING/OUTGOING).
+**`CallHistoryItem`:** call_id, chat_id (пусто для личного), peer_user_id (0 для группового), is_group, media_type, direction, end_reason, started_at/answered_at/ended_at, duration_seconds.
+
+---
+
 ## Паттерн Service Pairs
 
 | Proto | Публичный сервис | Внутренний сервис |
@@ -350,3 +385,4 @@
 | `navigator_api.proto` | `NavigatorApi` | — |
 | `configuration_api.proto` | `ConfigurationApi` | — |
 | `developers_api.proto` | `DevelopersApi` | — |
+| `calls_api.proto` | `CallsApi` | — |

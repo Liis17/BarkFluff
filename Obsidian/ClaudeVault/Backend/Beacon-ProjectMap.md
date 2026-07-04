@@ -14,7 +14,6 @@
 - Регистрирует: MediatR, gRPC reflection, Serilog, метрики (`AddBarkFluffMetrics`)
 - Регистрирует gRPC-клиенты: `NavigatorApiClient` (по ключу `NavigatorUrl`) и `ConfigurationApiClient` (по ключу `ConfigurationServiceAddr`)
 - Запускает `ServerRegistrationService` как `HostedService`
-- ⚠️ **Замечено**: `AddMediatR` вызывается дважды (дублирование, не влияет на работу)
 
 ---
 
@@ -36,13 +35,14 @@ gRPC-сервис (реализует `BeaconApi.BeaconApiBase` из `beacon_api
 ### `Features/GetServerInfo/GetServerInfoCommandHandler.cs`
 Основная бизнес-логика сборки ответа клиенту.
 
-- Последовательно запрашивает конфигурации 7 сервисов через `ConfigurationApiClient`:
-  `Identity`, `Users`, `Files`, `Messages`, `Updates`, `Onliner`, `FastAuth`
+- Последовательно запрашивает конфигурации 8 сервисов через `ConfigurationApiClient`:
+  `Identity`, `Users`, `Files`, `Messages`, `Updates`, `Onliner`, `FastAuth`, `Calls`
 - Для каждого сервиса вызывает `ParseService()`:
   - Ищет ключ `ExternalEndpoint:Host` — внешний адрес через nginx (порт 443, TLS)
   - Фолбэк на `RunSettings:Host`, затем на `https://{service}.example.com`
   - Статус всегда `ServiceStatus.Healthy`, `TlsEnabled = true`, порт всегда `443`
-- Собирает `GetServerInfoResponse` с полями: `Name`, `Description`, `Color`, и эндпоинты всех сервисов
+- Дополнительно для `Calls` вычитывает `LivekitUrl` из секции `LiveKit`/ключа `Url` его конфигурации
+- Собирает `GetServerInfoResponse` с полями: `Name`, `Description`, `Color`, `LivekitUrl`, и эндпоинты всех сервисов
 
 ---
 
@@ -127,8 +127,7 @@ ServerRegistrationService (каждые 5 мин)
 | GetServerInfo через CQRS/MediatR | ✅ Актуально |
 | Регистрация в Navigator каждые 5 мин | ✅ Актуально |
 | Зависимости: Configuration + Navigator | ✅ Актуально |
-| 7 сервисов в GetServerInfoResponse | ✅ Актуально |
+| 8 сервисов в GetServerInfoResponse (включая Calls) | ✅ Актуально |
 | ExternalEndpoint:Host / RunSettings фолбэк | ✅ Актуально |
 | MetricsCollector (`server_info_requests`, `navigator_registrations`) | ⚠️ Не упомянуто в Beacon.md |
 | `ConfigurationServiceAddr` ключ конфига | ⚠️ Не упомянуто в Beacon.md |
-| Двойная регистрация MediatR в Program.cs | ⚠️ Незначительный баг |
