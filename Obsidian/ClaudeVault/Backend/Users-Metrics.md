@@ -67,7 +67,8 @@
 | `profile_bio_updates`         | counter | `UsersApiService.ChangeBio`                        | Изменение био.                                                        |
 | `profile_avatar_updates`      | counter | `UsersApiService.SetProfilePicture` (FileId != null), `UsersServerApiService.SetProfilePictureServer` | Установка/смена аватара. |
 | `profile_avatar_removals`     | counter | `UsersApiService.SetProfilePicture` (FileId == null) | Удаление аватара (отдельно, чтобы видеть отказы).                   |
-| `profile_poster_updates`      | counter | `UsersApiService.SetProfilePoster`                 | Смена/удаление профильного постера.                                   |
+| `profile_poster_updates`      | counter | `UsersApiService.SetProfilePoster`, `UsersServerApiService.SetProfilePosterServer` | Смена/удаление профильного постера (включая AdminPanel). |
+| `profile_poster_lookups`      | counter | `UsersServerApiService.GetProfilePosterServer`     | Чтение URL постера профиля (AdminPanel).                               |
 | `personalization_updates`     | counter | `UsersApiService.UpdatePersonalization`            | Изменение настроек персонализации.                                    |
 | `privacy_updates`             | counter | `UsersApiService.UpdatePrivacySettings`            | Изменение настроек приватности.                                       |
 
@@ -94,8 +95,20 @@
 | `device_deletions`            | counter | `UsersServerApiService.DeleteUserDevice`                                | Удаление устройства (logout с другого устройства).                    |
 | `device_renames`              | counter | `UsersApiService.RenameDevice`                                          | Переименование устройства пользователем.                              |
 | `device_lookups`              | counter | `GetDevices` / `GetCurrentDevice` / `GetUserDevices` / `GetDevicesWithFirebaseTokens` | Чтение списка устройств.                              |
+| `device_lookups_by_device_id` | counter | `UsersServerApiService.GetDevicesWithFirebaseTokensByDeviceIds`         | Устройства с FCM-токенами по списку device_id (адресная рассылка). |
+| `device_lookups_all`          | counter | `UsersServerApiService.GetAllDevicesWithFirebaseTokens`                 | Все устройства с FCM-токенами (рассылка на всех, AdminPanel broadcast). |
 | `firebase_token_updates`      | counter | `UsersApiService.SetFirebaseToken`                                      | Установка/обновление FCM-токена.                                      |
 | `notifications_toggles`       | counter | `UsersApiService.SetNotificationsEnabled`                               | Включение/выключение пушей.                                           |
+
+### Prekey-bundle (X3DH, для E2E-чатов)
+
+| Метрика                            | Тип     | Где                                                | Описание                                                              |
+| ----------------------------------- | ------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
+| `prekey_bundle_registrations`       | counter | `UsersApiService.RegisterPrekeyBundle`               | Регистрация prekey-bundle устройства.                                   |
+| `prekey_bundle_fetches`             | counter | `UsersApiService.FetchPrekeyBundle`                  | Получение bundle собеседника (расходует one-time prekey).               |
+| `peer_device_listings`              | counter | `UsersApiService.ListPeerDevices`                    | Список устройств пользователя с `has_bundle` (выбор цели секретного чата). |
+| `one_time_prekey_replenishments`    | counter | `UsersApiService.ReplenishOneTimePrekeys`            | Пополнение пула one-time prekeys устройства.                            |
+| `signed_prekey_rotations`           | counter | `UsersApiService.RotateSignedPrekey`                 | Смена signed prekey устройства.                                         |
 
 ### Бейджи
 

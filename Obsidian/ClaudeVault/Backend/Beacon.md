@@ -19,7 +19,7 @@ dotnet build Backend/BarkFluff.Beacon/BarkFluff.Beacon.csproj
 
 Сервис **не имеет БД**. Вся логика — две операции:
 
-1. **GetServerInfo** (gRPC endpoint) — запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner, FastAuth из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`, фолбэк на `RunSettings:Host`). В `GetServerInfoResponse` отдаёт `public_name` и `location`.
+1. **GetServerInfo** (gRPC endpoint) — запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner, FastAuth, **Calls** (8 сервисов) из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`, фолбэк на `RunSettings:Host`). В `GetServerInfoResponse` отдаёт `public_name`, `location` и `livekit_url` (WSS-адрес LiveKit SFU, пусто если звонки не настроены — берётся из конфигурации `Calls` секции `LiveKit`/`Url`).
 2. **ServerRegistrationService** (BackgroundService) — каждые 5 минут отправляет `RegisterServerRequest` в Navigator.
 
 CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler`.

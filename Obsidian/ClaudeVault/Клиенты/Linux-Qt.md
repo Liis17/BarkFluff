@@ -36,12 +36,16 @@ src/
 ├── Connection/     # gRPC клиенты
 ├── Models/         # Модели данных
 ├── UI/
-│   ├── Pages/      # MainWindow, LoginPage, MessengerPage, ...
-│   └── Widgets/    # Переиспользуемые виджеты
-├── Services/       # SessionManager, FileCacheService
-├── Storage/        # SecureStorage, AppSettings
+│   ├── *.h/.cpp    # Страницы: MainWindow, LoginPage, RegisterPage, ServerSelectPage,
+│   │               #   MessengerPage, ProfilePage, UserProfileView, PinUnlockDialog
+│   ├── Settings/   # SettingsPage + General/Security/Sessions/Storage/AboutWidget
+│   └── Widgets/    # ~13 переиспользуемых виджетов (аватар, эмодзи-пикер, вложения, бейджи, ...)
+├── Services/       # SessionManager (singleton, PIN-защита, автовосстановление сессии), FileCacheService
+├── Storage/        # SecureStorage (AES-256 шифрование токенов), AppSettings
 └── Utils/          # ErrorHandler, Validators, MessageGrouper, ...
 ```
+
+**Сохранение сессии** (см. `Linux/SESSION_PERSISTENCE.md`): `SessionManager` — singleton с PIN-блокировкой (`PinUnlockDialog`), шифрует токены через `SecureStorage` (AES-256), при старте пытается восстановить сессию и молча обновить access token через refresh token.
 
 ## gRPC Clients (Connection Layer)
 

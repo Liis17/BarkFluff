@@ -9,7 +9,7 @@ Target framework: `net10.0`, без внешних зависимостей.
 
 ## Содержимое (три файла)
 
-- **`ServiceId.cs`** — enum с ID каждого микросервиса (`Unknown=0`, `Identity=1`, `Users=2`, `Beacon=3`, ..., `Developers=12`). При добавлении нового сервиса — добавить сюда.
+- **`ServiceId.cs`** — enum с ID каждого микросервиса (`Unknown=0`, `Identity=1`, `Users=2`, `Beacon=3`, ..., `Developers=12`, `Calls=13`). При добавлении нового сервиса — добавить сюда.
 - **`TokenType.cs`** — enum: `Unknown=0`, `User=1`, `Service=2`.
 - **`IdentityClaims.cs`** — строковые константы для JWT claims и gRPC metadata: `x-user-id`, `x-token-type`, `x-service-id`, `x-device-id`.
 

@@ -28,9 +28,12 @@ Barkfluff.AdminPanel/
 │   ├── SeqEndpoints.cs                ← /api/seq/*
 │   ├── LogsExportEndpoints.cs         ← /api/seq/export/*
 │   ├── LogsClearEndpoints.cs          ← /api/seq/clear/*
+│   ├── LogsCompressionEndpoints.cs    ← /api/seq/compress-metrics/*
 │   ├── ConfigurationEndpoints.cs      ← /api/configuration/*
 │   ├── S3BrowserEndpoints.cs          ← /api/s3/*
-│   └── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
+│   ├── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
+│   ├── MailEndpoints.cs               ← /api/mail/*
+│   └── RemoteDockerEndpoints.cs       ← /api/remote/*
 ├── Middleware/
 │   └── TokenAuthMiddleware.cs         ← cookie-аутентификация
 ├── Models/
@@ -54,7 +57,9 @@ Barkfluff.AdminPanel/
 │   ├── LogsClearService.cs            ← async job: count → DELETE Seq events, TTL-cleanup
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
-│   └── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
+│   └── RemoteDockerService.cs         ← Docker на удалённых хостах по SSH-туннелю
 ├── Pages/
 │   ├── Login.html                     ← форма входа
 │   ├── dashboard.html                 ← KPI, трафик, метрики
@@ -291,6 +296,30 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 ### MetricsCollectorService (IHostedService)
 Запускается при старте + каждый час. Собирает события Seq за 24 часа, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет данные старше 24ч (HourlyStats) и 12ч (HourlyServiceMetrics).
 
+### MailService
+`IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных почтовых ящиков платформы (support/help/noreply/privacy/security и т.п., см. `MailSettings.Accounts`). Держит по одному `ImapClient` + `SemaphoreSlim` на аккаунт (`AccountState`) для сериализации доступа.
+
+| Метод | Описание |
+|-------|---------|
+| `GetAccounts()` | Список настроенных ящиков |
+| `ListMessagesAsync()` | Список писем в папке |
+| `GetMessageAsync()` | Письмо целиком (заголовки + тело) |
+| `GetAttachmentAsync()` / `GetInlineAttachmentAsync()` | Вложение / inline-картинка по `cid` |
+| `MarkAsReadAsync()` | Пометить письмо прочитанным |
+| `SendAsync()` | Отправить письмо через SMTP |
+
+Конфиг: `Mail:ImapHost/ImapPort/ImapSecurity`, `Mail:SmtpHost/SmtpPort/SmtpSecurity` (`SslOnConnect`/`StartTls`/`StartTlsWhenAvailable`/`None`/`Auto`), `Mail:AcceptInvalidCertificates`, `Mail:Accounts[]`.
+
+### RemoteDockerService
+Управление Docker-контейнерами на удалённых хостах (например, второй сервер платформы) — аналог `DockerService`, но по сети через настройки `RemoteServersSettings` (host/port/credentials на сервер).
+
+| Метод | Описание |
+|-------|---------|
+| `GetContainersStatusAsync(server)` | Статус контейнеров удалённого хоста |
+| `StartAsync` / `StopAsync` / `RestartAsync` / `PullAndRecreateAsync` | Управление контейнером |
+| `InspectContainerLabelsAsync` | Docker labels контейнера |
+| `GetServerInfo(server)` | Host/port/credentials сервера из конфига |
+
 ---
 
 ## Endpoints — полная таблица API
@@ -416,6 +445,39 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | POST | `/api/reserved-names/` | `{ name }` |
 | PUT | `/api/reserved-names/` | `{ oldName, newName }` |
 | DELETE | `/api/reserved-names/{name}` | — |
+
+### /api/mail — MailEndpoints.cs
+
+| Метод | Путь | Описание |
+|-------|------|---------|
+| GET | `/api/mail/accounts` | Список настроенных служебных ящиков |
+| GET | `/api/mail/{address}/messages` | Список писем в ящике |
+| GET | `/api/mail/{address}/messages/{uid}` | Письмо целиком |
+| GET | `/api/mail/{address}/messages/{uid}/attachments/{idx}` | Вложение |
+| GET | `/api/mail/{address}/messages/{uid}/inline/{cid}` | Inline-изображение по Content-ID |
+| POST | `/api/mail/{address}/messages/{uid}/read` | Пометить прочитанным |
+| POST | `/api/mail/{address}/send` | Отправить письмо |
+
+### /api/remote — RemoteDockerEndpoints.cs
+
+Управление Docker на удалённом сервере (не путать с `/api/docker` — тем же интерфейсом для локального хоста).
+
+| Метод | Путь | Описание |
+|-------|------|---------|
+| GET | `/api/remote/{server}/inspect/{containerName}` | Docker labels контейнера |
+| GET | `/api/remote/{server}/config` | Host/port/credentials сервера |
+| GET | `/api/remote/{server}/containers` | Статус контейнеров |
+| POST | `/api/remote/{server}/containers/{name}/start` | Запустить |
+| POST | `/api/remote/{server}/containers/{name}/stop` | Остановить |
+| POST | `/api/remote/{server}/containers/{name}/restart` | Перезапустить |
+| POST | `/api/remote/{server}/containers/{name}/pull` | Обновить образ |
+
+### /api/seq/compress-metrics — LogsCompressionEndpoints.cs
+
+| Метод | Путь | Описание |
+|-------|------|---------|
+| POST | `/api/seq/compress-metrics/run` | Запустить сжатие ServiceMetrics-логов вручную |
+| GET | `/api/seq/compress-metrics/history` | История запусков сжатия |
 
 ---
 

@@ -30,6 +30,7 @@ dotnet build BarkFluff.Proto.csproj
 | `navigator_api.proto` | `BarkFluff.Proto.Navigator` | Глобальный реестр серверов |
 | `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация |
 | `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
+| `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
 
 ## Service Pairs Pattern
 
@@ -37,7 +38,7 @@ dotnet build BarkFluff.Proto.csproj
 - `XxxApi` — публичный, клиенты (JWT user token)
 - `XxxServerApi` — внутренний, только микросервисы (service token)
 
-Исключения (один сервис): `UpdatesApi`, `OnlinerApi`, `NavigatorApi`, `BeaconApi`, `ConfigurationApi`.
+Исключения (один сервис): `UpdatesApi`, `OnlinerApi`, `NavigatorApi`, `BeaconApi`, `ConfigurationApi`, `CallsApi`.
 
 ## Важные детали
 
@@ -61,6 +62,8 @@ dotnet build BarkFluff.Proto.csproj
 - `SecretEnvelope` сервер обращается как с opaque blob: только релэит указанному `recipient_device_id` и буферизует в Redis на 24ч (TTL). После `AckSecretMessage` удаляется. В БД секретные сообщения и чаты **не сохраняются** вообще.
 - Подписки на секретные события в `updates_api.proto` — **device-scoped** (только устройство, на которое пришло сообщение). Подписки на приватные события — **user-scoped** (все устройства пользователя получают шифротекст; расшифровать сможет только устройство со знанием passphrase).
 - Prekey-bundle (X3DH): RPC расположены в `users_api.proto` (`UsersApi`), не в `identity_api.proto`. Bundle принадлежит устройству, `device_id` берётся из JWT текущей сессии.
+- Групповые чаты (V1): `AddUser`/`UpdateGroupChat` в `MessagesApi`; `GetChatMemberIds` (для ринга групповых звонков) и `PostCallSystemMessage` (системное сообщение об итоге звонка — `CallSystemResult`: ENDED/MISSED/REJECTED) в `MessagesServerApi`.
+- Звонки: `calls_api.proto` описывает `CallsApi` (1-на-1 через `callee_user_id` или групповой через `chat_id`, `oneof target`). `SubscribeCallEvents` — device-scoped стрим, как `SubscribeSecretMessages` в Updates. `beacon_api.proto` содержит `livekit_url` (field 13) и `Service calls` (field 14) в `GetServerInfoResponse`.
 
 ## Подключение в .csproj
 

@@ -37,6 +37,7 @@ Target framework: `net10.0`
 | `CloudMessaging` | 10 | Push-уведомления (Firebase) |
 | `Web` | 11 | gRPC-Web прокси |
 | `Developers` | 12 | Портал документации |
+| `Calls` | 13 | Звонки (аудио/видео на LiveKit SFU) |
 
 > При добавлении нового сервиса — добавить значение сюда, затем зарегистрировать в БД [[Backend/Configuration]].
 

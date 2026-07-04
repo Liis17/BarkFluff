@@ -36,6 +36,7 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | Файл | Субдомен / Назначение | Порт сервиса | Протокол |
 |------|-----------------------|--------------|----------|
 | `00-default.conf` | Catch-all для неизвестных хостов | — | Возвращает `444` |
+| `00-rate-limits.conf` | Общие rate-limit зоны (`limit_req_zone`/`limit_conn_zone`) для анонимных эндпоинтов | — | — |
 | `01-ssl-params.conf` | Общий SSL-сниппет (TLSv1.2/1.3, ciphers, session cache) | — | — |
 | `barkfluff.single-server.conf` | Конфиг для деплоя на **одном сервере** без Docker (прямые IP:порт) | 64641, 7050, 7006 | HTTP → HTTPS 301 |
 | `identity.conf` | `identity.barkfluff.com` → [[Identity]] | 7000 | gRPC |
@@ -62,6 +63,12 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 
 ### `00-default.conf`
 Catch-all server block. Слушает `:80` и `:443 ssl` с `default_server`. Для любого неизвестного `Host` возвращает `444` (nginx немедленно закрывает соединение без ответа). Защита от сканирования.
+
+### `00-rate-limits.conf`
+Security-аудит (S1/D2): rate limit на анонимные (без JWT) эндпоинты, где нет другой защиты от перебора/спама.
+- `limit_req_zone $binary_remote_addr zone=beacon_anon:10m rate=5r/s;` — используется в `beacon.conf` (`burst=10 nodelay`)
+- `limit_req_zone $binary_remote_addr zone=fastauth_anon:10m rate=2r/s;` — используется в `fast-auth.conf` (`burst=5 nodelay`), защищает `GenerateFastAuthToken`
+- `limit_conn_zone $binary_remote_addr zone=fastauth_streams:10m;` — используется в `fast-auth.conf` (`limit_conn fastauth_streams 10`), ограничивает число одновременных стримов `SubscribeFastAuthResult` с одного IP
 
 ### `01-ssl-params.conf`
 Общий сниппет SSL, подключается через `include /etc/nginx/conf.d/01-ssl-params.conf;` во всех сервисных конфигах.

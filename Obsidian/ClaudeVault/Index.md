@@ -87,13 +87,14 @@
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
 | [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
 | [[Клиенты/Windows-DBEditor]] | Редактор конфигурации БД (WPF) |
-| [[Клиенты/Linux-Qt]] | Qt 6 / C++20, ранняя стадия |
+| [[Клиенты/Windows-UpdaterCLI]] | Консольный инсталлятор/апдейтер WPF-клиента (.NET 8, отдельный от основного приложения) |
+| [[Клиенты/Linux-Qt]] | Qt 6 / C++20 — авторизация, мессенджер, настройки, PIN-защита и восстановление сессии |
 | [[Клиенты/macOS]] | SwiftUI + gRPC-Swift (macOS 26) |
 | [[Клиенты/macOS-ProjectMap]] | Карта всех файлов и классов macOS-клиента |
 | [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (iOS 26, на базе macOS-клиента) |
 | [[Клиенты/iOS-ProjectMap]] | Карта всех файлов iOS-клиента с описанием |
 | [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
-| [[Клиенты/Web]] | **Веб-мессенджер** — React 19 + TS SPA, Material 3 Expressive (заменил vanilla-JS) |
+| [[Клиенты/Web]] | **Веб-мессенджер** — vanilla-JS SPA (без фреймворка и бандлера), раздаётся BarkFluff.Web. React-переписывание было откачено, актуальность не путать с [[Клиенты/Developers-Web]] |
 
 ---
 

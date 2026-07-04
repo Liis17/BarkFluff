@@ -78,6 +78,8 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - Контроллер пишет тело в собственный temp-файл (`Path.GetTempPath()/barkfluff-clientstorage-uploads/{guid}`) с попутным `IncrementalHash` SHA-256 — один проход по сети
 - Temp-файл заливается в S3/MinIO через `Amazon.S3.Transfer.TransferUtility` (multipart, 16 MB parts) — устойчиво к таймаутам и сетевым флукам
 - В `AmazonS3Config`: `Timeout=30 мин`, `RequestChecksumCalculation/ResponseChecksumValidation = WHEN_REQUIRED` — иначе SDK 4 шлёт MinIO trailing-чексуммы (CRC64NVME), которые MinIO не понимает и отвечает ошибкой
+- `S3_REGION` (env) → `AmazonS3Config.AuthenticationRegion`. Для Cloudflare R2 обязателен (значение `auto`), для MinIO/dev не задаётся
+- `TransferUtilityUploadRequest.DisablePayloadSigning = true` — Cloudflare R2 не реализует chunked signing (`STREAMING-AWS4-HMAC-SHA256-PAYLOAD`); `UNSIGNED-PAYLOAD` совместим с R2/MinIO/S3, целостность обеспечивает TLS
 - В `finally` temp-файл удаляется
 - После ответа клиенту: фоновая задача скачивает файл из S3 в локальный кеш
 
