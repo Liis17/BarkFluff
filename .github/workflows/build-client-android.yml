@@ -164,7 +164,7 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          bash .github/scripts/send-telegram.sh
+          bash "$GITHUB_WORKSPACE/.github/scripts/send-telegram.sh"
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
@@ -180,4 +180,4 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          bash .github/scripts/send-telegram.sh
+          bash "$GITHUB_WORKSPACE/.github/scripts/send-telegram.sh"
