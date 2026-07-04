@@ -1,91 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Экран профиля группового чата (терракотовый редизайн) -->
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
-    android:orientation="vertical">
+    android:background="@color/profile_surface"
+    android:fillViewport="true">
 
-    <!-- Верхняя панель -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="8dp">
-
-        <ImageButton
-            android:id="@+id/backButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/cd_back"
-            android:padding="12dp"
-            android:src="@drawable/ic_arrow_back"
-            app:tint="?attr/colorOnSurface" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="@string/group_info_title"
-            android:textAppearance="?attr/textAppearanceTitleLarge"
-            android:textColor="?attr/colorOnSurface" />
-
-    </LinearLayout>
-
-    <!-- Аватар + название -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="16dp">
+        android:clipChildren="false"
+        android:paddingBottom="24dp">
 
+        <!-- Header-band + floating back -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <View
+                android:id="@+id/headerBand"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@color/profile_elem"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintDimensionRatio="3:1" />
+
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="38dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_circle_surface"
+                android:contentDescription="@string/cd_back"
+                android:src="@drawable/ic_arrow_back"
+                app:tint="@android:color/white"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Аватар внахлёст + камера -->
         <FrameLayout
             android:id="@+id/avatarContainer"
-            android:layout_width="120dp"
-            android:layout_height="120dp">
+            android:layout_width="116dp"
+            android:layout_height="116dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="-58dp"
+            android:background="@drawable/bg_avatar_ring"
+            android:padding="4dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/groupAvatar"
-                android:layout_width="120dp"
-                android:layout_height="120dp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:scaleType="centerCrop"
                 android:visibility="gone"
                 app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
             <TextView
                 android:id="@+id/groupAvatarPlaceholder"
-                android:layout_width="120dp"
-                android:layout_height="120dp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:gravity="center"
-                android:textColor="?attr/colorOnPrimary"
-                android:textSize="44sp"
+                android:textColor="@android:color/white"
+                android:textSize="42sp"
                 android:textStyle="bold"
-                android:visibility="visible"
                 android:background="@drawable/background_color_indicator" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/changeAvatarButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_gravity="bottom|end"
                 android:contentDescription="@string/group_change_avatar"
+                app:backgroundTint="@color/profile_accent"
                 app:fabSize="mini"
+                app:maxImageSize="18dp"
                 app:srcCompat="@drawable/ic_camera"
-                app:tint="?attr/colorOnPrimaryContainer" />
+                app:tint="@color/profile_on_accent" />
 
         </FrameLayout>
 
+        <!-- Название + edit -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -93,59 +101,194 @@
                 android:id="@+id/groupName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceHeadlineSmall"
-                android:textColor="?attr/colorOnSurface"
-                tools:text="Название группы" />
+                android:textColor="@color/profile_text"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                tools:text="Команда «Аврора»" />
 
             <ImageButton
                 android:id="@+id/changeNameButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_action_square"
                 android:contentDescription="@string/group_change_name"
-                android:padding="8dp"
+                android:padding="7dp"
                 android:src="@drawable/ic_edit"
-                app:tint="?attr/colorOnSurfaceVariant" />
+                app:tint="@color/profile_accent" />
 
         </LinearLayout>
 
-    </LinearLayout>
-
-    <!-- Заголовок секции участников + кнопка добавить -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="8dp">
-
         <TextView
-            android:layout_width="0dp"
+            android:id="@+id/groupSubtitle"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/group_members"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="?attr/colorPrimary" />
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/profile_text_dim"
+            android:textSize="13.5sp"
+            tools:text="6 участников · 3 в сети" />
 
+        <!-- Инфо-карта: ID чата -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/profile_elem"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:id="@+id/rowChatId"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="18dp"
+                android:paddingVertical="13dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_forum"
+                    app:tint="@color/profile_accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/groupChatIdValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/profile_text"
+                        android:textSize="15sp"
+                        tools:text="−1001 845 302" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_chat_id_label"
+                        android:textColor="@color/profile_text_dim"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_copy_content"
+                    app:tint="@color/profile_text_dim" />
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Pill-табы -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_pill_group"
+            android:orientation="horizontal"
+            android:padding="5dp">
+
+            <TextView
+                android:id="@+id/tabMembers"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/group_members"
+                android:textColor="@color/profile_chip_text"
+                android:textSize="13.5sp" />
+
+            <TextView
+                android:id="@+id/tabMedia"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/profile_tab_media"
+                android:textColor="@color/profile_chip_text"
+                android:textSize="13.5sp" />
+
+            <TextView
+                android:id="@+id/tabFiles"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/media_tab_files"
+                android:textColor="@color/profile_chip_text"
+                android:textSize="13.5sp" />
+
+        </LinearLayout>
+
+        <!-- Кнопка «Добавить участника» -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/addMemberButton"
             style="@style/Widget.Material3.Button.TextButton.Icon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="8dp"
             android:text="@string/group_add_member"
-            app:icon="@drawable/ic_add" />
+            android:textColor="@color/profile_accent"
+            app:icon="@drawable/ic_add"
+            app:iconTint="@color/profile_accent" />
+
+        <!-- Список участников -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/membersRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:paddingHorizontal="12dp"
+            tools:listitem="@layout/item_group_member" />
+
+        <!-- Вложения (медиа/файлы) -->
+        <FrameLayout
+            android:id="@+id/attachmentsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="168dp"
+            android:paddingHorizontal="18dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/attachmentsLoading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/attachmentsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/item_attachment_preview" />
+
+            <TextView
+                android:id="@+id/attachmentsEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:textColor="@color/profile_text_dim"
+                android:textSize="14sp"
+                android:visibility="gone"
+                tools:text="Нет вложений" />
+
+        </FrameLayout>
 
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/membersRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingVertical="4dp"
-        tools:listitem="@layout/item_group_member" />
-
-</LinearLayout>
+</androidx.core.widget.NestedScrollView>
