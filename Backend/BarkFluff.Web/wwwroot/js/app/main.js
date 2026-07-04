@@ -1274,6 +1274,11 @@
             profileStatus.textContent = online ? 'в сети' : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
 
+            var _profileUserId = $('#profileUserId');
+            var _profileChatId = $('#profileChatId');
+            if (_profileUserId) _profileUserId.textContent = user.id;
+            if (_profileChatId) _profileChatId.textContent = currentChatId || '\u2014';
+
             if (user.registrationDate) {
                 profileRegDate.textContent = new Date(user.registrationDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
             } else { profileRegDate.textContent = '\u2014'; }
@@ -1310,9 +1315,10 @@
         if (type === 'media') {
             Promise.all([
                 BF.api.listChatAttachments(currentChatId, 1, 0, 30),
-                BF.api.listChatAttachments(currentChatId, 2, 0, 30)
+                BF.api.listChatAttachments(currentChatId, 2, 0, 30),
+                BF.api.listChatAttachments(currentChatId, 3, 0, 30)
             ]).then(function (results) {
-                var all = (results[0].attachments || []).concat(results[1].attachments || []);
+                var all = (results[0].attachments || []).concat(results[1].attachments || [], results[2].attachments || []);
                 all.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
                 if (all.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет медиафайлов</div>'; return; }
 
@@ -1338,7 +1344,7 @@
                 });
                 chain.then(function () { profileMediaContent.appendChild(grid); });
             });
-        } else {
+        } else if (type === 'files') {
             BF.api.listChatAttachments(currentChatId, 4, 0, 30).then(function (data) {
                 var files = data.attachments || [];
                 if (files.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет файлов</div>'; return; }
@@ -1361,6 +1367,42 @@
                             icon.textContent = '\u{1F4C4}';
                             el.appendChild(icon);
                             el.appendChild(document.createTextNode(' ' + (att.fileName || 'Файл')));
+                            list.appendChild(el);
+                        });
+                    });
+                });
+                chain.then(function () { profileMediaContent.appendChild(list); });
+            });
+        } else if (type === 'audio' || type === 'voice') {
+            var attType = type === 'audio' ? 5 : 6;
+            var emptyText = type === 'audio' ? 'Нет аудио' : 'Нет голосовых';
+            BF.api.listChatAttachments(currentChatId, attType, 0, 30).then(function (data) {
+                var items = data.attachments || [];
+                if (items.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">' + emptyText + '</div>'; return; }
+                var list = document.createElement('div');
+                list.className = 'profile-file-list';
+
+                var chain = Promise.resolve();
+                items.forEach(function (item) {
+                    chain = chain.then(function () {
+                        var att = item.attachment;
+                        if (!att || !att.fileId) return;
+                        return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+                            var fileUrl = urls[0] ? urls[0].url : '';
+                            if (!fileUrl) return;
+                            var el = document.createElement('div');
+                            el.className = 'profile-audio-item';
+                            if (type === 'audio') {
+                                var nm = document.createElement('div');
+                                nm.className = 'profile-audio-name';
+                                nm.textContent = att.fileName || 'Аудио';
+                                el.appendChild(nm);
+                            }
+                            var audio = document.createElement('audio');
+                            audio.controls = true;
+                            audio.preload = 'none';
+                            audio.src = fileUrl;
+                            el.appendChild(audio);
                             list.appendChild(el);
                         });
                     });
@@ -1426,6 +1468,24 @@
     profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
 
+    var _profileMsgBtn = $('#profileMsgBtn');
+    var _profileCallAudioBtn = $('#profileCallAudioBtn');
+    var _profileCallVideoBtn = $('#profileCallVideoBtn');
+    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
+    if (_profileCallAudioBtn) _profileCallAudioBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
+    if (_profileCallVideoBtn) _profileCallVideoBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
+
+    function copyText(text) {
+        if (!text || !navigator.clipboard) return;
+        navigator.clipboard.writeText(String(text)).then(function () { groupToast('Скопировано'); }).catch(function () {});
+    }
+    document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var target = document.getElementById(btn.dataset.copy);
+            if (target) copyText(target.textContent);
+        });
+    });
+
     // ========== GROUP INFO PANEL ==========
 
     function groupToast(text) {
@@ -1452,6 +1512,8 @@
     function openGroupInfo() {
         if (!currentChatInfo || !currentChatId) return;
         groupName.textContent = currentChatInfo.title || 'Группа';
+        var _groupChatId = $('#groupChatId');
+        if (_groupChatId) _groupChatId.textContent = currentChatId || '—';
         renderGroupAvatar(currentChatInfo.picture, currentChatInfo.title);
         groupAddBox.classList.add('hidden');
         groupAddInput.value = '';
