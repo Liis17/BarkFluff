@@ -493,4 +493,10 @@
     <string name="language_option_es">🇪🇸  Español</string>
     <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">「跟随系统」使用设备的语言。所选语言将立即生效。</string>
+    <!-- Per-chat mute -->
+    <string name="chat_menu_mute">关闭通知</string>
+    <string name="chat_menu_unmute">开启通知</string>
+    <string name="chat_muted">已关闭通知</string>
+    <string name="chat_unmuted">已开启通知</string>
+    <string name="chat_mute_error">无法更改设置</string>
 </resources>
