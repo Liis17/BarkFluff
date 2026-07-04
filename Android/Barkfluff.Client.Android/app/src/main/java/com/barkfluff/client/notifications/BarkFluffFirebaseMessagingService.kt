@@ -77,6 +77,14 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
+
+        // Guard: чат замьючен пользователем — не показываем локальное уведомление.
+        // Сервер уже подавляет push для замьюченных чатов; это защита от гонок кэша токенов.
+        if (chatId in GlobalParam(applicationContext).mutedChatIds) {
+            Log.d(TAG, "onMessageReceived: чат $chatId замьючен, уведомление пропущено")
+            return
+        }
+
         val senderId = data["sender_id"]?.toLongOrNull() ?: return
         val senderName = data["sender_name"]?.takeIf { it.isNotBlank() } ?: "Unknown"
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
