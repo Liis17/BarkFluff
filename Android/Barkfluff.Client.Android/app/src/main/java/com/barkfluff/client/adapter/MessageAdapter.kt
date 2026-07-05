@@ -704,7 +704,10 @@ class MessageAdapter(
             it.type == Shared.MessageAttachmentType.VIDEO
         }
         val stickers = attachments.filter { it.type == Shared.MessageAttachmentType.STICKER }
-        val audios = attachments.filter { it.type == Shared.MessageAttachmentType.AUDIO }
+        val audios = attachments.filter {
+            it.type == Shared.MessageAttachmentType.AUDIO ||
+            it.type == Shared.MessageAttachmentType.VOICE
+        }
         val docs   = attachments.filter {
             it.type == Shared.MessageAttachmentType.DOCUMENT ||
             it.type == Shared.MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN

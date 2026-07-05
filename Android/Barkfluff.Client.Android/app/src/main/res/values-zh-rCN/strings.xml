@@ -171,6 +171,12 @@
     <string name="cd_attach_file">附加文件</string>
     <string name="cd_stickers">贴纸</string>
     <string name="cd_send">发送</string>
+    <string name="cd_record_voice">录制语音消息</string>
+    <string name="voice_record_permission_granted">已获得权限。按住麦克风录音</string>
+    <string name="voice_record_permission_denied">麦克风访问被拒绝</string>
+    <string name="voice_record_start_failed">无法开始录音</string>
+    <string name="voice_record_cancelled">录音已取消</string>
+    <string name="voice_record_too_short">语音消息太短</string>
     <string name="cd_sticker_preview">贴纸预览</string>
     <string name="cd_close">关闭</string>
     <string name="cd_more">更多</string>
