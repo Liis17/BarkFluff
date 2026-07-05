@@ -28,6 +28,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
@@ -37,10 +38,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 /**
  * Экран управления групповым чатом: аватар, название, участники, вложения.
@@ -403,7 +400,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun memberSubtitle(status: Pair<Boolean, Long>?): String {
         if (status == null) return ""
-        return if (status.first) "в сети" else formatLastSeen(status.second)
+        return if (status.first) "в сети" else OnlineTimeFormatter.formatLastSeen(this, status.second)
     }
 
     private fun confirmRemove(member: GroupMemberAdapter.MemberItem) {
@@ -508,24 +505,6 @@ class GroupInfoActivity : AppCompatActivity() {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText(label, text))
         Toast.makeText(this, getString(R.string.profile_copied), Toast.LENGTH_SHORT).show()
-    }
-
-    private fun formatLastSeen(lastSeenMs: Long): String {
-        if (lastSeenMs <= 0) return "был(а) давно"
-        val now = System.currentTimeMillis()
-        val diff = now - lastSeenMs
-        return when {
-            diff < TimeUnit.MINUTES.toMillis(1) -> "был(а) только что"
-            diff < TimeUnit.HOURS.toMillis(1) -> "был(а) ${TimeUnit.MILLISECONDS.toMinutes(diff)} мин. назад"
-            diff < TimeUnit.DAYS.toMillis(1) -> {
-                val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-                "был(а) сегодня в ${sdf.format(Date(lastSeenMs))}"
-            }
-            else -> {
-                val sdf = SimpleDateFormat("d MMM", Locale("ru"))
-                "был(а) ${sdf.format(Date(lastSeenMs))}"
-            }
-        }
     }
 
     override fun onDestroy() {

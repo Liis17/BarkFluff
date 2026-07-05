@@ -58,6 +58,7 @@ import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
+import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
@@ -2318,7 +2319,7 @@ class ChatActivity : AppCompatActivity() {
                             binding.onlineStatusTextView.text = "в сети"
                             binding.onlineIndicator.visibility = View.VISIBLE
                         } else {
-                            val lastSeen = formatLastSeen(status.lastSeen.seconds * 1000)
+                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
                             binding.onlineStatusTextView.text = lastSeen
                             binding.onlineIndicator.visibility = View.GONE
                         }
@@ -2344,7 +2345,7 @@ class ChatActivity : AppCompatActivity() {
                             binding.onlineStatusTextView.text = "в сети"
                             binding.onlineIndicator.visibility = View.VISIBLE
                         } else {
-                            val lastSeen = formatLastSeen(userStatus.lastSeen.seconds * 1000)
+                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
                             binding.onlineStatusTextView.text = lastSeen
                             binding.onlineIndicator.visibility = View.GONE
                         }
@@ -2363,20 +2364,6 @@ class ChatActivity : AppCompatActivity() {
         val ext = fileName.substringAfterLast('.', "").lowercase()
         if (ext.isEmpty()) return null
         return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-    }
-
-    private fun formatLastSeen(timestampMillis: Long): String {
-        if (timestampMillis <= 0) return "был(а) недавно"
-
-        val now = System.currentTimeMillis()
-        val diff = now - timestampMillis
-
-        return when {
-            diff < 60_000 -> "был(а) только что"
-            diff < 3600_000 -> "был(а) ${diff / 60_000} мин. назад"
-            diff < 86400_000 -> "был(а) ${diff / 3600_000} ч. назад"
-            else -> "был(а) ${diff / 86400_000} дн. назад"
-        }
     }
 
     private fun loadMessages(isRetry: Boolean = false) {
