@@ -37,6 +37,20 @@
     // Error code for wrong old password
     var ERR_WRONG_OLD_PASSWORD = 'A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04';
 
+    var ICONS = {
+        settings: iconSvg('<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>'),
+        edit: iconSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
+        fileText: iconSvg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>'),
+        shield: iconSvg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/>'),
+        lock: iconSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+        palette: iconSvg('<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.2 2 11.5 2 16.4 5.8 20 10.5 20h1.1c.9 0 1.4-.8 1.1-1.6-.3-.9.3-1.9 1.3-1.9h1.5c4 0 6.5-2.8 6.5-6.2C22 5.7 17.5 2 12 2Z"/>'),
+        smartphone: iconSvg('<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>'),
+        info: iconSvg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>')
+    };
+
+    function iconSvg(content) {
+        return '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + content + '</svg>';
+    }
     function init(opts) {
         myUserId = opts.myUserId;
         overlay = document.querySelector('#settingsOverlay');
@@ -230,7 +244,7 @@
     // ========== VIEWS ==========
 
     function renderMain() {
-        titleEl.textContent = 'Настройки';
+        titleEl.innerHTML = ICONS.settings + '<span>Настройки</span>';
         body.innerHTML = '';
 
         // Profile block (avatar + name + username) → navigate to profile
@@ -266,39 +280,39 @@
 
         // Section: Account
         var secAccount = makeSection('Аккаунт', [
-            { icon: '✏️', label: 'Имя и юзернейм', view: 'name' },
-            { icon: '📝', label: 'Биография', view: 'bio' }
+            { icon: ICONS.edit, label: 'Имя и юзернейм', view: 'name' },
+            { icon: ICONS.fileText, label: 'Биография', view: 'bio' }
         ]);
         body.appendChild(secAccount);
 
         // Section: Privacy
         var secPrivacy = makeSection('Конфиденциальность', [
-            { icon: '🛡️', label: 'Приватность', view: 'privacy' }
+            { icon: ICONS.shield, label: 'Приватность', view: 'privacy' }
         ]);
         body.appendChild(secPrivacy);
 
         // Section: Security
         var secSecurity = makeSection('Безопасность', [
-            { icon: '🔒', label: 'Пароль', view: 'password' },
-            { icon: '🛡️', label: 'Двухфакторная аутентификация', view: 'twofa' }
+            { icon: ICONS.lock, label: 'Пароль', view: 'password' },
+            { icon: ICONS.shield, label: 'Двухфакторная аутентификация', view: 'twofa' }
         ]);
         body.appendChild(secSecurity);
 
         // Section: Personalization
         var secPers = makeSection('Персонализация', [
-            { icon: '🎨', label: 'Фон чата и постер', view: 'personalization' }
+            { icon: ICONS.palette, label: 'Фон чата и постер', view: 'personalization' }
         ]);
         body.appendChild(secPers);
 
         // Section: Devices
         var secDevices = makeSection('Устройства', [
-            { icon: '📱', label: 'Активные сессии', view: 'sessions' }
+            { icon: ICONS.smartphone, label: 'Активные сессии', view: 'sessions' }
         ]);
         body.appendChild(secDevices);
 
         // Section: About
         var secAbout = makeSection('О приложении', [
-            { icon: 'ℹ️', label: 'О BarkFluff', view: 'about' }
+            { icon: ICONS.info, label: 'О BarkFluff', view: 'about' }
         ]);
         body.appendChild(secAbout);
 
