@@ -18,4 +18,7 @@ public class SendMessageCommand : IRequest<SendMessageResponse>
     /// В серверном пути авто-создание личного чата запрещено (бот не пишет первым).
     /// </summary>
     public long? SenderId { get; set; }
+
+    /// <summary>Разрешить авто-создание личного чата в серверном пути (системные боты, напр. login-notifier)</summary>
+    public bool AllowChatCreation { get; set; }
 }
