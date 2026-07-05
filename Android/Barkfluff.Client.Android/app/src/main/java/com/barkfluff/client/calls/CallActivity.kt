@@ -376,7 +376,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             }
 
             if (!callEnded && !isFinishing) {
-                statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorError))
+                statusDot.background.mutate().setTint(resolveColor(androidx.appcompat.R.attr.colorError))
                 statusText.text = "Не удалось восстановить соединение"
             }
         }
