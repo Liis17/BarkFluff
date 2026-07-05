@@ -5,6 +5,7 @@ using BarkFluff.Bots.Infrastructure;
 using BarkFluff.Bots.Persistence;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
+using BarkFluff.Bots.Services.BotFather;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
@@ -55,7 +56,10 @@ public class Program
 
         builder.Services.AddScoped<BotsStorage>();
         builder.Services.AddScoped<BotUpdatesStorage>();
+        builder.Services.AddScoped<BotFatherSessionsStorage>();
+        builder.Services.AddScoped<BotFatherService>();
         builder.Services.AddScoped<SystemBotsSeeder>();
+        builder.Services.AddHttpClient();
         builder.Services.AddSingleton<BotRegistryCache>();
         builder.Services.AddSingleton<BotTokenService>();
         builder.Services.AddSingleton<BotUpdateNotifier>();
@@ -87,6 +91,7 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<NewMessageConsumer>();
+            x.AddConsumer<LoginNotificationConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -99,6 +104,11 @@ public class Program
                 cfg.ReceiveEndpoint("new-messages-bots-handler", e =>
                 {
                     e.ConfigureConsumer<NewMessageConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("email-notifications-bots-handler", e =>
+                {
+                    e.ConfigureConsumer<LoginNotificationConsumer>(context);
                 });
             });
         });

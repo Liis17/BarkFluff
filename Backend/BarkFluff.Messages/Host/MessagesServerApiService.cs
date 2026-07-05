@@ -117,6 +117,7 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         var command = new SendMessageCommand
         {
             SenderId = request.SenderUserId,
+            AllowChatCreation = request.AllowChatCreation,
             Message = new OutgoingMessage
             {
                 FileIds = request.Message.FilesIds?.Select(Guid.Parse).ToList(),
