@@ -107,6 +107,10 @@ Package: `com.barkfluff.client`
 - Контролы — стеклянная «таблетка» (`bg_call_control_pill`) с круглыми кнопками с подписями: `Микро`, `Камера`, большая красная `Завершить` (`bg_call_btn_end`), `Экран`, `Ещё`. Переворот камеры перенесён в лист `Ещё` (виден при включённой камере) вместе с `Маршрут звука` / `Качество голоса` / `Качество видео собеседника`. Бейдж количества участников в шапке для групповых (>2). Состояния кнопок и foreground service синхронизированы с моделью участников; foreground обновляется только при смене camera/screen.
 - Таймер длительности устойчив к reconnect (anchor не сбрасывается). `CallActivity` слушает `CallEventsService.events` по своему `callId`: `ENDED`/`REJECTED` (в т.ч. от собеседника или со второго устройства) закрывают экран, останавливают foreground и гасят notification — работает и для звонящего, где `currentCall` не инициализируется. Завершение идемпотентно (флаг `callEnded`); accept/reject в `IncomingCallActivity` защищены флагом `actionTaken`.
 - `CallForegroundService` держит ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; action уведомления завершает активный звонок через `CallActionReceiver`.
+- Foreground активного звонка стартует до подключения к LiveKit, поэтому аудиозвонок тоже сразу получает ongoing foreground notification. Runtime type включает `microphone|phoneCall`, при включении камеры добавляется `camera`, при демонстрации — `mediaProjection`.
+- `CallActivity` при `RoomEvent.Disconnected` / `FailedToConnect` не завершает звонок сразу: запускает backoff-реконнект (2s, 4s, 8s, 15s, далее 30s, максимум 8 попыток), обновляет LiveKit credentials через `JoinCall(call_id)`, пересоздаёт room и восстанавливает состояние микрофона/камеры. Демонстрация экрана после полного reconnect не восстанавливается автоматически, т.к. `MediaProjection` требует свежего системного consent.
+- Пока локально есть активный звонок (`CallTelecomRegistry.hasActiveCall()`), `BarkFluffApplication.onStop()` не ставит `CallEventsService` на паузу — remote `ENDED`/`REJECTED` продолжает доходить в фоне.
+- `CallBatteryOptimizationHelper` один раз во время успешного звонка просит Android исключить BarkFluff из battery optimization (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), если система ещё не дала исключение. Это дополняет foreground service для агрессивных OEM/Doze-сценариев.
 
 Связанный backend-контекст: [[Backend/Calls]], [[Backend/CloudMessaging]].
 ## Firebase FCM токен
@@ -476,4 +480,15 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 ```bash
 cd Android/Barkfluff.Client.Android
 ./gradlew assembleDebug
+```
+
+### Тестовая сборка на macOS
+
+На macOS клиент V1 собирается из корневого Android Gradle-проекта. Использовать JBR из Android Studio и локальный Android SDK:
+
+```bash
+cd /Users/liis/Projects/BarkFluff/Android
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+ANDROID_HOME="/Users/liis/Library/Android/sdk" \
+sh ./gradlew :app-v1:assembleDebug
 ```

@@ -38,6 +38,8 @@ object CallTelecomRegistry {
     fun isAnsweringOrActive(callId: String): Boolean =
         answeringCalls.contains(callId) || activeCalls.contains(callId)
 
+    fun hasActiveCall(): Boolean = activeCalls.isNotEmpty()
+
     fun disconnect(callId: String, cause: Int = DisconnectCause.LOCAL) {
         answeringCalls.remove(callId)
         activeCalls.remove(callId)

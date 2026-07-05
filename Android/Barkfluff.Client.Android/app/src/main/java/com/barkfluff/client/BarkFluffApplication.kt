@@ -147,7 +147,9 @@ class BarkFluffApplication : Application() {
                 cameFromBackground = true
                 realtimeService.pause()
                 stopCallEventsUiBridge()
-                callEventsService.pause()
+                if (!CallTelecomRegistry.hasActiveCall()) {
+                    callEventsService.pause()
+                }
             }
         })
     }
