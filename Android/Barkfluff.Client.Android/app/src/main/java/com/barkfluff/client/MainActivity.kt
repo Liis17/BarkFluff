@@ -94,6 +94,15 @@ class MainActivity : AppCompatActivity() {
         handleChatIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::binding.isInitialized) {
+            applyBottomNavigationVisibility()
+            compactifyBottomNav()
+            binding.bottomNavigation.selectedItemId = tabIndexToMenuId(currentTabIndex)
+        }
+    }
+
     private fun handleChatIntent(intent: Intent?) {
         // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload,
         // pendingChatId — сохранённый chatId после cold start через SplashActivity
@@ -202,6 +211,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNavigation() {
+        applyBottomNavigationVisibility()
+
         // Убираем внутренние минимальные ширины item'ов, чтобы панель была компактной
         compactifyBottomNav()
 
@@ -212,6 +223,26 @@ class MainActivity : AppCompatActivity() {
             switchTab(newTabIndex)
             true
         }
+    }
+
+    private fun applyBottomNavigationVisibility() {
+        val visibleTabs = visibleTabIndices()
+        binding.bottomNavigation.menu.findItem(R.id.navigation_chats).isVisible = visibleTabs.contains(TAB_CHATS)
+        binding.bottomNavigation.menu.findItem(R.id.navigation_calls).isVisible = visibleTabs.contains(TAB_CALLS)
+        binding.bottomNavigation.menu.findItem(R.id.navigation_profile).isVisible = visibleTabs.contains(TAB_PROFILE)
+
+        if (!visibleTabs.contains(currentTabIndex)) {
+            showFragment(visibleTabs.first())
+        }
+    }
+
+    private fun visibleTabIndices(): List<Int> {
+        val globalParam = GlobalParam(this)
+        val tabs = mutableListOf<Int>()
+        if (globalParam.mainTabChatsVisible) tabs.add(TAB_CHATS)
+        if (globalParam.mainTabCallsVisible) tabs.add(TAB_CALLS)
+        if (globalParam.mainTabProfileVisible) tabs.add(TAB_PROFILE)
+        return if (tabs.isNotEmpty()) tabs else listOf(TAB_CHATS)
     }
 
     private fun compactifyBottomNav() {
@@ -228,6 +259,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchTab(newTabIndex: Int) {
+        if (!visibleTabIndices().contains(newTabIndex)) return
+
         val enterAnim = if (newTabIndex < currentTabIndex) {
             R.anim.slide_in_from_left
         } else {
