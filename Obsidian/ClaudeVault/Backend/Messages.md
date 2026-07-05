@@ -65,6 +65,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `MessagesApiService` | `TokenType.User` — клиентский API |
 | `MessagesServerApiService` | `TokenType.Service` — межсервисный API |
 
+`MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, OutgoingMessage, allow_chat_creation)` — отправка от имени пользователя (вызывает [[Backend/Bots]]). `SendMessageCommand.SenderId` параметризует отправителя (null = клиентский путь из UserContext); переиспользуется вся логика (вложения, лимиты, `NewMessageEvent`). В серверном пути **авто-создание личного чата запрещено** (бот не пишет первым), кроме `allow_chat_creation=true` (системные боты, login-notifier). Членство отправителя в чате проверяется как обычно (`CheckAccessToChat` с senderId).
+
 ### Исходящие gRPC-клиенты
 
 - **Users** (`UsersServerApiClient`) — `GetByIdAsync`, `ListByIdsAsync` для имён/аватаров (токен `UsersService:Token`)
