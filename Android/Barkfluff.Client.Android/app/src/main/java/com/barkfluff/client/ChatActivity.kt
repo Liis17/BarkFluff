@@ -244,6 +244,10 @@ class ChatActivity : AppCompatActivity() {
         val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val inputBaseMargin = (binding.messageInputLayout.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
+        val recyclerBasePaddingBottom = binding.messagesRecyclerView.paddingBottom
+        // Высота полосы, зарезервированной под кнопки ввода (inputRowBottom, фикс. 64dp) —
+        // именно на столько лента должна не доходить контентом до нижнего края экрана.
+        val inputRowBandPx = binding.inputRowBottom.layoutParams.height
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -251,7 +255,13 @@ class ChatActivity : AppCompatActivity() {
             binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
             binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
             binding.chatInfoCard.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = infoCardBaseMargin + bars.top }
-            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop + bars.top)
+            // Recyclerview остаётся edge-to-edge (constraint на true parent bottom, как и сверху) —
+            // фон/обои ленты уходят под панель ввода и жестовую навигацию, а контент просто
+            // не долистывается ниже paddingBottom.
+            binding.messagesRecyclerView.updatePadding(
+                top = recyclerBasePaddingTop + bars.top,
+                bottom = recyclerBasePaddingBottom + inputRowBandPx + bars.bottom
+            )
 
             binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bars.bottom }
             binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bars.bottom }
