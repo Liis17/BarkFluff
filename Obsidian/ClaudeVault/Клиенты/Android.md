@@ -152,6 +152,7 @@ Backend заполняет эти поля при доставке сообще�
    - Документы — читаются как есть (`AttachmentSpec.Document`).
    - Картинки — сжимаются через `ImageCompressor.compressImage` (JPEG q=90, max 2500px по длинной стороне).
    - Видео — обрезка/перекодировка через `Transformer` в MP4.
+   - Голосовые сообщения — `AttachmentSpec.Voice` читает записанный во внутреннем кеше `.ogg` и отправляет его как `UploadFileType.MESSAGE_ATTACHMENT_VOICE`.
 2. `ChatRepository.uploadFile(jpegImageBytes, fileType, ...)` (`repository/ChatRepository.kt`) ДО получения upload URL:
    - Считает SHA-256 от итоговых байт через приватный extension `ByteArray.sha256Hex()` → lowercase hex, 64 символа.
    - Вызывает `grpcManager.checkFileHash(hash)` → `FilesApi.CheckFileHash` (gRPC, см. [[Backend/Files]] и [[Shared/Proto]]).
@@ -171,6 +172,16 @@ Backend заполняет эти поля при доставке сообще�
 - **Прогресс.** `MediaSendService.aggregateProgress(idx, pct)`: при `sendSeparately` прогресс пофайловый (у каждого файла своё сообщение/localId), иначе — агрегированный по всем N файлам одного сообщения `(idx*100+pct)/total`, чтобы бар не сбрасывался в 0 на каждом следующем файле. События идут через `MediaSendService.uploadEvents` (`UploadEvent`: PREPARING/UPLOADING/SENDING/SENT/FAILED + `progress` + `serverMessageId`).
 - **Реальная скорость.** `ChatRepository.uploadFile` ставит `connection.setFixedLengthStreamingMode(...)` и флашит каждый чанк — без этого `HttpURLConnection` буферизует тело в память и `onProgress` прыгал бы в 100% ещё до сетевой отправки.
 - **Реконсиляция (защита от дубликата/пустого сообщения).** `ChatActivity.addNewMessage` ищет оптимистичный плейсхолдер ДО проверки дубликата, в обоих порядках прихода: realtime-эхо раньше ответа `sendMessage` (матч по контенту + `uploadProgress != null`/`localPreviewUris`, т.к. вложения плейсхолдера ещё пустые) ИЛИ `SENT` раньше эха (матч по уже проставленному `messageId` + `localId`). Без этого эхо с фото добавлялось бы вторым item'ом, а `clearOptimisticUploadProgress` оставлял первый с пустыми вложениями → два item с одним `messageId` → коллизия `DiffUtil.areItemsTheSame` (сравнение по `messageId`) → пустой bubble до переоткрытия чата.
+
+### Голосовые сообщения
+
+В `ChatActivity` правая кнопка ввода переключается между `ic_send_filled` и `ic_mic`: микрофон показывается только когда текст пустой, нет pending-вложений, reply и edit-режимов. При первом удержании запрашивается `RECORD_AUDIO`; после выдачи разрешения пользователь удерживает кнопку ещё раз.
+
+- Запись: `MediaRecorder` пишет OGG/Opus (`OutputFormat.OGG`, `AudioEncoder.OPUS`) во временный файл `cacheDir`.
+- Отправка: отпускание кнопки создаёт оптимистичный `MessageItem` с `uploadProgress=0` и ставит `SendJob(AttachmentSpec.Voice)` в `MediaSendService`; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
+- Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, при отпускании запись удаляется и сообщение не отправляется.
+- Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
+- Отображение: `MessageAdapter` рендерит `AUDIO` и `VOICE` одним аудио-row через `AudioPlayerHelper`; вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
 
 ## Система кеширования
 
@@ -357,14 +368,15 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 ## Раздел «Персонализация» — папки
 
-`PersonalizationSettingsActivity` (между блоками «Настройки отображения» и «Фон чатов») содержит блок «Папки» с двумя `MaterialSwitch`:
+`PersonalizationSettingsActivity` (между блоками «Настройки отображения» и «Фон чатов») содержит блок «Папки» с тремя `MaterialSwitch`:
 
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
 | `compactFolders` | `folders_compact` | Компактные папки: в сегменте `ChatsFragment.foldersRecyclerView` скрывает текст имени папки, оставляя только иконку + бейдж непрочитанных. |
+| `folderTabsNoOutline` | `folders_no_outline` | Убирает `stroke` у неактивных вкладок папок через `bg_folder_tab_no_outline`; выбранная вкладка сохраняет `bg_folder_tab_selected` с подсветкой. |
 | `excludeFolderChatsFromAll` | `folders_exclude_from_all` | Чаты, входящие хотя бы в одну пользовательскую папку, не показываются во вкладке «Все чаты» и не учитываются в её бейдже. |
 
-Оба флага по умолчанию `false`. Применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. При возврате на список чатов из персонализации `onResume()` фрагмента ререндерит сегмент.
+Все флаги по умолчанию `false`. Применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. При возврате на список чатов из персонализации `onResume()` фрагмента ререндерит сегмент.
 
 ## Настройки → Аккаунт — поле «О себе»
 
