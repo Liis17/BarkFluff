@@ -218,6 +218,21 @@ service UsersServerApi {
 
   // Получить URL постера профиля пользователя (для админ-панели)
   rpc GetProfilePosterServer(GetProfilePosterServerRequest) returns(GetProfilePosterServerResponse);
+
+  // Создать бот-пользователя (для сервиса Bots). Идемпотентно: если username уже занят ботом — вернуть его id.
+  rpc CreateBotUser(CreateBotUserRequest) returns(CreateBotUserResponse);
+}
+
+// Создание бот-пользователя (серверный, для сервиса Bots)
+message CreateBotUserRequest {
+  string username = 1;               // юзернейм бота (обязан заканчиваться на "bot", кроме bypass)
+  string first_name = 2;             // отображаемое имя бота
+  bool bypass_username_rules = 3;    // true для системных ботов (напр. botfather): пропустить проверку формата/суффикса
+}
+
+message CreateBotUserResponse {
+  int64 user_id = 1;         // идентификатор созданного (или существующего) бота
+  bool already_existed = 2;  // true если бот с таким username уже существовал
 }
 
 // Установить аватарку (серверный)
@@ -410,6 +425,7 @@ message User{
   repeated UserBadge badges = 9; // баджи пользователя
   int32 storage_limit_gb = 10; // лимит хранилища в гигабайтах
   string profile_poster_file_id = 11; // FileId постера/фона профиля (пусто если не задан)
+  bool is_bot = 12; // является ли пользователь ботом
 }
 
 // Сообщения для работы с баджами
@@ -623,6 +639,7 @@ message GetUserByUsernameResponse {
   string bio = 5; // био
   string profile_picture = 6; // ссылка на аватарку
   string profile_poster_url = 7; // ссылка на постер/фон профиля (пусто если не задан)
+  bool is_bot = 8; // является ли пользователь ботом
 }
 
 // Запросы и ответы для установки Firebase токена

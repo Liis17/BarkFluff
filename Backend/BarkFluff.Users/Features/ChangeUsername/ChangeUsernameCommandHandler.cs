@@ -44,6 +44,12 @@ public class ChangeUsernameCommandHandler : IRequestHandler<ChangeUsernameComman
             throw new UsernameInvalidFormatException();
         }
 
+        if (UsernameFormatValidator.HasBotSuffix(username))
+        {
+            _logger.LogWarning("Username {Username} заканчивается на суффикс bot и зарезервирован", username);
+            throw new UsernameBotSuffixReservedException();
+        }
+
         if (_reservedUsernamesService.IsReserved(username))
         {
             _logger.LogWarning("Username {Username} является зарезервированным именем", username);
