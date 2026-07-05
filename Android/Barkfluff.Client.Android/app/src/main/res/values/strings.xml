@@ -411,6 +411,12 @@
     <string name="personalization_online_time">Онлайн</string>
     <string name="personalization_relative_online_time">Относительное время онлайна</string>
     <string name="personalization_relative_online_time_subtitle">15 минут назад вместо времени на часах</string>
+    <string name="personalization_stickers">Стикеры</string>
+    <string name="personalization_sticker_preview_text">Как будет выглядеть</string>
+    <string name="personalization_sticker_preview_time">14:30</string>
+    <string name="personalization_sticker_size">Размер стикера</string>
+    <string name="personalization_sticker_size_default">160 dp</string>
+    <string name="personalization_sticker_size_value">%1$d dp</string>
     <string name="personalization_chat_background">Фон чатов</string>
     <string name="personalization_expand_backgrounds">Развернуть</string>
     <string name="personalization_collapse_backgrounds">Свернуть</string>

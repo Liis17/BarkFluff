@@ -112,6 +112,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         setupFolderSettings()
         setupMainTabSettings()
         setupOnlineTimeSettings()
+        setupStickerSizeSlider()
         setupBackgroundsGrid()
         loadPersonalizationFromServer()
     }
@@ -175,6 +176,27 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding.switchRelativeOnlineTime.setOnCheckedChangeListener { _, isChecked ->
             globalParam.relativeOnlineTime = isChecked
         }
+    }
+
+    private fun setupStickerSizeSlider() {
+        val saved = globalParam.chatStickerSizeDp
+        binding.stickerSizeSlider.value = saved.toFloat()
+        updateStickerSizePreview(saved)
+
+        binding.stickerSizeSlider.addOnChangeListener { _, value, fromUser ->
+            val size = value.toInt()
+            updateStickerSizePreview(size)
+            if (fromUser) globalParam.chatStickerSizeDp = size
+        }
+    }
+
+    private fun updateStickerSizePreview(sizeDp: Int) {
+        binding.stickerSizeValue.text = getString(R.string.personalization_sticker_size_value, sizeDp)
+        val sizePx = (sizeDp * resources.displayMetrics.density + 0.5f).toInt()
+        val params = binding.stickerSizePreviewImage.layoutParams
+        params.width = sizePx
+        params.height = sizePx
+        binding.stickerSizePreviewImage.layoutParams = params
     }
 
     private fun setupToolbar() {
