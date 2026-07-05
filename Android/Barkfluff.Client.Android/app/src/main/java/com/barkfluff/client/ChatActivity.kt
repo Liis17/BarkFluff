@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import android.widget.Toast
@@ -53,8 +54,11 @@ import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.applySpringPress
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.GridLayoutManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
@@ -198,6 +202,7 @@ class ChatActivity : AppCompatActivity() {
 
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
 
+        setupWindowInsets()
         setupToolbar()
         setupMessagesRecyclerView()
         setupMessageInput()
@@ -221,6 +226,39 @@ class ChatActivity : AppCompatActivity() {
         if (!isGroupChat && otherUserId > 0) {
             realtimeService.changeOnlineSubscription(listOf(otherUserId))
             loadOnlineStatus(otherUserId)
+        }
+    }
+
+    // targetSdk 35+ форсирует edge-to-edge, fitsSystemWindows="true" в XML больше не работает —
+    // системные бары вручную резервируем через insets, чтобы верхняя/нижняя панели и
+    // recyclerview не оказывались под статус-баром / жестовой навигацией.
+    private fun setupWindowInsets() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val backBaseMargin = (binding.btnBack.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val moreBaseMargin = (binding.btnMore.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val infoCardBaseMargin = (binding.chatInfoCard.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+
+        val attachBaseMargin = (binding.attachButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val stickerBaseMargin = (binding.stickerButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val inputBaseMargin = (binding.messageInputLayout.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
+            binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
+            binding.chatInfoCard.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = infoCardBaseMargin + bars.top }
+            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop + bars.top)
+
+            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bars.bottom }
+            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bars.bottom }
+            binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bars.bottom }
+            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bars.bottom }
+
+            insets
         }
     }
 
