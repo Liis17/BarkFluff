@@ -142,6 +142,20 @@ services:
     depends_on:
       - configuration
 
+  bots:
+    image: docker.barkfluff.com:5000/barkfluff-bots:latest
+    container_name: bots
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - users
+      - messages
+      - files
+
   # Панель администрирования
   admin-panel:
     image: docker.barkfluff.com:5000/barkfluff-admin-panel:latest
@@ -161,6 +175,8 @@ services:
       FilesService__Token: "${FILES_SERVICE_TOKEN}"
       IdentityService__Host: "http://identity:7000"
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
+      BotsService__Host: "http://bots:7027"
+      BotsService__Token: "${BOTS_SERVICE_TOKEN:-}"
       Mail__SmtpHost: "${MAIL_SMTP_HOST:-}"
       Mail__SmtpPort: "${MAIL_SMTP_PORT:-587}"
       Mail__ImapHost: "${MAIL_IMAP_HOST:-}"
