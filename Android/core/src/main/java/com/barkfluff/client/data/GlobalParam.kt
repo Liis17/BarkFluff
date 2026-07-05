@@ -243,7 +243,7 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, value).apply()
 
-    /** Показывать вкладку «Чаты» в главной нижней панели. */
+    /** Legacy: вкладка «Чаты» обязательна и всегда показывается. */
     var mainTabChatsVisible: Boolean
         get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_CHATS_VISIBLE, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_CHATS_VISIBLE, value).apply()
@@ -253,7 +253,7 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_CALLS_VISIBLE, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_CALLS_VISIBLE, value).apply()
 
-    /** Показывать вкладку «Профиль» в главной нижней панели. */
+    /** Legacy: вкладка «Профиль» обязательна и всегда показывается. */
     var mainTabProfileVisible: Boolean
         get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_PROFILE_VISIBLE, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_PROFILE_VISIBLE, value).apply()

@@ -721,12 +721,13 @@
                             android:layout_weight="1"
                             android:text="@string/personalization_main_tab_chats"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchMainTabChats"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:enabled="false" />
 
                     </LinearLayout>
 
@@ -775,12 +776,13 @@
                             android:layout_weight="1"
                             android:text="@string/personalization_main_tab_profile"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchMainTabProfile"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:enabled="false" />
 
                     </LinearLayout>
 
@@ -898,40 +900,70 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="top|start"
+                            android:layout_marginEnd="56dp"
                             app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
                             app:cardCornerRadius="@dimen/shape_corner_large_increased"
                             app:cardElevation="0dp"
                             app:strokeWidth="0dp">
 
-                            <TextView
+                            <LinearLayout
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:orientation="vertical"
                                 android:paddingHorizontal="14dp"
-                                android:paddingVertical="8dp"
-                                android:text="@string/personalization_sticker_preview_text"
-                                android:textAppearance="?attr/textAppearanceBodyMedium"
-                                android:textColor="?attr/colorOnSurface" />
+                                android:paddingVertical="8dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/personalization_sticker_preview_text"
+                                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                                    android:textColor="?attr/colorOnSurface" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="end"
+                                    android:layout_marginTop="2dp"
+                                    android:alpha="0.7"
+                                    android:text="@string/personalization_sticker_preview_received_time"
+                                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                            </LinearLayout>
 
                         </com.google.android.material.card.MaterialCardView>
 
-                        <com.google.android.material.imageview.ShapeableImageView
-                            android:id="@+id/stickerSizePreviewImage"
-                            android:layout_width="160dp"
-                            android:layout_height="160dp"
-                            android:layout_gravity="center_vertical|end"
-                            android:scaleType="fitCenter"
-                            android:src="@drawable/ic_sticker"
-                            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker"
-                            app:tint="?attr/colorPrimary" />
-
-                        <TextView
+                        <FrameLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="bottom|end"
-                            android:alpha="0.7"
-                            android:text="@string/personalization_sticker_preview_time"
-                            android:textAppearance="?attr/textAppearanceLabelSmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
+                            android:padding="4dp">
+
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:id="@+id/stickerSizePreviewImage"
+                                android:layout_width="160dp"
+                                android:layout_height="160dp"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/ic_sticker"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker"
+                                app:tint="?attr/colorPrimary" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="bottom|end"
+                                android:layout_marginEnd="4dp"
+                                android:layout_marginBottom="4dp"
+                                android:alpha="0.82"
+                                android:background="?attr/colorSurfaceContainerHighest"
+                                android:paddingHorizontal="5dp"
+                                android:paddingVertical="2dp"
+                                android:text="@string/personalization_sticker_preview_time"
+                                android:textAppearance="?attr/textAppearanceLabelSmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                        </FrameLayout>
 
                     </FrameLayout>
 
