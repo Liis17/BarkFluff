@@ -55,7 +55,7 @@ class CallForegroundService : Service() {
     }
 
     private fun foregroundType(cameraEnabled: Boolean, screenShareEnabled: Boolean): Int {
-        var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
         if (cameraEnabled) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         if (screenShareEnabled) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         return type

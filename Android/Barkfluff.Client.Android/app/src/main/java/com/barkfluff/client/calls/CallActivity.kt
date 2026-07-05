@@ -77,8 +77,14 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private var callEnded = false
     private var callStartedAtMs = 0L
     private var callTimerJob: Job? = null
+    private var reconnectJob: Job? = null
+    private var reconnectAttempt = 0
     private var lastForegroundCamera = false
     private var lastForegroundScreen = false
+    private var desiredMicEnabled = true
+    private var desiredCameraEnabled = false
+    private var desiredScreenShareEnabled = false
+    private var batteryOptimizationPromptedForSession = false
 
     private val speakingColor = 0xFF43D67C.toInt()
 
@@ -109,6 +115,13 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         lifecycleScope.launch {
             callEngine.setScreenShareEnabled(true, data)
+                .onSuccess {
+                    desiredScreenShareEnabled = true
+                    updateCallForegroundService(
+                        cameraEnabled = lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled ?: desiredCameraEnabled,
+                        screenShareEnabled = true
+                    )
+                }
                 .onFailure { Toast.makeText(this@CallActivity, "Не удалось включить демонстрацию", Toast.LENGTH_SHORT).show() }
         }
     }
@@ -121,6 +134,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         accessToken = intent.getStringExtra(CallExtras.EXTRA_ACCESS_TOKEN).orEmpty()
         mediaType = intent.getStringExtra(CallExtras.EXTRA_MEDIA_TYPE).orEmpty()
         callTitle = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank { "Звонок" }
+        desiredCameraEnabled = isVideoCall()
 
         if (callId.isBlank()) {
             finish()
@@ -282,6 +296,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private fun closeOnRemoteEnd() {
         if (callEnded) return
         callEnded = true
+        reconnectJob?.cancel()
         stopCallTimer()
         callEngine.disconnect()
         CallForegroundService.stop(this)
@@ -293,19 +308,105 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun connectToLiveKit() {
         lifecycleScope.launch {
-            Log.d(TAG, "connectToLiveKit: url=$livekitUrl, tokenLen=${accessToken.length}, callId=$callId")
-            callEngine.connect(
-                livekitUrl = livekitUrl,
-                accessToken = accessToken,
-                cameraOnStart = isVideoCall()
-            ).onFailure {
-                Log.e(TAG, "connectToLiveKit failed: callEnded=$callEnded, finishing=$isFinishing", it)
-                if (callEnded || isFinishing) return@onFailure
-                statusText.text = "Не удалось подключиться к звонку"
-                Toast.makeText(this@CallActivity, "Ошибка подключения к LiveKit", Toast.LENGTH_SHORT).show()
+            CallTelecomRegistry.markActive(callId)
+            updateCallForegroundService(
+                cameraEnabled = desiredCameraEnabled && hasPermission(Manifest.permission.CAMERA),
+                screenShareEnabled = false
+            )
+            if (!connectOnce()) {
+                scheduleLiveKitReconnect("Не удалось подключиться к звонку")
             }
         }
     }
+
+    private suspend fun connectOnce(): Boolean {
+        Log.d(TAG, "connectToLiveKit: url=$livekitUrl, tokenLen=${accessToken.length}, callId=$callId")
+        return callEngine.connect(
+            livekitUrl = livekitUrl,
+            accessToken = accessToken,
+            cameraOnStart = desiredCameraEnabled && hasPermission(Manifest.permission.CAMERA)
+        ).onSuccess {
+            restoreLocalMediaState()
+            reconnectAttempt = 0
+        }.onFailure {
+            Log.e(TAG, "connectToLiveKit failed: callEnded=$callEnded, finishing=$isFinishing", it)
+            if (!callEnded && !isFinishing) {
+                statusText.text = "Не удалось подключиться к звонку"
+                Toast.makeText(this@CallActivity, "Ошибка подключения к LiveKit", Toast.LENGTH_SHORT).show()
+            }
+        }.isSuccess
+    }
+
+    private suspend fun restoreLocalMediaState() {
+        if (!desiredMicEnabled) {
+            callEngine.setMicrophoneEnabled(false)
+        }
+        if (desiredCameraEnabled && hasPermission(Manifest.permission.CAMERA)) {
+            callEngine.setCameraEnabled(true)
+        }
+        desiredScreenShareEnabled = false
+    }
+
+    private fun scheduleLiveKitReconnect(reason: String) {
+        if (callEnded || isFinishing || isDestroyed) return
+        if (reconnectJob?.isActive == true) return
+
+        reconnectJob = lifecycleScope.launch {
+            callEngine.disconnect()
+            desiredScreenShareEnabled = false
+            updateCallForegroundService(
+                cameraEnabled = desiredCameraEnabled && hasPermission(Manifest.permission.CAMERA),
+                screenShareEnabled = false
+            )
+
+            while (!callEnded && !isFinishing && reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempt++
+                val delayMs = reconnectDelayMs(reconnectAttempt)
+                statusText.text = "$reason. Повторная попытка $reconnectAttempt/$MAX_RECONNECT_ATTEMPTS..."
+                delay(delayMs)
+
+                if (!refreshLiveKitCredentialsForReconnect()) {
+                    continue
+                }
+
+                if (connectOnce()) {
+                    reconnectAttempt = 0
+                    return@launch
+                }
+            }
+
+            if (!callEnded && !isFinishing) {
+                statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorError))
+                statusText.text = "Не удалось восстановить соединение"
+            }
+        }
+    }
+
+    private suspend fun refreshLiveKitCredentialsForReconnect(): Boolean {
+        if (!ensureCallsClient()) return false
+
+        val app = application as BarkFluffApplication
+        app.grpcManager.ensureTokenValid(this)
+        return app.callRepository.join(callId)
+            .onSuccess { response ->
+                livekitUrl = response.livekitUrl.ifBlank { livekitUrl.ifBlank { GlobalParam(this).livekitUrl } }
+                accessToken = response.accessToken
+                Log.d(TAG, "LiveKit reconnect credentials refreshed: callId=$callId")
+            }
+            .onFailure {
+                Log.w(TAG, "JoinCall failed during LiveKit reconnect: callId=$callId", it)
+            }
+            .isSuccess
+    }
+
+    private fun reconnectDelayMs(attempt: Int): Long =
+        when (attempt) {
+            1 -> 2_000L
+            2 -> 4_000L
+            3 -> 8_000L
+            4 -> 15_000L
+            else -> 30_000L
+        }
 
     // region Раскладка плиток
 
@@ -524,6 +625,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private fun toggleMicrophone() {
         lifecycleScope.launch {
             val enabled = !(lastParticipants.firstOrNull { it.isLocal }?.micEnabled ?: true)
+            desiredMicEnabled = enabled
             callEngine.setMicrophoneEnabled(enabled)
         }
     }
@@ -537,6 +639,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         lifecycleScope.launch {
             val enabled = !(lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled ?: false)
+            desiredCameraEnabled = enabled
             callEngine.setCameraEnabled(enabled)
                 .onFailure { Toast.makeText(this@CallActivity, "Не удалось переключить камеру", Toast.LENGTH_SHORT).show() }
         }
@@ -551,6 +654,13 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         if (callEngine.isLocalScreenShareEnabled()) {
             lifecycleScope.launch {
                 callEngine.setScreenShareEnabled(false)
+                    .onSuccess {
+                        desiredScreenShareEnabled = false
+                        updateCallForegroundService(
+                            cameraEnabled = lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled ?: desiredCameraEnabled,
+                            screenShareEnabled = false
+                        )
+                    }
                     .onFailure { Toast.makeText(this@CallActivity, "Не удалось выключить демонстрацию", Toast.LENGTH_SHORT).show() }
             }
             return
@@ -650,6 +760,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private fun endCallAndClose() {
         if (callEnded) return
         callEnded = true
+        reconnectJob?.cancel()
         lifecycleScope.launch {
             callEngine.disconnect()
             CallForegroundService.stop(this@CallActivity)
@@ -663,6 +774,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onDestroy() {
+        reconnectJob?.cancel()
         stopCallTimer()
         callEngine.disconnect()
         CallForegroundService.stop(this)
@@ -677,21 +789,41 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onConnected(cameraEnabled: Boolean) {
+        reconnectAttempt = 0
+        CallTelecomRegistry.markActive(callId)
         statusDot.background.mutate().setTint(speakingColor)
+        updateCallForegroundService(cameraEnabled, desiredScreenShareEnabled)
+        if (!batteryOptimizationPromptedForSession) {
+            batteryOptimizationPromptedForSession = true
+            CallBatteryOptimizationHelper.requestIgnoreBatteryOptimizationsIfNeeded(this)
+        }
         startCallTimer()
     }
 
     override fun onReconnecting() {
+        stopCallTimer()
         statusText.text = "Восстанавливаем соединение..."
     }
 
     override fun onDisconnected() {
+        if (!callEnded && !isFinishing) {
+            stopCallTimer()
+            statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
+            scheduleLiveKitReconnect("Соединение потеряно")
+            return
+        }
         stopCallTimer()
         statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         statusText.text = "Звонок завершён"
     }
 
     override fun onError(message: String) {
+        if (!callEnded && !isFinishing) {
+            stopCallTimer()
+            statusText.text = message
+            scheduleLiveKitReconnect(message)
+            return
+        }
         stopCallTimer()
         statusText.text = message
     }
@@ -824,5 +956,6 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private companion object {
         const val TAG = "CallActivity"
+        const val MAX_RECONNECT_ATTEMPTS = 8
     }
 }
