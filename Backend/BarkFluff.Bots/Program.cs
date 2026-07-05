@@ -7,6 +7,7 @@ using BarkFluff.Bots.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -33,6 +34,10 @@ public class Program
         builder.Services.AddGrpc(options =>
         {
             options.Interceptors.Add<ServerExceptionInterceptor>();
+        }).AddServiceOptions<BotsExternalApiService>(options =>
+        {
+            // Токен-аутентификация только для внешнего Bot API
+            options.Interceptors.Add<BotTokenInterceptor>();
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Bots");
         builder.Services.AddGrpcReflection();
@@ -52,6 +57,9 @@ public class Program
         builder.Services.AddSingleton<BotRegistryCache>();
         builder.Services.AddSingleton<BotTokenService>();
         builder.Services.AddSingleton<BotUpdateNotifier>();
+        builder.Services.AddSingleton<BotTokenAuthenticator>();
+        builder.Services.AddSingleton<BotRateLimiter>();
+        builder.Services.AddSingleton<BotPollingGuard>();
         builder.Services.AddHostedService<BotsCleanupService>();
 
         builder.Services.AddXAuth(builder.Configuration);
@@ -60,6 +68,12 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["UsersService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddGrpcClient<MessagesServerApi.MessagesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["MessagesService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddMassTransit(x =>
@@ -98,6 +112,7 @@ public class Program
         app.UseXAuth();
 
         app.MapGrpcService<BotsServerApiService>();
+        app.MapGrpcService<BotsExternalApiService>();
 
         var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
         startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
