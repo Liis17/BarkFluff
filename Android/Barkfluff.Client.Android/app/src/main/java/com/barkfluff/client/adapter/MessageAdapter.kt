@@ -23,7 +23,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import coil.size.Size
 import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
@@ -72,7 +71,7 @@ class MessageAdapter(
     private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
     private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
-    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, fileId аватара). null = брать из самого MessageItem. */
+    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
     private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
@@ -402,19 +401,15 @@ class MessageAdapter(
                 binding.senderNameTextView.text = senderName
 
                 if (!senderAvatarFileId.isNullOrBlank()) {
-                    binding.senderAvatarPlaceholder.visibility = View.GONE
-                    binding.senderAvatarImageView.visibility = View.VISIBLE
-                    scope.launch {
-                        val url = getFileUrl(senderAvatarFileId)
-                        if (url != null) {
-                            withContext(Dispatchers.Main) {
-                                binding.senderAvatarImageView.load(url) {
-                                    size(Size(48, 48))
-                                    crossfade(true)
-                                    error(R.drawable.ic_person)
-                                }
-                            }
-                        }
+                    AvatarLoader.loadByFileId(
+                        imageView = binding.senderAvatarImageView,
+                        placeholderView = binding.senderAvatarPlaceholder,
+                        fileId = senderAvatarFileId,
+                        displayName = senderName ?: "",
+                        userId = item.senderId,
+                        size = 48
+                    ) {
+                        getFileUrl(senderAvatarFileId)
                     }
                 } else {
                     binding.senderAvatarImageView.visibility = View.GONE
