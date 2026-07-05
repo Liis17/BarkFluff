@@ -233,6 +233,11 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_COMPACT_FOLDERS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_COMPACT_FOLDERS, value).apply()
 
+    /** Убирать обводку у неактивных вкладок папок. По умолчанию false. */
+    var folderTabsNoOutline: Boolean
+        get() = sharedPreferences.getBoolean(KEY_FOLDER_TABS_NO_OUTLINE, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_FOLDER_TABS_NO_OUTLINE, value).apply()
+
     /** Убирать чаты, входящие хотя бы в одну папку, из вкладки «Все чаты». По умолчанию false. */
     var excludeFolderChatsFromAll: Boolean
         get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
@@ -368,6 +373,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
         private const val KEY_CHAT_BACKGROUND_DIM = "chat_background_dim"
         private const val KEY_COMPACT_FOLDERS = "folders_compact"
+        private const val KEY_FOLDER_TABS_NO_OUTLINE = "folders_no_outline"
         private const val KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL = "folders_exclude_from_all"
 
         // Тестирование

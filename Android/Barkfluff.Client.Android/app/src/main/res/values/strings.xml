@@ -393,6 +393,8 @@
     <string name="personalization_folders">Папки</string>
     <string name="personalization_compact_folders">Компактные папки</string>
     <string name="personalization_compact_folders_subtitle">Показывать только иконку</string>
+    <string name="personalization_folder_tabs_no_outline">Убрать обводку у папок</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">Оставить только иконку и подсветку активной папки</string>
     <string name="personalization_exclude_from_all">Убирать чаты из «Все чаты»</string>
     <string name="personalization_exclude_from_all_subtitle">Если чат входит в папку, он не будет показан во вкладке «Все чаты»</string>
     <string name="personalization_chat_background">Фон чатов</string>
