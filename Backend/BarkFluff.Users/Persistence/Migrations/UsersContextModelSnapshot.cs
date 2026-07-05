@@ -236,6 +236,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsBot")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsDraft")
                         .HasColumnType("boolean");
 

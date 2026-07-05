@@ -15,9 +15,11 @@ public class User
 
     public DateTime RegistrationDate { get; set; }
 
-    public UserContact Contact { get; set; }
+    public UserContact? Contact { get; set; }
 
     public bool IsDraft { get; set; }
+
+    public bool IsBot { get; set; }
 
     public string? ProfilePicture { get; set; }
 
