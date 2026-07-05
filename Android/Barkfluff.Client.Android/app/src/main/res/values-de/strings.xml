@@ -371,6 +371,8 @@
     <string name="personalization_folders">Ordner</string>
     <string name="personalization_compact_folders">Kompakte Ordner</string>
     <string name="personalization_compact_folders_subtitle">Nur Symbol anzeigen</string>
+    <string name="personalization_folder_tabs_no_outline">Ordnerrahmen entfernen</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">Nur Symbole und Hervorhebung des aktiven Ordners anzeigen</string>
     <string name="personalization_exclude_from_all">Chats aus „Alle Chats“ ausblenden</string>
     <string name="personalization_exclude_from_all_subtitle">Wenn ein Chat in einem Ordner liegt, wird er nicht im Tab „Alle Chats“ angezeigt</string>
     <string name="personalization_chat_background">Chat-Hintergrund</string>

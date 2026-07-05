@@ -117,6 +117,10 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding.switchCompactFolders.setOnCheckedChangeListener { _, isChecked ->
             globalParam.compactFolders = isChecked
         }
+        binding.switchFolderTabsNoOutline.isChecked = globalParam.folderTabsNoOutline
+        binding.switchFolderTabsNoOutline.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.folderTabsNoOutline = isChecked
+        }
         binding.switchExcludeFromAll.isChecked = globalParam.excludeFolderChatsFromAll
         binding.switchExcludeFromAll.setOnCheckedChangeListener { _, isChecked ->
             globalParam.excludeFolderChatsFromAll = isChecked
