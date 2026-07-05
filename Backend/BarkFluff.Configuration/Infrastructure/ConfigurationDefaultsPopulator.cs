@@ -44,6 +44,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.CloudMessaging, "cloud-messaging" },
         { ServiceId.Web, "web" },
         { ServiceId.Calls, "calls" },
+        { ServiceId.Bots, "bots" },
     };
 
     /// <summary>
@@ -63,6 +64,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.CloudMessaging, 7011 },
         { ServiceId.Web, 7016 },
         { ServiceId.Calls, 7025 },
+        { ServiceId.Bots, 7027 },
     };
 
     /// <summary>
@@ -81,6 +83,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, "onliner" },
         { ServiceId.Web, "web" },
         { ServiceId.Calls, "calls" },
+        { ServiceId.Bots, "bots" },
     };
 
     /// <summary>
@@ -94,6 +97,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Messages, ("MessagesDb", "messages") },
         { ServiceId.Onliner, ("OnlinerDb", "onliner") },
         { ServiceId.Calls, ("CallsDb", "calls") },
+        { ServiceId.Bots, ("BotsDb", "bots") },
     };
 
     public ConfigurationDefaultsPopulator(
@@ -222,13 +226,15 @@ public class ConfigurationDefaultsPopulator
                 return port.ToString();
         }
 
-        // --- RunSettings:Http1Port (Files, Calls) ---
+        // --- RunSettings:Http1Port (Files, Calls, Bots) ---
         if (config.Section == "RunSettings" && config.Key == "Http1Port")
         {
             if (serviceId == ServiceId.Files)
                 return "7006";
             if (serviceId == ServiceId.Calls)
                 return "7026"; // HTTP/1.1-листенер для приёма LiveKit-webhooks
+            if (serviceId == ServiceId.Bots)
+                return "7028"; // HTTP/1.1-листенер для Bot REST API
         }
 
         // --- JwtSettings ---
@@ -320,6 +326,17 @@ public class ConfigurationDefaultsPopulator
             {
                 "Host" => $"http://messages:{DefaultPorts[ServiceId.Messages]}",
                 "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "MessagesServiceClient"),
+                _ => null
+            };
+        }
+
+        // --- BotsService (inter-service, для AdminPanel) ---
+        if (config.Section == "BotsService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://bots:{DefaultPorts[ServiceId.Bots]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "BotsServiceClient"),
                 _ => null
             };
         }
