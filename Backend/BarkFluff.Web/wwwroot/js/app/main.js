@@ -184,7 +184,7 @@
                 }
             }
 
-            var time = (lm && lm.sentAt) ? u.formatTime(lm.sentAt) : '';
+            var time = (lm && lm.sentAt) ? u.formatChatListTime(lm.sentAt) : '';
             var unread = chat.countUnread || 0;
             var unreadText = unread > 99 ? '99+' : unread;
 
