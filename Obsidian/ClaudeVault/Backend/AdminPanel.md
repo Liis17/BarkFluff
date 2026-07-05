@@ -42,6 +42,7 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 | `FilesServerApi` | Файлы, S3 |
 | `IdentityServerApi` | Авторизация |
 | `ConfigurationApi` | Конфигурация |
+| `BotsServerApi` | Боты ([[Backend/Bots]]): создание системных, токены, удаление |
 
 Ключи: `{Service}Service:Host` и `{Service}Service:Token`.
 
@@ -68,7 +69,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ## Proto
 
-- `users_api.proto`, `files_api.proto`, `identity_api.proto` — Client
+- `users_api.proto`, `files_api.proto`, `identity_api.proto`, `bots_api.proto` — Client
 - `shared.proto` — None (`GrpcServices="None"`)
 
 ## HTML-страницы (Pages/)
@@ -82,6 +83,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | `badges.html` | CRUD бейджей |
 | `stickers.html` | Управление стикерпаками |
 | `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
+| `v2/bots.html` | Управление ботами: создание системного, токен (показ один раз), перегенерация, удаление |
 | `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
 | `s3-storage.html` | (мёртвый, не роутится) старая плоская страница конфигурации S3 |
 | `s3-browser.html` | (мёртвый, не роутится) старый браузер S3-объектов |
@@ -90,7 +92,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ### Актуальная версия — Pages/v2 (MD3)
 
-`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/notifications`, `/mail`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 
