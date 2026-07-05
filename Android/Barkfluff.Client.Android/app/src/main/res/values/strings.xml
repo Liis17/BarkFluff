@@ -408,6 +408,9 @@
     <string name="personalization_main_tab_calls">Звонки</string>
     <string name="personalization_main_tab_profile">Профиль</string>
     <string name="personalization_main_tabs_keep_one">Оставьте хотя бы одну вкладку</string>
+    <string name="personalization_online_time">Онлайн</string>
+    <string name="personalization_relative_online_time">Относительное время онлайна</string>
+    <string name="personalization_relative_online_time_subtitle">15 минут назад вместо времени на часах</string>
     <string name="personalization_chat_background">Фон чатов</string>
     <string name="personalization_expand_backgrounds">Развернуть</string>
     <string name="personalization_collapse_backgrounds">Свернуть</string>
