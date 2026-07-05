@@ -113,6 +113,7 @@ class ChatActivity : AppCompatActivity() {
 
     // Непрочитанные сообщения
     private var firstUnreadMessageId: Long = 0L
+    private var lastBottomReadTriggerId: Long = -1L
 
     // Вставленные из буфера обмена изображения
     private val pendingPastedImages = mutableListOf<Uri>()
@@ -602,6 +603,14 @@ class ChatActivity : AppCompatActivity() {
 
                     // Показ/скрытие кнопки прокрутки вниз
                     updateScrollToBottomButton()
+
+                    // Safety-net: долистали до самого низа и подгружать больше нечего —
+                    // помечаем прочитанными все загруженные чужие сообщения (страхует от
+                    // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
+                    if (!hasMoreMessagesDown && isRecyclerViewAtBottom() && lastVisibleMessageId != lastBottomReadTriggerId) {
+                        lastBottomReadTriggerId = lastVisibleMessageId
+                        markAllLoadedMessagesAsRead()
+                    }
                 }
             })
         }
@@ -2208,6 +2217,27 @@ class ChatActivity : AppCompatActivity() {
                     Log.d(TAG, "Marked ${unreadMessageIds.size} messages as read")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error marking messages as read", e)
+                }
+            }
+        }
+    }
+
+    /**
+     * Помечает прочитанными все чужие сообщения, уже загруженные в адаптер. Вызывается
+     * при достижении самого низа списка — сервер идемпотентен, повторная пометка безопасна.
+     */
+    private fun markAllLoadedMessagesAsRead() {
+        val unreadMessageIds = messageAdapter.currentList
+            .filter { it.type == MessageType.MESSAGE && it.senderId != currentUserId }
+            .map { it.messageId }
+
+        if (unreadMessageIds.isNotEmpty()) {
+            lifecycleScope.launch {
+                try {
+                    chatRepository.markAsRead(unreadMessageIds)
+                    Log.d(TAG, "Marked all ${unreadMessageIds.size} loaded messages as read (reached bottom)")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error marking all messages as read on scroll to bottom", e)
                 }
             }
         }
