@@ -29,6 +29,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - `UploadBadgeImage` — загрузка PNG бейджей (байты напрямую, без сжатия)
 - `UploadAvatarServer` — аватар от имени пользователя
 - `UploadPosterServer` — постер профиля (UserProfilePoster) от имени пользователя для админ-панели
+- `UploadFileServer(data, filename, file_type, owner_user_id)` — загрузка файла от имени пользователя (для [[Backend/Bots]]); переиспользует полный пайплайн `UploadFileCommand`: детекция типа, компрессия, превью, дедупликация → `{file_id, preview_url, file_size}`
 - `GetUserStorageInfoServer` — хранилище по userId
 - Стикеры (управление): `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
 
