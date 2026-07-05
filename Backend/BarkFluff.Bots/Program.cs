@@ -1,3 +1,4 @@
+using BarkFluff.Bots.Consumers;
 using BarkFluff.Bots.Host;
 using BarkFluff.Bots.Infrastructure;
 using BarkFluff.Bots.Persistence;
@@ -10,6 +11,8 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
+
+using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -44,9 +47,12 @@ public class Program
             }));
 
         builder.Services.AddScoped<BotsStorage>();
+        builder.Services.AddScoped<BotUpdatesStorage>();
         builder.Services.AddScoped<SystemBotsSeeder>();
         builder.Services.AddSingleton<BotRegistryCache>();
         builder.Services.AddSingleton<BotTokenService>();
+        builder.Services.AddSingleton<BotUpdateNotifier>();
+        builder.Services.AddHostedService<BotsCleanupService>();
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -55,6 +61,25 @@ public class Program
                 o.Address = new Uri(builder.Configuration["UsersService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddMassTransit(x =>
+        {
+            x.AddConsumer<NewMessageConsumer>();
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"]);
+                    h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+
+                cfg.ReceiveEndpoint("new-messages-bots-handler", e =>
+                {
+                    e.ConfigureConsumer<NewMessageConsumer>(context);
+                });
+            });
+        });
 
         var app = builder.Build();
 
