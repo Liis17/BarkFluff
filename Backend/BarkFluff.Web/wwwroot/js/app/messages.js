@@ -157,9 +157,14 @@
             var w = images[0].imageWidth || 0;
             var h = images[0].imageHeight || 0;
             if (w > 0 && h > 0) {
+                grid.style.width = Math.min(w, 400) + 'px';
+                grid.style.maxWidth = '100%';
                 grid.style.aspectRatio = w + ' / ' + h;
                 grid.style.maxHeight = '350px';
             }
+        } else {
+            grid.style.width = '400px';
+            grid.style.maxWidth = '100%';
         }
 
         for (var i = 0; i < visible; i++) {
