@@ -386,7 +386,7 @@ Toggle уведомлений, настройки каналов Android.
 
 **Тип:** AppCompatActivity
 
-Экран персонализации. Три блока сверху вниз:
+Экран персонализации. Основные блоки сверху вниз:
 
 **Блок 1 — Превью чата (260dp):**
 - `FrameLayout chatPreviewLayout` — полноразмерный превью-контейнер
@@ -401,13 +401,19 @@ Toggle уведомлений, настройки каналов Android.
 - `blurRadiusSection` (скрыт если тогл выкл): `Slider blurRadiusSlider` (1..25) → `GlobalParam.chatBackgroundBlurRadius`
 - `Slider dimSlider` (0..100 %) → `GlobalParam.chatBackgroundDim`; значение отображается как "N%"
 
+**Блоки локальных параметров:**
+- «Папки»: `compactFolders`, `folderTabsNoOutline`, `excludeFolderChatsFromAll`
+- «Панель вкладок»: `mainTabChatsVisible`, `mainTabCallsVisible`, `mainTabProfileVisible`; `MainActivity` скрывает menu item'ы bottom navigation и при скрытии текущей вкладки уходит на первую доступную. `mainTabCallsVisible` по умолчанию `false`.
+- «Онлайн»: `relativeOnlineTime`; `OnlineTimeFormatter` меняет last seen между относительным форматом и `был(а) в H:mm` для `ChatActivity`, `UserProfileActivity`, `GroupInfoActivity`.
+- «Стикеры»: `Slider stickerSizeSlider` (96..240 dp) → `GlobalParam.chatStickerSizeDp`; preview обновляется сразу, `ChatActivity` передаёт размер в `MessageAdapter`.
+
 **Блок 3 — Фон чатов:**
-- `RecyclerView` GridLayoutManager 3 колонки + `ChatBackgroundAdapter`
+- `RecyclerView` GridLayoutManager 3 колонки + `ChatBackgroundAdapter`; в свернутом состоянии показываются первые 9 ячеек, при большем количестве появляется кнопка `buttonToggleBackgrounds`
 - Первая ячейка всегда — "Без фона" (fileId = ""); выбор сбрасывает фон
 - Кнопка "Добавить фон": `GetContent("image/*")` → JPEG 85% → `ChatRepository.uploadFile` → `GrpcManager.updatePersonalizationBackgrounds`
 - Долгое нажатие → режим удаления (оверлей корзины)
 
-**Связи:** `GlobalParam`, `GrpcManager`, `ChatRepository`, `ChatBackgroundAdapter`, `AspectRatioImageView`
+**Связи:** `GlobalParam`, `GrpcManager`, `ChatRepository`, `ChatBackgroundAdapter`, `AspectRatioImageView`, `OnlineTimeFormatter`, `MessageAdapter`
 
 ---
 

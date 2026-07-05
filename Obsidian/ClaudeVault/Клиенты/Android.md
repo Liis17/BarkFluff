@@ -366,17 +366,22 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.
 
-## Раздел «Персонализация» — папки
+## Раздел «Персонализация» — локальные параметры
 
-`PersonalizationSettingsActivity` (между блоками «Настройки отображения» и «Фон чатов») содержит блок «Папки» с тремя `MaterialSwitch`:
+`PersonalizationSettingsActivity` хранит локальные параметры в `GlobalParam` (`barkfluff_prefs`). Блок «Папки» содержит три `MaterialSwitch`:
 
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
 | `compactFolders` | `folders_compact` | Компактные папки: в сегменте `ChatsFragment.foldersRecyclerView` скрывает текст имени папки, оставляя только иконку + бейдж непрочитанных. |
 | `folderTabsNoOutline` | `folders_no_outline` | Убирает `stroke` у неактивных вкладок папок через `bg_folder_tab_no_outline`; выбранная вкладка сохраняет `bg_folder_tab_selected` с подсветкой. |
 | `excludeFolderChatsFromAll` | `folders_exclude_from_all` | Чаты, входящие хотя бы в одну пользовательскую папку, не показываются во вкладке «Все чаты» и не учитываются в её бейдже. |
+| `mainTabChatsVisible` | `main_tab_chats_visible` | Показывает/скрывает вкладку «Чаты» в `MainActivity.bottomNavigation`. |
+| `mainTabCallsVisible` | `main_tab_calls_visible` | Показывает/скрывает вкладку «Звонки»; по умолчанию `false`, поэтому вкладка звонков скрыта. |
+| `mainTabProfileVisible` | `main_tab_profile_visible` | Показывает/скрывает вкладку «Профиль». |
+| `relativeOnlineTime` | `relative_online_time` | Форматирует last online через `OnlineTimeFormatter`: `был(а) 15 минут назад` или `был(а) в 6:15`. Применяется в `ChatActivity`, `UserProfileActivity`, `GroupInfoActivity`. |
+| `chatStickerSizeDp` | `chat_sticker_size_dp` | Размер стикеров в чате, диапазон 96..240dp, по умолчанию 160dp. `PersonalizationSettingsActivity` показывает preview, `ChatActivity` передаёт значение в `MessageAdapter`. |
 
-Все флаги по умолчанию `false`. Применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. При возврате на список чатов из персонализации `onResume()` фрагмента ререндерит сегмент.
+Фон чатов в блоке «Фон чатов» остаётся серверной персонализацией, но список в настройках теперь свернут до 3×3 ячеек (включая «Без фона») и раскрывается кнопкой, если элементов больше. Папочные флаги применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. Вкладки главного экрана перечитываются в `MainActivity.onResume()`.
 
 ## Настройки → Аккаунт — поле «О себе»
 
