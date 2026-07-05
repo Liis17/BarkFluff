@@ -13,6 +13,21 @@
         return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     }
 
+    function formatChatListTime(ts) {
+        if (!ts) return '';
+        var d = new Date(ts);
+        var today = new Date();
+        if (d.toDateString() === today.toDateString()) {
+            return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) {
+            return 'вчера в ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
     function formatDate(ts) {
         if (!ts) return '';
         var d = new Date(ts);
@@ -165,6 +180,7 @@
 
     window.BF.utils = {
         formatTime: formatTime,
+        formatChatListTime: formatChatListTime,
         formatDate: formatDate,
         formatFileSize: formatFileSize,
         truncate: truncate,
