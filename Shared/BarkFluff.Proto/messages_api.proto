@@ -504,6 +504,8 @@ message SendMessageServerRequest {
   }
 
   OutgoingMessage message = 4; // отправляемое сообщение
+
+  bool allow_chat_creation = 5; // разрешить авто-создание личного чата (только системные боты: login-notifier); для обычных ботов всегда false
 }
 
 message GetUserAllMessagesRequest {

@@ -1,6 +1,7 @@
 using BarkFluff.Bots.Domain;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
+using BarkFluff.Bots.Services.BotFather;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Proto.Users;
@@ -19,6 +20,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
     private readonly BotRegistryCache _registryCache;
     private readonly BotUpdatesStorage _updatesStorage;
     private readonly BotUpdateNotifier _notifier;
+    private readonly BotFatherService _botFatherService;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<NewMessageConsumer> _logger;
@@ -27,6 +29,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
         BotRegistryCache registryCache,
         BotUpdatesStorage updatesStorage,
         BotUpdateNotifier notifier,
+        BotFatherService botFatherService,
         UsersServerApi.UsersServerApiClient usersClient,
         MetricsCollector metrics,
         ILogger<NewMessageConsumer> logger)
@@ -34,6 +37,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
         _registryCache = registryCache;
         _updatesStorage = updatesStorage;
         _notifier = notifier;
+        _botFatherService = botFatherService;
         _usersClient = usersClient;
         _metrics = metrics;
         _logger = logger;
@@ -68,8 +72,8 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
             switch (bot?.SystemRole)
             {
                 case SystemBotRole.BotFather:
-                    // Диалог BotFather обрабатывается in-process (BotFatherService, фаза 6)
                     _metrics.Increment("botfather_messages_received");
+                    await _botFatherService.HandleAsync(message, context.Message.ChatId);
                     break;
 
                 case SystemBotRole.LoginNotifier:

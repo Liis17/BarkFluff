@@ -147,7 +147,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
             var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(personRepose.User.Id, senderId);
 
-            if (chatIdWithPerson is null && request.SenderId is not null)
+            if (chatIdWithPerson is null && request.SenderId is not null && !request.AllowChatCreation)
             {
                 // Серверный путь (боты): чат должен уже существовать — бот не пишет первым.
                 _logger.LogWarning(
