@@ -489,6 +489,21 @@ service MessagesServerApi {
 
   // Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
   rpc PostCallSystemMessage(PostCallSystemMessageRequest) returns(PostCallSystemMessageResponse);
+
+  // Отправить сообщение от имени пользователя (вызывает сервис Bots).
+  // Авторизацию отправителя (членство бота в чате, запрет инициации чата) выполняет вызывающий сервис.
+  rpc SendMessageServer(SendMessageServerRequest) returns(SendMessageResponse);
+}
+
+message SendMessageServerRequest {
+  int64 sender_user_id = 1; // от чьего имени отправка (бот)
+
+  oneof source_id {
+    string chat_id = 2; // идентификатор чата
+    int64 user_id = 3; // идентификатор пользователя (личный чат должен уже существовать; авто-создание чата в этом пути запрещено)
+  }
+
+  OutgoingMessage message = 4; // отправляемое сообщение
 }
 
 message GetUserAllMessagesRequest {
