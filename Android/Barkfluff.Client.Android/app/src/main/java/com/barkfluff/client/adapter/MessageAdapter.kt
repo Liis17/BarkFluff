@@ -26,6 +26,7 @@ import coil.load
 import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.shape.CornerFamily
@@ -67,6 +68,8 @@ class MessageAdapter(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
     var messageCornerRadiusDp: Int = 20,
+    /** Размер стикеров в чате в dp. */
+    var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
     /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
     private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
@@ -282,6 +285,7 @@ class MessageAdapter(
                 binding.stickerTimeStatusLayout.visibility = View.VISIBLE
 
                 val attachment = displayedAttachments[0]
+                applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
@@ -435,6 +439,7 @@ class MessageAdapter(
                 binding.stickerTimeTextView.visibility = View.VISIBLE
 
                 val attachment = displayedAttachments[0]
+                applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
@@ -638,6 +643,16 @@ class MessageAdapter(
         )
     }
 
+    private fun applyStickerSize(imageView: ImageView) {
+        val sizePx = (stickerSizeDp * imageView.context.resources.displayMetrics.density + 0.5f).toInt()
+        val params = imageView.layoutParams
+        if (params.width != sizePx || params.height != sizePx) {
+            params.width = sizePx
+            params.height = sizePx
+            imageView.layoutParams = params
+        }
+    }
+
     // ─── Color Helpers ─────────────────────────────────────────────────────────
 
     private fun resolveColor(context: Context, attr: Int): Int {
@@ -731,7 +746,7 @@ class MessageAdapter(
         // Стикеры (внутри облачка, когда есть текст или другие вложения)
         for (sticker in stickers) {
             val dm = context.resources.displayMetrics
-            val stickerSizePx = (160 * dm.density + 0.5f).toInt()
+            val stickerSizePx = (stickerSizeDp * dm.density + 0.5f).toInt()
             val cornerRadiusPx = 15 * dm.density
             val stickerView = ShapeableImageView(context).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(stickerSizePx, stickerSizePx).apply {
