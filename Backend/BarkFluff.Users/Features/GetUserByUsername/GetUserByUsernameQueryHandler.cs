@@ -88,6 +88,7 @@ public class GetUserByUsernameQueryHandler : IRequestHandler<GetUserByUsernameQu
             Bio = bio,
             ProfilePicture = avatar,
             ProfilePosterUrl = posterUrl,
+            IsBot = user.IsBot,
         };
     }
 }

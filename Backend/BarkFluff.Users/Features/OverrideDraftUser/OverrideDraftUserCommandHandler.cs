@@ -1,6 +1,7 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Users.Persistence.Services;
+using BarkFluff.Users.Services;
 
 using MediatR;
 
@@ -23,6 +24,12 @@ public class OverrideDraftUserCommandHandler : IRequestHandler<OverrideDraftUser
         var username = request.Username?.Trim();
         var firstName = request.FirstName?.Trim();
         var lastName = request.LastName?.Trim();
+
+        if (UsernameFormatValidator.HasBotSuffix(username))
+        {
+            _logger.LogWarning("Username {Username} заканчивается на суффикс bot и зарезервирован", username);
+            throw new UsernameBotSuffixReservedException();
+        }
 
         _logger.LogInformation(
             "Перезапись черновика пользователя. Username: {Username}, Email: {Email}",
@@ -50,7 +57,7 @@ public class OverrideDraftUserCommandHandler : IRequestHandler<OverrideDraftUser
 
         user.FirstName = firstName;
         user.LastName = lastName;
-        user.Contact.Email = email;
+        user.Contact!.Email = email; // черновики всегда создаются с контактом (см. UsersStorage.CreateUser)
         user.Username = username;
         user.ProfilePicture = null;
         user.RegistrationDate = DateTime.UtcNow;

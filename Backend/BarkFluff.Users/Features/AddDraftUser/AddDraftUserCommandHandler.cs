@@ -50,6 +50,12 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
             throw new UsernameInvalidFormatException();
         }
 
+        if (UsernameFormatValidator.HasBotSuffix(username))
+        {
+            _logger.LogWarning("Username {Username} заканчивается на суффикс bot и зарезервирован", username);
+            throw new UsernameBotSuffixReservedException();
+        }
+
         _logger.LogDebug("Проверка существования email: {MaskedEmail}", MaskEmail(email));
 
         var userByEmail = await _usersStorage.GetUserByEmail(email);
