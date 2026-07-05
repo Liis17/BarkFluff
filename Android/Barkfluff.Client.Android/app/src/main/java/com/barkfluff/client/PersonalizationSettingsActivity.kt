@@ -133,42 +133,19 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     }
 
     private fun setupMainTabSettings() {
-        binding.switchMainTabChats.isChecked = globalParam.mainTabChatsVisible
-        binding.switchMainTabCalls.isChecked = globalParam.mainTabCallsVisible
-        binding.switchMainTabProfile.isChecked = globalParam.mainTabProfileVisible
+        globalParam.mainTabChatsVisible = true
+        globalParam.mainTabProfileVisible = true
 
-        binding.switchMainTabChats.setOnCheckedChangeListener { button, isChecked ->
-            if (!isChecked && visibleMainTabsCount() == 0) {
-                button.isChecked = true
-                Toast.makeText(this, R.string.personalization_main_tabs_keep_one, Toast.LENGTH_SHORT).show()
-                return@setOnCheckedChangeListener
-            }
-            globalParam.mainTabChatsVisible = isChecked
-        }
-        binding.switchMainTabCalls.setOnCheckedChangeListener { button, isChecked ->
-            if (!isChecked && visibleMainTabsCount() == 0) {
-                button.isChecked = true
-                Toast.makeText(this, R.string.personalization_main_tabs_keep_one, Toast.LENGTH_SHORT).show()
-                return@setOnCheckedChangeListener
-            }
+        binding.switchMainTabChats.isChecked = true
+        binding.switchMainTabCalls.isChecked = globalParam.mainTabCallsVisible
+        binding.switchMainTabProfile.isChecked = true
+
+        binding.switchMainTabChats.isEnabled = false
+        binding.switchMainTabProfile.isEnabled = false
+
+        binding.switchMainTabCalls.setOnCheckedChangeListener { _, isChecked ->
             globalParam.mainTabCallsVisible = isChecked
         }
-        binding.switchMainTabProfile.setOnCheckedChangeListener { button, isChecked ->
-            if (!isChecked && visibleMainTabsCount() == 0) {
-                button.isChecked = true
-                Toast.makeText(this, R.string.personalization_main_tabs_keep_one, Toast.LENGTH_SHORT).show()
-                return@setOnCheckedChangeListener
-            }
-            globalParam.mainTabProfileVisible = isChecked
-        }
-    }
-
-    private fun visibleMainTabsCount(): Int {
-        return listOf(
-            binding.switchMainTabChats.isChecked,
-            binding.switchMainTabCalls.isChecked,
-            binding.switchMainTabProfile.isChecked
-        ).count { it }
     }
 
     private fun setupOnlineTimeSettings() {

@@ -40,6 +40,8 @@ class MainActivity : AppCompatActivity() {
         private const val TAB_CALLS = 1
         private const val TAB_PROFILE = 2
         private const val KEY_CURRENT_TAB = "current_tab"
+        private const val BOTTOM_NAV_PHONE_ITEM_WIDTH_DP = 84
+        private const val BOTTOM_NAV_WIDE_ITEM_WIDTH_DP = 72
 
         /**
          * Хранит chatId для открытия после cold start (когда приложение убито
@@ -230,6 +232,7 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigation.menu.findItem(R.id.navigation_chats).isVisible = visibleTabs.contains(TAB_CHATS)
         binding.bottomNavigation.menu.findItem(R.id.navigation_calls).isVisible = visibleTabs.contains(TAB_CALLS)
         binding.bottomNavigation.menu.findItem(R.id.navigation_profile).isVisible = visibleTabs.contains(TAB_PROFILE)
+        updateBottomNavigationWidth(visibleTabs.size)
 
         if (!visibleTabs.contains(currentTabIndex)) {
             showFragment(visibleTabs.first())
@@ -239,22 +242,36 @@ class MainActivity : AppCompatActivity() {
     private fun visibleTabIndices(): List<Int> {
         val globalParam = GlobalParam(this)
         val tabs = mutableListOf<Int>()
-        if (globalParam.mainTabChatsVisible) tabs.add(TAB_CHATS)
+        tabs.add(TAB_CHATS)
         if (globalParam.mainTabCallsVisible) tabs.add(TAB_CALLS)
-        if (globalParam.mainTabProfileVisible) tabs.add(TAB_PROFILE)
-        return if (tabs.isNotEmpty()) tabs else listOf(TAB_CHATS)
+        tabs.add(TAB_PROFILE)
+        return tabs
     }
 
     private fun compactifyBottomNav() {
         val menuView = binding.bottomNavigation.getChildAt(0) as? android.view.ViewGroup ?: return
-        val itemWidthDp = 72
         val density = resources.displayMetrics.density
+        val itemWidthDp = if (findViewById<android.view.View>(R.id.bottomNavCard) != null) {
+            BOTTOM_NAV_PHONE_ITEM_WIDTH_DP
+        } else {
+            BOTTOM_NAV_WIDE_ITEM_WIDTH_DP
+        }
         val itemWidthPx = (itemWidthDp * density).toInt()
         for (i in 0 until menuView.childCount) {
             val item = menuView.getChildAt(i)
             val params = item.layoutParams
             params.width = itemWidthPx
             item.layoutParams = params
+        }
+    }
+
+    private fun updateBottomNavigationWidth(visibleTabsCount: Int) {
+        val bottomNavCard = findViewById<android.view.View>(R.id.bottomNavCard) ?: return
+        val widthPx = (BOTTOM_NAV_PHONE_ITEM_WIDTH_DP * visibleTabsCount * resources.displayMetrics.density).toInt()
+        val params = bottomNavCard.layoutParams
+        if (params.width != widthPx) {
+            params.width = widthPx
+            bottomNavCard.layoutParams = params
         }
     }
 

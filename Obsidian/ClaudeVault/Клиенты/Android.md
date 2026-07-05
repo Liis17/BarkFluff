@@ -23,7 +23,7 @@ Package: `com.barkfluff.client`
 
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
 
-- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`), нижняя навигация (`bottomNavCard`) — плавающий элемент поверх, рисуется позже в XML → автоматически выше по z-order.
+- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`), нижняя навигация (`bottomNavCard`) — плавающий элемент поверх, рисуется позже в XML → автоматически выше по z-order. Ширина `bottomNavCard` в `MainActivity` подстраивается под количество видимых вкладок.
 - `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
 - `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:
   - `VIEW_TYPE_FOOTER` / `FooterViewHolder` — не требует биндинга.
@@ -375,9 +375,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | `compactFolders` | `folders_compact` | Компактные папки: в сегменте `ChatsFragment.foldersRecyclerView` скрывает текст имени папки, оставляя только иконку + бейдж непрочитанных. |
 | `folderTabsNoOutline` | `folders_no_outline` | Убирает `stroke` у неактивных вкладок папок через `bg_folder_tab_no_outline`; выбранная вкладка сохраняет `bg_folder_tab_selected` с подсветкой. |
 | `excludeFolderChatsFromAll` | `folders_exclude_from_all` | Чаты, входящие хотя бы в одну пользовательскую папку, не показываются во вкладке «Все чаты» и не учитываются в её бейдже. |
-| `mainTabChatsVisible` | `main_tab_chats_visible` | Показывает/скрывает вкладку «Чаты» в `MainActivity.bottomNavigation`. |
-| `mainTabCallsVisible` | `main_tab_calls_visible` | Показывает/скрывает вкладку «Звонки»; по умолчанию `false`, поэтому вкладка звонков скрыта. |
-| `mainTabProfileVisible` | `main_tab_profile_visible` | Показывает/скрывает вкладку «Профиль». |
+| `mainTabCallsVisible` | `main_tab_calls_visible` | Показывает/скрывает вкладку «Звонки»; по умолчанию `false`, поэтому вкладка звонков скрыта. «Чаты» и «Профиль» обязательны, в настройках показаны серыми и не отключаются. |
 | `relativeOnlineTime` | `relative_online_time` | Форматирует last online через `OnlineTimeFormatter`: `был(а) 15 минут назад` или `был(а) в 6:15`. Применяется в `ChatActivity`, `UserProfileActivity`, `GroupInfoActivity`. |
 | `chatStickerSizeDp` | `chat_sticker_size_dp` | Размер стикеров в чате, диапазон 96..240dp, по умолчанию 160dp. `PersonalizationSettingsActivity` показывает preview, `ChatActivity` передаёт значение в `MessageAdapter`. |
 
