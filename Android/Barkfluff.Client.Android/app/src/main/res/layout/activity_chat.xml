@@ -191,7 +191,7 @@
         android:paddingTop="72dp"
         android:paddingBottom="8dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/inputRowBottom"
+        app:layout_constraintBottom_toTopOf="@id/inputRowBarrier"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_message_sent" />
