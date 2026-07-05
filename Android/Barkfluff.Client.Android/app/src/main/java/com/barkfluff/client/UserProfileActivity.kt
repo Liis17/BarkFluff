@@ -25,13 +25,13 @@ import com.barkfluff.client.repository.ChatRepository
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.OnlineTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 /**
  * Экран профиля пользователя / группового чата.
@@ -525,7 +525,8 @@ class UserProfileActivity : AppCompatActivity() {
                             binding.statusDot.visibility = View.VISIBLE
                             binding.onlineIndicator.visibility = View.VISIBLE
                         } else {
-                            binding.profileOnlineStatusTextView.text = formatLastSeen(userStatus.lastSeen.seconds * 1000)
+                            binding.profileOnlineStatusTextView.text =
+                                OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeen.seconds * 1000)
                             binding.profileOnlineStatusTextView.setTextColor(
                                 ContextCompat.getColor(this@UserProfileActivity, R.color.profile_text_dim)
                             )
@@ -583,27 +584,6 @@ class UserProfileActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading poster image", e)
-            }
-        }
-    }
-
-    private fun formatLastSeen(lastSeenMs: Long): String {
-        if (lastSeenMs <= 0) return "был(а) давно"
-        val now = System.currentTimeMillis()
-        val diff = now - lastSeenMs
-        return when {
-            diff < TimeUnit.MINUTES.toMillis(1) -> "был(а) только что"
-            diff < TimeUnit.HOURS.toMillis(1) -> {
-                val mins = TimeUnit.MILLISECONDS.toMinutes(diff)
-                "был(а) $mins мин. назад"
-            }
-            diff < TimeUnit.DAYS.toMillis(1) -> {
-                val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-                "был(а) сегодня в ${sdf.format(Date(lastSeenMs))}"
-            }
-            else -> {
-                val sdf = SimpleDateFormat("d MMM", Locale("ru"))
-                "был(а) ${sdf.format(Date(lastSeenMs))}"
             }
         }
     }

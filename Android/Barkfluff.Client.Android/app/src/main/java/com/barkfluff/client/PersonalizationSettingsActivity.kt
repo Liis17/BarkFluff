@@ -111,6 +111,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         setupDimSlider()
         setupFolderSettings()
         setupMainTabSettings()
+        setupOnlineTimeSettings()
         setupBackgroundsGrid()
         loadPersonalizationFromServer()
     }
@@ -167,6 +168,13 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
             binding.switchMainTabCalls.isChecked,
             binding.switchMainTabProfile.isChecked
         ).count { it }
+    }
+
+    private fun setupOnlineTimeSettings() {
+        binding.switchRelativeOnlineTime.isChecked = globalParam.relativeOnlineTime
+        binding.switchRelativeOnlineTime.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.relativeOnlineTime = isChecked
+        }
     }
 
     private fun setupToolbar() {
