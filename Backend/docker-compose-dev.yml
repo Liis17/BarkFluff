@@ -186,6 +186,20 @@ services:
     depends_on:
       - configuration
 
+  bots:
+    image: docker.barkfluff.com:5000/barkfluff-bots-dev:latest
+    container_name: bots
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - users
+      - messages
+      - files
+
   # === Панель администрирования ===
 
   admin-panel:
@@ -210,6 +224,8 @@ services:
       FilesService__Token: "${FILES_SERVICE_TOKEN}"
       IdentityService__Host: "${IDENTITY_SERVICE_HOST}"
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
+      BotsService__Host: "${BOTS_SERVICE_HOST:-http://bots:7027}"
+      BotsService__Token: "${BOTS_SERVICE_TOKEN:-}"
       RemoteServers__Navigator__Host: "${NAVIGATOR_SSH_HOST:-}"
       RemoteServers__Navigator__Port: "${NAVIGATOR_SSH_PORT:-22}"
       RemoteServers__Navigator__Username: "${NAVIGATOR_SSH_USER:-root}"
