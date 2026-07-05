@@ -11,6 +11,7 @@ using BarkFluff.Users.Features.Badges.UpdateBadge;
 using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
 using BarkFluff.Users.Features.ChatMutes.GetMutedChatIds;
 using BarkFluff.Users.Features.CheckExistEmail;
+using BarkFluff.Users.Features.CreateBotUser;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.Devices.DeleteUserDevice;
@@ -444,5 +445,16 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     {
         _metrics.Increment("profile_poster_lookups");
         return _mediator.Send(new GetProfilePosterServerQuery { UserId = request.UserId });
+    }
+
+    public override Task<CreateBotUserResponse> CreateBotUser(CreateBotUserRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("bot_users_create_requests");
+        return _mediator.Send(new CreateBotUserCommand
+        {
+            Username = request.Username?.Trim(),
+            FirstName = request.FirstName?.Trim(),
+            BypassUsernameRules = request.BypassUsernameRules
+        });
     }
 }

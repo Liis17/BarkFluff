@@ -234,6 +234,39 @@ public class UsersStorage
         return user;
     }
 
+    /// <summary>
+    /// Создаёт бот-пользователя: сразу подтверждён (IsDraft=false), IsBot=true, без UserContact (у ботов нет email).
+    /// </summary>
+    public async Task<User> CreateBotUser(string username, string firstName)
+    {
+        var user = new User
+        {
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Username = username,
+            FirstName = firstName,
+            LastName = string.Empty,
+            RegistrationDate = DateTime.UtcNow,
+            Contact = null,
+            IsDraft = false,
+            IsBot = true,
+        };
+
+        await _usersContext.Users.AddAsync(user);
+
+        try
+        {
+            await _usersContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" } pg)
+        {
+            if (pg.ConstraintName?.Contains("username", StringComparison.OrdinalIgnoreCase) == true)
+                throw new UsernameExistException();
+            throw;
+        }
+
+        return user;
+    }
+
     public async Task ChangeDraftStatus(long userId, bool isDraft)
     {
         var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
