@@ -30,4 +30,6 @@ public enum ServiceId
 
     Calls = 13,
 
+    Bots = 14,
+
 }
