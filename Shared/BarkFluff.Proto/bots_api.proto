@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Bots";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.bots;
+
+// ── Server API (TokenType.Service, для AdminPanel) ─────────────────────────
+
+service BotsServerApi {
+
+  // Создать системного бота (OwnerUserId = NULL). Токен показывается один раз.
+  rpc CreateSystemBot(CreateSystemBotRequest) returns(CreateSystemBotResponse);
+
+  // Список всех ботов
+  rpc ListBots(ListBotsRequest) returns(ListBotsResponse);
+
+  // Удалить бота: строка Bots + токен + BotUpdates каскадом; в Users username освобождается,
+  // аккаунт помечается удалённым. Чаты бот↔пользователь сохраняются.
+  rpc DeleteBot(DeleteBotRequest) returns(DeleteBotResponse);
+
+  // Перегенерировать токен бота. Новый токен показывается один раз.
+  rpc RegenerateToken(RegenerateTokenRequest) returns(RegenerateTokenResponse);
+}
+
+message CreateSystemBotRequest {
+  string username = 1; // юзернейм бота (обязан заканчиваться на "bot")
+  string name = 2;     // отображаемое имя бота
+}
+
+message CreateSystemBotResponse {
+  int64 bot_id = 1;  // идентификатор бота (= Users.Id)
+  string token = 2;  // токен бота (plaintext, показывается один раз)
+}
+
+message ListBotsRequest { }
+
+message BotInfo {
+  int64 id = 1;                              // идентификатор бота (= Users.Id)
+  string username = 2;                       // юзернейм
+  string name = 3;                           // отображаемое имя
+  int64 owner_user_id = 4;                   // владелец (0 = системный)
+  int32 system_role = 5;                     // 0=None, 1=BotFather, 2=LoginNotifier
+  google.protobuf.Timestamp created_at = 6;  // время создания
+}
+
+message ListBotsResponse {
+  repeated BotInfo bots = 1; // все боты
+}
+
+message DeleteBotRequest {
+  int64 bot_id = 1; // идентификатор бота
+}
+
+message DeleteBotResponse { }
+
+message RegenerateTokenRequest {
+  int64 bot_id = 1; // идентификатор бота
+}
+
+message RegenerateTokenResponse {
+  string token = 1; // новый токен бота (plaintext, показывается один раз)
+}
+
+// ── External API (аутентификация по x-bot-token, для внешних программ) ─────
+
+service BotsExternalApi {
+
+  // Информация о боте, которому принадлежит токен
+  rpc GetMe(GetMeRequest) returns(GetMeResponse);
+
+  // Отправить сообщение. Разрешено только в чаты, где бот уже состоит.
+  rpc SendMessage(SendMessageRequest) returns(SendMessageResponse);
+
+  // Публичная информация о пользователе
+  rpc GetUserInfo(GetUserInfoRequest) returns(GetUserInfoResponse);
+
+  // Подписка на входящие: backlog начиная с offset + live-стрим.
+  // Одновременно допускается один активный стрим/поток getUpdates на бота.
+  rpc SubscribeUpdates(SubscribeUpdatesRequest) returns(stream BotUpdate);
+}
+
+message GetMeRequest { }
+
+message GetMeResponse {
+  int64 id = 1;          // идентификатор бота
+  bool is_bot = 2;       // всегда true
+  string first_name = 3; // отображаемое имя
+  string username = 4;   // юзернейм
+}
+
+message SendMessageRequest {
+  oneof target {
+    string chat_id = 1; // идентификатор чата (Guid-строка)
+    int64 user_id = 2;  // идентификатор пользователя (чат должен уже существовать)
+  }
+  string text = 3;              // текст сообщения (≤4096)
+  repeated string file_ids = 4; // идентификаторы прикреплённых файлов
+}
+
+message SendMessageResponse {
+  int64 message_id = 1;                          // идентификатор отправленного сообщения
+  string chat_id = 2;                            // чат, куда отправлено
+  google.protobuf.Timestamp sent_at = 3;         // время отправки
+}
+
+message GetUserInfoRequest {
+  oneof user {
+    int64 user_id = 1;   // по идентификатору
+    string username = 2; // по юзернейму
+  }
+}
+
+message GetUserInfoResponse {
+  int64 id = 1;            // идентификатор пользователя
+  string username = 2;     // юзернейм
+  string first_name = 3;   // имя
+  string last_name = 4;    // фамилия
+  string bio = 5;          // био
+  string avatar_url = 6;   // ссылка на аватарку
+  bool is_bot = 7;         // является ли ботом
+}
+
+message SubscribeUpdatesRequest {
+  int64 offset = 1; // подтвердить и удалить update'ы с id < offset, отдавать с id >= offset (0 = с первого неподтверждённого)
+}
+
+message BotUpdate {
+  int64 update_id = 1;             // монотонно растущий идентификатор
+  BotIncomingMessage message = 2;  // входящее сообщение
+}
+
+message BotIncomingMessage {
+  int64 message_id = 1;                       // идентификатор сообщения
+  string chat_id = 2;                         // идентификатор чата
+  int64 from_user_id = 3;                     // отправитель
+  string from_username = 4;                   // юзернейм отправителя
+  string from_first_name = 5;                 // имя отправителя
+  google.protobuf.Timestamp date = 6;         // время отправки
+  string text = 7;                            // текст сообщения
+  repeated BotAttachment attachments = 8;     // вложения
+}
+
+message BotAttachment {
+  string file_id = 1;     // идентификатор файла
+  string type = 2;        // тип вложения: image, video, gif, document, audio, voice, sticker
+  string preview_url = 3; // ссылка на превью (если есть)
+  int64 file_size = 4;    // размер файла в байтах
+}
