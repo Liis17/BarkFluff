@@ -1,5 +1,6 @@
 using BarkFluff.Bots.Consumers;
 using BarkFluff.Bots.Host;
+using BarkFluff.Bots.Host.Http;
 using BarkFluff.Bots.Infrastructure;
 using BarkFluff.Bots.Persistence;
 using BarkFluff.Bots.Persistence.Services;
@@ -7,6 +8,7 @@ using BarkFluff.Bots.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
@@ -76,6 +78,12 @@ public class Program
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FilesService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<NewMessageConsumer>();
@@ -113,6 +121,9 @@ public class Program
 
         app.MapGrpcService<BotsServerApiService>();
         app.MapGrpcService<BotsExternalApiService>();
+
+        // Bot REST API (HTTP/1.1 на RunSettings:Http1Port)
+        app.MapBotApiEndpoints();
 
         var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
         startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
