@@ -1004,10 +1004,20 @@
         .attach-image-grid.grid-5 img:nth-child(4),
         .attach-image-grid.grid-5 img:nth-child(5) { grid-column: span 2; }
         .attach-image-grid.grid-6 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 130px; }
-        .attach-image-grid.grid-7,
-        .attach-image-grid.grid-8,
-        .attach-image-grid.grid-9,
-        .attach-image-grid.grid-10 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 110px; }
+        /* 7 — 2 ряда по 3, последний ряд — 1 картинка на всю ширину */
+        .attach-image-grid.grid-7 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
+        .attach-image-grid.grid-7 img:nth-child(-n+6) { grid-column: span 2; }
+        .attach-image-grid.grid-7 img:nth-child(7) { grid-column: span 6; }
+        /* 8 — 2 ряда по 3, последний ряд — 2 картинки пополам */
+        .attach-image-grid.grid-8 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
+        .attach-image-grid.grid-8 img:nth-child(-n+6) { grid-column: span 2; }
+        .attach-image-grid.grid-8 img:nth-child(n+7) { grid-column: span 3; }
+        /* 9 — ровная сетка 3x3 */
+        .attach-image-grid.grid-9 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 110px; }
+        /* 10 — 3 ряда по 3, последний ряд — 1 картинка на всю ширину */
+        .attach-image-grid.grid-10 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
+        .attach-image-grid.grid-10 img:nth-child(-n+9) { grid-column: span 2; }
+        .attach-image-grid.grid-10 img:nth-child(10) { grid-column: span 6; }
         .attach-image-grid img {
             width: 100%;
             height: 100%;
