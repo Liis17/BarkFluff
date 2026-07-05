@@ -172,6 +172,7 @@
                 var wrap = document.createElement('div');
                 wrap.className = 'more-overlay';
                 var im = document.createElement('img');
+                if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
                 im.src = prev || url; im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
                 wrap.appendChild(im);
@@ -184,6 +185,7 @@
                 grid.appendChild(wrap);
             } else {
                 var im = document.createElement('img');
+                if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
                 im.src = prev || url; im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
                 BF.files.bindResilientMedia(im, a.fileId, true);

@@ -147,7 +147,7 @@ class UserProfileActivity : AppCompatActivity() {
             return
         }
 
-        binding.actionMessageButton.setOnClickListener { finish() }
+        binding.actionMessageButton.setOnClickListener { openChat() }
         binding.actionCallButton.setOnClickListener { startCall() }
 
         isChatMuted = chatId in globalParam.mutedChatIds
@@ -178,6 +178,18 @@ class UserProfileActivity : AppCompatActivity() {
                 Toast.makeText(this@UserProfileActivity, getString(R.string.chat_mute_error), Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun openChat() {
+        startActivity(Intent(this, ChatActivity::class.java).apply {
+            putExtra("chat_id", chatId)
+            putExtra("chat_title", chatTitle)
+            putExtra("chat_avatar_file_id", chatAvatarFileId)
+            putExtra("is_group_chat", isGroupChat)
+            putExtra("other_user_id", otherUserId)
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+        })
+        finish()
     }
 
     private fun startCall() {
