@@ -61,11 +61,13 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
     /** Локальный список fileId фонов (синхронизируется с сервером) */
     private val backgroundFileIds = mutableListOf<String>()
+    private var backgroundsExpanded = false
 
     private var currentPosterFileId: String = ""
 
     companion object {
         private const val TAG = "PersonalizationActivity"
+        private const val MAX_COLLAPSED_BACKGROUNDS = 9
     }
 
     private val pickImageLauncher = registerForActivityResult(
@@ -444,6 +446,10 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 pickImageLauncher.launch("image/*")
             }
         }
+        binding.buttonToggleBackgrounds.setOnClickListener {
+            backgroundsExpanded = !backgroundsExpanded
+            refreshBackgroundList()
+        }
 
         // Показываем превью сохранённого фона сразу при открытии
         updatePreviewBackground(globalParam.chatBackgroundFileId)
@@ -468,8 +474,20 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     }
 
     private fun refreshBackgroundList() {
-        val items = listOf(ChatBackgroundItem("")) + backgroundFileIds.map { ChatBackgroundItem(it) }
-        backgroundAdapter.submitList(items)
+        val allItems = listOf(ChatBackgroundItem("")) + backgroundFileIds.map { ChatBackgroundItem(it) }
+        val hasHiddenItems = allItems.size > MAX_COLLAPSED_BACKGROUNDS
+        val visibleItems = if (hasHiddenItems && !backgroundsExpanded) {
+            allItems.take(MAX_COLLAPSED_BACKGROUNDS)
+        } else {
+            allItems
+        }
+
+        backgroundAdapter.submitList(visibleItems)
+        binding.buttonToggleBackgrounds.visibility = if (hasHiddenItems) View.VISIBLE else View.GONE
+        binding.buttonToggleBackgrounds.text = getString(
+            if (backgroundsExpanded) R.string.personalization_collapse_backgrounds
+            else R.string.personalization_expand_backgrounds
+        )
     }
 
     // ─── Удаление фона ────────────────────────────────────────────────────────
@@ -512,6 +530,9 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 if (uploadResult.isSuccess) {
                     val fileId = uploadResult.getOrNull()!!
                     backgroundFileIds.add(fileId)
+                    if (backgroundFileIds.size + 1 > MAX_COLLAPSED_BACKGROUNDS) {
+                        backgroundsExpanded = true
+                    }
                     refreshBackgroundList()
                     syncPersonalizationToServer()
                 } else {

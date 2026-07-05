@@ -717,6 +717,16 @@
                         android:layout_height="wrap_content"
                         android:nestedScrollingEnabled="false" />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonToggleBackgrounds"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/personalization_expand_backgrounds"
+                        android:textAllCaps="false"
+                        android:visibility="gone" />
+
                     <android.widget.Space
                         android:layout_width="match_parent"
                         android:layout_height="10dp" />
