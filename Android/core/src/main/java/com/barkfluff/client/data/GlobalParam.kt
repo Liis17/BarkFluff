@@ -243,6 +243,33 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, value).apply()
 
+    /** Показывать вкладку «Чаты» в главной нижней панели. */
+    var mainTabChatsVisible: Boolean
+        get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_CHATS_VISIBLE, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_CHATS_VISIBLE, value).apply()
+
+    /** Показывать вкладку «Звонки» в главной нижней панели. По умолчанию скрыта. */
+    var mainTabCallsVisible: Boolean
+        get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_CALLS_VISIBLE, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_CALLS_VISIBLE, value).apply()
+
+    /** Показывать вкладку «Профиль» в главной нижней панели. */
+    var mainTabProfileVisible: Boolean
+        get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_PROFILE_VISIBLE, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_PROFILE_VISIBLE, value).apply()
+
+    /** Отображать last seen как относительное время, иначе как абсолютное время. */
+    var relativeOnlineTime: Boolean
+        get() = sharedPreferences.getBoolean(KEY_RELATIVE_ONLINE_TIME, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_RELATIVE_ONLINE_TIME, value).apply()
+
+    /** Размер стикера в чате в dp. */
+    var chatStickerSizeDp: Int
+        get() = sharedPreferences.getInt(KEY_CHAT_STICKER_SIZE_DP, DEFAULT_STICKER_SIZE_DP)
+        set(value) = sharedPreferences.edit()
+            .putInt(KEY_CHAT_STICKER_SIZE_DP, value.coerceIn(MIN_STICKER_SIZE_DP, MAX_STICKER_SIZE_DP))
+            .apply()
+
     /** Язык приложения: "system" (по умолчанию) — использовать локаль устройства, "ru" / "en" / "de" / "es" / "zh-CN" — переопределение. */
     var appLanguage: String
         get() = sharedPreferences.getString(KEY_APP_LANGUAGE, LANGUAGE_SYSTEM) ?: LANGUAGE_SYSTEM
@@ -375,6 +402,15 @@ class GlobalParam(private val context: Context) {
         private const val KEY_COMPACT_FOLDERS = "folders_compact"
         private const val KEY_FOLDER_TABS_NO_OUTLINE = "folders_no_outline"
         private const val KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL = "folders_exclude_from_all"
+        private const val KEY_MAIN_TAB_CHATS_VISIBLE = "main_tab_chats_visible"
+        private const val KEY_MAIN_TAB_CALLS_VISIBLE = "main_tab_calls_visible"
+        private const val KEY_MAIN_TAB_PROFILE_VISIBLE = "main_tab_profile_visible"
+        private const val KEY_RELATIVE_ONLINE_TIME = "relative_online_time"
+        private const val KEY_CHAT_STICKER_SIZE_DP = "chat_sticker_size_dp"
+
+        const val MIN_STICKER_SIZE_DP = 96
+        const val DEFAULT_STICKER_SIZE_DP = 160
+        const val MAX_STICKER_SIZE_DP = 240
 
         // Тестирование
         private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
