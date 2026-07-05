@@ -121,6 +121,14 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `GetDevicesWithFirebaseTokens(userIds[])` | Получить FCM-токены устройств | Для CloudMessaging/push-уведомлений |
 | `GetDevicesWithFirebaseTokensByDeviceIds(deviceIds[])` | Получить FCM-токены по списку DeviceId | Для админ-рассылки (точечной) |
 | `GetAllDevicesWithFirebaseTokens()` | Получить FCM-токены **всех** устройств с включёнными уведомлениями | Для админ-рассылки (broadcast) |
+| `CreateBotUser(username, first_name, bypass_username_rules)` | Создать бот-юзера для [[Backend/Bots]] | Сразу `IsDraft=false, IsBot=true`, без `UserContact` (nullable), Privacy по умолчанию. Идемпотентен: username занят ботом → его id + `already_existed` |
+| `DeleteBotUser(user_id)` | Пометить бот-аккаунт удалённым | Username → `deleted_{id}` (освобождается), `IsDraft=true` (вне поиска). Чаты сохраняются |
+
+### Боты (интеграция с [[Backend/Bots]])
+
+- `User.IsBot` (миграция `AddUserIsBot`), поле `is_bot` в proto `User` (12) и `GetUserByUsernameResponse` (8).
+- `UserContact` стал **nullable** — у ботов нет email (null-guard в GetUserContacts/OverrideDraftUser).
+- Суффикс **`bot`** в username зарезервирован: `UsernameFormatValidator.HasBotSuffix()` + отказ (`UsernameBotSuffixReservedException`) в AddDraftUser/OverrideDraftUser/ChangeUsername. Системные боты (напр. `botfather`) создаются с `bypass_username_rules`.
 
 ## Приватность
 
