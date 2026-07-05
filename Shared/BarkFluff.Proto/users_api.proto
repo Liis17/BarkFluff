@@ -650,6 +650,7 @@ message GetUserByUsernameResponse {
   string profile_picture = 6; // ссылка на аватарку
   string profile_poster_url = 7; // ссылка на постер/фон профиля (пусто если не задан)
   bool is_bot = 8; // является ли пользователь ботом
+  int64 id = 9; // идентификатор пользователя
 }
 
 // Запросы и ответы для установки Firebase токена
