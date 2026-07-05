@@ -403,6 +403,11 @@
     <string name="personalization_folder_tabs_no_outline_subtitle">Оставить только иконку и подсветку активной папки</string>
     <string name="personalization_exclude_from_all">Убирать чаты из «Все чаты»</string>
     <string name="personalization_exclude_from_all_subtitle">Если чат входит в папку, он не будет показан во вкладке «Все чаты»</string>
+    <string name="personalization_main_tabs">Панель вкладок</string>
+    <string name="personalization_main_tab_chats">Чаты</string>
+    <string name="personalization_main_tab_calls">Звонки</string>
+    <string name="personalization_main_tab_profile">Профиль</string>
+    <string name="personalization_main_tabs_keep_one">Оставьте хотя бы одну вкладку</string>
     <string name="personalization_chat_background">Фон чатов</string>
     <string name="personalization_expand_backgrounds">Развернуть</string>
     <string name="personalization_collapse_backgrounds">Свернуть</string>
