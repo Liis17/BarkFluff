@@ -41,6 +41,7 @@
             --scrollbar: rgba(0,0,0,0.10);
             --separator-bg: rgba(255,255,255,0.82);
             --profile-bg: #faf8f5;
+            --profile-info-bg: #eee4dd;
             --logo-gradient: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
             /* legacy aliases */
             --bg-dark: var(--bg);
@@ -80,6 +81,7 @@
             --scrollbar: rgba(255,255,255,0.07);
             --separator-bg: rgba(28,25,20,0.92);
             --profile-bg: #1c1916;
+            --profile-info-bg: rgba(255, 255, 255, 0.045);
             --logo-gradient: linear-gradient(135deg, #f0e8e0 0%, #c0a080 100%);
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
@@ -117,6 +119,7 @@
             --scrollbar: rgba(255,255,255,0.06);
             --separator-bg: rgba(18,21,38,0.92);
             --profile-bg: #12152a;
+            --profile-info-bg: rgba(255, 255, 255, 0.05);
             --logo-gradient: linear-gradient(135deg, #e8e4ff 0%, #a090ff 100%);
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
@@ -1660,6 +1663,149 @@
 
         .profile-action-btn.icon-only { flex: 0 0 44px; width: 44px; }
 
+        .profile-action-btn svg,
+        .profile-info-copy svg,
+        .profile-info-icon svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        .user-profile-panel .profile-header {
+            padding: 30px 24px 8px;
+            gap: 6px;
+            border-bottom: none;
+        }
+
+        .user-profile-panel .profile-name {
+            font-size: 22px;
+            line-height: 1.2;
+        }
+
+        .user-profile-panel .profile-username {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .user-profile-panel .profile-status-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .user-profile-panel .profile-status-line.online::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .user-profile-panel .profile-actions {
+            gap: 8px;
+            padding: 12px 30px 16px;
+        }
+
+        .user-profile-panel .profile-action-btn {
+            height: 48px;
+            border-radius: 15px;
+            background: var(--profile-info-bg);
+            color: var(--primary);
+            transition: background 0.15s, color 0.15s, transform 0.15s;
+        }
+
+        .user-profile-panel .profile-action-btn:hover {
+            background: var(--primary-alpha);
+            transform: translateY(-1px);
+        }
+
+        .user-profile-panel .profile-action-btn.primary {
+            flex: 1 1 auto;
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .user-profile-panel .profile-action-btn.primary:hover {
+            background: var(--primary-hover, var(--primary));
+        }
+
+        .user-profile-panel .profile-action-btn.icon-only {
+            flex: 0 0 48px;
+            width: 48px;
+            padding: 0;
+        }
+
+        .profile-details-card {
+            margin: 0 30px 14px;
+            padding: 0 18px;
+            border-bottom: none;
+            border-radius: 18px;
+            background: var(--profile-info-bg);
+        }
+
+        .profile-details-card .profile-info-item {
+            display: grid;
+            grid-template-columns: 24px minmax(0, 1fr) 32px;
+            gap: 12px;
+            align-items: center;
+            min-height: 58px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .profile-details-card .profile-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-details-card .profile-info-icon {
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-details-card .profile-info-text {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-details-card .profile-info-value {
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .profile-details-card .profile-info-label {
+            display: block;
+            margin-top: 2px;
+            font-size: 12px;
+            line-height: 1.15;
+        }
+
+        .profile-details-card .profile-info-copy {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-details-card .profile-info-copy:hover {
+            background: var(--primary-alpha);
+        }
+
+        .profile-details-card .profile-info-item.no-copy .profile-info-text {
+            grid-column: 2 / 4;
+        }
         .profile-badges {
             display: flex;
             gap: 8px;
@@ -1995,9 +2141,19 @@
 
         .sd-title {
             flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             font-size: 17px;
             font-weight: 700;
             color: var(--text-main);
+        }
+
+        .sd-title svg {
+            width: 18px;
+            height: 18px;
+            color: var(--primary);
+            flex-shrink: 0;
         }
 
         .sd-close {
@@ -2075,7 +2231,21 @@
         }
 
         .sd-item:hover { background: rgba(0, 0, 0, 0.04); }
-        .sd-item-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+        .sd-item-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .sd-item-icon svg {
+            width: 19px;
+            height: 19px;
+            display: block;
+        }
         .sd-item-label { flex: 1; }
         .sd-item-arrow { color: var(--text-sub); font-size: 14px; }
 
@@ -4158,7 +4328,7 @@
         <div class="settings-dialog" id="settingsDialog">
             <div class="sd-header">
                 <button class="sd-back" id="sdBack">&#8592;</button>
-                <div class="sd-title" id="sdTitle">Настройки</div>
+                <div class="sd-title" id="sdTitle"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span>Настройки</span></div>
                 <button class="sd-close" id="sdClose">&times;</button>
             </div>
             <div class="sd-body" id="sdBody"></div>
@@ -4260,7 +4430,7 @@
     </div>
 
     <div class="profile-overlay" id="profileOverlay">
-        <div class="profile-panel">
+        <div class="profile-panel user-profile-panel">
             <button class="profile-close" id="profileClose">&times;</button>
             <div class="profile-poster" id="profilePoster"></div>
             <div class="profile-header">
@@ -4272,28 +4442,76 @@
                 <div class="profile-badges" id="profileBadges"></div>
             </div>
             <div class="profile-actions">
-                <button class="profile-action-btn primary" id="profileMsgBtn">Сообщение</button>
-                <button class="profile-action-btn icon-only" id="profileCallAudioBtn" title="Аудиозвонок">&#128222;</button>
-                <button class="profile-action-btn icon-only" id="profileCallVideoBtn" title="Видеозвонок">&#127909;</button>
+                <button class="profile-action-btn primary" id="profileMsgBtn" aria-label="Написать сообщение">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Сообщение</span>
+                </button>
+                <button class="profile-action-btn icon-only" id="profileCallAudioBtn" title="Аудиозвонок" aria-label="Аудиозвонок">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.78.6 2.62a2 2 0 0 1-.45 2.11L9 10.71a16 16 0 0 0 4.29 4.29l1.26-1.26a2 2 0 0 1 2.11-.45c.84.28 1.72.48 2.62.6A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                </button>
+                <button class="profile-action-btn icon-only" id="profileCallVideoBtn" title="Видеозвонок" aria-label="Видеозвонок">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+                        <path d="m22 8-6 4 6 4V8z"></path>
+                    </svg>
+                </button>
             </div>
-            <div class="profile-info-section">
+            <div class="profile-info-section profile-details-card">
                 <div class="profile-info-item">
-                    <span class="profile-info-label">ID пользователя</span>
-                    <span class="profile-info-value">
-                        <span id="profileUserId"></span>
-                        <button class="profile-info-copy" data-copy="profileUserId" title="Копировать">&#128203;</button>
+                    <span class="profile-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                            <path d="M7 9h4"></path>
+                            <path d="M7 13h2"></path>
+                            <circle cx="16" cy="11" r="2"></circle>
+                            <path d="M14 15.5c.7-.7 3.3-.7 4 0"></path>
+                        </svg>
                     </span>
+                    <span class="profile-info-text">
+                        <span class="profile-info-value" id="profileUserId"></span>
+                        <span class="profile-info-label">ID пользователя</span>
+                    </span>
+                    <button class="profile-info-copy" data-copy="profileUserId" title="Копировать" aria-label="Копировать ID пользователя">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div class="profile-info-item">
-                    <span class="profile-info-label">ID чата</span>
-                    <span class="profile-info-value">
-                        <span id="profileChatId"></span>
-                        <button class="profile-info-copy" data-copy="profileChatId" title="Копировать">&#128203;</button>
+                    <span class="profile-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
                     </span>
+                    <span class="profile-info-text">
+                        <span class="profile-info-value" id="profileChatId"></span>
+                        <span class="profile-info-label">ID чата</span>
+                    </span>
+                    <button class="profile-info-copy" data-copy="profileChatId" title="Копировать" aria-label="Копировать ID чата">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
                 </div>
-                <div class="profile-info-item">
-                    <span class="profile-info-label">Регистрация</span>
-                    <span class="profile-info-value" id="profileRegDate"></span>
+                <div class="profile-info-item no-copy">
+                    <span class="profile-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                            <path d="M16 2v4"></path>
+                            <path d="M8 2v4"></path>
+                            <path d="M3 10h18"></path>
+                        </svg>
+                    </span>
+                    <span class="profile-info-text">
+                        <span class="profile-info-value" id="profileRegDate"></span>
+                        <span class="profile-info-label">Дата регистрации</span>
+                    </span>
                 </div>
             </div>
             <div class="profile-media-section">
