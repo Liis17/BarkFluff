@@ -221,7 +221,17 @@ service UsersServerApi {
 
   // Создать бот-пользователя (для сервиса Bots). Идемпотентно: если username уже занят ботом — вернуть его id.
   rpc CreateBotUser(CreateBotUserRequest) returns(CreateBotUserResponse);
+
+  // Удалить бот-аккаунт (для сервиса Bots): освободить username, исключить из поиска. Чаты сохраняются.
+  rpc DeleteBotUser(DeleteBotUserRequest) returns(DeleteBotUserResponse);
 }
+
+// Удаление бот-аккаунта (серверный, для сервиса Bots)
+message DeleteBotUserRequest {
+  int64 user_id = 1; // идентификатор бота
+}
+
+message DeleteBotUserResponse { }
 
 // Создание бот-пользователя (серверный, для сервиса Bots)
 message CreateBotUserRequest {
