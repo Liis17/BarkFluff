@@ -354,6 +354,7 @@ class ChatsFragment : Fragment() {
         foldersAdapter.submit(
             newItems = listOf(allChatsItem) + folderItems,
             compact = globalParam.compactFolders,
+            noOutline = globalParam.folderTabsNoOutline,
             selected = selectedFolderId
         )
     }
