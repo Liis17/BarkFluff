@@ -31,6 +31,7 @@
     <None Remove="Pages\notifications.html" />
     <None Remove="Pages\mail.html" />
     <None Remove="Pages\v2\badges.html" />
+    <None Remove="Pages\v2\bots.html" />
     <None Remove="Pages\v2\dashboard.html" />
     <None Remove="Pages\v2\index.html" />
     <None Remove="Pages\v2\Login.html" />
@@ -124,6 +125,9 @@
     <Content Include="Pages\v2\badges.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Pages\v2\bots.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Pages\v2\dashboard.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -195,6 +199,7 @@
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Client" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\identity_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\bots_api.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
