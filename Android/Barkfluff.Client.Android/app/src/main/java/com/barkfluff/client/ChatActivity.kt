@@ -579,6 +579,7 @@ class ChatActivity : AppCompatActivity() {
             },
             scope = scope,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
+            stickerSizeDp = globalParam.chatStickerSizeDp,
             onMessageActionRequested = { anchor, item, rawX, rawY ->
                 showMessageActionMenu(anchor, item, rawX, rawY)
             },
@@ -3140,6 +3141,8 @@ class ChatActivity : AppCompatActivity() {
         super.onResume()
         // Обновляем список, чтобы отразить изменения кэша (например, после удаления видео из кэша)
         if (::messageAdapter.isInitialized) {
+            messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
+            messageAdapter.stickerSizeDp = globalParam.chatStickerSizeDp
             messageAdapter.notifyDataSetChanged()
         }
     }
