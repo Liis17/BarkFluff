@@ -280,6 +280,8 @@ class ChatActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val bottomInset = maxOf(bars.bottom, ime.bottom)
 
             binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
             binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
@@ -289,13 +291,13 @@ class ChatActivity : AppCompatActivity() {
             // не долистывается ниже paddingBottom.
             binding.messagesRecyclerView.updatePadding(
                 top = recyclerBasePaddingTop + bars.top,
-                bottom = recyclerBasePaddingBottom + inputRowBandPx + bars.bottom
+                bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
             )
 
-            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bars.bottom }
-            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bars.bottom }
-            binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bars.bottom }
-            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bars.bottom }
+            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bottomInset }
+            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bottomInset }
+            binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
+            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
 
             insets
         }
