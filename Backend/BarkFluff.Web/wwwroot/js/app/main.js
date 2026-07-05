@@ -286,10 +286,41 @@
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
-                renderMessages().then(scrollToBottom);
+                var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
+                renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
             }
         }).catch(function () { loadingMessages.classList.remove('visible'); });
+    }
+
+    // Скроллит к первому непрочитанному (если есть) либо в самый низ чата,
+    // и повторяет попытку после того как догрузятся картинки сообщений —
+    // без этого reflow от догрузки картинок сбивает позицию скролла.
+    function settleScroll(unreadId) {
+        function anchor() {
+            var el = unreadId && messagesInner.querySelector('[data-msg-id="' + unreadId + '"]');
+            if (el) el.scrollIntoView({ block: 'start' });
+            else scrollToBottom();
+        }
+        anchor();
+        var pending = Array.prototype.filter.call(messagesInner.querySelectorAll('img'), function (im) { return !im.complete; });
+        if (pending.length === 0) return;
+        var settled = false;
+        var remaining = pending.length;
+        function settle() {
+            if (settled) return;
+            settled = true;
+            anchor();
+        }
+        pending.forEach(function (im) {
+            im.addEventListener('load', onOneDone);
+            im.addEventListener('error', onOneDone);
+        });
+        function onOneDone() {
+            remaining--;
+            if (remaining <= 0) settle();
+        }
+        setTimeout(settle, 1500);
     }
 
     // ========== RENDER MESSAGES ==========
