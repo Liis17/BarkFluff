@@ -783,30 +783,21 @@ class MessageAdapter(
             )
         }
 
-        // Для одиночного изображения применяем соотношение сторон из метаданных, чтобы
-        // облачко заняло правильный размер ещё до загрузки картинки и не скакало.
-        val isSingleImage = capped.size == 1
-
         var itemIndex = 0
         for ((rowIdx, itemsInRow) in layout.withIndex()) {
             val totalSpacing = spacingPx * (itemsInRow - 1)
             val cellWidth = (maxWidth - totalSpacing) / itemsInRow
 
-            // Высота ячейки: для одиночного изображения — по соотношению сторон (если известно),
-            // для мульти-сетки — всегда квадратная ячейка.
-            val cellHeight: Int = if (isSingleImage) {
-                val attachment = capped[0]
-                val imgW = attachment.imageWidth
-                val imgH = attachment.imageHeight
-                if (imgW > 0 && imgH > 0) {
-                    // Ограничиваем высоту: не меньше 1/3 и не больше 2x ширины
-                    (imgH.toLong() * cellWidth / imgW).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
-                } else {
-                    cellWidth
+            // Высота ряда — по усреднённому соотношению сторон картинок этого ряда,
+            // считается от ширины одной ячейки (cellWidth), а не всего ряда.
+            val rowRatios = capped.subList(itemIndex, (itemIndex + itemsInRow).coerceAtMost(capped.size))
+                .mapNotNull { attachment ->
+                    val imgW = attachment.imageWidth
+                    val imgH = attachment.imageHeight
+                    if (imgW > 0 && imgH > 0) imgW.toFloat() / imgH.toFloat() else null
                 }
-            } else {
-                cellWidth
-            }
+            val avgRatio = if (rowRatios.isNotEmpty()) rowRatios.average().toFloat() else 1f
+            val cellHeight = (cellWidth / avgRatio).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
 
             val row = android.widget.LinearLayout(context).apply {
                 orientation = android.widget.LinearLayout.HORIZONTAL
