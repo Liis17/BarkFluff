@@ -280,6 +280,11 @@ class MediaSendService : Service() {
                     val raw = SendPayloadCache.take(att.cacheKey) ?: return@withContext null
                     PreparedAttachment(raw, UploadFileType.MESSAGE_ATTACHMENT_STICKER, fileName = null, mimeType = null)
                 }
+                is AttachmentSpec.Voice -> {
+                    val bytes = att.file.readBytes()
+                    runCatching { att.file.delete() }
+                    PreparedAttachment(bytes, UploadFileType.MESSAGE_ATTACHMENT_VOICE, "voice.ogg", "audio/ogg")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "prepareAttachment error", e)

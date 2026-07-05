@@ -171,6 +171,12 @@
     <string name="cd_attach_file">Attach file</string>
     <string name="cd_stickers">Stickers</string>
     <string name="cd_send">Send</string>
+    <string name="cd_record_voice">Record voice message</string>
+    <string name="voice_record_permission_granted">Permission granted. Hold the mic to record</string>
+    <string name="voice_record_permission_denied">Microphone access denied</string>
+    <string name="voice_record_start_failed">Could not start recording</string>
+    <string name="voice_record_cancelled">Recording cancelled</string>
+    <string name="voice_record_too_short">Voice message is too short</string>
     <string name="cd_sticker_preview">Sticker preview</string>
     <string name="cd_close">Close</string>
     <string name="cd_more">More</string>

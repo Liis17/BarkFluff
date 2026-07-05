@@ -171,6 +171,12 @@
     <string name="cd_attach_file">Adjuntar archivo</string>
     <string name="cd_stickers">Stickers</string>
     <string name="cd_send">Enviar</string>
+    <string name="cd_record_voice">Grabar mensaje de voz</string>
+    <string name="voice_record_permission_granted">Permiso concedido. Mantén pulsado el micrófono para grabar</string>
+    <string name="voice_record_permission_denied">Acceso al micrófono denegado</string>
+    <string name="voice_record_start_failed">No se pudo iniciar la grabación</string>
+    <string name="voice_record_cancelled">Grabación cancelada</string>
+    <string name="voice_record_too_short">El mensaje de voz es demasiado corto</string>
     <string name="cd_sticker_preview">Vista previa del sticker</string>
     <string name="cd_close">Cerrar</string>
     <string name="cd_more">Más</string>

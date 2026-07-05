@@ -46,7 +46,8 @@ class AttachmentPreviewAdapter(
             Shared.MessageAttachmentType.GIF,
             Shared.MessageAttachmentType.VIDEO,
             Shared.MessageAttachmentType.STICKER -> VIEW_TYPE_MEDIA
-            Shared.MessageAttachmentType.AUDIO -> VIEW_TYPE_AUDIO
+            Shared.MessageAttachmentType.AUDIO,
+            Shared.MessageAttachmentType.VOICE -> VIEW_TYPE_AUDIO
             else -> VIEW_TYPE_FILE
         }
     }

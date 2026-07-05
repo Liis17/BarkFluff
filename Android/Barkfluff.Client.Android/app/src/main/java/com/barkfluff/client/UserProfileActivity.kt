@@ -321,7 +321,7 @@ class UserProfileActivity : AppCompatActivity() {
             }
             Tab.VOICE -> {
                 binding.attachmentsRecyclerView.layoutManager = LinearLayoutManager(this)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.AUDIO)
+                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.VOICE)
             }
         }
     }
@@ -382,7 +382,7 @@ class UserProfileActivity : AppCompatActivity() {
                     showEmpty(getString(R.string.media_no_attachments))
                 } else if (attachments.isEmpty()) {
                     showEmpty(
-                        if (type == barkfluff.shared.Shared.MessageAttachmentType.AUDIO)
+                        if (type == barkfluff.shared.Shared.MessageAttachmentType.VOICE)
                             getString(R.string.profile_no_voice)
                         else getString(R.string.media_no_attachments)
                     )

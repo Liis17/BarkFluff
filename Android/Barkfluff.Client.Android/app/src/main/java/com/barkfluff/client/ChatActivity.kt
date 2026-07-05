@@ -1,6 +1,7 @@
 package com.barkfluff.client
 
 import barkfluff.calls.CallsApiOuterClass
+import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.ClipData
@@ -8,9 +9,15 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.ColorStateList
+import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
@@ -52,6 +59,7 @@ import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.applySpringPress
+import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
@@ -121,6 +129,14 @@ class ChatActivity : AppCompatActivity() {
     private val pendingDocumentUris = mutableListOf<Uri>()
     private val pendingCropQueue = ArrayDeque<Uri>()
 
+    // Голосовые сообщения
+    private var sendButtonVoiceMode = false
+    private var voiceRecorder: MediaRecorder? = null
+    private var voiceRecordingFile: File? = null
+    private var voiceRecordingStartedAtMs = 0L
+    private var voiceDownRawX = 0f
+    private var voiceCancelPending = false
+
     // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
     // 0 = нет активного ответа.
     private var pendingReplyMessageId: Long = 0L
@@ -159,6 +175,17 @@ class ChatActivity : AppCompatActivity() {
         processNextCropFromQueue()
     }
 
+    private val recordAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val messageRes = if (granted) {
+            R.string.voice_record_permission_granted
+        } else {
+            R.string.voice_record_permission_denied
+        }
+        Toast.makeText(this, messageRes, Toast.LENGTH_SHORT).show()
+    }
+
     companion object {
         private const val TAG = "ChatActivity"
         private const val EXTRA_CHAT_ID = "chat_id"
@@ -167,6 +194,7 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
         private const val EXTRA_OTHER_USER_ID = "other_user_id"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
+        private const val MIN_VOICE_RECORDING_MS = 500L
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -790,6 +818,17 @@ class ChatActivity : AppCompatActivity() {
                     sendMessage()
             }
         }
+        binding.sendButton.setOnTouchListener { _, event ->
+            handleVoiceButtonTouch(event)
+        }
+
+        binding.messageEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                updateSendButtonMode()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
             when {
@@ -832,6 +871,8 @@ class ChatActivity : AppCompatActivity() {
             clearPendingEdit()
         }
 
+        updateSendButtonMode()
+
         // Обработка вставки изображений из буфера обмена
         ViewCompat.setOnReceiveContentListener(
             binding.messageEditText,
@@ -866,6 +907,201 @@ class ChatActivity : AppCompatActivity() {
             }
             split.second
         }
+    }
+
+    private fun hasPendingAttachments(): Boolean =
+        pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty()
+
+    private fun shouldShowVoiceButton(): Boolean {
+        val text = binding.messageEditText.text?.toString().orEmpty()
+        return text.isBlank() &&
+            !hasPendingAttachments() &&
+            pendingReplyMessageId == 0L &&
+            pendingEditMessageId == 0L
+    }
+
+    private fun updateSendButtonMode() {
+        if (voiceRecorder != null) return
+
+        sendButtonVoiceMode = shouldShowVoiceButton()
+        binding.sendButton.setImageResource(
+            if (sendButtonVoiceMode) R.drawable.ic_mic else R.drawable.ic_send_filled
+        )
+        binding.sendButton.contentDescription = getString(
+            if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
+        )
+        tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+    }
+
+    private fun tintSendButton(attr: Int) {
+        val color = MaterialColors.getColor(binding.sendButton, attr)
+        binding.sendButton.imageTintList = ColorStateList.valueOf(color)
+    }
+
+    private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
+        if (!sendButtonVoiceMode && voiceRecorder == null) return false
+
+        return when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (!shouldShowVoiceButton()) {
+                    updateSendButtonMode()
+                    false
+                } else {
+                    if (!hasRecordAudioPermission()) {
+                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        return true
+                    }
+
+                    voiceDownRawX = event.rawX
+                    voiceCancelPending = false
+                    if (startVoiceRecording()) {
+                        binding.sendButton.animate()
+                            .scaleX(0.95f)
+                            .scaleY(0.95f)
+                            .setDuration(80L)
+                            .start()
+                    }
+                    true
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (voiceRecorder == null) return true
+
+                val cancelDistancePx = resources.displayMetrics.widthPixels * 0.5f
+                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f)
+                binding.sendButton.translationX = dx.coerceAtLeast(-cancelDistancePx)
+
+                val cancelNow = -dx >= cancelDistancePx
+                if (cancelNow != voiceCancelPending) {
+                    voiceCancelPending = cancelNow
+                    tintSendButton(
+                        if (cancelNow) androidx.appcompat.R.attr.colorError
+                        else androidx.appcompat.R.attr.colorPrimary
+                    )
+                }
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                finishVoiceRecording(shouldSend = !voiceCancelPending)
+                true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                finishVoiceRecording(shouldSend = false)
+                true
+            }
+            else -> true
+        }
+    }
+
+    private fun hasRecordAudioPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun startVoiceRecording(): Boolean {
+        if (voiceRecorder != null) return true
+
+        val file = File.createTempFile("voice_${System.currentTimeMillis()}_", ".ogg", cacheDir)
+        return try {
+            val recorder = MediaRecorder(this).apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.OGG)
+                setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
+                setAudioChannels(1)
+                setAudioSamplingRate(48_000)
+                setAudioEncodingBitRate(24_000)
+                setOutputFile(file.absolutePath)
+                prepare()
+                start()
+            }
+
+            voiceRecorder = recorder
+            voiceRecordingFile = file
+            voiceRecordingStartedAtMs = System.currentTimeMillis()
+            tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start voice recording", e)
+            runCatching { voiceRecorder?.release() }
+            voiceRecorder = null
+            voiceRecordingFile = null
+            runCatching { file.delete() }
+            resetVoiceButtonDrag()
+            Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
+            false
+        }
+    }
+
+    private fun finishVoiceRecording(shouldSend: Boolean) {
+        val recorder = voiceRecorder ?: return
+        val file = voiceRecordingFile
+        val elapsedMs = System.currentTimeMillis() - voiceRecordingStartedAtMs
+        val wasCancelledByDrag = !shouldSend && voiceCancelPending
+        var send = shouldSend
+
+        try {
+            recorder.stop()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to stop voice recording cleanly", e)
+            send = false
+        } finally {
+            runCatching { recorder.release() }
+            voiceRecorder = null
+            voiceRecordingFile = null
+            voiceRecordingStartedAtMs = 0L
+            resetVoiceButtonDrag()
+        }
+
+        if (!send) {
+            runCatching { file?.delete() }
+            if (wasCancelledByDrag) {
+                Toast.makeText(this, R.string.voice_record_cancelled, Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+
+        if (file == null || elapsedMs < MIN_VOICE_RECORDING_MS || !file.exists() || file.length() == 0L) {
+            runCatching { file?.delete() }
+            Toast.makeText(this, R.string.voice_record_too_short, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        sendVoiceMessage(file)
+    }
+
+    private fun resetVoiceButtonDrag() {
+        binding.sendButton.animate()
+            .translationX(0f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(120L)
+            .start()
+        voiceCancelPending = false
+        updateSendButtonMode()
+    }
+
+    private fun sendVoiceMessage(file: File) {
+        val localId = java.util.UUID.randomUUID().toString()
+        addOptimisticMessage(
+            MessageItem(
+                messageId = -System.nanoTime(),
+                senderId = currentUserId,
+                text = "",
+                timestamp = System.currentTimeMillis(),
+                attachments = emptyList(),
+                readStatus = ReadStatus.SENDING,
+                type = MessageType.MESSAGE,
+                localId = localId,
+                uploadProgress = 0
+            )
+        )
+
+        val job = com.barkfluff.client.send.SendJob(
+            chatId = chatId,
+            chatTitle = chatTitle,
+            text = "",
+            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file)),
+            localIds = listOf(localId)
+        )
+        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
     }
 
     private fun pickImages() {
@@ -1314,6 +1550,7 @@ class ChatActivity : AppCompatActivity() {
                     getString(R.string.attached_photos_count, photosCount)
             }
         }
+        updateSendButtonMode()
     }
 
     private fun sendMessageWithPendingAttachments() {
@@ -1574,11 +1811,13 @@ class ChatActivity : AppCompatActivity() {
         binding.replyPreviewContentText.text = preview
         binding.replyPreviewBar.visibility = View.VISIBLE
         binding.messageEditText.requestFocus()
+        updateSendButtonMode()
     }
 
     private fun clearPendingReply() {
         pendingReplyMessageId = 0L
         binding.replyPreviewBar.visibility = View.GONE
+        updateSendButtonMode()
     }
 
     // ─── Edit / Delete UX ─────────────────────────────────────────────────────
@@ -1605,6 +1844,7 @@ class ChatActivity : AppCompatActivity() {
         binding.messageEditText.setSelection(binding.messageEditText.text?.length ?: 0)
         binding.messageEditText.requestFocus()
         WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
+        updateSendButtonMode()
     }
 
     private fun clearPendingEdit() {
@@ -1612,6 +1852,7 @@ class ChatActivity : AppCompatActivity() {
         pendingEditFileIds = emptyList()
         binding.editPreviewBar.visibility = View.GONE
         binding.messageEditText.text?.clear()
+        updateSendButtonMode()
     }
 
     private fun confirmAndDelete(item: MessageItem) {
@@ -2912,6 +3153,11 @@ class ChatActivity : AppCompatActivity() {
         if (::messageAdapter.isInitialized) {
             messageAdapter.notifyDataSetChanged()
         }
+    }
+
+    override fun onStop() {
+        finishVoiceRecording(shouldSend = false)
+        super.onStop()
     }
 
     override fun onDestroy() {

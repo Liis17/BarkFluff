@@ -2,6 +2,7 @@ package com.barkfluff.client.send
 
 import android.net.Uri
 import com.barkfluff.client.editor.EditedVideoSpec
+import java.io.File
 import java.util.UUID
 
 /**
@@ -25,6 +26,9 @@ sealed class AttachmentSpec {
 
     /** Стикер из буфера обмена — байты передаются напрямую (WebP). */
     data class Sticker(val cacheKey: String) : AttachmentSpec()
+
+    /** Голосовое сообщение — записанный OGG/Opus-файл во внутреннем кеше приложения. */
+    data class Voice(val file: File) : AttachmentSpec()
 }
 
 /**
