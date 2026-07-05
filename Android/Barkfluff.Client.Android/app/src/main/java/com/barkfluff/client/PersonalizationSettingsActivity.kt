@@ -110,6 +110,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         setupBlurToggle()
         setupDimSlider()
         setupFolderSettings()
+        setupMainTabSettings()
         setupBackgroundsGrid()
         loadPersonalizationFromServer()
     }
@@ -127,6 +128,45 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding.switchExcludeFromAll.setOnCheckedChangeListener { _, isChecked ->
             globalParam.excludeFolderChatsFromAll = isChecked
         }
+    }
+
+    private fun setupMainTabSettings() {
+        binding.switchMainTabChats.isChecked = globalParam.mainTabChatsVisible
+        binding.switchMainTabCalls.isChecked = globalParam.mainTabCallsVisible
+        binding.switchMainTabProfile.isChecked = globalParam.mainTabProfileVisible
+
+        binding.switchMainTabChats.setOnCheckedChangeListener { button, isChecked ->
+            if (!isChecked && visibleMainTabsCount() == 0) {
+                button.isChecked = true
+                Toast.makeText(this, R.string.personalization_main_tabs_keep_one, Toast.LENGTH_SHORT).show()
+                return@setOnCheckedChangeListener
+            }
+            globalParam.mainTabChatsVisible = isChecked
+        }
+        binding.switchMainTabCalls.setOnCheckedChangeListener { button, isChecked ->
+            if (!isChecked && visibleMainTabsCount() == 0) {
+                button.isChecked = true
+                Toast.makeText(this, R.string.personalization_main_tabs_keep_one, Toast.LENGTH_SHORT).show()
+                return@setOnCheckedChangeListener
+            }
+            globalParam.mainTabCallsVisible = isChecked
+        }
+        binding.switchMainTabProfile.setOnCheckedChangeListener { button, isChecked ->
+            if (!isChecked && visibleMainTabsCount() == 0) {
+                button.isChecked = true
+                Toast.makeText(this, R.string.personalization_main_tabs_keep_one, Toast.LENGTH_SHORT).show()
+                return@setOnCheckedChangeListener
+            }
+            globalParam.mainTabProfileVisible = isChecked
+        }
+    }
+
+    private fun visibleMainTabsCount(): Int {
+        return listOf(
+            binding.switchMainTabChats.isChecked,
+            binding.switchMainTabCalls.isChecked,
+            binding.switchMainTabProfile.isChecked
+        ).count { it }
     }
 
     private fun setupToolbar() {
