@@ -96,7 +96,7 @@ class ChatActivity : AppCompatActivity() {
     private var otherUserId: Long = 0L
     private var currentUserId: Long = 0L
 
-    // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, fileId аватара)
+    // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
 
     // Пагинация сообщений
@@ -575,14 +575,22 @@ class ChatActivity : AppCompatActivity() {
             for (member in members) {
                 if (member.userId == currentUserId) continue
                 val name = "${member.firstName} ${member.lastName}".trim().ifBlank { "ID ${member.userId}" }
-                val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { u ->
-                    u.profilePicturePreviewFileId.ifBlank { u.profilePictureFileId }
-                }?.ifBlank { null }
-                groupMemberInfoCache[member.userId] = name to avatarFileId
+                val avatarSource = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                    avatarSourceFor(user)
+                }
+                groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
             messageAdapter.notifyDataSetChanged()
         }
+    }
+
+    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+        return user.profilePicturePreviewUrl
+            .ifBlank { user.profilePictureUrl }
+            .ifBlank { user.profilePicturePreviewFileId }
+            .ifBlank { user.profilePictureFileId }
+            .ifBlank { null }
     }
 
     /**

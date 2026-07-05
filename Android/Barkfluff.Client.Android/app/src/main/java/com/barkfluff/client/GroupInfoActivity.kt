@@ -125,14 +125,23 @@ class GroupInfoActivity : AppCompatActivity() {
             addMemberLauncher.launch(AddGroupMemberActivity.createIntent(this, chatId))
         }
 
-        binding.groupChatIdValue.text = chatId
-        binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
+        setupInfoCard()
 
         setupMembersList()
         setupAttachmentsRecycler()
         setupTabs()
         renderHeader()
         loadMembers()
+    }
+
+    private fun setupInfoCard() {
+        val showIds = globalParam.showIdsInProfile
+        val chatIdCard = binding.rowChatId.parent as View
+        chatIdCard.visibility = if (showIds) View.VISIBLE else View.GONE
+        if (showIds) {
+            binding.groupChatIdValue.text = chatId
+            binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
+        }
     }
 
     // ── Табы ──────────────────────────────────────────────────────────────────
@@ -283,6 +292,7 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun setupMembersList() {
         memberAdapter = GroupMemberAdapter(
             getFileUrl = { fileId -> grpcManager.getFileDownloadUrl(fileId).getOrNull() },
+            onMemberClick = { member -> openMemberProfile(member) },
             onRemove = { member -> confirmRemove(member) }
         )
         binding.membersRecyclerView.apply {
@@ -320,9 +330,9 @@ class GroupInfoActivity : AppCompatActivity() {
                 async(Dispatchers.IO) {
                     val name = "${member.firstName} ${member.lastName}".trim()
                         .ifBlank { "ID ${member.userId}" }
-                    val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { u ->
-                        u.profilePicturePreviewFileId.ifBlank { u.profilePictureFileId }
-                    }?.ifBlank { null }
+                    val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                        avatarSourceFor(user)
+                    }
                     val status = statuses[member.userId]
                     GroupMemberAdapter.MemberItem(
                         userId = member.userId,
@@ -339,6 +349,35 @@ class GroupInfoActivity : AppCompatActivity() {
 
             val onlineCount = items.count { it.online }
             binding.groupSubtitle.text = getString(R.string.group_online_count, items.size, onlineCount)
+        }
+    }
+
+    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+        return user.profilePicturePreviewUrl
+            .ifBlank { user.profilePictureUrl }
+            .ifBlank { user.profilePicturePreviewFileId }
+            .ifBlank { user.profilePictureFileId }
+            .ifBlank { null }
+    }
+
+    private fun openMemberProfile(member: GroupMemberAdapter.MemberItem) {
+        lifecycleScope.launch {
+            val personalChatId = if (member.userId != globalParam.userId) {
+                grpcManager.getPersonChatId(member.userId).getOrNull()
+            } else {
+                null
+            }
+
+            startActivity(
+                UserProfileActivity.createIntent(
+                    this@GroupInfoActivity,
+                    chatId = personalChatId ?: chatId,
+                    otherUserId = member.userId,
+                    isGroupChat = false,
+                    chatTitle = member.name,
+                    chatAvatarFileId = member.avatarFileId
+                )
+            )
         }
     }
 
