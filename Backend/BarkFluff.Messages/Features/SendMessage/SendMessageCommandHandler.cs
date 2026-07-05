@@ -62,9 +62,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
     public async Task<SendMessageResponse> Handle(SendMessageCommand request, CancellationToken cancellationToken)
     {
+        // Серверный путь (SendMessageServer от сервиса Bots) передаёт отправителя явно, клиентский — из токена.
+        var senderId = request.SenderId ?? _userContext.UserId;
+
         _logger.LogInformation(
             "Начало отправки сообщения от пользователя {UserId} в чат {ChatId} или пользователю {TargetUserId}",
-            _userContext.UserId,
+            senderId,
             request.ChatId,
             request.UserId
         );
@@ -76,7 +79,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Попытка отправки пустого сообщения от пользователя {UserId}",
-                _userContext.UserId
+                senderId
             );
             throw new MessageNotContainContextException();
         }
@@ -85,7 +88,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Текст сообщения от пользователя {UserId} превышает лимит {MaxTextLength} символов: {ActualLength}",
-                _userContext.UserId,
+                senderId,
                 MaxTextLength,
                 request.Message.Text.Length
             );
@@ -96,7 +99,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Сообщение от пользователя {UserId} содержит {AttachmentCount} вложений (лимит: {MaxAttachments})",
-                _userContext.UserId,
+                senderId,
                 fileIds.Count,
                 MaxAttachmentsPerMessage
             );
@@ -109,22 +112,22 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Не указан ни ChatId, ни UserId для отправки сообщения от пользователя {UserId}",
-                _userContext.UserId
+                senderId
             );
             throw new SourceForSendMessageNotSetException();
         }
 
         if (chatId != null)
         {
-            _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", _userContext.UserId, chatId.Value);
+            _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", senderId, chatId.Value);
 
-            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, _userContext.UserId);
+            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, senderId);
 
             if (!hasAccess)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId}",
-                    _userContext.UserId,
+                    senderId,
                     chatId.Value
                 );
                 throw new NoAccessToChatException();
@@ -135,34 +138,45 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogDebug(
                 "Создание или получение личного чата между пользователями {UserId} и {TargetUserId}",
-                _userContext.UserId,
+                senderId,
                 request.UserId
             );
 
             // Получаем пользователя по ID
             var personRepose = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId!.Value });
 
-            var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(personRepose.User.Id, _userContext.UserId);
+            var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(personRepose.User.Id, senderId);
+
+            if (chatIdWithPerson is null && request.SenderId is not null)
+            {
+                // Серверный путь (боты): чат должен уже существовать — бот не пишет первым.
+                _logger.LogWarning(
+                    "Серверная отправка от {SenderId} пользователю {TargetUserId} отклонена: личного чата не существует",
+                    senderId,
+                    request.UserId
+                );
+                throw new NoAccessToChatException();
+            }
 
             if (chatIdWithPerson is null)
             {
                 _logger.LogInformation(
                     "Создание нового личного чата между пользователями {UserId} и {TargetUserId}",
-                    _userContext.UserId,
+                    senderId,
                     personRepose.User.Id
                 );
 
-                var createdChat = await _chatsStorage.CreatePersonChat(_userContext.UserId, personRepose.User.Id);
+                var createdChat = await _chatsStorage.CreatePersonChat(senderId, personRepose.User.Id);
 
                 chatId = createdChat.Id;
 
-                var userResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
+                var userResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
 
                 // Кэшируем аватарочки и имена
-                await _chatCache.SetChatName(chatId.Value, _userContext.UserId, $"{personRepose.User.FirstName} {personRepose.User.LastName}");
+                await _chatCache.SetChatName(chatId.Value, senderId, $"{personRepose.User.FirstName} {personRepose.User.LastName}");
                 await _chatCache.SetChatName(chatId.Value, personRepose.User.Id, $"{userResponse.User.FirstName} {userResponse.User.LastName}");
 
-                await _chatCache.SetChatImage(chatId.Value, _userContext.UserId, personRepose.User.ProfilePicture);
+                await _chatCache.SetChatImage(chatId.Value, senderId, personRepose.User.ProfilePicture);
                 await _chatCache.SetChatImage(chatId.Value, personRepose.User.Id, userResponse.User.ProfilePicture);
 
                 _metrics.Increment("chats_created_person");
@@ -170,7 +184,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 _logger.LogInformation(
                     "Личный чат {ChatId} создан между пользователями {UserId} и {TargetUserId}",
                     chatId.Value,
-                    _userContext.UserId,
+                    senderId,
                     personRepose.User.Id
                 );
             }
@@ -200,7 +214,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             {
                 _logger.LogWarning(
                     "Обнаружены неподдерживаемые типы файлов в сообщении от пользователя {UserId}",
-                    _userContext.UserId
+                    senderId
                 );
                 throw new FileNotSupportedException();
             }
@@ -226,7 +240,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             _logger.LogDebug(
                 "Обработка пересланного сообщения {OriginalMessageId} от пользователя {UserId}",
                 request.Message.ForwardedMessageId.Value,
-                _userContext.UserId
+                senderId
             );
 
             var originalMessages = await _messagesStorage.GetMessagesByIds([request.Message.ForwardedMessageId.Value]);
@@ -241,12 +255,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 throw new MessageNotFoundException();
             }
 
-            var hasAccessToOriginal = await _chatsStorage.CheckAccessToChat(originalMessage.ChatId, _userContext.UserId);
+            var hasAccessToOriginal = await _chatsStorage.CheckAccessToChat(originalMessage.ChatId, senderId);
             if (!hasAccessToOriginal)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId} оригинального сообщения",
-                    _userContext.UserId,
+                    senderId,
                     originalMessage.ChatId
                 );
                 throw new NoAccessToChatException();
@@ -310,8 +324,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 Attachments = attachments,
                 Text = request.Message.Text
             },
-            ReadBy = [_userContext.UserId],
-            SenderId = _userContext.UserId,
+            ReadBy = [senderId],
+            SenderId = senderId,
             SentAt = DateTime.UtcNow,
             Type = MessageContentType.Generic
         };
@@ -352,7 +366,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             "Сообщение {MessageId} успешно отправлено в чат {ChatId} от пользователя {UserId}",
             message.Id,
             chatId.Value,
-            _userContext.UserId
+            senderId
         );
 
         return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap) };

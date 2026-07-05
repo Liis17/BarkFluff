@@ -2,7 +2,9 @@ using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.ExportData;
 using BarkFluff.Messages.Features.GetChatMemberIds;
 using BarkFluff.Messages.Features.PostCallSystemMessage;
+using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Shared.Exceptions.Messages;
 using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
@@ -10,6 +12,8 @@ using Grpc.Core;
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
+
+using OutgoingMessage = BarkFluff.Messages.Features.SendMessage.OutgoingMessage;
 
 namespace BarkFluff.Messages.Host;
 
@@ -90,6 +94,48 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
             Result = request.Result,
             DurationSeconds = request.DurationSeconds,
         };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<SendMessageResponse> SendMessageServer(
+        SendMessageServerRequest request,
+        ServerCallContext context)
+    {
+        // Доверяем сервисному токену вызывающего (Bots); авторизацию отправки (членство бота
+        // в чате, запрет инициации чата) вызывающий выполняет ДО обращения сюда.
+        if (request.SenderUserId <= 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "sender_user_id обязателен"));
+        }
+
+        if (request.Message is null)
+        {
+            throw new MessageNotContainContextException();
+        }
+
+        var command = new SendMessageCommand
+        {
+            SenderId = request.SenderUserId,
+            Message = new OutgoingMessage
+            {
+                FileIds = request.Message.FilesIds?.Select(Guid.Parse).ToList(),
+                Text = request.Message.Text,
+                ForwardedMessageId = request.Message.ForwardedMessageId == 0 ? null : request.Message.ForwardedMessageId
+            },
+        };
+
+        switch (request.SourceIdCase)
+        {
+            case SendMessageServerRequest.SourceIdOneofCase.ChatId when Guid.TryParse(request.ChatId, out var chatId):
+                command.ChatId = chatId;
+                break;
+            case SendMessageServerRequest.SourceIdOneofCase.ChatId:
+                throw new ChatIdNotValidException();
+            case SendMessageServerRequest.SourceIdOneofCase.UserId:
+                command.UserId = request.UserId;
+                break;
+        }
 
         return _mediator.Send(command, context.CancellationToken);
     }

@@ -34,6 +34,8 @@ service FilesServerApi {
 
   rpc UploadPosterServer(UploadPosterServerRequest) returns(UploadPosterServerResponse); // Загрузить постер профиля пользователя (для админ-панели)
 
+  rpc UploadFileServer(UploadFileServerRequest) returns(UploadFileServerResponse); // Загрузить файл от имени пользователя (для сервиса Bots; полный пайплайн: детекция типа, компрессия, превью)
+
   // Стикерпаки
   rpc CreateStickerPack(CreateStickerPackRequest) returns(CreateStickerPackResponse);
   rpc UpdateStickerPack(UpdateStickerPackRequest) returns(UpdateStickerPackResponse);
@@ -168,6 +170,20 @@ message UploadPosterServerRequest {
 message UploadPosterServerResponse {
   string file_url = 1;    // ссылка на изображение
   string file_id = 2;     // идентификатор файла
+}
+
+// Загрузить файл от имени пользователя (серверный, для сервиса Bots)
+message UploadFileServerRequest {
+  bytes data = 1;              // содержимое файла
+  string filename = 2;         // имя файла
+  UploadFileType file_type = 3; // тип загружаемого файла
+  int64 owner_user_id = 4;     // владелец файла (бот)
+}
+
+message UploadFileServerResponse {
+  string file_id = 1;     // идентификатор файла
+  string preview_url = 2; // ссылка на превью (пусто, если превью нет)
+  int64 file_size = 3;    // размер файла в байтах
 }
 
 message CheckFileHashRequest {
