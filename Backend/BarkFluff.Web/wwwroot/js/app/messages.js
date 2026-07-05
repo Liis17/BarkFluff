@@ -150,7 +150,7 @@
         }
 
         var grid = document.createElement('div');
-        var visible = Math.min(images.length, 4);
+        var visible = Math.min(images.length, 10);
         grid.className = 'attach-image-grid grid-' + visible;
 
         if (visible === 1) {
@@ -173,30 +173,13 @@
             var url = (fd && fd.url) || '';
             var prev = (fd && fd.previewUrl) || a.previewUrl || '';
 
-            if (i === 3 && images.length > 4) {
-                var wrap = document.createElement('div');
-                wrap.className = 'more-overlay';
-                var im = document.createElement('img');
-                if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
-                im.src = prev || url; im.loading = 'lazy';
-                im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                wrap.appendChild(im);
-                var cnt = document.createElement('div');
-                cnt.className = 'more-count';
-                cnt.textContent = '+' + (images.length - 3);
-                wrap.appendChild(cnt);
-                BF.files.bindResilientMedia(im, a.fileId, true);
-                wrap.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
-                grid.appendChild(wrap);
-            } else {
-                var im = document.createElement('img');
-                if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
-                im.src = prev || url; im.loading = 'lazy';
-                im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                BF.files.bindResilientMedia(im, a.fileId, true);
-                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
-                grid.appendChild(im);
-            }
+            var im = document.createElement('img');
+            if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
+            im.src = prev || url; im.loading = 'lazy';
+            im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
+            BF.files.bindResilientMedia(im, a.fileId, true);
+            im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
+            grid.appendChild(im);
         }
         container.appendChild(grid);
     }
