@@ -171,6 +171,12 @@
     <string name="cd_attach_file">Datei anhängen</string>
     <string name="cd_stickers">Sticker</string>
     <string name="cd_send">Senden</string>
+    <string name="cd_record_voice">Sprachnachricht aufnehmen</string>
+    <string name="voice_record_permission_granted">Berechtigung erteilt. Mikrofon zum Aufnehmen halten</string>
+    <string name="voice_record_permission_denied">Kein Zugriff auf das Mikrofon</string>
+    <string name="voice_record_start_failed">Aufnahme konnte nicht gestartet werden</string>
+    <string name="voice_record_cancelled">Aufnahme abgebrochen</string>
+    <string name="voice_record_too_short">Sprachnachricht ist zu kurz</string>
     <string name="cd_sticker_preview">Sticker-Vorschau</string>
     <string name="cd_close">Schließen</string>
     <string name="cd_more">Mehr</string>

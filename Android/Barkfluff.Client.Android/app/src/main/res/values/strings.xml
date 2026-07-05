@@ -179,6 +179,12 @@
     <string name="cd_attach_file">Прикрепить файл</string>
     <string name="cd_stickers">Стикеры</string>
     <string name="cd_send">Отправить</string>
+    <string name="cd_record_voice">Записать голосовое сообщение</string>
+    <string name="voice_record_permission_granted">Разрешение получено. Удерживайте микрофон для записи</string>
+    <string name="voice_record_permission_denied">Нет доступа к микрофону</string>
+    <string name="voice_record_start_failed">Не удалось начать запись</string>
+    <string name="voice_record_cancelled">Запись отменена</string>
+    <string name="voice_record_too_short">Голосовое сообщение слишком короткое</string>
     <string name="cd_sticker_preview">Предпросмотр стикера</string>
     <string name="cd_close">Закрыть</string>
     <string name="cd_more">Ещё</string>
