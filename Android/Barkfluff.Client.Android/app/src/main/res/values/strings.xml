@@ -404,6 +404,8 @@
     <string name="personalization_exclude_from_all">Убирать чаты из «Все чаты»</string>
     <string name="personalization_exclude_from_all_subtitle">Если чат входит в папку, он не будет показан во вкладке «Все чаты»</string>
     <string name="personalization_chat_background">Фон чатов</string>
+    <string name="personalization_expand_backgrounds">Развернуть</string>
+    <string name="personalization_collapse_backgrounds">Свернуть</string>
     <string name="personalization_add_background">Добавить фон</string>
     <string name="personalization_no_background">Без фона</string>
 
