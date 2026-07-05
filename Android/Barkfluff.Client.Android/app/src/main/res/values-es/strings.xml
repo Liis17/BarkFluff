@@ -371,6 +371,8 @@
     <string name="personalization_folders">Carpetas</string>
     <string name="personalization_compact_folders">Carpetas compactas</string>
     <string name="personalization_compact_folders_subtitle">Mostrar solo el icono</string>
+    <string name="personalization_folder_tabs_no_outline">Quitar bordes de carpetas</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">Mantener solo iconos y resaltado de la carpeta activa</string>
     <string name="personalization_exclude_from_all">Ocultar chats de «Todos los chats»</string>
     <string name="personalization_exclude_from_all_subtitle">Si un chat está en una carpeta, no se mostrará en la pestaña «Todos los chats»</string>
     <string name="personalization_chat_background">Fondo de los chats</string>

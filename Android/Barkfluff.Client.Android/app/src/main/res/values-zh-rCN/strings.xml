@@ -367,6 +367,8 @@
     <string name="personalization_folders">文件夹</string>
     <string name="personalization_compact_folders">紧凑文件夹</string>
     <string name="personalization_compact_folders_subtitle">仅显示图标</string>
+    <string name="personalization_folder_tabs_no_outline">移除文件夹描边</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">仅保留图标和当前文件夹高亮</string>
     <string name="personalization_exclude_from_all">从「全部聊天」中隐藏</string>
     <string name="personalization_exclude_from_all_subtitle">如果聊天属于某个文件夹，则不会显示在「全部聊天」选项卡中</string>
     <string name="personalization_chat_background">聊天背景</string>

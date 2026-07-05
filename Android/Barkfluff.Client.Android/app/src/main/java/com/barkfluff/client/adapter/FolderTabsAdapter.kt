@@ -20,12 +20,14 @@ class FolderTabsAdapter(
 
     private val items = mutableListOf<Item>()
     private var compactMode: Boolean = false
+    private var noOutlineMode: Boolean = false
     private var selectedId: String? = null
 
-    fun submit(newItems: List<Item>, compact: Boolean, selected: String?) {
+    fun submit(newItems: List<Item>, compact: Boolean, noOutline: Boolean, selected: String?) {
         items.clear()
         items.addAll(newItems)
         compactMode = compact
+        noOutlineMode = noOutline
         selectedId = selected
         notifyDataSetChanged()
     }
@@ -58,6 +60,9 @@ class FolderTabsAdapter(
             holder.badge.visibility = View.GONE
         }
 
+        holder.root.setBackgroundResource(
+            if (noOutlineMode) R.drawable.bg_folder_tab_no_outline else R.drawable.bg_folder_tab
+        )
         holder.root.isSelected = item.id == selectedId
         holder.root.setOnClickListener {
             if (item.id != selectedId) {

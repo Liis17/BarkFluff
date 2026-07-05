@@ -371,6 +371,8 @@
     <string name="personalization_folders">Folders</string>
     <string name="personalization_compact_folders">Compact folders</string>
     <string name="personalization_compact_folders_subtitle">Show icon only</string>
+    <string name="personalization_folder_tabs_no_outline">Remove folder outlines</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">Keep only icons and active folder highlight</string>
     <string name="personalization_exclude_from_all">Hide chats from “All chats”</string>
     <string name="personalization_exclude_from_all_subtitle">If a chat is in a folder, it won\'t show in the “All chats” tab</string>
     <string name="personalization_chat_background">Chat background</string>
