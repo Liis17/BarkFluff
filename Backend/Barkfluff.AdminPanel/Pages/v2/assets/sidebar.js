@@ -11,6 +11,7 @@
     { id: 'badges',        href: '/badges',        label: 'Бейджи',     icon: 'workspace_premium' },
     { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'mood' },
     { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'group' },
+    { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'smart_toy' },
     { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications' },
     { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail' },
     { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'cloud', expandable: true }
