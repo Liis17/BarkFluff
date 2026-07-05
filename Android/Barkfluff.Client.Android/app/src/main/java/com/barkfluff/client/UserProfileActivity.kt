@@ -108,11 +108,16 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun setupInfoCard() {
         val showIds = globalParam.showIdsInProfile
+        val showUserId = showIds && !isGroupChat && otherUserId > 0L
 
-        binding.profileChatIdValue.text = chatId
-        binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
-
+        binding.rowChatId.visibility = if (showIds) View.VISIBLE else View.GONE
+        binding.dividerChatId.visibility = if (showIds) View.VISIBLE else View.GONE
         if (showIds) {
+            binding.profileChatIdValue.text = chatId
+            binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
+        }
+
+        if (showUserId) {
             binding.rowUserId.visibility = View.VISIBLE
             binding.dividerUserId.visibility = View.VISIBLE
             binding.profileUserIdValue.text = formatId(otherUserId)
@@ -456,7 +461,7 @@ class UserProfileActivity : AppCompatActivity() {
                         binding.profileBioTextView.visibility = View.VISIBLE
                     }
 
-                    val avatarFileId = user.profilePictureFileId
+                    val avatarFileId = avatarSourceFor(user)
                     if (!avatarFileId.isNullOrBlank()) {
                         AvatarLoader.loadByFileId(
                             imageView = binding.profileAvatarImageView,
@@ -528,6 +533,14 @@ class UserProfileActivity : AppCompatActivity() {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+        return user.profilePicturePreviewUrl
+            .ifBlank { user.profilePictureUrl }
+            .ifBlank { user.profilePicturePreviewFileId }
+            .ifBlank { user.profilePictureFileId }
+            .ifBlank { null }
+    }
 
     private fun loadPosterImage(posterFileId: String) {
         val cachedUrl = AvatarLoader.urlCache[posterFileId]

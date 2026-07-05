@@ -16,6 +16,7 @@ import com.barkfluff.client.utils.AvatarLoader
  */
 class GroupMemberAdapter(
     private val getFileUrl: suspend (String) -> String?,
+    private val onMemberClick: (MemberItem) -> Unit,
     private val onRemove: (MemberItem) -> Unit
 ) : ListAdapter<GroupMemberAdapter.MemberItem, GroupMemberAdapter.MemberViewHolder>(DiffCallback()) {
 
@@ -46,6 +47,7 @@ class GroupMemberAdapter(
             binding.memberSubtitle.text = item.subtitle
             binding.memberSubtitle.visibility = if (item.subtitle.isBlank()) View.GONE else View.VISIBLE
             binding.memberPresenceDot.visibility = if (item.online) View.VISIBLE else View.GONE
+            binding.root.setOnClickListener { onMemberClick(item) }
 
             AvatarLoader.loadByFileId(
                 imageView = binding.memberAvatar,
