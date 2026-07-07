@@ -65,6 +65,16 @@
                 android:textColor="?attr/colorOnSurface"
                 tools:text="audio_file_name.mp3" />
 
+            <com.barkfluff.client.view.VoiceWaveformView
+                android:id="@+id/voiceWaveform"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:enabled="false"
+                android:importantForAccessibility="no"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <TextView
                 android:id="@+id/durationText"
                 android:layout_width="wrap_content"
