@@ -8,7 +8,7 @@ BarkFluff.Configuration — централизованное хранилище 
 | Критичность | Кол-во |
 | ----------- | ------ |
 | Critical    | 4      |
-| High        | 3      |
+| High        | 4      |
 | Medium      | 4      |
 | Low         | 4      |
 
@@ -79,6 +79,12 @@ BarkFluff.Configuration — централизованное хранилище 
 **Проблема:** Сервисные токены подписываются ключом, преобразованным через `Encoding.ASCII`, а все сервисы валидируют тем же ключом через `Encoding.UTF8`. Для авто-сгенерированного ключа (charset ASCII в `GenerateRandomKey`, строка 384) байты совпадают, поэтому сейчас работает. Но если `SecretKey` зададут вручную с не-ASCII символом, ASCII-кодирование исказит байты ключа.
 **Почему это проблема:** Скрытая хрупкость: смена ключа на не-ASCII строку сломает всю межсервисную аутентификацию (токены подписаны иначе, чем валидируются).
 **Рекомендация:** Привести к единой кодировке (`UTF8`) в `GenerateServiceToken`.
+
+### S12. Автозаполнение использует публичные LiveKit API-учётные данные — High
+**Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:355-364`, `Backend/BarkFluff.Configuration/Persistence/Migrations/20260622000000_AddCallsConfiguration.cs:34-37`, `Backend/livekit/livekit.yaml:1-17`, `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`, `Backend/BarkFluff.Calls/Program.cs:52-56`
+**Проблема:** Миграция Calls создаёт пустые записи `LiveKit:Url`/`ApiKey`/`ApiSecret`, после чего `ConfigurationDefaultsPopulator` без проверки окружения записывает `ApiKey = "devkey"` и публично известный `ApiSecret = "devsecret_change_me_in_production_0123456789"`. Эта же пара закоммичена в `livekit.yaml`; ограничений, запрещающих такое автозаполнение в Production, нет.
+**Почему это проблема:** Любой, кто знает репозиторий, получает секрет подписи LiveKit. `LiveKitTokenService` использует его для выпуска токенов с правом входа в комнату, публикации и подписки на медиа; атакующий может самостоятельно подписывать LiveKit JWT с произвольными identity/room/grants. Тем же ключом инициализируется `WebhookReceiver`, поэтому компрометируется и доверие к webhook-событиям LiveKit. При пустой или ошибочно очищенной production-конфигурации это становится рабочей компрометацией звонков.
+**Рекомендация:** Не задавать LiveKit API-secret дефолтным значением вне Development. Требовать production-пару из secret-manager/переменных окружения и аварийно завершать старт при её отсутствии; удалить/ротировать опубликованную пару ключей.
 
 > Примечание (Low, не выделяю в отдельный пункт): `GenerateRandomKey` (Populator:382-392) берёт `b % chars.Length` (68 символов), что даёт лёгкое смещение распределения (256 % 68 ≠ 0). На длине 64 символа энтропии достаточно, но для секретного ключа корректнее использовать `RandomNumberGenerator.GetString`/rejection sampling или base64url.
 
