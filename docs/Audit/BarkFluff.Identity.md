@@ -11,9 +11,9 @@
 |-------------|--------------|--------------------|--------------|
 | Critical    | 1            | 0                  | 0            |
 | High        | 6            | 2                  | 1            |
-| Medium      | 4            | 2                  | 1            |
+| Medium      | 5            | 2                  | 1            |
 | Low         | 4            | 1                  | 0            |
-| **Итого**   | **15**       | **5**              | **2**        |
+| **Итого**   | **16**       | **5**              | **2**        |
 
 Положительные моменты (не находки): BCrypt с work factor 12 (`PasswordHasher.cs:8`), `CryptographicOperations.FixedTimeEquals` для legacy-хеша (`PasswordHasher.cs:25`), `RandomNumberGenerator.GetInt32`/`GetBytes` для кодов и токенов (`CodeGenerator.cs:16`, `RefreshTokenGenerator.cs:10`), полная валидация JWT в XAuth (`XAuthExtensions.cs:23-33`), анти-энумерация для несуществующего пользователя в сбросе пароля (`ResetPasswordCommandHandler.cs:99-101`), запуск контейнера под non-root `USER $APP_UID` (`Dockerfile:22`).
 
@@ -112,6 +112,12 @@
 **Рекомендация:** Использовать `Guid.TryParse` и возвращать корректный доменный/`InvalidArgument` ответ.
 
 ---
+
+### S16. Изменение Email 2FA и замена TOTP-секрета не требуют подтверждения действующим фактором — Medium
+**Файлы:** `Backend/BarkFluff.Identity/Features/DisableOtpVerification/DisableOtpVerificationCommandHandler.cs:103-109`; `Backend/BarkFluff.Identity/Features/EnableOtpVerification/EnableOtpVerificationCommandHandler.cs:72-97`; публичные RPC защищены только обычным User JWT — `Host/IdentityApiService.cs:117-127,140-149`.
+**Проблема:** При `OtpType.Email` обработчик сразу вызывает `DisableEmailOtp`, не проверяя переданный `OtpCode`, пароль или иной свежий фактор. При повторном включении Authenticator обработчик без проверки прежнего TOTP перезаписывает `OtpSecret` и выбранный метод новым значением, а секрет нового аутентификатора возвращает в ответе.
+**Почему это проблема:** Тот, кто кратковременно получил действующий access token, может закрепить доступ после его истечения: отключить Email 2FA либо заменить TOTP на известный ему секрет и затем использовать новый фактор. Уведомление по email помогает обнаружить атаку, но не предотвращает изменение.
+**Рекомендация:** Для отключения и замены любого включённого метода требовать step-up: пароль и/или код текущего активного фактора. При смене Authenticator не перезаписывать действующий секрет до успешного подтверждения старым фактором и нового TOTP-кода.
 
 ## Производительность
 
