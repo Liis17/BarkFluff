@@ -40,6 +40,8 @@ import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.grpc.GrpcManager
@@ -100,6 +102,8 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var realtimeService: RealtimeService
     private lateinit var chatRepository: ChatRepository
     private lateinit var messageAdapter: MessageAdapter
+    private lateinit var chatCacheRepository: ChatCacheRepository
+    private var cacheScope: CacheScope? = null
 
     private var chatId: String = ""
     private var chatTitle: String = ""
@@ -218,6 +222,7 @@ class ChatActivity : AppCompatActivity() {
         grpcManager = app.grpcManager
         realtimeService = app.realtimeService
         chatRepository = ChatRepository(this, grpcManager)
+        chatCacheRepository = app.chatCacheRepository
 
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
@@ -229,6 +234,7 @@ class ChatActivity : AppCompatActivity() {
         isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP_CHAT, false)
         otherUserId = intent.getLongExtra(EXTRA_OTHER_USER_ID, 0L)
         currentUserId = globalParam.userId
+        cacheScope = CacheScope.from(globalParam)
 
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
 
@@ -2210,7 +2216,25 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadCachedMessages() {
+        val scope = cacheScope ?: return
+        lifecycleScope.launch {
+            val messages = runCatching {
+                chatCacheRepository.latestMessages(scope, chatId, limit = 30)
+            }.getOrNull().orEmpty()
+            if (messages.isEmpty()) return@launch
+
+            displayMessages(messages)
+            val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+            firstVisibleMessageId = sortedMessages.first().id
+            lastVisibleMessageId = sortedMessages.last().id
+            hasMoreMessagesUp = messages.size >= 30
+            hasMoreMessagesDown = false
+            binding.loadingProgress.visibility = View.GONE
+        }
+    }
     private fun loadChatInfoAndMessages() {
+        loadCachedMessages()
         isLoadingMessages = true
         binding.loadingProgress.visibility = View.VISIBLE
 
@@ -2391,6 +2415,10 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
+                    cacheScope?.let { scope ->
+                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
+                            .onFailure { Log.w(TAG, "Не удалось сохранить сообщения в кеш", it) }
+                    }
                     displayMessages(messages)
 
                     if (messages.isNotEmpty()) {
@@ -2482,6 +2510,20 @@ class ChatActivity : AppCompatActivity() {
 
         loadMessagesJob = lifecycleScope.launch {
             try {
+                cacheScope?.let { scope ->
+                    val cached = chatCacheRepository.messagesBefore(
+                        scope,
+                        chatId,
+                        firstVisibleMessageId,
+                        limit = 30
+                    )
+                    if (cached.isNotEmpty()) {
+                        prependMessages(cached)
+                        firstVisibleMessageId = cached.minBy { it.sentAt.seconds }.id
+                        hasMoreMessagesUp = cached.size >= 30
+                        return@launch
+                    }
+                }
                 val result = chatRepository.loadMessages(
                     chatId = chatId,
                     fromMessageId = firstVisibleMessageId,
@@ -2491,6 +2533,9 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
+                    cacheScope?.let { scope ->
+                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
+                    }
                     if (messages.isNotEmpty()) {
                         prependMessages(messages)
                         val sortedMessages = messages.sortedBy { it.sentAt.seconds }
@@ -2525,6 +2570,9 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
+                    cacheScope?.let { scope ->
+                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
+                    }
                     if (messages.isNotEmpty()) {
                         appendMessages(messages)
                         val sortedMessages = messages.sortedBy { it.sentAt.seconds }
@@ -2713,6 +2761,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.newMessages.collect { event ->
                 if (event.chatId == chatId) {
                     val msg = event.message
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.saveMessages(scope, chatId, listOf(msg))
+                    }
                     addNewMessage(msg)
                 }
             }
@@ -2750,6 +2801,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.messagesRead.collect { event ->
                 if (event.chatId == chatId) {
                     updateMessageReadStatus(event.messageId, event.newReadByList)
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.updateReadBy(scope, chatId, event.messageId, event.newReadByList)
+                    }
                 }
             }
         }
@@ -2758,6 +2812,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.messageEdited.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     applyEditedMessage(event.message)
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.saveMessages(scope, chatId, listOf(event.message))
+                    }
                 }
             }
         }
@@ -2766,6 +2823,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.messageDeleted.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     removeMessageById(event.messageId)
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.deleteMessage(scope, chatId, event.messageId)
+                    }
                 }
             }
         }

@@ -524,4 +524,8 @@
     <string name="chat_muted">Benachrichtigungen stummgeschaltet</string>
     <string name="chat_unmuted">Benachrichtigungen aktiviert</string>
     <string name="chat_mute_error">Einstellung konnte nicht geändert werden</string>
+    <string name="chats_sync_updating">Wird aktualisiert…</string>
+    <string name="chats_sync_offline">Keine Verbindung / Daten können veraltet sein</string>
+    <string name="chats_sync_retry">Erneut versuchen</string>
+    <string name="storage_cache_size_with_chats">Bildcache: %1$.1f MB\\nChat-Cache: %2$d Chats · %3$d Nachrichten · %4$s</string>
 </resources>

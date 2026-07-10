@@ -9,6 +9,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -42,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_CURRENT_TAB = "current_tab"
         private const val BOTTOM_NAV_PHONE_ITEM_WIDTH_DP = 84
         private const val BOTTOM_NAV_WIDE_ITEM_WIDTH_DP = 72
+        private const val CREATE_CHAT_FAB_SIDE_MARGIN_DP = 12
+        private const val CREATE_CHAT_FAB_ABOVE_NAV_MARGIN_DP = 16
 
         /**
          * Хранит chatId для открытия после cold start (когда приложение убито
@@ -280,6 +283,7 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigation.menu.findItem(R.id.navigation_calls).isVisible = visibleTabs.contains(TAB_CALLS)
         binding.bottomNavigation.menu.findItem(R.id.navigation_profile).isVisible = visibleTabs.contains(TAB_PROFILE)
         updateBottomNavigationWidth(visibleTabs.size)
+        updateCreateChatFabPosition(visibleTabs.size)
 
         if (!visibleTabs.contains(currentTabIndex)) {
             showFragment(visibleTabs.first())
@@ -321,6 +325,41 @@ class MainActivity : AppCompatActivity() {
             bottomNavCard.layoutParams = params
         }
     }
+
+    private fun updateCreateChatFabPosition(visibleTabsCount: Int) {
+        val bottomNavCard = findViewById<android.view.View>(R.id.bottomNavCard) ?: return
+        val params = binding.createChatFab.layoutParams as ConstraintLayout.LayoutParams
+
+        if (visibleTabsCount == 2) {
+            params.startToStart = ConstraintLayout.LayoutParams.UNSET
+            params.startToEnd = bottomNavCard.id
+            params.endToStart = ConstraintLayout.LayoutParams.UNSET
+            params.endToEnd = ConstraintLayout.LayoutParams.UNSET
+            params.topToTop = bottomNavCard.id
+            params.topToBottom = ConstraintLayout.LayoutParams.UNSET
+            params.bottomToTop = ConstraintLayout.LayoutParams.UNSET
+            params.bottomToBottom = bottomNavCard.id
+            params.marginStart = dpToPx(CREATE_CHAT_FAB_SIDE_MARGIN_DP)
+            params.marginEnd = 0
+            params.bottomMargin = 0
+        } else {
+            params.startToStart = ConstraintLayout.LayoutParams.UNSET
+            params.startToEnd = ConstraintLayout.LayoutParams.UNSET
+            params.endToStart = ConstraintLayout.LayoutParams.UNSET
+            params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            params.topToTop = ConstraintLayout.LayoutParams.UNSET
+            params.topToBottom = ConstraintLayout.LayoutParams.UNSET
+            params.bottomToTop = bottomNavCard.id
+            params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
+            params.marginStart = 0
+            params.marginEnd = dpToPx(CREATE_CHAT_FAB_ABOVE_NAV_MARGIN_DP)
+            params.bottomMargin = dpToPx(CREATE_CHAT_FAB_ABOVE_NAV_MARGIN_DP)
+        }
+
+        binding.createChatFab.layoutParams = params
+    }
+
+    private fun dpToPx(valueDp: Int): Int = (valueDp * resources.displayMetrics.density).toInt()
 
     private fun switchTab(newTabIndex: Int) {
         if (!visibleTabIndices().contains(newTabIndex)) return

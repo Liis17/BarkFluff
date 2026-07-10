@@ -55,6 +55,13 @@ object LogoutHelper {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка очистки кеша медиафайлов", e)
         }
+        try {
+            (context.applicationContext as? BarkFluffApplication)?.chatCacheRepository?.clearAll()
+            Log.i(TAG, "Кеш чатов очищен")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка очистки кеша чатов", e)
+        }
+
 
         // 2. Удаление FCM-токена Firebase
         try {

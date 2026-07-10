@@ -15,6 +15,7 @@ import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.crypto.BarkFluffSignalStore
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
@@ -47,6 +48,9 @@ import java.util.concurrent.TimeUnit
 class BarkFluffApplication : Application() {
 
     lateinit var grpcManager: GrpcManager
+        private set
+
+    lateinit var chatCacheRepository: ChatCacheRepository
         private set
 
     lateinit var realtimeService: RealtimeService
@@ -97,6 +101,7 @@ class BarkFluffApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        System.loadLibrary("sqlcipher")
         // Применяем выбранный язык приложения до создания UI.
         // Для "system" сбрасывается override → используется системная локаль.
         LocaleManager.apply(GlobalParam(this).appLanguage)
@@ -105,6 +110,7 @@ class BarkFluffApplication : Application() {
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
         NotificationHelper.createChannels(this)
+        chatCacheRepository = ChatCacheRepository(applicationContext)
         CallTelecomManager.registerPhoneAccount(this)
         grpcManager = GrpcManager()
         realtimeService = RealtimeService(
