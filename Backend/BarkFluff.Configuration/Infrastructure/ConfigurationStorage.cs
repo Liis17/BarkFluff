@@ -27,6 +27,15 @@ public class ConfigurationStorage
         return configurations;
     }
 
+    public async Task<List<ConfigurationItem>> GetAllConfigurationsAsync()
+    {
+        var configurations = await _context.Configurations
+            .AsNoTracking()
+            .ToListAsync();
+
+        return configurations;
+    }
+
     public async Task UpdateConfigurationAsync(string section, string key, string value, ServiceId serviceId, string editedBy, string editedFrom)
     {
         var existing = await _context.Configurations
