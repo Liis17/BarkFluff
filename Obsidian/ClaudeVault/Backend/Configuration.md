@@ -22,7 +22,8 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 
 **Конфигурация:**
 - `GetConfiguration` — возвращает конфигурацию для `ServiceId`. Загружает записи с `ServiceId == запрошенный || ServiceId == Unknown`; при дублях по Section+Key приоритет у записи с конкретным ServiceId.
-- `UpdateConfiguration` — upsert по Section+Key+ServiceId.
+- `GetAllConfigurations` — возвращает **все** строки таблицы без фильтров и дедупликации (для вкладки «Конфигурация» в [[Backend/AdminPanel|AdminPanel]]).
+- `UpdateConfiguration` — upsert по Section+Key+ServiceId. `EditedAt` ставится сервером (`DateTime.UtcNow`), `EditedBy`/`EditedFrom` передаёт клиент.
 
 **Reserved Names (зарезервированные имена пользователей):**
 - `GetReservedNames` / `AddReservedName` / `UpdateReservedName` / `DeleteReservedName` — CRUD. Хранится как одна строка в БД (`Section="ReservedNames"`, `Key="Usernames"`, Value — comma-separated). Имена нормализуются в lowercase.
