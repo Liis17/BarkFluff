@@ -313,6 +313,57 @@ public class FirebaseService
     }
 
     /// <summary>
+    /// Отправляет data-only уведомление о запросе на приватный чат (type=private_chat_invite).
+    /// Текст локализуется на клиенте, сервер строк не шлёт.
+    /// </summary>
+    public virtual async Task SendPrivateChatInviteBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string chatId,
+        long inviterUserId,
+        string inviterName,
+        string? avatarUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping private_chat_invite");
+            return;
+        }
+
+        if (fcmTokens.Count == 0)
+            return;
+
+        var multicastMessage = new MulticastMessage
+        {
+            Tokens = [.. fcmTokens],
+            Data = new Dictionary<string, string>
+            {
+                ["type"] = "private_chat_invite",
+                ["chat_id"] = chatId,
+                ["inviter_user_id"] = inviterUserId.ToString(),
+                ["inviter_name"] = inviterName,
+                ["avatar_url"] = avatarUrl ?? ""
+            },
+            Android = new AndroidConfig
+            {
+                Priority = Priority.High
+            }
+        };
+
+        try
+        {
+            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+            _logger.LogInformation(
+                "private_chat_invite push отправлен. ChatId: {ChatId}, Tokens: {Total}, Success: {Success}, Failed: {Failed}",
+                chatId, fcmTokens.Count, response.SuccessCount, response.FailureCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Неожиданная ошибка при отправке private_chat_invite push. ChatId: {ChatId}", chatId);
+        }
+    }
+
+    /// <summary>
     /// Отправляет data-only команду погасить нотификацию входящего звонка (type=dismiss_call).
     /// </summary>
     public virtual async Task SendCallDismissBatchAsync(

@@ -45,6 +45,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<AdminBroadcastConsumer>();
     x.AddConsumer<IncomingCallPushConsumer>();
     x.AddConsumer<CallDismissPushConsumer>();
+    x.AddConsumer<PrivateChatInvitePushConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -77,6 +78,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("call-dismiss-push-handler", e =>
         {
             e.ConfigureConsumer<CallDismissPushConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("private-chat-invite-push-handler", e =>
+        {
+            e.ConfigureConsumer<PrivateChatInvitePushConsumer>(context);
         });
     });
 });
