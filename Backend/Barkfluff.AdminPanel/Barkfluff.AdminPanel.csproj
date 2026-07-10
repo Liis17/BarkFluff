@@ -32,6 +32,7 @@
     <None Remove="Pages\mail.html" />
     <None Remove="Pages\v2\badges.html" />
     <None Remove="Pages\v2\bots.html" />
+    <None Remove="Pages\v2\configuration.html" />
     <None Remove="Pages\v2\dashboard.html" />
     <None Remove="Pages\v2\index.html" />
     <None Remove="Pages\v2\Login.html" />
@@ -123,6 +124,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\badges.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\configuration.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\bots.html">
