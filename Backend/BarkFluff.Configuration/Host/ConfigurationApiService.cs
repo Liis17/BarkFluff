@@ -1,5 +1,6 @@
 using BarkFluff.Configuration.Features.AddReservedName;
 using BarkFluff.Configuration.Features.DeleteReservedName;
+using BarkFluff.Configuration.Features.GetAllConfigurations;
 using BarkFluff.Configuration.Features.GetConfiguration;
 using BarkFluff.Configuration.Features.GetReservedNames;
 using BarkFluff.Configuration.Features.UpdateConfiguration;
@@ -50,6 +51,30 @@ public class ConfigurationApiService : BarkFluff.Proto.Configuration.Configurati
             sw.Stop();
             _metrics.Increment("config_get_errors");
             _metrics.Add("config_get_duration_ms_total", sw.ElapsedMilliseconds);
+            throw;
+        }
+    }
+
+    public override async Task<GetAllConfigurationsResponse> GetAllConfigurations(GetAllConfigurationsRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("config_get_all_requests");
+        _metrics.Set("last_config_get_all_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var response = await _mediator.Send(new GetAllConfigurationsCommand());
+
+            sw.Stop();
+            _metrics.Increment("config_get_all_success");
+            _metrics.Add("config_get_all_duration_ms_total", sw.ElapsedMilliseconds);
+            _metrics.Set("last_config_get_all_items", response.Configurations.Count);
+            return response;
+        }
+        catch
+        {
+            sw.Stop();
+            _metrics.Increment("config_get_all_errors");
+            _metrics.Add("config_get_all_duration_ms_total", sw.ElapsedMilliseconds);
             throw;
         }
     }
