@@ -282,10 +282,15 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_TESTING_SHOW_IDS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SHOW_IDS, value).apply()
 
-    /** Показывать кнопку создания скрытых (приватных/секретных) чатов в шапке списка чатов. */
+    /** Флаг для отложенного secret-chat flow. Пункт UI пока намеренно не показывается. */
     var secretChatsEnabled: Boolean
         get() = sharedPreferences.getBoolean(KEY_TESTING_SECRET_CHATS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SECRET_CHATS, value).apply()
+
+    /** Показывать экспериментальный пункт создания приватного чата. */
+    var privateChatsEnabled: Boolean
+        get() = sharedPreferences.getBoolean(KEY_TESTING_PRIVATE_CHATS, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_PRIVATE_CHATS, value).apply()
 
     // --- Отложенная очистка APK обновления ---
 
@@ -415,6 +420,7 @@ class GlobalParam(private val context: Context) {
         // Тестирование
         private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
         private const val KEY_TESTING_SECRET_CHATS = "testing_secret_chats_enabled"
+        private const val KEY_TESTING_PRIVATE_CHATS = "testing_private_chats_enabled"
 
         // Отложенная очистка APK обновления
         private const val KEY_PENDING_UPDATE_APK_PATH = "pending_update_apk_path"

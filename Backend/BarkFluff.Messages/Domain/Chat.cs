@@ -26,4 +26,17 @@ public class Chat
     public byte[]? KdfSalt { get; set; }
 
     public byte[]? PassphraseVerifier { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Нормализованная пара участников приватного чата. Поля намеренно живут
+    // рядом с Chat: это позволяет обеспечить уникальность пары одной БД.
+    public long? PrivateUserLowId { get; set; }
+
+    public long? PrivateUserHighId { get; set; }
+
+    public PrivateChatInviteState PrivateInviteState { get; set; } = PrivateChatInviteState.Pending;
+
+    // Вычисляется в выборке списка чатов и не хранится в БД.
+    public DateTime LastActivityAt { get; set; }
 }

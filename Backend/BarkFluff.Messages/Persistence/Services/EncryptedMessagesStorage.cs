@@ -152,4 +152,40 @@ public class EncryptedMessagesStorage(MessagesContext context)
         await context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<long> MarkReadThroughAsync(Guid chatId, long userId, long requestedMessageId)
+    {
+        var lastExistingId = await context.EncryptedMessages
+            .Where(m => m.ChatId == chatId && !m.IsDeleted && m.Id <= requestedMessageId)
+            .MaxAsync(m => (long?)m.Id) ?? 0;
+
+        if (lastExistingId == 0)
+        {
+            return 0;
+        }
+
+        var state = await context.PrivateChatReadStates
+            .FirstOrDefaultAsync(s => s.ChatId == chatId && s.UserId == userId);
+
+        if (state is null)
+        {
+            await context.PrivateChatReadStates.AddAsync(new PrivateChatReadState
+            {
+                ChatId = chatId,
+                UserId = userId,
+                LastReadMessageId = lastExistingId,
+            });
+        }
+        else if (lastExistingId > state.LastReadMessageId)
+        {
+            state.LastReadMessageId = lastExistingId;
+        }
+        else
+        {
+            return state.LastReadMessageId;
+        }
+
+        await context.SaveChangesAsync();
+        return lastExistingId;
+    }
 }

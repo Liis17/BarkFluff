@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupBottomNavigation()
+        setupCreateChatFab()
         handleChatIntent(intent)
         handlePendingDeepLink()
         checkForUpdates()
@@ -102,6 +103,7 @@ class MainActivity : AppCompatActivity() {
             applyBottomNavigationVisibility()
             compactifyBottomNav()
             binding.bottomNavigation.selectedItemId = tabIndexToMenuId(currentTabIndex)
+            updateCreateChatFabVisibility()
         }
     }
 
@@ -227,6 +229,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupCreateChatFab() {
+        supportFragmentManager.setFragmentResultListener(CreateChatBottomSheet.RESULT_KEY, this) { _, result ->
+            when (result.getString(CreateChatBottomSheet.RESULT_TYPE)) {
+                CreateChatBottomSheet.TYPE_REGULAR -> startActivity(Intent(this, SearchActivity::class.java))
+                CreateChatBottomSheet.TYPE_GROUP -> startActivity(Intent(this, CreateGroupChatActivity::class.java))
+                CreateChatBottomSheet.TYPE_PRIVATE -> startActivity(
+                    Intent(this, SearchActivity::class.java)
+                        .putExtra(SearchActivity.EXTRA_MODE, SearchActivity.MODE_PRIVATE)
+                )
+            }
+        }
+
+        binding.createChatFab.setOnClickListener {
+            if (supportFragmentManager.findFragmentByTag(CreateChatBottomSheet.TAG) == null) {
+                CreateChatBottomSheet.newInstance(GlobalParam(this).privateChatsEnabled)
+                    .show(supportFragmentManager, CreateChatBottomSheet.TAG)
+            }
+        }
+        updateCreateChatFabVisibility()
+    }
+
+    private fun updateCreateChatFabVisibility() {
+        binding.createChatFab.visibility = if (currentTabIndex == TAB_CHATS) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
     private fun applyBottomNavigationVisibility() {
         val visibleTabs = visibleTabIndices()
         binding.bottomNavigation.menu.findItem(R.id.navigation_chats).isVisible = visibleTabs.contains(TAB_CHATS)
@@ -307,6 +334,7 @@ class MainActivity : AppCompatActivity() {
 
         transaction.commit()
         currentTabIndex = newTabIndex
+        updateCreateChatFabVisibility()
     }
 
     private fun showFragment(tabIndex: Int) {
@@ -319,6 +347,7 @@ class MainActivity : AppCompatActivity() {
             .commit()
 
         currentTabIndex = tabIndex
+        if (::binding.isInitialized) updateCreateChatFabVisibility()
     }
 
     private fun createFragment(tabIndex: Int): Fragment {

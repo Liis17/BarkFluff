@@ -55,14 +55,20 @@ class PrivateChatRepository(
      * Создать приватный чат: сгенерировать salt, вывести ключ из [passphrase],
      * посчитать verifier и отправить на сервер. Ключ остаётся локально.
      */
-    suspend fun createPrivateChat(peerUserId: Long, passphrase: String): Result<MessagesApiOuterClass.Chat> =
+    suspend fun createPrivateChat(
+        peerUserId: Long,
+        passphrase: String,
+        rememberKey: Boolean = false
+    ): Result<GrpcManager.PrivateChatCreateResult> =
         withContext(Dispatchers.Default) {
             try {
                 val salt = PrivateChatCrypto.generateSalt()
                 val key = PrivateChatCrypto.deriveKey(passphrase, salt)
                 val verifier = PrivateChatCrypto.computeVerifier(key)
                 val result = grpc.createPrivateChat(peerUserId, salt, verifier)
-                result.onSuccess { chat -> rememberKey(chat.id, key) }
+                result.onSuccess { created ->
+                    if (created.created) rememberKey(created.chat.id, key, rememberKey)
+                }
                 result
             } catch (e: Exception) {
                 Log.e(tag, "createPrivateChat failed", e)
@@ -78,7 +84,8 @@ class PrivateChatRepository(
         chatId: String,
         passphrase: String,
         kdfSalt: ByteArray,
-        passphraseVerifier: ByteArray
+        passphraseVerifier: ByteArray,
+        rememberKey: Boolean = false
     ): Result<MessagesApiOuterClass.Chat> = withContext(Dispatchers.Default) {
         try {
             val key = PrivateChatCrypto.deriveKey(passphrase, kdfSalt)
@@ -86,7 +93,7 @@ class PrivateChatRepository(
                 return@withContext Result.failure(InvalidPassphraseException(chatId))
             }
             val result = grpc.acceptPrivateChat(chatId)
-            result.onSuccess { chat -> rememberKey(chat.id, key) }
+            result.onSuccess { chat -> rememberKey(chat.id, key, rememberKey) }
             result
         } catch (e: InvalidPassphraseException) {
             Result.failure(e)
@@ -101,10 +108,10 @@ class PrivateChatRepository(
      * перезахода в приложение). Используется когда у клиента есть Chat (с salt+verifier) от сервера,
      * но локально ключ не сохранён.
      */
-    fun unlockExistingChat(chat: MessagesApiOuterClass.Chat, passphrase: String): Boolean {
+    fun unlockExistingChat(chat: MessagesApiOuterClass.Chat, passphrase: String, rememberKey: Boolean = false): Boolean {
         val key = PrivateChatCrypto.deriveKey(passphrase, chat.kdfSalt.toByteArray())
         if (!PrivateChatCrypto.validateVerifier(key, chat.passphraseVerifier.toByteArray())) return false
-        rememberKey(chat.id, key)
+        rememberKey(chat.id, key, rememberKey)
         return true
     }
 
@@ -160,6 +167,9 @@ class PrivateChatRepository(
         Result.success(decrypted)
     }
 
+    suspend fun markMessagesRead(chatId: String, lastReadMessageId: Long): Result<Unit> =
+        grpc.markPrivateMessagesAsRead(chatId, lastReadMessageId)
+
     /** Расшифровать одно входящее сообщение (например из realtime-стрима). */
     fun decryptIncoming(chatId: String, message: Shared.EncryptedMessage): DecryptedPrivateMessage? {
         val key = loadKey(chatId) ?: return null
@@ -187,9 +197,13 @@ class PrivateChatRepository(
         }
     }
 
-    private fun rememberKey(chatId: String, key: ByteArray) {
+    private fun rememberKey(chatId: String, key: ByteArray, persist: Boolean) {
         keyCache[chatId] = key
-        keyPrefs.edit().putString(chatId, Base64.encodeToString(key, Base64.NO_WRAP)).apply()
+        if (persist) {
+            keyPrefs.edit().putString(chatId, Base64.encodeToString(key, Base64.NO_WRAP)).apply()
+        } else {
+            keyPrefs.edit().remove(chatId).apply()
+        }
     }
 
     private fun loadKey(chatId: String): ByteArray? {

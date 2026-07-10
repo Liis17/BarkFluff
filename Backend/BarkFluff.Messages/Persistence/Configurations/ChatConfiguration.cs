@@ -17,6 +17,8 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Ignore(x => x.FirstUnreadMessageId);
 
+        builder.Ignore(x => x.LastActivityAt);
+
         builder.Property(x => x.Type)
             .HasDefaultValue(ChatType.Regular);
 
@@ -25,6 +27,16 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Property(x => x.PassphraseVerifier)
             .HasColumnType("bytea");
+
+        builder.Property(x => x.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.Property(x => x.PrivateInviteState)
+            .HasDefaultValue(PrivateChatInviteState.Pending);
+
+        builder.HasIndex(x => new { x.Type, x.PrivateUserLowId, x.PrivateUserHighId })
+            .IsUnique()
+            .HasFilter("\"Type\" = 1 AND \"PrivateUserLowId\" IS NOT NULL AND \"PrivateUserHighId\" IS NOT NULL");
 
         builder
             .HasMany(x => x.Members)

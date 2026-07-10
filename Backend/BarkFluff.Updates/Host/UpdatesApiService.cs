@@ -31,6 +31,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
     private readonly Features.SubscribePrivateMessages.StreamSubscriptionsManager _privateMessagesSubscriptionsManager;
     private readonly Features.SubscribePrivateMessageEdits.StreamSubscriptionsManager _privateMessageEditsSubscriptionsManager;
     private readonly Features.SubscribePrivateMessageDeletes.StreamSubscriptionsManager _privateMessageDeletesSubscriptionsManager;
+    private readonly Features.SubscribePrivateMessagesRead.StreamSubscriptionsManager _privateMessagesReadSubscriptionsManager;
     private readonly Features.SubscribePrivateChatInvites.StreamSubscriptionsManager _privateChatInvitesSubscriptionsManager;
     private readonly Features.SubscribePrivateChatInviteResolutions.StreamSubscriptionsManager _privateChatInviteResolutionsSubscriptionsManager;
     private readonly Features.SubscribeSecretChatInvites.StreamSubscriptionsManager _secretChatInvitesSubscriptionsManager;
@@ -50,6 +51,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         Features.SubscribePrivateMessages.StreamSubscriptionsManager privateMessagesSubscriptionsManager,
         Features.SubscribePrivateMessageEdits.StreamSubscriptionsManager privateMessageEditsSubscriptionsManager,
         Features.SubscribePrivateMessageDeletes.StreamSubscriptionsManager privateMessageDeletesSubscriptionsManager,
+        Features.SubscribePrivateMessagesRead.StreamSubscriptionsManager privateMessagesReadSubscriptionsManager,
         Features.SubscribePrivateChatInvites.StreamSubscriptionsManager privateChatInvitesSubscriptionsManager,
         Features.SubscribePrivateChatInviteResolutions.StreamSubscriptionsManager privateChatInviteResolutionsSubscriptionsManager,
         Features.SubscribeSecretChatInvites.StreamSubscriptionsManager secretChatInvitesSubscriptionsManager,
@@ -68,6 +70,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         _privateMessagesSubscriptionsManager = privateMessagesSubscriptionsManager;
         _privateMessageEditsSubscriptionsManager = privateMessageEditsSubscriptionsManager;
         _privateMessageDeletesSubscriptionsManager = privateMessageDeletesSubscriptionsManager;
+        _privateMessagesReadSubscriptionsManager = privateMessagesReadSubscriptionsManager;
         _privateChatInvitesSubscriptionsManager = privateChatInvitesSubscriptionsManager;
         _privateChatInviteResolutionsSubscriptionsManager = privateChatInviteResolutionsSubscriptionsManager;
         _secretChatInvitesSubscriptionsManager = secretChatInvitesSubscriptionsManager;
@@ -87,6 +90,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         + _privateMessagesSubscriptionsManager.ActiveCount
         + _privateMessageEditsSubscriptionsManager.ActiveCount
         + _privateMessageDeletesSubscriptionsManager.ActiveCount
+        + _privateMessagesReadSubscriptionsManager.ActiveCount
         + _privateChatInvitesSubscriptionsManager.ActiveCount
         + _privateChatInviteResolutionsSubscriptionsManager.ActiveCount
         + _secretChatInvitesSubscriptionsManager.ActiveCount
@@ -367,6 +371,29 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
             _privateMessageDeletesSubscriptionsManager.RemoveSubscription(userId, subscriptionId);
             _metrics.Increment("private_message_deletes_subscriptions_closed");
             _metrics.Set("private_message_deletes_subscriptions_active", _privateMessageDeletesSubscriptionsManager.ActiveCount);
+            _metrics.Set("subscriptions_active_total", TotalActive);
+        }
+    }
+
+    public override async Task SubscribePrivateMessagesRead(SubscribePrivateMessagesReadRequest request,
+        IServerStreamWriter<PrivateMessagesReadEvent> responseStream, ServerCallContext context)
+    {
+        long userId = _userContext.UserId;
+        var subscriptionId = _privateMessagesReadSubscriptionsManager.RegisterSubscription(userId, responseStream);
+        _metrics.Increment("private_messages_read_subscriptions_opened");
+        _metrics.Set("private_messages_read_subscriptions_active", _privateMessagesReadSubscriptionsManager.ActiveCount);
+        _metrics.Set("subscriptions_active_total", TotalActive);
+
+        try
+        {
+            await Task.Delay(Timeout.Infinite, context.CancellationToken);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            _privateMessagesReadSubscriptionsManager.RemoveSubscription(userId, subscriptionId);
+            _metrics.Increment("private_messages_read_subscriptions_closed");
+            _metrics.Set("private_messages_read_subscriptions_active", _privateMessagesReadSubscriptionsManager.ActiveCount);
             _metrics.Set("subscriptions_active_total", TotalActive);
         }
     }
