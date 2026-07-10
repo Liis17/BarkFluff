@@ -2,6 +2,8 @@ using Barkfluff.AdminPanel.Models;
 
 using BarkFluff.Proto.Bots;
 
+using Grpc.Core;
+
 namespace Barkfluff.AdminPanel.Endpoints;
 
 public static class BotsEndpoints
@@ -19,19 +21,26 @@ public static class BotsEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            var response = await botsClient.ListBotsAsync(new ListBotsRequest());
-
-            var bots = response.Bots.Select(b => new
+            try
             {
-                id = b.Id,
-                username = b.Username,
-                name = b.Name,
-                ownerUserId = b.OwnerUserId,
-                systemRole = b.SystemRole,
-                createdAt = b.CreatedAt?.ToDateTime()
-            });
+                var response = await botsClient.ListBotsAsync(new ListBotsRequest());
 
-            return Results.Ok(bots);
+                var bots = response.Bots.Select(b => new
+                {
+                    id = b.Id,
+                    username = b.Username,
+                    name = b.Name,
+                    ownerUserId = b.OwnerUserId,
+                    systemRole = b.SystemRole,
+                    createdAt = b.CreatedAt?.ToDateTime()
+                });
+
+                return Results.Ok(bots);
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
         })
         .WithName("GetAllBots");
 
@@ -47,13 +56,20 @@ public static class BotsEndpoints
             if (string.IsNullOrWhiteSpace(body.Username) || string.IsNullOrWhiteSpace(body.Name))
                 return Results.BadRequest("Username and name are required");
 
-            var response = await botsClient.CreateSystemBotAsync(new CreateSystemBotRequest
+            try
             {
-                Username = body.Username.Trim(),
-                Name = body.Name.Trim()
-            });
+                var response = await botsClient.CreateSystemBotAsync(new CreateSystemBotRequest
+                {
+                    Username = body.Username.Trim(),
+                    Name = body.Name.Trim()
+                });
 
-            return Results.Ok(new { botId = response.BotId, token = response.Token });
+                return Results.Ok(new { botId = response.BotId, token = response.Token });
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
         })
         .WithName("CreateSystemBot");
 
@@ -66,9 +82,16 @@ public static class BotsEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            var response = await botsClient.RegenerateTokenAsync(new RegenerateTokenRequest { BotId = id });
+            try
+            {
+                var response = await botsClient.RegenerateTokenAsync(new RegenerateTokenRequest { BotId = id });
 
-            return Results.Ok(new { token = response.Token });
+                return Results.Ok(new { token = response.Token });
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
         })
         .WithName("RegenerateBotToken");
 
@@ -81,9 +104,16 @@ public static class BotsEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            await botsClient.DeleteBotAsync(new DeleteBotRequest { BotId = id });
+            try
+            {
+                await botsClient.DeleteBotAsync(new DeleteBotRequest { BotId = id });
 
-            return Results.Ok();
+                return Results.Ok();
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
         })
         .WithName("DeleteBot");
     }
