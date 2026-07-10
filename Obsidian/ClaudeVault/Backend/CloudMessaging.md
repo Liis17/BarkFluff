@@ -18,14 +18,15 @@ docker-compose -f Backend/docker-compose-dev.yml up -d cloudmessaging
 
 Компоненты:
 
-1. **Program.cs** — startup: загрузка конфигурации (`ServiceId.CloudMessaging`), регистрация gRPC-клиентов (Users, Messages) и MassTransit consumers (`PushNotificationConsumer`, `DismissPushConsumer`, `AdminBroadcastConsumer`, `IncomingCallPushConsumer`, `CallDismissPushConsumer`).
+1. **Program.cs** — startup: загрузка конфигурации (`ServiceId.CloudMessaging`), регистрация gRPC-клиентов (Users, Messages) и MassTransit consumers (`PushNotificationConsumer`, `DismissPushConsumer`, `AdminBroadcastConsumer`, `IncomingCallPushConsumer`, `CallDismissPushConsumer`, `PrivateChatInvitePushConsumer`).
 2. **PushNotificationConsumer** — MassTransit consumer для `PushNotificationEvent`. Параллельно запрашивает данные отправителя (Users) и чата (Messages), рассылает push **батчем** на все устройства одним запросом к FCM. При ошибке логирует и не пробрасывает — сообщение считается обработанным (без MassTransit retry).
 3. **DismissPushConsumer** — MassTransit consumer для `DismissPushEvent`. Берёт FCM-токены пользователя через `Users.GetDevicesWithFirebaseTokensAsync` и отправляет data-only команду `dismiss_chat_notifications`, чтобы клиенты убрали нотификацию чата на остальных устройствах. Best-effort, без retry.
 4. **AdminBroadcastConsumer** — MassTransit consumer для `AdminBroadcastNotificationEvent` (рассылка от админ-панели). Если `TargetDeviceIds` пуст — запрашивает все FCM-токены через `Users.GetAllDevicesWithFirebaseTokensAsync`, иначе — `Users.GetDevicesWithFirebaseTokensByDeviceIdsAsync`. Шлёт через `FirebaseService.SendAdminBroadcastBatchAsync` (с native Notification-блоком). Best-effort, без retry.
 5. **IncomingCallPushConsumer** — consumer для `IncomingCallPushEvent` из [[Backend/Calls]]. Резолвит имя звонящего/аватар (`Users.GetById`) и заголовок чата для группового (`Messages.GetChatInfo`), берёт токены получателей и шлёт `FirebaseService.SendIncomingCallBatchAsync` (`type=incoming_call`). Best-effort, без retry.
 6. **CallDismissPushConsumer** — consumer для `CallDismissPushEvent`. Берёт токены получателей и шлёт `FirebaseService.SendCallDismissBatchAsync` (`type=dismiss_call`, `reason`) — гасит нотификацию входящего звонка. Best-effort, без retry.
-7. **FirebaseService** — singleton над Firebase Admin SDK.
-   - `SendNotificationBatchAsync` / `SendDismissBatchAsync` / `SendIncomingCallBatchAsync` / `SendCallDismissBatchAsync` — **data-only** сообщения (без `Notification` блока), Android-клиент сам рисует уведомления.
+7. **PrivateChatInvitePushConsumer** — consumer для `PrivateChatInviteEvent` из [[Backend/Messages]] (fanout, параллельно с Updates). Резолвит имя/аватар инициатора (`Users.GetById`), берёт токены приглашённого и шлёт `FirebaseService.SendPrivateChatInviteBatchAsync` (`type=private_chat_invite`; текст локализуется на клиенте). Best-effort, без retry.
+8. **FirebaseService** — singleton над Firebase Admin SDK.
+   - `SendNotificationBatchAsync` / `SendDismissBatchAsync` / `SendIncomingCallBatchAsync` / `SendCallDismissBatchAsync` / `SendPrivateChatInviteBatchAsync` — **data-only** сообщения (без `Notification` блока), Android-клиент сам рисует уведомления.
    - `SendAdminBroadcastBatchAsync` — **native Notification-блок** (title/body/imageUrl) для админ-рассылок, чтобы Android-система показала уведомление без вовлечения клиентского кода. Чанкование по 500 токенов (FCM лимит на multicast).
    Все методы используют `SendEachForMulticastAsync` и обрабатывают `Unregistered`-ошибки для последующей очистки токенов.
 
@@ -71,6 +72,15 @@ Calls (accept/reject/end/timeout/room_finished) → CallDismissPushEvent → Rab
   → CallDismissPushConsumer
   → Users.GetDevicesWithFirebaseTokens(recipients)
   → FirebaseService.SendCallDismissBatchAsync (type=dismiss_call, reason)
+```
+
+```
+Messages (CreatePrivateChat) → PrivateChatInviteEvent → RabbitMQ (fanout: Updates + CloudMessaging)
+  → private-chat-invite-push-handler queue
+  → PrivateChatInvitePushConsumer
+  → Users.GetById (имя/аватар инициатора)
+  → Users.GetDevicesWithFirebaseTokens(invitee)
+  → FirebaseService.SendPrivateChatInviteBatchAsync (type=private_chat_invite)
 ```
 
 > ⚠️ Задержки отправки **нет** — обработка немедленная после получения события из очереди.
