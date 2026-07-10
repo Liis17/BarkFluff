@@ -92,7 +92,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ### Актуальная версия — Pages/v2 (MD3)
 
-`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 
@@ -142,6 +142,17 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 - [[Backend/GrpcServer]] — LoadConfiguration
 - [[Shared/Auth]] — JwtClientInterceptor
 - [[Shared/Queue]] — события RabbitMQ (`AdminBroadcastNotificationEvent`)
+
+## Вкладка «Конфигурация» (`/configuration`)
+
+`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису (раскрывающиеся блоки), клиентский поиск, маскировка секретов (ключ/секция содержит `Token|Secret|Password|AccessKey` → ••• с кнопкой «показать»), inline-редактирование **только Value** (Enter — сохранить, Esc — отмена). `EditedAt` ставит сервер, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+
+Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations` (+ `serviceName` из enum `ServiceId`) |
+| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
 
 ## REST API: Notifications
 

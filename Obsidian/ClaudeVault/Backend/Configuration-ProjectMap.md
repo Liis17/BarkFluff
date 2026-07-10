@@ -32,7 +32,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Host/ConfigurationApiService.cs` | gRPC-сервис, реализует `ConfigurationApiBase`. Принимает входящие RPC-вызовы, инкрементирует метрики через `MetricsCollector` и делегирует обработку в MediatR-команды. Методы: `GetConfiguration`, `UpdateConfiguration`, `GetReservedNames`, `AddReservedName`, `UpdateReservedName`, `DeleteReservedName`. |
+| `Host/ConfigurationApiService.cs` | gRPC-сервис, реализует `ConfigurationApiBase`. Принимает входящие RPC-вызовы, инкрементирует метрики через `MetricsCollector` и делегирует обработку в MediatR-команды. Методы: `GetConfiguration`, `GetAllConfigurations`, `UpdateConfiguration`, `GetReservedNames`, `AddReservedName`, `UpdateReservedName`, `DeleteReservedName`. |
 
 ---
 
@@ -53,6 +53,12 @@
 |------|----------|
 | `Features/GetConfiguration/GetConfigurationCommand.cs` | Команда с полем `ServiceId`. |
 | `Features/GetConfiguration/GetConfigurationCommandHandler.cs` | Загружает конфигурации через `ConfigurationStorage`, фильтрует дубли по Section+Key (приоритет — конкретный ServiceId над Unknown), возвращает `GetConfigurationResponse`. |
+
+### GetAllConfigurations
+| Файл | Описание |
+|------|----------|
+| `Features/GetAllConfigurations/GetAllConfigurationsCommand.cs` | Пустая команда. |
+| `Features/GetAllConfigurations/GetAllConfigurationsCommandHandler.cs` | Возвращает все строки таблицы через `ConfigurationStorage.GetAllConfigurationsAsync()` без фильтров/дедупликации. Используется вкладкой «Конфигурация» AdminPanel. |
 
 ### UpdateConfiguration
 | Файл | Описание |
