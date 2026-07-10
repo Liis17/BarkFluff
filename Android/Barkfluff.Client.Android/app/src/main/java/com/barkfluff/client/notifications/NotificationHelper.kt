@@ -77,6 +77,7 @@ object NotificationHelper {
 
     const val EXTRA_CHAT_ID = "extra_chat_id"
     const val EXTRA_MESSAGE_ID = "extra_message_id"
+    const val EXTRA_IS_PRIVATE_CHAT = "extra_is_private_chat"
     const val ACTION_MARK_AS_READ = "com.barkfluff.client.ACTION_MARK_AS_READ"
 
     fun createChannels(context: Context) {
@@ -278,6 +279,59 @@ object NotificationHelper {
         }
     }
 
+
+    /**
+     * Уведомление о запросе на приватный чат (type=private_chat_invite).
+     * Упрощённая версия showMessageNotification: без action «Прочитано»,
+     * тап открывает PrivateChatActivity через MainActivity (EXTRA_IS_PRIVATE_CHAT).
+     */
+    fun showPrivateInviteNotification(
+        context: Context,
+        inviterName: String,
+        chatId: String,
+        avatarBitmap: Bitmap?
+    ) {
+        try {
+            val notificationId = chatId.hashCode()
+
+            val contentIntent = Intent(context, MainActivity::class.java).apply {
+                putExtra(EXTRA_CHAT_ID, chatId)
+                putExtra(EXTRA_IS_PRIVATE_CHAT, true)
+                action = Intent.ACTION_VIEW
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val contentPendingIntent = PendingIntent.getActivity(
+                context,
+                notificationId,
+                contentIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+
+            val effectiveBitmap = avatarBitmap ?: createPlaceholderBitmap(inviterName, chatId.hashCode().toLong())
+            val softBitmap = toSoftwareBitmap(effectiveBitmap)
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_CHAT_MESSAGES)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(softBitmap)
+                .setColor(context.resources.getColor(R.color.primary, null))
+                .setContentTitle(inviterName)
+                .setContentText(context.getString(R.string.private_chat_invite_incoming))
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setContentIntent(contentPendingIntent)
+
+            try {
+                NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+                activeNotificationChats.add(chatId)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "No notification permission", e)
+            }
+            Log.d(TAG, "Private invite notification shown: chatId=$chatId, inviter=$inviterName")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show private invite notification", e)
+        }
+    }
 
     fun showIncomingCallNotification(
         context: Context,
