@@ -38,7 +38,11 @@ public class Program
         builder.Services.AddXAuth(builder.Configuration);
 
         builder.Services.AddDbContext<DevelopersContext>(c
-            => c.UseNpgsql(builder.Configuration["DevelopersDb"]));
+            => c.UseNpgsql(builder.Configuration["DevelopersDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddTransient<DocumentationStorage>();
         builder.Services.AddTransient<ProtoMetadataStorage>();

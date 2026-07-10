@@ -40,7 +40,11 @@ public class Program
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<OnlineStatusContext>(c
-            => c.UseNpgsql(builder.Configuration["OnlinerDb"]));
+            => c.UseNpgsql(builder.Configuration["OnlinerDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         // Регистрируем все Onliner сервисы (Storage, Notifier, Background Services, MediatR)
         builder.Services.AddOnlinerServices();
