@@ -136,8 +136,7 @@ gRPC сервис для серверных клиентов (`FastAuthServerApi
 | `appsettings.json` | Базовые настройки: порт (`RunSettings:Port = 7008`), адрес ConfigurationService, IdentityService host/token |
 | `appsettings.Development.json` | Переопределения для разработки |
 | `Properties/launchSettings.json` | Профили запуска Visual Studio |
-| `Dockerfile` | Стандартный образ на основе `mcr.microsoft.com/dotnet/aspnet` |
-| `Dockerfile.slim` | Облегчённый образ |
+| `Dockerfile.slim` | Образ на основе `mcr.microsoft.com/dotnet/aspnet`, используемый CI и production. |
 | `BarkFluff.FastAuth.http` | HTTP-файл для ручного тестирования gRPC эндпоинтов |
 | `SECURITY_AUDIT.md` | Документ аудита безопасности сервиса |
 

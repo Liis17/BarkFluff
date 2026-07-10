@@ -13,8 +13,7 @@ Barkfluff.AdminPanel/
 ├── Barkfluff.AdminPanel.csproj
 ├── appsettings.json
 ├── appsettings.Development.json
-├── Dockerfile
-├── Dockerfile.slim                        ← облегчённый образ
+├── Dockerfile.slim                        ← образ для CI и production
 ├── dotnet-tools.json                      ← манифест .NET инструментов
 ├── Data/
 │   ├── TokenDbContext.cs              ← LiteDB: auth-токены
@@ -556,7 +555,7 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 ## Docker — особенности
 
-Dockerfile монтирует `/var/run/docker.sock`, устанавливает Docker CLI.
+`Dockerfile.slim` монтирует `/var/run/docker.sock`, устанавливает Docker CLI.
 `DockerService` запускает команды через `Process` с `ArgumentList` (не string — защита от injection).
 
 **Self-управление** (restart-own, update-own): AdminPanel запускает ephemeral helper-контейнер, который рестартует или обновляет саму панель. Это обходит проблему "убить себя".
