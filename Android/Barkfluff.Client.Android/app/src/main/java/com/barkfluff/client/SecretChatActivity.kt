@@ -9,6 +9,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.EncryptedMessageAdapter
 import com.barkfluff.client.adapter.EncryptedMessageItem
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.databinding.ActivitySecretChatBinding
 import com.barkfluff.client.repository.SecretChatRepository
 import kotlinx.coroutines.flow.filter
@@ -32,6 +34,8 @@ class SecretChatActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySecretChatBinding
     private lateinit var globalParam: GlobalParam
     private lateinit var repo: SecretChatRepository
+    private lateinit var chatCacheRepository: ChatCacheRepository
+    private var cacheScope: CacheScope? = null
     private lateinit var adapter: EncryptedMessageAdapter
 
     private lateinit var chat: SecretChatRepository.SecretChat
@@ -44,6 +48,8 @@ class SecretChatActivity : AppCompatActivity() {
         val secretChatId = intent.getStringExtra(EXTRA_SECRET_CHAT_ID) ?: run { finish(); return }
         globalParam = GlobalParam(this)
         val app = applicationContext as BarkFluffApplication
+        chatCacheRepository = app.chatCacheRepository
+        cacheScope = CacheScope.from(globalParam)
         repo = app.secretChatRepository
         chat = repo.getChat(secretChatId) ?: run {
             Toast.makeText(this, "Секретный чат не найден", Toast.LENGTH_LONG).show()
@@ -58,6 +64,7 @@ class SecretChatActivity : AppCompatActivity() {
         adapter = EncryptedMessageAdapter()
         binding.messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.messagesRecyclerView.adapter = adapter
+        loadCachedHistory()
 
         // Если чат только что создан — показать первое сообщение в UI
         intent.getStringExtra(EXTRA_INITIAL_MESSAGE)?.takeIf { it.isNotBlank() }?.let { firstMsg ->
@@ -74,19 +81,45 @@ class SecretChatActivity : AppCompatActivity() {
         observeRealtime(app)
     }
 
+    private fun loadCachedHistory() {
+        val scope = cacheScope ?: return
+        lifecycleScope.launch {
+            val messages = runCatching {
+                chatCacheRepository.latestSecretMessages(scope, chat.id, limit = 50)
+            }.getOrNull().orEmpty()
+            if (messages.isEmpty()) return@launch
+
+            val items = messages.map {
+                EncryptedMessageItem(
+                    id = it.messageId,
+                    senderLabel = it.senderLabel,
+                    plaintext = it.plaintext,
+                    sentAtMillis = it.sentAtMillis
+                )
+            }
+            adapter.submitList(items) {
+                binding.messagesRecyclerView.scrollToPosition(items.lastIndex)
+            }
+        }
+    }
     private fun onSendClicked() {
         val text = binding.messageEditText.text?.toString()?.trim().orEmpty()
         if (text.isEmpty()) return
         binding.messageEditText.setText("")
         lifecycleScope.launch {
             repo.sendMessage(chat, text)
-                .onSuccess {
+                .onSuccess { sent ->
                     val item = EncryptedMessageItem(
-                        id = "out:${it.messageId}",
+                        id = "out:${sent.messageId}",
                         senderLabel = "Вы",
                         plaintext = text,
                         sentAtMillis = System.currentTimeMillis()
                     )
+                    cacheScope?.let { scope ->
+                        lifecycleScope.launch {
+                            chatCacheRepository.saveSecretMessage(scope, chat.id, item.id, "Вы", text, item.sentAtMillis)
+                        }
+                    }
                     val list = adapter.currentList + item
                     adapter.submitList(list) { binding.messagesRecyclerView.scrollToPosition(list.lastIndex) }
                 }
@@ -112,6 +145,18 @@ class SecretChatActivity : AppCompatActivity() {
                                 plaintext = decrypted.plaintext,
                                 sentAtMillis = decrypted.sentAtSeconds * 1000L
                             )
+                            cacheScope?.let { scope ->
+                                lifecycleScope.launch {
+                                    chatCacheRepository.saveSecretMessage(
+                                        scope,
+                                        chat.id,
+                                        item.id,
+                                        item.senderLabel.orEmpty(),
+                                        decrypted.plaintext,
+                                        item.sentAtMillis
+                                    )
+                                }
+                            }
                             val list = adapter.currentList + item
                             adapter.submitList(list) { binding.messagesRecyclerView.scrollToPosition(list.lastIndex) }
                             // Подтверждаем доставку, чтобы сервер удалил из Redis-буфера

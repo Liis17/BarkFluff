@@ -23,7 +23,7 @@ Package: `com.barkfluff.client`
 
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
 
-- `MainActivity` владеет M3 FAB создания: он видим только на вкладке чатов, находится над нижней навигацией (или в правом нижнем углу wide-layout) и открывает `CreateChatBottomSheet`. Sheet ведёт в обычный поиск, создание группы или, при `privateChatsEnabled` в тестовых настройках, поиск для приватного чата. Секретный пункт скрыт до отдельной реализации протокола.
+- `MainActivity` владеет малой M3 FAB создания: она видима только на вкладке чатов и открывает `CreateChatBottomSheet`. На телефоне при двух видимых вкладках она стоит справа от `bottomNavCard`, а при трёх — поднимается над правым краем панели; wide-layout сохраняет кнопку в правом нижнем углу. Sheet ведёт в обычный поиск, создание группы или, при `privateChatsEnabled` в тестовых настройках, поиск для приватного чата. Секретный пункт скрыт до отдельной реализации протокола.
 - Групповой flow: `CreateGroupChatActivity` выбирает нескольких пользователей через поиск, требует название, принимает опциональную обложку и вызывает `CreateGroupChat`.
 - `ChatData` получает `chatType`, `lastActivityAt`, `privateInviteState` и `privateInviterUserId`; `ChatsFragment` подгружает страницы `ListChats` при прокрутке. Приватный чат открывает `PrivateChatActivity`, имеет lock-бейдж рядом с аватаром и skeleton вместо текста последнего сообщения.
 - Инвайт-флоу приватного чата в списке: при `privateInviteState != ACCEPTED` вместо skeleton показывается статус — «Запрос на приватный чат» (приглашённый), «Ожидает подтверждения» (инициатор), «Запрос отклонён». Роль определяется по `privateInviterUserId` vs свой userId. `PrivateChatActivity` в pending-режиме у приглашённого показывает экран «Принять/Отклонить» (принять → passphrase → `acceptPrivateChatInvite`), у инициатора — баннер ожидания с заблокированным вводом (разблокируется по `privateChatInviteResolutions`); вход с push без extras — fallback-фетч состояния через `getChat`. FCM `type=private_chat_invite` → `NotificationHelper.showPrivateInviteNotification`, тап открывает `PrivateChatActivity` (`EXTRA_IS_PRIVATE_CHAT` в `MainActivity.handleChatIntent`).
@@ -496,6 +496,12 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 - `GlobalParam.mutedChatIds` (StringSet) + `setChatMutedLocal()` — локальный кэш; `BarkFluffFirebaseMessagingService.onMessageReceived` пропускает уведомление, если `chatId` в кэше (guard от гонок кэша токенов; сервер и так подавляет push).
 - Строки: `chat_menu_mute/unmute`, `chat_muted/unmuted`, `chat_mute_error` (все 5 локалей). Серверная часть — [[Backend/Users]] → Per-chat mute.
 
+## Offline-first кеш чатов (V1)
+
+- \`:app-v1\` хранит список чатов, папки, отображаемые данные личных чатов и всю просмотренную историю в зашифрованной Room/SQLCipher БД. Ключ создаётся случайно и хранится в \`EncryptedSharedPreferences\`; scope включает Beacon-сервер и ID пользователя.
+- \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. В шапке отдельно от realtime-статуса отображаются «Обновление…» либо offline-подсказка с повтором.
+- \`ChatActivity\` немедленно показывает последние 30 кешированных сообщений, а затем обновляет серверную страницу только для открытого чата. Страницы пагинации и события realtime (new/read/edit/delete) сохраняются обратно в кеш.
+- Настройки хранилища показывают размер и количество офлайн-данных; «Очистить кеш» удаляет БД и ключ. \`LogoutHelper\` также очищает кеш, поэтому данные другого аккаунта не отображаются.
 ## Сборка
 
 ```bash

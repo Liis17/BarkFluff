@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
     id("com.google.gms.google-services")
 }
 
@@ -91,6 +92,10 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Общий не-UI слой (gRPC, репозитории, крипто, proto, хранилище). Транзитивно отдаёт
     // gRPC/protobuf/coroutines-core (api), а также libsignal/argon2 native в APK.
@@ -104,6 +109,14 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
 
+
+    // Offline-first chat cache: Room with SQLCipher encryption.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.sqlite)
+    implementation("net.zetetic:sqlcipher-android:4.15.0@aar")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // ProcessLifecycleOwner — foreground/background tracking + RealtimeService resume/pause.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 

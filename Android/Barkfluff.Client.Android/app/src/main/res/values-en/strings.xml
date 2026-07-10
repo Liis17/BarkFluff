@@ -530,4 +530,8 @@
     <string name="chat_muted">Notifications muted</string>
     <string name="chat_unmuted">Notifications unmuted</string>
     <string name="chat_mute_error">Couldn’t change the setting</string>
+    <string name="chats_sync_updating">Updating…</string>
+    <string name="chats_sync_offline">No connection / data may be outdated</string>
+    <string name="chats_sync_retry">Retry</string>
+    <string name="storage_cache_size_with_chats">Image cache: %1$.1f MB\\nChat cache: %2$d chats · %3$d messages · %4$s</string>
 </resources>

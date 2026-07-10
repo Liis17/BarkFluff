@@ -140,6 +140,12 @@
 -keep class kotlinx.coroutines.debug.** { *; }
 
 # =============================================================================
+# =============================================================================
+# SQLCipher — JNI ищет классы и native methods по имени
+# =============================================================================
+-keep,includedescriptorclasses class net.zetetic.database.sqlcipher.** { *; }
+-keep,includedescriptorclasses interface net.zetetic.database.sqlcipher.** { *; }
+-dontwarn net.zetetic.database.sqlcipher.**
 # Наш код — оставляем всё под com.barkfluff.client (минимизация даст слишком
 # мало по сравнению с рисками; основная экономия от R8 идёт по библиотекам).
 # Если позже захотим обфусцировать собственный код — снять это правило.

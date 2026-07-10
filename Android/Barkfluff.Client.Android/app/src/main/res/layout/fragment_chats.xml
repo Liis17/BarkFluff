@@ -79,6 +79,46 @@
 
         </com.google.android.material.appbar.MaterialToolbar>
 
+        <LinearLayout
+            android:id="@+id/syncStatusContainer"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone">
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/syncProgress"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:indeterminate="true"
+                app:indicatorColor="?attr/colorPrimary"
+                app:indicatorSize="18dp"
+                app:trackThickness="2dp" />
+
+            <TextView
+                android:id="@+id/syncStatusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/syncRetryButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/chats_sync_retry"
+                android:visibility="gone"
+                app:icon="@drawable/ic_refresh"
+                app:iconTint="?attr/colorPrimary" />
+
+        </LinearLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/foldersRecyclerView"
             android:layout_width="match_parent"
