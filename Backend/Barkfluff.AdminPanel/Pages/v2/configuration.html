@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Конфигурация</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .toolbar input { flex: 1; max-width: 420px; }
+
+        .service-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .service-head {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 20px;
+            cursor: pointer; user-select: none;
+        }
+        .service-head:hover { background: var(--md-surface-container); }
+        .service-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-secondary-container);
+            color: var(--md-on-secondary-container);
+            display: inline-flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .service-name { font-size: 15px; font-weight: 600; color: var(--md-on-surface); flex: 1; }
+        .service-count { font-size: 12px; color: var(--md-on-surface-variant); }
+        .service-chevron { transition: transform .2s; color: var(--md-on-surface-variant); }
+        .service-card.open .service-chevron { transform: rotate(180deg); }
+
+        .config-table { width: 100%; border-collapse: collapse; }
+        .config-table th {
+            text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+            color: var(--md-on-surface-variant);
+            padding: 8px 12px;
+            border-top: 1px solid var(--md-outline-variant);
+            border-bottom: 1px solid var(--md-outline-variant);
+            background: var(--md-surface-container);
+        }
+        .config-table td {
+            padding: 8px 12px; font-size: 13px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            color: var(--md-on-surface);
+            vertical-align: middle;
+        }
+        .config-table tr:last-child td { border-bottom: none; }
+        .config-table tr:hover td { background: var(--md-surface-container); }
+
+        .cell-section { color: var(--md-on-surface-variant); white-space: nowrap; }
+        .cell-key { font-family: 'Roboto Mono', monospace; font-size: 12px; white-space: nowrap; }
+        .cell-value { max-width: 340px; }
+        .value-text { font-family: 'Roboto Mono', monospace; font-size: 12px; overflow-wrap: anywhere; word-break: break-all; }
+        .value-masked { letter-spacing: 2px; color: var(--md-on-surface-variant); }
+        .cell-meta { font-size: 12px; color: var(--md-on-surface-variant); white-space: nowrap; }
+        .cell-actions { white-space: nowrap; text-align: right; }
+        .cell-actions .md-icon-btn { width: 32px; height: 32px; }
+
+        .value-edit-wrap { display: flex; align-items: center; gap: 6px; }
+        .value-edit-wrap input { flex: 1; min-width: 200px; font-family: 'Roboto Mono', monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="configuration"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <h1>Конфигурация</h1>
+                <span class="md-status md-status-info"><span class="dot"></span>База конфигурации</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div class="toolbar">
+                <input type="text" id="search-input" class="md-input-outlined" placeholder="Поиск по секции, ключу, значению...">
+                <span class="service-count" id="total-count"></span>
+            </div>
+
+            <div id="services-list"></div>
+
+            <div id="empty-state" class="md-empty" style="display:none;">
+                <span class="msr size-48">tune</span>
+                <h3>Ничего не найдено</h3>
+                <p>Нет строк конфигурации, подходящих под фильтр.</p>
+            </div>
+
+            <div id="error-state" class="md-empty" style="display:none;color:var(--md-error);">
+                <span class="msr size-48">error</span>
+                <h3 style="color:var(--md-error);">Ошибка загрузки</h3>
+                <p id="error-message"></p>
+                <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadConfigurations()">
+                    <span class="msr size-18">refresh</span>
+                    Попробовать снова
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let allItems = [];               // все строки из /api/configuration/all
+    const openGroups = new Set();    // раскрытые сервисы
+    const revealed = new Set();      // индексы строк с раскрытым секретом
+    let editingIdx = null;           // индекс редактируемой строки
+    let searchQuery = '';
+
+    const SECRET_RE = /token|secret|password|accesskey/i;
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function formatDate(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d.getTime())) return '—'; return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+    function isSecret(item) { return SECRET_RE.test(item.key) || SECRET_RE.test(item.section); }
+
+    async function loadConfigurations() {
+        const err = document.getElementById('error-state');
+        try {
+            const r = await fetch('/api/configuration/all');
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            allItems = await r.json();
+            revealed.clear();
+            editingIdx = null;
+            err.style.display = 'none';
+            render();
+        } catch (e) {
+            document.getElementById('services-list').innerHTML = '';
+            document.getElementById('empty-state').style.display = 'none';
+            err.style.display = 'flex';
+            document.getElementById('error-message').textContent = e.message;
+        }
+    }
+
+    function matchesSearch(item) {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return item.section.toLowerCase().includes(q)
+            || item.key.toLowerCase().includes(q)
+            || item.value.toLowerCase().includes(q)
+            || item.serviceName.toLowerCase().includes(q);
+    }
+
+    function render() {
+        const list = document.getElementById('services-list');
+        const empty = document.getElementById('empty-state');
+
+        const groups = new Map();
+        allItems.forEach((item, idx) => {
+            if (!matchesSearch(item)) return;
+            if (!groups.has(item.serviceName)) groups.set(item.serviceName, []);
+            groups.get(item.serviceName).push(idx);
+        });
+
+        const shown = [...groups.values()].reduce((n, a) => n + a.length, 0);
+        document.getElementById('total-count').textContent = `Строк: ${shown} из ${allItems.length}`;
+
+        if (groups.size === 0) {
+            list.innerHTML = '';
+            empty.style.display = 'flex';
+            return;
+        }
+        empty.style.display = 'none';
+
+        const names = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+        list.innerHTML = names.map(name => {
+            const idxs = groups.get(name);
+            const open = searchQuery ? true : openGroups.has(name);
+            return `
+                <div class="service-card${open ? ' open' : ''}" data-group="${escapeHtml(name)}">
+                    <div class="service-head" onclick="toggleGroup('${escapeHtml(name)}')">
+                        <div class="service-icon"><span class="msr">dns</span></div>
+                        <div class="service-name">${escapeHtml(name)}</div>
+                        <span class="service-count">${idxs.length} параметров</span>
+                        <span class="msr service-chevron">expand_more</span>
+                    </div>
+                    ${open ? renderTable(idxs) : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderTable(idxs) {
+        return `
+            <table class="config-table">
+                <thead>
+                    <tr>
+                        <th>Секция</th>
+                        <th>Ключ</th>
+                        <th>Значение</th>
+                        <th>Изменено</th>
+                        <th>Кем</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${idxs.map(renderRow).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function renderRow(idx) {
+        const item = allItems[idx];
+        const secret = isSecret(item);
+        const editing = editingIdx === idx;
+
+        let valueCell, actionsCell;
+        if (editing) {
+            valueCell = `
+                <div class="value-edit-wrap">
+                    <input type="text" id="edit-input-${idx}" class="md-input-outlined" value="${escapeHtml(item.value)}"
+                        onkeydown="onEditKey(event, ${idx})">
+                </div>
+            `;
+            actionsCell = `
+                <button class="md-icon-btn" title="Сохранить" onclick="saveValue(${idx})"><span class="msr size-20" style="color:var(--md-primary);">check</span></button>
+                <button class="md-icon-btn" title="Отмена" onclick="cancelEdit()"><span class="msr size-20">close</span></button>
+            `;
+        } else {
+            const masked = secret && !revealed.has(idx);
+            valueCell = masked
+                ? `<span class="value-text value-masked">••••••••</span>`
+                : `<span class="value-text">${escapeHtml(item.value)}</span>`;
+            actionsCell = `
+                ${secret ? `<button class="md-icon-btn" title="${masked ? 'Показать' : 'Скрыть'}" onclick="toggleReveal(${idx})"><span class="msr size-20">${masked ? 'visibility' : 'visibility_off'}</span></button>` : ''}
+                <button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="msr size-20">edit</span></button>
+            `;
+        }
+
+        return `
+            <tr data-idx="${idx}">
+                <td class="cell-section">${escapeHtml(item.section)}</td>
+                <td class="cell-key">${escapeHtml(item.key)}</td>
+                <td class="cell-value">${valueCell}</td>
+                <td class="cell-meta" title="${escapeHtml(item.editedFrom || '')}">${formatDate(item.editedAt)}</td>
+                <td class="cell-meta">${escapeHtml(item.editedBy || '—')}</td>
+                <td class="cell-actions">${actionsCell}</td>
+            </tr>
+        `;
+    }
+
+    window.toggleGroup = function (name) {
+        if (openGroups.has(name)) openGroups.delete(name); else openGroups.add(name);
+        render();
+    };
+
+    window.toggleReveal = function (idx) {
+        if (revealed.has(idx)) revealed.delete(idx); else revealed.add(idx);
+        render();
+    };
+
+    window.startEdit = function (idx) {
+        editingIdx = idx;
+        render();
+        const input = document.getElementById(`edit-input-${idx}`);
+        if (input) { input.focus(); input.select(); }
+    };
+
+    window.cancelEdit = function () {
+        editingIdx = null;
+        render();
+    };
+
+    window.onEditKey = function (e, idx) {
+        if (e.key === 'Enter') saveValue(idx);
+        else if (e.key === 'Escape') cancelEdit();
+    };
+
+    window.saveValue = async function (idx) {
+        const item = allItems[idx];
+        const input = document.getElementById(`edit-input-${idx}`);
+        if (!input) return;
+        const newValue = input.value;
+
+        input.disabled = true;
+        try {
+            const r = await fetch('/api/configuration/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    section: item.section,
+                    key: item.key,
+                    serviceId: item.serviceId,
+                    value: newValue
+                })
+            });
+            if (!r.ok) {
+                const body = await r.json().catch(() => null);
+                throw new Error(body?.message || `HTTP ${r.status}`);
+            }
+            const data = await r.json();
+            item.value = newValue;
+            item.editedAt = new Date().toISOString();
+            item.editedBy = data.editedBy || item.editedBy;
+            editingIdx = null;
+            render();
+        } catch (e) {
+            input.disabled = false;
+            alert('Ошибка сохранения: ' + e.message);
+        }
+    };
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim();
+        editingIdx = null;
+        render();
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', loadConfigurations);
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        if (!confirm('Выйти?')) return;
+        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const auth = await checkAuth(); if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        await loadConfigurations();
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>
