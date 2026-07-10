@@ -11,7 +11,7 @@
 |------|-----------|
 | `Program.cs` | Настройка DI, gRPC, EF Core, Redis, MassTransit (consumers), gRPC-клиенты Users/Files, Serilog, XAuth |
 | `appsettings.json` / `appsettings.Development.json` | Конфигурация подключений (DB, Redis, RabbitMQ, сервисы) |
-| `Dockerfile` / `Dockerfile.slim` | Образы для запуска сервиса в контейнере |
+| `Dockerfile.slim` | Образ для запуска сервиса в CI и production. |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса |
 
 ---

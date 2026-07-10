@@ -93,8 +93,7 @@ Settings-класс. Свойства сервера: `Name`, `Description`, `Pu
 
 | Файл | Назначение |
 |------|-----------|
-| `Dockerfile` | Продакшен-образ |
-| `Dockerfile.slim` | Облегчённый образ |
+| `Dockerfile.slim` | Образ для CI и production |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса |
 | `BarkFluff.Beacon.http` | HTTP-файл для ручного тестирования gRPC |
 | `appsettings.Development.json` | Dev-конфигурация (переопределения) |

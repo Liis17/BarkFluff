@@ -1,5 +1,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
 WORKDIR /app
+# Статические ffmpeg/ffprobe для генерации превью видео.
+COPY --from=mwader/static-ffmpeg:latest /ffmpeg /ffprobe /usr/local/bin/
 COPY --chown=1654:1654 publish/ .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "BarkFluff.Files.dll"]
