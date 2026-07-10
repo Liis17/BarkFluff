@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.PopupMenu
@@ -20,6 +19,7 @@ import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,16 +35,18 @@ class MediaViewerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMediaViewerBinding
     private lateinit var chatRepository: ChatRepository
     private var player: ExoPlayer? = null
+    private var progressUpdateJob: Job? = null
 
     private var fileId: String = ""
     private var fileName: String = ""
     private var cachedPath: String? = null
+    private var isSeeking = false
+    private var controlsVisible = true
 
     private var swipeTouchStartY = 0f
     private var swipeTouchStartTranslation = 0f
 
     companion object {
-        private const val TAG = "MediaViewerActivity"
         const val RESULT_CACHE_DELETED = 100
         const val EXTRA_FILE_ID = "file_id"
         private const val EXTRA_FILE_NAME = "file_name"
@@ -89,20 +91,21 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun setupPlayerWithFile(file: File) {
+        cachedPath = file.absolutePath
         binding.loadingProgress.visibility = View.GONE
-        val uri = Uri.fromFile(file)
-        initPlayer(uri)
+        initPlayer(Uri.fromFile(file))
     }
 
     private fun downloadAndPlay() {
         binding.loadingProgress.visibility = View.VISIBLE
-        binding.bottomBar.visibility = View.GONE
+        binding.controlsCard.visibility = View.INVISIBLE
+        controlsVisible = false
         lifecycleScope.launch {
             val file = chatRepository.downloadFile(fileId)
             withContext(Dispatchers.Main) {
                 binding.loadingProgress.visibility = View.GONE
                 if (file != null) {
-                    binding.bottomBar.visibility = View.VISIBLE
+                    showControls()
                     setupPlayerWithFile(file)
                 } else {
                     Toast.makeText(this@MediaViewerActivity, "Ошибка загрузки", Toast.LENGTH_SHORT).show()
@@ -123,15 +126,18 @@ class MediaViewerActivity : AppCompatActivity() {
                 override fun onPlaybackStateChanged(state: Int) {
                     if (state == Player.STATE_READY) {
                         updatePlayPauseIcon()
+                        updatePlaybackProgress()
                         startProgressUpdates()
                     }
                     if (state == Player.STATE_ENDED) {
                         binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow)
                         binding.videoSeekBar.progress = 0
+                        binding.timeText.text = "${formatTime(0)} / ${formatTime(exo.duration)}"
                         exo.seekTo(0)
                         exo.playWhenReady = false
                     }
                 }
+
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     updatePlayPauseIcon()
                 }
@@ -140,27 +146,33 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun updatePlayPauseIcon() {
-        val isPlaying = player?.isPlaying == true
         binding.playPauseButton.setIconResource(
-            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+            if (player?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play_arrow
         )
     }
 
     private fun startProgressUpdates() {
-        lifecycleScope.launch {
+        progressUpdateJob?.cancel()
+        progressUpdateJob = lifecycleScope.launch {
             while (true) {
                 delay(250)
-                val p = player ?: break
-                val duration = p.duration.takeIf { it > 0 } ?: continue
-                val position = p.currentPosition
-                binding.videoSeekBar.progress = (position * 1000L / duration).toInt()
-                binding.timeText.text = "${formatTime(position)} / ${formatTime(duration)}"
+                if (player == null) break
+                if (!isSeeking) updatePlaybackProgress()
             }
         }
     }
 
+    private fun updatePlaybackProgress() {
+        val currentPlayer = player ?: return
+        val duration = currentPlayer.duration.takeIf { it > 0 } ?: return
+        val position = currentPlayer.currentPosition
+        binding.videoSeekBar.progress = (position * 1000L / duration).toInt()
+        binding.timeText.text = "${formatTime(position)} / ${formatTime(duration)}"
+    }
+
     private fun setupButtons() {
         binding.backButton.setOnClickListener { finishWithAnimation() }
+        binding.playerView.setOnClickListener { toggleControls() }
 
         binding.playPauseButton.setOnClickListener {
             player?.let {
@@ -168,28 +180,70 @@ class MediaViewerActivity : AppCompatActivity() {
             }
         }
 
+        binding.downloadButton.setOnClickListener { saveToDownloads() }
+
         binding.videoSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    val duration = player?.duration ?: return
-                    if (duration > 0) player?.seekTo(progress.toLong() * duration / 1000L)
+                    val duration = player?.duration?.takeIf { it > 0 } ?: return
+                    binding.timeText.text = "${formatTime(progress.toLong() * duration / 1000L)} / ${formatTime(duration)}"
                 }
             }
-            override fun onStartTrackingTouch(sb: SeekBar) {}
-            override fun onStopTrackingTouch(sb: SeekBar) {}
+
+            override fun onStartTrackingTouch(sb: SeekBar) {
+                isSeeking = true
+            }
+
+            override fun onStopTrackingTouch(sb: SeekBar) {
+                val duration = player?.duration?.takeIf { it > 0 }
+                if (duration != null) {
+                    player?.seekTo(sb.progress.toLong() * duration / 1000L)
+                }
+                isSeeking = false
+            }
         })
 
         binding.moreButton.setOnClickListener { showMoreMenu(it) }
     }
 
+    private fun toggleControls() {
+        if (controlsVisible) hideControls() else showControls()
+    }
+
+    private fun hideControls() {
+        if (!controlsVisible) return
+        controlsVisible = false
+        binding.controlsCard.animate()
+            .alpha(0f)
+            .translationY(24f * resources.displayMetrics.density)
+            .setDuration(150)
+            .withEndAction {
+                if (!controlsVisible) binding.controlsCard.visibility = View.INVISIBLE
+            }
+            .start()
+    }
+
+    private fun showControls() {
+        if (controlsVisible) return
+        controlsVisible = true
+        binding.controlsCard.apply {
+            visibility = View.VISIBLE
+            alpha = 0f
+            translationY = 24f * resources.displayMetrics.density
+            animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(150)
+                .start()
+        }
+    }
+
     private fun showMoreMenu(anchor: View) {
         val popup = PopupMenu(this, anchor)
-        popup.menu.add(0, 1, 0, "Сохранить")
-        popup.menu.add(0, 2, 1, "Удалить из кэша")
+        popup.menu.add(0, 1, 0, "Удалить из кэша")
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                1 -> { saveToGallery(); true }
-                2 -> { deleteFromCacheAndClose(); true }
+                1 -> { deleteFromCacheAndClose(); true }
                 else -> false
             }
         }
@@ -248,15 +302,18 @@ class MediaViewerActivity : AppCompatActivity() {
             .start()
     }
 
-    private fun saveToGallery() {
-        val cachedFile = FileCache.getFile(fileId) ?: run {
+    private fun saveToDownloads() {
+        val videoFile = cachedPath?.let { File(it) }?.takeIf { it.exists() }
+            ?: FileCache.getFile(fileId)
+        if (videoFile == null) {
             Toast.makeText(this, "Файл не найден в кэше", Toast.LENGTH_SHORT).show()
             return
         }
+
         val displayName = fileName.ifBlank { "BarkFluff_${System.currentTimeMillis()}.mp4" }
         lifecycleScope.launch {
             val ok = withContext(Dispatchers.IO) {
-                FileSaveUtils.saveToDownloads(this@MediaViewerActivity, cachedFile, displayName)
+                FileSaveUtils.saveToDownloads(this@MediaViewerActivity, videoFile, displayName)
             }
             Toast.makeText(
                 this@MediaViewerActivity,
@@ -275,6 +332,7 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        progressUpdateJob?.cancel()
         player?.release()
         player = null
         chatRepository.close()
