@@ -116,7 +116,7 @@ public class Program
 
         builder.Services.AddGrpcClient<BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient>(o =>
         {
-            o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7010");
+            o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7003");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["ConfigurationService:Token"] ?? string.Empty));
 
         builder.Services.AddGrpcClient<BotsServerApi.BotsServerApiClient>(o =>
@@ -242,6 +242,9 @@ public class Program
 
         // Map Users Endpoints
         app.MapUsersEndpoints();
+
+        // Map Bots Endpoints
+        app.MapBotsEndpoints();
 
         // Map Configuration Endpoints
         app.MapConfigurationEndpoints();

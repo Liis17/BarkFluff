@@ -32,7 +32,7 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 
 - `Domain/ConfigurationItem` — единственная сущность: Section, Key, Value, ServiceId, EditedAt/By/From
 - `Infrastructure/ConfigurationStorage` — read/upsert конфигураций + CRUD reserved names
-- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings` (с `Http1Port` для Files), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles` (ExpiresAt 60 мин), `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, базы данных (Identity, Users, Files, Messages, Onliner). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
+- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings` (с `Http1Port` для Files, Calls и [[Backend/Bots|Bots]]), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles` (ExpiresAt 60 мин), `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, базы данных (Identity, Users, Files, Messages, Onliner, Bots). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
 - `Infrastructure/ConfigurationContext` — EF Core DbContext, один DbSet: `Configurations`
 - `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды; инструментирован `MetricsCollector` (счётчики запросов, ошибок, длительность)
 
@@ -40,10 +40,11 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 
 Применяются автоматически при старте (`ctx.Database.Migrate()`) с retry до 5 раз. После миграций запускается `ConfigurationDefaultsPopulator`.
 
-Миграции-seed (например `SeedBeaconServerProps`) добавляют начальные записи через SQL в `Up()` — не через EF-модель.
+Миграции-seed (например `SeedBeaconServerProps`) добавляют начальные записи через SQL в `Up()` — не через EF-модель. Каждая migration-класс имеет `MigrationAttribute` (из сгенерированного `.Designer.cs` либо явно на классе), иначе EF Core не включит её в `Database.Migrate()`.
 
 ```bash
-dotnet ef migrations add MigrationName --project Backend/BarkFluff.Configuration
+dotnet tool restore
+dotnet tool run dotnet-ef migrations add MigrationName --project Backend/BarkFluff.Configuration
 ```
 
 ## Proto

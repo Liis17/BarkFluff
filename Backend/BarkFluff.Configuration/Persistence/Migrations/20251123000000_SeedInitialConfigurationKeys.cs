@@ -77,12 +77,7 @@ namespace BarkFluff.Configuration.Persistence.Migrations
                     ('Redis', '', '', NOW(), 'system', 'migration', 6),
 
                     -- NavigatorUrl
-                    ('NavigatorUrl', '', '', NOW(), 'system', 'migration', 0),
-
-                    -- ServerProps
-                    ('ServerProps', 'Name', '', NOW(), 'system', 'migration', 3),
-                    ('ServerProps', 'Description', '', NOW(), 'system', 'migration', 3),
-                    ('ServerProps', 'PublicName', '', NOW(), 'system', 'migration', 3);
+                    ('NavigatorUrl', '', '', NOW(), 'system', 'migration', 0);
             ");
         }
 

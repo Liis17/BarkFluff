@@ -67,6 +67,8 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 Каждый файл в `Endpoints/` — extension method `Map{Name}Endpoints()`. Добавление: создать метод в существующем файле или новый файл + вызов в `Program.cs`.
 
+`BotsEndpoints` зарегистрирован через `app.MapBotsEndpoints()` и проксирует `ListBots`, создание системного бота, перегенерацию токена и удаление в [[Backend/Bots|Bots]]. Сервис `BarkFluff.Bots` также входит в списки статусов контейнеров и метрик Seq на актуальных страницах `Pages/v2/services.html` и `Pages/v2/dashboard.html`.
+
 ## Proto
 
 - `users_api.proto`, `files_api.proto`, `identity_api.proto`, `bots_api.proto` — Client
