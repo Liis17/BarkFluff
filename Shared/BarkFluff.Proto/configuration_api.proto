@@ -10,7 +10,10 @@ service ConfigurationApi {
 
   // Получить настройки сервиса
   rpc GetConfiguration(GetConfigurationRequest) returns(GetConfigurationResponse);
-  
+
+  // Получить все строки конфигурации (для админ-панели)
+  rpc GetAllConfigurations(GetAllConfigurationsRequest) returns(GetAllConfigurationsResponse);
+
   // Обновить настройку
   rpc UpdateConfiguration(UpdateConfigurationRequest) returns(UpdateConfigurationResponse);
 
@@ -47,6 +50,14 @@ message ConfigurationItem {
   string edited_from = 6;
 
   int32 service_id = 7;
+}
+
+message GetAllConfigurationsRequest {}
+
+message GetAllConfigurationsResponse {
+
+  repeated ConfigurationItem configurations = 1;
+
 }
 
 message UpdateConfigurationRequest {
