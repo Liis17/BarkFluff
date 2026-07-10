@@ -39,4 +39,8 @@ public class Chat
 
     // Вычисляется в выборке списка чатов и не хранится в БД.
     public DateTime LastActivityAt { get; set; }
+
+    // Инициатор приватного инвайта: пока чат не Accepted, единственный реальный
+    // member — инициатор. Вычисляется в выборке, не хранится в БД.
+    public long? PrivateInviterUserId { get; set; }
 }

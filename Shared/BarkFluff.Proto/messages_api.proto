@@ -312,6 +312,10 @@ message Chat {
   google.protobuf.Timestamp last_activity_at = 14;
 
   barkfluff.shared.PrivateChatInviteState private_invite_state = 15;
+
+  // Инициатор приватного инвайта (только PRIVATE и state != ACCEPTED; иначе 0).
+  // Позволяет клиенту понять роль: получатель показывает «принять/отклонить».
+  int64 private_inviter_user_id = 16;
 }
 
 message ChatMember {

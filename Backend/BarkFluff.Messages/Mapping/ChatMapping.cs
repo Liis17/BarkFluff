@@ -32,6 +32,7 @@ public static class ChatMapping
                 ? Timestamp.FromDateTime(DateTime.SpecifyKind(chat.CreatedAt, DateTimeKind.Utc))
                 : Timestamp.FromDateTime(DateTime.SpecifyKind(chat.LastActivityAt, DateTimeKind.Utc)),
             PrivateInviteState = (BarkFluff.Proto.Shared.PrivateChatInviteState)chat.PrivateInviteState,
+            PrivateInviterUserId = chat.PrivateInviterUserId ?? 0,
         };
     }
 }
