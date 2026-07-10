@@ -247,7 +247,9 @@
       "Bash(./gradlew :app-v1:compileDebugKotlin -q)",
       "Skill(run)",
       "Bash(node server.js)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8934/repro2.html)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8934/repro2.html)",
+      "Bash(dotnet test *)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew :app-v1:assembleDebug -q)"
     ],
     "deny": [],
     "ask": []

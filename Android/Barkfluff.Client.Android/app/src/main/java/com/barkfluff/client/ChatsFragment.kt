@@ -12,6 +12,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.activity.result.contract.ActivityResultContracts
 import com.barkfluff.client.adapter.ChatAdapter
+import com.barkfluff.client.adapter.ChatSkeletonAdapter
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.CachedChatDisplay
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.adapter.FolderTabsAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
@@ -40,6 +44,11 @@ class ChatsFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var realtimeService: RealtimeService
+    private lateinit var chatCacheRepository: ChatCacheRepository
+    private lateinit var skeletonAdapter: ChatSkeletonAdapter
+    private var cacheScope: CacheScope? = null
+    private var cachedDisplays: Map<String, CachedChatDisplay> = emptyMap()
+    private var hasAppliedRemoteChats = false
     private var loadChatsJob: Job? = null
 
     // Папки чатов
@@ -73,13 +82,17 @@ class ChatsFragment : Fragment() {
         globalParam = GlobalParam(requireContext())
         grpcManager = app.grpcManager
         realtimeService = app.realtimeService
+        chatCacheRepository = app.chatCacheRepository
+        cacheScope = CacheScope.from(globalParam)
 
         setupToolbar()
         setupChatList()
         setupFolderTabs()
         setupSearchButton()
+        showSkeleton()
 
         subscribeToRealtimeEvents()
+        hydrateChatsFromCache()
         checkTokenAndLoadChats()
     }
 
@@ -115,8 +128,8 @@ class ChatsFragment : Fragment() {
                     // Сначала проверяем и обновляем токен при необходимости
                     val tokenValid = grpcManager.ensureTokenValid(requireContext())
                     if (!tokenValid) {
-                        Log.w(TAG, "onResume: Token refresh failed, navigating to login")
-                        navigateToLogin()
+                        Log.w(TAG, "onResume: Token refresh failed, keeping cached chats")
+                        showSyncOffline()
                         return@launch
                     }
                     loadChats()
@@ -137,6 +150,9 @@ class ChatsFragment : Fragment() {
         binding.toolbar.title = null
         // Показываем имя пользователя
         updateToolbarTitle()
+        binding.syncRetryButton.setOnClickListener {
+            checkTokenAndLoadChats()
+        }
     }
 
     private fun updateToolbarTitle(isConnecting: Boolean = false) {
@@ -217,10 +233,11 @@ class ChatsFragment : Fragment() {
         }
 
         chatAdapter.currentUserId = globalParam.userId
+        skeletonAdapter = ChatSkeletonAdapter()
 
         binding.chatRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = chatAdapter
+            adapter = skeletonAdapter
             setHasFixedSize(false)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -232,8 +249,33 @@ class ChatsFragment : Fragment() {
         }
     }
 
-    private fun checkTokenAndLoadChats() {
+    private fun hydrateChatsFromCache() {
+        val scope = cacheScope ?: run {
+            showSkeleton()
+            return
+        }
         viewLifecycleOwner.lifecycleScope.launch {
+            val snapshot = runCatching { chatCacheRepository.readChatList(scope) }.getOrNull()
+            if (snapshot == null) {
+                showSkeleton()
+                return@launch
+            }
+            if (hasAppliedRemoteChats) return@launch
+
+            allChats = snapshot.chats
+            folders = snapshot.folders
+            cachedDisplays = snapshot.displays
+            totalChatsCount = snapshot.totalCount
+            renderFolderTabs()
+            applyFolderFilter()
+            realtimeService.changeOnlineSubscription(allChats.flatMap { it.memberIds }.distinct())
+        }
+    }
+
+    private fun checkTokenAndLoadChats() {
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            showSyncUpdating()
             val hasRefreshToken = globalParam.refreshToken != null
             val hasAccessToken = globalParam.accessToken != null
             val isAccessTokenExpired = isAccessTokenExpired()
@@ -246,7 +288,7 @@ class ChatsFragment : Fragment() {
                 hasRefreshToken && (!hasAccessToken || isAccessTokenExpired) -> {
                     val refreshResult = tryRefreshToken()
                     if (!refreshResult) {
-                        navigateToLogin()
+                        showSyncOffline()
                         return@launch
                     }
                 }
@@ -285,7 +327,7 @@ class ChatsFragment : Fragment() {
     private fun loadChats() {
         loadChatsJob?.cancel()
         loadChatsJob = viewLifecycleOwner.lifecycleScope.launch {
-            showLoading(true)
+            showSyncUpdating()
 
             // Параллельно: чаты и папки. Чаты критичны, папки — нет (если упали — log + пустой список).
             val (chatsResult, foldersResult) = coroutineScope {
@@ -296,13 +338,25 @@ class ChatsFragment : Fragment() {
 
             if (chatsResult.isSuccess) {
                 val page = chatsResult.getOrNull()!!
-                allChats = page.chats
+                val refreshedChats = page.chats.toMutableList()
+                var nextOffset = refreshedChats.size
+                for (pageIndex in 1 until 3) {
+                    if (nextOffset >= page.totalCount) break
+                    val nextPageResult = grpcManager.getChatsPage(offset = nextOffset)
+                    val nextPage = nextPageResult.getOrNull() ?: break
+                    refreshedChats += nextPage.chats
+                    nextOffset += nextPage.chats.size
+                    if (nextPage.chats.isEmpty()) break
+                }
+                hasAppliedRemoteChats = true
+                allChats = (allChats + refreshedChats).associateBy { it.id }.values
+                    .sortedByDescending { it.lastActivityAt }
                 totalChatsCount = page.totalCount
                 Log.d(TAG, "Загружено ${allChats.size} из $totalChatsCount чатов")
 
                 folders = if (foldersResult.isSuccess) foldersResult.getOrNull() ?: emptyList() else {
                     Log.w(TAG, "Не удалось загрузить папки, продолжаем с пустым списком", foldersResult.exceptionOrNull())
-                    emptyList()
+                    folders
                 }
 
                 // Если выбранная папка пропала — сбрасываем на «Все чаты»
@@ -316,6 +370,17 @@ class ChatsFragment : Fragment() {
                 // Обновляем подписку на онлайн-статусы всех участников чатов
                 val allMemberIds = allChats.flatMap { it.memberIds }.distinct()
                 realtimeService.changeOnlineSubscription(allMemberIds)
+                cacheScope?.let { scope ->
+                    runCatching {
+                        chatCacheRepository.saveChatPage(
+                            scope = scope,
+                            chats = refreshedChats,
+                            totalCount = totalChatsCount,
+                            folders = foldersResult.getOrNull()
+                        )
+                    }.onFailure { Log.w(TAG, "Не удалось сохранить кеш чатов", it) }
+                }
+                hideSyncStatus()
             } else {
                 Log.e(TAG, "Ошибка загрузки чатов", chatsResult.exceptionOrNull())
                 Snackbar.make(
@@ -323,10 +388,10 @@ class ChatsFragment : Fragment() {
                     "Ошибка загрузки чатов: ${chatsResult.exceptionOrNull()?.message}",
                     Snackbar.LENGTH_LONG
                 ).show()
-                showEmptyState(true)
+                showSyncOffline()
+                if (allChats.isEmpty()) showEmptyState(true)
             }
 
-            showLoading(false)
         }
     }
 
@@ -339,6 +404,11 @@ class ChatsFragment : Fragment() {
                     .sortedByDescending { it.lastActivityAt }
                 allChats = merged
                 totalChatsCount = page.totalCount
+                cacheScope?.let { scope ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        runCatching { chatCacheRepository.saveChatPage(scope, page.chats, page.totalCount) }
+                    }
+                }
                 applyFolderFilter()
                 realtimeService.changeOnlineSubscription(allChats.flatMap { it.memberIds }.distinct())
             }.onFailure {
@@ -431,7 +501,28 @@ class ChatsFragment : Fragment() {
         }
         val sorted = filtered.sortedByDescending { it.lastActivityAt }
         viewLifecycleOwner.lifecycleScope.launch {
+            if (binding.chatRecyclerView.adapter !== chatAdapter) {
+                binding.chatRecyclerView.adapter = chatAdapter
+            }
             val displayItems = sorted.map { chat -> resolveDisplayItem(chat) }
+            cachedDisplays = displayItems.associate { item ->
+                item.chatData.id to CachedChatDisplay(
+                    item.displayTitle,
+                    item.displayAvatarFileId,
+                    item.otherUserId
+                )
+            }
+            cacheScope?.let { scope ->
+                displayItems.forEach { item ->
+                    runCatching {
+                        chatCacheRepository.saveDisplay(
+                            scope,
+                            item.chatData.id,
+                            CachedChatDisplay(item.displayTitle, item.displayAvatarFileId, item.otherUserId)
+                        )
+                    }
+                }
+            }
             chatAdapter.submitList(displayItems)
             showEmptyState(displayItems.isEmpty())
         }
@@ -442,6 +533,17 @@ class ChatsFragment : Fragment() {
 
     private fun subscribeToRealtimeEvents() {
         // Подписка на новые сообщения
+        viewLifecycleOwner.lifecycleScope.launch {
+            chatCacheRepository.clearedEvents.collect {
+                allChats = emptyList()
+                folders = emptyList()
+                cachedDisplays = emptyMap()
+                totalChatsCount = 0
+                binding.foldersRecyclerView.visibility = View.GONE
+                chatAdapter.submitList(emptyList())
+                showSkeleton()
+            }
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             realtimeService.newMessages.collect { event ->
                 handleNewMessage(event)
@@ -502,6 +604,7 @@ class ChatsFragment : Fragment() {
         // Зеркалим состояние в allChats для корректного подсчёта бейджей папок.
         mirrorNewMessageInAllChats(event.chatId, msg.senderId, msg.id, msg.content?.text ?: "", msg.sentAt.seconds * 1000)
         refreshFolderTabs()
+        persistChatList()
 
         // Если активна папка — отфильтровать события по чатам в ней.
         val selectedFolder = folders.firstOrNull { it.folderId == selectedFolderId }
@@ -565,6 +668,7 @@ class ChatsFragment : Fragment() {
             mirrorReadInAllChats(event.chatId)
             refreshFolderTabs()
         }
+        persistChatList()
     }
 
     private fun handlePrivateMessage(chatId: String, senderId: Long, sentAtMillis: Long) {
@@ -582,6 +686,7 @@ class ChatsFragment : Fragment() {
             .sortedByDescending { it.lastActivityAt }
         refreshFolderTabs()
         applyFolderFilter()
+        persistChatList()
     }
 
     private fun mirrorNewMessageInAllChats(
@@ -639,8 +744,27 @@ class ChatsFragment : Fragment() {
         val updated = existing.copy(countUnread = 0L)
         allChats = allChats.toMutableList().also { it[idx] = updated }
     }
+    private fun persistChatList() {
+        cacheScope?.let { scope ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                runCatching { chatCacheRepository.saveChatPage(scope, allChats, totalChatsCount) }
+                    .onFailure { Log.w(TAG, "Не удалось обновить кеш чатов", it) }
+            }
+        }
+    }
 
     private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {
+
+        if (!hasAppliedRemoteChats) {
+            cachedDisplays[chat.id]?.let { display ->
+                return ChatAdapter.ChatDisplayItem(
+                    chatData = chat,
+                    displayTitle = display.title,
+                    displayAvatarFileId = display.avatarFileId,
+                    otherUserId = display.otherUserId
+                )
+            }
+        }
         if (!chat.isGroupChat && chat.title.isBlank()) {
             val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
             if (otherUserId != null) {
@@ -698,8 +822,31 @@ class ChatsFragment : Fragment() {
         startActivity(intent)
     }
 
-    private fun showLoading(show: Boolean) {
-        binding.loadingIndicator.visibility = if (show) View.VISIBLE else View.GONE
+    private fun showSkeleton() {
+        binding.loadingIndicator.visibility = View.GONE
+        binding.emptyState.visibility = View.GONE
+        binding.chatRecyclerView.visibility = View.VISIBLE
+        if (::skeletonAdapter.isInitialized && binding.chatRecyclerView.adapter !== skeletonAdapter) {
+            binding.chatRecyclerView.adapter = skeletonAdapter
+        }
+    }
+
+    private fun showSyncUpdating() {
+        binding.syncStatusContainer.visibility = View.VISIBLE
+        binding.syncStatusText.setText(R.string.chats_sync_updating)
+        binding.syncProgress.visibility = View.VISIBLE
+        binding.syncRetryButton.visibility = View.GONE
+    }
+
+    private fun showSyncOffline() {
+        binding.syncStatusContainer.visibility = View.VISIBLE
+        binding.syncStatusText.setText(R.string.chats_sync_offline)
+        binding.syncProgress.visibility = View.GONE
+        binding.syncRetryButton.visibility = View.VISIBLE
+    }
+
+    private fun hideSyncStatus() {
+        binding.syncStatusContainer.visibility = View.GONE
     }
 
     private fun showEmptyState(show: Boolean) {

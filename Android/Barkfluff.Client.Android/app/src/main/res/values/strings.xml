@@ -592,4 +592,8 @@
     <string name="chat_muted">Уведомления отключены</string>
     <string name="chat_unmuted">Уведомления включены</string>
     <string name="chat_mute_error">Не удалось изменить настройку</string>
+    <string name="chats_sync_updating">Обновление…</string>
+    <string name="chats_sync_offline">Нет сети / данные могут быть неактуальны</string>
+    <string name="chats_sync_retry">Повторить</string>
+    <string name="storage_cache_size_with_chats">Кеш изображений: %1$.1f МБ\\nКеш чатов: %2$d чатов · %3$d сообщений · %4$s</string>
 </resources>

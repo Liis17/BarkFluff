@@ -48,6 +48,11 @@ class SplashActivity : AppCompatActivity() {
                 return@launch
             }
 
+            // Local chat cache must be reachable even when Beacon or token refresh is offline.
+            if (globalParam.refreshToken != null && globalParam.socketIdentity.isNotBlank()) {
+                navigateToChats()
+                return@launch
+            }
             refreshServerInfoFromBeacon(grpcManager, globalParam)
             if (globalParam.socketIdentity.isBlank()) {
                 navigateToWelcome()

@@ -524,4 +524,8 @@
     <string name="chat_muted">Notificaciones silenciadas</string>
     <string name="chat_unmuted">Notificaciones activadas</string>
     <string name="chat_mute_error">No se pudo cambiar el ajuste</string>
+    <string name="chats_sync_updating">Actualizando…</string>
+    <string name="chats_sync_offline">Sin conexión / los datos pueden no estar actualizados</string>
+    <string name="chats_sync_retry">Reintentar</string>
+    <string name="storage_cache_size_with_chats">Caché de imágenes: %1$.1f MB\\nCaché de chats: %2$d chats · %3$d mensajes · %4$s</string>
 </resources>
