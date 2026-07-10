@@ -61,7 +61,12 @@ public class Program
             ? $"Host={host};Database={database};Username={username};Password={password}"
             : $"Host={host};Port={port};Database={database};Username={username};Password={password}";
 
-        builder.Services.AddDbContext<ConfigurationContext>(c => c.UseNpgsql(configurationDb));
+        builder.Services.AddDbContext<ConfigurationContext>(c
+            => c.UseNpgsql(configurationDb, npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
