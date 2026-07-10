@@ -251,10 +251,17 @@ class UserProfileActivity : AppCompatActivity() {
                         if (adapter != null) {
                             val allFileIds = adapter.currentList.map { it.attachment.fileId }
                             val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
+                            val allFileNames = adapter.currentList.map { it.attachment.fileName }
+                            val sourceMessageIds = adapter.currentList.map { it.messageId }
                             val position = adapter.currentList.indexOf(attachmentInfo).coerceAtLeast(0)
                             startActivity(
                                 ImageViewerActivity.createIntent(
-                                    this, allFileIds, allPreviewUrls, position
+                                    this,
+                                    allFileIds,
+                                    allPreviewUrls,
+                                    position,
+                                    fileNames = allFileNames,
+                                    sourceMessageIds = sourceMessageIds
                                 )
                             )
                         }

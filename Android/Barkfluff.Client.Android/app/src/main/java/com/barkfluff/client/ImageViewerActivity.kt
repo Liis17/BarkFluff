@@ -1,16 +1,13 @@
 package com.barkfluff.client
 
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
@@ -18,12 +15,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.barkfluff.client.adapter.ImagePagerAdapter
 import com.barkfluff.client.databinding.ActivityImageViewerBinding
+import com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
 import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
-import com.github.chrisbanes.photoview.PhotoView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Просмотрщик изображений с поддержкой масштабирования (pinch-to-zoom),
@@ -37,26 +36,34 @@ class ImageViewerActivity : AppCompatActivity() {
 
     private var fileIds: List<String> = emptyList()
     private var previewUrls: List<String> = emptyList()
+    private var fileNames: List<String> = emptyList()
+    private var sourceMessageIds: List<Long> = emptyList()
     private var startPosition: Int = 0
 
     private var swipeTouchStartY = 0f
 
     companion object {
-        private const val TAG = "ImageViewerActivity"
+
         private const val EXTRA_FILE_IDS = "file_ids"
         private const val EXTRA_PREVIEW_URLS = "preview_urls"
         private const val EXTRA_START_POSITION = "start_position"
+        private const val EXTRA_FILE_NAMES = "file_names"
+        private const val EXTRA_SOURCE_MESSAGE_IDS = "source_message_ids"
 
         fun createIntent(
             context: Context,
             fileIds: List<String>,
             previewUrls: List<String> = emptyList(),
-            startPosition: Int = 0
+            startPosition: Int = 0,
+            fileNames: List<String> = emptyList(),
+            sourceMessageIds: List<Long> = emptyList()
         ): Intent {
             return Intent(context, ImageViewerActivity::class.java).apply {
                 putStringArrayListExtra(EXTRA_FILE_IDS, ArrayList(fileIds))
                 putStringArrayListExtra(EXTRA_PREVIEW_URLS, ArrayList(previewUrls))
                 putExtra(EXTRA_START_POSITION, startPosition)
+                putStringArrayListExtra(EXTRA_FILE_NAMES, ArrayList(fileNames))
+                putExtra(EXTRA_SOURCE_MESSAGE_IDS, sourceMessageIds.toLongArray())
             }
         }
     }
@@ -70,6 +77,8 @@ class ImageViewerActivity : AppCompatActivity() {
 
         fileIds = intent.getStringArrayListExtra(EXTRA_FILE_IDS) ?: emptyList()
         previewUrls = intent.getStringArrayListExtra(EXTRA_PREVIEW_URLS) ?: emptyList()
+        fileNames = intent.getStringArrayListExtra(EXTRA_FILE_NAMES) ?: emptyList()
+        sourceMessageIds = intent.getLongArrayExtra(EXTRA_SOURCE_MESSAGE_IDS)?.toList() ?: emptyList()
         startPosition = intent.getIntExtra(EXTRA_START_POSITION, 0)
 
         if (fileIds.isEmpty()) {
@@ -93,8 +102,11 @@ class ImageViewerActivity : AppCompatActivity() {
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 updateCounter(position)
+                updateForwardAvailability(position)
             }
         })
+
+        updateForwardAvailability(startPosition)
     }
 
     private fun updateCounter(position: Int) {
@@ -108,62 +120,47 @@ class ImageViewerActivity : AppCompatActivity() {
 
     private fun setupButtons() {
         binding.closeButton.setOnClickListener { finishWithAnimation() }
-        binding.moreButton.setOnClickListener { showMoreMenu(it) }
-    }
-
-    private fun showMoreMenu(anchor: View) {
-        val popup = PopupMenu(this, anchor)
-        popup.menu.add(0, 1, 0, "Сохранить")
-        popup.menu.add(0, 2, 1, "Копировать в буфер")
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                1 -> { saveCurrentImage(); true }
-                2 -> { copyCurrentImageToClipboard(); true }
-                else -> false
-            }
-        }
-        popup.show()
+        binding.saveButton.setOnClickListener { saveCurrentImage() }
+        binding.copyButton.setOnClickListener { copyCurrentImageToClipboard() }
+        binding.forwardButton.setOnClickListener { forwardCurrentImage() }
     }
 
     private fun copyCurrentImageToClipboard() {
         val currentPosition = binding.viewPager.currentItem
-        val recyclerView = binding.viewPager.getChildAt(0) as? androidx.recyclerview.widget.RecyclerView
-        val viewHolder = recyclerView?.findViewHolderForAdapterPosition(currentPosition)
-        val photoView = (viewHolder?.itemView as? android.view.ViewGroup)?.getChildAt(0) as? PhotoView
-        val drawable = photoView?.drawable
-
-        if (drawable is BitmapDrawable && drawable.bitmap != null) {
-            lifecycleScope.launch {
-                copyBitmapToClipboard(drawable.bitmap)
+        lifecycleScope.launch {
+            val source = getImageFile(fileIds[currentPosition])
+            if (source == null) {
+                Toast.makeText(this@ImageViewerActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                return@launch
             }
-        } else {
-            Toast.makeText(this, "Изображение ещё загружается", Toast.LENGTH_SHORT).show()
-        }
-    }
 
-    private suspend fun copyBitmapToClipboard(bitmap: Bitmap) {
-        withContext(Dispatchers.IO) {
             try {
-                val file = java.io.File(cacheDir, "clipboard_temp_${System.currentTimeMillis()}.png")
-                file.outputStream().use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                val fileName = getFileName(currentPosition)
+                val ext = fileName.substringAfterLast('.', "").lowercase().ifBlank { "jpg" }
+                val tempFile = withContext(Dispatchers.IO) {
+                    val tempDir = File(cacheDir, "clipboard").apply { if (!exists()) mkdirs() }
+                    File(tempDir, "img_${System.currentTimeMillis()}.$ext").also { target ->
+                        source.inputStream().use { input ->
+                            target.outputStream().use { input.copyTo(it) }
+                        }
+                    }
                 }
                 val uri = FileProvider.getUriForFile(
                     this@ImageViewerActivity,
                     "${packageName}.fileprovider",
-                    file
+                    tempFile
                 )
-                withContext(Dispatchers.Main) {
-                    val clipData = ClipData.newUri(contentResolver, "Image", uri)
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(clipData)
-                    Toast.makeText(this@ImageViewerActivity, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
-                }
+                val mime = FileSaveUtils.getMimeType("image.$ext").takeIf { it.startsWith("image/") }
+                    ?: "image/jpeg"
+                val clipData = ClipData(
+                    ClipDescription("BarkFluff image", arrayOf(mime)),
+                    ClipData.Item(uri)
+                )
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(clipData)
+                Toast.makeText(this@ImageViewerActivity, "Изображение скопировано", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Log.e(TAG, "Error copying to clipboard", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@ImageViewerActivity, "Ошибка копирования: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(this@ImageViewerActivity, "Не удалось скопировать", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -222,31 +219,43 @@ class ImageViewerActivity : AppCompatActivity() {
     private fun saveCurrentImage() {
         val currentPosition = binding.viewPager.currentItem
         val fileId = fileIds[currentPosition]
-
-        val recyclerView = binding.viewPager.getChildAt(0) as? androidx.recyclerview.widget.RecyclerView
-        val viewHolder = recyclerView?.findViewHolderForAdapterPosition(currentPosition)
-        val photoView = (viewHolder?.itemView as? android.view.ViewGroup)?.getChildAt(0) as? PhotoView
-        val drawable = photoView?.drawable
-
-        if (drawable is BitmapDrawable && drawable.bitmap != null) {
-            lifecycleScope.launch {
-                saveToGallery(drawable.bitmap, fileId)
+        lifecycleScope.launch {
+            val source = getImageFile(fileId)
+            if (source == null) {
+                Toast.makeText(this@ImageViewerActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                return@launch
             }
-        } else {
-            Toast.makeText(this, "Изображение ещё загружается", Toast.LENGTH_SHORT).show()
+
+            val ok = withContext(Dispatchers.IO) {
+                FileSaveUtils.saveImageToGallery(this@ImageViewerActivity, source, getFileName(currentPosition))
+            }
+            Toast.makeText(
+                this@ImageViewerActivity,
+                if (ok) "Сохранено в галерею (Pictures/BarkFluff)" else "Не удалось сохранить",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
-    private suspend fun saveToGallery(bitmap: Bitmap, fileId: String) {
-        val filename = "BarkFluff_${fileId.take(8)}_${System.currentTimeMillis()}.jpg"
-        val ok = withContext(Dispatchers.IO) {
-            FileSaveUtils.saveBitmapToGallery(this@ImageViewerActivity, bitmap, filename)
-        }
-        Toast.makeText(
-            this,
-            if (ok) "Сохранено в галерею (Pictures/BarkFluff)" else "Не удалось сохранить",
-            Toast.LENGTH_SHORT
-        ).show()
+    private fun forwardCurrentImage() {
+        val messageId = sourceMessageIds.getOrNull(binding.viewPager.currentItem) ?: return
+        if (messageId == 0L) return
+
+        ForwardChatPickerBottomSheet.newInstance(messageId)
+            .show(supportFragmentManager, "forward_image")
+    }
+
+    private suspend fun getImageFile(fileId: String): File? {
+        return FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId)
+    }
+
+    private fun getFileName(position: Int): String {
+        return fileNames.getOrNull(position).orEmpty()
+            .ifBlank { "image_${fileIds[position].take(8)}.jpg" }
+    }
+
+    private fun updateForwardAvailability(position: Int) {
+        binding.forwardButton.isEnabled = sourceMessageIds.getOrNull(position)?.let { it != 0L } == true
     }
 
     override fun onDestroy() {

@@ -338,7 +338,7 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, isSentByMe = true)
+                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, isSentByMe = true, sourceMessageId = item.messageId)
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -478,7 +478,7 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx)
+                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, sourceMessageId = item.messageId)
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -578,7 +578,8 @@ class MessageAdapter(
                 quote.forwardAttachmentsContainer,
                 nestedAtts,
                 maxWidthPx,
-                isSentByMe = false
+                isSentByMe = false,
+                sourceMessageId = data.originalMessageId
             )
             quote.forwardAttachmentsContainer.visibility = View.VISIBLE
         } else {
@@ -713,7 +714,8 @@ class MessageAdapter(
         container: ViewGroup,
         attachments: List<Shared.MessageAttachment>,
         mediaWidthPx: Int = 0,
-        isSentByMe: Boolean = false
+        isSentByMe: Boolean = false,
+        sourceMessageId: Long? = null
     ) {
         container.removeAllViews()
 
@@ -744,7 +746,7 @@ class MessageAdapter(
 
         // Медиа-сетка (IMAGE / GIF / VIDEO) — ряды по алгоритму WPF MultiImageGrid
         if (mediaItems.isNotEmpty() && mediaWidthPx > 0) {
-            val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx)
+            val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx, sourceMessageId)
             wrapper.addView(mediaGrid)
         }
 
@@ -791,7 +793,8 @@ class MessageAdapter(
     private fun buildMediaGrid(
         context: android.content.Context,
         mediaItems: List<Shared.MessageAttachment>,
-        maxWidth: Int
+        maxWidth: Int,
+        sourceMessageId: Long?
     ): View {
         val dm = context.resources.displayMetrics
         val spacingPx = (2 * dm.density + 0.5f).toInt()
@@ -839,7 +842,7 @@ class MessageAdapter(
                     if (col > 0) marginStart = spacingPx
                 }
 
-                bindMediaCell(cellView, attachment, capped, itemIndex)
+                bindMediaCell(cellView, attachment, capped, itemIndex, sourceMessageId)
                 row.addView(cellView)
                 itemIndex++
             }
@@ -919,7 +922,8 @@ class MessageAdapter(
         cellView: View,
         attachment: Shared.MessageAttachment,
         allMedia: List<Shared.MessageAttachment>,
-        position: Int
+        position: Int,
+        sourceMessageId: Long?
     ) {
         val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
         val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
@@ -973,7 +977,14 @@ class MessageAdapter(
                 val allFileIds    = imageItems.map { it.fileId }
                 val allPreviewUrls = imageItems.map { it.previewUrl }
                 ctx.startActivity(
-                    ImageViewerActivity.createIntent(ctx, allFileIds, allPreviewUrls, clickedIndex)
+                    ImageViewerActivity.createIntent(
+                        ctx,
+                        allFileIds,
+                        allPreviewUrls,
+                        clickedIndex,
+                        fileNames = imageItems.map { it.fileName },
+                        sourceMessageIds = List(imageItems.size) { sourceMessageId ?: 0L }
+                    )
                 )
             }
 
@@ -1543,7 +1554,8 @@ class MessageAdapter(
                     context,
                     listOf(fileId),
                     listOf(previewUrl),
-                    0
+                    0,
+                    fileNames = listOf(fileName)
                 )
                 context.startActivity(intent)
             }
