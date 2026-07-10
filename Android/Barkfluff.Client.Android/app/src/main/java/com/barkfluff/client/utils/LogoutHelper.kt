@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.barkfluff.client.LoginActivity
+import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.google.firebase.messaging.FirebaseMessaging
@@ -68,6 +69,7 @@ object LogoutHelper {
         // 3. Очистка всех настроек аккаунта (оставляем только адреса сервера)
         //    device_id удаляется — при следующем входе будет создан новый
         val globalParam = GlobalParam(context)
+        (context.applicationContext as? BarkFluffApplication)?.privateChatRepository?.forgetAll()
         globalParam.clearUserData()
         Log.i(TAG, "Настройки аккаунта очищены (device_id сброшен)")
 

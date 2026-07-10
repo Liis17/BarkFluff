@@ -92,6 +92,9 @@ service MessagesApi {
   // Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
   rpc DeletePrivateMessage(DeletePrivateMessageRequest) returns(DeletePrivateMessageResponse);
 
+  // Отметить все зашифрованные сообщения до указанного как прочитанные.
+  rpc MarkPrivateMessagesAsRead(MarkPrivateMessagesAsReadRequest) returns(MarkPrivateMessagesAsReadResponse);
+
   // -- Секретные чаты (Signal Double Ratchet) -----------------------------------
   //
   // Сервер НЕ хранит ни сам чат, ни сообщения. Метаданные чата держит только
@@ -304,6 +307,11 @@ message Chat {
   bool muted = 12; // Уведомления этого чата отключены текущим пользователем
 
   google.protobuf.Timestamp muted_until = 13; // До какого времени mute (пусто => навсегда, если muted=true)
+
+  // Время последней видимой активности. Для PRIVATE не раскрывает содержимое.
+  google.protobuf.Timestamp last_activity_at = 14;
+
+  barkfluff.shared.PrivateChatInviteState private_invite_state = 15;
 }
 
 message ChatMember {
@@ -376,6 +384,7 @@ message CreatePrivateChatRequest {
 
 message CreatePrivateChatResponse {
   Chat chat = 1; // Созданный чат (с chat_type=PRIVATE; собеседник пока не присоединён)
+  bool created = 2; // false, если вернулся уже существующий чат этой пары
 }
 
 message AcceptPrivateChatRequest {
@@ -430,6 +439,13 @@ message DeletePrivateMessageRequest {
 }
 
 message DeletePrivateMessageResponse { }
+
+message MarkPrivateMessagesAsReadRequest {
+  string chat_id = 1;
+  int64 last_read_message_id = 2;
+}
+
+message MarkPrivateMessagesAsReadResponse { }
 
 // -- Секретные чаты (Signal Double Ratchet) -----------------------------------
 
