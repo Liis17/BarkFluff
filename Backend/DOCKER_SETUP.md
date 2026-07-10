@@ -94,9 +94,7 @@ services:
 
   # Configuration Service (должен запускаться первым)
   configuration:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Configuration/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-configuration:latest
     container_name: barkfluff-configuration
     environment:
       - CONFIGURATION_PORT=${CONFIGURATION_PORT:-7003}
@@ -115,9 +113,7 @@ services:
 
   # Navigator Service
   navigator:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Navigator/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-navigator:latest
     container_name: barkfluff-navigator
     environment:
       - NAVIGATOR_PORT=${NAVIGATOR_PORT:-7010}
@@ -131,9 +127,7 @@ services:
 
   # Identity Service
   identity:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Identity/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-identity:latest
     container_name: barkfluff-identity
     environment:
       - IDENTITY_PORT=${IDENTITY_PORT:-7000}
@@ -150,9 +144,7 @@ services:
 
   # Users Service
   users:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Users/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-users:latest
     container_name: barkfluff-users
     environment:
       - USERS_PORT=${USERS_PORT:-7001}
@@ -169,9 +161,7 @@ services:
 
   # Beacon Service
   beacon:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Beacon/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-beacon:latest
     container_name: barkfluff-beacon
     environment:
       - BEACON_PORT=${BEACON_PORT:-7002}
@@ -187,9 +177,7 @@ services:
 
   # Notification Service
   notification:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Notification/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-notification:latest
     container_name: barkfluff-notification
     environment:
       - NOTIFICATION_PORT=${NOTIFICATION_PORT:-7004}
@@ -205,9 +193,7 @@ services:
 
   # Files Service
   files:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Files/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-files:latest
     container_name: barkfluff-files
     environment:
       - FILES_PORT=${FILES_PORT:-7005}
@@ -226,9 +212,7 @@ services:
 
   # Messages Service
   messages:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Messages/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-messages:latest
     container_name: barkfluff-messages
     environment:
       - MESSAGES_PORT=${MESSAGES_PORT:-7007}
@@ -246,9 +230,7 @@ services:
 
   # FastAuth Service
   fastauth:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.FastAuth/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-fast-auth:latest
     container_name: barkfluff-fastauth
     environment:
       - FASTAUTH_PORT=${FASTAUTH_PORT:-7008}
@@ -263,9 +245,7 @@ services:
 
   # Onliner Service
   onliner:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Onliner/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-onliner:latest
     container_name: barkfluff-onliner
     environment:
       - ONLINER_PORT=${ONLINER_PORT:-7009}
@@ -281,9 +261,7 @@ services:
 
   # Updates Service
   updates:
-    build:
-      context: .
-      dockerfile: Backend/BarkFluff.Updates/Dockerfile
+    image: docker.barkfluff.com:5000/barkfluff-updates:latest
     container_name: barkfluff-updates
     environment:
       - UPDATES_PORT=${UPDATES_PORT:-7015}

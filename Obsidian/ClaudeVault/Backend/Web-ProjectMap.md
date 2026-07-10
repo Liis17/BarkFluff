@@ -220,8 +220,8 @@ Node.js зависимости для генерации proto-bundle (esbuild �
 
 ## Docker / nginx
 
-### `Dockerfile`
-Стандартная сборка образа сервиса (multi-stage: build → runtime).
+### `Dockerfile.slim`
+Сборка образа сервиса для CI и production.
 
 ### `Dockerfile.slim`
 Облегчённый образ (меньший base image / без dev-зависимостей).
