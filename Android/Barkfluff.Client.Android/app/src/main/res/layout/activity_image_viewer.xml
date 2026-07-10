@@ -54,16 +54,77 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/moreButton"
-            style="@style/Widget.Material3.Button.IconButton"
+        <View
             android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:contentDescription="@string/cd_more"
-            app:icon="@drawable/ic_more_vert"
-            app:iconTint="@android:color/white" />
+            android:layout_height="48dp" />
 
     </LinearLayout>
+
+    <!-- M3 Expressive Floating Toolbar — контекстные действия с изображением -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/actionsToolbarCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="16dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:cardCornerRadius="@dimen/shape_corner_full"
+        app:cardElevation="6dp"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/msg_action_save_image"
+                app:icon="@drawable/ic_save"
+                app:iconTint="?attr/colorOnSurface" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="24dp"
+                android:layout_marginHorizontal="4dp"
+                android:background="?attr/colorOutlineVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/copyButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/msg_action_copy_image"
+                app:icon="@drawable/ic_copy_content"
+                app:iconTint="?attr/colorOnSurface" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="24dp"
+                android:layout_marginHorizontal="4dp"
+                android:background="?attr/colorOutlineVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/forwardButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/msg_action_forward"
+                app:icon="@drawable/ic_forward"
+                app:iconTint="?attr/colorOnSurface" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Индикатор загрузки (по центру) -->
     <com.google.android.material.progressindicator.CircularProgressIndicator
