@@ -36,7 +36,7 @@ public class SystemBotsSeeder
 
         // botfather без суффикса "bot" в конце — bypass правил username
         await EnsureSystemBot(SystemBotRole.BotFather, "botfather", "BotFather", bypassUsernameRules: true);
-        await EnsureSystemBot(SystemBotRole.LoginNotifier, "login_notifier_bot", "Login Notifier", bypassUsernameRules: false);
+        await EnsureSystemBot(SystemBotRole.LoginNotifier, "barkfluffnotifier", "Barkfluff", bypassUsernameRules: true);
     }
 
     private async Task EnsureSystemBot(SystemBotRole role, string username, string name, bool bypassUsernameRules)
