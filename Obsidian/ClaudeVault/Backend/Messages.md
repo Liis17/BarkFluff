@@ -52,6 +52,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ListPrivateMessages` | Двунаправленная пагинация шифрованных сообщений (до 50 в каждую сторону) через `EncryptedMessagesStorage.ListByChatAsync`. Soft-deleted отдаются с пустым ciphertext |
 | `EditPrivateMessage` | Перезаписывает ciphertext+nonce+AAD своего сообщения, выставляет IsEdited+EditedAt. Публикует `EncryptedMessageEditedEvent` |
 | `DeletePrivateMessage` | Soft-delete своего шифрованного сообщения (физически очищает все 3 bytea-поля). Публикует `EncryptedMessageDeletedEvent`. Idempotent |
+| `MarkPrivateMessagesAsRead` | Сохраняет per-user `LastReadMessageId` для приватного чата и публикует `PrivateMessagesReadEvent`; ciphertext и plaintext не передаются |
 | `SendSecretChatInvite` | Отправить инвайт секретного чата конкретному устройству. Кладёт opaque PreKeySignalMessage в `SecretMessageBuffer.EnqueueInviteAsync` (Redis 24ч), публикует `SecretChatInviteEvent` + silent push. Лимит envelope 32Б-16КиБ |
 | `AcceptSecretChatInvite` | Принять инвайт на устройстве-получателе: атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=true)` инициатору, опционально вкладывает первое ответное SignalMessage |
 | `RejectSecretChatInvite` | Отклонить инвайт: `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
@@ -136,6 +137,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 | `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление |
 | `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable). Индекс `(ChatId, SentAt)` — обязателен: все выборки сообщений фильтруют по `ChatId` и сортируют по `SentAt`, без него seq scan |
 | `EncryptedMessage` | Шифрованное сообщение приватного чата. Отдельная таблица `EncryptedMessages` (НЕ join с `Messages`). Поля: `Id` (bigserial), `ChatId`, `SenderId`, `SenderDeviceId` (Guid), `SentAt`, `Ciphertext`/`Nonce`/`AssociatedData` (bytea), `IsEdited`, `EditedAt`, `IsDeleted`. Soft-delete очищает все 3 bytea-поля. Индексы по `ChatId` и `(ChatId, SentAt)` |
+| `PrivateChatReadState` | Составной ключ `(ChatId, UserId)`, хранит только ID последнего прочитанного зашифрованного сообщения; используется для `count_unread` без раскрытия содержимого |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |
 | `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker, ForwardedMessage |
 | `ForwardedMessageAttachment` | Owned collection в таблице `ForwardedMessageAttachments`; вложения внутри пересланного сообщения (без ForwardedMessage рекурсии) |
@@ -153,6 +155,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 - **Права кика**: только создатель группы и `GroupChatInfo.UsersCanKick`
 - **Self-chat**: `CreatePersonChat(userId, userId)` — личный чат с самим собой поддерживается
 - **Личные чаты**: `GetPersonChatId` и отправка по `user_id` ищут только `ChatType.Regular` DM с ровно двумя участниками. Если в БД есть дубли обычных DM между теми же пользователями, выбирается чат с самым свежим неудалённым сообщением.
+- **Приватные чаты**: уникальны по нормализованной паре пользователей на уровне БД. Повторный `CreatePrivateChat` возвращает тот же `Chat` с `created=false`. `ListChats` включает приватные чаты (в том числе пустые pending), сортирует их по последнему `EncryptedMessage` или времени создания и не возвращает plaintext-превью.
 - **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`). `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`. Пустые чаты отфильтровываются до пагинации, чтобы страницы списка чатов были стабильными для всех клиентов.
 - **Edit-семантика**: при правке forward-вложения сохраняются как есть (Telegram-style), не-forward attachments полностью пересоздаются по новому списку `FileIds`. Forward-снапшоты не обновляются автоматически
 - **Pin-права**: любой участник чата может закреплять/откреплять любые сообщения (общая для чата доска). Авторизация — `[Authorize(Policy = nameof(TokenType.User))]` + `CheckAccessToChat`. Лимит: 100 закрепов на чат → `TooManyPinnedMessagesException`

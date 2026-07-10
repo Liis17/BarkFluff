@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.activity.result.contract.ActivityResultContracts
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.adapter.FolderTabsAdapter
@@ -45,6 +46,8 @@ class ChatsFragment : Fragment() {
     private var folders: List<GrpcManager.ChatFolder> = emptyList()
     private var allChats: List<GrpcManager.ChatData> = emptyList()
     private var selectedFolderId: String? = null  // null = «Все чаты»
+    private var totalChatsCount = 0
+    private var isLoadingNextPage = false
 
     private val foldersSettingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -75,7 +78,6 @@ class ChatsFragment : Fragment() {
         setupChatList()
         setupFolderTabs()
         setupSearchButton()
-        applySecretChatsVisibility()
 
         subscribeToRealtimeEvents()
         checkTokenAndLoadChats()
@@ -97,7 +99,6 @@ class ChatsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        applySecretChatsVisibility()
         // Перерендерить сегмент папок с актуальными настройками компактности
         if (_binding != null && ::foldersAdapter.isInitialized && folders.isNotEmpty()) {
             renderFolderTabs()
@@ -129,16 +130,6 @@ class ChatsFragment : Fragment() {
             val intent = Intent(requireContext(), SearchActivity::class.java)
             startActivity(intent)
         }
-        binding.encryptedChatButton.setOnClickListener {
-            val intent = Intent(requireContext(), CreateEncryptedChatActivity::class.java)
-            startActivity(intent)
-        }
-    }
-
-    private fun applySecretChatsVisibility() {
-        if (_binding == null) return
-        binding.encryptedChatButton.visibility =
-            if (globalParam.secretChatsEnabled) View.VISIBLE else View.GONE
     }
 
     private fun setupToolbar() {
@@ -231,6 +222,13 @@ class ChatsFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = chatAdapter
             setHasFixedSize(false)
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    if (dy <= 0 || isLoadingNextPage || allChats.size >= totalChatsCount) return
+                    val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                    if (layoutManager.findLastVisibleItemPosition() >= chatAdapter.itemCount - 6) loadNextPage()
+                }
+            })
         }
     }
 
@@ -291,14 +289,16 @@ class ChatsFragment : Fragment() {
 
             // Параллельно: чаты и папки. Чаты критичны, папки — нет (если упали — log + пустой список).
             val (chatsResult, foldersResult) = coroutineScope {
-                val chatsDeferred = async { grpcManager.getChats() }
+                val chatsDeferred = async { grpcManager.getChatsPage() }
                 val foldersDeferred = async { grpcManager.getChatFolders() }
                 chatsDeferred.await() to foldersDeferred.await()
             }
 
             if (chatsResult.isSuccess) {
-                allChats = chatsResult.getOrNull() ?: emptyList()
-                Log.d(TAG, "Загружено ${allChats.size} чатов")
+                val page = chatsResult.getOrNull()!!
+                allChats = page.chats
+                totalChatsCount = page.totalCount
+                Log.d(TAG, "Загружено ${allChats.size} из $totalChatsCount чатов")
 
                 folders = if (foldersResult.isSuccess) foldersResult.getOrNull() ?: emptyList() else {
                     Log.w(TAG, "Не удалось загрузить папки, продолжаем с пустым списком", foldersResult.exceptionOrNull())
@@ -327,6 +327,24 @@ class ChatsFragment : Fragment() {
             }
 
             showLoading(false)
+        }
+    }
+
+    private fun loadNextPage() {
+        if (isLoadingNextPage || allChats.size >= totalChatsCount) return
+        isLoadingNextPage = true
+        viewLifecycleOwner.lifecycleScope.launch {
+            grpcManager.getChatsPage(offset = allChats.size).onSuccess { page ->
+                val merged = (allChats + page.chats).associateBy { it.id }.values
+                    .sortedByDescending { it.lastActivityAt }
+                allChats = merged
+                totalChatsCount = page.totalCount
+                applyFolderFilter()
+                realtimeService.changeOnlineSubscription(allChats.flatMap { it.memberIds }.distinct())
+            }.onFailure {
+                Log.w(TAG, "Не удалось загрузить следующую страницу чатов", it)
+            }
+            isLoadingNextPage = false
         }
     }
 
@@ -411,7 +429,7 @@ class ChatsFragment : Fragment() {
                 allChats.filter { it.id in ids }
             }
         }
-        val sorted = filtered.sortedByDescending { it.lastMessage?.sentAt ?: 0L }
+        val sorted = filtered.sortedByDescending { it.lastActivityAt }
         viewLifecycleOwner.lifecycleScope.launch {
             val displayItems = sorted.map { chat -> resolveDisplayItem(chat) }
             chatAdapter.submitList(displayItems)
@@ -433,6 +451,20 @@ class ChatsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             realtimeService.messagesRead.collect { event ->
                 handleMessageRead(event)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            realtimeService.privateMessages.collect { event ->
+                handlePrivateMessage(event.chatId, event.message.senderId, event.message.sentAt.seconds * 1000)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            realtimeService.privateMessagesRead.collect { event ->
+                if (event.userId == globalParam.userId) {
+                    mirrorReadInAllChats(event.chatId)
+                    refreshFolderTabs()
+                    applyFolderFilter()
+                }
             }
         }
         // Подписка на состояние соединения с задержкой показа
@@ -535,6 +567,23 @@ class ChatsFragment : Fragment() {
         }
     }
 
+    private fun handlePrivateMessage(chatId: String, senderId: Long, sentAtMillis: Long) {
+        val index = allChats.indexOfFirst { it.id == chatId }
+        if (index < 0) {
+            loadChats()
+            return
+        }
+        val existing = allChats[index]
+        val updated = existing.copy(
+            lastActivityAt = sentAtMillis,
+            countUnread = if (senderId == globalParam.userId) existing.countUnread else existing.countUnread + 1
+        )
+        allChats = allChats.toMutableList().also { it[index] = updated }
+            .sortedByDescending { it.lastActivityAt }
+        refreshFolderTabs()
+        applyFolderFilter()
+    }
+
     private fun mirrorNewMessageInAllChats(
         chatId: String,
         senderId: Long,
@@ -563,7 +612,7 @@ class ChatsFragment : Fragment() {
                 countUnread = if (isOwn) 0L else 1L,
                 firstUnreadMessageId = if (isOwn) 0L else messageId
             )
-            allChats = (allChats + newChat).sortedByDescending { it.lastMessage?.sentAt ?: 0L }
+            allChats = (allChats + newChat).sortedByDescending { it.lastActivityAt }
             return
         }
         val existing = allChats[idx]
@@ -579,7 +628,7 @@ class ChatsFragment : Fragment() {
             countUnread = if (isOwn) existing.countUnread else existing.countUnread + 1
         )
         allChats = allChats.toMutableList().also { it[idx] = updated }
-            .sortedByDescending { it.lastMessage?.sentAt ?: 0L }
+            .sortedByDescending { it.lastActivityAt }
     }
 
     private fun mirrorReadInAllChats(chatId: String) {
@@ -624,6 +673,14 @@ class ChatsFragment : Fragment() {
     private fun onChatClicked(chat: GrpcManager.ChatData) {
         // Находим display item для получения дополнительной информации
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
+
+        if (chat.chatType == barkfluff.shared.Shared.ChatType.CHAT_TYPE_PRIVATE) {
+            startActivity(Intent(requireContext(), PrivateChatActivity::class.java).apply {
+                putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
+                putExtra(PrivateChatActivity.EXTRA_TITLE, displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) })
+            })
+            return
+        }
 
         val intent = Intent(requireContext(), ChatActivity::class.java).apply {
             putExtra("chat_id", chat.id)

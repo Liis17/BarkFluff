@@ -23,12 +23,16 @@ class TestingSettingsActivity : AppCompatActivity() {
 
         binding.switchShowIds.isChecked = globalParam.showIdsInProfile
         binding.switchSecretChats.isChecked = globalParam.secretChatsEnabled
+        binding.switchPrivateChats.isChecked = globalParam.privateChatsEnabled
 
         binding.switchShowIds.setOnCheckedChangeListener { _, isChecked ->
             globalParam.showIdsInProfile = isChecked
         }
         binding.switchSecretChats.setOnCheckedChangeListener { _, isChecked ->
             globalParam.secretChatsEnabled = isChecked
+        }
+        binding.switchPrivateChats.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.privateChatsEnabled = isChecked
         }
     }
 }

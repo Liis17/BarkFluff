@@ -40,6 +40,9 @@ service UpdatesApi {
   // Удаление сообщений в приватных чатах
   rpc SubscribePrivateMessageDeletes(SubscribePrivateMessageDeletesRequest) returns (stream EncryptedMessageDeletedEvent);
 
+  // Изменение read-state приватного чата
+  rpc SubscribePrivateMessagesRead(SubscribePrivateMessagesReadRequest) returns (stream PrivateMessagesReadEvent);
+
   // Приглашения в приватные чаты (для приглашённого)
   rpc SubscribePrivateChatInvites(SubscribePrivateChatInvitesRequest) returns (stream PrivateChatInviteEvent);
 
@@ -123,6 +126,7 @@ message AllMessagesUnpinnedEvent {
 message SubscribePrivateMessagesRequest { }
 message SubscribePrivateMessageEditsRequest { }
 message SubscribePrivateMessageDeletesRequest { }
+message SubscribePrivateMessagesReadRequest { }
 message SubscribePrivateChatInvitesRequest { }
 message SubscribePrivateChatInviteResolutionsRequest { }
 
@@ -139,6 +143,12 @@ message EncryptedMessageEditedEvent {
 message EncryptedMessageDeletedEvent {
   string chat_id = 1;     // ID приватного чата
   int64 message_id = 2;   // ID удалённого шифрованного сообщения
+}
+
+message PrivateMessagesReadEvent {
+  string chat_id = 1;
+  int64 user_id = 2;
+  int64 last_read_message_id = 3;
 }
 
 message PrivateChatInviteEvent {
