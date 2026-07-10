@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.barkfluff.client.cache.ChatCacheRepository
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.databinding.ActivityStorageSettingsBinding
 import com.barkfluff.client.grpc.GrpcManager
@@ -23,6 +24,7 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStorageSettingsBinding
     private lateinit var grpcManager: GrpcManager
+    private lateinit var chatCacheRepository: ChatCacheRepository
 
     companion object {
         private const val TAG = "StorageSettings"
@@ -51,6 +53,7 @@ class StorageSettingsActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         grpcManager = app.grpcManager
+        chatCacheRepository = app.chatCacheRepository
 
         setupToolbar()
         setupClickListeners()
@@ -148,11 +151,16 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private fun updateCacheSize() {
         lifecycleScope.launch {
-            val size = withContext(Dispatchers.IO) {
-                calculateCacheSize()
+            val (imageCacheSize, chatCacheStats) = withContext(Dispatchers.IO) {
+                calculateCacheSize() to chatCacheRepository.stats()
             }
-            val sizeMB = size / (1024.0 * 1024.0)
-            binding.textCacheSize.text = "Кеш изображений: %.1f МБ".format(sizeMB)
+            binding.textCacheSize.text = getString(
+                R.string.storage_cache_size_with_chats,
+                imageCacheSize / (1024.0 * 1024.0),
+                chatCacheStats.chatCount,
+                chatCacheStats.messageCount,
+                formatBytes(chatCacheStats.sizeBytes)
+            )
         }
     }
 
@@ -187,6 +195,7 @@ class StorageSettingsActivity : AppCompatActivity() {
                 // Удаляем дополнительные папки кеша (если есть)
                 val bitmapCacheDir = File(cacheDir, "bitmap_cache")
                 bitmapCacheDir.deleteRecursively()
+                chatCacheRepository.clearAll()
             }
 
             updateCacheSize()

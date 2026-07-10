@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.EncryptedMessageAdapter
 import com.barkfluff.client.adapter.EncryptedMessageItem
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.databinding.ActivityPrivateChatBinding
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -44,6 +46,8 @@ class PrivateChatActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPrivateChatBinding
     private lateinit var globalParam: GlobalParam
     private lateinit var repo: PrivateChatRepository
+    private lateinit var chatCacheRepository: ChatCacheRepository
+    private var cacheScope: CacheScope? = null
     private lateinit var adapter: EncryptedMessageAdapter
 
     private lateinit var chatId: String
@@ -65,6 +69,8 @@ class PrivateChatActivity : AppCompatActivity() {
         val app = applicationContext as BarkFluffApplication
         repo = app.privateChatRepository
 
+        chatCacheRepository = app.chatCacheRepository
+        cacheScope = CacheScope.from(globalParam)
         adapter = EncryptedMessageAdapter()
         binding.messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.messagesRecyclerView.adapter = adapter
@@ -221,6 +227,7 @@ class PrivateChatActivity : AppCompatActivity() {
 
     private fun ensureUnlockedThenLoad() {
         if (repo.hasKey(chatId)) {
+            loadCachedHistory()
             loadHistory()
             return
         }
@@ -266,7 +273,10 @@ class PrivateChatActivity : AppCompatActivity() {
                         return@launch
                     }
                     val ok = repo.unlockExistingChat(chat, passphrase, remember.isChecked)
-                    if (ok) loadHistory() else {
+                    if (ok) {
+                        loadCachedHistory()
+                        loadHistory()
+                    } else {
                         Toast.makeText(this@PrivateChatActivity, "Неверный passphrase", Toast.LENGTH_LONG).show()
                         finish()
                     }
@@ -276,10 +286,29 @@ class PrivateChatActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun loadCachedHistory() {
+        val scope = cacheScope ?: return
+        lifecycleScope.launch {
+            val messages = runCatching {
+                chatCacheRepository.latestPrivateMessages(scope, chatId, limit = 50)
+            }.getOrNull().orEmpty()
+                .mapNotNull { repo.decryptIncoming(chatId, it) }
+            if (messages.isEmpty()) return@launch
+
+            adapter.submitList(messages.map { it.toItem() }) {
+                binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
+            }
+        }
+    }
     private fun loadHistory() {
         lifecycleScope.launch {
             val result = repo.listMessages(chatId, fromMessageId = 0, offsetBefore = 50, offsetAfter = 0)
             result.onSuccess { messages ->
+                cacheScope?.let { scope ->
+                    lifecycleScope.launch {
+                        runCatching { chatCacheRepository.savePrivateMessages(scope, chatId, messages.map { it.raw }) }
+                    }
+                }
                 adapter.submitList(messages.map { it.toItem() })
                 binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
                 messages.maxOfOrNull { it.raw.id }?.let { repo.markMessagesRead(chatId, it) }
@@ -297,6 +326,11 @@ class PrivateChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repo.sendText(chatId, text)
                 .onSuccess { sent ->
+                    cacheScope?.let { scope ->
+                        lifecycleScope.launch {
+                            runCatching { chatCacheRepository.savePrivateMessages(scope, chatId, listOf(sent.raw)) }
+                        }
+                    }
                     val newList = adapter.currentList + sent.toItem()
                     adapter.submitList(newList) {
                         binding.messagesRecyclerView.scrollToPosition(newList.lastIndex)
@@ -313,6 +347,9 @@ class PrivateChatActivity : AppCompatActivity() {
             app.realtimeService.privateMessages
                 .filter { it.chatId == chatId }
                 .collect { event ->
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.savePrivateMessages(scope, chatId, listOf(event.message))
+                    }
                     if (event.message.senderId == globalParam.userId) return@collect
                     val decrypted = repo.decryptIncoming(chatId, event.message) ?: return@collect
                     val newList = adapter.currentList + decrypted.toItem()
@@ -326,6 +363,9 @@ class PrivateChatActivity : AppCompatActivity() {
             app.realtimeService.privateMessageDeletes
                 .filter { it.chatId == chatId }
                 .collect { event ->
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.deletePrivateMessage(scope, chatId, event.messageId)
+                    }
                     val updated = adapter.currentList.filterNot { it.id == "p:${event.messageId}" }
                     adapter.submitList(updated)
                 }
