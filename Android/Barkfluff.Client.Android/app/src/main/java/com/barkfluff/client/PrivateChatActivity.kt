@@ -3,9 +3,11 @@ package com.barkfluff.client
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import barkfluff.shared.Shared
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.EncryptedMessageAdapter
@@ -34,6 +36,8 @@ class PrivateChatActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_CHAT_ID = "chat_id"
         const val EXTRA_TITLE = "chat_title"
+        const val EXTRA_INVITE_STATE = "invite_state"
+        const val EXTRA_INVITER_USER_ID = "inviter_user_id"
         private const val TAG = "PrivateChatActivity"
     }
 
@@ -67,9 +71,152 @@ class PrivateChatActivity : AppCompatActivity() {
 
         binding.sendButton.setOnClickListener { onSendClicked() }
 
-        ensureUnlockedThenLoad()
+        resolveModeAndStart(app)
 
         observeRealtime(app)
+    }
+
+    /**
+     * Определяет режим экрана по состоянию инвайта: обычный чат, запрос
+     * «принять/отклонить» (приглашённый), ожидание подтверждения (инициатор)
+     * или «запрос отклонён». Состояние берётся из extras, при входе с push —
+     * из ListChats.
+     */
+    private fun resolveModeAndStart(app: BarkFluffApplication) {
+        val stateNumber = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
+        val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
+        if (stateNumber >= 0) {
+            applyMode(app, stateNumber, inviterUserId)
+            return
+        }
+        lifecycleScope.launch {
+            val chat = app.grpcManager.getChat(chatId).getOrNull()
+            if (chat == null) {
+                Toast.makeText(this@PrivateChatActivity, "Чат не найден", Toast.LENGTH_LONG).show()
+                finish()
+                return@launch
+            }
+            if (chat.title.isNotBlank()) binding.toolbar.title = chat.title
+            applyMode(app, chat.privateInviteState.number, chat.privateInviterUserId)
+        }
+    }
+
+    private fun applyMode(app: BarkFluffApplication, stateNumber: Int, inviterUserId: Long) {
+        val isInvitee = inviterUserId != 0L && inviterUserId != globalParam.userId
+        when (stateNumber) {
+            Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_PENDING_VALUE ->
+                if (isInvitee) showInviteRequest() else showWaitingMode(app)
+
+            Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_REJECTED_VALUE ->
+                showRejectedMode()
+
+            else -> ensureUnlockedThenLoad()
+        }
+    }
+
+    // ─── Приглашённый: запрос «принять/отклонить» ────────────────────────────
+
+    private fun showInviteRequest() {
+        setInputEnabled(false)
+        binding.inviteRequestContainer.visibility = View.VISIBLE
+        binding.invitePromptText.text = getString(R.string.private_chat_invite_prompt, binding.toolbar.title)
+        binding.inviteAcceptButton.setOnClickListener { promptPassphraseAndAccept() }
+        binding.inviteDeclineButton.setOnClickListener { declineInvite() }
+    }
+
+    private fun promptPassphraseAndAccept() {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val margin = (24 * resources.displayMetrics.density).toInt()
+            setPadding(margin, 0, margin, 0)
+        }
+        val passwordLayout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+            hint = getString(R.string.private_chat_password_hint)
+        }
+        val edit = TextInputEditText(passwordLayout.context).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        passwordLayout.addView(edit)
+        val remember = MaterialCheckBox(this).apply {
+            text = getString(R.string.private_chat_remember_password)
+            isChecked = false
+        }
+        content.addView(passwordLayout)
+        content.addView(remember)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Введите passphrase")
+            .setMessage("Этот чат зашифрован общим паролем. Введите passphrase, чтобы принять запрос.")
+            .setView(content)
+            .setPositiveButton("OK") { _, _ ->
+                val passphrase = edit.text?.toString()?.trim().orEmpty()
+                if (passphrase.isEmpty()) return@setPositiveButton
+                lifecycleScope.launch {
+                    val app = applicationContext as BarkFluffApplication
+                    val chat = app.grpcManager.getChat(chatId).getOrNull()
+                    if (chat == null) {
+                        Toast.makeText(this@PrivateChatActivity, "Чат не найден", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    repo.acceptPrivateChatInvite(
+                        chatId,
+                        passphrase,
+                        chat.kdfSalt.toByteArray(),
+                        chat.passphraseVerifier.toByteArray(),
+                        remember.isChecked
+                    ).onSuccess {
+                        binding.inviteRequestContainer.visibility = View.GONE
+                        setInputEnabled(true)
+                        loadHistory()
+                    }.onFailure {
+                        Log.w(TAG, "Failed to accept private chat invite", it)
+                        Toast.makeText(this@PrivateChatActivity, "Неверный passphrase", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun declineInvite() {
+        lifecycleScope.launch {
+            repo.rejectPrivateChat(chatId)
+                .onSuccess { finish() }
+                .onFailure {
+                    Toast.makeText(this@PrivateChatActivity, "Не удалось отклонить: ${it.message}", Toast.LENGTH_LONG).show()
+                }
+        }
+    }
+
+    // ─── Инициатор: ожидание подтверждения / отклонено ───────────────────────
+
+    private fun showWaitingMode(app: BarkFluffApplication) {
+        setInputEnabled(false)
+        binding.pendingBanner.text = getString(R.string.private_chat_invite_waiting)
+        binding.pendingBanner.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            app.realtimeService.privateChatInviteResolutions
+                .filter { it.chatId == chatId }
+                .collect { event ->
+                    if (event.accepted) {
+                        binding.pendingBanner.visibility = View.GONE
+                        setInputEnabled(true)
+                        ensureUnlockedThenLoad()
+                    } else {
+                        showRejectedMode()
+                    }
+                }
+        }
+    }
+
+    private fun showRejectedMode() {
+        setInputEnabled(false)
+        binding.pendingBanner.text = getString(R.string.private_chat_invite_rejected)
+        binding.pendingBanner.visibility = View.VISIBLE
+    }
+
+    private fun setInputEnabled(enabled: Boolean) {
+        binding.messageEditText.isEnabled = enabled
+        binding.sendButton.isEnabled = enabled
     }
 
     private fun ensureUnlockedThenLoad() {
