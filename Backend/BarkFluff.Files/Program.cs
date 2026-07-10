@@ -69,7 +69,11 @@ public class Program
         builder.Services.AddFileTypeDetection();
 
         builder.Services.AddDbContext<FilesContext>(options =>
-            options.UseNpgsql(builder.Configuration["FilesDb"]));
+            options.UseNpgsql(builder.Configuration["FilesDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddMassTransit(x =>
         {
