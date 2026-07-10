@@ -37,10 +37,10 @@ namespace BarkFluff.Messages.Persistence.Migrations
                 nullable: true);
 
             migrationBuilder.Sql("""
-                UPDATE \"Chats\" c
-                SET \"PrivateInviteState\" = 1
-                WHERE c.\"Type\" = 1
-                  AND (SELECT COUNT(*) FROM \"ChatMembers\" m WHERE m.\"ChatId\" = c.\"Id\") = 2;
+                UPDATE "Chats" c
+                SET "PrivateInviteState" = 1
+                WHERE c."Type" = 1
+                  AND (SELECT COUNT(*) FROM "ChatMembers" m WHERE m."ChatId" = c."Id") = 2;
                 """);
 
             migrationBuilder.CreateTable(
