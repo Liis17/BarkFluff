@@ -14,6 +14,7 @@
     { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'smart_toy' },
     { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications' },
     { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail' },
+    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune' },
     { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'cloud', expandable: true }
   ];
 
