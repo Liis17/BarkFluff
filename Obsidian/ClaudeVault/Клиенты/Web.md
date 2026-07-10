@@ -28,7 +28,7 @@ bash scripts/generate-proto.sh       # Linux/macOS (нужен protoc-gen-grpc-w
 pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 ```
 
-Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списках в `Dockerfile`/`Dockerfile.slim`.
+Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списке в `Dockerfile.slim`.
 
 ## Архитектура
 

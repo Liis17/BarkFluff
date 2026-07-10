@@ -126,8 +126,7 @@
 | `appsettings.json` | — | Базовая конфигурация (порт 7009) |
 | `appsettings.Development.json` | — | Локальная конфигурация для разработки |
 | `Properties/launchSettings.json` | — | Профили запуска VS/dotnet |
-| `Dockerfile` | — | Образ для продакшена |
-| `Dockerfile.slim` | — | Облегчённый образ |
+| `Dockerfile.slim` | — | Образ для CI и production |
 
 ---
 

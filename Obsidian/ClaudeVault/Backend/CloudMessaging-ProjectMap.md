@@ -58,8 +58,8 @@ Singleton-сервис-обёртка над **Firebase Admin SDK**. Отвеч�
 
 ---
 
-### `Dockerfile` / `Dockerfile.slim`
-Docker-образы для деплоя. `Dockerfile.slim` — облегчённый вариант образа.
+### `Dockerfile.slim`
+Docker-образ для CI и деплоя.
 
 ### `Properties/launchSettings.json`
 Настройки запуска для локальной разработки (Visual Studio / dotnet run).

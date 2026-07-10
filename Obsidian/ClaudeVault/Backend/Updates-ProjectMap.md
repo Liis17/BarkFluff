@@ -16,7 +16,7 @@
 | `appsettings.json` | Базовая конфигурация: порт `7015`, адрес Configuration-сервиса. |
 | `appsettings.Development.json` | Переопределения для разработки. |
 | `Properties/launchSettings.json` | Профили запуска (IDE). |
-| `Dockerfile` / `Dockerfile.slim` | Образы для Docker-деплоя. |
+| `Dockerfile.slim` | Образ для Docker-деплоя, используемый CI. |
 
 ---
 

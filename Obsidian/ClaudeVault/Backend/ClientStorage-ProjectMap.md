@@ -79,8 +79,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Dockerfile` | Стандартный образ на базе `mcr.microsoft.com/dotnet/aspnet`. |
-| `Dockerfile.slim` | Облегчённый образ (оптимизированный размер). |
+| `Dockerfile.slim` | Образ на базе `mcr.microsoft.com/dotnet/aspnet`, используемый CI и production. |
 | `docker-compose-dev.yml` | Локальная среда разработки (сервис + MinIO). |
 | `docker-compose-master.yml` | Production-окружение. |
 | `.env.example` | Пример переменных окружения (`S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_SERVICE_URL`, `S3_BUCKET_NAME`, `UPLOAD_TOKEN`, `CACHE_DIR`, `PUBLIC_BASE_URL`). |

@@ -15,7 +15,7 @@
 | `appsettings.json` | Базовые настройки приложения. |
 | `appsettings.Development.json` | Настройки для локальной разработки. |
 | `Properties/launchSettings.json` | Профили запуска для Visual Studio / dotnet run. |
-| `Dockerfile` / `Dockerfile.slim` | Docker-образы сервиса (полный и slim). |
+| `Dockerfile.slim` | Docker-образ сервиса, используемый CI и production. |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса. |
 
 ---

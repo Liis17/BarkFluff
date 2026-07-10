@@ -84,8 +84,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Dockerfile` | Образ для продакшена |
-| `Dockerfile.slim` | Облегчённый образ |
+| `Dockerfile.slim` | Образ для CI и production |
 | `docker-compose-dev.yml` | Локальная разработка |
 | `docker-compose-master.yml` | Продакшен |
 | `Properties/PublishProfiles/FolderProfile.pubxml` | Профиль публикации в папку |

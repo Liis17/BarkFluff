@@ -13,8 +13,7 @@
 | `Barkfluff.AdminPanel.csproj` | Манифест проекта. `net10.0`, зависимости: LiteDB, Telegram.Bot, AWSSDK.S3, gRPC-клиенты. |
 | `appsettings.json` | Конфигурация по умолчанию: Telegram, Auth, LiteDb, Seq, адреса сервисов. |
 | `appsettings.Development.json` | Переопределения для локальной разработки. |
-| `Dockerfile` | Продакшн-образ: сборка → runtime на `mcr.microsoft.com/dotnet/aspnet`, монтирует `docker.sock`. |
-| `Dockerfile.slim` | Облегчённый вариант образа без лишних слоёв. |
+| `Dockerfile.slim` | Продакшн-образ, используемый CI; устанавливает Docker CLI и монтирует `docker.sock`. |
 | `dotnet-tools.json` | Манифест локальных .NET-инструментов проекта. |
 | `SECURITY_AUDIT.md` | Полный аудит безопасности: критические уязвимости, рекомендации. |
 

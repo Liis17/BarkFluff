@@ -14,8 +14,7 @@
 | `Program.cs` | Конфигурация DI, gRPC, EF Core, MassTransit, XAuth; запуск миграций при старте |
 | `appsettings.json` | Базовая конфигурация |
 | `appsettings.Development.json` | Конфигурация для локальной разработки |
-| `Dockerfile` | Образ для production |
-| `Dockerfile.slim` | Облегчённый образ |
+| `Dockerfile.slim` | Образ для CI и production |
 | `Properties/launchSettings.json` | Профили запуска VS |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса |
 

@@ -61,7 +61,7 @@ public class Program
         builder.Services.AddSingleton<VideoThumbnailExtractor>();
         builder.Services.AddHostedService<TempFileCleanupService>();
 
-        // Путь к бинарям ffmpeg/ffprobe в образе (см. Dockerfile). По умолчанию — /usr/local/bin.
+        // Путь к бинарям ffmpeg/ffprobe в образе (см. Dockerfile.slim). По умолчанию — /usr/local/bin.
         FFMpegCore.GlobalFFOptions.Configure(o =>
             o.BinaryFolder = builder.Configuration["Ffmpeg:BinaryFolder"] ?? "/usr/local/bin");
 

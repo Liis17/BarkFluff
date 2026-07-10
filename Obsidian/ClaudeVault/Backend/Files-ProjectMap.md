@@ -165,7 +165,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Dockerfile` / `Dockerfile.slim` | Docker-образы для production и slim-варианта. |
+| `Dockerfile.slim` | Docker-образ, используемый CI и production. |
 | `BarkFluff.Files.http` | HTTP-сниппеты для ручного тестирования REST-эндпоинтов. |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса. |
 | `Properties/launchSettings.json` | Профили запуска для Visual Studio. |
