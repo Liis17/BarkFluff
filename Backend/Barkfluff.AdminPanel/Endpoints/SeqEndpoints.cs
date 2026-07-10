@@ -25,6 +25,7 @@ public static class SeqEndpoints
         "BarkFluff.Configuration",
         "BarkFluff.Developers",
         "BarkFluff.Calls",
+        "BarkFluff.Bots",
         // Инфраструктурные сервисы
         "Seq",
         "Minio",
@@ -50,6 +51,7 @@ public static class SeqEndpoints
             { "BarkFluff.Web",           "web" },
             { "BarkFluff.Developers",    "developers" },
             { "BarkFluff.Calls",         "calls" },
+            { "BarkFluff.Bots",          "bots" },
             { "Seq",                     "seq" },
             { "Minio",                   "minio" },
             { "RabbitMQ",                "rabbitmq" },
