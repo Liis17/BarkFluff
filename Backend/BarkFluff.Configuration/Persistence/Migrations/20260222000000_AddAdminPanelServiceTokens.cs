@@ -1,3 +1,6 @@
+using BarkFluff.Configuration.Infrastructure;
+
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BarkFluff.Configuration.Persistence.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ConfigurationContext))]
+    [Migration("20260222000000_AddAdminPanelServiceTokens")]
     public partial class AddAdminPanelServiceTokens : Migration
     {
         /// <inheritdoc />
@@ -12,10 +17,15 @@ namespace BarkFluff.Configuration.Persistence.Migrations
         {
             migrationBuilder.Sql(@"
                 INSERT INTO ""Configurations"" (""Section"", ""Key"", ""Value"", ""EditedAt"", ""EditedBy"", ""EditedFrom"", ""ServiceId"")
-                VALUES
-                    -- FilesService для AdminPanel (ServiceId = 0)
-                    ('FilesService', 'Token', '', NOW(), 'system', 'migration', 0),
-                    ('FilesService', 'Host', 'http://files:7005', NOW(), 'system', 'migration', 0);
+                SELECT v.""Section"", v.""Key"", v.""Value"", NOW(), 'system', 'migration', 0
+                FROM (VALUES
+                    ('FilesService', 'Token', ''),
+                    ('FilesService', 'Host', 'http://files:7005')
+                ) AS v(""Section"", ""Key"", ""Value"")
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM ""Configurations"" c
+                    WHERE c.""ServiceId"" = 0 AND c.""Section"" = v.""Section"" AND c.""Key"" = v.""Key""
+                );
             ");
         }
 

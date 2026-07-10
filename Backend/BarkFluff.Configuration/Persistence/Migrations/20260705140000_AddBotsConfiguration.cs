@@ -1,3 +1,6 @@
+using BarkFluff.Configuration.Infrastructure;
+
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -8,6 +11,8 @@ namespace BarkFluff.Configuration.Persistence.Migrations
     /// Конфигурация сервиса ботов Bots (ServiceId = 14) + секция BotsService для AdminPanel (ServiceId = 0).
     /// Значения заполняет ConfigurationDefaultsPopulator при старте Configuration.
     /// </summary>
+    [DbContext(typeof(ConfigurationContext))]
+    [Migration("20260705140000_AddBotsConfiguration")]
     public partial class AddBotsConfiguration : Migration
     {
         /// <inheritdoc />
