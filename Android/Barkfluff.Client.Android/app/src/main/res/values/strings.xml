@@ -164,6 +164,12 @@
     <string name="private_chat_remember_password">Сохранить пароль на устройстве</string>
     <string name="private_chat_lock_description">Приватный чат</string>
     <string name="private_chat_preview_hidden">Текст последнего сообщения скрыт</string>
+    <string name="private_chat_invite_incoming">Запрос на приватный чат</string>
+    <string name="private_chat_invite_waiting">Ожидает подтверждения</string>
+    <string name="private_chat_invite_rejected">Запрос отклонён</string>
+    <string name="private_chat_invite_accept">Принять</string>
+    <string name="private_chat_invite_decline">Отклонить</string>
+    <string name="private_chat_invite_prompt">%1$s приглашает вас в приватный чат</string>
     <string name="create_group_title">Новая группа</string>
     <string name="create_group_name_hint">Название группы</string>
     <string name="create_group_name_required">Введите название группы</string>

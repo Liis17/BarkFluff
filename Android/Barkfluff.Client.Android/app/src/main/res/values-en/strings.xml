@@ -194,6 +194,12 @@
     <string name="cd_read_status">Read status</string>
 
     <!-- Encrypted / private chat -->
+    <string name="private_chat_invite_incoming">Private chat request</string>
+    <string name="private_chat_invite_waiting">Awaiting confirmation</string>
+    <string name="private_chat_invite_rejected">Request declined</string>
+    <string name="private_chat_invite_accept">Accept</string>
+    <string name="private_chat_invite_decline">Decline</string>
+    <string name="private_chat_invite_prompt">%1$s invites you to a private chat</string>
     <string name="private_chat_title">Private chat</string>
     <string name="private_chat_description">Passphrase-based encryption. The chat is available on all your devices.</string>
     <string name="encrypted_chat_type">Chat type</string>

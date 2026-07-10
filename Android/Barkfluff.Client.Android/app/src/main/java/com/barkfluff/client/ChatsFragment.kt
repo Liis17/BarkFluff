@@ -678,6 +678,8 @@ class ChatsFragment : Fragment() {
             startActivity(Intent(requireContext(), PrivateChatActivity::class.java).apply {
                 putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
                 putExtra(PrivateChatActivity.EXTRA_TITLE, displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) })
+                putExtra(PrivateChatActivity.EXTRA_INVITE_STATE, chat.privateInviteState.number)
+                putExtra(PrivateChatActivity.EXTRA_INVITER_USER_ID, chat.privateInviterUserId)
             })
             return
         }

@@ -120,8 +120,23 @@ class ChatAdapter(
             // Последнее сообщение
             val lastMessage = chat.lastMessage
             if (isPrivateChat) {
-                binding.lastMessage.visibility = View.GONE
-                binding.privatePreviewSkeleton.visibility = View.VISIBLE
+                if (chat.privateInviteState != Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED) {
+                    // Запрос на приватный чат: вместо скелетона — статус инвайта.
+                    val isInvitee = chat.privateInviterUserId != 0L && chat.privateInviterUserId != currentUserId
+                    binding.privatePreviewSkeleton.visibility = View.GONE
+                    binding.lastMessage.text = binding.root.context.getString(
+                        when {
+                            chat.privateInviteState == Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_REJECTED ->
+                                R.string.private_chat_invite_rejected
+                            isInvitee -> R.string.private_chat_invite_incoming
+                            else -> R.string.private_chat_invite_waiting
+                        }
+                    )
+                    binding.lastMessage.visibility = View.VISIBLE
+                } else {
+                    binding.lastMessage.visibility = View.GONE
+                    binding.privatePreviewSkeleton.visibility = View.VISIBLE
+                }
                 binding.messageTime.text = formatTime(chat.lastActivityAt)
                 binding.messageTime.visibility = if (chat.lastActivityAt > 0) View.VISIBLE else View.GONE
             } else if (lastMessage != null) {

@@ -1313,7 +1313,8 @@ class GrpcManager {
             firstUnreadMessageId = chat.firstUnreadMessageId,
             chatType = chat.chatType,
             lastActivityAt = if (chat.hasLastActivityAt()) chat.lastActivityAt.seconds * 1000 else lastMsg?.sentAt ?: 0L,
-            privateInviteState = chat.privateInviteState
+            privateInviteState = chat.privateInviteState,
+            privateInviterUserId = chat.privateInviterUserId
         )
     }
 
@@ -2294,7 +2295,8 @@ class GrpcManager {
         val firstUnreadMessageId: Long,
         val chatType: Shared.ChatType = Shared.ChatType.CHAT_TYPE_REGULAR,
         val lastActivityAt: Long = lastMessage?.sentAt ?: 0L,
-        val privateInviteState: Shared.PrivateChatInviteState = Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED
+        val privateInviteState: Shared.PrivateChatInviteState = Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED,
+        val privateInviterUserId: Long = 0L
     )
 
     data class ChatPage(val chats: List<ChatData>, val totalCount: Int)
