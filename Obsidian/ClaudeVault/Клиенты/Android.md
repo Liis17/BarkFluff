@@ -23,6 +23,11 @@ Package: `com.barkfluff.client`
 
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
 
+- `MainActivity` владеет M3 FAB создания: он видим только на вкладке чатов, находится над нижней навигацией (или в правом нижнем углу wide-layout) и открывает `CreateChatBottomSheet`. Sheet ведёт в обычный поиск, создание группы или, при `privateChatsEnabled` в тестовых настройках, поиск для приватного чата. Секретный пункт скрыт до отдельной реализации протокола.
+- Групповой flow: `CreateGroupChatActivity` выбирает нескольких пользователей через поиск, требует название, принимает опциональную обложку и вызывает `CreateGroupChat`.
+- `ChatData` получает `chatType` и `lastActivityAt`; `ChatsFragment` подгружает страницы `ListChats` при прокрутке. Приватный чат открывает `PrivateChatActivity`, имеет lock-бейдж рядом с аватаром и skeleton вместо текста последнего сообщения.
+- Ввод passphrase приватного чата (создание, инвайт, разблокирование) содержит opt-in «Сохранить пароль». В `EncryptedSharedPreferences` сохраняется только производный ключ; при logout ключи очищаются.
+
 - `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`), нижняя навигация (`bottomNavCard`) — плавающий элемент поверх, рисуется позже в XML → автоматически выше по z-order. Ширина `bottomNavCard` в `MainActivity` подстраивается под количество видимых вкладок.
 - `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
 - `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:

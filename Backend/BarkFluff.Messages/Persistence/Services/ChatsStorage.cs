@@ -25,21 +25,26 @@ public class ChatsStorage
 
     public async Task<List<Chat>> GetUserChats(long userId, int skip, int count)
     {
-        //todo: если будет лагать, то разделить на два разных запроса
+        // PRIVATE чаты не имеют обычных Message: их активность и unread считаются
+        // только по EncryptedMessages, не раскрывая ciphertext в списке.
         var chats = await _context
             .Chats
             .AsNoTracking()
             .Include(x => x.Members)
             .Where(x => x.Members!.Any(m => m.UserId == userId))
-            .Where(c => _context.Messages.Any(m => m.ChatId == c.Id && !m.IsDeleted))
+            .Where(c => c.Type == ChatType.Private || _context.Messages.Any(m => m.ChatId == c.Id && !m.IsDeleted))
             .Select(c => new
             {
                 Chat = c,
-                LastMessageSentAt = _context.Messages
-                    .Where(m => m.ChatId == c.Id && !m.IsDeleted)
-                    .Max(m => (DateTime?)m.SentAt)
+                LastActivityAt = c.Type == ChatType.Private
+                    ? _context.EncryptedMessages
+                        .Where(m => m.ChatId == c.Id && !m.IsDeleted)
+                        .Max(m => (DateTime?)m.SentAt) ?? c.CreatedAt
+                    : _context.Messages
+                        .Where(m => m.ChatId == c.Id && !m.IsDeleted)
+                        .Max(m => (DateTime?)m.SentAt) ?? c.CreatedAt
             })
-            .OrderByDescending(x => x.LastMessageSentAt)
+            .OrderByDescending(x => x.LastActivityAt)
             .ThenBy(x => x.Chat.Id)
             .Skip(skip)
             .Take(count)
@@ -50,16 +55,52 @@ public class ChatsStorage
                 Picture = c.Chat.Picture,
                 IsGroupChat = c.Chat.IsGroupChat,
                 Members = c.Chat.Members,
-                CountUnread = _context.Messages.Count(x => x.ChatId == c.Chat.Id && !x.IsDeleted && !x.ReadBy.Contains(userId)),
-                FirstUnreadMessageId = _context.Messages
-                    .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted && !m.ReadBy.Contains(userId))
-                    .Min(m => (long?)m.Id),
-                LastMessage = _context.Messages
-                    .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted)
-                    .OrderByDescending(m => m.SentAt)
-                    .FirstOrDefault()
+                Type = c.Chat.Type,
+                KdfSalt = c.Chat.KdfSalt,
+                PassphraseVerifier = c.Chat.PassphraseVerifier,
+                CreatedAt = c.Chat.CreatedAt,
+                PrivateUserLowId = c.Chat.PrivateUserLowId,
+                PrivateUserHighId = c.Chat.PrivateUserHighId,
+                PrivateInviteState = c.Chat.PrivateInviteState,
+                LastActivityAt = c.LastActivityAt,
+                CountUnread = c.Chat.Type == ChatType.Private
+                    ? _context.EncryptedMessages.Count(m =>
+                        m.ChatId == c.Chat.Id && !m.IsDeleted && m.SenderId != userId &&
+                        m.Id > _context.PrivateChatReadStates
+                            .Where(s => s.ChatId == c.Chat.Id && s.UserId == userId)
+                            .Select(s => s.LastReadMessageId)
+                            .FirstOrDefault())
+                    : _context.Messages.Count(m => m.ChatId == c.Chat.Id && !m.IsDeleted && !m.ReadBy.Contains(userId)),
+                FirstUnreadMessageId = c.Chat.Type == ChatType.Private
+                    ? _context.EncryptedMessages
+                        .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted && m.SenderId != userId &&
+                            m.Id > _context.PrivateChatReadStates
+                                .Where(s => s.ChatId == c.Chat.Id && s.UserId == userId)
+                                .Select(s => s.LastReadMessageId)
+                                .FirstOrDefault())
+                        .Min(m => (long?)m.Id)
+                    : _context.Messages
+                        .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted && !m.ReadBy.Contains(userId))
+                        .Min(m => (long?)m.Id),
+                LastMessage = c.Chat.Type == ChatType.Private
+                    ? null
+                    : _context.Messages
+                        .Where(m => m.ChatId == c.Chat.Id && !m.IsDeleted)
+                        .OrderByDescending(m => m.SentAt)
+                        .FirstOrDefault()
             })
             .ToListAsync();
+
+        // Pending private chats have only the initiator in ChatMembers. Add the
+        // peer to the response model so clients can resolve its title/avatar.
+        foreach (var chat in chats.Where(c => c.Type == ChatType.Private && !c.IsGroupChat))
+        {
+            var peerId = chat.PrivateUserLowId == userId ? chat.PrivateUserHighId : chat.PrivateUserLowId;
+            if (peerId.HasValue && chat.Members?.All(m => m.UserId != peerId.Value) == true)
+            {
+                chat.Members.Add(new ChatMember { UserId = peerId.Value, JoinedAt = chat.CreatedAt });
+            }
+        }
 
         return chats;
     }
@@ -123,9 +164,11 @@ public class ChatsStorage
 
     public async Task<int> GetTotalUserChats(long userId)
     {
-        // Считаем только чаты, у которых есть сообщения (исключаем пустые чаты)
+        // Пустой PRIVATE чат — полноценный объект списка: он нужен создателю
+        // до принятия инвайта и для идемпотентного повторного открытия.
         var count = await _context.Chats
-            .CountAsync(x => x.Members.Any(c => c.UserId == userId) && _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted));
+            .CountAsync(x => x.Members.Any(c => c.UserId == userId) &&
+                (x.Type == ChatType.Private || _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted)));
 
         return count;
     }
@@ -168,24 +211,104 @@ public class ChatsStorage
         return result.Entity;
     }
 
-    public async Task<Chat> CreatePrivateChat(long initiatorUserId, byte[] kdfSalt, byte[] passphraseVerifier)
+    public async Task<PrivateChatCreationResult> CreatePrivateChat(
+        long initiatorUserId,
+        long peerUserId,
+        byte[] kdfSalt,
+        byte[] passphraseVerifier)
     {
+        var lowUserId = Math.Min(initiatorUserId, peerUserId);
+        var highUserId = Math.Max(initiatorUserId, peerUserId);
+
+        var existing = await FindPrivateChatAsync(lowUserId, highUserId);
+        if (existing is not null)
+        {
+            return new PrivateChatCreationResult(existing, false);
+        }
+
         var chat = new Chat
         {
             IsGroupChat = false,
             Type = ChatType.Private,
             KdfSalt = kdfSalt,
             PassphraseVerifier = passphraseVerifier,
+            PrivateUserLowId = lowUserId,
+            PrivateUserHighId = highUserId,
+            PrivateInviteState = PrivateChatInviteState.Pending,
             Members = new List<ChatMember>
             {
                 new() { UserId = initiatorUserId, JoinedAt = DateTime.UtcNow }
             }
         };
 
-        var result = await _context.Chats.AddAsync(chat);
-        await _context.SaveChangesAsync();
+        await _context.Chats.AddAsync(chat);
+        try
+        {
+            await _context.SaveChangesAsync();
+            return new PrivateChatCreationResult(chat, true);
+        }
+        catch (DbUpdateException)
+        {
+            // Уникальный индекс пары устраняет гонку двух одновременных Create.
+            _context.Entry(chat).State = EntityState.Detached;
+            foreach (var member in chat.Members)
+            {
+                _context.Entry(member).State = EntityState.Detached;
+            }
 
-        return result.Entity;
+            existing = await FindPrivateChatAsync(lowUserId, highUserId);
+            if (existing is not null)
+            {
+                return new PrivateChatCreationResult(existing, false);
+            }
+
+            throw;
+        }
+    }
+
+    public async Task<Chat> AcceptPrivateChat(Guid chatId, long inviteeUserId)
+    {
+        var chat = await _context.Chats
+            .Include(x => x.Members)
+            .FirstAsync(x => x.Id == chatId);
+
+        if (chat.Members?.All(m => m.UserId != inviteeUserId) == true)
+        {
+            chat.Members.Add(new ChatMember { ChatId = chatId, UserId = inviteeUserId, JoinedAt = DateTime.UtcNow });
+        }
+
+        chat.PrivateInviteState = PrivateChatInviteState.Accepted;
+
+        if (!await _context.PrivateChatReadStates.AnyAsync(s => s.ChatId == chatId && s.UserId == inviteeUserId))
+        {
+            await _context.PrivateChatReadStates.AddAsync(new PrivateChatReadState
+            {
+                ChatId = chatId,
+                UserId = inviteeUserId,
+            });
+        }
+
+        await _context.SaveChangesAsync();
+        return chat;
+    }
+
+    public async Task<Chat> RejectPrivateChat(Guid chatId)
+    {
+        var chat = await _context.Chats
+            .Include(x => x.Members)
+            .FirstAsync(x => x.Id == chatId);
+
+        chat.PrivateInviteState = PrivateChatInviteState.Rejected;
+        await _context.SaveChangesAsync();
+        return chat;
+    }
+
+    private Task<Chat?> FindPrivateChatAsync(long lowUserId, long highUserId)
+    {
+        return _context.Chats
+            .Include(x => x.Members)
+            .FirstOrDefaultAsync(x => x.Type == ChatType.Private &&
+                x.PrivateUserLowId == lowUserId && x.PrivateUserHighId == highUserId);
     }
 
     public async Task<ChatMember> AddChatMember(Guid chatId, long userId)
@@ -304,6 +427,8 @@ public class ChatsStorage
         return chat;
     }
 }
+
+public record PrivateChatCreationResult(Chat Chat, bool Created);
 
 public class ChatInfoDto
 {

@@ -54,15 +54,18 @@ public class AcceptPrivateChatCommandHandler : IRequestHandler<AcceptPrivateChat
             throw new ChatNotPrivateException();
         }
 
-        var invitee = await _inviteStore.GetInviteeAsync(request.ChatId);
-        if (invitee is null)
-        {
-            throw new PrivateChatInviteNotFoundException();
-        }
-
-        if (invitee.Value != _userContext.UserId)
+        var initiatorId = chat.Members?.FirstOrDefault()?.UserId;
+        var invitee = chat.PrivateUserLowId.HasValue && initiatorId.HasValue
+            ? (chat.PrivateUserLowId == initiatorId ? chat.PrivateUserHighId ?? 0 : chat.PrivateUserLowId.Value)
+            : await _inviteStore.GetInviteeAsync(request.ChatId) ?? 0;
+        if (invitee != _userContext.UserId)
         {
             throw new NoAccessToChatException();
+        }
+
+        if (chat.PrivateInviteState != PrivateChatInviteState.Pending)
+        {
+            throw new PrivateChatAlreadyAcceptedException();
         }
 
         if (chat.Members?.Any(m => m.UserId == _userContext.UserId) == true)
@@ -70,11 +73,10 @@ public class AcceptPrivateChatCommandHandler : IRequestHandler<AcceptPrivateChat
             throw new PrivateChatAlreadyAcceptedException();
         }
 
-        await _chatsStorage.AddChatMember(request.ChatId, _userContext.UserId);
-
+        var updated = await _chatsStorage.AcceptPrivateChat(request.ChatId, _userContext.UserId);
         await _inviteStore.RemoveAsync(request.ChatId);
 
-        var inviterId = chat.Members?.FirstOrDefault()?.UserId ?? 0;
+        var inviterId = initiatorId ?? 0;
         await _queueSender.SendInviteResolution(
             request.ChatId,
             inviterId,
@@ -83,7 +85,6 @@ public class AcceptPrivateChatCommandHandler : IRequestHandler<AcceptPrivateChat
 
         _metrics.Increment("private_chats_accepted");
 
-        var updated = await _chatsStorage.GetChat(request.ChatId);
-        return new AcceptPrivateChatResponse { Chat = updated!.ToGrpc() };
+        return new AcceptPrivateChatResponse { Chat = updated.ToGrpc() };
     }
 }

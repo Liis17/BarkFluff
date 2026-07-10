@@ -115,8 +115,10 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             val result = app.privateChatRepository.createPrivateChat(peerId, passphrase)
             binding.progressBar.visibility = View.GONE
             binding.createButton.isEnabled = true
-            result.onSuccess { chat ->
-                Toast.makeText(this@CreateEncryptedChatActivity, "Приватный чат создан, дождитесь подключения собеседника", Toast.LENGTH_LONG).show()
+            result.onSuccess { creation ->
+                val chat = creation.chat
+                val text = if (creation.created) "Приватный чат создан, дождитесь подключения собеседника" else "Открыт существующий приватный чат"
+                Toast.makeText(this@CreateEncryptedChatActivity, text, Toast.LENGTH_LONG).show()
                 val intent = Intent(this@CreateEncryptedChatActivity, PrivateChatActivity::class.java)
                     .putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
                     .putExtra(PrivateChatActivity.EXTRA_TITLE, chat.title.ifBlank { "Приватный чат" })

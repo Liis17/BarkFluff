@@ -23,6 +23,8 @@ public class MessagesContext : DbContext
 
     public DbSet<EncryptedMessage> EncryptedMessages { get; set; }
 
+    public DbSet<PrivateChatReadState> PrivateChatReadStates { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
@@ -30,6 +32,7 @@ public class MessagesContext : DbContext
         modelBuilder.ApplyConfiguration(new MessageConfiguration());
         modelBuilder.ApplyConfiguration(new PinnedMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EncryptedMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new PrivateChatReadStateConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

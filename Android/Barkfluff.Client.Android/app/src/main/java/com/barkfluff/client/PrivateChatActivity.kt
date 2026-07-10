@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.text.InputType
 import android.util.Log
 import android.widget.Toast
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -13,7 +14,9 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityPrivateChatBinding
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
@@ -78,14 +81,28 @@ class PrivateChatActivity : AppCompatActivity() {
     }
 
     private fun promptPassphraseAndUnlock() {
-        val edit = TextInputEditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            hint = "Passphrase"
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val margin = (24 * resources.displayMetrics.density).toInt()
+            setPadding(margin, 0, margin, 0)
         }
+        val passwordLayout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+            hint = getString(R.string.private_chat_password_hint)
+        }
+        val edit = TextInputEditText(passwordLayout.context).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        passwordLayout.addView(edit)
+        val remember = MaterialCheckBox(this).apply {
+            text = getString(R.string.private_chat_remember_password)
+            isChecked = false
+        }
+        content.addView(passwordLayout)
+        content.addView(remember)
         MaterialAlertDialogBuilder(this)
             .setTitle("Введите passphrase")
             .setMessage("Этот чат зашифрован общим паролем. Введите passphrase для расшифровки истории.")
-            .setView(edit)
+            .setView(content)
             .setCancelable(false)
             .setPositiveButton("OK") { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
@@ -101,7 +118,7 @@ class PrivateChatActivity : AppCompatActivity() {
                         finish()
                         return@launch
                     }
-                    val ok = repo.unlockExistingChat(chat, passphrase)
+                    val ok = repo.unlockExistingChat(chat, passphrase, remember.isChecked)
                     if (ok) loadHistory() else {
                         Toast.makeText(this@PrivateChatActivity, "Неверный passphrase", Toast.LENGTH_LONG).show()
                         finish()
@@ -118,6 +135,7 @@ class PrivateChatActivity : AppCompatActivity() {
             result.onSuccess { messages ->
                 adapter.submitList(messages.map { it.toItem() })
                 binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
+                messages.maxOfOrNull { it.raw.id }?.let { repo.markMessagesRead(chatId, it) }
             }.onFailure {
                 Log.w(TAG, "Failed to load private history", it)
                 Toast.makeText(this@PrivateChatActivity, "Не удалось загрузить историю: ${it.message}", Toast.LENGTH_LONG).show()
@@ -154,6 +172,7 @@ class PrivateChatActivity : AppCompatActivity() {
                     adapter.submitList(newList) {
                         binding.messagesRecyclerView.scrollToPosition(newList.lastIndex)
                     }
+                    repo.markMessagesRead(chatId, event.message.id)
                 }
         }
         lifecycleScope.launch {

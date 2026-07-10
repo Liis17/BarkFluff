@@ -18,6 +18,7 @@ using BarkFluff.Messages.Features.ListMessages;
 using BarkFluff.Messages.Features.ListPinnedMessages;
 using BarkFluff.Messages.Features.ListPrivateMessages;
 using BarkFluff.Messages.Features.MarkAsRead;
+using BarkFluff.Messages.Features.MarkPrivateMessagesAsRead;
 using BarkFluff.Messages.Features.PinMessage;
 using BarkFluff.Messages.Features.RejectPrivateChat;
 using BarkFluff.Messages.Features.RejectSecretChatInvite;
@@ -504,6 +505,24 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         };
 
         return await _mediator.Send(command);
+    }
+
+    public override async Task<MarkPrivateMessagesAsReadResponse> MarkPrivateMessagesAsRead(
+        MarkPrivateMessagesAsReadRequest request,
+        ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        await _mediator.Send(new MarkPrivateMessagesAsReadCommand
+        {
+            ChatId = chatId,
+            LastReadMessageId = request.LastReadMessageId,
+        });
+
+        return new MarkPrivateMessagesAsReadResponse();
     }
 
     // -- Секретные чаты ------------------------------------------------------

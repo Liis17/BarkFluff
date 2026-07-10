@@ -46,6 +46,18 @@
             android:background="@drawable/online_indicator"
             android:visibility="gone" />
 
+        <ImageView
+            android:id="@+id/privateChatLock"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="top|end"
+            android:background="@drawable/bg_private_lock_badge"
+            android:contentDescription="@string/private_chat_lock_description"
+            android:padding="3dp"
+            android:src="@drawable/ic_lock"
+            android:visibility="gone"
+            app:tint="?attr/colorOnPrimaryContainer" />
+
     </FrameLayout>
 
     <LinearLayout
@@ -111,6 +123,15 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Привет! Как дела?" />
+
+            <View
+                android:id="@+id/privatePreviewSkeleton"
+                android:layout_width="104dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_private_preview_skeleton"
+                android:contentDescription="@string/private_chat_preview_hidden"
+                android:visibility="gone" />
 
             <!-- Unread badge — pill через corner.full -->
             <com.google.android.material.card.MaterialCardView

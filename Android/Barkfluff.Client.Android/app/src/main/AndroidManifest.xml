@@ -139,6 +139,13 @@
             android:launchMode="singleTop" />
 
         <activity
+            android:name=".CreateGroupChatActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".UserProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"

@@ -127,6 +127,14 @@ enum ChatType {
   CHAT_TYPE_SECRET = 2;
 }
 
+// Состояние приглашения в приватный чат. Нужно клиенту, чтобы не предлагать
+// отправку до принятия приглашения второй стороной.
+enum PrivateChatInviteState {
+  PRIVATE_CHAT_INVITE_STATE_PENDING = 0;
+  PRIVATE_CHAT_INVITE_STATE_ACCEPTED = 1;
+  PRIVATE_CHAT_INVITE_STATE_REJECTED = 2;
+}
+
 // Зашифрованное сообщение приватного чата.
 // Сервер хранит как opaque blob в отдельной таблице EncryptedMessages и
 // никогда не имеет ключа для расшифровки. Расшифровка только клиентами,

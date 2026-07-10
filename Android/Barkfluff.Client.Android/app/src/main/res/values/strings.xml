@@ -154,6 +154,28 @@
     <string name="chat_empty_title">Пока что здесь пусто</string>
     <string name="chat_empty_description">Начните диалог, найдя пользователя через поиск</string>
     <string name="btn_new_chat">Новый чат</string>
+    <string name="cd_create_chat">Создать чат</string>
+    <string name="create_chat_sheet_title">Новый чат</string>
+    <string name="create_chat_regular">Обычный чат</string>
+    <string name="create_chat_group">Групповой чат</string>
+    <string name="create_chat_private">Приватный чат</string>
+    <string name="private_chat_password_title">Приватный чат</string>
+    <string name="private_chat_password_hint">Общий пароль</string>
+    <string name="private_chat_remember_password">Сохранить пароль на устройстве</string>
+    <string name="private_chat_lock_description">Приватный чат</string>
+    <string name="private_chat_preview_hidden">Текст последнего сообщения скрыт</string>
+    <string name="create_group_title">Новая группа</string>
+    <string name="create_group_name_hint">Название группы</string>
+    <string name="create_group_name_required">Введите название группы</string>
+    <string name="create_group_avatar">Добавить обложку</string>
+    <string name="create_group_avatar_selected">Обложка выбрана</string>
+    <string name="create_group_search_members">Найти участников</string>
+    <string name="create_group_members_empty">Участники не выбраны</string>
+    <string name="create_group_members_count">Выбрано: %1$d</string>
+    <string name="create_group_members_required">Выберите хотя бы одного участника</string>
+    <string name="create_group_confirm">Создать</string>
+    <string name="create_group_failed">Не удалось создать группу: %1$s</string>
+    <string name="create_group_avatar_failed">Не удалось загрузить обложку</string>
     <string name="connecting">Соединение…</string>
     <string name="chat_message_hint">Сообщение</string>
     <string name="chat_message_edited">изменено</string>
@@ -499,7 +521,9 @@
     <string name="testing_show_ids">Показывать ID в профиле</string>
     <string name="testing_show_ids_subtitle">UserId и ChatId под статусом онлайна</string>
     <string name="testing_secret_chats">Скрытые чаты</string>
-    <string name="testing_secret_chats_subtitle">Кнопка создания приватных и секретных чатов</string>
+    <string name="testing_secret_chats_subtitle">Отложенный экспериментальный сценарий секретных чатов</string>
+    <string name="testing_private_chats">Приватные чаты</string>
+    <string name="testing_private_chats_subtitle">Показывать создание чата с общим паролем</string>
 
     <!-- Pinned messages -->
     <string name="pinned_empty">Нет закреплённых сообщений</string>

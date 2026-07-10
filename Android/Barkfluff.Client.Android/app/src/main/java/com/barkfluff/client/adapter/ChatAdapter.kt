@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import barkfluff.shared.Shared
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
 import com.barkfluff.client.grpc.GrpcManager
@@ -99,6 +100,8 @@ class ChatAdapter(
 
             // Название чата
             binding.chatTitle.text = item.displayTitle.trim()
+            val isPrivateChat = chat.chatType == Shared.ChatType.CHAT_TYPE_PRIVATE
+            binding.privateChatLock.visibility = if (isPrivateChat) View.VISIBLE else View.GONE
 
             // Аватар через AvatarLoader с fileId
             AvatarLoader.loadByFileId(
@@ -116,7 +119,13 @@ class ChatAdapter(
 
             // Последнее сообщение
             val lastMessage = chat.lastMessage
-            if (lastMessage != null) {
+            if (isPrivateChat) {
+                binding.lastMessage.visibility = View.GONE
+                binding.privatePreviewSkeleton.visibility = View.VISIBLE
+                binding.messageTime.text = formatTime(chat.lastActivityAt)
+                binding.messageTime.visibility = if (chat.lastActivityAt > 0) View.VISIBLE else View.GONE
+            } else if (lastMessage != null) {
+                binding.privatePreviewSkeleton.visibility = View.GONE
                 val text = lastMessage.text
                 binding.lastMessage.text = when {
                     text.isNotBlank() -> text.trim()
@@ -126,6 +135,7 @@ class ChatAdapter(
                 binding.messageTime.text = formatTime(lastMessage.sentAt)
                 binding.messageTime.visibility = View.VISIBLE
             } else {
+                binding.privatePreviewSkeleton.visibility = View.GONE
                 binding.lastMessage.text = "Нет сообщений"
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.visibility = View.GONE
@@ -144,7 +154,7 @@ class ChatAdapter(
 
             // Статус прочтения (галочки)
             val lastMsg = chat.lastMessage
-            if (lastMsg != null && lastMsg.senderId == currentUserId) {
+            if (!isPrivateChat && lastMsg != null && lastMsg.senderId == currentUserId) {
                 val readByOthers = lastMsg.readBy.any { it != currentUserId }
                 if (readByOthers) {
                     binding.readStatus.setImageResource(R.drawable.ic_status_read)

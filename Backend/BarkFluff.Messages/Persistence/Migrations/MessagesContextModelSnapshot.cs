@@ -32,11 +32,27 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<bool>("IsGroupChat")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
                     b.Property<byte[]>("KdfSalt")
                         .HasColumnType("bytea");
 
                     b.Property<byte[]>("PassphraseVerifier")
                         .HasColumnType("bytea");
+
+                    b.Property<int>("PrivateInviteState")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<long?>("PrivateUserHighId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PrivateUserLowId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Picture")
                         .HasColumnType("text");
@@ -50,6 +66,10 @@ namespace BarkFluff.Messages.Persistence.Migrations
                         .HasDefaultValue(0);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Type", "PrivateUserLowId", "PrivateUserHighId")
+                        .IsUnique()
+                        .HasFilter("\"Type\" = 1 AND \"PrivateUserLowId\" IS NOT NULL AND \"PrivateUserHighId\" IS NOT NULL");
 
                     b.ToTable("Chats");
                 });
@@ -234,6 +254,22 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.ToTable("PinnedMessages");
                 });
 
+            modelBuilder.Entity("BarkFluff.Messages.Domain.PrivateChatReadState", b =>
+                {
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("LastReadMessageId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ChatId", "UserId");
+
+                    b.ToTable("PrivateChatReadStates");
+                });
+
             modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
                 {
                     b.HasOne("BarkFluff.Messages.Domain.Chat", "Chat")
@@ -358,6 +394,15 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.HasOne("BarkFluff.Messages.Domain.Message", null)
                         .WithMany()
                         .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.PrivateChatReadState", b =>
+                {
+                    b.HasOne("BarkFluff.Messages.Domain.Chat", null)
+                        .WithMany()
+                        .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

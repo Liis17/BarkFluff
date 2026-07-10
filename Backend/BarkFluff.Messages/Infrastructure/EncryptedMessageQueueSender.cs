@@ -59,6 +59,17 @@ public class EncryptedMessageQueueSender
         await _publishEndpoint.Publish(evt);
     }
 
+    public virtual async Task SendReadState(Guid chatId, long userId, long lastReadMessageId, List<long> chatMembers)
+    {
+        await _publishEndpoint.Publish(new PrivateMessagesReadEvent
+        {
+            ChatId = chatId,
+            UserId = userId,
+            LastReadMessageId = lastReadMessageId,
+            ChatMembers = chatMembers,
+        });
+    }
+
     public virtual async Task SendInvite(
         Guid chatId,
         long inviterUserId,

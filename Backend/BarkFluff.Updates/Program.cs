@@ -42,6 +42,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<NewEncryptedMessageConsumer>();
     x.AddConsumer<EncryptedMessageEditedConsumer>();
     x.AddConsumer<EncryptedMessageDeletedConsumer>();
+    x.AddConsumer<PrivateMessagesReadConsumer>();
     x.AddConsumer<PrivateChatInviteConsumer>();
     x.AddConsumer<PrivateChatInviteResolutionConsumer>();
     x.AddConsumer<SecretChatInviteConsumer>();
@@ -111,6 +112,11 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<EncryptedMessageDeletedConsumer>(context);
         });
 
+        cfg.ReceiveEndpoint("private-messages-read-updates-handler", e =>
+        {
+            e.ConfigureConsumer<PrivateMessagesReadConsumer>(context);
+        });
+
         cfg.ReceiveEndpoint("private-chat-invites-updates-handler", e =>
         {
             e.ConfigureConsumer<PrivateChatInviteConsumer>(context);
@@ -159,6 +165,7 @@ startupMetrics.Set("all_messages_unpinned_subscriptions_active", 0);
 startupMetrics.Set("private_messages_subscriptions_active", 0);
 startupMetrics.Set("private_message_edits_subscriptions_active", 0);
 startupMetrics.Set("private_message_deletes_subscriptions_active", 0);
+startupMetrics.Set("private_messages_read_subscriptions_active", 0);
 startupMetrics.Set("private_chat_invites_subscriptions_active", 0);
 startupMetrics.Set("private_chat_invite_resolutions_subscriptions_active", 0);
 startupMetrics.Set("secret_chat_invites_subscriptions_active", 0);

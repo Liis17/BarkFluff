@@ -74,6 +74,9 @@ class RealtimeService(
     private val _privateMessageDeletes = MutableSharedFlow<UpdatesApiOuterClass.EncryptedMessageDeletedEvent>(extraBufferCapacity = 64)
     val privateMessageDeletes: SharedFlow<UpdatesApiOuterClass.EncryptedMessageDeletedEvent> = _privateMessageDeletes
 
+    private val _privateMessagesRead = MutableSharedFlow<UpdatesApiOuterClass.PrivateMessagesReadEvent>(extraBufferCapacity = 64)
+    val privateMessagesRead: SharedFlow<UpdatesApiOuterClass.PrivateMessagesReadEvent> = _privateMessagesRead
+
     private val _privateChatInvites = MutableSharedFlow<UpdatesApiOuterClass.PrivateChatInviteEvent>(extraBufferCapacity = 32)
     val privateChatInvites: SharedFlow<UpdatesApiOuterClass.PrivateChatInviteEvent> = _privateChatInvites
 
@@ -134,6 +137,7 @@ class RealtimeService(
         scope.launch { streamWithReconnect("PrivateMessages") { collectPrivateMessages() } }
         scope.launch { streamWithReconnect("PrivateMessageEdits") { collectPrivateMessageEdits() } }
         scope.launch { streamWithReconnect("PrivateMessageDeletes") { collectPrivateMessageDeletes() } }
+        scope.launch { streamWithReconnect("PrivateMessagesRead") { collectPrivateMessagesRead() } }
         scope.launch { streamWithReconnect("PrivateChatInvites") { collectPrivateChatInvites() } }
         scope.launch { streamWithReconnect("PrivateChatInviteResolutions") { collectPrivateChatInviteResolutions() } }
         // E2E секретные чаты (device-scope)
@@ -317,6 +321,15 @@ class RealtimeService(
         client.subscribePrivateMessageDeletes(request).collect { event ->
             Log.v(TAG, "Private msg deleted: chatId=${event.chatId}, msgId=${event.messageId}")
             _privateMessageDeletes.emit(event)
+        }
+    }
+
+    private suspend fun collectPrivateMessagesRead() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateMessagesReadRequest.getDefaultInstance()
+        client.subscribePrivateMessagesRead(request).collect { event ->
+            Log.v(TAG, "Private messages read: chatId=${event.chatId}, userId=${event.userId}")
+            _privateMessagesRead.emit(event)
         }
     }
 
