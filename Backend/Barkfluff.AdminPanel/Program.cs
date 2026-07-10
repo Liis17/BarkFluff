@@ -305,6 +305,7 @@ public class Program
         app.MapGet("/users", async context => await ServeHtmlFile(context, Path.Combine("v2", "users.html")));
         app.MapGet("/notifications", async context => await ServeHtmlFile(context, Path.Combine("v2", "notifications.html")));
         app.MapGet("/mail", async context => await ServeHtmlFile(context, Path.Combine("v2", "mail.html")));
+        app.MapGet("/configuration", async context => await ServeHtmlFile(context, Path.Combine("v2", "configuration.html")));
         app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-storage.html")));
         app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-browser.html")));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, Path.Combine("v2", "restarting.html")));
