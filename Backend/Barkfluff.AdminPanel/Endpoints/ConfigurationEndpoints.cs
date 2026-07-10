@@ -17,6 +17,80 @@ public static class ConfigurationEndpoints
         var group = app.MapGroup("/api/configuration")
             .WithTags("Configuration");
 
+        // Получить все строки конфигурации
+        group.MapGet("/all", async (
+            ConfigurationApi.ConfigurationApiClient configClient,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            try
+            {
+                var response = await configClient.GetAllConfigurationsAsync(new GetAllConfigurationsRequest());
+
+                var items = response.Configurations.Select(c => new
+                {
+                    section = c.Section,
+                    key = c.Key,
+                    value = c.Value,
+                    serviceId = c.ServiceId,
+                    serviceName = Enum.IsDefined(typeof(ServiceId), c.ServiceId)
+                        ? ((ServiceId)c.ServiceId).ToString()
+                        : c.ServiceId.ToString(),
+                    editedAt = c.EditedAt?.ToDateTime().ToString("o") ?? "",
+                    editedBy = c.EditedBy,
+                    editedFrom = c.EditedFrom
+                });
+
+                return Results.Ok(items);
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Ошибка получения конфигурации: {ex.Message}");
+            }
+        });
+
+        // Обновить значение одной строки конфигурации
+        group.MapPost("/update", async (
+            ConfigurationApi.ConfigurationApiClient configClient,
+            HttpContext context,
+            ConfigurationValueUpdateRequest request) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken token)
+                return Results.Unauthorized();
+
+            try
+            {
+                var result = await configClient.UpdateConfigurationAsync(new UpdateConfigurationRequest
+                {
+                    Section = request.Section,
+                    Key = request.Key,
+                    Value = request.Value,
+                    ServiceId = request.ServiceId,
+                    EditedBy = token.Name,
+                    EditedFrom = context.Connection.RemoteIpAddress?.ToString() ?? "admin-panel"
+                });
+
+                if (!result.Success)
+                    return Results.BadRequest(new { message = result.Message });
+
+                return Results.Ok(new { message = result.Message, editedBy = token.Name });
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Ошибка обновления конфигурации: {ex.Message}");
+            }
+        });
+
         // Получить S3 конфигурацию (все бакеты)
         group.MapGet("/s3-configuration", async (
             ConfigurationApi.ConfigurationApiClient configClient,
@@ -164,6 +238,17 @@ public static class ConfigurationEndpoints
             }
         });
     }
+}
+
+/// <summary>
+/// Request модель для обновления значения строки конфигурации
+/// </summary>
+public class ConfigurationValueUpdateRequest
+{
+    public string Section { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public int ServiceId { get; set; }
+    public string Value { get; set; } = string.Empty;
 }
 
 /// <summary>
