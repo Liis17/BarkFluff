@@ -1,3 +1,6 @@
+using BarkFluff.Configuration.Infrastructure;
+
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,6 +13,8 @@ namespace BarkFluff.Configuration.Persistence.Migrations
     /// UsersService:* — OnlineVisibilityFilter (настройки приватности онлайна).
     /// Значения заполняет ConfigurationDefaultsPopulator при старте Configuration.
     /// </summary>
+    [DbContext(typeof(ConfigurationContext))]
+    [Migration("20260622000001_AddOnlinerInterServiceConfiguration")]
     public partial class AddOnlinerInterServiceConfiguration : Migration
     {
         /// <inheritdoc />
