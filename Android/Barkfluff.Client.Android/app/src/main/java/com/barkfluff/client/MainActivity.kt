@@ -51,6 +51,10 @@ class MainActivity : AppCompatActivity() {
          */
         @Volatile
         var pendingChatId: String? = null
+
+        /** Признак того, что pendingChatId — приватный чат (уведомление private_chat_invite). */
+        @Volatile
+        var pendingChatIsPrivate: Boolean = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,10 +119,16 @@ class MainActivity : AppCompatActivity() {
             ?: pendingChatId
             ?: return
 
+        val isPrivateChat = intent?.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false)
+            ?.takeIf { intent.hasExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT) }
+            ?: pendingChatIsPrivate
+
         // Очищаем все источники чтобы не обрабатывать повторно
         pendingChatId = null
+        pendingChatIsPrivate = false
         intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
         intent?.removeExtra("chat_id")
+        intent?.removeExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT)
 
         Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
 
@@ -139,10 +149,20 @@ class MainActivity : AppCompatActivity() {
                 // Нужна авторизация через SplashActivity
                 Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
                 pendingChatId = chatId
+                pendingChatIsPrivate = isPrivateChat
                 startActivity(Intent(this, SplashActivity::class.java))
                 finish()
                 return
             }
+        }
+
+        // Приватный чат: PrivateChatActivity сам зарезолвит состояние инвайта через getChat
+        if (isPrivateChat) {
+            startActivity(Intent(this, PrivateChatActivity::class.java).apply {
+                putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chatId)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+            return
         }
 
         // gRPC готов — открываем ChatActivity
