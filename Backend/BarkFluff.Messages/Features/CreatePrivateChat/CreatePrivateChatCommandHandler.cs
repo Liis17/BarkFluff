@@ -74,6 +74,11 @@ public class CreatePrivateChatCommandHandler : IRequestHandler<CreatePrivateChat
             request.KdfSalt,
             request.PassphraseVerifier);
 
+        if (creation.Chat.PrivateInviteState != Domain.PrivateChatInviteState.Accepted)
+        {
+            creation.Chat.PrivateInviterUserId = creation.Chat.Members?.FirstOrDefault()?.UserId;
+        }
+
         if (!creation.Created)
         {
             _logger.LogInformation(

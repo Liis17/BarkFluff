@@ -31,7 +31,10 @@ public class ChatsStorage
             .Chats
             .AsNoTracking()
             .Include(x => x.Members)
-            .Where(x => x.Members!.Any(m => m.UserId == userId))
+            .Where(x => x.Members!.Any(m => m.UserId == userId)
+                || (x.Type == ChatType.Private
+                    && x.PrivateInviteState == PrivateChatInviteState.Pending
+                    && (x.PrivateUserLowId == userId || x.PrivateUserHighId == userId)))
             .Where(c => c.Type == ChatType.Private || _context.Messages.Any(m => m.ChatId == c.Id && !m.IsDeleted))
             .Select(c => new
             {
@@ -95,6 +98,11 @@ public class ChatsStorage
         // peer to the response model so clients can resolve its title/avatar.
         foreach (var chat in chats.Where(c => c.Type == ChatType.Private && !c.IsGroupChat))
         {
+            if (chat.PrivateInviteState != PrivateChatInviteState.Accepted && chat.Members is { Count: 1 })
+            {
+                chat.PrivateInviterUserId = chat.Members[0].UserId;
+            }
+
             var peerId = chat.PrivateUserLowId == userId ? chat.PrivateUserHighId : chat.PrivateUserLowId;
             if (peerId.HasValue && chat.Members?.All(m => m.UserId != peerId.Value) == true)
             {
@@ -167,7 +175,10 @@ public class ChatsStorage
         // Пустой PRIVATE чат — полноценный объект списка: он нужен создателю
         // до принятия инвайта и для идемпотентного повторного открытия.
         var count = await _context.Chats
-            .CountAsync(x => x.Members.Any(c => c.UserId == userId) &&
+            .CountAsync(x => (x.Members.Any(c => c.UserId == userId)
+                    || (x.Type == ChatType.Private
+                        && x.PrivateInviteState == PrivateChatInviteState.Pending
+                        && (x.PrivateUserLowId == userId || x.PrivateUserHighId == userId))) &&
                 (x.Type == ChatType.Private || _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted)));
 
         return count;

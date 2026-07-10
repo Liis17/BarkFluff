@@ -41,7 +41,8 @@ public class ChatsStorageTests
     {
         var salt = new byte[32];
         var verifier = new byte[32];
-        var chat = await _h.ChatsStorage.CreatePrivateChat(1, salt, verifier);
+        var creation = await _h.ChatsStorage.CreatePrivateChat(1, 2, salt, verifier);
+        var chat = creation.Chat;
 
         chat.Type.Should().Be(Domain.ChatType.Private);
         chat.KdfSalt.Should().BeEquivalentTo(salt);
