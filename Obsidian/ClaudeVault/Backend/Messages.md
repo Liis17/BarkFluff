@@ -26,7 +26,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений |
 | `EditMessage` | Правка своего сообщения: текст и/или список вложений. Forward-снапшот не редактируется. Системные нельзя. Выставляет `IsEdited`+`EditedAt`, публикует `MessageEditedEvent` |
 | `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`). Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
-| `ListChats` | Список непустых чатов с пагинацией по последнему неудалённому сообщению (`last_message.SentAt DESC`); имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат) |
+| `ListChats` | Список непустых чатов с пагинацией по последнему неудалённому сообщению (`last_message.SentAt DESC`); имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат). Приватные Pending-чаты видны и приглашённому (по `PrivateUserLowId/HighId`, он ещё не member); Rejected — только инициатору. В proto `Chat.private_inviter_user_id=16` — инициатор инвайта (вычисляется: до Accept единственный реальный member = инициатор), клиент по нему определяет роль |
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
@@ -46,8 +46,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ListPinnedMessages` | Пагинированный список закреплённых сообщений (sort by `PinnedAt DESC`). Soft-deleted фильтруются |
 | `UnpinAll` | Снять все закрепы в чате одним вызовом. Одно системное сообщение + `AllMessagesUnpinnedEvent` |
 | `CreatePrivateChat` | Создать приватный чат (E2E через passphrase). Сохраняет KdfSalt+PassphraseVerifier, добавляет инициатора участником, кладёт invitee в Redis (`PrivateChatInviteStore`), публикует `PrivateChatInviteEvent`. Валидация salt 16-64Б, verifier 16-128Б |
-| `AcceptPrivateChat` | Приглашённый присоединяется к приватному чату: проверяет invite в Redis, добавляет себя в `ChatMembers`, удаляет invite, публикует `PrivateChatInviteResolutionEvent(accepted=true)` |
-| `RejectPrivateChat` | Отклонить инвайт: удаляет чат целиком + Redis-invite, публикует `PrivateChatInviteResolutionEvent(accepted=false)` |
+| `AcceptPrivateChat` | Приглашённый присоединяется к приватному чату: добавляет себя в `ChatMembers`, ставит `PrivateInviteState=Accepted`, удаляет Redis-invite, публикует `PrivateChatInviteResolutionEvent(accepted=true)` |
+| `RejectPrivateChat` | Отклонить инвайт: ставит `PrivateInviteState=Rejected` (чат сохраняется — инициатор видит «запрос отклонён», у приглашённого исчезает из списка), удаляет Redis-invite, публикует `PrivateChatInviteResolutionEvent(accepted=false)` |
 | `SendPrivateMessage` | Отправить шифротекст в приватный чат через `EncryptedMessagesStorage`. Требует DeviceId в JWT. Лимиты: ciphertext 1Б-64КиБ, nonce 12-32Б, AAD ≤ 4КиБ. Публикует `NewEncryptedMessageEvent` всем участникам чата |
 | `ListPrivateMessages` | Двунаправленная пагинация шифрованных сообщений (до 50 в каждую сторону) через `EncryptedMessagesStorage.ListByChatAsync`. Soft-deleted отдаются с пустым ciphertext |
 | `EditPrivateMessage` | Перезаписывает ciphertext+nonce+AAD своего сообщения, выставляет IsEdited+EditedAt. Публикует `EncryptedMessageEditedEvent` |
