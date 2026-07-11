@@ -30,6 +30,7 @@ import com.barkfluff.client.deeplink.DeepLinkHandler
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.shape.ShapeAppearanceModel
@@ -471,7 +472,10 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         val badge = binding.bottomNavigation.getOrCreateBadge(R.id.navigation_profile)
                         badge.isVisible = true
-                        badge.backgroundColor = android.graphics.Color.parseColor("#FF3D00")
+                        badge.backgroundColor = MaterialColors.getColor(
+                            binding.bottomNavigation,
+                            com.google.android.material.R.attr.colorErrorContainer
+                        )
                     }
                 } else {
                     profileUpdateAvailable = false
@@ -537,15 +541,20 @@ class MainActivity : AppCompatActivity() {
         iconRes: Int,
         selected: Boolean
     ) {
-        val contentColor = ContextCompat.getColor(
-            this,
-            if (selected) R.color.floating_nav_active_content else R.color.floating_nav_inactive_content
+        val contentColor = MaterialColors.getColor(
+            button,
+            if (selected) com.google.android.material.R.attr.colorOnPrimaryContainer
+            else com.google.android.material.R.attr.colorOnSurfaceVariant
         )
         button.text = if (selected) label else ""
         button.setIconResource(iconRes)
         button.iconTint = ColorStateList.valueOf(contentColor)
         button.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, if (selected) R.color.floating_nav_active else R.color.floating_nav_inactive)
+            MaterialColors.getColor(
+                button,
+                if (selected) com.google.android.material.R.attr.colorPrimaryContainer
+                else com.google.android.material.R.attr.colorSurfaceContainerHigh
+            )
         )
         button.setTextColor(contentColor)
         button.iconPadding = if (selected) dpToPx(8) else 0

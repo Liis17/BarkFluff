@@ -67,28 +67,9 @@
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />
 
-    <!-- Локальная палитра и формы для всех подстраниц настроек 2a. -->
+    <!-- Формы настроек 2a; цветовые роли остаются у активной Material You темы. -->
     <style name="Theme.BarkfluffClientAndroid.Settings2A" parent="Theme.BarkfluffClientAndroid">
-        <item name="android:windowBackground">@color/profile_settings_background</item>
-        <item name="colorPrimary">@color/profile_settings_primary</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/profile_settings_tonal_container</item>
-        <item name="colorOnPrimaryContainer">@color/profile_settings_on_tonal_container</item>
-        <item name="colorErrorContainer">@color/profile_settings_error_container</item>
-        <item name="colorOnErrorContainer">@color/profile_settings_on_error_container</item>
-        <item name="colorSurface">@color/profile_settings_background</item>
-        <item name="colorSurfaceContainerLowest">@color/profile_settings_surface</item>
-        <item name="colorSurfaceContainerLow">@color/profile_settings_surface</item>
-        <item name="colorSurfaceContainer">@color/profile_settings_surface</item>
-        <item name="colorSurfaceContainerHigh">@color/profile_settings_surface</item>
-        <item name="colorSurfaceContainerHighest">@color/profile_settings_surface</item>
-        <item name="colorOnSurface">@color/profile_settings_on_surface</item>
-        <item name="colorOnSurfaceVariant">@color/profile_settings_on_surface_variant</item>
-        <item name="colorSurfaceVariant">@color/profile_settings_switch_off_track</item>
-        <item name="colorControlActivated">@color/profile_settings_primary</item>
-        <item name="colorControlNormal">@color/profile_settings_switch_off_thumb</item>
-        <item name="colorOutline">@color/profile_settings_divider</item>
-        <item name="colorOutlineVariant">@color/profile_settings_divider</item>
+        <item name="android:windowBackground">?attr/colorSurfaceContainer</item>
         <item name="materialCardViewStyle">@style/Widget.Barkfluff.Settings2A.Card</item>
     </style>
 
@@ -153,50 +134,50 @@
     </style>
 
     <style name="Widget.Barkfluff.Profile.SettingsItem" parent="">
-        <item name="cardBackgroundColor">@color/profile_settings_surface</item>
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainerLowest</item>
         <item name="cardElevation">0dp</item>
         <item name="cardUseCompatPadding">false</item>
-        <item name="rippleColor">@color/profile_settings_ripple</item>
+        <item name="rippleColor">?attr/colorPrimary</item>
         <item name="strokeWidth">0dp</item>
     </style>
 
     <style name="Widget.Barkfluff.Settings2A.Card" parent="Widget.Material3.CardView.Elevated">
-        <item name="cardBackgroundColor">@color/profile_settings_surface</item>
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainerLowest</item>
         <item name="cardElevation">0dp</item>
         <item name="strokeWidth">0dp</item>
-        <item name="rippleColor">@color/profile_settings_ripple</item>
+        <item name="rippleColor">?attr/colorPrimary</item>
     </style>
 
     <style name="Widget.Barkfluff.Settings2A.PrimaryButton" parent="Widget.Material3.Button.TonalButton">
-        <item name="backgroundTint">@color/profile_settings_primary</item>
-        <item name="android:textColor">@color/white</item>
-        <item name="iconTint">@color/white</item>
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="iconTint">?attr/colorOnPrimary</item>
         <item name="cornerRadius">28dp</item>
     </style>
 
     <style name="Widget.Barkfluff.Settings2A.ErrorButton" parent="Widget.Material3.Button.TonalButton">
-        <item name="backgroundTint">@color/profile_settings_error_container</item>
-        <item name="android:textColor">@color/profile_settings_on_error_container</item>
-        <item name="iconTint">@color/profile_settings_on_error_container</item>
+        <item name="backgroundTint">?attr/colorErrorContainer</item>
+        <item name="android:textColor">?attr/colorOnErrorContainer</item>
+        <item name="iconTint">?attr/colorOnErrorContainer</item>
         <item name="cornerRadius">28dp</item>
     </style>
 
     <style name="Widget.Barkfluff.Settings2A.Toolbar" parent="Widget.Material3.Toolbar">
-        <item name="android:background">@color/profile_settings_background</item>
-        <item name="titleTextColor">@color/profile_settings_on_surface</item>
-        <item name="navigationIconTint">@color/profile_settings_on_surface</item>
+        <item name="android:background">?attr/colorSurfaceContainer</item>
+        <item name="titleTextColor">?attr/colorOnSurface</item>
+        <item name="navigationIconTint">?attr/colorOnSurface</item>
     </style>
 
     <style name="TextAppearance.Barkfluff.Settings2A.Title" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textSize">24sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/profile_settings_on_surface</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 
     <style name="TextAppearance.Barkfluff.Settings2A.Section" parent="TextAppearance.Material3.LabelLarge">
         <item name="android:textSize">14sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/profile_settings_primary</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
     </style>
 
     <style name="ShapeAppearanceOverlay.Barkfluff.Settings2A.SoftCard" parent="">

@@ -30,6 +30,7 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -176,10 +177,14 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun styleTab(view: TextView, selected: Boolean) {
         if (selected) {
             view.setBackgroundResource(R.drawable.bg_pill_selected)
-            view.setTextColor(ContextCompat.getColor(this, R.color.profile_on_accent))
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnPrimary)
+            )
         } else {
             view.background = null
-            view.setTextColor(ContextCompat.getColor(this, R.color.profile_chip_text))
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            )
         }
     }
 
