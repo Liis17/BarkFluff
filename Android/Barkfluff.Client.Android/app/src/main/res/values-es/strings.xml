@@ -547,4 +547,22 @@
     <string name="create_chat_private_short">Privado</string>
     <string name="create_chat_secret">Chat secreto</string>
     <string name="create_chat_secret_short">Secreto</string>
+    <string name="storage_used">Usado</string>
+    <string name="storage_of_limit">de %1$s</string>
+    <string name="storage_load_error">No se pudo cargar</string>
+    <string name="storage_local_storage">Almacenamiento en el dispositivo</string>
+    <string name="storage_image_cache">Caché de imágenes</string>
+    <string name="storage_chat_cache">Caché de chats</string>
+    <string name="storage_cache_summary">%1$d chats · %2$d mensajes</string>
+    <string name="storage_clear_cache_with_size">Borrar caché · %1$s</string>
+    <string name="storage_category_images">Imágenes</string>
+    <string name="storage_category_videos">Vídeos</string>
+    <string name="storage_category_audio">Audio</string>
+    <string name="storage_category_documents">Documentos</string>
+    <string name="storage_category_stickers">Stickers</string>
+    <string name="storage_category_avatars">Avatares</string>
+    <string name="security_hero_title">Cuenta protegida</string>
+    <string name="security_hero_subtitle">Activa 2FA para mayor protección</string>
+    <string name="security_section_parameters">Configuración</string>
+    <string name="testing_experimental_hint">Las funciones experimentales pueden ser inestables.</string>
 </resources>

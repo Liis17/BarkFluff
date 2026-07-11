@@ -23,8 +23,8 @@
             app:navigationIcon="@drawable/ic_back"
             app:navigationIconTint="?attr/colorOnSurface"
             app:title="@string/personalization_settings_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -418,7 +418,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchBlurBackground"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -578,7 +580,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchCompactFolders"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -623,7 +627,9 @@
                             android:id="@+id/switchFolderTabsNoOutline"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp" />
+                            android:layout_marginStart="12dp"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -668,7 +674,9 @@
                             android:id="@+id/switchExcludeFromAll"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp" />
+                            android:layout_marginStart="12dp"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -727,7 +735,9 @@
                             android:id="@+id/switchMainTabChats"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:enabled="false" />
+                            android:enabled="false"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -754,7 +764,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchMainTabCalls"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -782,7 +794,9 @@
                             android:id="@+id/switchMainTabProfile"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:enabled="false" />
+                            android:enabled="false"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -851,7 +865,9 @@
                         android:id="@+id/switchRelativeOnlineTime"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp" />
+                        android:layout_marginStart="12dp"
+                        app:thumbTint="@color/settings_switch_thumb"
+                        app:trackTint="@color/settings_switch_track" />
 
                 </LinearLayout>
 
