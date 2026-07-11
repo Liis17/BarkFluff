@@ -377,6 +377,17 @@
             text-overflow: ellipsis;
         }
 
+        .bot-badge {
+            display: inline-flex;
+            width: 16px;
+            height: 16px;
+            margin-left: 4px;
+            color: var(--primary);
+            vertical-align: -3px;
+        }
+        .bot-badge svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .profile-name .bot-badge { width: 19px; height: 19px; vertical-align: -2px; }
+
         .chat-time {
             font-size: 12px;
             color: var(--text-sub);
@@ -959,9 +970,9 @@
             background: rgba(0, 0, 0, 0.45);
             border-radius: 10px;
         }
-        .msg-img-overlay-meta .msg-time,
-        .msg-img-overlay-meta .msg-status,
-        .msg-img-overlay-meta .msg-edited {
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-time,
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-status,
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-edited {
             color: #fff;
         }
 
@@ -3657,10 +3668,21 @@
             color: var(--error);
         }
         .msg-context-menu .cm-icon {
-            font-size: 16px;
             width: 18px;
-            text-align: center;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
+        }
+        .msg-context-menu .cm-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         /* Forward modal */
@@ -4212,6 +4234,18 @@
     </script>
 </head>
 <body>
+    <svg aria-hidden="true" style="display:none">
+        <symbol id="bf-icon-reply" viewBox="0 0 24 24"><path d="m9 17-5-5 5-5"/><path d="M4 12h11a5 5 0 0 1 5 5v2"/></symbol>
+        <symbol id="bf-icon-forward" viewBox="0 0 24 24"><path d="m15 17 5-5-5-5"/><path d="M20 12H9a5 5 0 0 0-5 5v2"/></symbol>
+        <symbol id="bf-icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+        <symbol id="bf-icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
+        <symbol id="bf-icon-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="m8 3 8 0 1 6 3 3v2H4v-2l3-3z"/></symbol>
+        <symbol id="bf-icon-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></symbol>
+        <symbol id="bf-icon-delete" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v5M14 11v5"/></symbol>
+        <symbol id="bf-icon-folder-plus" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></symbol>
+        <symbol id="bf-icon-folder-minus" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></symbol>
+        <symbol id="bf-icon-bot" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M12 2v4M8 12h.01M16 12h.01M8 16h8"/></symbol>
+    </svg>
     <div class="blobs">
         <div class="blob b1"></div>
         <div class="blob b2"></div>
@@ -4591,13 +4625,13 @@
 
     <!-- Message context menu -->
     <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon">&#8617;</span><span class="cm-label">Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon">&#8618;</span><span class="cm-label">Переслать</span></button>
-        <button data-act="copy-text"><span class="cm-icon">&#128203;</span><span class="cm-label">Копировать текст</span></button>
-        <button data-act="copy-image"><span class="cm-icon">&#128247;</span><span class="cm-label">Копировать изображение</span></button>
-        <button data-act="pin"><span class="cm-icon">&#128204;</span><span class="cm-label">Закрепить</span></button>
-        <button data-act="edit"><span class="cm-icon">&#9998;</span><span class="cm-label">Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon">&#128465;</span><span class="cm-label">Удалить</span></button>
+        <button data-act="reply"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-reply"></use></svg></span><span class="cm-label">Ответить</span></button>
+        <button data-act="forward"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-forward"></use></svg></span><span class="cm-label">Переслать</span></button>
+        <button data-act="copy-text"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-copy"></use></svg></span><span class="cm-label">Копировать текст</span></button>
+        <button data-act="copy-image"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-image"></use></svg></span><span class="cm-label">Копировать изображение</span></button>
+        <button data-act="pin"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-pin"></use></svg></span><span class="cm-label">Закрепить</span></button>
+        <button data-act="edit"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-edit"></use></svg></span><span class="cm-label">Изменить</span></button>
+        <button data-act="delete" class="cm-danger"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-delete"></use></svg></span><span class="cm-label">Удалить</span></button>
     </div>
 
     <!-- Chat context menu (PCM на чате в сайдбаре) -->

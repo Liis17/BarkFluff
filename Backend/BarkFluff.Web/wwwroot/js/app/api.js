@@ -99,6 +99,7 @@
             profilePicture: u.getProfilePicture(),
             profilePicturePreview: u.getProfilePicturePreview(),
             profilePosterFileId: u.getProfilePosterFileId ? u.getProfilePosterFileId() : '',
+            isBot: u.getIsBot ? u.getIsBot() : false,
             bio: u.getBio(),
             registrationDate: tsToMs(u.getRegistrationDate()),
             badges: u.getBadgesList().map(function (b) {

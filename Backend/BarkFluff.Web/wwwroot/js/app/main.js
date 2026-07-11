@@ -18,19 +18,25 @@
 
     // --- User cache ---
     var userCache = new Map();
+    var userRequests = new Map();
 
     function getUser(userId) {
         if (userCache.has(userId)) return Promise.resolve(userCache.get(userId));
-        return BF.api.getUser(userId).then(function (d) {
+        if (userRequests.has(userId)) return userRequests.get(userId);
+        var request = BF.api.getUser(userId).then(function (d) {
             if (d && d.user) { userCache.set(userId, d.user); return d.user; }
             return null;
         });
+        userRequests.set(userId, request);
+        request.then(function () { userRequests.delete(userId); }, function () { userRequests.delete(userId); });
+        return request;
     }
 
     // --- State ---
     var chats = [];
     var currentChatId = null;
     var currentChatInfo = null;
+    var currentChatPeerIsBot = false;
     var messages = [];
     var isLoadingOlder = false;
     var noMoreOlder = false;
@@ -136,6 +142,24 @@
     var groupAddResults = $('#groupAddResults');
     var groupMediaContent = $('#groupMediaContent');
 
+    function botBadgeMarkup() {
+        return '<span class="bot-badge" role="img" aria-label="Бот" title="Бот"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
+    }
+
+    function setChatCallButtonsVisible(visible) {
+        ['btnCallAudio', 'btnCallVideo'].forEach(function (id) {
+            var button = document.getElementById(id);
+            if (button) button.hidden = !visible;
+        });
+    }
+
+    function setProfileCallButtonsVisible(visible) {
+        ['profileCallAudioBtn', 'profileCallVideoBtn'].forEach(function (id) {
+            var button = document.getElementById(id);
+            if (button) button.hidden = !visible;
+        });
+    }
+
     // ========== CHAT LIST ==========
 
     function loadChats(reset) {
@@ -193,12 +217,23 @@
                 var peer = chat.members.find(function (m) { return m.userId !== myUserId; });
                 if (peer) peerUserId = peer.userId;
             }
+            var peerUser = peerUserId ? userCache.get(peerUserId) : null;
+            if (peerUserId && !userCache.has(peerUserId)) {
+                getUser(peerUserId).then(function () {
+                    renderChatList();
+                    collectOnlineUserIds();
+                }).catch(function () {});
+            }
+            var isBot = !!(peerUser && peerUser.isBot);
+            var onlineDot = peerUser && !isBot
+                ? '<div class="online-dot' + (peerUserId && isUserOnline(peerUserId) ? ' visible' : '') + '" data-online-user="' + (peerUserId || '') + '"></div>'
+                : '';
 
             el.innerHTML =
                 '<div class="chat-avatar">' + avatarHtml +
-                '<div class="online-dot' + (peerUserId && isUserOnline(peerUserId) ? ' visible' : '') + '" data-online-user="' + (peerUserId || '') + '"></div></div>' +
+                onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + u.escapeHtml(chat.title || 'Чат') + '</span>' +
+                '<span class="chat-name">' + u.escapeHtml(chat.title || 'Чат') + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -220,6 +255,8 @@
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
+        currentChatInfo = null;
+        currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
         knownMessageIds = new Set();
@@ -234,6 +271,10 @@
         messagesInner.innerHTML = '';
         inputBar.classList.add('visible');
         loadingMessages.classList.add('visible');
+        chatHeaderStatus.hidden = false;
+        chatHeaderStatus.textContent = '';
+        chatHeaderStatus.classList.remove('online');
+        setChatCallButtonsVisible(true);
 
         // Reset unread count for the opened chat
         var openedChat = chats.find(function (c) { return c.id === chatId; });
@@ -255,15 +296,6 @@
             if (!info.isGroupChat && info.membersId && info.membersId.length > 0) {
                 var peerId = info.membersId.find(function (id) { return id !== myUserId; });
                 if (peerId) {
-                    subscribeOnlineForUsers([peerId]);
-                    // Fetch current online status via unary RPC to show immediately
-                    BF.api.getOnlineStatus([peerId]).then(function (data) {
-                        if (data && data.statuses && data.statuses.length > 0) {
-                            var s = data.statuses[0];
-                            handleOnlineStatus(s.userId, s.status, s.lastSeen);
-                        }
-                    }).catch(function () {});
-                    // Заголовок вкладки и favicon — «Чат с @username» + аватар собеседника
                     getUser(peerId).then(function (peer) {
                         if (chatId !== currentChatId || !peer) return;
                         var label = peer.username
@@ -271,11 +303,29 @@
                             : 'Чат с ' + (((peer.firstName || '') + ' ' + (peer.lastName || '')).trim() || 'пользователем');
                         var fav = peer.profilePicturePreview || peer.profilePicture || info.picture || null;
                         setChatTabContext(label, fav);
+
+                        currentChatPeerIsBot = !!peer.isBot;
+                        setChatCallButtonsVisible(!currentChatPeerIsBot);
+                        if (currentChatPeerIsBot) {
+                            chatHeaderStatus.hidden = true;
+                            return;
+                        }
+
+                        subscribeOnlineForUsers([peerId]);
+                        // Fetch current online status via unary RPC to show immediately
+                        BF.api.getOnlineStatus([peerId]).then(function (data) {
+                            if (data && data.statuses && data.statuses.length > 0) {
+                                var s = data.statuses[0];
+                                handleOnlineStatus(s.userId, s.status, s.lastSeen);
+                            }
+                        }).catch(function () {});
                     }).catch(function () {});
                 }
             } else {
                 chatHeaderStatus.textContent = (info.membersId ? info.membersId.length : 0) + ' участников';
                 chatHeaderStatus.classList.remove('online');
+                chatHeaderStatus.hidden = false;
+                setChatCallButtonsVisible(true);
                 // Для группового чата — сбрасываем кастомный контекст вкладки
                 resetChatTabContext();
             }
@@ -1011,7 +1061,7 @@
         document.querySelectorAll('.online-dot[data-online-user="' + userId + '"]').forEach(function (dot) {
             dot.classList.toggle('visible', online);
         });
-        if (currentChatInfo && !currentChatInfo.isGroupChat) {
+        if (currentChatInfo && !currentChatInfo.isGroupChat && !currentChatPeerIsBot) {
             var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
             if (peerId === userId) updateChatHeaderOnline(userId);
         }
@@ -1032,16 +1082,32 @@
         var ids = new Set();
         chats.forEach(function (chat) {
             if (!chat.isGroupChat && chat.members) {
-                chat.members.forEach(function (m) { if (m.userId !== myUserId) ids.add(m.userId); });
+                chat.members.forEach(function (m) {
+                    var user = userCache.get(m.userId);
+                    if (m.userId !== myUserId && !(user && user.isBot)) ids.add(m.userId);
+                });
             }
         });
-        subscribeOnlineForUsers(Array.from(ids));
+        var changed = ids.size !== onlineSubscribedUserIds.size;
+        if (!changed) {
+            ids.forEach(function (id) {
+                if (!onlineSubscribedUserIds.has(id)) changed = true;
+            });
+        }
+        if (changed) {
+            onlineSubscribedUserIds = ids;
+            BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
+        }
     }
 
     function subscribeOnlineForUsers(userIds) {
         var changed = false;
         userIds.forEach(function (id) {
-            if (!onlineSubscribedUserIds.has(id)) { onlineSubscribedUserIds.add(id); changed = true; }
+            var user = userCache.get(id);
+            if (!(user && user.isBot) && !onlineSubscribedUserIds.has(id)) {
+                onlineSubscribedUserIds.add(id);
+                changed = true;
+            }
         });
         if (changed) BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
     }
@@ -1296,6 +1362,7 @@
                 profileAvatar.textContent = initial;
             }
             profileName.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
+            if (user.isBot) profileName.insertAdjacentHTML('beforeend', botBadgeMarkup());
             profileUsername.textContent = user.username ? '@' + user.username : '';
             profileBio.textContent = user.bio || '';
             profileBio.style.display = user.bio ? 'block' : 'none';
@@ -1304,6 +1371,8 @@
             var entry = onlineStatuses.get(userId);
             profileStatus.textContent = online ? 'в сети' : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
+            profileStatus.hidden = !!user.isBot;
+            setProfileCallButtonsVisible(!user.isBot);
 
             var _profileUserId = $('#profileUserId');
             var _profileChatId = $('#profileChatId');
@@ -1481,6 +1550,7 @@
     // --- Call buttons (шапка чата) ---
     function startCall(media) {
         if (!currentChatId || !currentChatInfo) return;
+        if (!currentChatInfo.isGroupChat && currentChatPeerIsBot) return;
         var target;
         if (currentChatInfo.isGroupChat) {
             target = { chatId: currentChatId };
@@ -2064,8 +2134,8 @@
                 singleImageFileId = imgAtts[0].fileId;
             }
         }
-        contextMenuTarget.imageFileId = singleImageFileId;
-        if (copyImageBtn) copyImageBtn.style.display = singleImageFileId ? '' : 'none';
+        contextMenuTarget.image = singleImageFileId ? msgEl.querySelector('.attach-image-grid img') : null;
+        if (copyImageBtn) copyImageBtn.style.display = contextMenuTarget.image ? '' : 'none';
 
         msgContextMenu.classList.add('visible');
 
@@ -2086,34 +2156,47 @@
         contextMenuTarget = null;
     }
 
-    // Скопировать изображение в буфер тем же превью, что показано в облачке.
-    // Буфер принимает только image/png — при необходимости конвертируем через canvas.
-    function copyImageToClipboard(fileId) {
-        if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return;
-        var fd = BF.files.getCachedFileUrl(fileId);
-        var cached = fd && (fd.previewUrl || fd.url);
-        var urlP = cached
-            ? Promise.resolve(cached)
-            : BF.files.refreshFileUrl(fileId).then(function (f) { return f && (f.previewUrl || f.url); });
-        urlP.then(function (url) {
-            if (!url) throw new Error('no_url');
-            return fetch(url);
-        }).then(function (r) { return r.blob(); })
-            .then(function (blob) {
-                if (blob.type === 'image/png') return blob;
-                return createImageBitmap(blob).then(function (bmp) {
-                    var canvas = document.createElement('canvas');
-                    canvas.width = bmp.width;
-                    canvas.height = bmp.height;
-                    canvas.getContext('2d').drawImage(bmp, 0, 0);
-                    return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
+    function canvasToPngBlob(drawable, width, height) {
+        return new Promise(function (resolve, reject) {
+            try {
+                var canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(drawable, 0, 0);
+                canvas.toBlob(function (blob) {
+                    if (blob) resolve(blob);
+                    else reject(new Error('no_png'));
+                }, 'image/png');
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    // Копируем уже загруженное превью из облачка, а не полную версию файла.
+    function copyImageToClipboard(image) {
+        if (!navigator.clipboard || typeof ClipboardItem === 'undefined' || !image) return;
+        var imageUrl = image.currentSrc || image.src;
+        var previewPng = image.complete && image.naturalWidth && image.naturalHeight
+            ? canvasToPngBlob(image, image.naturalWidth, image.naturalHeight)
+            : Promise.reject(new Error('preview_not_loaded'));
+
+        previewPng.catch(function () {
+            if (!imageUrl) throw new Error('no_preview_url');
+            return fetch(imageUrl).then(function (response) {
+                if (!response.ok) throw new Error('preview_unavailable');
+                return response.blob();
+            }).then(function (blob) {
+                return createImageBitmap(blob).then(function (bitmap) {
+                    return canvasToPngBlob(bitmap, bitmap.width, bitmap.height).then(function (png) {
+                        bitmap.close();
+                        return png;
+                    });
                 });
-            })
-            .then(function (png) {
-                if (!png) throw new Error('no_png');
-                return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-            })
-            .catch(function () {});
+            });
+        }).then(function (png) {
+            return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+        }).catch(function () {});
     }
 
     function chatAvatarMarkup(chat) {
@@ -2283,7 +2366,7 @@
             var act = btn.dataset.act;
             var msgId = contextMenuTarget.messageId;
             var isOutgoing = contextMenuTarget.isOutgoing;
-            var imageFileId = contextMenuTarget.imageFileId;
+            var image = contextMenuTarget.image;
             var msg = messages.find(function (m) { return Number(m.id) === Number(msgId); });
             closeContextMenu();
             if (act === 'reply') {
@@ -2294,7 +2377,7 @@
                 var t = msg && msg.content && msg.content.text;
                 if (t) navigator.clipboard.writeText(t).catch(function () {});
             } else if (act === 'copy-image') {
-                if (imageFileId) copyImageToClipboard(imageFileId);
+                copyImageToClipboard(image);
             } else if (act === 'edit') {
                 if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     setPendingEdit(msg);
@@ -2473,6 +2556,10 @@
     var chatCmTargetId = null;
     var chatCmShownAt = 0;
 
+    function contextMenuIcon(name) {
+        return '<span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-' + name + '"></use></svg></span>';
+    }
+
     function buildChatContextMenu(chatId) {
         if (!chatContextMenu) return;
         chatContextMenu.innerHTML = '';
@@ -2492,8 +2579,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'add-folder';
                     btn.dataset.folderId = f.folderId;
-                    var icon = (f.folderIcon || '📁') + ' ';
-                    btn.innerHTML = '<span class="cm-icon">' + u.escapeHtml(icon) + '</span><span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -2509,8 +2595,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'remove-folder';
                     btn.dataset.folderId = f.folderId;
-                    var icon = (f.folderIcon || '📁') + ' ';
-                    btn.innerHTML = '<span class="cm-icon">' + u.escapeHtml(icon) + '</span><span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -2526,7 +2611,7 @@
         createBtn.type = 'button';
         createBtn.className = 'cm-item';
         createBtn.dataset.act = 'create-folder';
-        createBtn.innerHTML = '<span class="cm-icon">&#10133;</span><span class="cm-label">Создать папку</span>';
+        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">Создать папку</span>';
         chatContextMenu.appendChild(createBtn);
     }
 
