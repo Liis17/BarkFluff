@@ -15,6 +15,31 @@ public static class UsersEndpoints
         var group = app.MapGroup("/api/users")
             .WithTags("Users");
 
+        group.AddEndpointFilter(async (filterContext, next) =>
+        {
+            if (filterContext.HttpContext.Items["AuthToken"] is not AuthToken ||
+                !long.TryParse(filterContext.HttpContext.Request.RouteValues["id"]?.ToString(), out var userId))
+            {
+                return await next(filterContext);
+            }
+
+            try
+            {
+                var usersClient = filterContext.HttpContext.RequestServices
+                    .GetRequiredService<UsersServerApi.UsersServerApiClient>();
+                var response = await usersClient.GetByIdAsync(new GetByIdRequest { UserId = userId });
+
+                if (response.User is null || response.User.IsBot)
+                    return Results.NotFound();
+            }
+            catch (Grpc.Core.RpcException)
+            {
+                return Results.NotFound();
+            }
+
+            return await next(filterContext);
+        });
+
         // GET /api/users?query=&offset=0&size=50
         group.MapGet("/", async (
             string? query,

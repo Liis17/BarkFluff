@@ -22,6 +22,7 @@ public class UserMappingTests
             Bio = "Hello world",
             StorageLimitGb = 10,
             IsDraft = false,
+            IsBot = true,
         };
 
         var grpc = user.ToGrpc();
@@ -35,6 +36,7 @@ public class UserMappingTests
         grpc.ProfilePicturePreview.Should().Be("https://pic.com/avatar_small.png");
         grpc.Bio.Should().Be("Hello world");
         grpc.StorageLimitGb.Should().Be(10);
+        grpc.IsBot.Should().BeTrue();
     }
 
     [Fact]

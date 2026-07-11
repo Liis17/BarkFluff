@@ -41,6 +41,9 @@ public class LoginNotificationConsumer : IConsumer<EmailNotification>
         if (notification.Type != NotificationType.SuccessfulLogin || notification.OwnerId is not { } userId)
             return;
 
+        if (_registryCache.IsBot(userId))
+            return;
+
         var notifierBot = _registryCache.GetBySystemRole(SystemBotRole.LoginNotifier);
         if (notifierBot is null)
         {

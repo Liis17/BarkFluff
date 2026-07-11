@@ -62,6 +62,16 @@ public class NotificationQueueSenderTests
     }
 
     [Fact]
+    public async Task SendNotification_EmailNotificationWithoutAddress_DoesNotPublish()
+    {
+        await _sender.SendNotification(new EmailNotification { Address = "", Title = "Test" });
+
+        _publishEndpoint.Verify(
+            x => x.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task SendNotification_NonEmailNotification_DoesNotPublish()
     {
         var notification = new TestNotification();
