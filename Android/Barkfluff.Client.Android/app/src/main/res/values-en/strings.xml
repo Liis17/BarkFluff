@@ -534,4 +534,20 @@
     <string name="chats_sync_offline">No connection / data may be outdated</string>
     <string name="chats_sync_retry">Retry</string>
     <string name="storage_cache_size_with_chats">Image cache: %1$.1f MB\\nChat cache: %2$d chats · %3$d messages · %4$s</string>
+    <string name="create_chat_sheet_title">New chat</string>
+    <string name="create_chat_regular">Regular chat</string>
+    <string name="create_chat_group">Group chat</string>
+    <string name="create_chat_private">Private chat</string>
+    <string name="nav_chats">Chats</string>
+    <string name="nav_calls">Calls</string>
+    <string name="nav_profile">Profile</string>
+    <string name="nav_selected">selected</string>
+    <string name="cd_chats_with_unread">Chats, %1$d unread</string>
+    <string name="cd_profile">Profile</string>
+    <string name="cd_new_chat">New chat</string>
+    <string name="create_chat_regular_subtitle">Start a personal conversation</string>
+    <string name="create_chat_group_short">Group</string>
+    <string name="create_chat_private_short">Private</string>
+    <string name="create_chat_secret">Secret chat</string>
+    <string name="create_chat_secret_short">Secret</string>
 </resources>

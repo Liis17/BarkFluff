@@ -96,6 +96,11 @@
         <item name="cornerSize">50%</item>
     </style>
 
+    <style name="ShapeAppearanceOverlay.Barkfluff.FloatingNavFab" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">22dp</item>
+    </style>
+
     <!-- Форма со скруглёнными углами 15dp для стикеров -->
     <style name="ShapeAppearance.App.Sticker" parent="">
         <item name="cornerFamily">rounded</item>

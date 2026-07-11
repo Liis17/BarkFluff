@@ -16,50 +16,175 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Нижняя навигация (компактный плавающий стиль, 3 элемента) -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/bottomNavCard"
+    <!-- Невидимый в phone-варианте общий ID сохраняет совместимость ViewBinding с wide-layout. -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        app:layout_constraintWidth_max="252dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
-        app:cardCornerRadius="28dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottomNavigation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp"
-            app:itemActiveIndicatorStyle="@style/BottomNav.ActiveIndicator.Compact"
-            app:itemHorizontalTranslationEnabled="false"
-            app:itemIconTint="@color/bottom_nav_item_color"
-            app:itemTextColor="@color/bottom_nav_item_color"
-            app:labelVisibilityMode="labeled"
-            app:menu="@menu/bottom_nav_menu" />
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/createChatFab"
-        style="?attr/floatingActionButtonSmallStyle"
+    <!-- Плавающая M3 Expressive-навигация для телефона. -->
+    <LinearLayout
+        android:id="@+id/floatingNavContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:contentDescription="@string/cd_create_chat"
-        android:visibility="gone"
-        app:backgroundTint="?attr/colorPrimaryContainer"
-        app:srcCompat="@drawable/ic_add_chat"
-        app:tint="?attr/colorOnPrimaryContainer"
-        app:layout_constraintBottom_toTopOf="@id/bottomNavCard"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:layout_marginBottom="20dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bottomNavCard"
+            android:layout_width="wrap_content"
+            android:layout_height="68dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            app:cardBackgroundColor="@color/floating_nav_group"
+            app:cardCornerRadius="34dp"
+            app:cardElevation="8dp"
+            app:cardUseCompatPadding="false"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:id="@+id/floatingNavTabs"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <FrameLayout
+                    android:id="@+id/chatNavTab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="52dp"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chatNavButton"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="52dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:text="@string/nav_chats"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:cornerRadius="26dp"
+                        app:icon="@drawable/ic_chat_bubble"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp"
+                        app:iconSize="24dp"
+                        app:strokeWidth="0dp" />
+
+                    <TextView
+                        android:id="@+id/chatUnreadBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="17dp"
+                        android:layout_gravity="top|end"
+                        android:background="@drawable/bg_floating_nav_badge"
+                        android:gravity="center"
+                        android:minWidth="17dp"
+                        android:paddingHorizontal="4dp"
+                        android:textColor="@color/floating_nav_badge_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:translationX="4dp"
+                        android:translationY="-4dp"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/callsNavTab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="52dp"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/callsNavButton"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="52dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:cornerRadius="26dp"
+                        app:icon="@drawable/ic_phone"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:iconSize="24dp"
+                        app:strokeWidth="0dp" />
+
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/profileNavTab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="52dp"
+                    android:layout_marginStart="8dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/profileNavButton"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="52dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:cornerRadius="26dp"
+                        app:icon="@drawable/ic_account"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:iconSize="24dp"
+                        app:strokeWidth="0dp" />
+
+                    <View
+                        android:id="@+id/profileUpdateBadge"
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_gravity="top|end"
+                        android:background="@drawable/bg_floating_nav_update_badge"
+                        android:translationX="-2dp"
+                        android:translationY="4dp"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/createChatFab"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginStart="10dp"
+            android:contentDescription="@string/cd_new_chat"
+            android:visibility="gone"
+            app:backgroundTint="@color/floating_nav_fab"
+            app:fabCustomSize="64dp"
+            app:maxImageSize="26dp"
+            app:rippleColor="@color/floating_nav_active"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.FloatingNavFab"
+            app:srcCompat="@drawable/ic_edit_square"
+            app:tint="@color/floating_nav_fab_content" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
