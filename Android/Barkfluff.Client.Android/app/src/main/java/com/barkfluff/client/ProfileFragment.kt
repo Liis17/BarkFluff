@@ -16,6 +16,7 @@ import com.barkfluff.client.utils.LogoutHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class ProfileFragment : Fragment() {
 
@@ -109,7 +110,7 @@ class ProfileFragment : Fragment() {
         val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
         binding.textFullName.text = fullName.ifEmpty { getString(R.string.profile_user_placeholder) }
         binding.textUsername.text = if (globalParam.userName.isNotEmpty()) "@${globalParam.userName}" else ""
-        binding.textAppVersion.text = "BarkFluff ${GlobalParam.getAppVersion(requireContext())}"
+        binding.textLanguageValue.text = getLanguageDisplayName()
 
         loadAvatar()
     }
@@ -126,28 +127,48 @@ class ProfileFragment : Fragment() {
 
         // Основной аватар (tab Profile)
         if (urlToUse.isNotBlank()) {
+            binding.avatarPlaceholderIcon.visibility = View.GONE
             AvatarLoader.load(
                 imageView = binding.avatarImage,
                 placeholderView = binding.avatarPlaceholder,
                 avatarUrl = urlToUse,
                 displayName = displayName,
-                userId = globalParam.userId
+                userId = globalParam.userId,
+                circleCrop = false
             )
         } else if (fileId.isNotEmpty()) {
+            binding.avatarPlaceholderIcon.visibility = View.GONE
             AvatarLoader.loadByFileId(
                 binding.avatarImage,
                 binding.avatarPlaceholder,
                 fileId,
                 displayName,
                 globalParam.userId,
-                size = 192
+                size = 192,
+                circleCrop = false
             ) {
                 val result = grpcManager.getFileDownloadUrl(fileId)
                 if (result.isSuccess) result.getOrNull() else null
             }
         } else {
-            AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
+            binding.avatarPlaceholder.visibility = View.GONE
+            binding.avatarPlaceholderIcon.visibility = View.VISIBLE
             binding.avatarImage.visibility = View.GONE
+        }
+    }
+
+    private fun getLanguageDisplayName(): String {
+        val locale = when (globalParam.appLanguage) {
+            GlobalParam.LANGUAGE_RU -> Locale("ru")
+            GlobalParam.LANGUAGE_EN -> Locale.ENGLISH
+            GlobalParam.LANGUAGE_DE -> Locale.GERMAN
+            GlobalParam.LANGUAGE_ES -> Locale("es")
+            GlobalParam.LANGUAGE_ZH -> Locale.SIMPLIFIED_CHINESE
+            else -> Locale.getDefault()
+        }
+        val displayName = locale.getDisplayLanguage(locale)
+        return displayName.replaceFirstChar { character ->
+            if (character.isLowerCase()) character.titlecase(locale) else character.toString()
         }
     }
 

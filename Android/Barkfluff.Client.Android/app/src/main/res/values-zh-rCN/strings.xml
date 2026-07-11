@@ -311,6 +311,9 @@
     <string name="profile_title">个人资料</string>
     <string name="profile_user_placeholder">用户</string>
     <string name="profile_section_account_security">账户与安全</string>
+    <string name="profile_section_account">账户</string>
+    <string name="profile_section_appearance">外观</string>
+    <string name="profile_section_about">关于应用</string>
     <string name="profile_section_personalization">个性化</string>
     <string name="profile_section_application">应用</string>
     <string name="profile_section_other">其他</string>
