@@ -66,6 +66,12 @@ public class CreateSessionForUserServerCommandHandlerTests
             .Returns(new AsyncUnaryCall<GetUserContactsResponse>(
                 Task.FromResult(new GetUserContactsResponse { User = new User { Id = 1, Username = "user" }, Contact = new UserContact { Email = "t@t.com" } }),
                 Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        _usersClient
+            .Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetByIdResponse>(
+                Task.FromResult(new GetByIdResponse { User = new User { Id = 1 } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
     }
 
     private CreateSessionForUserServerCommandHandler CreateHandler()
@@ -182,5 +188,25 @@ public class CreateSessionForUserServerCommandHandlerTests
 
         Assert.NotNull(result);
         Assert.Equal("at", result.AccessToken.Value);
+    }
+
+    [Fact]
+    public async Task Handle_Bot_ThrowsBeforeCreatingSession()
+    {
+        _usersClient
+            .Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetByIdResponse>(
+                Task.FromResult(new GetByIdResponse { User = new User { Id = 1, IsBot = true } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() => CreateHandler().Handle(new CreateSessionForUserServerCommand
+        {
+            UserId = 1, DeviceId = "dev1", DeviceName = "MyPhone", OperationSystem = "Android", AppName = "BF v1"
+        }, CancellationToken.None));
+
+        Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
+        Assert.Empty(_context.RefreshTokens);
+        _usersClient.Verify(c => c.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, CancellationToken.None), Times.Never);
+        _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

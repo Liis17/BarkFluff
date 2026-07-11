@@ -112,6 +112,24 @@ public class ResetPasswordCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_Bot_ReturnsFakeResetIdWithoutCreatingResetOrNotification()
+    {
+        _usersClient
+            .Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<FindByLoginResponse>(
+                Task.FromResult(new FindByLoginResponse { User = new User { Id = 1, IsBot = true } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var result = await CreateHandler().Handle(
+            new ResetPasswordCommand { Username = "testbot", OtpType = OtpType.Email }, CancellationToken.None);
+
+        Assert.False(string.IsNullOrWhiteSpace(result.ResetId));
+        Assert.Empty(_context.ResetPasswords);
+        _usersClient.Verify(c => c.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, CancellationToken.None), Times.Never);
+        _publishEndpoint.Verify(p => p.Publish(It.IsAny<BarkFluff.Shared.Queue.Notifications.EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_AuthenticatorOtpNotSetup_ThrowsOtpNotCreatedException()
     {
         _usersClient

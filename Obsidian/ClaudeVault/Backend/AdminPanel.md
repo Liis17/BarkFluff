@@ -69,6 +69,8 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 `BotsEndpoints` зарегистрирован через `app.MapBotsEndpoints()` и проксирует `ListBots`, создание системного бота, перегенерацию токена и удаление в [[Backend/Bots|Bots]]. Сервис `BarkFluff.Bots` также входит в списки статусов контейнеров и метрик Seq на актуальных страницах `Pages/v2/services.html` и `Pages/v2/dashboard.html`.
 
+`UsersEndpoints` и `SearchUsersServer` показывают только обычные аккаунты: боты не входят в `/api/users` и `totalCount`, а запросы к пользовательским операциям по bot ID отвечают 404. Управление ботами остаётся в `/bots` (`Pages/v2/bots.html`).
+
 ## Proto
 
 - `users_api.proto`, `files_api.proto`, `identity_api.proto`, `bots_api.proto` — Client
