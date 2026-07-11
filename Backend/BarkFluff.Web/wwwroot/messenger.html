@@ -954,6 +954,17 @@
         .msg-bubble.image-only .msg-attachments { margin-bottom: 0; }
         .msg-bubble.image-only .attach-image-grid { border-radius: inherit; }
 
+        /* Видео без подписи занимает всё облачко; зазор под превью нужен только перед текстом */
+        .msg-bubble.has-videos {
+            padding: 0;
+            overflow: hidden;
+        }
+        .msg-bubble.has-videos .msg-attachments { margin-bottom: 0; }
+        .msg-bubble.video-with-text .msg-attachments { margin-bottom: 4px; }
+        .msg-bubble.has-videos .msg-text { padding: 0 10px; }
+        .msg-bubble.has-videos .msg-meta { padding: 0 10px 4px; }
+        .msg-bubble.video-only .attach-video-wrap { border-radius: inherit; }
+
         /* Картинки/документы + текст — сетка сверху без полей, текст и время со своим отступом */
         .msg-bubble.has-images:not(.image-only) .msg-text { padding: 4px 10px 0; }
         .msg-bubble.has-images:not(.image-only) .msg-meta { padding: 0 10px 4px; }
@@ -972,7 +983,10 @@
         }
         .msg-bubble.image-only .msg-img-overlay-meta .msg-time,
         .msg-bubble.image-only .msg-img-overlay-meta .msg-status,
-        .msg-bubble.image-only .msg-img-overlay-meta .msg-edited {
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-edited,
+        .msg-bubble.video-only .msg-img-overlay-meta .msg-time,
+        .msg-bubble.video-only .msg-img-overlay-meta .msg-status,
+        .msg-bubble.video-only .msg-img-overlay-meta .msg-edited {
             color: #fff;
         }
 
