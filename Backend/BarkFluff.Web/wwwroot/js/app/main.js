@@ -19,6 +19,7 @@
     // --- User cache ---
     var userCache = new Map();
     var userRequests = new Map();
+    var chatListUserIdsLoaded = new Set();
 
     function getUser(userId) {
         if (userCache.has(userId)) return Promise.resolve(userCache.get(userId));
@@ -178,7 +179,35 @@
             chatListLoading = false;
             renderChatList();
             collectOnlineUserIds();
+            loadChatListUsers();
         }).catch(function () { chatListLoading = false; });
+    }
+
+    function loadChatListUsers() {
+        var userIds = [];
+        chats.forEach(function (chat) {
+            if (chat.isGroupChat || !chat.members) return;
+            chat.members.forEach(function (member) {
+                if (member.userId !== myUserId && !userCache.has(member.userId) && !chatListUserIdsLoaded.has(member.userId)) {
+                    chatListUserIdsLoaded.add(member.userId);
+                    userIds.push(member.userId);
+                }
+            });
+        });
+        if (userIds.length === 0) return;
+
+        var chain = Promise.resolve();
+        for (var i = 0; i < userIds.length; i += 5) {
+            (function (batch) {
+                chain = chain.then(function () { return Promise.all(batch.map(getUser)); });
+            })(userIds.slice(i, i + 5));
+        }
+        chain.then(function () {
+            renderChatList();
+            collectOnlineUserIds();
+        }).catch(function () {
+            userIds.forEach(function (id) { chatListUserIdsLoaded.delete(id); });
+        });
     }
 
     function renderChatList() {
@@ -218,12 +247,6 @@
                 if (peer) peerUserId = peer.userId;
             }
             var peerUser = peerUserId ? userCache.get(peerUserId) : null;
-            if (peerUserId && !userCache.has(peerUserId)) {
-                getUser(peerUserId).then(function () {
-                    renderChatList();
-                    collectOnlineUserIds();
-                }).catch(function () {});
-            }
             var isBot = !!(peerUser && peerUser.isBot);
             var onlineDot = peerUser && !isBot
                 ? '<div class="online-dot' + (peerUserId && isUserOnline(peerUserId) ? ' visible' : '') + '" data-online-user="' + (peerUserId || '') + '"></div>'
