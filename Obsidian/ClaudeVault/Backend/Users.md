@@ -42,9 +42,9 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Зарезервированные имена**: `ReservedUsernamesService` (Singleton) загружает из конфига `ReservedNames:Usernames` (через запятую).
 
-**Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy. Данные и общий счёт берутся ОДНИМ запросом через оконную функцию `COUNT(*) OVER()` (`Database.SqlQueryRaw<TrigramSearchRow>` → ручной маппинг в `User`) — без второго trigram-скана.
+**Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy. Данные и общий счёт берутся ОДНИМ запросом через оконную функцию `COUNT(*) OVER()` (`Database.SqlQueryRaw<TrigramSearchRow>` → ручной маппинг в `User`) — без второго trigram-скана. `IsBot` выбирается и маппится в результат, поэтому клиенты получают `User.is_bot` и могут отображать ботов отдельно.
 
-**Поиск (серверный)**: `SearchUsersServer` — через `GetAllUsersDescending` (если query пустой — все) или поиск по username/user_id. Без ограничения приватности.
+**Поиск (серверный)**: `SearchUsersServer` — через `GetAllUsersDescending` (если query пустой — все) или поиск по username/user_id. Без ограничения приватности, но только для не-ботов: это источник раздела «Юзеры» AdminPanel; боты управляются во вкладке «Боты».
 
 **Бейджи**: уникальное ограничение (UserId, BadgeId). `Priority` — меньше = выше приоритет (default 1000). Только активные баджи включаются при `GetUserBadges`. Создание всегда устанавливает `IsActive=true`.
 
