@@ -62,4 +62,28 @@
     </style>
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />
+
+    <style name="Theme.BarkfluffClientAndroid.Settings2A" parent="Theme.BarkfluffClientAndroid">
+        <item name="android:windowBackground">@color/profile_settings_background</item>
+        <item name="colorPrimary">@color/profile_settings_primary</item>
+        <item name="colorOnPrimary">@color/profile_settings_background</item>
+        <item name="colorPrimaryContainer">@color/profile_settings_tonal_container</item>
+        <item name="colorOnPrimaryContainer">@color/profile_settings_on_tonal_container</item>
+        <item name="colorErrorContainer">@color/profile_settings_error_container</item>
+        <item name="colorOnErrorContainer">@color/profile_settings_on_error_container</item>
+        <item name="colorSurface">@color/profile_settings_background</item>
+        <item name="colorSurfaceContainerLowest">@color/profile_settings_surface</item>
+        <item name="colorSurfaceContainerLow">@color/profile_settings_surface</item>
+        <item name="colorSurfaceContainer">@color/profile_settings_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/profile_settings_surface</item>
+        <item name="colorSurfaceContainerHighest">@color/profile_settings_surface</item>
+        <item name="colorOnSurface">@color/profile_settings_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/profile_settings_on_surface_variant</item>
+        <item name="colorSurfaceVariant">@color/profile_settings_switch_off_track</item>
+        <item name="colorControlActivated">@color/profile_settings_primary</item>
+        <item name="colorControlNormal">@color/profile_settings_switch_off_thumb</item>
+        <item name="colorOutline">@color/profile_settings_divider</item>
+        <item name="colorOutlineVariant">@color/profile_settings_divider</item>
+        <item name="materialCardViewStyle">@style/Widget.Barkfluff.Settings2A.Card</item>
+    </style>
 </resources>

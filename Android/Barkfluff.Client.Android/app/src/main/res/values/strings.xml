@@ -400,6 +400,9 @@
     <string name="security_change_password">Смена пароля</string>
     <string name="security_2fa_app">2FA по приложению</string>
     <string name="security_2fa_email">2FA по email</string>
+    <string name="security_hero_title">Аккаунт защищён</string>
+    <string name="security_hero_subtitle">Включите 2FA для большей защиты</string>
+    <string name="security_section_parameters">Параметры</string>
 
     <!-- Privacy Settings -->
     <string name="privacy_settings_title">Приватность</string>
@@ -477,6 +480,20 @@
     <string name="storage_server_storage">Хранилище на сервере</string>
     <string name="storage_app_cache">Кеш приложения</string>
     <string name="storage_clear_cache">Очистить кеш</string>
+    <string name="storage_used">Занято</string>
+    <string name="storage_of_limit">из %1$s</string>
+    <string name="storage_load_error">Не удалось загрузить</string>
+    <string name="storage_local_storage">Хранилище на устройстве</string>
+    <string name="storage_image_cache">Кеш изображений</string>
+    <string name="storage_chat_cache">Кеш чатов</string>
+    <string name="storage_cache_summary">%1$d чатов · %2$d сообщений</string>
+    <string name="storage_clear_cache_with_size">Очистить кеш · %1$s</string>
+    <string name="storage_category_images">Изображения</string>
+    <string name="storage_category_videos">Видео</string>
+    <string name="storage_category_audio">Аудио</string>
+    <string name="storage_category_documents">Документы</string>
+    <string name="storage_category_stickers">Стикеры</string>
+    <string name="storage_category_avatars">Аватарки</string>
 
     <!-- Devices -->
     <string name="devices_title">Устройства</string>
@@ -527,6 +544,7 @@
     <!-- Testing -->
     <string name="testing_settings_title">Тестирование</string>
     <string name="testing_section_params">Параметры</string>
+    <string name="testing_experimental_hint">Экспериментальные функции. Могут работать нестабильно.</string>
     <string name="testing_show_ids">Показывать ID в профиле</string>
     <string name="testing_show_ids_subtitle">UserId и ChatId под статусом онлайна</string>
     <string name="testing_secret_chats">Скрытые чаты</string>

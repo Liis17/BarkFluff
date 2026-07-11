@@ -17,8 +17,8 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             app:title="@string/language_settings_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -48,8 +48,7 @@
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/shape_corner_extra_large"
                 app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
+                app:strokeWidth="0dp">
 
                 <RadioGroup
                     android:id="@+id/languageRadioGroup"
@@ -62,6 +61,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
+                        android:background="@drawable/bg_settings_language_selected"
+                        android:buttonTint="@color/settings_radio_button"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="12dp"
                         android:text="@string/language_option_system"
@@ -78,6 +79,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
+                        android:background="@drawable/bg_settings_language_selected"
+                        android:buttonTint="@color/settings_radio_button"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="12dp"
                         android:text="@string/language_option_ru"
@@ -94,6 +97,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
+                        android:background="@drawable/bg_settings_language_selected"
+                        android:buttonTint="@color/settings_radio_button"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="12dp"
                         android:text="@string/language_option_en"
@@ -110,6 +115,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
+                        android:background="@drawable/bg_settings_language_selected"
+                        android:buttonTint="@color/settings_radio_button"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="12dp"
                         android:text="@string/language_option_de"
@@ -126,6 +133,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
+                        android:background="@drawable/bg_settings_language_selected"
+                        android:buttonTint="@color/settings_radio_button"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="12dp"
                         android:text="@string/language_option_es"
@@ -142,6 +151,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
+                        android:background="@drawable/bg_settings_language_selected"
+                        android:buttonTint="@color/settings_radio_button"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="12dp"
                         android:text="@string/language_option_zh"

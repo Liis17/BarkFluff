@@ -73,6 +73,7 @@
     <dimen name="spacing_large">24dp</dimen>
     <dimen name="spacing_extra_large">32dp</dimen>
     <dimen name="spacing_hero">48dp</dimen>
+    <dimen name="settings_split_gap">3dp</dimen>
 
     <!-- Online indicator -->
     <dimen name="online_indicator_size">16dp</dimen>

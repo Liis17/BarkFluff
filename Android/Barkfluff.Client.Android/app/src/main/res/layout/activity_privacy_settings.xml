@@ -17,8 +17,8 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             app:title="@string/privacy_settings_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -67,11 +67,13 @@
                         android:paddingVertical="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_web"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -99,7 +101,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchProfileOnSite"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -119,11 +123,13 @@
                         android:paddingHorizontal="16dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_account"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -166,11 +172,13 @@
                         android:paddingHorizontal="16dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_edit"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -213,11 +221,13 @@
                         android:paddingHorizontal="16dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_mail"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -285,11 +295,13 @@
                         android:paddingHorizontal="16dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_search"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -303,7 +315,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchSearchVisible"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -323,11 +337,13 @@
                         android:paddingHorizontal="16dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_check_circle"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <TextView
                             android:layout_width="0dp"

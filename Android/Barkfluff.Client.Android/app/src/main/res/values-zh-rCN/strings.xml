@@ -543,4 +543,22 @@
     <string name="create_chat_private_short">私密</string>
     <string name="create_chat_secret">秘密聊天</string>
     <string name="create_chat_secret_short">秘密</string>
+    <string name="storage_used">已用</string>
+    <string name="storage_of_limit">共 %1$s</string>
+    <string name="storage_load_error">加载失败</string>
+    <string name="storage_local_storage">设备存储</string>
+    <string name="storage_image_cache">图片缓存</string>
+    <string name="storage_chat_cache">聊天缓存</string>
+    <string name="storage_cache_summary">%1$d 个聊天 · %2$d 条消息</string>
+    <string name="storage_clear_cache_with_size">清除缓存 · %1$s</string>
+    <string name="storage_category_images">图片</string>
+    <string name="storage_category_videos">视频</string>
+    <string name="storage_category_audio">音频</string>
+    <string name="storage_category_documents">文档</string>
+    <string name="storage_category_stickers">贴纸</string>
+    <string name="storage_category_avatars">头像</string>
+    <string name="security_hero_title">账号受保护</string>
+    <string name="security_hero_subtitle">启用双重验证以获得更强保护</string>
+    <string name="security_section_parameters">设置</string>
+    <string name="testing_experimental_hint">实验功能可能不稳定。</string>
 </resources>

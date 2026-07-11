@@ -14,9 +14,11 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="64dp"
             app:title="@string/chat_folders_settings_title"
-            app:navigationIcon="@drawable/ic_arrow_back" />
+            app:navigationIcon="@drawable/ic_arrow_back"
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -58,13 +60,21 @@
             android:textColor="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/createFolderFab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
         android:text="@string/chat_folders_new_folder"
-        app:icon="@drawable/ic_add" />
+        android:textColor="@color/profile_settings_primary"
+        app:backgroundTint="@color/profile_settings_background"
+        app:cornerRadius="28dp"
+        app:icon="@drawable/ic_add"
+        app:iconTint="@color/profile_settings_primary"
+        app:strokeColor="@color/profile_settings_primary"
+        app:strokeWidth="1dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
