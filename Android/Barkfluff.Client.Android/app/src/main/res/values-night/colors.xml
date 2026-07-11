@@ -105,6 +105,12 @@
     <color name="profile_settings_error_container">#6D2717</color>
     <color name="profile_settings_on_error_container">#FFB4A1</color>
     <color name="profile_settings_ripple">#33E88B59</color>
+    <color name="profile_settings_tonal_container">#5A2E19</color>
+    <color name="profile_settings_on_tonal_container">#FFDCC9</color>
+    <color name="profile_settings_divider">#4A3428</color>
+    <color name="profile_settings_switch_off_track">#46342A</color>
+    <color name="profile_settings_switch_off_thumb">#C8A99A</color>
+    <color name="profile_settings_info_container">#4A341A</color>
 
     <!-- Floating navigation palette (dark, Floating Nav 1c) -->
     <color name="floating_nav_group">#2A1E18</color>
