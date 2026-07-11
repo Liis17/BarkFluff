@@ -31,13 +31,18 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.toolbar.setNavigationOnClickListener { finish() }
-        binding.typePrivateButton.isChecked = true
+        type = when (intent.getStringExtra(EXTRA_INITIAL_TYPE)) {
+            INITIAL_TYPE_SECRET -> Type.SECRET
+            else -> Type.PRIVATE
+        }
         binding.chatTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             type = if (checkedId == binding.typePrivateButton.id) Type.PRIVATE else Type.SECRET
             applyTypeUi()
         }
-        applyTypeUi()
+        binding.chatTypeToggle.check(
+            if (type == Type.PRIVATE) binding.typePrivateButton.id else binding.typeSecretButton.id
+        )
 
         binding.peerIdEditText.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus && type == Type.SECRET) loadPeerDevices()
@@ -160,5 +165,10 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать секретный чат: ${it.message}", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_INITIAL_TYPE = "initial_chat_type"
+        const val INITIAL_TYPE_SECRET = "secret"
     }
 }
