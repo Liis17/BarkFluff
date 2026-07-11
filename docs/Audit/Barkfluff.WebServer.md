@@ -1,5 +1,5 @@
 # Аудит: Barkfluff.WebServer
-> Дата: 2026-06-12. Область: код сервиса, Dockerfile, nginx, docker-compose.
+> Дата: 2026-06-12. Дополнение: 2026-07-12. Область: код сервиса, Dockerfile, nginx, docker-compose.
 
 ## Сводка
 Barkfluff.WebServer — REST/HTTP-сервис (порт 64641): отдаёт лендинг, юридические страницы, страницы профилей пользователей, файлы установщиков и проксирует профиль пользователя из Users-сервиса по gRPC. Главная проблема — **reflected XSS** на странице профиля: имя пользователя из URL вставляется в HTML простым `String.Replace` без какого-либо экранирования, причём страница отдаётся вообще без security-заголовков и CSP. Раздача файлов реализована безопасно (whitelist имён, фиксированные пути — path traversal нет, directory listing отсутствует). По производительности — чтение файлов целиком в память и отсутствие кэширования/ETag.
@@ -8,8 +8,8 @@ Barkfluff.WebServer — REST/HTTP-сервис (порт 64641): отдаёт л
 | ----------- | ------ |
 | Critical    | 1      |
 | High        | 0      |
-| Medium      | 2      |
-| Low         | 4      |
+| Medium      | 3      |
+| Low         | 5      |
 
 ## Безопасность
 
@@ -67,6 +67,12 @@ Barkfluff.WebServer — REST/HTTP-сервис (порт 64641): отдаёт л
 **Файл:** `Backend/nginx/barkfluff.single-server.conf:87-100`
 **Проблема:** WebServer (порт 64641) проксируется через `barkfluff_gateway`; в этом `location /` нет `add_header` для CSP/X-Frame-Options/nosniff (см. S2).
 **Рекомендация:** Добавить заголовки на уровне nginx либо в приложении.
+
+### D2. Host network открывает plaintext WebServer в обход nginx/TLS — Medium
+**Файлы:** `Backend/Barkfluff.WebServer/docker-compose-master.yml:6,9`; `Backend/Barkfluff.WebServer/docker-compose-dev.yml:6,9`.
+**Проблема:** Оба compose-файла используют `network_mode: host`, а Kestrel настроен как `ASPNETCORE_URLS=http://+:${WEBSERVER_PORT}`. Поэтому процесс слушает plaintext HTTP на всех интерфейсах хоста без явного Docker port-binding.
+**Почему это проблема:** Если порт 64641 не закрыт внешним firewall, клиент может обратиться к Kestrel напрямую, обойти TLS и любые ограничения/заголовки nginx; трафик можно перехватить или подменить в сети. Общий Docker S3 перечисляет опубликованные gRPC-порты основного compose, но отдельный host-network compose WebServer там не покрыт.
+**Рекомендация:** Убрать host network и подключить сервис к bridge-сети nginx. Если nginx работает на хосте и host network необходим, слушать только loopback (`http://127.0.0.1:${WEBSERVER_PORT}`).
 
 ### Позитив
 Dockerfile (`Backend/Barkfluff.WebServer/Dockerfile`) корректен: multi-stage, финальный образ `aspnet:10.0-noble-chiseled`, запуск под `$APP_UID`, `--chown` на скопированные артефакты. Секретов в `appsettings.json` нет (Telegram BotToken и UsersService:Token пустые, заполняются из окружения).
