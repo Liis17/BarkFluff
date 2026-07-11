@@ -1,6 +1,6 @@
 # Аудит: Barkfluff.CloudMessaging
 
-> Дата: 2026-06-12. Область: код сервиса, Dockerfile, nginx, docker-compose.
+> Дата: 2026-06-12. Дополнение: 2026-07-12. Область: код сервиса, Dockerfile, nginx, docker-compose.
 
 ## Сводка
 
@@ -10,7 +10,7 @@ CloudMessaging — background worker без публичного API: три Mas
 | ----------- | ---------- |
 | Critical    | 0          |
 | High        | 0          |
-| Medium      | 3          |
+| Medium      | 4          |
 | Low         | 7          |
 
 ## Безопасность
@@ -49,6 +49,13 @@ CloudMessaging — background worker без публичного API: три Mas
 **Проблема:** Worker вызывает `SetRunningAddress`, который поднимает Kestrel-листенер HTTP/2 на порту из `RunSettings:Port`, но сервис не маппит ни одного gRPC-сервиса или HTTP-endpoint'а — порт отвечает только 404.
 **Почему это проблема:** Лишняя поверхность внутри docker-сети и обязательная (но бессмысленная) конфигурация `RunSettings:Port`, без которой сервис не стартует. Для чистого консьюмера очередей слушатель не нужен.
 **Рекомендация:** Убрать `SetRunningAddress` (перейти на generic host) либо использовать порт осмысленно — повесить на него health check endpoint для Docker/оркестратора.
+
+### S6. Admin-broadcast из RabbitMQ принимается как привилегированная команда без проверки источника — Medium
+
+**Файлы:** общие RabbitMQ credentials и endpoint — `Backend/Barkfluff.CloudMessaging/Program.cs:50-70`; consumer — `Consumers/AdminBroadcastConsumer.cs:30-81`; штатный publisher с admin-проверкой — `Backend/Barkfluff.AdminPanel/Endpoints/NotificationsEndpoints.cs:18-45`.
+**Проблема:** Штатный HTTP-путь публикации защищён сессией AdminPanel и подтверждением, но `AdminBroadcastConsumer` доверяет любому `AdminBroadcastNotificationEvent`, попавшему в exchange. При пустом `TargetDeviceIds` он запрашивает FCM-токены всех устройств и рассылает переданные `Title`, `Body` и `ImageUrl`. Producer identity, подпись события и отдельный ACL для этого привилегированного типа не проверяются; сервис подключается общими RabbitMQ credentials.
+**Почему это проблема:** Компрометация учётных данных RabbitMQ или любого сервиса, способного публиковать в общий exchange, позволяет обойти AdminPanel и отправить всем пользователям фишинговое/вредоносное push-уведомление. Это отдельный привилегированный broadcast-канал; аналогичный общий риск очереди для email описан в `BarkFluff.Notification` S3, но данный consumer и массовый push там не покрыты.
+**Рекомендация:** Выделить для admin-broadcast отдельный exchange/vhost и RabbitMQ user/ACL, разрешив publish только AdminPanel, а consume — только CloudMessaging. Дополнительно проверять producer identity или подпись события; ограничить длины полей и допустимую схему `ImageUrl`.
 
 ## Производительность
 
