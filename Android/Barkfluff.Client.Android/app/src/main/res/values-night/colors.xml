@@ -94,6 +94,18 @@
     <color name="profile_chip_text">#D3B6A4</color>
     <color name="profile_presence_online">#3EC46D</color>
 
+    <!-- Floating navigation palette (dark, Floating Nav 1c) -->
+    <color name="floating_nav_group">#2A1E18</color>
+    <color name="floating_nav_inactive">#3A2A20</color>
+    <color name="floating_nav_inactive_content">#B19C90</color>
+    <color name="floating_nav_active">#C07A52</color>
+    <color name="floating_nav_active_content">#241309</color>
+    <color name="floating_nav_fab">#5C3A27</color>
+    <color name="floating_nav_fab_content">#FFDBC4</color>
+    <color name="floating_nav_badge">#17100C</color>
+    <color name="floating_nav_badge_text">#FFDBC4</color>
+    <color name="floating_nav_update_badge">#FFB4AB</color>
+
     <!-- Widget colors — Material You dark theme -->
     <color name="widget_background_color">@android:color/system_neutral1_900</color>
     <color name="widget_text_primary">@android:color/system_neutral1_50</color>

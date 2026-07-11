@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -71,6 +72,8 @@ class ChatsFragment : Fragment() {
         private const val TOKEN_BUFFER_MINUTES = 5
         private const val TITLE_FADE_OUT_DURATION_MS = 90L
         private const val TITLE_FADE_IN_DURATION_MS = 160L
+        const val MAIN_UNREAD_RESULT_KEY = "main_chats_unread"
+        const val MAIN_UNREAD_COUNT = "count"
     }
 
     private enum class SyncStatus {
@@ -521,7 +524,19 @@ class ChatsFragment : Fragment() {
         return sum
     }
 
+    private fun publishMainUnread() {
+        if (!isAdded) return
+        val unreadCount = allChats.fold(0L) { total, chat ->
+            (total + chat.countUnread).coerceAtMost(Int.MAX_VALUE.toLong())
+        }.toInt()
+        parentFragmentManager.setFragmentResult(
+            MAIN_UNREAD_RESULT_KEY,
+            bundleOf(MAIN_UNREAD_COUNT to unreadCount)
+        )
+    }
+
     private fun applyFolderFilter() {
+        publishMainUnread()
         val filtered: List<GrpcManager.ChatData> = if (selectedFolderId == null) {
             if (globalParam.excludeFolderChatsFromAll && folders.isNotEmpty()) {
                 val inFolders = chatsInUserFolders()
@@ -579,6 +594,7 @@ class ChatsFragment : Fragment() {
                 totalChatsCount = 0
                 binding.foldersRecyclerView.visibility = View.GONE
                 chatAdapter.submitList(emptyList())
+                publishMainUnread()
                 showSkeleton()
             }
         }
@@ -640,6 +656,7 @@ class ChatsFragment : Fragment() {
 
         // Зеркалим состояние в allChats для корректного подсчёта бейджей папок.
         mirrorNewMessageInAllChats(event.chatId, msg.senderId, msg.id, msg.content?.text ?: "", msg.sentAt.seconds * 1000)
+        publishMainUnread()
         refreshFolderTabs()
         persistChatList()
 
@@ -704,6 +721,7 @@ class ChatsFragment : Fragment() {
         if (event.newReadByList.contains(globalParam.userId)) {
             mirrorReadInAllChats(event.chatId)
             refreshFolderTabs()
+            publishMainUnread()
         }
         persistChatList()
     }
@@ -788,6 +806,10 @@ class ChatsFragment : Fragment() {
                     .onFailure { Log.w(TAG, "Не удалось обновить кеш чатов", it) }
             }
         }
+    }
+
+    fun scrollToTop() {
+        if (_binding != null) binding.chatRecyclerView.smoothScrollToPosition(0)
     }
 
     private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {

@@ -524,4 +524,20 @@
     <string name="chats_sync_offline">无网络连接 / 数据可能不是最新</string>
     <string name="chats_sync_retry">重试</string>
     <string name="storage_cache_size_with_chats">图片缓存：%1$.1f MB\\n聊天缓存：%2$d 个聊天 · %3$d 条消息 · %4$s</string>
+    <string name="create_chat_sheet_title">新聊天</string>
+    <string name="create_chat_regular">普通聊天</string>
+    <string name="create_chat_group">群聊</string>
+    <string name="create_chat_private">私密聊天</string>
+    <string name="nav_chats">聊天</string>
+    <string name="nav_calls">通话</string>
+    <string name="nav_profile">个人资料</string>
+    <string name="nav_selected">已选择</string>
+    <string name="cd_chats_with_unread">聊天，%1$d 条未读</string>
+    <string name="cd_profile">个人资料</string>
+    <string name="cd_new_chat">新聊天</string>
+    <string name="create_chat_regular_subtitle">开始私聊</string>
+    <string name="create_chat_group_short">群组</string>
+    <string name="create_chat_private_short">私密</string>
+    <string name="create_chat_secret">秘密聊天</string>
+    <string name="create_chat_secret_short">秘密</string>
 </resources>

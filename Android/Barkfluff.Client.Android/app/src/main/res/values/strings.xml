@@ -596,4 +596,16 @@
     <string name="chats_sync_offline">Нет сети / данные могут быть неактуальны</string>
     <string name="chats_sync_retry">Повторить</string>
     <string name="storage_cache_size_with_chats">Кеш изображений: %1$.1f МБ\\nКеш чатов: %2$d чатов · %3$d сообщений · %4$s</string>
+    <string name="nav_chats">Чаты</string>
+    <string name="nav_calls">Звонки</string>
+    <string name="nav_profile">Профиль</string>
+    <string name="nav_selected">выбрано</string>
+    <string name="cd_chats_with_unread">Чаты, непрочитанных: %1$d</string>
+    <string name="cd_profile">Профиль</string>
+    <string name="cd_new_chat">Новый чат</string>
+    <string name="create_chat_regular_subtitle">Начать личную переписку</string>
+    <string name="create_chat_group_short">Групповой</string>
+    <string name="create_chat_private_short">Приватный</string>
+    <string name="create_chat_secret">Секретный чат</string>
+    <string name="create_chat_secret_short">Секретный</string>
 </resources>

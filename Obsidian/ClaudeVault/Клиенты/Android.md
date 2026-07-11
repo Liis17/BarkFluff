@@ -23,13 +23,14 @@ Package: `com.barkfluff.client`
 
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
 
-- `MainActivity` владеет малой M3 FAB создания: она видима только на вкладке чатов и открывает `CreateChatBottomSheet`. На телефоне при двух видимых вкладках она стоит справа от `bottomNavCard`, а при трёх — поднимается над правым краем панели; wide-layout сохраняет кнопку в правом нижнем углу. Sheet ведёт в обычный поиск, создание группы или, при `privateChatsEnabled` в тестовых настройках, поиск для приватного чата. Секретный пункт скрыт до отдельной реализации протокола.
+- На телефоне `MainActivity` показывает M3 Expressive floating navigation: pill-группа с морфингом активной вкладки (filled icon + label) и отдельный 64dp squircle FAB. Всегда доступны «Чаты» и «Профиль», а «Звонки» добавляются третьей вкладкой при `mainTabCallsVisible`; FAB виден только в чатах. `ChatsFragment` публикует суммарный счётчик непрочитанных через Fragment Result для badge «Чаты» (значения выше 99 отображаются как `99+`). Wide-layout сохраняет прежний navigation rail и medium FAB.
+- `CreateChatBottomSheet` — светлый modal sheet с hero-пунктом обычного чата и равномерной строкой вторичных карточек. «Групповой» есть всегда; «Приватный» и «Секретный» зависят от тестовых `privateChatsEnabled` / `secretChatsEnabled`, поэтому оставшиеся карточки растягиваются на всю строку. Обычный и приватный пути ведут в `SearchActivity`, группа — в `CreateGroupChatActivity`, секретный — в `CreateEncryptedChatActivity` с `EXTRA_INITIAL_TYPE=secret`, чтобы сразу выбрать режим SECRET.
 - Групповой flow: `CreateGroupChatActivity` выбирает нескольких пользователей через поиск, требует название, принимает опциональную обложку и вызывает `CreateGroupChat`.
 - `ChatData` получает `chatType`, `lastActivityAt`, `privateInviteState` и `privateInviterUserId`; `ChatsFragment` подгружает страницы `ListChats` при прокрутке. Приватный чат открывает `PrivateChatActivity`, имеет lock-бейдж рядом с аватаром и skeleton вместо текста последнего сообщения.
 - Инвайт-флоу приватного чата в списке: при `privateInviteState != ACCEPTED` вместо skeleton показывается статус — «Запрос на приватный чат» (приглашённый), «Ожидает подтверждения» (инициатор), «Запрос отклонён». Роль определяется по `privateInviterUserId` vs свой userId. `PrivateChatActivity` в pending-режиме у приглашённого показывает экран «Принять/Отклонить» (принять → passphrase → `acceptPrivateChatInvite`), у инициатора — баннер ожидания с заблокированным вводом (разблокируется по `privateChatInviteResolutions`); вход с push без extras — fallback-фетч состояния через `getChat`. FCM `type=private_chat_invite` → `NotificationHelper.showPrivateInviteNotification`, тап открывает `PrivateChatActivity` (`EXTRA_IS_PRIVATE_CHAT` в `MainActivity.handleChatIntent`).
 - Ввод passphrase приватного чата (создание, инвайт, разблокирование) содержит opt-in «Сохранить пароль». В `EncryptedSharedPreferences` сохраняется только производный ключ; при logout ключи очищаются.
 
-- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`), нижняя навигация (`bottomNavCard`) — плавающий элемент поверх, рисуется позже в XML → автоматически выше по z-order. Ширина `bottomNavCard` в `MainActivity` подстраивается под количество видимых вкладок.
+- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`). В phone-варианте `floatingNavContainer` центрирует над ним группу вкладок и FAB с отступом 20dp от нижнего inset; старый невидимый `bottomNavigation` оставлен только для общей ViewBinding-совместимости с `layout-w600dp`.
 - `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
 - `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:
   - `VIEW_TYPE_FOOTER` / `FooterViewHolder` — не требует биндинга.
@@ -147,6 +148,10 @@ Package: `com.barkfluff.client`
 
 Поля `image_width` (field 8) и `image_height` (field 9) добавлены в `MessageAttachment` в `shared.proto`.
 Backend заполняет эти поля при доставке сообщения с вложением-изображением.
+
+### Время на фото и стикерах
+
+Для сообщения, состоящего только из фото/GIF/видео или стикера, `MessageAdapter` показывает время внутри визуального вложения: внизу справа находится компактная тёмная полупрозрачная плашка со светлым временем. У исходящих сообщений рядом применяются существующие векторные иконки статуса доставки. Плашка для медиа добавляется в `attachmentsContainer` из `view_media_time_status.xml`, для стикера она находится в `stickerContainer`; сообщения с текстовой подписью сохраняют обычное размещение времени рядом с текстом.
 
 ## Отправка файлов и pre-upload дедупликация (SHA-256)
 

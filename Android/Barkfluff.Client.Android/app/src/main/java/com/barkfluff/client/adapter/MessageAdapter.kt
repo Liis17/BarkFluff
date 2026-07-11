@@ -144,28 +144,34 @@ class MessageAdapter(
      * соответствует M3 Expressive feedback (часы → одна галочка → две → две filled primary).
      * FAILED перекрывает текущий tint на colorError.
      */
-    private fun applyDeliveryStatusIcon(view: ImageView, status: ReadStatus) {
+    private fun applyDeliveryStatusIcon(
+        view: ImageView,
+        status: ReadStatus,
+        useLightTint: Boolean = false
+    ) {
         val ctx = view.context
+        val lightTint = if (useLightTint) ColorStateList.valueOf(android.graphics.Color.WHITE) else null
         when (status) {
             ReadStatus.NONE -> view.visibility = View.GONE
             ReadStatus.SENDING -> {
                 view.setImageResource(R.drawable.ic_status_sending)
-                view.imageTintList = null
+                view.imageTintList = lightTint
                 view.visibility = View.VISIBLE
             }
             ReadStatus.SENT -> {
                 view.setImageResource(R.drawable.ic_status_sent)
-                view.imageTintList = null
+                view.imageTintList = lightTint
                 view.visibility = View.VISIBLE
             }
             ReadStatus.DELIVERED -> {
                 view.setImageResource(R.drawable.ic_status_delivered)
-                view.imageTintList = null
+                view.imageTintList = lightTint
                 view.visibility = View.VISIBLE
             }
             ReadStatus.READ -> {
                 view.setImageResource(R.drawable.ic_status_read)
-                view.imageTintList = ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorPrimary))
+                view.imageTintList = lightTint
+                    ?: ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorPrimary))
                 view.visibility = View.VISIBLE
             }
             ReadStatus.FAILED -> {
@@ -286,7 +292,7 @@ class MessageAdapter(
             if (isPureSticker) {
                 // Показать стикер без облачка
                 binding.messageCard.visibility = View.GONE
-                binding.stickerImageView.visibility = View.VISIBLE
+                binding.stickerContainer.visibility = View.VISIBLE
                 binding.stickerTimeStatusLayout.visibility = View.VISIBLE
 
                 val attachment = displayedAttachments[0]
@@ -294,11 +300,11 @@ class MessageAdapter(
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
-                applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus)
+                applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus, useLightTint = true)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
-                binding.stickerImageView.visibility = View.GONE
+                binding.stickerContainer.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
 
                 // Применяем закругление из настроек персонализации
@@ -317,6 +323,10 @@ class MessageAdapter(
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
 
+                val showMediaTimeOverlay = item.text.isBlank() &&
+                    (item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
+                binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
+
                 if (item.localPreviewUris.isNotEmpty()) {
                     // Оптимистичное сообщение: вложения ещё не на сервере — рендерим локальные превью.
                     val mediaWidthPx = calcMediaWidthPx(binding.root.context)
@@ -327,6 +337,9 @@ class MessageAdapter(
                     binding.attachmentsContainer.addView(
                         buildLocalMediaGrid(binding.root.context, item.localPreviewUris, mediaWidthPx)
                     )
+                    if (showMediaTimeOverlay) {
+                        bindMediaTimeOverlay(binding.attachmentsContainer, item)
+                    }
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -338,7 +351,16 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, isSentByMe = true, sourceMessageId = item.messageId)
+                    setupAttachmentsContainer(
+                        binding.attachmentsContainer,
+                        displayedAttachments,
+                        mediaWidthPx,
+                        isSentByMe = true,
+                        sourceMessageId = item.messageId
+                    )
+                    if (showMediaTimeOverlay) {
+                        bindMediaTimeOverlay(binding.attachmentsContainer, item)
+                    }
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -440,8 +462,8 @@ class MessageAdapter(
             if (isPureSticker) {
                 // Показать стикер без облачка
                 binding.messageCard.visibility = View.GONE
-                binding.stickerImageView.visibility = View.VISIBLE
-                binding.stickerTimeTextView.visibility = View.VISIBLE
+                binding.stickerContainer.visibility = View.VISIBLE
+                binding.stickerTimeStatusLayout.visibility = View.VISIBLE
 
                 val attachment = displayedAttachments[0]
                 applyStickerSize(binding.stickerImageView)
@@ -451,8 +473,8 @@ class MessageAdapter(
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
-                binding.stickerImageView.visibility = View.GONE
-                binding.stickerTimeTextView.visibility = View.GONE
+                binding.stickerContainer.visibility = View.GONE
+                binding.stickerTimeStatusLayout.visibility = View.GONE
 
                 // Применяем закругление из настроек персонализации
                 val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
@@ -468,6 +490,9 @@ class MessageAdapter(
                 binding.timeTextView.text = formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
+                val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
+                binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
+
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
                         it.type == Shared.MessageAttachmentType.IMAGE ||
@@ -478,7 +503,15 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, sourceMessageId = item.messageId)
+                    setupAttachmentsContainer(
+                        binding.attachmentsContainer,
+                        displayedAttachments,
+                        mediaWidthPx,
+                        sourceMessageId = item.messageId
+                    )
+                    if (showMediaTimeOverlay) {
+                        bindMediaTimeOverlay(binding.attachmentsContainer, item)
+                    }
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -657,6 +690,28 @@ class MessageAdapter(
             params.height = sizePx
             imageView.layoutParams = params
         }
+    }
+
+    private fun List<Shared.MessageAttachment>.isPureMedia(): Boolean =
+        isNotEmpty() && all {
+            it.type == Shared.MessageAttachmentType.IMAGE ||
+                it.type == Shared.MessageAttachmentType.GIF ||
+                it.type == Shared.MessageAttachmentType.VIDEO
+        }
+
+    private fun bindMediaTimeOverlay(
+        container: android.widget.FrameLayout,
+        item: MessageItem
+    ) {
+        val overlay = LayoutInflater.from(container.context)
+            .inflate(R.layout.view_media_time_status, container, false)
+        overlay.findViewById<android.widget.TextView>(R.id.mediaTimeTextView).text = formatTime(item.timestamp)
+        applyDeliveryStatusIcon(
+            overlay.findViewById(R.id.mediaReadStatusImageView),
+            item.readStatus,
+            useLightTint = item.readStatus != ReadStatus.NONE
+        )
+        container.addView(overlay)
     }
 
     // ─── Color Helpers ─────────────────────────────────────────────────────────
