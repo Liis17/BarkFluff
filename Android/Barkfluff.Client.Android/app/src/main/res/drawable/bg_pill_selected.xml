@@ -2,6 +2,6 @@
 <!-- Выбранная pill-вкладка -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/profile_accent" />
+    <solid android:color="?attr/colorPrimary" />
     <corners android:radius="20dp" />
 </shape>

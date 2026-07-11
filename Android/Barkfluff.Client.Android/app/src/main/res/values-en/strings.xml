@@ -401,6 +401,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Chat folders</string>
+    <string name="chat_folders_section_title">Your folders</string>
     <string name="chat_folders_empty_title">No folders yet</string>
     <string name="chat_folders_empty_subtitle">Create a folder to quickly switch between groups of chats</string>
     <string name="chat_folders_new_folder">New folder</string>

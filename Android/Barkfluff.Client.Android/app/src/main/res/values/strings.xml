@@ -464,6 +464,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Папки чатов</string>
+    <string name="chat_folders_section_title">Ваши папки</string>
     <string name="chat_folders_empty_title">Пока нет папок</string>
     <string name="chat_folders_empty_subtitle">Создайте папку, чтобы быстро переключаться между группами чатов</string>
     <string name="chat_folders_new_folder">Новая папка</string>

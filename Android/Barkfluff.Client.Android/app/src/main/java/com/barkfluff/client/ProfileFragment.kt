@@ -16,6 +16,7 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.LogoutHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -192,7 +193,12 @@ class ProfileFragment : Fragment() {
             previousMainBackground = mainRoot.background
             mainBackgroundCaptured = true
         }
-        mainRoot.setBackgroundColor(requireContext().getColor(R.color.profile_settings_background))
+        mainRoot.setBackgroundColor(
+            MaterialColors.getColor(
+                mainRoot,
+                com.google.android.material.R.attr.colorSurfaceContainer
+            )
+        )
     }
 
     private fun restoreMainBackground() {

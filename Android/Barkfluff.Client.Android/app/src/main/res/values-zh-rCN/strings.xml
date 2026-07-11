@@ -391,6 +391,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">聊天文件夹</string>
+    <string name="chat_folders_section_title">你的文件夹</string>
     <string name="chat_folders_empty_title">还没有文件夹</string>
     <string name="chat_folders_empty_subtitle">创建文件夹以在聊天分组之间快速切换</string>
     <string name="chat_folders_new_folder">新建文件夹</string>
