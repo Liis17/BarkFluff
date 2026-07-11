@@ -17,6 +17,9 @@ public class NotificationQueueSender
     {
         if (notification is EmailNotification emailNotification)
         {
+            if (string.IsNullOrWhiteSpace(emailNotification.Address))
+                return;
+
             await _publishEndpoint.Publish(emailNotification);
         }
     }

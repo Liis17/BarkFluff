@@ -156,6 +156,25 @@ public class AuthCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_Bot_ThrowsInvalidLoginOrPasswordExceptionWithoutSideEffects()
+    {
+        _usersClient
+            .Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<FindByLoginResponse>(
+                Task.FromResult(new FindByLoginResponse { User = new User { Id = 1, IsBot = true } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var handler = CreateHandler();
+
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() =>
+            handler.Handle(new AuthCommand { Username = "testbot", Password = "password" }, CancellationToken.None));
+
+        Assert.Empty(_context.RefreshTokens);
+        _mediator.Verify(m => m.Send(It.IsAny<CreateTokenCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_OtpEnabledNoOtpCode_ThrowsOtpCodeNeedException()
     {
         var user = new FindByLoginResponse();

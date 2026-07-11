@@ -55,6 +55,13 @@ public class CreateSessionForUserServerCommandHandler(
             throw new RpcException(new Status(StatusCode.InvalidArgument, "AppName is required"));
         }
 
+        var user = await usersClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId });
+        if (user.User.IsBot)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                "Bot accounts cannot create user sessions"));
+        }
+
         logger.LogInformation(
             "Создание серверной сессии для пользователя {UserId} на устройстве {DeviceId} ({DeviceName})",
             request.UserId, request.DeviceId, request.DeviceName);

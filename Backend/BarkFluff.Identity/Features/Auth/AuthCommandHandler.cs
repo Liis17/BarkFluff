@@ -96,6 +96,13 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             throw new InvalidLoginOrPasswordException();
         }
 
+        if (user.User.IsBot)
+        {
+            metrics.Increment("auth_login_failed");
+            logger.LogWarning("Попытка пользовательского входа для бота {UserId}", user.User.Id);
+            throw new InvalidLoginOrPasswordException();
+        }
+
         var optOptions = await authPropertiesStorage.GetUserAuthProperties(user.User.Id);
 
         if (optOptions != null && (optOptions.EmailOtpEnabled || optOptions.OtpEnabled) && string.IsNullOrEmpty(request.OtpCode))

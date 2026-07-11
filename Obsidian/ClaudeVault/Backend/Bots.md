@@ -29,10 +29,12 @@ dotnet build Backend/BarkFluff.Bots/BarkFluff.Bots.csproj
 
 ## Системные боты (in-process, не под rate-limit, без внешнего токена)
 
-| Бот | Роль | Что делает |
-|-----|------|-----------|
-| `@botfather` | BotFather | State machine создания/управления ботами: `/newbot`, `/mybots`, `/token`, `/setname`, `/setdescription`, `/setuserpic`, `/deletebot`, `/cancel`. Сессии — `BotFatherSessions` (TTL 30 мин). Username `botfather` создан с bypass правил. |
-| `@login_notifier_bot` | LoginNotifier | Consumer `EmailNotification` (очередь `email-notifications-bots-handler`), фильтр `SuccessfulLogin` → DM о входе (устройство/ОС/IP/локация). Может создать чат первым (`allow_chat_creation`). |
+| Бот                  | Роль      | Что делает                                                                                                                                                                                                                               |
+| -------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@botfather`         | BotFather | State machine создания/управления ботами: `/newbot`, `/mybots`, `/token`, `/setname`, `/setdescription`, `/setuserpic`, `/deletebot`, `/cancel`. Сессии — `BotFatherSessions` (TTL 30 мин). Username `botfather` создан с bypass правил. |
+| `@barkfluffnotifier` | Barkfluff | Consumer `EmailNotification` (очередь `email-notifications-bots-handler`), фильтр `SuccessfulLogin` → DM о входе (устройство/ОС/IP/локация). Может создать чат первым (`allow_chat_creation`).                                           |
+
+Consumer дополнительно пропускает события, где `OwnerId` принадлежит боту: уведомления о входе остаются у людей и не создают DM ботам.
 
 Сидятся `SystemBotsSeeder` при старте (после Migrate), идемпотентно через `UsersServerApi.CreateBotUser`.
 

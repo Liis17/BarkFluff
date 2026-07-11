@@ -207,6 +207,10 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 Полный реестр и где они инкрементируются — см. файл памяти `project_identity_metrics.md`.
 
+## Боты и email
+
+Боты используют только токены [[Backend/Bots|Bot API]] и не получают пользовательские Identity-сессии, пароли или сброс пароля. `NotificationQueueSender` не публикует `EmailNotification` без адреса получателя; так бот без `UserContact` не попадает ни в SMTP, ни в consumer login-notifier.
+
 ## Связанные файлы
 
 - [[Backend/Identity-ProjectMap]] — подробная карта всех файлов и классов проекта

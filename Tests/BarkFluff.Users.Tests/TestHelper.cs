@@ -94,6 +94,7 @@ public class TestHelper
         string lastName = "User",
         string email = "test@test.com",
         bool isDraft = false,
+        bool isBot = false,
         string? bio = null,
         string? profilePicture = null)
     {
@@ -105,6 +106,7 @@ public class TestHelper
             LastName = lastName,
             RegistrationDate = DateTime.UtcNow,
             IsDraft = isDraft,
+            IsBot = isBot,
             Bio = bio,
             ProfilePicture = profilePicture,
             Contact = new UserContact { Email = email }

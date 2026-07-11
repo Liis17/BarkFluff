@@ -92,4 +92,21 @@ public class ForceSetPasswordServerCommandHandlerTests
         Assert.NotNull(result);
         _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_Bot_ThrowsBeforeChangingPassword()
+    {
+        _usersClient
+            .Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetByIdResponse>(
+                Task.FromResult(new GetByIdResponse { User = new User { Id = 1, IsBot = true } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() => CreateHandler().Handle(
+            new ForceSetPasswordServerCommand { UserId = 1, NewPassword = "adminpass" }, CancellationToken.None));
+
+        Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
+        Assert.Empty(_context.UserPasswords);
+        _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

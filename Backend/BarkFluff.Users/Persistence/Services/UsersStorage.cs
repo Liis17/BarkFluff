@@ -113,7 +113,7 @@ public class UsersStorage
     /// <param name="pageSize">Размер страницы</param>
     /// <param name="similarityThreshold">Порог схожести (от 0 до 1, рекомендуется 0.3)</param>
     /// <returns>Список пользователей и общее количество найденных пользователей</returns>
-    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true)
+    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true, bool excludeBots = false)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -128,13 +128,14 @@ public class UsersStorage
         var privacyFilter = respectSearchVisibility
             ? @" AND (p.""SearchVisible"" IS NULL OR p.""SearchVisible"" = true OR u.""Id"" = @currentUserId)"
             : string.Empty;
+        var botFilter = excludeBots ? @" AND u.""IsBot"" = false" : string.Empty;
 
         // Один запрос: данные + общий счёт через оконную функцию COUNT(*) OVER().
         // Убирает второй тяжёлый trigram-скан и прежний баг, когда ExecuteSqlRawAsync
         // возвращал число затронутых строк (-1 для SELECT) вместо реального COUNT(*).
         var sql = @"
             SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
-                   u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
+                   u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""IsBot"", u.""StorageLimitGb"",
                    uc.""Email"", uc.""UserId"",
                    COUNT(*) OVER() AS ""TotalCount""
             FROM ""Users"" u
@@ -143,7 +144,7 @@ public class UsersStorage
             WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
                OR similarity(u.""Username"", @searchTerm) > @threshold)
-            AND u.""IsDraft"" = false" + privacyFilter + @"
+            AND u.""IsDraft"" = false" + privacyFilter + botFilter + @"
             ORDER BY GREATEST(
                 similarity(u.""FirstName"", @searchTerm),
                 similarity(u.""LastName"", @searchTerm),
@@ -174,6 +175,7 @@ public class UsersStorage
             ProfilePicturePreviewUrl = r.ProfilePicturePreviewUrl,
             Bio = r.Bio,
             IsDraft = r.IsDraft,
+            IsBot = r.IsBot,
             StorageLimitGb = r.StorageLimitGb,
             Contact = new UserContact { Email = r.Email ?? string.Empty, UserId = r.UserId ?? r.Id }
         }).ToList();
@@ -194,6 +196,7 @@ public class UsersStorage
         public string? ProfilePicturePreviewUrl { get; set; }
         public string? Bio { get; set; }
         public bool IsDraft { get; set; }
+        public bool IsBot { get; set; }
         public int StorageLimitGb { get; set; }
         public string? Email { get; set; }
         public long? UserId { get; set; }
@@ -489,7 +492,7 @@ public class UsersStorage
     {
         var query = _usersContext.Users
             .Include(u => u.Contact)
-            .Where(u => !u.IsDraft)
+            .Where(u => !u.IsDraft && !u.IsBot)
             .OrderByDescending(u => u.Id);
 
         var totalCount = await query.CountAsync();
