@@ -17,8 +17,8 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             app:title="@string/testing_settings_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -32,6 +32,29 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_settings_tonal_square"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_science"
+                    app:tint="@color/profile_settings_on_tonal_container" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="@string/testing_experimental_hint"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="@color/profile_settings_on_surface_variant" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -48,8 +71,7 @@
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/shape_corner_extra_large"
                 app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -66,11 +88,13 @@
                         android:paddingVertical="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_info"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -98,7 +122,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchShowIds"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -117,11 +143,13 @@
                         android:paddingVertical="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_hood"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -149,7 +177,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchSecretChats"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
@@ -167,11 +197,13 @@
                         android:paddingVertical="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_settings_tonal_circle"
+                            android:padding="11dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_lock"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_on_tonal_container" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -199,7 +231,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchPrivateChats"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            app:thumbTint="@color/settings_switch_thumb"
+                            app:trackTint="@color/settings_switch_track" />
 
                     </LinearLayout>
 
