@@ -206,6 +206,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_security"
+                            android:translationX="-2dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -254,6 +255,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_key"
+                            android:translationX="1dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -302,6 +304,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_devices"
+                            android:translationX="2dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -366,6 +369,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_palette"
+                            android:translationX="-1dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -414,6 +418,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_widgets"
+                            android:translationX="-1dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -462,6 +467,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_folder_copy"
+                            android:translationX="-1dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -526,6 +532,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_notifications"
+                            android:translationX="-2dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -678,6 +685,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_system_update"
+                            android:translationX="-3dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -798,6 +806,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_science"
+                            android:translationX="-2dp"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView

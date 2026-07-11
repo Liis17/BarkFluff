@@ -1,6 +1,7 @@
 package com.barkfluff.client
 
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -25,6 +26,8 @@ class ProfileFragment : Fragment() {
 
     private lateinit var globalParam: GlobalParam
     private lateinit var grpcManager: GrpcManager
+    private var previousMainBackground: Drawable? = null
+    private var mainBackgroundCaptured = false
 
     companion object {
         private const val TAG = "ProfileFragment"
@@ -49,7 +52,18 @@ class ProfileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        applyProfileSystemBarBackground()
         refreshUserData()
+    }
+
+    override fun onPause() {
+        restoreMainBackground()
+        super.onPause()
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (hidden) restoreMainBackground() else applyProfileSystemBarBackground()
     }
 
     private fun setupClickListeners() {
@@ -172,6 +186,22 @@ class ProfileFragment : Fragment() {
         }
     }
 
+    private fun applyProfileSystemBarBackground() {
+        val mainRoot = activity?.findViewById<View>(R.id.mainRoot) ?: return
+        if (!mainBackgroundCaptured) {
+            previousMainBackground = mainRoot.background
+            mainBackgroundCaptured = true
+        }
+        mainRoot.setBackgroundColor(requireContext().getColor(R.color.profile_settings_background))
+    }
+
+    private fun restoreMainBackground() {
+        if (!mainBackgroundCaptured) return
+        activity?.findViewById<View>(R.id.mainRoot)?.background = previousMainBackground
+        previousMainBackground = null
+        mainBackgroundCaptured = false
+    }
+
     private fun checkForUpdates() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -212,6 +242,7 @@ class ProfileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        restoreMainBackground()
         super.onDestroyView()
         _binding = null
     }
