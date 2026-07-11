@@ -42,6 +42,15 @@ Package: `com.barkfluff.client`
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
 
+## Экран «Профиль» (`ProfileFragment`)
+
+Экран настроек V1 реализует вариант 2a из [[Клиенты/DesignDocument]]: локальная тёплая M3 Expressive-палитра, где фон — `surface container`, а каждый пункт — светлый `surface`.
+
+- `res/layout/fragment_profile.xml` — заголовок «Профиль», горизонтальный блок идентичности с 72dp squircle-аватаром и четыре группы: «Аккаунт», «Оформление», «Приложение», «О приложении». Все 13 прежних пунктов и их `id` сохранены, поэтому переходы в Activity не менялись.
+- Каждая строка — самостоятельная `MaterialCardView` высотой 58dp. Плашки внутри группы разделены фоновым зазором 3dp и используют форму `28/6dp` (верх/середина/низ); logout остаётся отдельной error-container плашкой с M3 confirmation dialog.
+- Строка «Язык» показывает нативное название активной локали. Изображение профиля теперь маскируется формой squircle: `AvatarLoader` принимает `circleCrop`; для `ProfileFragment` он отключён, а при отсутствии фото виден `person` placeholder.
+- Телефонная floating-навигация закреплена в `MainActivity`, поэтому фрагмент оставляет нижний 150dp spacer для неё; wide-layout продолжает использовать navigation rail.
+
 ## Сегмент папок над списком чатов
 
 `fragment_chats.xml` содержит горизонтальный `RecyclerView` `foldersRecyclerView` поверх `chatRecyclerView`, скрытый при отсутствии папок. Раньше был `ChipGroup` с одинарными `Chip`-ами; заменён на кастомный адаптер ради иконки + имени + бейджа непрочитанных и поддержки компактного режима.

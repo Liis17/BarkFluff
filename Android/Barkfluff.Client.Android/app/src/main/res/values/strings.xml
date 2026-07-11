@@ -365,6 +365,9 @@
     <string name="profile_title">Профиль</string>
     <string name="profile_user_placeholder">Пользователь</string>
     <string name="profile_section_account_security">Аккаунт и безопасность</string>
+    <string name="profile_section_account">Аккаунт</string>
+    <string name="profile_section_appearance">Оформление</string>
+    <string name="profile_section_about">О приложении</string>
     <string name="profile_section_personalization">Персонализация</string>
     <string name="profile_section_application">Приложение</string>
     <string name="profile_section_other">Другое</string>

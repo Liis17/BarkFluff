@@ -151,7 +151,8 @@ object AvatarLoader {
         placeholderView: TextView,
         avatarUrl: String?,
         displayName: String,
-        userId: Long = 0
+        userId: Long = 0,
+        circleCrop: Boolean = true
     ) {
         Log.d("AvatarLoader", "load: avatarUrl='$avatarUrl', displayName='$displayName', userId=$userId")
         
@@ -159,11 +160,15 @@ object AvatarLoader {
             placeholderView.visibility = View.GONE
             imageView.visibility = View.VISIBLE
 
-            val request = ImageRequest.Builder(imageView.context)
+            val requestBuilder = ImageRequest.Builder(imageView.context)
                 .data(avatarUrl)
                 .crossfade(200)
-                .transformations(CircleCropTransformation())
-                .target(
+
+            if (circleCrop) {
+                requestBuilder.transformations(CircleCropTransformation())
+            }
+
+            requestBuilder.target(
                     onSuccess = { drawable ->
                         android.util.Log.d("AvatarLoader", "load: onSuccess url=$avatarUrl")
                         imageView.setImageDrawable(drawable)
@@ -176,7 +181,8 @@ object AvatarLoader {
                         showPlaceholderInternal(placeholderView, displayName, userId)
                     }
                 )
-                .build()
+
+            val request = requestBuilder.build()
 
             Log.d("AvatarLoader", "load: enqueueing request for url=$avatarUrl")
             getImageLoader(imageView.context).enqueue(request)
@@ -218,9 +224,10 @@ object AvatarLoader {
         fileId: String?,
         displayName: String,
         userId: Long = 0,
+        circleCrop: Boolean = true,
         getUrlCallback: suspend () -> String?
     ) {
-        loadByFileIdInternal(imageView, placeholderView, fileId, displayName, userId, 0, getUrlCallback)
+        loadByFileIdInternal(imageView, placeholderView, fileId, displayName, userId, 0, circleCrop, getUrlCallback)
     }
 
     /**
@@ -234,9 +241,10 @@ object AvatarLoader {
         displayName: String,
         userId: Long = 0,
         size: Int = 0,
+        circleCrop: Boolean = true,
         getUrlCallback: suspend () -> String?
     ) {
-        loadByFileIdInternal(imageView, placeholderView, fileId, displayName, userId, size, getUrlCallback)
+        loadByFileIdInternal(imageView, placeholderView, fileId, displayName, userId, size, circleCrop, getUrlCallback)
     }
 
     private fun loadByFileIdInternal(
@@ -246,6 +254,7 @@ object AvatarLoader {
         displayName: String,
         userId: Long,
         size: Int,
+        circleCrop: Boolean,
         getUrlCallback: suspend () -> String?
     ) {
         // Привязываем fileId к ImageView для защиты от race condition при recycling
@@ -262,7 +271,7 @@ object AvatarLoader {
             android.util.Log.d("AvatarLoader", "loadByFileId: Loading directly from URL=$fileId")
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
-            loadImageWithCoil(imageView, placeholderView, fileId, fileId, displayName, userId, size)
+            loadImageWithCoil(imageView, placeholderView, fileId, fileId, displayName, userId, size, circleCrop)
             return
         }
 
@@ -272,7 +281,7 @@ object AvatarLoader {
             android.util.Log.d("AvatarLoader", "loadByFileId: Runtime cache hit for fileId=$fileId")
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
-            loadImageWithCoil(imageView, placeholderView, cachedUrl, fileId, displayName, userId, size)
+            loadImageWithCoil(imageView, placeholderView, cachedUrl, fileId, displayName, userId, size, circleCrop)
             return
         }
 
@@ -284,7 +293,7 @@ object AvatarLoader {
             urlCache[fileId] = persistentUrl
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
-            loadImageWithCoil(imageView, placeholderView, persistentUrl, fileId, displayName, userId, size)
+            loadImageWithCoil(imageView, placeholderView, persistentUrl, fileId, displayName, userId, size, circleCrop)
             return
         }
 
@@ -310,7 +319,7 @@ object AvatarLoader {
 
             withContext(Dispatchers.Main) {
                 if (imageView.tag != fileId) return@withContext // View recycled
-                loadImageWithCoil(imageView, placeholderView, url, fileId, displayName, userId, size)
+                loadImageWithCoil(imageView, placeholderView, url, fileId, displayName, userId, size, circleCrop)
             }
         }
     }
@@ -325,7 +334,8 @@ object AvatarLoader {
         cacheKey: String,
         displayName: String,
         userId: Long,
-        size: Int
+        size: Int,
+        circleCrop: Boolean
     ) {
         android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading url=$url, cacheKey=$cacheKey, size=$size")
         val imageLoader = getImageLoader(imageView.context)
@@ -338,8 +348,12 @@ object AvatarLoader {
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
             .crossfade(200)
-            .transformations(CircleCropTransformation())
-            .target(
+
+        if (circleCrop) {
+            requestBuilder.transformations(CircleCropTransformation())
+        }
+
+        requestBuilder.target(
                 onSuccess = { drawable ->
                     if (imageView.tag == cacheKey) {
                         android.util.Log.d("AvatarLoader", "loadImageWithCoil: onSuccess cacheKey=$cacheKey")
