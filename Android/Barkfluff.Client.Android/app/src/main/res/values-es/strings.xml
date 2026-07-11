@@ -315,6 +315,9 @@
     <string name="profile_title">Perfil</string>
     <string name="profile_user_placeholder">Usuario</string>
     <string name="profile_section_account_security">Cuenta y seguridad</string>
+    <string name="profile_section_account">Cuenta</string>
+    <string name="profile_section_appearance">Apariencia</string>
+    <string name="profile_section_about">Acerca de la aplicación</string>
     <string name="profile_section_personalization">Personalización</string>
     <string name="profile_section_application">Aplicación</string>
     <string name="profile_section_other">Otros</string>
