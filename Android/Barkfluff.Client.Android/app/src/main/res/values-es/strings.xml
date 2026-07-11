@@ -395,6 +395,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Carpetas de chat</string>
+    <string name="chat_folders_section_title">Tus carpetas</string>
     <string name="chat_folders_empty_title">Aún no hay carpetas</string>
     <string name="chat_folders_empty_subtitle">Crea una carpeta para cambiar rápidamente entre grupos de chats</string>
     <string name="chat_folders_new_folder">Nueva carpeta</string>

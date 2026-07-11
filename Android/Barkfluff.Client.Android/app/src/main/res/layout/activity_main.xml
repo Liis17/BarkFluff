@@ -50,7 +50,7 @@
             android:layout_height="68dp"
             android:clipChildren="false"
             android:clipToPadding="false"
-            app:cardBackgroundColor="@color/floating_nav_group"
+            app:cardBackgroundColor="?attr/colorSurfaceContainer"
             app:cardCornerRadius="34dp"
             app:cardElevation="8dp"
             app:cardUseCompatPadding="false"
@@ -101,7 +101,7 @@
                         android:gravity="center"
                         android:minWidth="17dp"
                         android:paddingHorizontal="4dp"
-                        android:textColor="@color/floating_nav_badge_text"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="10sp"
                         android:textStyle="bold"
                         android:translationX="4dp"
@@ -184,13 +184,13 @@
             android:layout_marginStart="10dp"
             android:contentDescription="@string/cd_new_chat"
             android:visibility="gone"
-            app:backgroundTint="@color/floating_nav_fab"
+            app:backgroundTint="?attr/colorPrimaryContainer"
             app:fabCustomSize="64dp"
             app:maxImageSize="26dp"
-            app:rippleColor="@color/floating_nav_active"
+            app:rippleColor="?attr/colorPrimary"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.FloatingNavFab"
             app:srcCompat="@drawable/ic_edit_square"
-            app:tint="@color/floating_nav_fab_content" />
+            app:tint="?attr/colorOnPrimaryContainer" />
 
     </LinearLayout>
 

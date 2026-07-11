@@ -26,6 +26,7 @@ import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -348,10 +349,14 @@ class UserProfileActivity : AppCompatActivity() {
     private fun styleTab(view: TextView, selected: Boolean) {
         if (selected) {
             view.setBackgroundResource(R.drawable.bg_pill_selected)
-            view.setTextColor(ContextCompat.getColor(this, R.color.profile_on_accent))
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnPrimary)
+            )
         } else {
             view.background = null
-            view.setTextColor(ContextCompat.getColor(this, R.color.profile_chip_text))
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            )
         }
     }
 
@@ -535,7 +540,10 @@ class UserProfileActivity : AppCompatActivity() {
                             binding.profileOnlineStatusTextView.text =
                                 OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeen.seconds * 1000)
                             binding.profileOnlineStatusTextView.setTextColor(
-                                ContextCompat.getColor(this@UserProfileActivity, R.color.profile_text_dim)
+                                MaterialColors.getColor(
+                                    binding.root,
+                                    com.google.android.material.R.attr.colorOnSurfaceVariant
+                                )
                             )
                             binding.statusDot.visibility = View.GONE
                             binding.onlineIndicator.visibility = View.GONE

@@ -395,6 +395,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Chat-Ordner</string>
+    <string name="chat_folders_section_title">Deine Ordner</string>
     <string name="chat_folders_empty_title">Noch keine Ordner</string>
     <string name="chat_folders_empty_subtitle">Erstelle einen Ordner, um schnell zwischen Chat-Gruppen zu wechseln</string>
     <string name="chat_folders_new_folder">Neuer Ordner</string>
