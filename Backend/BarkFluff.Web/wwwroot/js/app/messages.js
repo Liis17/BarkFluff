@@ -10,6 +10,26 @@
 
     var u = function () { return BF.utils; };
 
+    function updateMessageStatus(statusEl, isRead) {
+        statusEl.replaceChildren();
+        var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'msg-status-icon' + (isRead ? ' msg-status-icon--read' : ''));
+        icon.setAttribute('viewBox', isRead ? '0 0 20 12' : '0 0 12 12');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('focusable', 'false');
+
+        var paths = isRead
+            ? ['M1 6.2 4.5 9.8 11 2', 'M7 6.2 10.5 9.8 17 2']
+            : ['M1 6.2 4.5 9.8 11 2'];
+        paths.forEach(function (d) {
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            icon.appendChild(path);
+        });
+        statusEl.appendChild(icon);
+        statusEl.setAttribute('aria-label', isRead ? 'Прочитано' : 'Доставлено');
+    }
+
     // --- Audio Player Singleton ---
     var AudioPlayer = {
         current: null,
@@ -444,7 +464,7 @@
                     statusEl.className = 'msg-status';
                     statusEl.dataset.msgId = msg.id;
                     var readCount = (msg.readBy || []).filter(function (id) { return id !== myUserId; }).length;
-                    statusEl.innerHTML = readCount > 0 ? '&#10003;&#10003;' : '&#10003;';
+                    updateMessageStatus(statusEl, readCount > 0);
                     meta.appendChild(statusEl);
                 }
                 bubble.appendChild(meta);
@@ -457,6 +477,7 @@
 
     window.BF.messages = {
         buildMessageElement: buildMessageElement,
+        updateMessageStatus: updateMessageStatus,
         renderAttachments: renderAttachments,
         renderForwardedBlock: renderForwardedBlock,
         renderReplyQuote: renderReplyQuote
