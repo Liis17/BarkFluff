@@ -25,14 +25,12 @@ import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ChatsFragment : Fragment() {
 
@@ -50,6 +48,9 @@ class ChatsFragment : Fragment() {
     private var cachedDisplays: Map<String, CachedChatDisplay> = emptyMap()
     private var hasAppliedRemoteChats = false
     private var loadChatsJob: Job? = null
+    private var syncStatus: SyncStatus? = null
+    private var isRealtimeReconnecting = false
+    private var titleAnimationGeneration = 0
 
     // Папки чатов
     private var folders: List<GrpcManager.ChatFolder> = emptyList()
@@ -68,6 +69,13 @@ class ChatsFragment : Fragment() {
     companion object {
         private const val TAG = "ChatsFragment"
         private const val TOKEN_BUFFER_MINUTES = 5
+        private const val TITLE_FADE_OUT_DURATION_MS = 90L
+        private const val TITLE_FADE_IN_DURATION_MS = 160L
+    }
+
+    private enum class SyncStatus {
+        UPDATING,
+        OFFLINE
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -148,20 +156,50 @@ class ChatsFragment : Fragment() {
     private fun setupToolbar() {
         // Убираем стандартный title toolbar'а, используем свой TextView
         binding.toolbar.title = null
-        // Показываем имя пользователя
-        updateToolbarTitle()
-        binding.syncRetryButton.setOnClickListener {
+        updateToolbarTitle(animate = false)
+        binding.toolbarRetryButton.setOnClickListener {
             checkTokenAndLoadChats()
         }
     }
 
-    private fun updateToolbarTitle(isConnecting: Boolean = false) {
-        if (isConnecting) {
-            binding.toolbarTitle.text = getString(R.string.connecting)
-        } else {
-            val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
-            binding.toolbarTitle.text = fullName.ifBlank { globalParam.userName }
+    private fun updateToolbarTitle(animate: Boolean = true) {
+        val title = when {
+            isRealtimeReconnecting -> getString(R.string.connecting)
+            syncStatus == SyncStatus.UPDATING -> getString(R.string.chats_sync_updating)
+            syncStatus == SyncStatus.OFFLINE -> getString(R.string.chats_sync_offline)
+            else -> {
+                val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+                fullName.ifBlank { globalParam.userName }
+            }
         }
+
+        if (binding.toolbarTitle.text == title) return
+
+        binding.toolbarTitle.animate().cancel()
+        if (!animate) {
+            binding.toolbarTitle.alpha = 1f
+            binding.toolbarTitle.translationY = 0f
+            binding.toolbarTitle.text = title
+            return
+        }
+
+        val generation = ++titleAnimationGeneration
+        val offset = 4 * resources.displayMetrics.density
+        binding.toolbarTitle.animate()
+            .alpha(0f)
+            .translationY(-offset)
+            .setDuration(TITLE_FADE_OUT_DURATION_MS)
+            .withEndAction {
+                if (_binding == null || generation != titleAnimationGeneration) return@withEndAction
+                binding.toolbarTitle.text = title
+                binding.toolbarTitle.translationY = offset
+                binding.toolbarTitle.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(TITLE_FADE_IN_DURATION_MS)
+                    .start()
+            }
+            .start()
     }
 
     private fun loadUserAvatar() {
@@ -577,9 +615,8 @@ class ChatsFragment : Fragment() {
                         // Отменяем отложенный показ "Соединение..."
                         connectionCheckJob?.cancel()
                         connectionCheckJob = null
-                        withContext(Dispatchers.Main) {
-                            updateToolbarTitle(isConnecting = false)
-                        }
+                        isRealtimeReconnecting = false
+                        updateToolbarTitle()
                     }
                     RealtimeService.ConnectionState.CONNECTING,
                     RealtimeService.ConnectionState.DISCONNECTED -> {
@@ -587,12 +624,12 @@ class ChatsFragment : Fragment() {
                         if (connectionCheckJob == null) {
                             connectionCheckJob = launch {
                                 delay(1000) // Ждём 1 секунду
-                                withContext(Dispatchers.Main) {
-                                    updateToolbarTitle(isConnecting = true)
-                                }
+                                isRealtimeReconnecting = true
+                                updateToolbarTitle()
                             }
                         }
                     }
+                    RealtimeService.ConnectionState.IDLE -> Unit
                 }
             }
         }
@@ -832,21 +869,21 @@ class ChatsFragment : Fragment() {
     }
 
     private fun showSyncUpdating() {
-        binding.syncStatusContainer.visibility = View.VISIBLE
-        binding.syncStatusText.setText(R.string.chats_sync_updating)
-        binding.syncProgress.visibility = View.VISIBLE
-        binding.syncRetryButton.visibility = View.GONE
+        syncStatus = SyncStatus.UPDATING
+        binding.toolbarRetryButton.visibility = View.GONE
+        updateToolbarTitle()
     }
 
     private fun showSyncOffline() {
-        binding.syncStatusContainer.visibility = View.VISIBLE
-        binding.syncStatusText.setText(R.string.chats_sync_offline)
-        binding.syncProgress.visibility = View.GONE
-        binding.syncRetryButton.visibility = View.VISIBLE
+        syncStatus = SyncStatus.OFFLINE
+        binding.toolbarRetryButton.visibility = View.VISIBLE
+        updateToolbarTitle()
     }
 
     private fun hideSyncStatus() {
-        binding.syncStatusContainer.visibility = View.GONE
+        syncStatus = null
+        binding.toolbarRetryButton.visibility = View.GONE
+        updateToolbarTitle()
     }
 
     private fun showEmptyState(show: Boolean) {

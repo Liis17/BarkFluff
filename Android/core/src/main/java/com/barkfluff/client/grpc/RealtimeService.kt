@@ -37,7 +37,7 @@ class RealtimeService(
         private const val DEDUP_MAX_SIZE = 1000
     }
 
-    enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
+    enum class ConnectionState { IDLE, DISCONNECTED, CONNECTING, CONNECTED }
 
     // Public event flows
     private val _newMessages = MutableSharedFlow<UpdatesApiOuterClass.NewMessageEvent>(extraBufferCapacity = 64)
@@ -93,13 +93,16 @@ class RealtimeService(
     private val _secretMessages = MutableSharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent>(extraBufferCapacity = 64)
     val secretMessages: SharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent> = _secretMessages
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    private val _connectionState = MutableStateFlow(ConnectionState.IDLE)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
     // Internal state
     private val globalParam = GlobalParam(context)
     private var serviceScope: CoroutineScope? = null
     private val seenMessageIds = LinkedHashSet<Long>()
+
+    @Volatile
+    private var hasEstablishedMessagesConnection = false
 
     // Online subscription state
     @Volatile
@@ -125,7 +128,7 @@ class RealtimeService(
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
 
-        scope.launch { streamWithReconnect("NewMessages") { collectNewMessages() } }
+        scope.launch { streamWithReconnect("NewMessages", reportsConnectionState = true) { collectNewMessages() } }
         scope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
         scope.launch { streamWithReconnect("MessagesEdited") { collectMessagesEdited() } }
         scope.launch { streamWithReconnect("MessagesDeleted") { collectMessagesDeleted() } }
@@ -154,7 +157,11 @@ class RealtimeService(
      */
     fun pause() {
         Log.i(TAG, "Pausing realtime streams")
-        _connectionState.value = ConnectionState.DISCONNECTED
+        _connectionState.value = if (hasEstablishedMessagesConnection) {
+            ConnectionState.DISCONNECTED
+        } else {
+            ConnectionState.IDLE
+        }
         serviceScope?.cancel()
         serviceScope = null
     }
@@ -164,7 +171,8 @@ class RealtimeService(
      */
     fun shutdown() {
         Log.i(TAG, "Shutting down realtime streams")
-        _connectionState.value = ConnectionState.DISCONNECTED
+        hasEstablishedMessagesConnection = false
+        _connectionState.value = ConnectionState.IDLE
         serviceScope?.cancel()
         serviceScope = null
     }
@@ -209,6 +217,7 @@ class RealtimeService(
     private suspend fun collectNewMessages() {
         val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeNewMessagesRequest.getDefaultInstance()
+        hasEstablishedMessagesConnection = true
         _connectionState.value = ConnectionState.CONNECTED
         client.subscribeNewMessages(request).collect { event ->
             val msgId = event.message.id
@@ -425,11 +434,17 @@ class RealtimeService(
 
     // --- Reconnection ---
 
-    private suspend fun streamWithReconnect(name: String, block: suspend () -> Unit) {
+    private suspend fun streamWithReconnect(
+        name: String,
+        reportsConnectionState: Boolean = false,
+        block: suspend () -> Unit
+    ) {
         var attempts = 0
         while (coroutineContext.isActive) {
             try {
-                _connectionState.value = ConnectionState.CONNECTING
+                if (reportsConnectionState && hasEstablishedMessagesConnection) {
+                    _connectionState.value = ConnectionState.CONNECTING
+                }
                 ensureTokenValid()
                 Log.v(TAG, "[$name] Connecting...")
                 block()
@@ -452,7 +467,9 @@ class RealtimeService(
                     MAX_BACKOFF_MS.toDouble()
                 ).toLong()
 
-                _connectionState.value = ConnectionState.DISCONNECTED
+                if (reportsConnectionState && hasEstablishedMessagesConnection) {
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                }
                 Log.v(TAG, "[$name] Waiting ${backoff}ms before reconnect")
                 delay(backoff)
 
