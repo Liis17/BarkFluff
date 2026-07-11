@@ -423,10 +423,15 @@
             });
             var hasImages = hasImg && !isSticker;
             var imageOnly = hasImages && !hasVideo && !hasAudio && !hasDoc && !text && !fwd;
+            var videoOnly = hasVideo && !hasImg && !hasAudio && !hasDoc && !text && !fwd;
+            var videoWithText = hasVideo && !!text;
             var docsOnly = hasDoc && !hasImg && !hasVideo && !hasAudio && !fwd;
             bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '')
                 + (hasImages ? ' has-images' : '')
                 + (imageOnly ? ' image-only' : '')
+                + (hasVideo ? ' has-videos' : '')
+                + (videoOnly ? ' video-only' : '')
+                + (videoWithText ? ' video-with-text' : '')
                 + (docsOnly ? ' docs-only' : '');
 
             if (fwd) {
@@ -448,7 +453,7 @@
 
             if (!isSticker) {
                 var meta = document.createElement('div');
-                meta.className = 'msg-meta' + (imageOnly ? ' msg-img-overlay-meta' : '');
+                meta.className = 'msg-meta' + (imageOnly || videoOnly ? ' msg-img-overlay-meta' : '');
                 if (msg.isEdited) {
                     var editedEl = document.createElement('span');
                     editedEl.className = 'msg-edited';
