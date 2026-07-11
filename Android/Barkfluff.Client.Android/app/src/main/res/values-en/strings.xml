@@ -321,6 +321,9 @@
     <string name="profile_title">Profile</string>
     <string name="profile_user_placeholder">User</string>
     <string name="profile_section_account_security">Account and security</string>
+    <string name="profile_section_account">Account</string>
+    <string name="profile_section_appearance">Appearance</string>
+    <string name="profile_section_about">About the app</string>
     <string name="profile_section_personalization">Personalization</string>
     <string name="profile_section_application">Application</string>
     <string name="profile_section_other">Other</string>
