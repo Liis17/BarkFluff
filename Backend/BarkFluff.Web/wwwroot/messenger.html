@@ -1160,11 +1160,27 @@
         .msg-bubble.outgoing .msg-time { color: rgba(0, 0, 0, 0.5); }
 
         .msg-status {
-            font-size: 12px;
             color: rgba(0, 0, 0, 0.4);
+            display: inline-flex;
+            align-items: center;
+            line-height: 0;
         }
 
         .msg-bubble.outgoing .msg-status { color: rgba(0, 0, 0, 0.5); }
+
+        .msg-status-icon {
+            width: 14px;
+            height: 12px;
+            display: block;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            overflow: visible;
+        }
+
+        .msg-status-icon--read { width: 20px; }
 
         .msg-date-separator {
             text-align: center;

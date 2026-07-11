@@ -1048,11 +1048,11 @@
             var msg = messages.find(function (m) { return m.id === messageId; });
             if (msg) {
                 msg.readBy = readBy;
-                // Update check-mark indicator (single ✓ = sent, double ✓✓ = read by others)
+                // Update check-mark indicator (single = delivered, double = read by others)
                 var el = messagesArea.querySelector('.msg-status[data-msg-id="' + messageId + '"]');
                 if (el) {
                     var rc = readBy.filter(function (id) { return id !== myUserId; }).length;
-                    el.innerHTML = rc > 0 ? '&#10003;&#10003;' : '&#10003;';
+                    BF.messages.updateMessageStatus(el, rc > 0);
                 }
             }
         }
