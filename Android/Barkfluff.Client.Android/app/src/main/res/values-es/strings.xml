@@ -101,11 +101,11 @@
     <string name="hint_password_confirm_required">Confirmar contraseña *</string>
     <string name="register_password_start_typing">Empieza a escribir tu contraseña</string>
     <string name="register_password_requirements">Requisitos de la contraseña:</string>
-    <string name="register_password_req_length">○ Mínimo 8 caracteres</string>
-    <string name="register_password_req_upper">○ Letras mayúsculas</string>
-    <string name="register_password_req_lower">○ Letras minúsculas</string>
-    <string name="register_password_req_digit">○ Dígitos</string>
-    <string name="register_password_req_special">○ Caracteres especiales</string>
+    <string name="register_password_req_length">Mínimo 8 caracteres</string>
+    <string name="register_password_req_upper">Letras mayúsculas</string>
+    <string name="register_password_req_lower">Letras minúsculas</string>
+    <string name="register_password_req_digit">Dígitos</string>
+    <string name="register_password_req_special">Caracteres especiales</string>
     <string name="register_password_case_hint">Combina mayúsculas y minúsculas</string>
     <string name="register_password_digits_hint">Añade dígitos y caracteres especiales</string>
 
@@ -132,22 +132,75 @@
     <string name="register_step9_subtitle">Tu cuenta se ha creado correctamente.\n¡Bienvenido!</string>
     <string name="register_start_messaging">Empezar a chatear</string>
 
+    <!-- Registration redesign (архетип "c") -->
+    <string name="register_step1_headline">¿Cómo te\nllamas?</string>
+    <string name="register_step1_hint">Esto lo verá tu manada.</string>
+    <string name="register_step2_headline">Elige tu\n@usuario</string>
+    <string name="register_step2_hint">La dirección única de tu manada.</string>
+    <string name="register_step3_headline">Tu\ncorreo</string>
+    <string name="register_step3_hint">Tu clave para recuperar el acceso.</string>
+    <string name="register_step4_headline">Ingresa el\ncódigo</string>
+    <string name="register_step4_hint">6 dígitos del correo.</string>
+    <string name="register_step5_headline">Crea una\ncontraseña</string>
+    <string name="register_step7_headline">Unas palabras\nsobre ti</string>
+    <string name="register_step8_headline">Protege tu\ncuenta</string>
+    <string name="register_step9_headline">¡Listo!\nYa eres parte de la manada.</string>
+    <string name="register_rule_min3">Mín. 3</string>
+    <string name="register_rule_max40">Máx. 40</string>
+    <string name="register_rule_any_symbols">Cualquier carácter</string>
+    <string name="register_rule_az">a–z</string>
+    <string name="register_rule_09">0–9</string>
+    <string name="register_rule_underscore">_</string>
+    <string name="register_rule_max30">hasta 30</string>
+    <string name="register_username_status_free">Disponible</string>
+    <string name="register_username_status_taken">Ocupado</string>
+    <string name="register_otp_chip_inbox">Recibidos</string>
+    <string name="register_otp_chip_spam">Spam</string>
+    <string name="register_password_strength_weak">Débil</string>
+    <string name="register_password_strength_medium">Media</string>
+    <string name="register_password_strength_good">Buena</string>
+    <string name="register_password_strength_strong">Segura</string>
+    <string name="register_password_optional_chars">＋ !@#</string>
+    <string name="register_step9_status_chip">Los %1$d pasos completados</string>
+
+
     <!-- Reset password -->
-    <string name="reset_password_title">Restablecer contraseña</string>
-    <string name="reset_password_subtitle">Sigue las instrucciones para restablecer tu contraseña</string>
-    <string name="reset_enter_email_or_login">Introduce correo o nombre de usuario</string>
+    <string name="reset_password_title">¿Olvidaste tu contraseña?</string>
+    <string name="reset_password_subtitle">Introduce tu correo o usuario y te enviaremos un código para restablecerla</string>
+    <string name="reset_enter_email_or_login">Correo o nombre de usuario</string>
     <string name="reset_send_code">Enviar código</string>
-    <string name="reset_enter_verify_code">Introduce el código de verificación</string>
-    <string name="reset_we_sent_code">Te enviamos un código de 6 dígitos al correo</string>
+    <string name="reset_enter_verify_code">Introduce el código</string>
+    <string name="reset_we_sent_code">Código de 6 dígitos enviado a &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">Confirmar código</string>
     <string name="reset_resend_code">Reenviar código</string>
-    <string name="reset_create_new_password">Crea una nueva contraseña</string>
+    <string name="reset_create_new_password">Nueva contraseña</string>
     <string name="hint_new_password">Nueva contraseña</string>
     <string name="hint_confirm_password">Confirmar contraseña</string>
-    <string name="reset_save_new_password">Guardar nueva contraseña</string>
-    <string name="reset_password_success">¡Contraseña cambiada con éxito!</string>
+    <string name="reset_save_new_password">Guardar contraseña</string>
+    <string name="reset_password_success">¡Contraseña cambiada!</string>
     <string name="reset_password_success_subtitle">Ya puedes iniciar sesión con tu nueva contraseña</string>
     <string name="reset_back_to_login">Volver al inicio de sesión</string>
+    <string name="reset_pill_inbox">Bandeja de entrada</string>
+    <string name="reset_pill_spam">Spam</string>
+    <string name="reset_strength_empty">Empieza a escribir tu contraseña</string>
+    <string name="reset_strength_weak">Débil</string>
+    <string name="reset_strength_medium">Media</string>
+    <string name="reset_strength_good">Buena</string>
+    <string name="reset_strength_strong">Contraseña segura</string>
+    <string name="reset_success_chip">Acceso restablecido</string>
+    <string name="reset_error_empty_login">Introduce tu correo o nombre de usuario</string>
+    <string name="reset_error_otp_incomplete">Introduce el código de 6 dígitos</string>
+    <string name="reset_error_password_empty">Introduce una nueva contraseña</string>
+    <string name="reset_error_password_too_short">La contraseña debe tener al menos 8 caracteres</string>
+    <string name="reset_error_password_mismatch">Las contraseñas no coinciden</string>
+    <string name="reset_error_no_reset_id">Error: resetId no recibido</string>
+    <string name="reset_error_generic">Error: %1$s</string>
+    <string name="reset_error_confirm_failed">Error al confirmar el código</string>
+    <string name="reset_error_invalid_otp">Código de confirmación no válido</string>
+    <string name="reset_toast_code_sent">Código enviado a tu correo</string>
+    <string name="reset_toast_code_confirmed">Código confirmado</string>
+    <string name="reset_toast_code_resent">Código reenviado</string>
+    <string name="reset_otp_digit_description">Dígito %1$d de 6</string>
 
     <!-- Chat Screen -->
     <string name="chat_search_hint">Buscar chats</string>
