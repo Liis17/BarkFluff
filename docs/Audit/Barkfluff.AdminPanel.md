@@ -17,11 +17,12 @@ AdminPanel — самая чувствительная поверхность п
 
 ## Безопасность
 
-### S1. Захардкоженный токен Telegram-бота в репозитории — Critical
+### S1. Захардкоженный токен Telegram-бота в репозитории — Critical — ✅ RESOLVED
 **Файл:** `Backend/Barkfluff.AdminPanel/appsettings.json:10` (и `appsettings.Development.json:9`)
 **Проблема:** В обоих файлах закоммичен боевой токен бота: `"BotToken": "8539569051:AAHMs6TwTKOpYqcA8XkWTB7p6w8CO1RWQwQ"`, а также реальный admin id (`"Admins": "495716470:admin_nick"`).
 **Почему это проблема:** Telegram-бот — единственный канал подтверждения входа в панель. Кто угодно с доступом к репозиторию (или к истории git) получает полный контроль над ботом: может перехватывать/подделывать сообщения, рассылать от его имени, в ряде сценариев манипулировать процессом одобрения входа. Даже несмотря на то, что в проде значение переопределяется через `Telegram__BotToken` (см. compose), сам токен уже скомпрометирован самим фактом коммита и остаётся валидным до отзыва.
 **Рекомендация:** Немедленно отозвать токен через @BotFather и выпустить новый. Убрать секреты из `appsettings*.json` (оставить пустые строки/placeholder), хранить только в `.env`/секрет-менеджере. Почистить git-историю (BFG/`git filter-repo`). Тот же подход — для `Admins`.
+**Статус:** `BotToken`/`Admins` заменены на пустые строки в `appsettings.json`, `appsettings.Development.json` и `Properties/launchSettings.json` — значения приходят только из `.env` через `docker-compose-dev.yml` (`Telegram__BotToken`, `Telegram__Admins`). Токен отозван через @BotFather, выпущен новый, обновлён на сервере. Git-история не чищена (старый токен уже невалиден, поэтому не критично).
 
 ### S2. Контейнер работает под root со смонтированным docker.sock (root на хосте) — Critical
 **Файл:** `Backend/docker-compose-dev.yml:184` и `:228` (`user: root` + `- /var/run/docker.sock:/var/run/docker.sock`); аналогично `Backend/docker-compose-master.yml:146` и `:178`. Контр-пример: `Backend/Barkfluff.AdminPanel/Dockerfile:23` (`USER $APP_UID`).
