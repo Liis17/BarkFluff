@@ -59,7 +59,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/profile_settings_surface"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
                 app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp">
@@ -148,7 +148,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/profile_settings_surface"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
                 app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp">
