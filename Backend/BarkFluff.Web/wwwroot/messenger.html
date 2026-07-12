@@ -526,8 +526,12 @@
         }
 
         .chat-empty-icon {
-            font-size: 48px;
             opacity: 0.4;
+        }
+
+        .chat-empty-icon svg {
+            width: 56px;
+            height: 56px;
         }
 
         .chat-empty-text {
@@ -3223,6 +3227,78 @@
         .btn-confirm-cancel:hover { opacity: 0.8; }
         .btn-confirm-ok:hover { opacity: 0.85; }
 
+        /* === PRIVATE CHATS === */
+
+        .chat-lock { margin-right: 4px; font-size: 12px; }
+
+        .preview-private-invite { color: var(--primary); font-weight: 500; }
+
+        /* В приватных чатах вложения/стикеры не поддерживаются */
+        .input-bar.private-chat .btn-attach,
+        .input-bar.private-chat .btn-sticker { display: none; }
+
+        .private-card {
+            max-width: 360px;
+            margin: 40px auto;
+            padding: 24px 28px;
+            background: var(--dialog-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .private-card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+
+        .private-card-text { font-size: 14px; color: var(--text-sub); line-height: 1.5; margin-bottom: 16px; }
+
+        .private-card-actions { display: flex; gap: 10px; justify-content: center; }
+
+        .private-card-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.07);
+            color: var(--text-main);
+            transition: opacity 0.15s;
+        }
+
+        .private-card-btn.primary { background: var(--primary); color: white; }
+        .private-card-btn:hover { opacity: 0.85; }
+
+        .private-pass-input {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .private-pass-input:focus { outline: none; border-color: var(--input-focus); }
+
+        .private-pass-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .private-pass-error { font-size: 13px; color: var(--error); min-height: 18px; margin-bottom: 10px; }
+
+        .btn-confirm-primary { background: var(--primary); color: white; }
+
         /* === SCROLL-TO-BOTTOM BUTTON === */
 
         .chat-area { position: relative; }
@@ -4339,7 +4415,7 @@
             </div>
 
             <div class="chat-empty" id="chatEmpty">
-                <div class="chat-empty-icon">&#128172;</div>
+                <div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
                 <div class="chat-empty-text">Чтобы начать диалог выберите чат из списка слева</div>
             </div>
 
@@ -4418,6 +4494,21 @@
             <div class="confirm-actions">
                 <button class="btn-confirm-cancel" id="deleteMsgCancel">Отмена</button>
                 <button class="btn-confirm-ok" id="deleteMsgOk">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пароль приватного чата -->
+    <div class="confirm-overlay" id="privatePassOverlay">
+        <div class="confirm-dialog">
+            <h3 id="privatePassTitle">Пароль приватного чата</h3>
+            <p>Пароль используется для расшифровки сообщений и не отправляется на сервер.</p>
+            <input type="password" class="private-pass-input" id="privatePassInput" placeholder="Пароль" autocomplete="off">
+            <label class="private-pass-remember"><input type="checkbox" id="privatePassRemember" checked> Запомнить пароль в этом браузере</label>
+            <div class="private-pass-error" id="privatePassError"></div>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="privatePassCancel">Отмена</button>
+                <button class="btn-confirm-ok btn-confirm-primary" id="privatePassOk">ОК</button>
             </div>
         </div>
     </div>
@@ -4914,16 +5005,18 @@
     <script src="/js/proto/barkfluff.bundle.js?v=folders-pins-1"></script>
     <!-- LiveKit JS SDK (window.LivekitClient) -->
     <script src="/js/vendor/livekit-client.bundle.js?v=calls-1"></script>
+    <script src="/js/vendor/hash-wasm.umd.min.js?v=private-chats-1"></script>
     <!-- App modules -->
     <script src="/js/app/device.js"></script>
     <script src="/js/app/tokens.js"></script>
     <script src="/js/app/metadata.js"></script>
     <script src="/js/app/clients.js"></script>
     <script src="/js/app/utils.js"></script>
-    <script src="/js/app/api.js?v=personalization-2"></script>
+    <script src="/js/app/api.js?v=private-chats-1"></script>
+    <script src="/js/app/privatechat.js?v=private-chats-1"></script>
     <script src="/js/app/files.js?v=resilient-media-1"></script>
     <script src="/js/app/messages.js?v=resilient-media-1"></script>
-    <script src="/js/app/realtime.js?v=folders-pins-1"></script>
+    <script src="/js/app/realtime.js?v=private-chats-1"></script>
     <script src="/js/app/calls.js?v=calls-3"></script>
     <script src="/js/app/calls-ui.js?v=calls-6"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
@@ -4932,7 +5025,7 @@
     <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
-    <script src="/js/app/main.js?v=resilient-media-1"></script>
+    <script src="/js/app/main.js?v=private-chats-1"></script>
     <script>
     /* Inject theme picker into settings dialog */
     (function () {
