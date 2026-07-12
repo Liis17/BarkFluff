@@ -407,3 +407,7 @@ Android/.gradle/9.2.1/executionHistory/executionHistory.bin
 
 # Load test reports содержат живые JWT в metadata — не коммитить
 /Tests/LoadTests/reports/
+
+# Android release signing key — не коммитить (был утёк, перевыпущен)
+Android/Barkfluff.Client.Android/barkfluff-release.jks
+*.jks
