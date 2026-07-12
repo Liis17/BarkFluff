@@ -256,4 +256,32 @@
         <item name="android:focusable">true</item>
         <item name="drawableTint">?attr/colorOnSurfaceVariant</item>
     </style>
+
+    <!-- Регистрация (архетип "c") -->
+    <style name="TextAppearance.Barkfluff.Register.Headline" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingMultiplier">0.95</item>
+    </style>
+
+    <style name="TextAppearance.Barkfluff.Register.FieldLabel" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+    </style>
+
+    <style name="TextAppearance.Barkfluff.Register.BigNumber" parent="TextAppearance.Material3.DisplayLarge">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:letterSpacing">-0.02</item>
+    </style>
+
+    <style name="Widget.Barkfluff.Register.CtaButton" parent="Widget.Material3.Button">
+        <item name="cornerRadius">@dimen/shape_corner_full</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">18sp</item>
+        <item name="iconGravity">textEnd</item>
+    </style>
 </resources>
