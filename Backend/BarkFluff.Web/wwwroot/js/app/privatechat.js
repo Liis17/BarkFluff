@@ -89,6 +89,11 @@
 
     // --- KDF + verifier ---
 
+    /** Криптостойкий salt для Argon2id (создание чата). */
+    function generateSalt() {
+        return crypto.getRandomValues(new Uint8Array(32));
+    }
+
     /** Argon2id(passphrase, salt) → Uint8Array(32). Тяжёлая операция (~1с). */
     function deriveKey(passphrase, salt) {
         return window.hashwasm.argon2id({
@@ -175,6 +180,7 @@
     }
 
     window.BF.privateChat = {
+        generateSalt: generateSalt,
         deriveKey: deriveKey,
         computeVerifier: computeVerifier,
         validateVerifier: validateVerifier,

@@ -60,7 +60,14 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - `js/app/api.js` — `mapChat` расширен (`chatType/kdfSalt/passphraseVerifier/lastActivityAt/privateInviteState/privateInviterUserId`), `mapEncryptedMessage`, методы `acceptPrivateChat/rejectPrivateChat/listPrivateMessages/sendPrivateMessage/markPrivateMessagesAsRead`.
 - `js/app/realtime.js` — стрим `SubscribePrivateMessages` → событие `private_message` (тот же паттерн backoff/watchdog/age-timer/resync).
 - `js/app/main.js`, секция `PRIVATE CHATS`: `openPrivateChat` (обходит `getChatInfo`/`listMessages`, данные чата из ListChats); карточки состояний (`showPrivateCard`) — инвайт «Принять/Отклонить» (PENDING у приглашённого), «Ожидание собеседника» (PENDING у инициатора), «Чат заблокирован» (ACCEPTED без ключа); passphrase-модал `#privatePassOverlay` с проверкой verifier'а до `AcceptPrivateChat`; расшифрованные сообщения маппятся в обычный формат и рендерятся `BF.messages.buildMessageElement`.
-- Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Создание приватного чата из веба пока не реализовано (только приём инвайтов с других клиентов). Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
+- Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
+
+### Создание чатов
+- `js/app/newchat.js` (`BF.newchat`) — FAB (карандаш) в сайдбаре над навигацией → меню из трёх пунктов → оверлей `#newChatOverlay` с поиском пользователей (`SearchUsers`, исключается сам пользователь):
+  - **Новое сообщение** — клик по пользователю → `GetPersonChatId` → `openChat` (создания RPC нет, ЛС материализуется лениво).
+  - **Новая группа** — название + мультивыбор участников (чипы) → `CreateGroupChat(user_ids, title)`.
+  - **Приватный чат** — один собеседник (боты исключаются) + пароль ≥6 символов + чекбокс «запомнить» → `generateSalt(32)` → Argon2id → verifier → `CreatePrivateChat`; ключ сохраняется только если `created=true` (у существующего чата свой salt/пароль — поведение Android `PrivateChatRepository.createPrivateChat`). Создатель видит «Ожидание собеседника» (PENDING).
+- `main.js` передаёт в `BF.newchat.init` колбэки `openChat`/`upsertChat` (вставка чата в список + открытие) и `getMyUserId`; на мобильном layout вызывается `window.__mobileShowChat`.
 
 ### Хост и маршрутизация
 - [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.

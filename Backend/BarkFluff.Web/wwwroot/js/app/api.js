@@ -729,7 +729,29 @@
         });
     }
 
+    function createGroupChat(userIds, title, pictureFileId) {
+        var req = new (msgPb().CreateGroupChatRequest)();
+        req.setUserIdsList(userIds);
+        req.setTitle(title || '');
+        req.setPictureFileId(pictureFileId || '');
+        return c().authCall(messages().createGroupChat.bind(messages()), req).then(function (resp) {
+            var ch = resp.getCreatedChat();
+            return { chat: ch ? mapChat(ch) : null };
+        });
+    }
+
     // --- Приватные чаты (E2E через passphrase) ---
+
+    function createPrivateChat(peerUserId, kdfSalt, passphraseVerifier) {
+        var req = new (msgPb().CreatePrivateChatRequest)();
+        req.setPeerUserId(peerUserId);
+        req.setKdfSalt(kdfSalt);
+        req.setPassphraseVerifier(passphraseVerifier);
+        return c().authCall(messages().createPrivateChat.bind(messages()), req).then(function (resp) {
+            var ch = resp.getChat();
+            return { chat: ch ? mapChat(ch) : null, created: resp.getCreated() };
+        });
+    }
 
     function acceptPrivateChat(chatId) {
         var req = new (msgPb().AcceptPrivateChatRequest)();
@@ -855,7 +877,9 @@
         unpinMessage: unpinMessage,
         listPinnedMessages: listPinnedMessages,
         unpinAll: unpinAll,
+        createGroupChat: createGroupChat,
         // Private chats
+        createPrivateChat: createPrivateChat,
         acceptPrivateChat: acceptPrivateChat,
         rejectPrivateChat: rejectPrivateChat,
         listPrivateMessages: listPrivateMessages,

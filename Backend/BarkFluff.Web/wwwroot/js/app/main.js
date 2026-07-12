@@ -3152,6 +3152,20 @@
         loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie);
     }
 
+    if (BF.newchat && BF.newchat.init) {
+        BF.newchat.init({
+            openChat: openChat,
+            getMyUserId: function () { return myUserId; },
+            upsertChat: function (chat) {
+                var idx = chats.findIndex(function (c) { return c.id === chat.id; });
+                if (idx >= 0) chats[idx] = chat; else chats.unshift(chat);
+                renderChatList();
+                openChat(chat.id);
+                if (window.__mobileShowChat) window.__mobileShowChat();
+            }
+        });
+    }
+
     BF.realtime.startAll();
     if (BF.calls && BF.calls.start) BF.calls.start();
 
