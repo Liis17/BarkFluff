@@ -54,6 +54,14 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - Кнопки звонка — в шапке чата (`#chatHeader`), обработчики в `main.js` (1-на-1 → `callee_user_id`, группа → `chat_id`).
 - LiveKit-бандл: `wwwroot/js/vendor/livekit-client.bundle.js` (esbuild IIFE, `window.LivekitClient`).
 
+### Приватные чаты (E2E через passphrase, см. [[Backend/Messages]])
+- Портирует Android `PrivateChatCrypto.kt`/`PrivateChatRepository.kt`: Argon2id (t=3, m=64MiB, p=4, salt 32 байта) → ключ 32 байта → AES-256-GCM (nonce 12 байт, tag 128 бит), AAD `barkfluff:private:{chatId}`, verifier `HMAC-SHA256(key, "BARKFLUFF_PRIVATE_CHAT_VERIFIER")`.
+- `js/app/privatechat.js` (`BF.privateChat`) — deriveKey (Argon2id через **hash-wasm**, `js/vendor/hash-wasm.umd.min.js`, глобал `hashwasm`), computeVerifier/validateVerifier + encryptText/decryptMessage (WebCrypto AES-GCM). Ключи (не passphrase): in-memory `Map` + localStorage `bf_private_chat_keys` (base64, если отмечен чекбокс «запомнить»).
+- `js/app/api.js` — `mapChat` расширен (`chatType/kdfSalt/passphraseVerifier/lastActivityAt/privateInviteState/privateInviterUserId`), `mapEncryptedMessage`, методы `acceptPrivateChat/rejectPrivateChat/listPrivateMessages/sendPrivateMessage/markPrivateMessagesAsRead`.
+- `js/app/realtime.js` — стрим `SubscribePrivateMessages` → событие `private_message` (тот же паттерн backoff/watchdog/age-timer/resync).
+- `js/app/main.js`, секция `PRIVATE CHATS`: `openPrivateChat` (обходит `getChatInfo`/`listMessages`, данные чата из ListChats); карточки состояний (`showPrivateCard`) — инвайт «Принять/Отклонить» (PENDING у приглашённого), «Ожидание собеседника» (PENDING у инициатора), «Чат заблокирован» (ACCEPTED без ключа); passphrase-модал `#privatePassOverlay` с проверкой verifier'а до `AcceptPrivateChat`; расшифрованные сообщения маппятся в обычный формат и рендерятся `BF.messages.buildMessageElement`.
+- Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Создание приватного чата из веба пока не реализовано (только приём инвайтов с других клиентов). Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
+
 ### Хост и маршрутизация
 - [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
 
