@@ -4,21 +4,23 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/profile_settings_background"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurfaceContainer">
+        android:background="@color/profile_settings_background">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
-            style="@style/Widget.Barkfluff.Settings2A.Toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             app:navigationIcon="@drawable/ic_arrow_back"
+            app:navigationIconTint="?attr/colorOnSurface"
             app:title="@string/chat_folders_settings_title"
-            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
