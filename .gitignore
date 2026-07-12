@@ -404,3 +404,6 @@ Android/.gradle/9.2.1/executionHistory/executionHistory.bin
 /Android/.gradle/buildOutputCleanup
 .gradle-codex/
 /.codex-remote-attachments/
+
+# Load test reports содержат живые JWT в metadata — не коммитить
+/Tests/LoadTests/reports/
