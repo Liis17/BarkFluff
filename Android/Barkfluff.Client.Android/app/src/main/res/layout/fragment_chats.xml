@@ -145,7 +145,7 @@
                 android:layout_height="64dp"
                 android:layout_gravity="center"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_chat_bubble"
+                android:src="@drawable/ic_chat_bubble_md3"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.card.MaterialCardView>

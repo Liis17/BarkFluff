@@ -10,6 +10,7 @@
     android:paddingVertical="8dp">
 
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/skeletonAvatar"
         android:layout_width="56dp"
         android:layout_height="56dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
@@ -24,12 +25,14 @@
         android:orientation="vertical">
 
         <View
+            android:id="@+id/skeletonLine1"
             android:layout_width="0dp"
             android:layout_height="16dp"
             android:layout_marginEnd="72dp"
             android:background="?attr/colorSurfaceContainerHigh" />
 
         <View
+            android:id="@+id/skeletonLine2"
             android:layout_width="0dp"
             android:layout_height="14dp"
             android:layout_marginTop="10dp"
