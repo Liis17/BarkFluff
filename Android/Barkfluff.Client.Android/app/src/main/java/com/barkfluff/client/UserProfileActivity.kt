@@ -446,8 +446,7 @@ class UserProfileActivity : AppCompatActivity() {
                 placeholderView = binding.profileAvatarPlaceholder,
                 fileId = chatAvatarFileId!!,
                 displayName = chatTitle,
-                userId = chatId.hashCode().toLong(),
-                size = 240
+                userId = chatId.hashCode().toLong()
             ) {
                 chatRepository.getFileDownloadUrl(chatAvatarFileId!!).getOrNull()
             }
@@ -492,8 +491,7 @@ class UserProfileActivity : AppCompatActivity() {
                             placeholderView = binding.profileAvatarPlaceholder,
                             fileId = avatarFileId,
                             displayName = displayName.ifBlank { user.username },
-                            userId = otherUserId,
-                            size = 240
+                            userId = otherUserId
                         ) {
                             chatRepository.getFileDownloadUrl(avatarFileId).getOrNull()
                         }
