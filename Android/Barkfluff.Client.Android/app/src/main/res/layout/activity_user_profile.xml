@@ -495,8 +495,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:minHeight="168dp"
-            android:paddingHorizontal="18dp">
+            android:minHeight="168dp">
 
             <ProgressBar
                 android:id="@+id/attachmentsLoading"
