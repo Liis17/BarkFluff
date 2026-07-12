@@ -86,7 +86,32 @@
             lastMessage: lm ? mapMessage(lm) : null,
             members: ch.getMembersList().map(function (m) { return { userId: m.getUserId() }; }),
             countUnread: ch.getCountUnread(),
-            firstUnreadMessageId: ch.getFirstUnreadMessageId()
+            firstUnreadMessageId: ch.getFirstUnreadMessageId(),
+            // Приватные чаты (ChatType: 0=REGULAR, 1=PRIVATE, 2=SECRET)
+            chatType: ch.getChatType ? ch.getChatType() : 0,
+            kdfSalt: ch.getKdfSalt_asU8 ? ch.getKdfSalt_asU8() : new Uint8Array(0),
+            passphraseVerifier: ch.getPassphraseVerifier_asU8 ? ch.getPassphraseVerifier_asU8() : new Uint8Array(0),
+            lastActivityAt: ch.getLastActivityAt ? tsToMs(ch.getLastActivityAt()) : null,
+            // PrivateChatInviteState: 0=PENDING, 1=ACCEPTED, 2=REJECTED
+            privateInviteState: ch.getPrivateInviteState ? ch.getPrivateInviteState() : 0,
+            privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0
+        };
+    }
+
+    // Шифрованное сообщение приватного чата — сервер отдаёт только шифротекст,
+    // расшифровка на клиенте (BF.privateChat).
+    function mapEncryptedMessage(m) {
+        return {
+            id: m.getId(),
+            chatId: m.getChatId(),
+            senderId: m.getSenderId(),
+            sentAt: tsToMs(m.getSentAt()),
+            ciphertext: m.getCiphertext_asU8(),
+            nonce: m.getNonce_asU8(),
+            associatedData: m.getAssociatedData_asU8(),
+            isEdited: m.getIsEdited(),
+            editedAt: tsToMs(m.getEditedAt()),
+            isDeleted: m.getIsDeleted()
         };
     }
 
@@ -704,6 +729,53 @@
         });
     }
 
+    // --- Приватные чаты (E2E через passphrase) ---
+
+    function acceptPrivateChat(chatId) {
+        var req = new (msgPb().AcceptPrivateChatRequest)();
+        req.setChatId(chatId);
+        return c().authCall(messages().acceptPrivateChat.bind(messages()), req).then(function (resp) {
+            var ch = resp.getChat();
+            return { chat: ch ? mapChat(ch) : null };
+        });
+    }
+
+    function rejectPrivateChat(chatId) {
+        var req = new (msgPb().RejectPrivateChatRequest)();
+        req.setChatId(chatId);
+        return c().authCall(messages().rejectPrivateChat.bind(messages()), req);
+    }
+
+    function listPrivateMessages(chatId, fromMessageId, offsetBefore, offsetAfter) {
+        var req = new (msgPb().ListPrivateMessagesRequest)();
+        req.setChatId(chatId);
+        req.setFromMessageId(fromMessageId || 0);
+        req.setOffsetBefore(Math.min(offsetBefore || 30, 50));
+        req.setOffsetAfter(Math.min(offsetAfter || 0, 50));
+        return c().authCall(messages().listPrivateMessages.bind(messages()), req).then(function (resp) {
+            return { messages: resp.getMessagesList().map(mapEncryptedMessage) };
+        });
+    }
+
+    function sendPrivateMessage(chatId, ciphertext, nonce, associatedData) {
+        var req = new (msgPb().SendPrivateMessageRequest)();
+        req.setChatId(chatId);
+        req.setCiphertext(ciphertext);
+        req.setNonce(nonce);
+        req.setAssociatedData(associatedData);
+        return c().authCall(messages().sendPrivateMessage.bind(messages()), req).then(function (resp) {
+            var m = resp.getMessage();
+            return { message: m ? mapEncryptedMessage(m) : null };
+        });
+    }
+
+    function markPrivateMessagesAsRead(chatId, lastReadMessageId) {
+        var req = new (msgPb().MarkPrivateMessagesAsReadRequest)();
+        req.setChatId(chatId);
+        req.setLastReadMessageId(lastReadMessageId);
+        return c().authCall(messages().markPrivateMessagesAsRead.bind(messages()), req);
+    }
+
     function setOnlineStatus() {
         var req = new (onlPb().SetOnlineStatusRequest)();
         return c().authCall(onliner().setOnlineStatus.bind(onliner()), req);
@@ -783,8 +855,15 @@
         unpinMessage: unpinMessage,
         listPinnedMessages: listPinnedMessages,
         unpinAll: unpinAll,
+        // Private chats
+        acceptPrivateChat: acceptPrivateChat,
+        rejectPrivateChat: rejectPrivateChat,
+        listPrivateMessages: listPrivateMessages,
+        sendPrivateMessage: sendPrivateMessage,
+        markPrivateMessagesAsRead: markPrivateMessagesAsRead,
         // Expose mapping helpers for realtime module
         _mapMessage: mapMessage,
-        _mapUser: mapUser
+        _mapUser: mapUser,
+        _mapEncryptedMessage: mapEncryptedMessage
     };
 })();
