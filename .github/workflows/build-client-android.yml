@@ -116,6 +116,11 @@ jobs:
         run: |
           sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' Barkfluff.Client.Android/app/build.gradle.kts
 
+      - name: Восстановление keystore из секрета
+        env:
+          STORE_B64: ${{ secrets.ANDROID_RELEASE_STORE_B64 }}
+        run: echo "$STORE_B64" | base64 -d > Barkfluff.Client.Android/barkfluff-release.jks
+
       - name: Сборка APK
         env:
           RELEASE_STORE_FILE: ${{ secrets.ANDROID_RELEASE_STORE_FILE }}
