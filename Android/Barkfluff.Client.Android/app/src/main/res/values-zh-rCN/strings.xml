@@ -101,11 +101,11 @@
     <string name="hint_password_confirm_required">确认密码 *</string>
     <string name="register_password_start_typing">开始输入密码</string>
     <string name="register_password_requirements">密码要求：</string>
-    <string name="register_password_req_length">○ 至少 8 个字符</string>
-    <string name="register_password_req_upper">○ 大写字母</string>
-    <string name="register_password_req_lower">○ 小写字母</string>
-    <string name="register_password_req_digit">○ 数字</string>
-    <string name="register_password_req_special">○ 特殊字符</string>
+    <string name="register_password_req_length">至少 8 个字符</string>
+    <string name="register_password_req_upper">大写字母</string>
+    <string name="register_password_req_lower">小写字母</string>
+    <string name="register_password_req_digit">数字</string>
+    <string name="register_password_req_special">特殊字符</string>
     <string name="register_password_case_hint">请混合使用大小写字母</string>
     <string name="register_password_digits_hint">请添加数字和特殊字符</string>
 
@@ -132,22 +132,75 @@
     <string name="register_step9_subtitle">你的账户已成功创建。\n欢迎！</string>
     <string name="register_start_messaging">开始聊天</string>
 
+    <!-- Registration redesign (архетип "c") -->
+    <string name="register_step1_headline">你叫\n什么名字?</string>
+    <string name="register_step1_hint">这将展示给你的伙伴们。</string>
+    <string name="register_step2_headline">创建你的\n@用户名</string>
+    <string name="register_step2_hint">你的专属地址。</string>
+    <string name="register_step3_headline">你的\n邮箱</string>
+    <string name="register_step3_hint">用于找回账号的密钥。</string>
+    <string name="register_step4_headline">输入\n验证码</string>
+    <string name="register_step4_hint">邮件中的6位数字。</string>
+    <string name="register_step5_headline">设置\n密码</string>
+    <string name="register_step7_headline">简单介绍\n一下自己</string>
+    <string name="register_step8_headline">保护你的\n账号</string>
+    <string name="register_step9_headline">完成!\n欢迎加入。</string>
+    <string name="register_rule_min3">最少3位</string>
+    <string name="register_rule_max40">最多40位</string>
+    <string name="register_rule_any_symbols">任意字符</string>
+    <string name="register_rule_az">a–z</string>
+    <string name="register_rule_09">0–9</string>
+    <string name="register_rule_underscore">_</string>
+    <string name="register_rule_max30">最多30位</string>
+    <string name="register_username_status_free">可用</string>
+    <string name="register_username_status_taken">已被占用</string>
+    <string name="register_otp_chip_inbox">收件箱</string>
+    <string name="register_otp_chip_spam">垃圾邮件</string>
+    <string name="register_password_strength_weak">弱</string>
+    <string name="register_password_strength_medium">中</string>
+    <string name="register_password_strength_good">较强</string>
+    <string name="register_password_strength_strong">强</string>
+    <string name="register_password_optional_chars">＋ !@#</string>
+    <string name="register_step9_status_chip">已完成全部%1$d个步骤</string>
+
+
     <!-- Reset password -->
-    <string name="reset_password_title">重置密码</string>
-    <string name="reset_password_subtitle">按照说明重置你的密码</string>
-    <string name="reset_enter_email_or_login">输入邮箱或用户名</string>
+    <string name="reset_password_title">忘记密码？</string>
+    <string name="reset_password_subtitle">输入邮箱或用户名，我们将发送验证码用于重置密码</string>
+    <string name="reset_enter_email_or_login">邮箱或用户名</string>
     <string name="reset_send_code">发送验证码</string>
     <string name="reset_enter_verify_code">输入验证码</string>
-    <string name="reset_we_sent_code">我们已将 6 位验证码发送到你的邮箱</string>
+    <string name="reset_we_sent_code">6 位验证码已发送至 &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">确认验证码</string>
     <string name="reset_resend_code">重新发送验证码</string>
-    <string name="reset_create_new_password">创建新密码</string>
+    <string name="reset_create_new_password">新密码</string>
     <string name="hint_new_password">新密码</string>
     <string name="hint_confirm_password">确认密码</string>
-    <string name="reset_save_new_password">保存新密码</string>
-    <string name="reset_password_success">密码修改成功！</string>
+    <string name="reset_save_new_password">保存密码</string>
+    <string name="reset_password_success">密码已修改！</string>
     <string name="reset_password_success_subtitle">你现在可以使用新密码登录了</string>
     <string name="reset_back_to_login">返回登录</string>
+    <string name="reset_pill_inbox">收件箱</string>
+    <string name="reset_pill_spam">垃圾邮件</string>
+    <string name="reset_strength_empty">开始输入密码</string>
+    <string name="reset_strength_weak">弱</string>
+    <string name="reset_strength_medium">中等</string>
+    <string name="reset_strength_good">良好</string>
+    <string name="reset_strength_strong">密码强度高</string>
+    <string name="reset_success_chip">访问权限已恢复</string>
+    <string name="reset_error_empty_login">请输入邮箱或用户名</string>
+    <string name="reset_error_otp_incomplete">请输入 6 位验证码</string>
+    <string name="reset_error_password_empty">请输入新密码</string>
+    <string name="reset_error_password_too_short">密码至少需要 8 个字符</string>
+    <string name="reset_error_password_mismatch">两次输入的密码不一致</string>
+    <string name="reset_error_no_reset_id">错误：未获取到 resetId</string>
+    <string name="reset_error_generic">错误：%1$s</string>
+    <string name="reset_error_confirm_failed">验证码确认失败</string>
+    <string name="reset_error_invalid_otp">验证码无效</string>
+    <string name="reset_toast_code_sent">验证码已发送至你的邮箱</string>
+    <string name="reset_toast_code_confirmed">验证码已确认</string>
+    <string name="reset_toast_code_resent">验证码已重新发送</string>
+    <string name="reset_otp_digit_description">第 %1$d 位，共 6 位</string>
 
     <!-- Chat Screen -->
     <string name="chat_search_hint">搜索聊天</string>
