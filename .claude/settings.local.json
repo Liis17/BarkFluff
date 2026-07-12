@@ -15,18 +15,15 @@
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_evaluate",
-
       "WebSearch",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Skill(commit)",
       "Skill(run)",
-
       "Read(/Users/liis/Projects/BarkFluff/**)",
       "Read(K:/source/BarkFluff/**)",
       "Read(//k/source/BarkFluff/**)",
       "Read(//c/Users/daske/.nuget/packages/**)",
       "Read(//tmp/**)",
-
       "Bash(cd:*)",
       "Bash(ls *)",
       "Bash(dir:*)",
@@ -58,7 +55,6 @@
       "Bash(if *)",
       "Bash(export *)",
       "Bash(break)",
-
       "Bash(git *)",
       "Bash(gh *)",
       "Bash(dotnet *)",
@@ -88,15 +84,18 @@
       "Bash(claude *)",
       "Bash(sudo xcode-select *)",
       "Bash(\"C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\" *)",
-
       "Bash(ANDROID_HOME=*)",
       "Bash(JAVA_HOME=*)",
       "Bash(PATH=*)",
-
       "PowerShell(dotnet build *)",
       "PowerShell(pwsh *)",
       "PowerShell(Copy-Item *)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "Bash(where keytool *)",
+      "Bash(keytool -help)",
+      "Bash(cmd //c keystore-to-base64.cmd)",
+      "Bash(cmd.exe /c \"keystore-to-base64.cmd\")",
+      "Bash(cmd.exe /c keystore-to-base64.cmd)"
     ],
     "deny": [],
     "ask": [
