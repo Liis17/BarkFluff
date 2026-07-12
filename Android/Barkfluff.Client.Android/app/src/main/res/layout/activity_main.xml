@@ -4,7 +4,7 @@
     android:id="@+id/mainRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
+    android:background="@color/profile_settings_background"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:fitsSystemWindows="true">

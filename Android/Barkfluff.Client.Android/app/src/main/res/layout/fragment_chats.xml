@@ -3,14 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/profile_settings_background">
 
     <!-- AppBar с Material 3 дизайном -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="@color/profile_settings_background"
         app:liftOnScroll="true"
         app:liftOnScrollTargetViewId="@id/chatRecyclerView"
         app:layout_constraintTop_toTopOf="parent">
