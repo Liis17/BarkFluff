@@ -96,7 +96,7 @@
       "PowerShell(dotnet build *)",
       "PowerShell(pwsh *)",
       "PowerShell(Copy-Item *)",
-      "PowerShell((Get-Content *)"
+      "PowerShell(Get-Content *)"
     ],
     "deny": [],
     "ask": [
