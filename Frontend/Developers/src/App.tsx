@@ -5,13 +5,7 @@ import { IdentityApi } from './gen/identity_api_connect';
 import { AuthRequest } from './gen/identity_api_pb';
 import { LoginPage } from './auth/LoginPage';
 import { DocsPage } from './components/DocsPage';
-
-interface AuthState {
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpiration: number;
-  refreshTokenExpiration: number;
-}
+import { type AuthState, AUTH_CHANGED_EVENT, loadAuth, saveAuth } from './auth/tokenManager';
 
 interface AuthContextValue {
   auth: AuthState | null;
@@ -21,43 +15,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const AUTH_KEY = 'barkfluff_dev_auth';
 const OTP_NEEDED_CODE = 'C1576884-12D8-4722-A7EE-9F9789AD1265';
 
 const identityTransport = createGrpcWebTransport({ baseUrl: '/grpc' });
 const identityClient = createClient(IdentityApi, identityTransport);
 
-function loadAuth(): AuthState | null {
-  try {
-    const raw = localStorage.getItem(AUTH_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed.accessTokenExpiration && Date.now() >= parsed.accessTokenExpiration) {
-      if (parsed.refreshTokenExpiration && Date.now() >= parsed.refreshTokenExpiration) {
-        localStorage.removeItem(AUTH_KEY);
-        return null;
-      }
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function saveAuth(auth: AuthState | null) {
-  if (auth) {
-    localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
-  } else {
-    localStorage.removeItem(AUTH_KEY);
-  }
-}
-
 export function App() {
   const [auth, setAuth] = useState<AuthState | null>(loadAuth);
 
+  // Держит состояние в синхроне с фоновым обновлением/сбросом токена (tokenManager.ensureValidAccessToken)
   useEffect(() => {
-    saveAuth(auth);
-  }, [auth]);
+    const onAuthChanged = (e: Event) => {
+      setAuth((e as CustomEvent<AuthState | null>).detail);
+    };
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+  }, []);
 
   const login = useCallback(async (loginValue: string, password: string, otpCode?: string) => {
     const metadata = {
@@ -89,6 +62,7 @@ export function App() {
           ? Number(resp.refreshToken.expirationDate.seconds) * 1000
           : Date.now() + 86_400_000 * 9999,
       };
+      saveAuth(newAuth);
       setAuth(newAuth);
       return { needOtp: false };
     } catch (err) {
@@ -101,6 +75,7 @@ export function App() {
   }, []);
 
   const logout = useCallback(() => {
+    saveAuth(null);
     setAuth(null);
   }, []);
 
