@@ -3,18 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/profile_settings_background"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        app:liftOnScroll="true">
+        android:background="@color/profile_settings_background">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="64dp"
             app:navigationIcon="@drawable/ic_back"
             app:title="@string/language_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
@@ -25,171 +25,148 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
                 android:text="@string/language_section_title"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
+                android:textAppearance="@style/TextAppearance.Barkfluff.Settings2A.Section" />
 
-            <com.google.android.material.card.MaterialCardView
+            <RadioGroup
+                android:id="@+id/languageRadioGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="@dimen/shape_corner_extra_large"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp">
+                android:orientation="vertical">
 
-                <RadioGroup
-                    android:id="@+id/languageRadioGroup"
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/radioSystem"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:minHeight="58dp"
+                    android:background="@drawable/bg_settings_language_top"
+                    android:buttonTint="@color/settings_radio_button"
+                    android:gravity="left|center_vertical"
+                    android:layoutDirection="rtl"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp"
+                    android:text="@string/language_option_system"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textDirection="locale"
+                    android:textColor="@color/profile_settings_on_surface" />
 
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radioSystem"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:background="@drawable/bg_settings_language_selected"
-                        android:buttonTint="@color/settings_radio_button"
-                        android:gravity="left|center_vertical"
-                        android:layoutDirection="rtl"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="12dp"
-                        android:text="@string/language_option_system"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textDirection="locale"
-                        android:textColor="?attr/colorOnSurface" />
+                <Space android:layout_width="match_parent" android:layout_height="3dp" />
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/radioRussian"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="58dp"
+                    android:background="@drawable/bg_settings_language_middle"
+                    android:buttonTint="@color/settings_radio_button"
+                    android:gravity="left|center_vertical"
+                    android:layoutDirection="rtl"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp"
+                    android:text="@string/language_option_ru"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textDirection="locale"
+                    android:textColor="@color/profile_settings_on_surface" />
 
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radioRussian"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:background="@drawable/bg_settings_language_selected"
-                        android:buttonTint="@color/settings_radio_button"
-                        android:gravity="left|center_vertical"
-                        android:layoutDirection="rtl"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="12dp"
-                        android:text="@string/language_option_ru"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textDirection="locale"
-                        android:textColor="?attr/colorOnSurface" />
+                <Space android:layout_width="match_parent" android:layout_height="3dp" />
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/radioEnglish"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="58dp"
+                    android:background="@drawable/bg_settings_language_middle"
+                    android:buttonTint="@color/settings_radio_button"
+                    android:gravity="left|center_vertical"
+                    android:layoutDirection="rtl"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp"
+                    android:text="@string/language_option_en"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textDirection="locale"
+                    android:textColor="@color/profile_settings_on_surface" />
 
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radioEnglish"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:background="@drawable/bg_settings_language_selected"
-                        android:buttonTint="@color/settings_radio_button"
-                        android:gravity="left|center_vertical"
-                        android:layoutDirection="rtl"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="12dp"
-                        android:text="@string/language_option_en"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textDirection="locale"
-                        android:textColor="?attr/colorOnSurface" />
+                <Space android:layout_width="match_parent" android:layout_height="3dp" />
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/radioGerman"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="58dp"
+                    android:background="@drawable/bg_settings_language_middle"
+                    android:buttonTint="@color/settings_radio_button"
+                    android:gravity="left|center_vertical"
+                    android:layoutDirection="rtl"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp"
+                    android:text="@string/language_option_de"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textDirection="locale"
+                    android:textColor="@color/profile_settings_on_surface" />
 
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radioGerman"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:background="@drawable/bg_settings_language_selected"
-                        android:buttonTint="@color/settings_radio_button"
-                        android:gravity="left|center_vertical"
-                        android:layoutDirection="rtl"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="12dp"
-                        android:text="@string/language_option_de"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textDirection="locale"
-                        android:textColor="?attr/colorOnSurface" />
+                <Space android:layout_width="match_parent" android:layout_height="3dp" />
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/radioSpanish"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="58dp"
+                    android:background="@drawable/bg_settings_language_middle"
+                    android:buttonTint="@color/settings_radio_button"
+                    android:gravity="left|center_vertical"
+                    android:layoutDirection="rtl"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp"
+                    android:text="@string/language_option_es"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textDirection="locale"
+                    android:textColor="@color/profile_settings_on_surface" />
 
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radioSpanish"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:background="@drawable/bg_settings_language_selected"
-                        android:buttonTint="@color/settings_radio_button"
-                        android:gravity="left|center_vertical"
-                        android:layoutDirection="rtl"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="12dp"
-                        android:text="@string/language_option_es"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textDirection="locale"
-                        android:textColor="?attr/colorOnSurface" />
+                <Space android:layout_width="match_parent" android:layout_height="3dp" />
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/radioChinese"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="58dp"
+                    android:background="@drawable/bg_settings_language_bottom"
+                    android:buttonTint="@color/settings_radio_button"
+                    android:gravity="left|center_vertical"
+                    android:layoutDirection="rtl"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp"
+                    android:text="@string/language_option_zh"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textDirection="locale"
+                    android:textColor="@color/profile_settings_on_surface" />
 
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radioChinese"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:background="@drawable/bg_settings_language_selected"
-                        android:buttonTint="@color/settings_radio_button"
-                        android:gravity="left|center_vertical"
-                        android:layoutDirection="rtl"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="12dp"
-                        android:text="@string/language_option_zh"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textDirection="locale"
-                        android:textColor="?attr/colorOnSurface" />
-
-                </RadioGroup>
-
-            </com.google.android.material.card.MaterialCardView>
+            </RadioGroup>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="8dp"
                 android:layout_marginTop="12dp"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="8dp"
                 android:text="@string/language_settings_hint"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:textColor="@color/profile_settings_on_surface_variant" />
 
         </LinearLayout>
 
