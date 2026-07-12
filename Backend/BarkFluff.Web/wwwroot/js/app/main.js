@@ -37,6 +37,7 @@
     var chats = [];
     var currentChatId = null;
     var currentChatInfo = null;
+    var currentChatType = 0; // ChatType: 0=REGULAR, 1=PRIVATE
     var currentChatPeerIsBot = false;
     var messages = [];
     var isLoadingOlder = false;
@@ -174,7 +175,11 @@
             if (!data || !data.chats) { chatListLoading = false; return; }
             chatListTotal = data.totalCount;
             chats = reset ? data.chats : chats.concat(data.chats);
-            chats.sort(function (a, b) { return ((b.lastMessage && b.lastMessage.sentAt) || 0) - ((a.lastMessage && a.lastMessage.sentAt) || 0); });
+            chats.sort(function (a, b) {
+                var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
+                var at = (a.lastMessage && a.lastMessage.sentAt) || a.lastActivityAt || 0;
+                return bt - at;
+            });
             chatListOffset = chats.length;
             chatListLoading = false;
             renderChatList();
@@ -223,9 +228,21 @@
                 ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">'
                 : avatarInitial;
 
+            var isPrivate = chat.chatType === 1;
             var lm = chat.lastMessage;
             var previewHtml = '';
-            if (lm) {
+            if (isPrivate) {
+                // Содержимое зашифровано — сервер (и превью) его не знает.
+                if (chat.privateInviteState === 0) {
+                    previewHtml = chat.privateInviterUserId === myUserId
+                        ? 'Ожидание собеседника'
+                        : '<span class="preview-private-invite">Приглашение в приватный чат</span>';
+                } else if (chat.privateInviteState === 2) {
+                    previewHtml = 'Приглашение отклонено';
+                } else {
+                    previewHtml = 'Сообщения зашифрованы';
+                }
+            } else if (lm) {
                 var text = (lm.content && lm.content.text) || '';
                 var ac = (lm.content && lm.content.attachments && lm.content.attachments.length) || 0;
                 if (lm.type === 2 || lm.type === 'SYSTEM') {
@@ -237,7 +254,8 @@
                 }
             }
 
-            var time = (lm && lm.sentAt) ? u.formatChatListTime(lm.sentAt) : '';
+            var timeTs = (lm && lm.sentAt) || (isPrivate ? chat.lastActivityAt : null);
+            var time = timeTs ? u.formatChatListTime(timeTs) : '';
             var unread = chat.countUnread || 0;
             var unreadText = unread > 99 ? '99+' : unread;
 
@@ -256,7 +274,7 @@
                 '<div class="chat-avatar">' + avatarHtml +
                 onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + u.escapeHtml(chat.title || 'Чат') + (isBot ? botBadgeMarkup() : '') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="Приватный чат">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || 'Чат') + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -275,10 +293,14 @@
     function openChat(chatId) {
         if (chatId === currentChatId) return;
 
+        var chatMeta = chats.find(function (c) { return c.id === chatId; });
+        if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
+
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
         currentChatInfo = null;
+        currentChatType = 0;
         currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
@@ -293,6 +315,7 @@
         messagesArea.classList.add('visible');
         messagesInner.innerHTML = '';
         inputBar.classList.add('visible');
+        inputBar.classList.remove('private-chat');
         loadingMessages.classList.add('visible');
         chatHeaderStatus.hidden = false;
         chatHeaderStatus.textContent = '';
@@ -488,8 +511,18 @@
             loadingMessages.classList.add('visible');
             var oldestId = messages[0].id || 0;
             var prevHeight = messagesArea.scrollHeight;
+            var pagedChatId = currentChatId;
 
-            BF.api.listMessages(currentChatId, oldestId, 30, 0).then(function (data) {
+            var older = currentChatType === 1
+                ? BF.api.listPrivateMessages(pagedChatId, oldestId, 30, 0).then(function (d) {
+                    return decryptPrivateBatch(pagedChatId, d && d.messages).then(function (mapped) {
+                        mapped.sort(function (a, b) { return a.id - b.id; });
+                        return { messages: mapped };
+                    });
+                })
+                : BF.api.listMessages(pagedChatId, oldestId, 30, 0);
+
+            older.then(function (data) {
                 if (data && data.messages && data.messages.length > 0) {
                     var newMsgs = data.messages.filter(function (m) { return !messages.some(function (em) { return em.id === m.id; }); });
                     if (newMsgs.length === 0) { noMoreOlder = true; }
@@ -512,6 +545,11 @@
     function sendMessage() {
         var text = messageInput.value.trim();
         if (!currentChatId) return;
+
+        if (currentChatType === 1) {
+            if (text) sendPrivateMessageFlow(text);
+            return;
+        }
 
         if (pendingEdit) {
             var editId = pendingEdit.messageId;
@@ -618,7 +656,7 @@
     }
 
     function openAttachModal(files) {
-        if (!currentChatId) return;
+        if (!currentChatId || currentChatType === 1) return; // в приватных чатах вложения не поддерживаются
         var prefill = messageInput.value;
         BF.attach.open(files, function (outFiles, asDocuments, caption) {
             // Если пользователь ввёл подпись в модалке — забираем её из неё, а исходный
@@ -682,7 +720,7 @@
             return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
         }
         chatArea.addEventListener('dragenter', function (e) {
-            if (!currentChatId || !isFileDrag(e)) return;
+            if (!currentChatId || currentChatType === 1 || !isFileDrag(e)) return;
             dragCounter++;
             chatArea.classList.add('drag-over');
         });
@@ -700,6 +738,348 @@
             chatArea.classList.remove('drag-over');
             var files = Array.from(e.dataTransfer.files || []);
             if (files.length > 0) openAttachModal(files);
+        });
+    }
+
+    // ========== PRIVATE CHATS (E2E через passphrase, зеркалит Android) ==========
+
+    var privatePassOverlay = $('#privatePassOverlay');
+    var privatePassTitle = $('#privatePassTitle');
+    var privatePassInput = $('#privatePassInput');
+    var privatePassRemember = $('#privatePassRemember');
+    var privatePassError = $('#privatePassError');
+    var privatePassCancel = $('#privatePassCancel');
+    var privatePassOk = $('#privatePassOk');
+    var privatePassActive = null; // { chat, onDone } — текущий запрос пароля
+
+    function closePassphraseModal() {
+        privatePassOverlay.classList.remove('visible');
+        privatePassActive = null;
+    }
+
+    // Запрос passphrase с локальной проверкой verifier'а (Argon2id → HMAC).
+    // onDone(key, remember) вызывается только после успешной проверки.
+    function promptPassphrase(chat, title, onDone) {
+        var ctx = { chat: chat, onDone: onDone };
+        privatePassActive = ctx;
+        privatePassTitle.textContent = title;
+        privatePassInput.value = '';
+        privatePassRemember.checked = true;
+        privatePassError.textContent = '';
+        privatePassOk.disabled = false;
+        privatePassOverlay.classList.add('visible');
+        setTimeout(function () { privatePassInput.focus(); }, 50);
+    }
+
+    function submitPassphrase() {
+        if (!privatePassActive) return;
+        var ctx = privatePassActive;
+        var pass = privatePassInput.value;
+        if (!pass) { privatePassError.textContent = 'Введите пароль'; return; }
+        privatePassOk.disabled = true;
+        privatePassError.textContent = 'Проверка…';
+        BF.privateChat.deriveKey(pass, ctx.chat.kdfSalt).then(function (key) {
+            return BF.privateChat.validateVerifier(key, ctx.chat.passphraseVerifier).then(function (ok) {
+                if (privatePassActive !== ctx) return;
+                if (!ok) {
+                    privatePassOk.disabled = false;
+                    privatePassError.textContent = 'Неверный пароль';
+                    return;
+                }
+                var remember = privatePassRemember.checked;
+                closePassphraseModal();
+                ctx.onDone(key, remember);
+            });
+        }).catch(function (e) {
+            console.error('[privateChat] deriveKey failed', e);
+            if (privatePassActive !== ctx) return;
+            privatePassOk.disabled = false;
+            privatePassError.textContent = 'Ошибка проверки пароля';
+        });
+    }
+
+    if (privatePassOk) privatePassOk.addEventListener('click', submitPassphrase);
+    if (privatePassCancel) privatePassCancel.addEventListener('click', closePassphraseModal);
+    if (privatePassInput) privatePassInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitPassphrase(); }
+    });
+
+    // Карточка-статус в области сообщений (инвайт/ожидание/разблокировка)
+    function showPrivateCard(title, text, buttons) {
+        messagesInner.innerHTML = '';
+        var card = document.createElement('div');
+        card.className = 'private-card';
+        var h = document.createElement('div');
+        h.className = 'private-card-title';
+        h.textContent = title;
+        card.appendChild(h);
+        if (text) {
+            var p = document.createElement('div');
+            p.className = 'private-card-text';
+            p.textContent = text;
+            card.appendChild(p);
+        }
+        if (buttons && buttons.length) {
+            var row = document.createElement('div');
+            row.className = 'private-card-actions';
+            buttons.forEach(function (b) {
+                var btn = document.createElement('button');
+                btn.className = 'private-card-btn' + (b.primary ? ' primary' : '');
+                btn.textContent = b.label;
+                btn.addEventListener('click', b.onClick);
+                row.appendChild(btn);
+            });
+            card.appendChild(row);
+        }
+        messagesInner.appendChild(card);
+    }
+
+    // EncryptedMessage (+расшифрованный текст) → объект сообщения для BF.messages
+    function privateToUiMessage(chatId, enc, text) {
+        return {
+            id: enc.id,
+            senderId: enc.senderId,
+            readBy: [],
+            sentAt: enc.sentAt,
+            type: 1,
+            isEdited: enc.isEdited,
+            editedAt: enc.editedAt,
+            content: {
+                text: (text !== null && text !== undefined) ? text : '\u{1F512} Не удалось расшифровать',
+                attachments: []
+            }
+        };
+    }
+
+    function decryptPrivateBatch(chatId, encMsgs) {
+        var alive = (encMsgs || []).filter(function (m) { return !m.isDeleted; });
+        return Promise.all(alive.map(function (m) {
+            return BF.privateChat.decryptMessage(chatId, m).then(function (t) {
+                return privateToUiMessage(chatId, m, t);
+            });
+        }));
+    }
+
+    function openPrivateChat(chat) {
+        if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
+
+        currentChatId = chat.id;
+        currentChatInfo = null;
+        currentChatType = 1;
+        currentChatPeerIsBot = false;
+        messages = [];
+        noMoreOlder = false;
+        knownMessageIds = new Set();
+        clearPendingReply();
+        clearPendingEdit();
+        closeContextMenu();
+        if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+        chatEmpty.style.display = 'none';
+        chatHeader.classList.add('visible');
+        messagesArea.parentElement.classList.add('visible');
+        messagesArea.classList.add('visible');
+        messagesInner.innerHTML = '';
+        inputBar.classList.remove('visible');
+        inputBar.classList.add('private-chat');
+        loadingMessages.classList.remove('visible');
+        setChatCallButtonsVisible(false);
+        resetChatTabContext();
+
+        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || 'Приватный чат');
+        if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
+        else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
+        chatHeaderStatus.hidden = false;
+        chatHeaderStatus.classList.remove('online');
+        chatHeaderStatus.textContent = 'Приватный чат';
+
+        if (chat.countUnread > 0) { chat.countUnread = 0; updateTitleBadge(); }
+        renderChatList();
+
+        if (chat.privateInviteState === 2) { // REJECTED
+            showPrivateCard('Приглашение отклонено', 'Этот приватный чат недоступен.');
+            return;
+        }
+        if (chat.privateInviteState === 0) { // PENDING
+            if (chat.privateInviterUserId === myUserId || !chat.privateInviterUserId) {
+                showPrivateCard('Ожидание собеседника', 'Собеседник ещё не принял приглашение в приватный чат.');
+            } else {
+                showPrivateInviteCard(chat);
+            }
+            return;
+        }
+        // ACCEPTED
+        if (BF.privateChat.hasKey(chat.id)) {
+            loadPrivateMessages(chat);
+        } else {
+            showPrivateUnlockCard(chat);
+        }
+    }
+
+    function showPrivateInviteCard(chat) {
+        showPrivateCard('Приглашение в приватный чат',
+            'Для входа нужен пароль, о котором вы договорились с собеседником.', [
+            { label: 'Отклонить', onClick: function () { rejectPrivateInvite(chat); } },
+            { label: 'Принять', primary: true, onClick: function () { acceptPrivateInvite(chat); } }
+        ]);
+    }
+
+    function showPrivateUnlockCard(chat) {
+        showPrivateCard('Чат заблокирован',
+            'Введите пароль чата, чтобы расшифровать сообщения на этом устройстве.', [
+            { label: 'Ввести пароль', primary: true, onClick: function () {
+                promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+                    BF.privateChat.saveKey(chat.id, key, remember);
+                    if (currentChatId === chat.id) loadPrivateMessages(chat);
+                });
+            } }
+        ]);
+    }
+
+    function acceptPrivateInvite(chat) {
+        promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+            BF.api.acceptPrivateChat(chat.id).then(function (resp) {
+                BF.privateChat.saveKey(chat.id, key, remember);
+                var idx = chats.findIndex(function (c) { return c.id === chat.id; });
+                var updated = (resp && resp.chat) ? resp.chat : chat;
+                updated.privateInviteState = 1;
+                updated.countUnread = 0;
+                if (idx >= 0) chats[idx] = updated;
+                renderChatList();
+                if (currentChatId === chat.id) loadPrivateMessages(updated);
+            }).catch(function (e) {
+                console.error('[privateChat] acceptPrivateChat failed', e);
+                if (currentChatId === chat.id) showPrivateInviteCard(chat);
+            });
+        });
+    }
+
+    function rejectPrivateInvite(chat) {
+        BF.api.rejectPrivateChat(chat.id).then(function () {
+            var idx = chats.findIndex(function (c) { return c.id === chat.id; });
+            if (idx >= 0) chats.splice(idx, 1);
+            renderChatList();
+            updateTitleBadge();
+            if (currentChatId === chat.id) closePrivateChatView();
+        }).catch(function (e) { console.error('[privateChat] rejectPrivateChat failed', e); });
+    }
+
+    function closePrivateChatView() {
+        currentChatId = null;
+        currentChatType = 0;
+        messages = [];
+        messagesInner.innerHTML = '';
+        chatHeader.classList.remove('visible');
+        messagesArea.classList.remove('visible');
+        messagesArea.parentElement.classList.remove('visible');
+        inputBar.classList.remove('visible');
+        chatEmpty.style.display = '';
+    }
+
+    function loadPrivateMessages(chat) {
+        var chatId = chat.id;
+        messagesInner.innerHTML = '';
+        loadingMessages.classList.add('visible');
+        BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
+            if (chatId !== currentChatId) return;
+            return decryptPrivateBatch(chatId, data && data.messages).then(function (mapped) {
+                if (chatId !== currentChatId) return;
+                mapped.sort(function (a, b) { return a.id - b.id; });
+                messages = mapped;
+                inputBar.classList.add('visible');
+                renderMessages().then(scrollToBottom);
+                var last = mapped.length ? mapped[mapped.length - 1].id : 0;
+                if (last) BF.api.markPrivateMessagesAsRead(chatId, last).catch(function () {});
+            });
+        }).catch(function (e) {
+            console.error('[privateChat] listPrivateMessages failed', e);
+        }).finally(function () {
+            loadingMessages.classList.remove('visible');
+        });
+    }
+
+    // Catch-up открытого приватного чата (реконнект стрима / возврат на вкладку)
+    function reloadCurrentPrivateChat() {
+        if (currentChatType !== 1 || !currentChatId) return;
+        var chat = chats.find(function (c) { return c.id === currentChatId; });
+        if (chat && chat.privateInviteState === 1 && BF.privateChat.hasKey(chat.id)) {
+            loadPrivateMessages(chat);
+        }
+    }
+
+    function sendPrivateMessageFlow(text) {
+        var sentChatId = currentChatId;
+        sendBtn.disabled = true;
+        BF.privateChat.encryptText(sentChatId, text).then(function (encd) {
+            return BF.api.sendPrivateMessage(sentChatId, encd.ciphertext, encd.nonce, encd.associatedData);
+        }).then(function (resp) {
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = false;
+            messageInput.focus();
+            if (resp && resp.message) {
+                var msg = privateToUiMessage(sentChatId, resp.message, text);
+                if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
+                    messages.push(msg);
+                    appendMessageToView(msg).then(scrollToBottom);
+                }
+                var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
+                if (chatIdx >= 0) {
+                    var chat = chats[chatIdx];
+                    chat.lastActivityAt = msg.sentAt || Date.now();
+                    chats.splice(chatIdx, 1);
+                    chats.unshift(chat);
+                    renderChatList();
+                }
+            }
+        }).catch(function (e) {
+            console.error('[privateChat] send failed', e);
+            sendBtn.disabled = false;
+        });
+    }
+
+    BF.realtime.on('private_message', function (data) {
+        handlePrivateMessage(data.chatId, data.message);
+    });
+
+    function handlePrivateMessage(chatId, enc) {
+        var chat = chats.find(function (c) { return c.id === chatId; });
+        if (chat) {
+            chat.lastActivityAt = enc.sentAt || Date.now();
+            if (chatId !== currentChatId && enc.senderId !== myUserId) {
+                chat.countUnread = (chat.countUnread || 0) + 1;
+            }
+            var idx = chats.indexOf(chat);
+            chats.splice(idx, 1);
+            chats.unshift(chat);
+            renderChatList();
+        } else {
+            // Неизвестный чат (например, свежий инвайт) — перечитываем список
+            loadChats(true);
+        }
+        updateTitleBadge();
+
+        if (enc.senderId !== myUserId) {
+            showNewMessageNotification(chat ? chat.title : 'Приватный чат',
+                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} Новое сообщение' } });
+        }
+
+        if (chatId !== currentChatId) return;
+        if (enc.isDeleted) return;
+        if (!BF.privateChat.hasKey(chatId)) return; // чат ещё не разблокирован
+        if (messages.some(function (m) { return m.id === enc.id; })) return;
+        BF.privateChat.decryptMessage(chatId, enc).then(function (text) {
+            if (chatId !== currentChatId) return;
+            if (messages.some(function (m) { return m.id === enc.id; })) return;
+            var msg = privateToUiMessage(chatId, enc, text);
+            var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+            messages.push(msg);
+            appendMessageToView(msg).then(function () {
+                if (isAtBottom) scrollToBottom();
+                else if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+            });
+            if (enc.senderId !== myUserId) {
+                BF.api.markPrivateMessagesAsRead(chatId, enc.id).catch(function () {});
+            }
         });
     }
 
@@ -867,6 +1247,7 @@
     function resyncCurrentChatTail() {
         if (!currentChatId) return;
         if (loadingMessages.classList.contains('visible')) return; // чат ещё открывается
+        if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
         var chatId = currentChatId;
         BF.api.getChatInfo(chatId).then(function (info) {
             if (chatId !== currentChatId || !info || info.error) return null;
@@ -895,6 +1276,7 @@
     // чтобы синхронизировать пропущенные edit/delete/new события.
     function reloadCurrentChatMessages() {
         if (!currentChatId) return;
+        if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
         var chatId = currentChatId;
         BF.api.getChatInfo(chatId).then(function (info) {
             if (chatId !== currentChatId || !info || info.error) return;
@@ -914,7 +1296,7 @@
     // ========== SCROLL-BASED MARK AS READ ==========
 
     function markVisibleMessagesAsRead() {
-        if (!currentChatId) return;
+        if (!currentChatId || currentChatType === 1) return;
         var changed = false;
         var areaRect = messagesArea.getBoundingClientRect();
 
@@ -1939,7 +2321,7 @@
     }
 
     function sendSticker(fileId) {
-        if (!currentChatId || !fileId) return;
+        if (!currentChatId || currentChatType === 1 || !fileId) return;
         stickerPicker.classList.remove('visible');
         stickerBtn.classList.remove('active');
         var sentChatId = currentChatId;
@@ -2115,6 +2497,8 @@
 
     function openContextMenu(x, y, msgEl) {
         if (!msgContextMenu || !msgEl) return;
+        if (currentChatType === 1) return; // edit/delete/reply/pin для приватных сообщений не поддерживаются
+
         if (msgEl.classList.contains('msg-system')) return;
         var msgId = Number(msgEl.dataset.msgId);
         if (!msgId) return;
