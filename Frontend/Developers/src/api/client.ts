@@ -8,8 +8,9 @@ import {
   GetErrorCodesRequest,
 } from '../gen/developers_api_pb';
 import { getDeviceId } from '../App';
+import { authInterceptor } from '../auth/tokenManager';
 
-const developerTransport = createGrpcWebTransport({ baseUrl: '/grpc' });
+const developerTransport = createGrpcWebTransport({ baseUrl: '/grpc', interceptors: [authInterceptor] });
 const developerClient = createClient(DevelopersApi, developerTransport);
 
 function getBrowserName(): string {
