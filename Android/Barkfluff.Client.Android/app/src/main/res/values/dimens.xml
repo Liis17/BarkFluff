@@ -106,4 +106,11 @@
     
     <!-- Message input height for RecyclerView padding -->
     <dimen name="message_input_height">80dp</dimen>
+
+    <!-- Registration flow (архетип "c") -->
+    <dimen name="register_cta_height">62dp</dimen>
+    <dimen name="register_field_height">60dp</dimen>
+    <dimen name="register_field_radius">20dp</dimen>
+    <dimen name="register_segment_height">7dp</dimen>
+    <dimen name="register_segment_gap">5dp</dimen>
 </resources>
