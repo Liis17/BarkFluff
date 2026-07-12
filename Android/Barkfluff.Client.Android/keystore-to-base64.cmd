@@ -1,10 +1,11 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 set KEYSTORE_NAME=barkfluff-release.jks
 
 if not exist "%KEYSTORE_NAME%" (
-    echo [!] Файл %KEYSTORE_NAME% не найден в этой папке.
+    echo [x] Файл %KEYSTORE_NAME% не найден в этой папке.
     echo     Сначала запусти generate-keystore.cmd
     exit /b 1
 )

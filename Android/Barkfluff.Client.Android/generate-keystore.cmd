@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo ===============================================
@@ -10,7 +11,7 @@ set KEYSTORE_NAME=barkfluff-release.jks
 set ALIAS_NAME=barkfluff-release
 
 if exist "%KEYSTORE_NAME%" (
-    echo [!] Файл %KEYSTORE_NAME% уже существует в этой папке.
+    echo [x] Файл %KEYSTORE_NAME% уже существует в этой папке.
     set /p CONFIRM="Перезаписать? (y/n): "
     if /i not "!CONFIRM!"=="y" (
         echo Отменено.
@@ -21,7 +22,7 @@ if exist "%KEYSTORE_NAME%" (
 
 where keytool >nul 2>nul
 if errorlevel 1 (
-    echo [!] keytool не найден в PATH. Установи JDK и добавь его bin в PATH.
+    echo [x] keytool не найден в PATH. Установи JDK и добавь его bin в PATH.
     exit /b 1
 )
 
@@ -39,7 +40,7 @@ keytool -genkeypair -v ^
     -dname "CN=BarkFluff, OU=BarkFluff, O=BarkFluff, L=Unknown, ST=Unknown, C=RU"
 
 if errorlevel 1 (
-    echo [!] Ошибка генерации keystore.
+    echo [x] Ошибка генерации keystore.
     exit /b 1
 )
 
