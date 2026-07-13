@@ -7,62 +7,71 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <!-- Success icon с контейнером -->
     <com.google.android.material.card.MaterialCardView
-        android:layout_width="140dp"
-        android:layout_height="140dp"
-        android:layout_marginBottom="32dp"
-        app:cardBackgroundColor="?attr/colorPrimaryContainer"
-        app:cardCornerRadius="35dp"
+        android:layout_width="132dp"
+        android:layout_height="132dp"
+        android:layout_marginBottom="30dp"
+        app:cardBackgroundColor="?attr/colorPrimary"
+        app:cardCornerRadius="40dp"
         app:cardElevation="0dp">
 
         <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_gravity="center"
-            android:contentDescription="Success"
+            android:contentDescription="@string/register_step9_headline"
             android:src="@drawable/ic_favorite"
-            app:tint="?attr/colorOnPrimaryContainer" />
+            app:tint="?attr/colorPrimaryContainer" />
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Title с Emphasized типографикой -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="@string/register_step9_title"
-        android:textAppearance="?attr/textAppearanceHeadlineLarge"
-        android:textColor="?attr/colorPrimary" />
+        android:gravity="center"
+        android:text="@string/register_step9_headline"
+        android:textAppearance="@style/TextAppearance.Barkfluff.Register.Headline" />
 
-    <!-- Message -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="40dp"
+        android:layout_marginTop="14dp"
         android:gravity="center"
         android:text="@string/register_step9_subtitle"
         android:textAppearance="?attr/textAppearanceBodyLarge"
         android:textColor="?attr/colorOnSurfaceVariant" />
+
+    <TextView
+        android:id="@+id/step9StatusChip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/bg_register_rule_chip_success"
+        android:drawablePadding="7dp"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp"
+        android:textAppearance="?attr/textAppearanceLabelMedium"
+        android:textColor="@color/on_success_container"
+        app:drawableStartCompat="@drawable/ic_verified"
+        app:drawableTint="@color/on_success_container" />
 
     <!-- Loading indicator (shown during final setup) -->
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/finalLoadingIndicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
+        android:layout_marginTop="24dp"
         android:indeterminate="true"
         android:visibility="gone"
         app:indicatorColor="?attr/colorPrimary" />
 
-    <!-- Go to login button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/goToLoginButton"
+        style="@style/Widget.Barkfluff.Register.CtaButton"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
+        android:layout_height="@dimen/register_cta_height"
+        android:layout_marginTop="32dp"
         android:text="@string/register_start_messaging"
-        android:textAllCaps="false"
-        android:textAppearance="?attr/textAppearanceTitleMedium"
-        app:cornerRadius="32dp" />
+        app:icon="@drawable/ic_arrow_forward" />
 
 </LinearLayout>
