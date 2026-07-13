@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/onboarding_background"
+    android:fitsSystemWindows="true">
 
     <!-- Декоративная окружность — позади контента -->
     <View
@@ -12,7 +13,7 @@
         android:layout_height="@dimen/login_decor_circle_size"
         android:layout_marginTop="-60dp"
         android:layout_marginStart="-80dp"
-        android:background="@drawable/bg_circle_primary_container"
+        android:background="@drawable/bg_circle_welcome_primary"
         android:clickable="false"
         android:focusable="false"
         android:importantForAccessibility="no"
@@ -41,19 +42,16 @@
                 android:layout_width="100dp"
                 android:layout_height="100dp"
                 android:layout_marginTop="24dp"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                android:layout_marginBottom="22dp"
+                app:cardBackgroundColor="@android:color/transparent"
                 app:cardCornerRadius="@dimen/shape_corner_extra_large_increased"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp">
+                app:cardElevation="6dp">
 
                 <ImageView
                     android:id="@+id/logoImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@string/app_name"
-                    android:padding="20dp"
                     android:src="@mipmap/ic_launcher" />
 
             </com.google.android.material.card.MaterialCardView>
@@ -63,31 +61,29 @@
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
+                android:layout_marginBottom="6dp"
                 android:text="@string/login_welcome"
                 android:textAppearance="?attr/textAppearanceHeadlineMedium"
-                android:textColor="?attr/colorOnSurface" />
+                android:textColor="@color/onboarding_title_text" />
 
             <!-- Подзаголовок -->
             <TextView
                 android:id="@+id/subtitleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
+                android:layout_marginBottom="28dp"
                 android:text="@string/login_subtitle"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:textColor="@color/onboarding_subtitle_text" />
 
             <!-- Карточка входа с увеличенными радиусами -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/loginCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardBackgroundColor="@color/onboarding_card_surface"
                 app:cardCornerRadius="@dimen/shape_corner_extra_large"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp">
+                app:cardElevation="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -110,7 +106,8 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
                             android:hint="@string/hint_username_or_email"
-                            app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            android:textColorHint="@color/onboarding_input_value_text"
+                            app:boxBackgroundColor="@color/onboarding_input_fill"
                             app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
                             app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
                             app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
@@ -118,7 +115,9 @@
                             app:boxStrokeWidth="0dp"
                             app:boxStrokeWidthFocused="0dp"
                             app:errorEnabled="true"
-                            app:startIconDrawable="@drawable/ic_person">
+                            app:hintTextColor="@color/onboarding_button_background"
+                            app:startIconDrawable="@drawable/ic_person"
+                            app:startIconTint="@color/onboarding_button_background">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/usernameEditText"
@@ -126,7 +125,8 @@
                                 android:layout_height="wrap_content"
                                 android:inputType="textEmailAddress"
                                 android:maxLength="50"
-                                android:maxLines="1" />
+                                android:maxLines="1"
+                                android:textColor="@color/onboarding_title_text" />
 
                         </com.google.android.material.textfield.TextInputLayout>
 
@@ -138,7 +138,8 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
                             android:hint="@string/hint_password"
-                            app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            android:textColorHint="@color/onboarding_input_value_text"
+                            app:boxBackgroundColor="@color/onboarding_input_fill"
                             app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
                             app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
                             app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
@@ -146,15 +147,19 @@
                             app:boxStrokeWidth="0dp"
                             app:boxStrokeWidthFocused="0dp"
                             app:endIconMode="password_toggle"
+                            app:endIconTint="@color/onboarding_button_background"
                             app:errorEnabled="true"
-                            app:startIconDrawable="@android:drawable/ic_lock_lock">
+                            app:hintTextColor="@color/onboarding_button_background"
+                            app:startIconDrawable="@android:drawable/ic_lock_lock"
+                            app:startIconTint="@color/onboarding_button_background">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/passwordEditText"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:inputType="textPassword"
-                                android:maxLines="1" />
+                                android:maxLines="1"
+                                android:textColor="@color/onboarding_title_text" />
 
                         </com.google.android.material.textfield.TextInputLayout>
 
@@ -167,7 +172,8 @@
                             android:layout_gravity="end"
                             android:layout_marginBottom="8dp"
                             android:text="@string/forgot_password"
-                            android:textAllCaps="false" />
+                            android:textAllCaps="false"
+                            android:textColor="@color/onboarding_button_background" />
 
                     </LinearLayout>
 
@@ -185,7 +191,7 @@
                             android:layout_marginBottom="8dp"
                             android:text="@string/otp_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textColor="@color/onboarding_title_text" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -193,7 +199,7 @@
                             android:layout_marginBottom="24dp"
                             android:text="@string/otp_subtitle"
                             android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
+                            android:textColor="@color/onboarding_subtitle_text" />
 
                         <!-- 6 OTP digit boxes — responsive: layout_weight=1, минимум 40dp -->
                         <LinearLayout
@@ -361,6 +367,8 @@
                             android:text="@string/btn_login"
                             android:textAllCaps="false"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="@color/white"
+                            app:backgroundTint="@color/onboarding_button_background"
                             app:cornerRadius="@dimen/shape_corner_full" />
 
                         <com.google.android.material.progressindicator.CircularProgressIndicator
@@ -388,7 +396,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/btn_change_server"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textColor="@color/onboarding_button_background" />
 
             <!-- Разделитель -->
             <com.google.android.material.divider.MaterialDivider
@@ -405,9 +414,12 @@
                 android:text="@string/btn_create_account"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="@color/onboarding_chip_text"
+                app:backgroundTint="@color/onboarding_chip_background"
                 app:cornerRadius="@dimen/shape_corner_full"
                 app:icon="@drawable/ic_grid"
-                app:iconGravity="textStart" />
+                app:iconGravity="textStart"
+                app:iconTint="@color/onboarding_chip_text" />
 
         </LinearLayout>
 
@@ -422,7 +434,7 @@
         android:padding="16dp"
         android:text="@string/footer_text"
         android:textAppearance="?attr/textAppearanceLabelSmall"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textColor="@color/onboarding_subtitle_text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

@@ -86,8 +86,8 @@ class ServerAdapter(
             }
 
             // Цвет icon-tile
-            val defaultColor = com.google.android.material.color.MaterialColors.getColor(
-                itemView, androidx.appcompat.R.attr.colorPrimary, Color.parseColor("#FF6B35")
+            val defaultColor = androidx.core.content.ContextCompat.getColor(
+                itemView.context, R.color.onboarding_button_background
             )
             try {
                 if (server.hexColor.isNotBlank()) {
