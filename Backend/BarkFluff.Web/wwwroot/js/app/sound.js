@@ -218,6 +218,27 @@
         return sharedContext;
     }
 
+    // Async события (входящие сообщения из WebSocket/gRPC) не считаются user gesture —
+    // браузер может бесконечно держать AudioContext suspended, если resume() ни разу
+    // не вызывался из реального клика/нажатия. Резюмим заранее на любой жест и при
+    // возврате фокуса вкладки (Chrome усыпляет контекст после ~30с простоя), чтобы
+    // к моменту play() из async-хендлера контекст уже был running.
+    function eagerResume() {
+        var context = getAudioContext();
+        if (context && context.state !== 'running') {
+            try { context.resume(); } catch (e) {}
+        }
+    }
+
+    if (typeof document !== 'undefined') {
+        ['pointerdown', 'keydown', 'touchstart'].forEach(function (evt) {
+            document.addEventListener(evt, eagerResume, { passive: true });
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) eagerResume();
+        });
+    }
+
     function play(sound) {
         sound = sound || 'chime';
         if (!enabled || !RECIPES.hasOwnProperty(sound)) return;

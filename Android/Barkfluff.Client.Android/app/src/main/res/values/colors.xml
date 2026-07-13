@@ -81,6 +81,24 @@
     <color name="warning_container">#FFE0B2</color>
     <color name="on_warning_container">#E65100</color>
 
+    <!-- Onboarding (Welcome/SelectServer/Login) — статичный тёплый бренд-акцент, не завязан на Dynamic Color -->
+    <color name="onboarding_background">#F8E5D7</color>
+    <color name="onboarding_circle_primary">#FFDBC7</color>
+    <color name="onboarding_circle_secondary">#F2D3BF</color>
+    <color name="onboarding_title_text">#241A13</color>
+    <color name="onboarding_subtitle_text">#7D685C</color>
+    <color name="onboarding_meta_text">#A8917F</color>
+    <color name="onboarding_chip_background">#FFDBC7</color>
+    <color name="onboarding_chip_text">#713916</color>
+    <color name="onboarding_button_background">#96502A</color>
+    <color name="onboarding_home_indicator">#C8B3A4</color>
+    <color name="onboarding_card_surface">#FFFBF7</color>
+    <color name="onboarding_input_fill">#FFEFE3</color>
+    <color name="onboarding_input_value_text">#A8836D</color>
+    <color name="onboarding_dashed_border">#CDB1A0</color>
+    <color name="onboarding_success_background">#E4F6EA</color>
+    <color name="onboarding_success_text">#1F7A45</color>
+
     <!-- User profiles: Android 12+ dynamic Material You palette. -->
     <color name="profile_accent">@android:color/system_accent1_600</color>
     <color name="profile_on_accent">@android:color/system_neutral1_50</color>
