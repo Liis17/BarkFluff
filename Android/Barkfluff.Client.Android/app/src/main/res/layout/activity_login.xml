@@ -5,6 +5,20 @@
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
 
+    <!-- Декоративная окружность — позади контента -->
+    <View
+        android:id="@+id/decorCircleTopStart"
+        android:layout_width="@dimen/login_decor_circle_size"
+        android:layout_height="@dimen/login_decor_circle_size"
+        android:layout_marginTop="-60dp"
+        android:layout_marginStart="-80dp"
+        android:background="@drawable/bg_circle_primary_container"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.core.widget.NestedScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -96,10 +110,13 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
                             android:hint="@string/hint_username_or_email"
-                            app:boxCornerRadiusBottomEnd="16dp"
-                            app:boxCornerRadiusBottomStart="16dp"
-                            app:boxCornerRadiusTopEnd="16dp"
-                            app:boxCornerRadiusTopStart="16dp"
+                            app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
+                            app:boxStrokeWidth="0dp"
+                            app:boxStrokeWidthFocused="0dp"
                             app:errorEnabled="true"
                             app:startIconDrawable="@drawable/ic_person">
 
@@ -121,10 +138,13 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
                             android:hint="@string/hint_password"
-                            app:boxCornerRadiusBottomEnd="16dp"
-                            app:boxCornerRadiusBottomStart="16dp"
-                            app:boxCornerRadiusTopEnd="16dp"
-                            app:boxCornerRadiusTopStart="16dp"
+                            app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
+                            app:boxStrokeWidth="0dp"
+                            app:boxStrokeWidthFocused="0dp"
                             app:endIconMode="password_toggle"
                             app:errorEnabled="true"
                             app:startIconDrawable="@android:drawable/ic_lock_lock">

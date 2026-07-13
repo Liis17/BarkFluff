@@ -113,4 +113,11 @@
     <dimen name="register_field_radius">20dp</dimen>
     <dimen name="register_segment_height">7dp</dimen>
     <dimen name="register_segment_gap">5dp</dimen>
+
+    <!-- Onboarding redesign (Welcome/SelectServer/Login) -->
+    <dimen name="welcome_decor_circle_large">260dp</dimen>
+    <dimen name="welcome_decor_circle_small">160dp</dimen>
+    <dimen name="feature_chip_height">36dp</dimen>
+    <dimen name="server_icon_tile_size">54dp</dimen>
+    <dimen name="login_decor_circle_size">200dp</dimen>
 </resources>
