@@ -587,6 +587,7 @@
 
             if (resp && resp.message) {
                 var msg = resp.message;
+                BF.sound.play('tick');
                 if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
                     messages.push(msg);
                     appendMessageToView(msg).then(scrollToBottom);
@@ -1018,6 +1019,7 @@
             messageInput.focus();
             if (resp && resp.message) {
                 var msg = privateToUiMessage(sentChatId, resp.message, text);
+                BF.sound.play('tick');
                 if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
                     messages.push(msg);
                     appendMessageToView(msg).then(scrollToBottom);
@@ -1059,6 +1061,7 @@
         updateTitleBadge();
 
         if (enc.senderId !== myUserId) {
+            BF.sound.play('chime');
             showNewMessageNotification(chat ? chat.title : 'Приватный чат',
                 { id: enc.id, chatId: chatId, content: { text: '\u{1F512} Новое сообщение' } });
         }
@@ -1399,6 +1402,7 @@
 
         // Browser notification for messages from others
         if (msg.senderId !== myUserId) {
+            BF.sound.play('chime');
             showNewMessageNotification(chatTitle, msg);
         }
 
@@ -1983,7 +1987,10 @@
 
     function copyText(text) {
         if (!text || !navigator.clipboard) return;
-        navigator.clipboard.writeText(String(text)).then(function () { groupToast('Скопировано'); }).catch(function () {});
+        navigator.clipboard.writeText(String(text)).then(function () {
+            BF.sound.play('success');
+            groupToast('Скопировано');
+        }).catch(function () {});
     }
     document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
         btn.addEventListener('click', function () {
