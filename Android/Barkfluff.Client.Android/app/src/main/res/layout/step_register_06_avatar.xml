@@ -8,128 +8,120 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
         android:orientation="vertical"
         android:padding="20dp">
 
-        <!-- Заголовок -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="@string/register_step_6"
-            android:textAppearance="?attr/textAppearanceHeadlineMedium"
-            android:textColor="?attr/colorOnSurface" />
+            android:text="@string/register_step6_headline"
+            android:textAppearance="@style/TextAppearance.Barkfluff.Register.Headline" />
 
-        <!-- Подзаголовок -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
-            android:text="@string/register_step6_subtitle"
+            android:layout_marginTop="10dp"
+            android:text="@string/register_photo_visibility_hint"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
-        <!-- Карточка с аватаром -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/colorOutline"
-            app:strokeWidth="1dp">
+        <FrameLayout
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="32dp">
 
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:orientation="vertical"
-                android:padding="24dp">
+                android:layout_height="match_parent"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:cardCornerRadius="100dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorPrimaryContainer"
+                app:strokeWidth="6dp">
 
-                <!-- Avatar preview / cropper container с увеличенным радиусом -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="200dp"
-                    android:layout_height="200dp"
-                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                    app:cardCornerRadius="100dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="?attr/colorOutline"
-                    app:strokeWidth="2dp">
-
-                    <FrameLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-
-                        <!-- Default avatar placeholder -->
-                        <ImageView
-                            android:id="@+id/avatarPlaceholder"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:contentDescription="Avatar placeholder"
-                            android:padding="50dp"
-                            android:scaleType="centerInside"
-                            android:src="@drawable/ic_person"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <!-- Cropped image preview (hidden initially) -->
-                        <ImageView
-                            android:id="@+id/croppedImageView"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:contentDescription="Cropped avatar"
-                            android:scaleType="centerCrop"
-                            android:visibility="gone" />
-
-                    </FrameLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Кнопки -->
-                <LinearLayout
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="32dp"
-                    android:orientation="vertical">
+                    android:layout_height="match_parent"
+                    android:padding="8dp">
 
-                    <!-- Upload button -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/uploadAvatarButton"
+                    <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:text="@string/register_pick_photo_from_gallery"
-                        android:textAllCaps="false"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        app:cornerRadius="32dp"
-                        app:icon="@drawable/ic_download"
-                        app:iconGravity="textStart" />
+                        android:layout_height="match_parent"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+                        app:cardCornerRadius="100dp"
+                        app:cardElevation="0dp">
 
-                    <!-- Skip button -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/skipAvatarButton"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_horizontal"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/register_skip_step"
-                        android:textAllCaps="false" />
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent">
 
-                </LinearLayout>
+                            <ImageView
+                                android:id="@+id/avatarPlaceholder"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:contentDescription="@string/register_step6_headline"
+                                android:padding="46dp"
+                                android:scaleType="centerInside"
+                                android:src="@drawable/ic_person"
+                                app:tint="?attr/colorOnSurfaceVariant" />
 
-                <!-- Подсказка -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:gravity="center"
-                    android:text="@string/register_photo_visibility_hint"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            <ImageView
+                                android:id="@+id/croppedImageView"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:contentDescription="@string/register_step6_headline"
+                                android:scaleType="centerCrop"
+                                android:visibility="gone" />
 
-            </LinearLayout>
+                        </FrameLayout>
 
-        </com.google.android.material.card.MaterialCardView>
+                    </com.google.android.material.card.MaterialCardView>
+
+                </FrameLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_gravity="bottom|end"
+                app:cardBackgroundColor="?attr/colorPrimary"
+                app:cardCornerRadius="25dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorSurface"
+                app:strokeWidth="4dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_camera"
+                    app:tint="?attr/colorOnPrimary" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </FrameLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/uploadAvatarButton"
+            style="@style/Widget.Barkfluff.Register.CtaButton"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/register_cta_height"
+            android:layout_marginTop="32dp"
+            android:text="@string/register_pick_photo_from_gallery"
+            app:icon="@drawable/ic_photo_library"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/skipAvatarButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="@string/register_skip_step"
+            android:textAllCaps="false" />
 
     </LinearLayout>
 
