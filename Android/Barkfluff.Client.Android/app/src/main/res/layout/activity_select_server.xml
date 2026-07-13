@@ -77,14 +77,54 @@
                 android:layout_height="wrap_content"
                 android:layout_marginVertical="16dp" />
 
-            <!-- Секция своего сервера -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+            <!-- Секция своего сервера — dashed row (статичная, без expand/collapse) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
                 android:layout_marginBottom="12dp"
-                android:text="@string/server_custom"
-                android:textAppearance="?attr/textAppearanceTitleSmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:background="@drawable/bg_dashed_outline_row"
+                android:clickable="false"
+                android:focusable="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_link"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/server_custom_row_title"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/server_custom_row_subtitle"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_down"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+            </LinearLayout>
 
             <!-- Поле ввода адреса — M3 medium corner (12dp) -->
             <com.google.android.material.textfield.TextInputLayout
@@ -119,7 +159,7 @@
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:cornerRadius="@dimen/shape_corner_full"
-                app:icon="@android:drawable/ic_media_play"
+                app:icon="@drawable/ic_arrow_forward"
                 app:iconGravity="textEnd"
                 app:iconPadding="12dp" />
 
