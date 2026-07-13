@@ -33,6 +33,7 @@ import com.barkfluff.client.databinding.StepRegister082faBinding
 import com.barkfluff.client.databinding.StepRegister09CompleteBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.DeviceInfoInterceptor
+import com.barkfluff.client.utils.OtpCellsHelper
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
@@ -93,6 +94,7 @@ class RegisterActivity : AppCompatActivity() {
     private var avatarBytes: ByteArray? = null
     private var codeId: String? = null  // CodeId от CreateAccount
     private var is2faEnabled = false
+    private var otpHelper: OtpCellsHelper? = null
 
     // Bindings for each step
     private var step1Binding: StepRegister01NameBinding? = null
@@ -259,9 +261,14 @@ class RegisterActivity : AppCompatActivity() {
     private fun loadStep(step: Int) {
         binding.contentFrame.removeAllViews()
 
-        // Обновляем индикатор шага
-        binding.stepIndicatorText.text = "Шаг $step из $TOTAL_STEPS"
-        binding.stepProgressBar.setProgressCompat((step - 1) * 100 / TOTAL_STEPS, true)
+        // Обновляем крупную нумерацию и сегментный прогресс-бар
+        binding.numberBigText.text = step.toString().padStart(2, '0')
+        for (i in 0 until binding.segmentsRow.childCount) {
+            binding.segmentsRow.getChildAt(i).setBackgroundColor(
+                if (i < step) resolveThemeColor(androidx.appcompat.R.attr.colorPrimary)
+                else resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+            )
+        }
 
         // Настраиваем кнопки
         if (step == TOTAL_STEPS) {
@@ -333,14 +340,18 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return
         b.firstNameEditText.setText(firstName)
         b.lastNameEditText.setText(lastName)
+        b.firstNameCounterText.text = "${firstName.length}/$MAX_NAME_LENGTH"
+        b.lastNameCounterText.text = "${lastName.length}/$MAX_NAME_LENGTH"
 
         b.firstNameEditText.doAfterTextChanged {
             firstName = it?.toString()?.trim() ?: ""
+            b.firstNameCounterText.text = "${it?.length ?: 0}/$MAX_NAME_LENGTH"
             validateFirstName()
         }
 
         b.lastNameEditText.doAfterTextChanged {
             lastName = it?.toString()?.trim() ?: ""
+            b.lastNameCounterText.text = "${it?.length ?: 0}/$MAX_NAME_LENGTH"
             validateLastName()
         }
     }
@@ -407,6 +418,7 @@ class RegisterActivity : AppCompatActivity() {
 
         val b = step2Binding ?: return
         b.usernameValidationText.text = "Проверка..."
+        b.usernameValidationText.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         b.usernameValidationText.visibility = View.VISIBLE
         binding.nextButton.isEnabled = false
 
@@ -417,11 +429,13 @@ class RegisterActivity : AppCompatActivity() {
                     val exists = existsResult.getOrNull()!!
                     Log.d(TAG, "Username exists: $exists")
                     if (exists) {
-                        b.usernameValidationText.text = "✗ Имя пользователя уже занято"
+                        b.usernameValidationText.text = getString(R.string.register_username_status_taken)
+                        b.usernameValidationText.setTextColor(getColor(R.color.error))
                         b.usernameValidationText.visibility = View.VISIBLE
                         binding.nextButton.isEnabled = true
                     } else {
-                        b.usernameValidationText.text = "✓ Имя пользователя доступно"
+                        b.usernameValidationText.text = getString(R.string.register_username_status_free)
+                        b.usernameValidationText.setTextColor(getColor(R.color.success))
                         b.usernameValidationText.visibility = View.VISIBLE
                         delay(500)
                         saveCurrentStepData()
@@ -546,18 +560,17 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep4() {
         val b = step4Binding ?: return
-        b.verificationCodeEditText.doAfterTextChanged {
-            // Авто-переход при вводе 6 символов
-            if (it?.length == 6) {
-                confirmAccountAndProceed()
-            }
-        }
+        otpHelper = OtpCellsHelper(
+            listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
+        ) { confirmAccountAndProceed() }
+        otpHelper?.setup()
+        otpHelper?.focusFirst()
     }
 
     private fun confirmAccountAndProceed() {
         val b = step4Binding ?: return
-        val code = b.verificationCodeEditText.text.toString()
-        
+        val code = otpHelper?.getCode() ?: ""
+
         if (code.length != 6) {
             b.verificationCodeValidationText.text = "Введите 6-значный код"
             b.verificationCodeValidationText.visibility = View.VISIBLE
@@ -611,11 +624,13 @@ class RegisterActivity : AppCompatActivity() {
                     Log.e(TAG, "Confirm account failed: ${confirmResult.exceptionOrNull()?.message}")
                     b.verificationCodeValidationText.text = "Ошибка: ${confirmResult.exceptionOrNull()?.message}"
                     binding.nextButton.isEnabled = true
+                    otpHelper?.clear()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Confirm account error: ${e.message}", e)
                 b.verificationCodeValidationText.text = "Ошибка: ${e.message}"
                 binding.nextButton.isEnabled = true
+                otpHelper?.clear()
             }
         }
     }
@@ -649,66 +664,41 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun updatePasswordStrength(pwd: String) {
         val b = step5Binding ?: return
-        
+
         var score = 0
-        var hasMinLength = false
-        var hasUpperCase = false
-        var hasLowerCase = false
-        var hasDigit = false
-        var hasSpecial = false
-        
-        if (pwd.length >= MIN_PASSWORD_LENGTH) {
-            score += 20
-            hasMinLength = true
-        }
-        if (pwd.any { it.isUpperCase() }) {
-            score += 20
-            hasUpperCase = true
-        }
-        if (pwd.any { it.isLowerCase() }) {
-            score += 20
-            hasLowerCase = true
-        }
-        if (pwd.any { it.isDigit() }) {
-            score += 20
-            hasDigit = true
-        }
-        if (pwd.any { !it.isLetterOrDigit() }) {
-            score += 20
-            hasSpecial = true
+        val hasMinLength = pwd.length >= MIN_PASSWORD_LENGTH
+        val hasUpperCase = pwd.any { it.isUpperCase() }
+        val hasLowerCase = pwd.any { it.isLowerCase() }
+        val hasDigit = pwd.any { it.isDigit() }
+        val hasSpecial = pwd.any { !it.isLetterOrDigit() }
+        if (hasMinLength) score += 20
+        if (hasUpperCase) score += 20
+        if (hasLowerCase) score += 20
+        if (hasDigit) score += 20
+        if (hasSpecial) score += 20
+
+        val filledSegments = score / 20
+        val segments = listOf(b.strengthSegment1, b.strengthSegment2, b.strengthSegment3, b.strengthSegment4)
+        val activeColor = getColor(R.color.on_success_container)
+        val inactiveColor = resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+        segments.forEachIndexed { index, segment ->
+            segment.setBackgroundColor(if (index < filledSegments.coerceAtMost(4)) activeColor else inactiveColor)
         }
 
-        b.passwordStrengthBar.setProgressCompat(score, true)
-        
-        // Меняем цвет прогресс бара в зависимости от сложности
-        val progressColor = when {
-            score < 40 -> getColor(android.R.color.holo_red_light)
-            score < 60 -> getColor(android.R.color.holo_orange_light)
-            score < 80 -> 0xFFFFC107.toInt() // Amber/Yellow
-            else -> getColor(android.R.color.holo_green_light)
-        }
-        b.passwordStrengthBar.setIndicatorColor(progressColor)
-        
         b.passwordDifficultyIndicator.text = when {
-            score == 0 -> "Начните вводить пароль"
-            score < 40 -> "Слабый"
-            score < 60 -> "Средний"
-            score < 80 -> "Хороший"
-            else -> "Надежный"
+            score == 0 -> getString(R.string.register_password_start_typing)
+            score < 40 -> getString(R.string.register_password_strength_weak)
+            score < 60 -> getString(R.string.register_password_strength_medium)
+            score < 80 -> getString(R.string.register_password_strength_good)
+            else -> getString(R.string.register_password_strength_strong)
         }
-        
-        // Обновляем чеклист требований
-        updateRequirement(b.reqMinLength, hasMinLength)
-        updateRequirement(b.reqUpperCase, hasUpperCase)
-        updateRequirement(b.reqLowerCase, hasLowerCase)
-        updateRequirement(b.reqDigit, hasDigit)
-        updateRequirement(b.reqSpecialChar, hasSpecial)
-    }
 
-    private fun updateRequirement(textView: android.widget.TextView, met: Boolean) {
-        val color = if (met) getColor(android.R.color.holo_green_light) else getColor(android.R.color.darker_gray)
-        textView.text = if (met) "✓ ${textView.text.toString().substring(2)}" else "○ ${textView.text.toString().substring(2)}"
-        textView.setTextColor(color)
+        // Обновляем чипы требований
+        b.reqMinLength.isChecked = hasMinLength
+        b.reqUpperCase.isChecked = hasUpperCase
+        b.reqLowerCase.isChecked = hasLowerCase
+        b.reqDigit.isChecked = hasDigit
+        b.reqSpecialChar.isChecked = hasSpecial
     }
 
     private fun setupStep6() {
@@ -818,13 +808,10 @@ class RegisterActivity : AppCompatActivity() {
         }
 
         b.bioEditText.setText(bio)
+        b.bioCounterText.text = "${bio.length}/$MAX_BIO_LENGTH"
         b.bioEditText.doAfterTextChanged {
             bio = it?.toString() ?: ""
-            if (bio.length > MAX_BIO_LENGTH) {
-                b.bioInputLayout.error = "Максимум $MAX_BIO_LENGTH символов"
-            } else {
-                b.bioInputLayout.error = null
-            }
+            b.bioCounterText.text = "${it?.length ?: 0}/$MAX_BIO_LENGTH"
         }
     }
 
@@ -994,6 +981,12 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
+    private fun resolveThemeColor(attr: Int): Int {
+        val typedValue = android.util.TypedValue()
+        theme.resolveAttribute(attr, typedValue, true)
+        return typedValue.data
+    }
+
     private fun copyToClipboard(text: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("2FA Code", text)
@@ -1018,6 +1011,8 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep9() {
         val b = step9Binding ?: return
+
+        b.step9StatusChip.text = getString(R.string.register_step9_status_chip, TOTAL_STEPS)
 
         b.goToLoginButton.setOnClickListener {
             navigateToMainActivity()
@@ -1130,5 +1125,6 @@ class RegisterActivity : AppCompatActivity() {
         step7Binding = null
         step8Binding = null
         step9Binding = null
+        otpHelper = null
     }
 }
