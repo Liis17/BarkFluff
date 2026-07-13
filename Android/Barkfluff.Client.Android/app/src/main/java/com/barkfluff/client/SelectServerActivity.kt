@@ -17,6 +17,7 @@ import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.regex.Pattern
 
 /**
@@ -38,6 +39,7 @@ class SelectServerActivity : AppCompatActivity() {
     private lateinit var serverAdapter: ServerAdapter
 
     private var isConnecting = false
+    private val pingCache = mutableMapOf<String, Int?>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -61,13 +63,30 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        serverAdapter = ServerAdapter { server ->
-            onServerSelected(server)
-        }
+        serverAdapter = ServerAdapter(
+            coroutineScope = lifecycleScope,
+            measurePing = { ip ->
+                if (pingCache.containsKey(ip)) pingCache[ip]
+                else measureServerPingMs(ip).also { pingCache[ip] = it }
+            },
+            onServerClick = { server -> onServerSelected(server) }
+        )
 
         binding.serverListRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@SelectServerActivity)
             adapter = serverAdapter
+        }
+    }
+
+    private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
+        val pingManager = GrpcManager()
+        try {
+            if (pingManager.createOnlyBeaconClient(address).isFailure) return@withTimeoutOrNull null
+            val start = System.currentTimeMillis()
+            if (pingManager.getServerInfo().isFailure) return@withTimeoutOrNull null
+            (System.currentTimeMillis() - start).toInt()
+        } finally {
+            pingManager.shutdown()
         }
     }
 
@@ -83,6 +102,7 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun loadServerList() {
         showLoading(true)
+        pingCache.clear()
 
         lifecycleScope.launch {
             try {
