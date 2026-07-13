@@ -142,6 +142,7 @@
     <string name="register_step4_headline">输入\n验证码</string>
     <string name="register_step4_hint">邮件中的6位数字。</string>
     <string name="register_step5_headline">设置\n密码</string>
+    <string name="register_step6_headline">展示\n你自己</string>
     <string name="register_step7_headline">简单介绍\n一下自己</string>
     <string name="register_step8_headline">保护你的\n账号</string>
     <string name="register_step9_headline">完成!\n欢迎加入。</string>
@@ -162,6 +163,7 @@
     <string name="register_password_strength_strong">强</string>
     <string name="register_password_optional_chars">＋ !@#</string>
     <string name="register_step9_status_chip">已完成全部%1$d个步骤</string>
+    <string name="register_step_indicator_total">/ 09</string>
 
 
     <!-- Reset password -->
