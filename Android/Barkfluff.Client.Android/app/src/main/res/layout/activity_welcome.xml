@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
+    android:background="@color/onboarding_background"
     android:fitsSystemWindows="true">
 
     <!-- Декоративные окружности — позади контента, чисто визуальный слой -->
@@ -13,7 +13,7 @@
         android:layout_height="@dimen/welcome_decor_circle_large"
         android:layout_marginTop="-80dp"
         android:layout_marginEnd="-100dp"
-        android:background="@drawable/bg_circle_primary_container"
+        android:background="@drawable/bg_circle_welcome_primary"
         android:clickable="false"
         android:focusable="false"
         android:importantForAccessibility="no"
@@ -24,14 +24,14 @@
         android:id="@+id/decorCircleBottomStart"
         android:layout_width="@dimen/welcome_decor_circle_small"
         android:layout_height="@dimen/welcome_decor_circle_small"
-        android:layout_marginBottom="-60dp"
-        android:layout_marginStart="-70dp"
-        android:background="@drawable/bg_circle_primary_container_dim"
+        android:layout_marginTop="120dp"
+        android:layout_marginStart="-80dp"
+        android:background="@drawable/bg_circle_welcome_secondary"
         android:clickable="false"
         android:focusable="false"
         android:importantForAccessibility="no"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="0dp"
@@ -45,30 +45,27 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
+            android:gravity="start"
             android:orientation="vertical"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="80dp"
+            android:paddingHorizontal="28dp"
+            android:paddingTop="40dp"
             android:paddingBottom="32dp">
 
-            <!-- Logo с увеличенным радиусом — M3 Expressive extra-extra-large (48dp) -->
+            <!-- Logo — плоское изображение без рамки/подложки, тень вместо обводки -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/logoCard"
-                android:layout_width="140dp"
-                android:layout_height="140dp"
-                android:layout_marginBottom="32dp"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                app:cardCornerRadius="@dimen/shape_corner_extra_extra_large"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="2dp">
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginBottom="26dp"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:cardCornerRadius="@dimen/shape_corner_extra_large_increased"
+                app:cardElevation="6dp">
 
                 <ImageView
                     android:id="@+id/logoImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@string/app_name"
-                    android:padding="28dp"
                     android:src="@mipmap/ic_launcher" />
 
             </com.google.android.material.card.MaterialCardView>
@@ -79,10 +76,10 @@
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="14dp"
                 android:text="@string/welcome_title"
                 android:textAppearance="@style/TextAppearance.Material3.DisplayMedium.Emphasized"
-                android:textColor="?attr/colorOnSurface" />
+                android:textColor="@color/onboarding_title_text" />
 
             <!-- Подзаголовок -->
             <TextView
@@ -90,17 +87,17 @@
                 android:layout_width="280dp"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="20dp"
-                android:gravity="center"
+                android:gravity="start"
                 android:text="@string/welcome_description"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:textColor="@color/onboarding_subtitle_text" />
 
             <!-- Чипы-фичи -->
             <com.google.android.material.chip.ChipGroup
                 android:id="@+id/featureChipsGroup"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
+                android:layout_marginBottom="28dp"
                 app:chipSpacingHorizontal="8dp"
                 app:singleLine="true">
 
@@ -112,11 +109,12 @@
                     android:clickable="false"
                     android:focusable="false"
                     android:text="@string/welcome_chip_fast"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    app:chipBackgroundColor="?attr/colorPrimaryContainer"
+                    android:textColor="@color/onboarding_chip_text"
+                    app:chipBackgroundColor="@color/onboarding_chip_background"
                     app:chipCornerRadius="@dimen/shape_corner_full"
                     app:chipIcon="@drawable/ic_bolt"
-                    app:chipIconTint="?attr/colorOnPrimaryContainer" />
+                    app:chipIconTint="@color/onboarding_chip_text"
+                    app:chipStrokeWidth="0dp" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipPrivate"
@@ -126,11 +124,12 @@
                     android:clickable="false"
                     android:focusable="false"
                     android:text="@string/welcome_chip_private"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    app:chipBackgroundColor="?attr/colorPrimaryContainer"
+                    android:textColor="@color/onboarding_chip_text"
+                    app:chipBackgroundColor="@color/onboarding_chip_background"
                     app:chipCornerRadius="@dimen/shape_corner_full"
                     app:chipIcon="@drawable/ic_lock"
-                    app:chipIconTint="?attr/colorOnPrimaryContainer" />
+                    app:chipIconTint="@color/onboarding_chip_text"
+                    app:chipStrokeWidth="0dp" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipOwnPack"
@@ -140,11 +139,12 @@
                     android:clickable="false"
                     android:focusable="false"
                     android:text="@string/welcome_chip_own_pack"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    app:chipBackgroundColor="?attr/colorPrimaryContainer"
+                    android:textColor="@color/onboarding_chip_text"
+                    app:chipBackgroundColor="@color/onboarding_chip_background"
                     app:chipCornerRadius="@dimen/shape_corner_full"
                     app:chipIcon="@drawable/ic_pets"
-                    app:chipIconTint="?attr/colorOnPrimaryContainer" />
+                    app:chipIconTint="@color/onboarding_chip_text"
+                    app:chipStrokeWidth="0dp" />
 
             </com.google.android.material.chip.ChipGroup>
 
@@ -157,11 +157,13 @@
                 android:text="@string/btn_start"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/onboarding_button_background"
                 app:cornerRadius="@dimen/shape_corner_full"
                 app:icon="@drawable/ic_arrow_forward"
                 app:iconGravity="textEnd"
                 app:iconPadding="12dp"
-                app:iconTint="?attr/colorOnPrimary" />
+                app:iconTint="@color/white" />
 
             <!-- Вторичная кнопка — text button -->
             <com.google.android.material.button.MaterialButton
@@ -169,16 +171,18 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/button_height_default"
-                android:layout_marginBottom="48dp"
+                android:layout_marginBottom="32dp"
                 android:text="@string/btn_learn_more"
                 android:textAllCaps="false"
-                android:textAppearance="?attr/textAppearanceTitleSmall" />
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="@color/onboarding_button_background" />
 
             <!-- Футер с ссылками -->
             <LinearLayout
                 android:id="@+id/footerPanel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
                 android:gravity="center"
                 android:orientation="horizontal">
 
@@ -188,12 +192,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/menu_about"
-                    android:textAllCaps="false" />
+                    android:textAllCaps="false"
+                    android:textColor="@color/onboarding_button_background" />
 
                 <View
                     android:layout_width="4dp"
                     android:layout_height="4dp"
-                    android:background="?attr/colorOutline" />
+                    android:background="@color/onboarding_home_indicator" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/privacyLink"
@@ -201,12 +206,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/menu_privacy"
-                    android:textAllCaps="false" />
+                    android:textAllCaps="false"
+                    android:textColor="@color/onboarding_button_background" />
 
                 <View
                     android:layout_width="4dp"
                     android:layout_height="4dp"
-                    android:background="?attr/colorOutline" />
+                    android:background="@color/onboarding_home_indicator" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/helpLink"
@@ -214,7 +220,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/menu_help"
-                    android:textAllCaps="false" />
+                    android:textAllCaps="false"
+                    android:textColor="@color/onboarding_button_background" />
 
             </LinearLayout>
 
