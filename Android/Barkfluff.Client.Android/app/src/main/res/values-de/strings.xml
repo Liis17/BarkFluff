@@ -142,6 +142,7 @@
     <string name="register_step4_headline">Code\neingeben</string>
     <string name="register_step4_hint">6 Ziffern aus der E-Mail.</string>
     <string name="register_step5_headline">Passwort\nerstellen</string>
+    <string name="register_step6_headline">Zeig dich\nselbst</string>
     <string name="register_step7_headline">Ein paar Worte\nüber dich</string>
     <string name="register_step8_headline">Konto\nschützen</string>
     <string name="register_step9_headline">Fertig!\nDu bist im Rudel.</string>
@@ -162,6 +163,7 @@
     <string name="register_password_strength_strong">Stark</string>
     <string name="register_password_optional_chars">＋ !@#</string>
     <string name="register_step9_status_chip">Alle %1$d Schritte abgeschlossen</string>
+    <string name="register_step_indicator_total">/ 09</string>
 
 
     <!-- Reset password -->

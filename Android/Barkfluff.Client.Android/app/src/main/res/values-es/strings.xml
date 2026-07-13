@@ -142,6 +142,7 @@
     <string name="register_step4_headline">Ingresa el\ncódigo</string>
     <string name="register_step4_hint">6 dígitos del correo.</string>
     <string name="register_step5_headline">Crea una\ncontraseña</string>
+    <string name="register_step6_headline">Muéstrate\na ti mismo</string>
     <string name="register_step7_headline">Unas palabras\nsobre ti</string>
     <string name="register_step8_headline">Protege tu\ncuenta</string>
     <string name="register_step9_headline">¡Listo!\nYa eres parte de la manada.</string>
@@ -162,6 +163,7 @@
     <string name="register_password_strength_strong">Segura</string>
     <string name="register_password_optional_chars">＋ !@#</string>
     <string name="register_step9_status_chip">Los %1$d pasos completados</string>
+    <string name="register_step_indicator_total">/ 09</string>
 
 
     <!-- Reset password -->
