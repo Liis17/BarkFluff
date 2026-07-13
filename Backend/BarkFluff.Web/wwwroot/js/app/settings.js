@@ -191,6 +191,7 @@
             var next = !sw.classList.contains('on');
             sw.classList.toggle('on', next);
             sw.setAttribute('aria-pressed', next ? 'true' : 'false');
+            BF.sound.play('toggle');
             if (onChange) onChange(next, sw);
         });
         row.appendChild(info);
@@ -484,6 +485,7 @@
                         unHint.textContent = 'Юзернейм уже занят';
                         unHint.className = 'sd-hint error';
                         unAvailable = false;
+                        BF.sound.play('droplet');
                     } else {
                         unHint.textContent = 'Юзернейм свободен';
                         unHint.className = 'sd-hint';
@@ -536,9 +538,11 @@
                 if (extractErrorCode(err) === 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47') {
                     unHint.textContent = 'Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа';
                     unHint.className = 'sd-hint error';
+                    BF.sound.play('droplet');
                 } else if (err && err.message === 'username_not_changed') {
                     unHint.textContent = 'Сервер не подтвердил смену юзернейма';
                     unHint.className = 'sd-hint error';
+                    BF.sound.play('droplet');
                 }
             });
         });
@@ -635,6 +639,7 @@
             function showErr(msg) {
                 errEl.textContent = msg;
                 errEl.style.display = '';
+                BF.sound.play('droplet');
             }
         });
     }
