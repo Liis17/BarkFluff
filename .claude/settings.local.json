@@ -95,7 +95,9 @@
       "Bash(keytool -help)",
       "Bash(cmd //c keystore-to-base64.cmd)",
       "Bash(cmd.exe /c \"keystore-to-base64.cmd\")",
-      "Bash(cmd.exe /c keystore-to-base64.cmd)"
+      "Bash(cmd.exe /c keystore-to-base64.cmd)",
+      "WebFetch(domain:github.com)",
+      "Bash(iconv -f windows-1251 -t utf-8 \"C:\\\\Users\\\\daske\\\\Desktop\\\\Barkfluff Onboarding 1c2c3c - Final.dc.html\")"
     ],
     "deny": [],
     "ask": [

@@ -55,6 +55,7 @@
         el.textContent = msg;
         el.classList.add('visible');
         if (inputEl) inputEl.classList.add('error');
+        BF.sound.play('droplet');
     }
 
     function setLoading(btn, loading) {
@@ -112,6 +113,7 @@
         input.addEventListener('input', function (e) {
             var value = e.target.value.replace(/[^0-9]/g, '');
             e.target.value = value;
+            if (value) BF.sound.play('tick');
             if (value && index < otpInputs.length - 1) {
                 otpInputs[index + 1].focus();
             }
@@ -139,6 +141,7 @@
         if (code.length !== 6) {
             otpError.textContent = 'Введите все 6 цифр';
             otpError.classList.add('visible');
+            BF.sound.play('droplet');
             return;
         }
 
@@ -148,6 +151,7 @@
             if (result.error === 'invalid_otp') {
                 otpError.textContent = 'Неверный код подтверждения';
                 otpError.classList.add('visible');
+                BF.sound.play('droplet');
                 otpInputs.forEach(function (i) { i.value = ''; });
                 otpInputs[0].focus();
                 return;
@@ -155,6 +159,7 @@
             if (result.error) {
                 otpError.textContent = 'Ошибка сервера';
                 otpError.classList.add('visible');
+                BF.sound.play('droplet');
                 return;
             }
 
@@ -164,6 +169,7 @@
         }).catch(function () {
             otpError.textContent = 'Не удалось подключиться к серверу';
             otpError.classList.add('visible');
+            BF.sound.play('droplet');
         }).then(function () {
             setLoading(otpSubmitBtn, false);
         });

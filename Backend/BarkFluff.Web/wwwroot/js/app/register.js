@@ -223,6 +223,7 @@
         if (!el) return;
         el.textContent = msg || '';
         el.classList.toggle('visible', !!msg);
+        if (msg) BF.sound.play('droplet');
     }
 
     function clearStepErrors() {
@@ -245,6 +246,7 @@
                 var v = e.target.value.replace(/[^0-9]/g, '');
                 e.target.value = v;
                 input.classList.toggle('filled', !!v);
+                if (v) BF.sound.play('tick');
                 if (v && index < inputs.length - 1) inputs[index + 1].focus();
                 var code = inputs.map(function (i) { return i.value; }).join('');
                 if (code.length === inputs.length) onComplete(code);
