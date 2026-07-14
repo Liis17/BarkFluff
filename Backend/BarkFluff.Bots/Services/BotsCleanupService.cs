@@ -3,7 +3,7 @@ using BarkFluff.Bots.Persistence.Services;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace BarkFluff.Bots.Infrastructure;
+namespace BarkFluff.Bots.Services;
 
 /// <summary>
 /// Раз в час: удаляет BotUpdates старше 24 часов (подтверждённые удаляются сразу в Confirm)
