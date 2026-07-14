@@ -13,8 +13,8 @@ public class Bot
     /// <summary>Отображаемое имя (кэш из Users)</summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>SHA-256 хеш секрета токена (plaintext не хранится)</summary>
-    public string TokenHash { get; set; } = string.Empty;
+    /// <summary>Идентификатор выпуска bot-JWT (claim x-bot-token-id; plaintext-JWT не хранится)</summary>
+    public string TokenId { get; set; } = string.Empty;
 
     public SystemBotRole SystemRole { get; set; }
 

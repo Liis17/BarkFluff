@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 
 using BarkFluff.Bots.Domain;
+using BarkFluff.Bots.Infrastructure;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Shared;
@@ -34,7 +35,7 @@ public class BotFatherService
     private readonly BotFatherSessionsStorage _sessionsStorage;
     private readonly BotsStorage _botsStorage;
     private readonly BotRegistryCache _registryCache;
-    private readonly BotTokenService _tokenService;
+    private readonly BotTokenIssuer _tokenIssuer;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly FilesServerApi.FilesServerApiClient _filesClient;
     private readonly MessagesProto.MessagesServerApi.MessagesServerApiClient _messagesClient;
@@ -45,7 +46,7 @@ public class BotFatherService
         BotFatherSessionsStorage sessionsStorage,
         BotsStorage botsStorage,
         BotRegistryCache registryCache,
-        BotTokenService tokenService,
+        BotTokenIssuer tokenIssuer,
         UsersServerApi.UsersServerApiClient usersClient,
         FilesServerApi.FilesServerApiClient filesClient,
         MessagesProto.MessagesServerApi.MessagesServerApiClient messagesClient,
@@ -55,7 +56,7 @@ public class BotFatherService
         _sessionsStorage = sessionsStorage;
         _botsStorage = botsStorage;
         _registryCache = registryCache;
-        _tokenService = tokenService;
+        _tokenIssuer = tokenIssuer;
         _usersClient = usersClient;
         _filesClient = filesClient;
         _messagesClient = messagesClient;
@@ -128,8 +129,8 @@ public class BotFatherService
                 if (bot is null)
                     return OwnedBotNotFoundText(command);
 
-                var (token, tokenHash) = _tokenService.GenerateToken(bot.Id);
-                bot.TokenHash = tokenHash;
+                var (token, tokenId) = await _tokenIssuer.IssueAsync(bot.Id);
+                bot.TokenId = tokenId;
                 await _botsStorage.Update(bot);
                 _registryCache.Set(bot);
 
@@ -286,7 +287,7 @@ public class BotFatherService
         if (createResponse.AlreadyExisted)
             return $"Username @{username} уже занят. Придумай другой.";
 
-        var (token, tokenHash) = _tokenService.GenerateToken(createResponse.UserId);
+        var (token, tokenId) = await _tokenIssuer.IssueAsync(createResponse.UserId);
 
         var bot = new Bot
         {
@@ -294,7 +295,7 @@ public class BotFatherService
             OwnerUserId = session.UserId,
             Username = username,
             Name = session.PendingName ?? username,
-            TokenHash = tokenHash,
+            TokenId = tokenId,
             SystemRole = SystemBotRole.None,
             CreatedAt = DateTime.UtcNow,
         };
