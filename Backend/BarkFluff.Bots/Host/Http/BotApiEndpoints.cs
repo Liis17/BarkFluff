@@ -5,6 +5,7 @@ using BarkFluff.Bots.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions;
+using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
 
@@ -14,7 +15,7 @@ namespace BarkFluff.Bots.Host.Http;
 
 /// <summary>
 /// Bot REST API (HTTP/1.1 на RunSettings:Http1Port, порт 7028).
-/// Маршруты /bot/{method}, токен — в заголовке X-Bot-Token (BotTokenEndpointFilter).
+/// Маршруты /bot/{method}, bot-JWT — в заголовке x-auth-token (штатный XAuth + BotAuthEndpointFilter).
 /// </summary>
 public static class BotApiEndpoints
 {
@@ -25,22 +26,22 @@ public static class BotApiEndpoints
     public static void MapBotApiEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/bot")
-            .AddEndpointFilter<BotTokenEndpointFilter>()
-            .AllowAnonymous();
+            .RequireAuthorization(nameof(TokenType.Bot))
+            .AddEndpointFilter<BotAuthEndpointFilter>();
 
         group.MapGet("/getMe", GetMe);
         group.MapPost("/sendMessage", SendMessage);
-        group.MapPost("/sendPhoto", (HttpContext ctx, MessagesProto.MessagesServerApi.MessagesServerApiClient m, FilesServerApi.FilesServerApiClient f)
-            => SendFile(ctx, m, f, UploadFileType.MessageAttachmentImage));
-        group.MapPost("/sendDocument", (HttpContext ctx, MessagesProto.MessagesServerApi.MessagesServerApiClient m, FilesServerApi.FilesServerApiClient f)
-            => SendFile(ctx, m, f, UploadFileType.MessageAttachmentDocument));
+        group.MapPost("/sendPhoto", (HttpContext ctx, BotCallerContext caller, MessagesProto.MessagesServerApi.MessagesServerApiClient m, FilesServerApi.FilesServerApiClient f)
+            => SendFile(ctx, caller, m, f, UploadFileType.MessageAttachmentImage));
+        group.MapPost("/sendDocument", (HttpContext ctx, BotCallerContext caller, MessagesProto.MessagesServerApi.MessagesServerApiClient m, FilesServerApi.FilesServerApiClient f)
+            => SendFile(ctx, caller, m, f, UploadFileType.MessageAttachmentDocument));
         group.MapGet("/getUpdates", GetUpdates);
         group.MapGet("/getUserInfo", GetUserInfo);
     }
 
-    private static IResult GetMe(HttpContext context)
+    private static IResult GetMe(BotCallerContext callerContext)
     {
-        var bot = context.GetBot();
+        var bot = callerContext.Bot;
         return BotApiResponse.Ok(new
         {
             id = bot.Id,
@@ -51,11 +52,11 @@ public static class BotApiEndpoints
     }
 
     private static async Task<IResult> SendMessage(
-        HttpContext context,
+        BotCallerContext callerContext,
         SendMessageBody body,
         MessagesProto.MessagesServerApi.MessagesServerApiClient messagesClient)
     {
-        var bot = context.GetBot();
+        var bot = callerContext.Bot;
 
         return await ExecuteAsync(async () =>
         {
@@ -66,11 +67,12 @@ public static class BotApiEndpoints
 
     private static async Task<IResult> SendFile(
         HttpContext context,
+        BotCallerContext callerContext,
         MessagesProto.MessagesServerApi.MessagesServerApiClient messagesClient,
         FilesServerApi.FilesServerApiClient filesClient,
         UploadFileType fileType)
     {
-        var bot = context.GetBot();
+        var bot = callerContext.Bot;
 
         if (!context.Request.HasFormContentType)
             return BotApiResponse.Error(StatusCodes.Status400BadRequest, "Ожидается multipart/form-data");
@@ -117,6 +119,7 @@ public static class BotApiEndpoints
 
     private static async Task<IResult> GetUpdates(
         HttpContext context,
+        BotCallerContext callerContext,
         BotUpdatesStorage updatesStorage,
         BotUpdateNotifier notifier,
         BotPollingGuard pollingGuard,
@@ -124,7 +127,7 @@ public static class BotApiEndpoints
         int limit = DefaultUpdatesLimit,
         int timeout = 0)
     {
-        var bot = context.GetBot();
+        var bot = callerContext.Bot;
 
         limit = Math.Clamp(limit, 1, DefaultUpdatesLimit);
         timeout = Math.Clamp(timeout, 0, MaxLongPollTimeoutSeconds);
@@ -160,13 +163,10 @@ public static class BotApiEndpoints
     }
 
     private static async Task<IResult> GetUserInfo(
-        HttpContext context,
         UsersServerApi.UsersServerApiClient usersClient,
         long? user_id = null,
         string? username = null)
     {
-        context.GetBot();
-
         return await ExecuteAsync(async () =>
         {
             if (!string.IsNullOrWhiteSpace(username))
