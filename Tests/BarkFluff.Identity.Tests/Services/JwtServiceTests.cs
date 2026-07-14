@@ -111,6 +111,38 @@ public class JwtServiceTests
     }
 
     [Fact]
+    public void GenerateBotToken_ContainsCorrectClaims()
+    {
+        var token = _jwtService.GenerateBotToken(789, "token-id-123");
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+
+        var userIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == IdentityClaims.UserId);
+        var tokenTypeClaim = jwt.Claims.FirstOrDefault(c => c.Type == IdentityClaims.TokenType);
+        var botTokenIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == IdentityClaims.BotTokenId);
+        var deviceIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == IdentityClaims.DeviceId);
+        var serviceIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == IdentityClaims.ServiceId);
+
+        Assert.Equal("789", userIdClaim?.Value);
+        Assert.Equal("Bot", tokenTypeClaim?.Value);
+        Assert.Equal("token-id-123", botTokenIdClaim?.Value);
+        Assert.Null(deviceIdClaim);
+        Assert.Null(serviceIdClaim);
+    }
+
+    [Fact]
+    public void GenerateBotToken_HasFarFutureExpiration()
+    {
+        var token = _jwtService.GenerateBotToken(1, "tid");
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+
+        Assert.True(jwt.ValidTo.Year >= 9999);
+    }
+
+    [Fact]
     public void GenerateUserToken_DifferentUsers_DifferentTokens()
     {
         var token1 = _jwtService.GenerateUserToken(1, "dev");
