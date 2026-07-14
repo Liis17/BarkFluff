@@ -51,6 +51,7 @@ Target framework: `net10.0`
 | `Unknown` | 0 | Значение по умолчанию |
 | `User` | 1 | Токен обычного пользователя |
 | `Service` | 2 | Межсервисный токен (XAuth) |
+| `Bot` | 3 | Долгоживущий bot-JWT внешнего Bot API ([[Backend/Bots]]) |
 
 > Используется в [[Backend/GrpcServer]] при проверке политик XAuth.
 
@@ -62,11 +63,12 @@ Target framework: `net10.0`
 | Константа | Значение | Назначение |
 |-----------|----------|------------|
 | `UserId` | `"x-user-id"` | ID пользователя |
-| `TokenType` | `"x-token-type"` | Тип токена (`User` / `Service`) |
+| `TokenType` | `"x-token-type"` | Тип токена (`User` / `Service` / `Bot`) |
 | `ServiceId` | `"x-service-id"` | ID сервиса-эмитента токена |
 | `DeviceId` | `"x-device-id"` | ID устройства пользователя |
+| `BotTokenId` | `"x-bot-token-id"` | ID выпуска bot-JWT (сверка для отзыва в [[Backend/Bots]]) |
 
-> Все четыре поля прописываются [[Backend/Identity]] при генерации JWT и читаются [[Backend/GrpcServer]] при авторизации входящих запросов.
+> Все поля прописываются [[Backend/Identity]] при генерации JWT и читаются [[Backend/GrpcServer]] при авторизации входящих запросов.
 
 ---
 
