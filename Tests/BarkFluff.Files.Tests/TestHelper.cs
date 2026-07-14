@@ -28,6 +28,7 @@ public class TestHelper
     public Mock<IS3BucketRegistry> S3BucketRegistryMock { get; }
     public ImageCompressor ImageCompressor { get; }
     public FileTypeDetector FileTypeDetector { get; }
+    public VideoThumbnailExtractor VideoThumbnailExtractor { get; }
 
     public TestHelper()
     {
@@ -56,6 +57,7 @@ public class TestHelper
 
         ImageCompressor = new ImageCompressor();
         FileTypeDetector = new FileTypeDetector();
+        VideoThumbnailExtractor = new VideoThumbnailExtractor(CreateLogger<VideoThumbnailExtractor>());
     }
 
     public UserContext CreateUserContext(long userId, string? deviceId = null)
