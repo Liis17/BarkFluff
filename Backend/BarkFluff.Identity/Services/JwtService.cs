@@ -45,6 +45,22 @@ public class JwtService(JwtSettings jwtSettings)
         return token;
     }
 
+    public string GenerateBotToken(long botUserId, string tokenId)
+    {
+        var claims = new List<Claim>
+        {
+            new(IdentityClaims.UserId, botUserId.ToString()),
+            new(IdentityClaims.TokenType, TokenType.Bot.ToString()),
+            new(IdentityClaims.BotTokenId, tokenId),
+        };
+
+        var dateEnd = new DateTime(9999, 12, 31, 23, 59, 59);
+
+        var token = CreateToken(claims, dateEnd);
+
+        return token;
+    }
+
     private string CreateToken(IEnumerable<Claim> claims, DateTime expiration)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey));
