@@ -2,13 +2,24 @@
 
 Платформа ботов по образцу Telegram Bot API. Боты — пользователи с `IsBot=true` и username с суффиксом `bot`; их свойства (владелец, токен, роль) — в отдельной БД `bots`. Порты: **7027** (gRPC) + **7028** (HTTP/1.1, Bot REST API).
 
-Расположение: `Backend/BarkFluff.Bots/`. План: `docs/plan/Bot-API.md`. План рефакторинга (переход на общие JWT `TokenType.Bot` + эталонные паттерны): `docs/plan/Bots-JWT-Refactor.md`.
+Расположение: `Backend/BarkFluff.Bots/`. План v1: `docs/plan/Bot-API.md`. Рефакторинг на общие JWT (`TokenType.Bot`) + эталонные паттерны **выполнен** (2026-07-15, план: `docs/plan/Bots-JWT-Refactor.md`); старый формат токена `{botId}:{secret}` выпилен без обратной совместимости.
 
 ## Сборка
 
 ```bash
 dotnet build Backend/BarkFluff.Bots/BarkFluff.Bots.csproj
+dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 ```
+
+## Структура проекта (эталон Identity/Users/Files)
+
+- `Features/` — CQRS (MediatR): admin (`CreateSystemBot`, `ListBots`, `DeleteBot`, `RegenerateToken`) + внешний API (`GetMe`, `SendBotMessage`, `SendBotFile`, `GetBotUserInfo`, `GetBotUpdates`)
+- `Host/` — `BotsServerApiService`, `BotsExternalApiService` + `BotAuthInterceptor`; `Http/` — `BotApiEndpoints`, `BotAuthEndpointFilter`, `BotApiResponse`
+- `Services/` — `BotRegistryCache`, `BotAccessValidator`, `BotCallerContext`, `BotRateLimiter`, `BotPollingGuard`, `BotUpdateNotifier`, `UpdateJsonMapper`, `BotFather/`; hosted: `SystemBotsSeeder`, `BotsCleanupService`
+- `Infrastructure/` — только `BotTokenIssuer` (обёртка gRPC-клиента [[Backend/Identity]])
+- `Mapping/` — `BotMapping`, `BotMessageMapping`, `BotUpdateMapping` (Domain/proto → gRPC/HTTP-ответы)
+- `Persistence/` — `BotsContext`, storages, миграции; `Consumers/` — `NewMessageConsumer`, `LoginNotificationConsumer`
+- Тесты: `Tests/BarkFluff.Bots.Tests` (BotAccessValidator, SendBotMessage/GetBotUpdates хендлеры, consumers)
 
 ## Архитектура
 
