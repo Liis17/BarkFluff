@@ -1,3 +1,4 @@
+using BarkFluff.Bots.Infrastructure;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
 using BarkFluff.Proto.Bots;
@@ -11,18 +12,18 @@ public class RegenerateTokenCommandHandler : IRequestHandler<RegenerateTokenComm
 {
     private readonly BotsStorage _botsStorage;
     private readonly BotRegistryCache _registryCache;
-    private readonly BotTokenService _tokenService;
+    private readonly BotTokenIssuer _tokenIssuer;
     private readonly ILogger<RegenerateTokenCommandHandler> _logger;
 
     public RegenerateTokenCommandHandler(
         BotsStorage botsStorage,
         BotRegistryCache registryCache,
-        BotTokenService tokenService,
+        BotTokenIssuer tokenIssuer,
         ILogger<RegenerateTokenCommandHandler> logger)
     {
         _botsStorage = botsStorage;
         _registryCache = registryCache;
-        _tokenService = tokenService;
+        _tokenIssuer = tokenIssuer;
         _logger = logger;
     }
 
@@ -36,8 +37,8 @@ public class RegenerateTokenCommandHandler : IRequestHandler<RegenerateTokenComm
             throw new BotNotFoundException();
         }
 
-        var (token, tokenHash) = _tokenService.GenerateToken(bot.Id);
-        bot.TokenHash = tokenHash;
+        var (token, tokenId) = await _tokenIssuer.IssueAsync(bot.Id, cancellationToken);
+        bot.TokenId = tokenId;
 
         await _botsStorage.Update(bot);
         _registryCache.Set(bot);

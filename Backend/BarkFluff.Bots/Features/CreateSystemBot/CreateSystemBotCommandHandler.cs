@@ -1,4 +1,5 @@
 using BarkFluff.Bots.Domain;
+using BarkFluff.Bots.Infrastructure;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
 using BarkFluff.Proto.Bots;
@@ -12,20 +13,20 @@ public class CreateSystemBotCommandHandler : IRequestHandler<CreateSystemBotComm
 {
     private readonly BotsStorage _botsStorage;
     private readonly BotRegistryCache _registryCache;
-    private readonly BotTokenService _tokenService;
+    private readonly BotTokenIssuer _tokenIssuer;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly ILogger<CreateSystemBotCommandHandler> _logger;
 
     public CreateSystemBotCommandHandler(
         BotsStorage botsStorage,
         BotRegistryCache registryCache,
-        BotTokenService tokenService,
+        BotTokenIssuer tokenIssuer,
         UsersServerApi.UsersServerApiClient usersClient,
         ILogger<CreateSystemBotCommandHandler> logger)
     {
         _botsStorage = botsStorage;
         _registryCache = registryCache;
-        _tokenService = tokenService;
+        _tokenIssuer = tokenIssuer;
         _usersClient = usersClient;
         _logger = logger;
     }
@@ -45,11 +46,11 @@ public class CreateSystemBotCommandHandler : IRequestHandler<CreateSystemBotComm
         // Идемпотентность: бот-юзер уже существовал и строка Bots есть — вернуть новый токен нельзя
         // без перегенерации, поэтому просто перегенерируем (единственный вызывающий — AdminPanel/сидер).
         var existing = await _botsStorage.GetById(botId);
-        var (token, tokenHash) = _tokenService.GenerateToken(botId);
+        var (token, tokenId) = await _tokenIssuer.IssueAsync(botId, cancellationToken);
 
         if (existing is not null)
         {
-            existing.TokenHash = tokenHash;
+            existing.TokenId = tokenId;
             existing.Name = request.Name;
             await _botsStorage.Update(existing);
             _registryCache.Set(existing);
@@ -64,7 +65,7 @@ public class CreateSystemBotCommandHandler : IRequestHandler<CreateSystemBotComm
             OwnerUserId = null,
             Username = request.Username,
             Name = request.Name,
-            TokenHash = tokenHash,
+            TokenId = tokenId,
             SystemRole = request.SystemRole,
             CreatedAt = DateTime.UtcNow,
         };

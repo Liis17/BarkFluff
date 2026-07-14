@@ -43,7 +43,7 @@ namespace BarkFluff.Bots.Persistence.Migrations
                     b.Property<int>("SystemRole")
                         .HasColumnType("integer");
 
-                    b.Property<string>("TokenHash")
+                    b.Property<string>("TokenId")
                         .IsRequired()
                         .HasColumnType("text");
 

@@ -10,6 +10,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
+using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
@@ -39,8 +40,8 @@ public class Program
             options.Interceptors.Add<ServerExceptionInterceptor>();
         }).AddServiceOptions<BotsExternalApiService>(options =>
         {
-            // Токен-аутентификация только для внешнего Bot API
-            options.Interceptors.Add<BotTokenInterceptor>();
+            // Сверка token-id + rate-limit только для внешнего Bot API (после XAuth)
+            options.Interceptors.Add<BotAuthInterceptor>();
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Bots");
         builder.Services.AddGrpcReflection();
@@ -61,11 +62,12 @@ public class Program
         builder.Services.AddScoped<SystemBotsSeeder>();
         builder.Services.AddHttpClient();
         builder.Services.AddSingleton<BotRegistryCache>();
-        builder.Services.AddSingleton<BotTokenService>();
         builder.Services.AddSingleton<BotUpdateNotifier>();
-        builder.Services.AddSingleton<BotTokenAuthenticator>();
         builder.Services.AddSingleton<BotRateLimiter>();
         builder.Services.AddSingleton<BotPollingGuard>();
+        builder.Services.AddSingleton<BotAccessValidator>();
+        builder.Services.AddScoped<BotCallerContext>();
+        builder.Services.AddScoped<BotTokenIssuer>();
         builder.Services.AddHostedService<BotsCleanupService>();
 
         builder.Services.AddXAuth(builder.Configuration);
@@ -86,6 +88,12 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["FilesService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddGrpcClient<IdentityServerApi.IdentityServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddMassTransit(x =>

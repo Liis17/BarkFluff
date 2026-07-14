@@ -3,6 +3,7 @@ using BarkFluff.Bots.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Bots;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
 
@@ -13,10 +14,10 @@ using MessagesProto = BarkFluff.Proto.Messages;
 namespace BarkFluff.Bots.Host;
 
 /// <summary>
-/// Внешний Bot API (gRPC). Аутентификация — BotTokenInterceptor по метадате x-bot-token
-/// (вешается через AddServiceOptions только на этот сервис), XAuth не используется.
+/// Внешний Bot API (gRPC). Аутентификация — bot-JWT в заголовке x-auth-token (штатный XAuth),
+/// сверка token-id + rate-limit — BotAuthInterceptor (вешается через AddServiceOptions только на этот сервис).
 /// </summary>
-[AllowAnonymous]
+[Authorize(Policy = nameof(TokenType.Bot))]
 public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 {
     private const int UpdatesBatchSize = 100;
@@ -26,6 +27,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly BotUpdateNotifier _notifier;
     private readonly BotPollingGuard _pollingGuard;
+    private readonly BotCallerContext _callerContext;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<BotsExternalApiService> _logger;
@@ -35,6 +37,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         UsersServerApi.UsersServerApiClient usersClient,
         BotUpdateNotifier notifier,
         BotPollingGuard pollingGuard,
+        BotCallerContext callerContext,
         IServiceScopeFactory scopeFactory,
         MetricsCollector metrics,
         ILogger<BotsExternalApiService> logger)
@@ -43,6 +46,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         _usersClient = usersClient;
         _notifier = notifier;
         _pollingGuard = pollingGuard;
+        _callerContext = callerContext;
         _scopeFactory = scopeFactory;
         _metrics = metrics;
         _logger = logger;
@@ -50,7 +54,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 
     public override Task<GetMeResponse> GetMe(GetMeRequest request, ServerCallContext context)
     {
-        var bot = context.GetBot();
+        var bot = _callerContext.Bot;
 
         return Task.FromResult(new GetMeResponse
         {
@@ -63,7 +67,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 
     public override async Task<SendMessageResponse> SendMessage(SendMessageRequest request, ServerCallContext context)
     {
-        var bot = context.GetBot();
+        var bot = _callerContext.Bot;
         _metrics.Increment("bot_api_messages_sent");
 
         // Авторизацию отправки выполняет SendMessageServer: членство бота в чате (chat_id)
@@ -102,7 +106,6 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 
     public override async Task<GetUserInfoResponse> GetUserInfo(GetUserInfoRequest request, ServerCallContext context)
     {
-        context.GetBot();
         _metrics.Increment("bot_api_user_info_requests");
 
         switch (request.UserCase)
@@ -155,7 +158,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         IServerStreamWriter<BotUpdate> responseStream,
         ServerCallContext context)
     {
-        var bot = context.GetBot();
+        var bot = _callerContext.Bot;
 
         if (!_pollingGuard.TryEnter(bot.Id))
         {
