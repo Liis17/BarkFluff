@@ -12,6 +12,8 @@ using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
 
+using MassTransit;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,6 +78,7 @@ public static class TestHelper
             quality,
             new CallTimeoutScheduler(Mock.Of<IServiceScopeFactory>(), NullLogger<CallTimeoutScheduler>.Instance),
             messagesClient ?? Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
+            Mock.Of<IPublishEndpoint>(),
             CreateUserContext(actingUserId, deviceId),
             new MetricsCollector(),
             NullLogger<CallsService>.Instance);

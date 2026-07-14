@@ -42,8 +42,7 @@ public class DownloadFileCommandHandlerTests
 
         result.Should().NotBeNull();
         result.FileStream.Should().NotBeNull();
-        result.FileName.Should().Contain(file.Id.ToString());
-        result.FileName.Should().EndWith(".png");
+        result.FileName.Should().Be("avatar.png"); // отдаётся оригинальное имя файла
         result.ContentType.Should().Be("image/png");
     }
 
@@ -152,7 +151,7 @@ public class DownloadFileCommandHandlerTests
         var result = await _handler.Handle(Command(previewId), CancellationToken.None);
 
         result.Should().NotBeNull();
-        result.FileName.Should().Contain(previewId.ToString());
+        result.FileName.Should().Be("preview.jpg"); // отдаётся оригинальное имя файла
     }
 
     [Fact]
