@@ -1,11 +1,10 @@
 using BarkFluff.Bots.Domain;
 using BarkFluff.Bots.Features.CreateSystemBot;
 using BarkFluff.Bots.Persistence.Services;
-using BarkFluff.Bots.Services;
 
 using MediatR;
 
-namespace BarkFluff.Bots.Infrastructure;
+namespace BarkFluff.Bots.Services;
 
 /// <summary>
 /// Сидинг системных ботов при старте сервиса (после Migrate) + первичная загрузка BotRegistryCache.

@@ -1,21 +1,25 @@
+using BarkFluff.Bots.Features.GetBotUserInfo;
+using BarkFluff.Bots.Features.GetMe;
+using BarkFluff.Bots.Features.SendBotMessage;
+using BarkFluff.Bots.Mapping;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Bots;
-using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
 
-using Microsoft.AspNetCore.Authorization;
+using MediatR;
 
-using MessagesProto = BarkFluff.Proto.Messages;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Bots.Host;
 
 /// <summary>
 /// Внешний Bot API (gRPC). Аутентификация — bot-JWT в заголовке x-auth-token (штатный XAuth),
 /// сверка token-id + rate-limit — BotAuthInterceptor (вешается через AddServiceOptions только на этот сервис).
+/// Унарные методы — тонкий маппинг + mediator; SubscribeUpdates остаётся в Host (server-streaming в MediatR не ложится).
 /// </summary>
 [Authorize(Policy = nameof(TokenType.Bot))]
 public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
@@ -23,135 +27,57 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
     private const int UpdatesBatchSize = 100;
     private static readonly TimeSpan LiveWaitInterval = TimeSpan.FromSeconds(25);
 
-    private readonly MessagesProto.MessagesServerApi.MessagesServerApiClient _messagesClient;
-    private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly IMediator _mediator;
+    private readonly BotCallerContext _callerContext;
     private readonly BotUpdateNotifier _notifier;
     private readonly BotPollingGuard _pollingGuard;
-    private readonly BotCallerContext _callerContext;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<BotsExternalApiService> _logger;
 
     public BotsExternalApiService(
-        MessagesProto.MessagesServerApi.MessagesServerApiClient messagesClient,
-        UsersServerApi.UsersServerApiClient usersClient,
+        IMediator mediator,
+        BotCallerContext callerContext,
         BotUpdateNotifier notifier,
         BotPollingGuard pollingGuard,
-        BotCallerContext callerContext,
         IServiceScopeFactory scopeFactory,
         MetricsCollector metrics,
         ILogger<BotsExternalApiService> logger)
     {
-        _messagesClient = messagesClient;
-        _usersClient = usersClient;
+        _mediator = mediator;
+        _callerContext = callerContext;
         _notifier = notifier;
         _pollingGuard = pollingGuard;
-        _callerContext = callerContext;
         _scopeFactory = scopeFactory;
         _metrics = metrics;
         _logger = logger;
     }
 
     public override Task<GetMeResponse> GetMe(GetMeRequest request, ServerCallContext context)
-    {
-        var bot = _callerContext.Bot;
-
-        return Task.FromResult(new GetMeResponse
-        {
-            Id = bot.Id,
-            IsBot = true,
-            FirstName = bot.Name,
-            Username = bot.Username,
-        });
-    }
+        => _mediator.Send(new GetMeQuery { BotId = _callerContext.Bot.Id }, context.CancellationToken);
 
     public override async Task<SendMessageResponse> SendMessage(SendMessageRequest request, ServerCallContext context)
     {
-        var bot = _callerContext.Bot;
-        _metrics.Increment("bot_api_messages_sent");
+        var chatId = request.TargetCase == SendMessageRequest.TargetOneofCase.ChatId ? request.ChatId : null;
 
-        // Авторизацию отправки выполняет SendMessageServer: членство бота в чате (chat_id)
-        // и запрет инициации личного чата (user_id) — бот отвечает только в существующие чаты.
-        var serverRequest = new MessagesProto.SendMessageServerRequest
+        var message = await _mediator.Send(new SendBotMessageCommand
         {
-            SenderUserId = bot.Id,
-            Message = new MessagesProto.OutgoingMessage
-            {
-                Text = request.Text ?? string.Empty,
-            },
-        };
-        serverRequest.Message.FilesIds.AddRange(request.FileIds);
+            BotId = _callerContext.Bot.Id,
+            ChatId = chatId,
+            UserId = request.TargetCase == SendMessageRequest.TargetOneofCase.UserId ? request.UserId : null,
+            Text = request.Text ?? string.Empty,
+            FileIds = request.FileIds.ToList(),
+        }, context.CancellationToken);
 
-        switch (request.TargetCase)
-        {
-            case SendMessageRequest.TargetOneofCase.ChatId:
-                serverRequest.ChatId = request.ChatId;
-                break;
-            case SendMessageRequest.TargetOneofCase.UserId:
-                serverRequest.UserId = request.UserId;
-                break;
-            default:
-                throw new RpcException(new Status(StatusCode.InvalidArgument, "chat_id или user_id обязателен"));
-        }
-
-        var response = await _messagesClient.SendMessageServerAsync(serverRequest, cancellationToken: context.CancellationToken);
-
-        return new SendMessageResponse
-        {
-            MessageId = response.Message.Id,
-            ChatId = request.TargetCase == SendMessageRequest.TargetOneofCase.ChatId ? request.ChatId : string.Empty,
-            SentAt = response.Message.SentAt,
-        };
+        return message.ToSendMessageResponse(chatId ?? string.Empty);
     }
 
-    public override async Task<GetUserInfoResponse> GetUserInfo(GetUserInfoRequest request, ServerCallContext context)
-    {
-        _metrics.Increment("bot_api_user_info_requests");
-
-        switch (request.UserCase)
+    public override Task<GetUserInfoResponse> GetUserInfo(GetUserInfoRequest request, ServerCallContext context)
+        => _mediator.Send(new GetBotUserInfoQuery
         {
-            case GetUserInfoRequest.UserOneofCase.Username:
-            {
-                // Privacy применяет Users
-                var response = await _usersClient.GetUserByUsernameAsync(
-                    new GetUserByUsernameRequest { Username = request.Username },
-                    cancellationToken: context.CancellationToken);
-
-                return new GetUserInfoResponse
-                {
-                    Id = response.Id,
-                    Username = request.Username,
-                    FirstName = response.FirstName,
-                    LastName = response.LastName,
-                    Bio = response.Bio,
-                    AvatarUrl = response.ProfilePicture,
-                    IsBot = response.IsBot,
-                };
-            }
-
-            case GetUserInfoRequest.UserOneofCase.UserId:
-            {
-                var response = await _usersClient.GetByIdAsync(
-                    new GetByIdRequest { UserId = request.UserId },
-                    cancellationToken: context.CancellationToken);
-
-                // Только публичные поля
-                return new GetUserInfoResponse
-                {
-                    Id = response.User.Id,
-                    Username = response.User.Username,
-                    FirstName = response.User.FirstName,
-                    LastName = response.User.LastName,
-                    Bio = response.User.Bio,
-                    AvatarUrl = response.User.ProfilePicture,
-                    IsBot = response.User.IsBot,
-                };
-            }
-
-            default:
-                throw new RpcException(new Status(StatusCode.InvalidArgument, "user_id или username обязателен"));
-        }
-    }
+            UserId = request.UserCase == GetUserInfoRequest.UserOneofCase.UserId ? request.UserId : null,
+            Username = request.UserCase == GetUserInfoRequest.UserOneofCase.Username ? request.Username : null,
+        }, context.CancellationToken);
 
     public override async Task SubscribeUpdates(
         SubscribeUpdatesRequest request,
