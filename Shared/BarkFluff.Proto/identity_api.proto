@@ -75,6 +75,9 @@ service IdentityServerApi {
   // Принудительно сменить пароль пользователя (для админ-панели, без OTP).
   // Отправляет email-уведомление пользователю.
   rpc ForceSetPasswordServer(ForceSetPasswordServerRequest) returns(ForceSetPasswordServerResponse);
+
+  // Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+  rpc CreateBotTokenServer(CreateBotTokenServerRequest) returns(CreateBotTokenServerResponse);
 }
 
 message CreateSessionForUserServerRequest {
@@ -107,6 +110,15 @@ message GetActiveSessionsServerRequest {
 message RemoveActiveSessionServerRequest {
   int64 user_id = 1;
   string device_id = 2;
+}
+
+message CreateBotTokenServerRequest {
+  int64 bot_user_id = 1; // Идентификатор бота (Users.Id)
+}
+
+message CreateBotTokenServerResponse {
+  string token = 1; // JWT бота
+  string token_id = 2; // Идентификатор выпуска токена (для отзыва)
 }
 
 // Принудительная смена пароля (серверный, для админ-панели)

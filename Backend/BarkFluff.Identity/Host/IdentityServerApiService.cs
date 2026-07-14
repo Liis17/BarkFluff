@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Identity.Features.CreateBotTokenServer;
 using BarkFluff.Identity.Features.CreateSessionForUserServer;
 using BarkFluff.Identity.Features.DisableOtpVerificationServer;
 using BarkFluff.Identity.Features.ForceSetPasswordServer;
@@ -103,6 +104,16 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
         {
             UserId = request.UserId,
             NewPassword = request.NewPassword
+        });
+    }
+
+    public override Task<CreateBotTokenServerResponse> CreateBotTokenServer(
+        CreateBotTokenServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("server_bot_token_creations");
+        return _mediator.Send(new CreateBotTokenServerCommand
+        {
+            BotUserId = request.BotUserId
         });
     }
 }

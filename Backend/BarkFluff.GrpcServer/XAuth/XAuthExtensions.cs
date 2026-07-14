@@ -78,6 +78,9 @@ public static class XAuthExtensions
 
             options.AddPolicy(nameof(TokenType.User),
                 p => p.RequireClaim(IdentityClaims.TokenType, "User", "Service"));
+
+            options.AddPolicy(nameof(TokenType.Bot),
+                p => p.RequireClaim(IdentityClaims.TokenType, "Bot"));
         });
 
         services.AddHttpContextAccessor();
