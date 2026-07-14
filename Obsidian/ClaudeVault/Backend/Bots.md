@@ -2,7 +2,7 @@
 
 Платформа ботов по образцу Telegram Bot API. Боты — пользователи с `IsBot=true` и username с суффиксом `bot`; их свойства (владелец, токен, роль) — в отдельной БД `bots`. Порты: **7027** (gRPC) + **7028** (HTTP/1.1, Bot REST API).
 
-Расположение: `Backend/BarkFluff.Bots/`. План: `docs/plan/Bot-API.md`.
+Расположение: `Backend/BarkFluff.Bots/`. План: `docs/plan/Bot-API.md`. План рефакторинга (переход на общие JWT `TokenType.Bot` + эталонные паттерны): `docs/plan/Bots-JWT-Refactor.md`.
 
 ## Сборка
 
