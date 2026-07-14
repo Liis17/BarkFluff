@@ -63,7 +63,7 @@ message RegenerateTokenResponse {
   string token = 1; // новый токен бота (plaintext, показывается один раз)
 }
 
-// ── External API (аутентификация по x-bot-token, для внешних программ) ─────
+// ── External API (bot-JWT в x-auth-token, TokenType.Bot; для внешних программ) ─────
 
 service BotsExternalApi {
 

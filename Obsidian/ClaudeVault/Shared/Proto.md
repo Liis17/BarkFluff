@@ -19,7 +19,7 @@ dotnet build BarkFluff.Proto.csproj
 | Файл | C# namespace | Назначение |
 |------|-------------|------------|
 | `shared.proto` | `BarkFluff.Proto.Shared` | `Message`, `MessageContent`, `MessageAttachment`, `MessageAttachmentType`, `PageRequest`, `ChatType`, `EncryptedMessage`, `SecretEnvelope` |
-| `identity_api.proto` | `BarkFluff.Proto.Identity` | Auth, 2FA, сессии, сброс/смена пароля |
+| `identity_api.proto` | `BarkFluff.Proto.Identity` | Auth, 2FA, сессии, сброс/смена пароля; `IdentityServerApi.CreateBotTokenServer` — выпуск bot-JWT для [[Backend/Bots]] |
 | `users_api.proto` | `BarkFluff.Proto.Users` | Профили, устройства, бейджи, поиск |
 | `messages_api.proto` | `BarkFluff.Proto.Messages` | Чаты, сообщения, вложения |
 | `files_api.proto` | `BarkFluff.Proto.Files` | Upload/download URL, стикеры, бейджи |
@@ -31,7 +31,7 @@ dotnet build BarkFluff.Proto.csproj
 | `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация |
 | `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
 | `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
-| `bots_api.proto` | `BarkFluff.Proto.Bots` | Bot API: `BotsServerApi` (AdminPanel — создание/список/удаление/токены) + `BotsExternalApi` (внешние программы, аутентификация метадатой `x-bot-token`) |
+| `bots_api.proto` | `BarkFluff.Proto.Bots` | Bot API: `BotsServerApi` (AdminPanel — создание/список/удаление/токены) + `BotsExternalApi` (внешние программы, bot-JWT в `x-auth-token`, политика `TokenType.Bot`) |
 
 ## Service Pairs Pattern
 
@@ -67,7 +67,7 @@ dotnet build BarkFluff.Proto.csproj
 - Prekey-bundle (X3DH): RPC расположены в `users_api.proto` (`UsersApi`), не в `identity_api.proto`. Bundle принадлежит устройству, `device_id` берётся из JWT текущей сессии.
 - Групповые чаты (V1): `AddUser`/`UpdateGroupChat` в `MessagesApi`; `GetChatMemberIds` (для ринга групповых звонков) и `PostCallSystemMessage` (системное сообщение об итоге звонка — `CallSystemResult`: ENDED/MISSED/REJECTED) в `MessagesServerApi`.
 - Звонки: `calls_api.proto` описывает `CallsApi` (1-на-1 через `callee_user_id` или групповой через `chat_id`, `oneof target`). `SubscribeCallEvents` — device-scoped стрим, как `SubscribeSecretMessages` в Updates. `beacon_api.proto` содержит `livekit_url` (field 13) и `Service calls` (field 14) в `GetServerInfoResponse`.
-- Боты: `User.is_bot` (field 12), `GetUserByUsernameResponse.is_bot` (8) + `id` (9); `UsersServerApi.CreateBotUser`/`DeleteBotUser`; `MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, allow_chat_creation)`; `FilesServerApi.UploadFileServer`; `beacon_api.proto` — `Service bots` (field 15). `BotsExternalApi` аутентифицируется НЕ XAuth-токеном, а метадатой `x-bot-token` (HTTP — заголовок `X-Bot-Token`).
+- Боты: `User.is_bot` (field 12), `GetUserByUsernameResponse.is_bot` (8) + `id` (9); `UsersServerApi.CreateBotUser`/`DeleteBotUser`; `MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, allow_chat_creation)`; `FilesServerApi.UploadFileServer`; `beacon_api.proto` — `Service bots` (field 15). `BotsExternalApi` аутентифицируется штатным XAuth: bot-JWT (`TokenType.Bot`) в заголовке `x-auth-token` (gRPC и HTTP), выпуск — `IdentityServerApi.CreateBotTokenServer`.
 
 ## Подключение в .csproj
 

@@ -68,7 +68,7 @@ gRPC-сервисы — точки входа в сервис.
 | Файл | Назначение |
 |------|-----------|
 | `IdentityApiService.cs` | Публичный gRPC-сервис для клиентов. Включает gRPC-Web. Использует `MetricsCollector` для счётчика `auth_login_attempts`. Делегирует всю логику в MediatR-команды. |
-| `IdentityServerApiService.cs` | Service-to-service gRPC-сервис. Требует `[Authorize(Policy = nameof(TokenType.Service))]`. Методы: `ListOtpVerificationServer`, `DisableOtpVerificationServer`, `GetActiveSessionsServer`, `RemoveActiveSessionServer`, `CreateSessionForUserServer`. |
+| `IdentityServerApiService.cs` | Service-to-service gRPC-сервис. Требует `[Authorize(Policy = nameof(TokenType.Service))]`. Методы: `ListOtpVerificationServer`, `DisableOtpVerificationServer`, `GetActiveSessionsServer`, `RemoveActiveSessionServer`, `CreateSessionForUserServer`, `ForceSetPasswordServer`, `CreateBotTokenServer` (bot-JWT для [[Backend/Bots]]). |
 
 ---
 
