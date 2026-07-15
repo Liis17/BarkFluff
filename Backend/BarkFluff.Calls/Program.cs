@@ -76,6 +76,7 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<ChatMemberKickedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -88,6 +89,11 @@ public class Program
                 cfg.ReceiveEndpoint("session-revoked-calls", e =>
                 {
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("chat-member-kicked-calls", e =>
+                {
+                    e.ConfigureConsumer<ChatMemberKickedConsumer>(context);
                 });
             });
         });
