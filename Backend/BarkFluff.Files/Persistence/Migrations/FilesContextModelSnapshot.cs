@@ -63,7 +63,8 @@ namespace BarkFluff.Files.Persistence.Migrations
 
                     b.HasKey("FileId");
 
-                    b.HasIndex("Hash");
+                    b.HasIndex("Hash")
+                        .IsUnique();
 
                     b.ToTable("FileHashes");
                 });
