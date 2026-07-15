@@ -801,21 +801,26 @@
     // When the user switches tabs the browser may throttle/kill streams.
     // On return we reconnect if streams dropped and refresh the token.
 
+    // Переоткрывает только упавшие стримы (живые не трогаем). Токен обновляется
+    // при необходимости внутри getValidToken.
+    function reconnectDeadStreams() {
+        BF.clients.getValidToken().then(function (token) {
+            if (!token) return;
+            if (!updatesConnected) subscribeNewMessages();
+            if (!readConnected) subscribeMessagesRead();
+            if (!editedConnected) subscribeMessagesEdited();
+            if (!deletedConnected) subscribeMessagesDeleted();
+            if (!pinnedStream) subscribeMessagesPinned();
+            if (!unpinnedStream) subscribeMessagesUnpinned();
+            if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
+            if (!privateMsgStream) subscribePrivateMessages();
+            if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
+        });
+    }
+
     function handleVisibilityChange() {
         if (document.visibilityState === 'visible' && _started) {
-            // Refresh token in case it expired while tab was hidden
-            BF.clients.getValidToken().then(function (token) {
-                if (!token) return;
-                if (!updatesConnected) subscribeNewMessages();
-                if (!readConnected) subscribeMessagesRead();
-                if (!editedConnected) subscribeMessagesEdited();
-                if (!deletedConnected) subscribeMessagesDeleted();
-                if (!pinnedStream) subscribeMessagesPinned();
-                if (!unpinnedStream) subscribeMessagesUnpinned();
-                if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
-                if (!privateMsgStream) subscribePrivateMessages();
-                if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
-            });
+            reconnectDeadStreams();
             // Send keep-alive immediately
             BF.api.setOnlineStatus().catch(function () {});
             emit('tab_visible', {});
@@ -823,6 +828,13 @@
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Сеть вернулась (ОС сообщила) — не ждём до 30с backoff'а, реконнектим сразу.
+    window.addEventListener('online', function () {
+        if (!_started) return;
+        reconnectDeadStreams();
+        BF.api.setOnlineStatus().catch(function () {});
+    });
 
     // --- Start/stop all subscriptions ---
 
