@@ -102,11 +102,10 @@
 **Файл:** `Backend/BarkFluff.Files/Persistence/FilesContext.cs` (`HasIndex(x => x.Uploaders).HasMethod("gin")`); миграция `AddUploadersGinIndex`.
 **Решение:** Добавлен GIN-индекс на колонку `Uploaders` — `x.Uploaders.Contains(userId)` (`userId = ANY(uploaders)`) теперь использует индекс вместо последовательного скана таблицы.
 
-### P5. Нет индекса на PreviewId — seq scan на горячем пути скачивания — Medium
-**Файл:** `Backend/BarkFluff.Files/Persistence/UploadedFilesStorage.cs:75-78` (`GetFileByPreviewId`), вызывается из `Features/DownloadFile/DownloadFileCommandHandler.cs:103`; модель — `FilesContextModelSnapshot.cs:149-189` (индекса на `PreviewId` нет)
-**Проблема:** Скачивание превью идёт через `FirstOrDefaultAsync(x => x.PreviewId == previewId)` по неиндексированной колонке `UploadedFiles.PreviewId`.
-**Почему это проблема:** Каждое скачивание, дошедшее до ветки превью, делает полный скан таблицы файлов — это самый горячий путь сервиса (загрузка картинок/аватаров в ленте).
-**Рекомендация:** Добавить индекс на `PreviewId` (можно частичный, `WHERE PreviewId IS NOT NULL`).
+### P5. ~~Нет индекса на PreviewId — seq scan на горячем пути скачивания~~ — ~~Medium~~ **Исправлено (2026-07-16)**
+
+**Файл:** `Backend/BarkFluff.Files/Persistence/FilesContext.cs` (частичный индекс `HasFilter("\"PreviewId\" IS NOT NULL")`); миграция `AddPreviewIdIndex`.
+**Решение:** Добавлен частичный индекс на `PreviewId` (только для непустых значений — большинство файлов превью не имеют).
 
 ### P2. Несколько полных копий в памяти в серверных image-хендлерах — Low
 **Файл:** `Backend/BarkFluff.Files/Features/UploadAvatarServer/UploadAvatarServerCommandHandler.cs:54-67` (аналогично `UploadPosterServer/...:52-56`, `UploadStickerImage/...:53-57`)

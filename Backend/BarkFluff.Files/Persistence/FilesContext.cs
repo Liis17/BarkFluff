@@ -27,6 +27,10 @@ public class FilesContext : DbContext
             .HasIndex(x => x.Uploaders)
             .HasMethod("gin");
 
+        modelBuilder.Entity<UploadFile>()
+            .HasIndex(x => x.PreviewId)
+            .HasFilter("\"PreviewId\" IS NOT NULL");
+
         modelBuilder.Entity<TempFile>()
             .HasIndex(x => x.OriginalFileId);
 
