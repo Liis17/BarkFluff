@@ -358,6 +358,7 @@ public class ConfigurationDefaultsPopulator
             return config.Key switch
             {
                 "Url" => "ws://livekit:7880",
+                "PublicUrl" => "wss://calls.example.com",
                 "ApiKey" => "devkey",
                 "ApiSecret" => "devsecret_change_me_in_production_0123456789",
                 _ => null
