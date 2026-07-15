@@ -188,6 +188,9 @@ namespace BarkFluff.Files.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PreviewId")
+                        .HasFilter("\"PreviewId\" IS NOT NULL");
+
                     b.HasIndex("Uploaders");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Uploaders"), "gin");
