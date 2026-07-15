@@ -44,7 +44,9 @@ public class Program
             options.Interceptors.Add<BotAuthInterceptor>();
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Bots");
-        builder.Services.AddGrpcReflection();
+
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
@@ -132,7 +134,9 @@ public class Program
             seeder.SeedAsync().GetAwaiter().GetResult();
         }
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
+
         app.UseRouting();
 
         app.UseXAuth();

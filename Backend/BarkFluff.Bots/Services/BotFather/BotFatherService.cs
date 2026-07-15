@@ -21,6 +21,8 @@ public class BotFatherService
 {
     private static readonly Regex UsernamePattern = new("^[a-zA-Z0-9_]{3,32}$", RegexOptions.Compiled);
 
+    private const int MaxBotsPerOwner = 10;
+
     private const string HelpText =
         "Я помогу создать бота и управлять им.\n\n" +
         "/newbot — создать нового бота\n" +
@@ -109,9 +111,15 @@ public class BotFatherService
                 return wasIdle ? "Нечего отменять." : "Отменено.";
 
             case "/newbot":
+            {
                 Reset(session);
+                var ownedCount = (await _botsStorage.GetByOwner(session.UserId)).Count;
+                if (ownedCount >= MaxBotsPerOwner)
+                    return $"Лимит {MaxBotsPerOwner} ботов на владельца исчерпан. Удали существующего бота (/deletebot), чтобы создать нового.";
+
                 session.State = (int)BotFatherState.AwaitingBotName;
                 return "Как назовём бота? Введи отображаемое имя.";
+            }
 
             case "/mybots":
             {
