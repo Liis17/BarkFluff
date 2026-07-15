@@ -21,12 +21,14 @@
 **Файл:** `Backend/BarkFluff.Calls/Services/CallsService.cs` (`GetActiveCallsAsync`).
 **Решение:** Перед чтением `CallSessions` вызывающий проверяется батчем через `CheckChatMembershipAsync` (все `chat_ids` разом), запрос строится только по подтверждённому подмножеству `MemberChatIds`. Число входных `chat_ids` ограничено 100 (`MaxActiveCallsChatIds`).
 
-### S2. LiveKit-токен сохраняет доступ после отзыва сессии или исключения из чата — Medium
+### S2. ~~LiveKit-токен сохраняет доступ после отзыва сессии или исключения из чата~~ — ~~Medium~~ **Исправлено (2026-07-15)**
 
-**Файлы:** `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`; `Backend/BarkFluff.Calls/Consumers/SessionRevokedConsumer.cs`; `Backend/BarkFluff.Calls/Program.cs`
-**Проблема:** `JoinCall` и `AcceptCall` проверяют членство только перед выдачей JWT, а `CreateRoomToken` подписывает независимый LiveKit access token с `CanPublish`/`CanSubscribe` и TTL два часа. После выдачи сервис не хранит токен и не вызывает LiveKit API для удаления участника.
-**Решение (частичное, 2026-07-15):** При `SessionRevokedEvent` `SessionRevokedConsumer` теперь best-effort кикает пользователя (`RoomServiceClient.RemoveParticipant`, identity = `userId`, т.к. LiveKit identity не привязан к устройству) из всех его активных direct-звонков и из всех активных групповых комнат (участники группового звонка не трекаются в БД — пробуем удалить из всех активных, «не найден» не считается ошибкой). Ошибки LiveKit не валят consumer (try/catch + debug-лог), `RoomServiceClient` создаётся на **внутреннем** `LiveKit:Url` (ws→http), не на публичном.
-**Не сделано:** кик при исключении из чата (`KickUser` и подобные) — `KickUserCommandHandler` в Messages сегодня не публикует никакого RMQ-события, которое Calls могла бы слушать. Это отдельный кросс-сервисный кусок (новое событие в Messages + консьюмер в Calls), по стоимости и форме аналогичный Bots S3. **→ Отложено**, решение пользователя.
+**Файлы:** `Backend/BarkFluff.Calls/Consumers/SessionRevokedConsumer.cs`, `Backend/BarkFluff.Calls/Consumers/ChatMemberKickedConsumer.cs`, `Backend/BarkFluff.Calls/Program.cs`; `Backend/BarkFluff.Messages/Features/KickUser/KickUserCommandHandler.cs`; `Shared/BarkFluff.Shared.Queue/Messages/ChatMemberKickedEvent.cs`.
+**Решение:**
+- **Отзыв сессии:** `SessionRevokedConsumer` best-effort кикает пользователя (`RoomServiceClient.RemoveParticipant`, identity = `userId` — LiveKit identity не привязан к устройству) из всех его активных direct-звонков и из всех активных групповых комнат (участники группового звонка не трекаются в БД, поэтому пробуем удалить из всех активных; «не найден» не считается ошибкой).
+- **Исключение из чата:** `KickUserCommandHandler` теперь публикует `ChatMemberKickedEvent {ChatId, UserId}` через MassTransit; новый `ChatMemberKickedConsumer` в Calls по `ChatId` находит активную комнату звонка этого чата и кикает исключённого участника.
+- В обоих консьюмерах ошибки LiveKit не валят обработку сообщения (try/catch + debug-лог, идемпотентно). `RoomServiceClient` создаётся на **внутреннем** `LiveKit:Url` (ws→http), не на публичном (см. Beacon S5).
+**Не сделано:** TTL токена (2 часа) не уменьшен, повторная проверка доступа при выдаче нового токена не добавлена — сами по себе не являются дырой при наличии кика, оставлены как есть.
 
 ## Проверенные области без новых уникальных находок
 
