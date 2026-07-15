@@ -16,19 +16,17 @@
 
 ## Безопасность
 
-### S1. IDOR в `GetActiveCalls`: раскрытие активных звонков чужих чатов — High
+### S1. ~~IDOR в `GetActiveCalls`: раскрытие активных звонков чужих чатов~~ — ~~High~~ **Исправлено (2026-07-15)**
 
-**Файл:** `Backend/BarkFluff.Calls/Services/CallsService.cs:366-395`
-**Проблема:** Метод принимает произвольный список `chat_ids`, парсит идентификаторы и запрашивает `CallSessions` только по `Status == Active` и `ChatId IN (...)`. В отличие от `InitiateAsync`, `AcceptAsync` и `JoinAsync`, перед запросом нет вызова `CheckChatMembership`/`EnsureChatMemberAsync`. Поэтому любой аутентифицированный пользователь, знающий UUID чата (в том числе бывший участник), получает `call_id`, тип медиа и время начала текущего группового звонка.
-**Почему это проблема:** Это нарушение object-level authorization и утечка метаданных коммуникации: факт и время созвона, а также тип звонка являются чувствительными данными группы. `call_id` дополнительно раскрывает идентификатор объекта; `JoinCall` его корректно блокирует, но утечка уже произошла.
-**Рекомендация:** До чтения `CallSessions` проверить членство вызывающего для каждого валидного `chat_id` через Messages и строить запрос только по подтверждённому подмножеству. Ограничить число входных идентификаторов.
+**Файл:** `Backend/BarkFluff.Calls/Services/CallsService.cs` (`GetActiveCallsAsync`).
+**Решение:** Перед чтением `CallSessions` вызывающий проверяется батчем через `CheckChatMembershipAsync` (все `chat_ids` разом), запрос строится только по подтверждённому подмножеству `MemberChatIds`. Число входных `chat_ids` ограничено 100 (`MaxActiveCallsChatIds`).
 
 ### S2. LiveKit-токен сохраняет доступ после отзыва сессии или исключения из чата — Medium
 
-**Файлы:** `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`; `Backend/BarkFluff.Calls/Services/CallsService.cs:195-220,628-649`; `Backend/BarkFluff.Calls/Consumers/SessionRevokedConsumer.cs:18-27`; `Backend/BarkFluff.Calls/Program.cs:67-84`
-**Проблема:** `JoinCall` и `AcceptCall` проверяют членство только перед выдачей JWT, а `CreateRoomToken` подписывает независимый LiveKit access token с `CanPublish`/`CanSubscribe` и TTL два часа. После выдачи сервис не хранит токен и не вызывает LiveKit API для удаления участника. Consumer отзыва сессии помещает данные только в `TokenRevocationCache`; он не завершает LiveKit-подключение и не инвалидирует LiveKit JWT. Поэтому исключённый из чата пользователь или пользователь с отозванной сессией продолжает публиковать и получать медиа в уже доступной комнате до истечения токена.
-**Почему это проблема:** Отзыв доступа к аккаунту или группе не прекращает доступ к содержимому активного звонка. Клиенту достаточно получить токен до исключения — далее Calls в медиасессии не участвует.
-**Рекомендация:** При `SessionRevokedEvent` и изменении членства чата удалять участника из соответствующих комнат через LiveKit RoomService API. Уменьшить TTL токена, выдавать новый токен лишь после повторной проверки доступа и передавать изменения членства из Messages в Calls.
+**Файлы:** `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`; `Backend/BarkFluff.Calls/Consumers/SessionRevokedConsumer.cs`; `Backend/BarkFluff.Calls/Program.cs`
+**Проблема:** `JoinCall` и `AcceptCall` проверяют членство только перед выдачей JWT, а `CreateRoomToken` подписывает независимый LiveKit access token с `CanPublish`/`CanSubscribe` и TTL два часа. После выдачи сервис не хранит токен и не вызывает LiveKit API для удаления участника.
+**Решение (частичное, 2026-07-15):** При `SessionRevokedEvent` `SessionRevokedConsumer` теперь best-effort кикает пользователя (`RoomServiceClient.RemoveParticipant`, identity = `userId`, т.к. LiveKit identity не привязан к устройству) из всех его активных direct-звонков и из всех активных групповых комнат (участники группового звонка не трекаются в БД — пробуем удалить из всех активных, «не найден» не считается ошибкой). Ошибки LiveKit не валят consumer (try/catch + debug-лог), `RoomServiceClient` создаётся на **внутреннем** `LiveKit:Url` (ws→http), не на публичном.
+**Не сделано:** кик при исключении из чата (`KickUser` и подобные) — `KickUserCommandHandler` в Messages сегодня не публикует никакого RMQ-события, которое Calls могла бы слушать. Это отдельный кросс-сервисный кусок (новое событие в Messages + консьюмер в Calls), по стоимости и форме аналогичный Bots S3. **→ Отложено**, решение пользователя.
 
 ## Проверенные области без новых уникальных находок
 

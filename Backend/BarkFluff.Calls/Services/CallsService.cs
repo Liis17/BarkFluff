@@ -363,6 +363,8 @@ public class CallsService
         return response;
     }
 
+    private const int MaxActiveCallsChatIds = 100;
+
     public async Task<GetActiveCallsResponse> GetActiveCallsAsync(GetActiveCallsRequest request, CancellationToken ct)
     {
         var response = new GetActiveCallsResponse();
@@ -371,6 +373,8 @@ public class CallsService
             .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
             .Where(g => g.HasValue)
             .Select(g => g!.Value)
+            .Distinct()
+            .Take(MaxActiveCallsChatIds)
             .ToList();
 
         if (chatIds.Count == 0)
@@ -378,8 +382,19 @@ public class CallsService
             return response;
         }
 
+        // Отдаём только чаты, в которых состоит вызывающий — иначе IDOR на активные звонки чужих чатов.
+        var membershipRequest = new CheckChatMembershipRequest { UserId = _userContext.UserId };
+        membershipRequest.ChatIds.AddRange(chatIds.Select(id => id.ToString()));
+        var membership = await _messagesClient.CheckChatMembershipAsync(membershipRequest, cancellationToken: ct);
+
+        var memberChatIds = chatIds.Where(id => membership.MemberChatIds.Contains(id.ToString())).ToList();
+        if (memberChatIds.Count == 0)
+        {
+            return response;
+        }
+
         var rows = await _db.CallSessions.AsNoTracking()
-            .Where(c => c.Status == CallStatus.Active && c.ChatId != null && chatIds.Contains(c.ChatId.Value))
+            .Where(c => c.Status == CallStatus.Active && c.ChatId != null && memberChatIds.Contains(c.ChatId.Value))
             .ToListAsync(ct);
 
         foreach (var c in rows)

@@ -54,6 +54,15 @@ public class Program
             var settings = sp.GetRequiredService<LiveKitSettings>();
             return new WebhookReceiver(settings.ApiKey, settings.ApiSecret);
         });
+        builder.Services.AddSingleton(sp =>
+        {
+            // RoomServiceClient — Twirp/HTTP, а LiveKit:Url задан как ws(s):// для клиентского входа в комнату.
+            var settings = sp.GetRequiredService<LiveKitSettings>();
+            var httpUrl = settings.Url
+                .Replace("wss://", "https://", StringComparison.OrdinalIgnoreCase)
+                .Replace("ws://", "http://", StringComparison.OrdinalIgnoreCase);
+            return new RoomServiceClient(httpUrl, settings.ApiKey, settings.ApiSecret);
+        });
         builder.Services.AddScoped<CallsService>();
 
         builder.Services.AddXAuth(builder.Configuration);
