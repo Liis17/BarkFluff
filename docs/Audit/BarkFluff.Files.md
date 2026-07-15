@@ -91,17 +91,16 @@
 **Файл:** `Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs`
 **Решение:** Убран особый случай для изображений/GIF в условии буферизации — порог 100 МБ (диск через `FileStream`) теперь применяется единообразно ко всем типам файлов, а не только к не-графическим. Дальнейший код (SHA256, детекция типа, ImageSharp) работает с `Stream` абстрактно и не зависит от того, диск это или память.
 
-### P3. Многократные полные проходы по содержимому (hash + детекция + повторные декодирования) — Medium
+### P3. Многократные полные проходы по содержимому (hash + детекция + повторные декодирования) — Medium **→ Отложено** (требует аккуратного объединения хеширования с копированием стрима — вернуться позже с более мощной моделью)
 **Файл:** `Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs:144-149, 158, 190, 259`
 **Проблема:** Для одной загрузки выполняется: отдельный проход SHA256 (`:144-149`, отмечено TODO), затем детекция типа (`:158`), затем для стикеров — `Image.IdentifyAsync` (`:190`), затем `ProcessImageAllInOneAsync` с полным декодированием (`:259`). То есть изображение декодируется минимум дважды, плюс полный проход хеша и чтение для детекции.
 **Почему это проблема:** Лишний CPU/время на горячем пути загрузки; для стикеров — два полных декодирования. `ProcessImageAllInOneAsync` уже объединил часть проходов, но хеш и identify стикеров остались отдельными.
 **Рекомендация:** Считать SHA256 во время первичного копирования стрима (как предлагает TODO); размеры стикера брать из единого `ProcessImageAllInOneAsync`, убрав отдельный `IdentifyAsync`.
 
-### P4. Нет индекса под запросы квоты по массиву Uploaders (seq scan) — Medium
-**Файл:** `Backend/BarkFluff.Files/Persistence/UploadedFilesStorage.cs:83-89, 94-102`; модель — `Persistence/Migrations/FilesContextModelSnapshot.cs:182-184` (`Uploaders` → `bigint[]`, индекса нет)
-**Проблема:** `GetUserStorageUsed`/`GetUserStorageByType` фильтруют `x.Uploaders.Contains(userId)` (PostgreSQL `userId = ANY(uploaders)`) с агрегацией `Sum`. Колонка `Uploaders` — массив `bigint[]` без GIN-индекса; таблица `UploadedFiles` индексирована только по PK `Id`.
-**Почему это проблема:** Подсчёт занятого места выполняется последовательным сканированием всей таблицы файлов на каждый вызов `GetUserStorageInfo` — деградирует линейно с ростом числа файлов.
-**Рекомендация:** Добавить GIN-индекс на `Uploaders` (`CREATE INDEX ... USING gin (\"Uploaders\")`) или денормализовать суммарную квоту пользователя в отдельную таблицу/счётчик.
+### P4. ~~Нет индекса под запросы квоты по массиву Uploaders (seq scan)~~ — ~~Medium~~ **Исправлено (2026-07-15)**
+
+**Файл:** `Backend/BarkFluff.Files/Persistence/FilesContext.cs` (`HasIndex(x => x.Uploaders).HasMethod("gin")`); миграция `AddUploadersGinIndex`.
+**Решение:** Добавлен GIN-индекс на колонку `Uploaders` — `x.Uploaders.Contains(userId)` (`userId = ANY(uploaders)`) теперь использует индекс вместо последовательного скана таблицы.
 
 ### P5. Нет индекса на PreviewId — seq scan на горячем пути скачивания — Medium
 **Файл:** `Backend/BarkFluff.Files/Persistence/UploadedFilesStorage.cs:75-78` (`GetFileByPreviewId`), вызывается из `Features/DownloadFile/DownloadFileCommandHandler.cs:103`; модель — `FilesContextModelSnapshot.cs:149-189` (индекса на `PreviewId` нет)
