@@ -23,6 +23,10 @@ public class FilesContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<UploadFile>()
+            .HasIndex(x => x.Uploaders)
+            .HasMethod("gin");
+
         modelBuilder.Entity<TempFile>()
             .HasIndex(x => x.OriginalFileId);
 
