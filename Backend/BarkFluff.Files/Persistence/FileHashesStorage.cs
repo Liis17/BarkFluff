@@ -14,12 +14,22 @@ public class FileHashesStorage
     }
 
     /// <summary>
-    /// Adds a new file hash to the storage.
+    /// Adds a new file hash to the storage. Идемпотентно относительно поля Hash:
+    /// при гонке (две параллельные загрузки одинакового контента) уникальный индекс
+    /// на Hash отклонит дубликат, а ON CONFLICT DO NOTHING проглотит конфликт без
+    /// исключения — инвариант «одна строка на Hash» сохраняется. Проигравшая гонку
+    /// загрузка сохраняет свой отдельный файл в S3 (дедупликация для неё пропускается) —
+    /// это допустимый исход редкой гонки, а не порча данных.
     /// </summary>
-    public async Task AddHash(FileHash fileHash)
+    public async Task AddHash(FileHash fileHash, CancellationToken cancellationToken = default)
     {
-        _context.FileHashes.Add(fileHash);
-        await _context.SaveChangesAsync();
+        await _context.Database.ExecuteSqlAsync(
+            $"""
+             INSERT INTO "FileHashes" ("FileId", "Hash")
+             VALUES ({fileHash.FileId}, {fileHash.Hash})
+             ON CONFLICT ("Hash") DO NOTHING
+             """,
+            cancellationToken);
     }
 
     /// <summary>

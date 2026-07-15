@@ -418,7 +418,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             FileId = file.Id,
             Hash = fileHash
         };
-        await _hashesStorage.AddHash(fileHashEntity);
+        await _hashesStorage.AddHash(fileHashEntity, cancellationToken);
 
         _logger.LogInformation("Хеш файла сохранен в базу данных");
 
