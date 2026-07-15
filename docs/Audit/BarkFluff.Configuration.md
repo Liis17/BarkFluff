@@ -80,7 +80,7 @@ BarkFluff.Configuration — централизованное хранилище 
 **Почему это проблема:** Скрытая хрупкость: смена ключа на не-ASCII строку сломает всю межсервисную аутентификацию (токены подписаны иначе, чем валидируются).
 **Рекомендация:** Привести к единой кодировке (`UTF8`) в `GenerateServiceToken`.
 
-### S12. Автозаполнение использует публичные LiveKit API-учётные данные — High
+### S12. ~~Автозаполнение использует публичные LiveKit API-учётные данные~~ — ~~High~~ **Неактуально**
 **Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:355-364`, `Backend/BarkFluff.Configuration/Persistence/Migrations/20260622000000_AddCallsConfiguration.cs:34-37`, `Backend/livekit/livekit.yaml:1-17`, `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`, `Backend/BarkFluff.Calls/Program.cs:52-56`
 **Проблема:** Миграция Calls создаёт пустые записи `LiveKit:Url`/`ApiKey`/`ApiSecret`, после чего `ConfigurationDefaultsPopulator` без проверки окружения записывает `ApiKey = "devkey"` и публично известный `ApiSecret = "devsecret_change_me_in_production_0123456789"`. Эта же пара закоммичена в `livekit.yaml`; ограничений, запрещающих такое автозаполнение в Production, нет.
 **Почему это проблема:** Любой, кто знает репозиторий, получает секрет подписи LiveKit. `LiveKitTokenService` использует его для выпуска токенов с правом входа в комнату, публикации и подписки на медиа; атакующий может самостоятельно подписывать LiveKit JWT с произвольными identity/room/grants. Тем же ключом инициализируется `WebhookReceiver`, поэтому компрометируется и доверие к webhook-событиям LiveKit. При пустой или ошибочно очищенной production-конфигурации это становится рабочей компрометацией звонков.
