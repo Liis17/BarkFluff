@@ -20,7 +20,7 @@ public class RejectFastAuthCommandHandler(
         var session = sessions.TryGet(request.FastAuthId)
             ?? throw new FastAuthSessionNotFoundException();
 
-        if (session.Status == Proto.FastAuth.FastAuthStatus.Expired)
+        if (session.Status == Proto.FastAuth.FastAuthStatus.Expired || DateTime.UtcNow >= session.ExpiresAt)
         {
             throw new FastAuthSessionExpiredException();
         }

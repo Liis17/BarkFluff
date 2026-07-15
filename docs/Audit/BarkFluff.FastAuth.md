@@ -71,12 +71,10 @@ FastAuth реализует QR-авторизацию: анонимное уст
 
 **Положительные стороны (по чек-листу):** session id и confirmation code — `Guid.NewGuid()` (CSPRNG .NET, 122 бита, перебор нереален: `FastAuthSessionsManager.cs:22`, `FastAuthSession.cs:67`); TTL 5 минут (`FastAuthSessionsManager.cs:9`) с фоновой очисткой; одноразовость кода и переходов состояний обеспечена атомарно под локом (`FastAuthSession.cs:74-104`); Accept/Reject привязаны к userId сканировавшего (`FastAuthSession.cs:79-80, 95-96` + дублирующая проверка в хендлерах); сообщения ошибок контролируемые, без утечки деталей (`Shared/BarkFluff.Shared.Exceptions/FastAuth/*`); SQL отсутствует (всё in-memory) — инъекции неприменимы; хардкода секретов в коде и конфигах нет.
 
-### S9. TTL QR-сессии не проверяется при Accept/Reject — Low
+### S9. ~~TTL QR-сессии не проверяется при Accept/Reject~~ — ~~Low~~ **Исправлено (2026-07-15)**
 
-**Файлы:** `Backend/BarkFluff.FastAuth/Domain/FastAuthSession.cs:52-71,74-102`; `Backend/BarkFluff.FastAuth/Features/AcceptFastAuth/AcceptFastAuthCommandHandler.cs:25-63`; `Infrastructure/FastAuthExpirationService.cs:14,36-49`.
-**Проблема:** `TryScan` сверяет `ExpiresAt`, но `TryAccept` и `TryReject` проверяют лишь состояние/confirmation code/userId. Сессию переводит в `EXPIRED` только фоновый sweep с периодом 30 секунд. Если её отсканировали до дедлайна, подтверждение в промежутке после `ExpiresAt`, но до следующего sweep, всё ещё выпустит полноценную Identity-сессию.
-**Почему это проблема:** Обещанный пятиминутный срок действия QR не является жёсткой серверной границей; при задержке фонового сервиса окно может стать больше. В `Accept` выпуск токенов начинается до финальной проверки состояния, поэтому лишняя сессия создаётся ещё до попытки перевести её в Accepted.
-**Рекомендация:** Внутри одного lock добавить проверку `DateTime.UtcNow >= ExpiresAt` в `TryAccept` и `TryReject` (с переводом в Expired), а до вызова Identity резервировать успешный переход состояния либо выполнять компенсационный отзыв при неуспехе.
+**Файлы:** `Backend/BarkFluff.FastAuth/Domain/FastAuthSession.cs`; `Features/AcceptFastAuth/AcceptFastAuthCommandHandler.cs`; `Features/RejectFastAuth/RejectFastAuthCommandHandler.cs`.
+**Решение:** `TryAccept`/`TryReject` теперь внутри лока проверяют `DateTime.UtcNow >= ExpiresAt` и при просрочке атомарно переводят сессию в `Expired` (общий приватный `ExpireLocked()`, переиспользован и в `TryExpire`), возвращая `false` — без ожидания 30-секундного sweep. Дополнительно оба хендлера (`Accept`/`Reject`) проверяют `ExpiresAt` до вызова Identity, чтобы не создавать лишнюю сессию в общем случае просрочки; компенсационный отзыв в Identity при гонке (S5) уже прикрывает оставшийся узкий race-window.
 
 ## Производительность
 
