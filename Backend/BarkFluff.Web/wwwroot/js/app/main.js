@@ -284,6 +284,50 @@
         });
     }
 
+    // Тихое фоновое обновление списка чатов (catch-up после реконнекта/возврата на
+    // вкладку): тянем первую страницу, сравниваем сигнатуру с текущим состоянием и
+    // трогаем DOM только при реальном различии.
+    function chatSignature(c) {
+        var lm = c.lastMessage;
+        return [
+            c.id, c.title, c.picture, c.countUnread || 0, c.privateInviteState,
+            c.lastActivityAt || 0,
+            lm ? (lm.id + '|' + (lm.editedAt || 0) + '|' + ((lm.content && lm.content.text) || '')) : ''
+        ].join('');
+    }
+
+    function refreshChatListQuiet() {
+        if (chatListLoading) return Promise.resolve();
+        chatListLoading = true;
+
+        return BF.api.listChats(0, 50).then(function (data) {
+            chatListLoading = false;
+            if (!data || !data.chats) return;
+            var fetched = data.chats.slice();
+            fetched.sort(function (a, b) {
+                var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
+                var at = (a.lastMessage && a.lastMessage.sentAt) || a.lastActivityAt || 0;
+                return bt - at;
+            });
+
+            var same = data.totalCount === chatListTotal && fetched.length <= chats.length;
+            if (same) {
+                for (var i = 0; i < fetched.length; i++) {
+                    if (chatSignature(fetched[i]) !== chatSignature(chats[i])) { same = false; break; }
+                }
+            }
+            if (same) return; // ничего не изменилось — DOM не трогаем
+
+            chats = fetched;
+            chatListTotal = data.totalCount;
+            chatListOffset = chats.length;
+            renderChatList();
+            collectOnlineUserIds();
+            loadChatListUsers();
+            updateTitleBadge();
+        }).catch(function () { chatListLoading = false; });
+    }
+
     chatListEl.addEventListener('scroll', function () {
         if (chatListEl.scrollTop + chatListEl.clientHeight >= chatListEl.scrollHeight - 100) loadChats();
     });
@@ -1184,10 +1228,10 @@
         }
         if (data.connected && _wasConnected === false) {
             // Соединение восстановлено — пропустили события (delete/edit/new),
-            // подтягиваем актуальное состояние с сервера.
+            // тихо сверяем состояние с сервером и применяем только диффы.
             console.log('[main] connection restored — running catch-up');
-            loadChats(true);
-            reloadCurrentChatMessages();
+            refreshChatListQuiet();
+            resyncCurrentChatTail();
         }
         _wasConnected = !!data.connected;
     });
@@ -1209,7 +1253,7 @@
             _resyncTimer = null;
             if (!currentChatId) {
                 // Чат не открыт — обновлять нечего в области сообщений; освежаем сайдбар.
-                loadChats(true);
+                refreshChatListQuiet();
                 return;
             }
             // Тихо сверяем хвост открытого чата. Сайдбар трогаем только если что-то
@@ -1219,37 +1263,53 @@
         }, 1200);
     });
 
-    // Совпадает ли только что загруженный хвост с тем, что уже показано (по id, тексту,
-    // флагу isEdited, числу прочитавших и наличию удалений в окне) — тогда менять нечего.
-    function tailMatchesCurrent(fetched) {
+    // Дифф свежезагруженного хвоста против показанного окна (по id, editedAt/тексту,
+    // числу прочитавших и удалениям в диапазоне окна). null — различий нет.
+    function diffFetchedTail(fetched) {
         var byId = new Map();
         messages.forEach(function (m) { byId.set(String(m.id), m); });
         var minId = Infinity, maxId = -Infinity;
+        var edits = [], readUpdates = [], news = [];
         for (var i = 0; i < fetched.length; i++) {
             var f = fetched[i];
             var fid = Number(f.id);
             if (fid < minId) minId = fid;
             if (fid > maxId) maxId = fid;
             var cur = byId.get(String(f.id));
-            if (!cur) return false;                                   // новое сообщение
-            if (!!cur.isEdited !== !!f.isEdited) return false;        // правка
+            if (!cur) { news.push(f); continue; }                     // новое сообщение
             var ct = (cur.content && cur.content.text) || '';
             var ft = (f.content && f.content.text) || '';
-            if (ct !== ft) return false;                              // правка текста
-            if ((cur.readBy || []).length !== (f.readBy || []).length) return false; // прочтение
+            if ((cur.editedAt || 0) !== (f.editedAt || 0) || ct !== ft) { edits.push(f); continue; } // правка
+            if ((cur.readBy || []).length !== (f.readBy || []).length) readUpdates.push(f); // прочтение
         }
         // Удаление: есть наше сообщение в диапазоне окна, которого нет в свежей выборке.
         var fetchedIds = new Set(fetched.map(function (m) { return String(m.id); }));
+        var deletes = [];
         for (var j = 0; j < messages.length; j++) {
             var mid = Number(messages[j].id);
-            if (mid >= minId && mid <= maxId && !fetchedIds.has(String(messages[j].id))) return false;
+            if (mid >= minId && mid <= maxId && !fetchedIds.has(String(messages[j].id))) deletes.push(messages[j].id);
         }
-        return true;
+        if (deletes.length === 0 && edits.length === 0 && readUpdates.length === 0 && news.length === 0) return null;
+        news.sort(function (a, b) { return Number(a.id) - Number(b.id); });
+        return { deletes: deletes, edits: edits, readUpdates: readUpdates, news: news };
+    }
+
+    // Точечное обновление галочек прочтения — view-часть handleMessageRead,
+    // без мутации счётчиков непрочитанного и без ререндера списка чатов.
+    function applyReadByUpdate(fetchedMsg) {
+        var msg = messages.find(function (m) { return String(m.id) === String(fetchedMsg.id); });
+        if (!msg) return;
+        msg.readBy = fetchedMsg.readBy || [];
+        var el = messagesArea.querySelector('.msg-status[data-msg-id="' + fetchedMsg.id + '"]');
+        if (el) {
+            var rc = msg.readBy.filter(function (id) { return id !== myUserId; }).length;
+            BF.messages.updateMessageStatus(el, rc > 0);
+        }
     }
 
     function resyncCurrentChatTail() {
         if (!currentChatId) return;
-        if (loadingMessages.classList.contains('visible')) return; // чат ещё открывается
+        if (isLoadingOlder || loadingMessages.classList.contains('visible')) return; // чат открывается/пагинируется
         if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
         var chatId = currentChatId;
         BF.api.getChatInfo(chatId).then(function (info) {
@@ -1261,38 +1321,60 @@
         }).then(function (res) {
             if (!res || !res.data || !res.data.messages || chatId !== currentChatId) return;
             var fetched = res.data.messages;
-            if (tailMatchesCurrent(fetched)) return; // за окно реконнекта ничего не пропало
+            var diff = diffFetchedTail(fetched);
+            if (!diff) return; // за окно реконнекта ничего не пропало — DOM не трогаем
             currentChatInfo = res.info;
             var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
-            messages = fetched;
-            renderMessages().then(function () {
-                if (wasAtBottom) scrollToBottom();
-            });
-            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
-            // чатах: освежаем превью/счётчики непрочитанного в сайдбаре.
-            loadChats(true);
-        }).catch(function () {});
-    }
 
-    // Catch-up: перезагрузка сообщений текущего чата.
-    // Используется при восстановлении соединения и при возврате на вкладку,
-    // чтобы синхронизировать пропущенные edit/delete/new события.
-    function reloadCurrentChatMessages() {
-        if (!currentChatId) return;
-        if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
-        var chatId = currentChatId;
-        BF.api.getChatInfo(chatId).then(function (info) {
-            if (chatId !== currentChatId || !info || info.error) return;
-            currentChatInfo = info;
-            var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
-            return BF.api.listMessages(chatId, fromId, 30, 10);
-        }).then(function (data) {
-            if (!data || !data.messages || chatId !== currentChatId) return;
-            var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
-            messages = data.messages;
-            renderMessages().then(function () {
-                if (wasAtBottom) scrollToBottom();
+            // Новые сообщения не в хвосте (окно прыгало через scrollToMessage, или своё
+            // сообщение ушло раньше resync-дебаунса) — точечно не вставить, полный render.
+            var maxCurId = messages.length > 0
+                ? Math.max.apply(null, messages.map(function (m) { return Number(m.id); }))
+                : -Infinity;
+            var tailOnly = messages.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            if (!tailOnly) {
+                messages = fetched;
+                renderMessages().then(function () {
+                    if (wasAtBottom) scrollToBottom();
+                });
+                refreshChatListQuiet();
+                return;
+            }
+
+            // Точечное применение диффа — как live-события, но без звуков/нотификаций.
+            diff.deletes.forEach(function (id) { applyMessageDelete(chatId, id); });
+            diff.edits.forEach(function (m) { applyMessageEdit(chatId, m); });
+            diff.readUpdates.forEach(applyReadByUpdate);
+
+            var chain = Promise.resolve();
+            diff.news.forEach(function (m) {
+                chain = chain.then(function () {
+                    if (chatId !== currentChatId) return;
+                    messages.push(m);
+                    return appendMessageToView(m);
+                });
             });
+            chain.then(function () {
+                if (chatId !== currentChatId || diff.news.length === 0) return;
+                if (wasAtBottom) {
+                    scrollToBottom();
+                    if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+                    var anyIncoming = false;
+                    diff.news.forEach(function (m) {
+                        if (m.senderId !== myUserId) { markReadPending.add(m.id); anyIncoming = true; }
+                    });
+                    if (anyIncoming) {
+                        if (markReadTimer) clearTimeout(markReadTimer);
+                        markReadTimer = setTimeout(flushMarkRead, 500);
+                    }
+                } else {
+                    if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+                }
+            });
+
+            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
+            // чатах: тихо освежаем превью/счётчики непрочитанного в сайдбаре.
+            refreshChatListQuiet();
         }).catch(function () {});
     }
 
@@ -1340,9 +1422,9 @@
     // ========== TAB VISIBILITY — REFRESH ON RETURN ==========
 
     BF.realtime.on('tab_visible', function () {
-        // Refresh chat list + currentChat messages to catch up missed updates while tab was hidden
-        loadChats(true);
-        reloadCurrentChatMessages();
+        // Тихий catch-up пропущенного за время скрытой вкладки: диффы вместо полного ререндера
+        refreshChatListQuiet();
+        resyncCurrentChatTail();
     });
 
     // ========== REALTIME HANDLERS ==========
