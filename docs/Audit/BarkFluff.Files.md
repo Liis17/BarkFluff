@@ -79,11 +79,10 @@
 **Рекомендация:** Логировать только `FileId`/`TempFileId`, не полный URL; либо понизить уровень и маскировать токен.
 **Статус: ✅ Исправлено** — добавлен `FileUrlHelper.MaskCapabilityToken(Guid)` (первые 8 hex-символов + `-****`), применён в `GetUploadUrlCommandHandler` (Information) и `GetTempDownloadUrlCommandHandler` (Debug) вместо полного URL/TempFileId.
 
-### S9. Незагруженные upload-слоты не истекают и не очищаются — Medium
-**Файлы:** `Backend/BarkFluff.Files/Features/GetUploadUrl/GetUploadUrlCommandHandler.cs:41-51`; модель `Domain/UploadFile.cs:16-32`; `Services/TempFileCleanupService.cs:5-34`.
-**Проблема:** Каждый вызов `GetUploadUrl` сразу сохраняет `UploadFile` в БД, но у записи нет срока действия. Если клиент не загружает файл (или загрузка завершается ошибкой), остаётся вечная строка с пустыми `Etag`/`UploadedAt`; зарегистрированный cleanup удаляет только истёкшие `TempFile`, не такие слоты. Проверки квоты учитывают только `UploadedAt != null` (`Persistence/UploadedFilesStorage.cs:83-101`).
-**Почему это проблема:** Любой аутентифицированный пользователь может быстро получать URL и не использовать их, накапливая неучитываемые квотой записи. Без TTL и ограничения частоты это постоянный DB resource-exhaustion; последующие обращения также замедляют таблицу и связанные проверки.
-**Рекомендация:** Добавить `UploadFile.ExpiresAt` для неподтверждённых слотов, периодически удалять просроченные строки (и объекты, если они появились), ограничить число pending-слотов и частоту `GetUploadUrl` на пользователя.
+### S9. ~~Незагруженные upload-слоты не истекают и не очищаются~~ — ~~Medium~~ **Исправлено (2026-07-15)**
+
+**Файлы:** `Domain/UploadFile.cs` (поле `ExpiresAt`); `Features/GetUploadUrl/GetUploadUrlCommandHandler.cs` (TTL 2 часа при создании слота); `Persistence/UploadedFilesStorage.cs` (`DeleteExpiredPendingAsync`); `Services/TempFileCleanupService.cs` (чистит также просроченные pending-слоты, не только `TempFile`); миграция `20260715165101_AddUploadFileExpiresAt`.
+**Решение:** У `UploadFile` появилось поле `ExpiresAt` (для уже существующих строк — дефолт `DateTime.MinValue`, что означает мгновенное истечение старых pending-слотов при накатке миграции). Фоновый `TempFileCleanupService` раз в час дополнительно удаляет `UploadedAt == null && ExpiresAt < now`. Rate-limiting на `GetUploadUrl` не добавлен — не требовался пользователем.
 
 ## Производительность
 

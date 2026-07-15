@@ -15,6 +15,11 @@ public class UploadFile
 
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// Срок действия слота, пока файл не загружен. После истечения слот удаляется фоновой очисткой.
+    /// </summary>
+    public DateTime ExpiresAt { get; set; }
+
     public DateTime? UploadedAt { get; set; }
 
     public string? Etag { get; set; }

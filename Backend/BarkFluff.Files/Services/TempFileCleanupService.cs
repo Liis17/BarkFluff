@@ -3,7 +3,7 @@ using BarkFluff.Files.Persistence;
 namespace BarkFluff.Files.Services;
 
 /// <summary>
-/// Фоновая периодическая очистка просроченных записей TempFile из БД.
+/// Фоновая периодическая очистка просроченных записей TempFile и незагруженных upload-слотов из БД.
 /// Без этого таблица бесконечно растёт, а запросы по индексу деградируют.
 /// </summary>
 public class TempFileCleanupService : BackgroundService
@@ -26,12 +26,16 @@ public class TempFileCleanupService : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var storage = scope.ServiceProvider.GetRequiredService<TempFilesStorage>();
+                var tempFilesStorage = scope.ServiceProvider.GetRequiredService<TempFilesStorage>();
+                var uploadedFilesStorage = scope.ServiceProvider.GetRequiredService<UploadedFilesStorage>();
 
-                var deleted = await storage.DeleteExpiredAsync(stoppingToken);
+                var deletedTempFiles = await tempFilesStorage.DeleteExpiredAsync(stoppingToken);
+                if (deletedTempFiles > 0)
+                    _logger.LogInformation("Удалено {Count} устаревших временных ссылок", deletedTempFiles);
 
-                if (deleted > 0)
-                    _logger.LogInformation("Удалено {Count} устаревших временных ссылок", deleted);
+                var deletedPendingUploads = await uploadedFilesStorage.DeleteExpiredPendingAsync(stoppingToken);
+                if (deletedPendingUploads > 0)
+                    _logger.LogInformation("Удалено {Count} незагруженных upload-слотов с истёкшим TTL", deletedPendingUploads);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

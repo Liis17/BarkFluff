@@ -11,6 +11,7 @@ namespace BarkFluff.Files.Features.GetUploadUrl;
 
 public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, GetUploadUrlResponse>
 {
+    private static readonly TimeSpan UploadSlotTtl = TimeSpan.FromHours(2);
 
     private readonly UploadedFilesStorage _uploadedFilesStorage;
     private readonly RunSettings _runSettings;
@@ -41,6 +42,7 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
         var uploadFile = new Domain.UploadFile()
         {
             CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow + UploadSlotTtl,
             Type = request.Type,
             Uploaders = new List<long> { _userContext.UserId },
         };
