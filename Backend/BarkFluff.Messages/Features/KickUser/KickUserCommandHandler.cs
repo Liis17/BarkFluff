@@ -4,6 +4,9 @@ using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Shared.Queue.Messages;
+
+using MassTransit;
 
 using MediatR;
 
@@ -18,18 +21,20 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
     private readonly MessagesStorage _messagesStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<KickUserCommandHandler> _logger;
 
     public KickUserCommandHandler(ChatsStorage chatsStorage, UserContext userContext, MessagesStorage messagesStorage,
         UsersServerApi.UsersServerApiClient usersServerApiClient, MessageQueueSender messageQueueSender,
-        MetricsCollector metrics, ILogger<KickUserCommandHandler> logger)
+        IPublishEndpoint publishEndpoint, MetricsCollector metrics, ILogger<KickUserCommandHandler> logger)
     {
         _chatsStorage = chatsStorage;
         _userContext = userContext;
         _messagesStorage = messagesStorage;
         _usersServerApiClient = usersServerApiClient;
         _messageQueueSender = messageQueueSender;
+        _publishEndpoint = publishEndpoint;
         _metrics = metrics;
         _logger = logger;
     }
@@ -89,6 +94,12 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
         _logger.LogDebug("Удаление пользователя {UserId} из чата {ChatId}", chatMember.UserId, request.ChatId);
 
         await _chatsStorage.RemoveChatMember(request.ChatId, chatMember.UserId);
+
+        await _publishEndpoint.Publish(new ChatMemberKickedEvent
+        {
+            ChatId = request.ChatId,
+            UserId = chatMember.UserId,
+        });
 
         var administatorUserInfoResponse = await
             _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
