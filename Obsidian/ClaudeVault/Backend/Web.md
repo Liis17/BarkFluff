@@ -17,7 +17,7 @@ docker-compose -f docker-compose-dev.yml up web
 
 Три функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
-2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP.
+2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP. **Base64-фрейминг:** каждый Write кодируется независимым padded base64-чанком и сразу флашится (`=` в середине потока — законный разделитель по спеке gRPC-Web, декодер клиента обрабатывает 4-символьные группы независимо). Раньше остаток 1-2 байта буферизовался до следующего Write — из-за этого server-streaming сообщения приходили с отставанием на одно.
 3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**)
 
 ## gRPC-Web трейлеры (grpc-status) — критично
@@ -103,9 +103,13 @@ docker-compose -f docker-compose-dev.yml up web
 - **exponential backoff** (2с → 30с) на error/end каждого стрима;
 - **age-timer** — превентивный реконнект каждые `STREAM_MAX_AGE` (180с);
 - **watchdog** — реконнект «молчащего» стрима после `STREAM_INACTIVITY_THRESHOLD` (90с, проверка раз в 30с): ловит «чёрные дыры», когда прокси/NAT молча дропнул сокет;
-- **page-visibility** — при возврате на вкладку (`tab_visible`) восстанавливаются упавшие стримы.
+- **page-visibility** — при возврате на вкладку (`tab_visible`) восстанавливаются упавшие стримы (`reconnectDeadStreams`);
+- **window `online`** — при возврате сети реконнект упавших стримов сразу, без ожидания backoff.
 
-**Catch-up (важно):** при ЛЮБОМ ПЕРЕоткрытии потоков `new_messages/read/edited/deleted` (не первый запуск) `realtime.js` эмитит событие **`resync`**. `main.js` ловит его с дебаунсом (1200мс) и тихо сверяет хвост открытого чата (`resyncCurrentChatTail` → `tailMatchesCurrent`): ререндер и `loadChats(true)` происходят **только если что-то реально изменилось** (новое/правка/прочтение/удаление в окне), иначе DOM не трогается. Это закрывает баг, когда отвалился один лишь поток новых сообщений, а `connection_status` (OR по 4 стримам) не флипался → старый catch-up не срабатывал и сообщение появлялось только после ручного переоткрытия чата. `connection_status` (полный разрыв всех стримов) и `tab_visible` по-прежнему делают полный `reloadCurrentChatMessages`.
+**Catch-up (важно):** при ЛЮБОМ ПЕРЕоткрытии потоков `new_messages/read/edited/deleted` (не первый запуск) `realtime.js` эмитит событие **`resync`**. Все catch-up-пути (`resync` с дебаунсом 1200мс, `connection_status` restore, `tab_visible`) идут через один тихий дифф-механизм:
+- `resyncCurrentChatTail` → `diffFetchedTail`: сверяет хвост открытого чата и применяет **точечный дифф** теми же аппликаторами, что live-события — новые → `appendMessageToView`, правки → `applyMessageEdit` (сравнение по `editedAt`+тексту), удаления → `applyMessageDelete`, прочтения → `applyReadByUpdate` (только галочки, без мутации счётчиков). Без звуков/нотификаций. Fallback на полный `renderMessages` только если новые сообщения не в хвосте (окно прыгало через `scrollToMessage` или своё сообщение ушло раньше дебаунса) или окно пусто. Различий нет → DOM не трогается.
+- `refreshChatListQuiet`: тянет первую страницу `listChats`, сравнивает сигнатуры чатов (`id|title|picture|countUnread|privateInviteState|lastActivityAt|lastMessage`) — `renderChatList` только при реальном различии.
+- Приватные чаты по-прежнему перезагружаются целиком (`reloadCurrentPrivateChat`) — инкремент требует decrypt-aware диффа. Прежний `reloadCurrentChatMessages` (безусловный полный ререндер) удалён.
 
 ## Редактирование и удаление сообщений (`main.js`)
 
