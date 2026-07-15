@@ -31,7 +31,8 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
             })
-            .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"]))
+            .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"]
+                ?? throw new InvalidOperationException("IdentityService:Token not configured")))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddFastAuthServices();
