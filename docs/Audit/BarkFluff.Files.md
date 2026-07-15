@@ -107,7 +107,7 @@
 **Файл:** `Backend/BarkFluff.Files/Persistence/FilesContext.cs` (частичный индекс `HasFilter("\"PreviewId\" IS NOT NULL")`); миграция `AddPreviewIdIndex`.
 **Решение:** Добавлен частичный индекс на `PreviewId` (только для непустых значений — большинство файлов превью не имеют).
 
-### P2. Несколько полных копий в памяти в серверных image-хендлерах — Low
+### P2. Несколько полных копий в памяти в серверных image-хендлерах — Low **→ Отложено** (та же зона image-pipeline, что и P3 — вернуться позже с более мощной моделью)
 **Файл:** `Backend/BarkFluff.Files/Features/UploadAvatarServer/UploadAvatarServerCommandHandler.cs:54-67` (аналогично `UploadPosterServer/...:52-56`, `UploadStickerImage/...:53-57`)
 **Проблема:** `request.ImageData.ToByteArray()` → `MemoryStream(rawStream)` → `ProcessAvatarAsync` → `processedBytes` → `MemoryStream(mainStream)` → плюс ещё `MemoryStream(processedBytes)` для превью. Несколько полных копий одного изображения в памяти.
 **Почему это проблема:** Лишние аллокации/копирования. Ограничено лимитом gRPC-сообщения 20 МБ, поэтому риск умеренный.
