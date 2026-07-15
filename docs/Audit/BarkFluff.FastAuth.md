@@ -64,12 +64,10 @@ FastAuth реализует QR-авторизацию: анонимное уст
 **Почему это проблема:** Сервисный токен любого внутреннего сервиса может «отсканировать» pending-сессию (зная её ID, например из логов — см. S4) и заблокировать легитимный вход (`AlreadyHandled` для настоящего пользователя). Довести до Accept не выйдет (`CreateSessionForUserServer` с UserId=0 не создаст осмысленную сессию), но DoS конкретной сессии и обход семантики «только пользователь» — реальны. Корень в общей политике GrpcServer (зона другого аудита), здесь — затронутость FastAuth.
 **Рекомендация:** В хендлерах Scan/Accept/Reject проверять `userContext.TokenType == TokenType.User` (или `UserId != 0`) до обработки.
 
-### S8. `IdentityService:Token` не валидируется при старте — Low
+### S8. ~~`IdentityService:Token` не валидируется при старте~~ — ~~Low~~ **Исправлено (2026-07-15)**
 
-**Файл:** `Backend/BarkFluff.FastAuth/Program.cs:31-33`
-**Проблема:** `IdentityService:Host` имеет молчаливый фолбэк `http://identity:7000`, а `IdentityService:Token` передаётся в `JwtClientInterceptor` без проверки на null — в отличие от принятого в проекте паттерна fail-fast (`?? throw new InvalidOperationException(...)`, как в CloudMessaging `Program.cs:27-29`).
-**Почему это проблема:** При отсутствующем токене в конфигурации сервис успешно стартует, а ломается только в момент `AcceptFastAuth` — на последнем шаге пользовательского сценария, причём ошибка авторизации к Identity всплывёт как непонятный сбой подтверждения входа.
-**Рекомендация:** Добавить `?? throw new InvalidOperationException("IdentityService:Token not configured")` (и аналогично для Host, если фолбэк не нужен осознанно).
+**Файл:** `Backend/BarkFluff.FastAuth/Program.cs`
+**Решение:** `IdentityService:Token` теперь `?? throw new InvalidOperationException(...)` — fail-fast при старте, как в CloudMessaging. `Host` оставлен с фолбэком на `http://identity:7000` — осознанно, не трогали.
 
 **Положительные стороны (по чек-листу):** session id и confirmation code — `Guid.NewGuid()` (CSPRNG .NET, 122 бита, перебор нереален: `FastAuthSessionsManager.cs:22`, `FastAuthSession.cs:67`); TTL 5 минут (`FastAuthSessionsManager.cs:9`) с фоновой очисткой; одноразовость кода и переходов состояний обеспечена атомарно под локом (`FastAuthSession.cs:74-104`); Accept/Reject привязаны к userId сканировавшего (`FastAuthSession.cs:79-80, 95-96` + дублирующая проверка в хендлерах); сообщения ошибок контролируемые, без утечки деталей (`Shared/BarkFluff.Shared.Exceptions/FastAuth/*`); SQL отсутствует (всё in-memory) — инъекции неприменимы; хардкода секретов в коде и конфигах нет.
 
