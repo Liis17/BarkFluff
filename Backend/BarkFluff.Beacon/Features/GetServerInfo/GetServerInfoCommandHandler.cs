@@ -118,9 +118,8 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Calls = ParseService(ServiceId.Calls, callsSettings.Configurations),
             Bots = ParseService(ServiceId.Bots, botsSettings.Configurations),
 
-            // WSS-адрес LiveKit для звонков (пусто, если Calls/LiveKit не настроены).
-            LivekitUrl = callsSettings.Configurations
-                .FirstOrDefault(x => x.Section == "LiveKit" && x.Key == "Url")?.Value ?? string.Empty,
+            // Публичный wss://-адрес LiveKit (отдельно от внутреннего LiveKit:Url для Calls -> LiveKit).
+            LivekitUrl = GetPublicLivekitUrl(callsSettings.Configurations),
         };
 
         _cache.Set(CacheKey, response, CacheTtl);
@@ -156,6 +155,23 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Status = ServiceStatus.Healthy,
             TlsEnabled = true
         };
+    }
+
+    private string GetPublicLivekitUrl(IEnumerable<ConfigurationItem> callsSettings)
+    {
+        var publicUrl = callsSettings
+            .FirstOrDefault(x => x.Section == "LiveKit" && x.Key == "PublicUrl")?.Value;
+
+        if (string.IsNullOrWhiteSpace(publicUrl))
+            return string.Empty;
+
+        if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var uri) || uri.Scheme != "wss")
+        {
+            _logger.LogError("LiveKit:PublicUrl должен быть публичным wss://-адресом, задано {Value}", publicUrl);
+            return string.Empty;
+        }
+
+        return publicUrl;
     }
 
     private static string NormalizeHost(string value)
