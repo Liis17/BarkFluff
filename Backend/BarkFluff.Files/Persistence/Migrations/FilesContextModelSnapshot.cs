@@ -188,6 +188,10 @@ namespace BarkFluff.Files.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Uploaders");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Uploaders"), "gin");
+
                     b.ToTable("UploadedFiles");
                 });
 
