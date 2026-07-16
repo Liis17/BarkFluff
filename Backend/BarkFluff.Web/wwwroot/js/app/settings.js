@@ -71,6 +71,8 @@
         document.querySelector('#confirmOk').addEventListener('click', function () {
             BF.realtime.stopAll();
             BF.tokens.clear();
+            BF.privateChat.clearAll();
+            BF.personalization.clearAll();
             window.location.href = '/';
         });
     }

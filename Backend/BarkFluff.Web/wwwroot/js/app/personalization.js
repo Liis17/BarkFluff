@@ -136,6 +136,13 @@
     }
     function getResolvedBackgroundUrl() { return resolvedBgUrl; }
 
+    /** Стереть все локальные настройки персонализации — вызывается при логауте. */
+    function clearAll() {
+        Object.keys(KEYS).forEach(function (k) { localStorage.removeItem(KEYS[k]); });
+        resolveBgUrl('');
+        applyAll();
+    }
+
     function onChange(cb) {
         if (typeof cb === 'function') listeners.push(cb);
         return function () {
@@ -154,6 +161,7 @@
         getBackgroundFileId: getBackgroundFileId,
         setBackgroundFileId: setBackgroundFileId,
         getResolvedBackgroundUrl: getResolvedBackgroundUrl,
+        clearAll: clearAll,
         onChange: onChange,
         DEFAULTS: DEFAULTS
     };
