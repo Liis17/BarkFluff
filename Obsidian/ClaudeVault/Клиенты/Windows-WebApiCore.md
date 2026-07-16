@@ -30,7 +30,7 @@ WebApi (IDisposable, фасад)
 ├── WebApiServerManager      — информация о серверах
 ├── WebApiUpdateManager      — real-time streaming (IAsyncEnumerable)
 ├── WebApiOnlinerManager     — онлайн-статусы
-└── WebApiFastAuthManager    — QR-вход (анонимный, отдельный канал, НЕ WebApiBase)
+└── WebApiFastAuthManager    — QR-вход (анонимный, отдельный канал; наследует WebApiBase)
 ```
 
 ## Ключевые классы
@@ -118,7 +118,7 @@ _webApi.TokenRefreshed += async (_, _) =>
 
 ## FastAuth QR-вход
 
-`WebApiFastAuthManager` — не наследует `WebApiBase`, работает с отдельным анонимным каналом.
+`WebApiFastAuthManager` — наследует `WebApiBase` (`internal class WebApiFastAuthManager : WebApiBase`), работает с отдельным анонимным каналом.
 
 **Публичные методы `WebApi`:**
 - `CreateFastAuthClient(gParam, deviceName, os, appName, appVersion, ip)` — создаёт анонимный gRPC канал к FastAuth с device-info interceptors (без JWT)

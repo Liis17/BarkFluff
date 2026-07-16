@@ -12,7 +12,7 @@ gRPC-клиентская библиотека для WPF-клиента. Еди
 
 ### `WebApi.cs`
 
-Публичный фасад. Создаёт и держит 8 gRPC-каналов, 8 gRPC-клиентов и 12 менеджеров. Реализует `IDisposable` — при `Dispose()` закрываются все gRPC-каналы.
+Публичный фасад. Создаёт и держит 9 gRPC-каналов, 9 gRPC-клиентов и 13 менеджеров (включая `FastAuthAC`/`FastAuthChannel`/`FastAuthManager`). Реализует `IDisposable` — при `Dispose()` закрываются все gRPC-каналы.
 
 **Свойства:**
 - `bool ACisnull` — `true`, если основные клиенты не инициализированы
@@ -30,7 +30,7 @@ gRPC-клиентская библиотека для WPF-клиента. Еди
 
 ### `WebApiBase.cs`
 
-Абстрактный базовый класс всех менеджеров. Предоставляет `protected`-доступ к 8 gRPC-клиентам и 8 каналам через ссылку на родительский `WebApi`.
+Абстрактный базовый класс всех менеджеров. Предоставляет `protected`-доступ к 9 gRPC-клиентам и 9 каналам (включая `FastAuthAC`/`FastAuthChannel`) через ссылку на родительский `WebApi`.
 
 ### `ErrorReturner.cs`
 
@@ -69,7 +69,7 @@ ErrorReturner
 |-------|-----------|
 | `CreateOnlyBeaconAC(gParam)` | Только Beacon-канал (до авторизации) |
 | `CreateNavigatorAC(url)` | Navigator-канал (публичный реестр серверов) |
-| `CreateAC(gParam, deviceName, os, appName, appVersion, ip)` | Все 8 каналов с 7 interceptors |
+| `CreateAC(gParam, deviceName, os, appName, appVersion, ip)` | Пересоздаёт 7 каналов с интерцептором (Messages/Files/Identity/Beacon/User/Updates/Onliner); `Navigator` и `FastAuth` создаются отдельными методами |
 
 **Interceptors (порядок):** `XDeviceClientInterceptor`, `XDeviceIdInterceptor`, `JwtClientInterceptor`, `XOsClientInterceptor`, `XAppClientInterceptor`, `ExceptionClientInterceptor`, `XIpInterceptor`
 
@@ -211,7 +211,7 @@ PeriodicTimer(30s)
 
 **`MessageModel`** — `MessageId`, `ChatId`, `Text`, `Attachments: List<AttachmentsModel>`, `SenderId`, `SentAt`, `Type`, `ReadBy: List<long>`, `IsSystemMessage`
 
-**`AttachmentsModel`** — `Id`, `Type (MessageAttachmentType)`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`
+**`AttachmentsModel`** — `Id`, `Type (MessageAttachmentType)`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`, `ImageWidth`, `ImageHeight`
 
 **`ForwardingLetter`** — `Text: string`, `FilesId: List<string>`
 
@@ -293,9 +293,9 @@ PeriodicTimer(30s)
 
 Главный контейнер состояния приложения. Сохраняется/загружается зашифрованным.
 
-**Шифрование:** AES-256-CBC, ключ из PBKDF2-SHA256 (100 000 итераций), формат файла: `[salt 16 bytes][iv 16 bytes][encrypted data]`
+**Шифрование:** AES-256-GCM, ключ из PBKDF2-SHA512 (600 000 итераций), формат файла BFV3: `[magic 4][salt 16][nonce 12][tag 16][ciphertext]`. Читает легаси-формат BFV2 (PBKDF2-SHA256 × 100 000).
 
-**Поля:** URLs всех 7 сервисов, `RefreshToken`, `AccessToken`, `UserId`, `UserName`, `FirstName`, `LastName`, `DeviceId`, `IpAddress`, `Colors (ClientColors)`, `NotificationMode`
+**Поля:** 8 полей `Socket*` (Beacon, Users, Identity, Files, Messages, Updates, Onliner, FastAuth), `RefreshToken`, `AccessToken`, `UserId`, `UserName`, `FirstName`, `LastName`, `DeviceId`, `IpAddress`, `Colors (ClientColors)`, `NotificationMode`, `AppTheme`, `AppLanguage`, `NotificationSoundEnabled`, `MessageBubbleCornerRadius`, `BackgroundBlur*`, `BackgroundDimPercent`, `CurrentBackgroundFileId`, `AppPath`, `ServerName`, `ServerDescription`, `MachineName`
 
 **`NotificationDisplayMode`:**
 - `0` Disabled — отключены
@@ -317,7 +317,7 @@ PeriodicTimer(30s)
 | `UserData` | `Username`, `FirstName`, `LastName`, `Email`, `Id`, `RegistrationDate`, `Badges`, `ProfilePictureUrl`, `ProfilePicturePreviewUrl`, `Description` |
 | `ChatInfo` | `ChatId`, `Members`, `Title`, `CountUnread`, `FirstUnreadId`, `IsGroup`, `LastMessageId`, `Picture` |
 | `MessageModel` | `MessageId`, `ChatId`, `Text`, `Attachments`, `SenderId`, `SentAt`, `Type`, `ReadBy`, `IsSystemMessage` |
-| `AttachmentsModel` | `Id`, `Type`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size` |
+| `AttachmentsModel` | `Id`, `Type`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`, `ImageWidth`, `ImageHeight` |
 | `ForwardingLetter` | `Text`, `FilesId: List<string>` |
 | `ServerDataElement` | `Title`, `Description`, `Ip`, `UserCount`, `PublicName`, `Location`, `HexColor` |
 | `ChatCacheClass` | `ChatId`, `ChatName`, `AvatarFileId`, `LastMessage?` |
