@@ -803,6 +803,13 @@
         return c().authCall(onliner().setOnlineStatus.bind(onliner()), req);
     }
 
+    function setTypingStatus(chatId, typing) {
+        var req = new (onlPb().SetTypingStatusRequest)();
+        req.setChatId(chatId);
+        req.setAction(typing ? 1 : 2);
+        return c().authCall(onliner().setTypingStatus.bind(onliner()), req);
+    }
+
     function getOnlineStatus(userIds) {
         var req = new (onlPb().GetOnlineStatusRequest)();
         req.setUserIdsList(userIds);
@@ -842,6 +849,7 @@
         getStickerPack: getStickerPack,
         setOnlineStatus: setOnlineStatus,
         getOnlineStatus: getOnlineStatus,
+        setTypingStatus: setTypingStatus,
         // Users
         changeName: changeName,
         changeUsername: changeUsername,
