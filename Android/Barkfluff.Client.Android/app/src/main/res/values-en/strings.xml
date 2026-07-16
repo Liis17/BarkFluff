@@ -633,4 +633,11 @@
     <string name="security_hero_subtitle">Enable 2FA for stronger protection</string>
     <string name="security_section_parameters">Settings</string>
     <string name="testing_experimental_hint">Experimental features may work unreliably.</string>
+
+    <!-- Typing indicator -->
+    <string name="typing_indicator">typing…</string>
+    <plurals name="typing_indicator_named">
+        <item quantity="one">%1$s is typing…</item>
+        <item quantity="other">%1$s are typing…</item>
+    </plurals>
 </resources>
