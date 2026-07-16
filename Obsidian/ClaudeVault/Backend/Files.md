@@ -59,9 +59,9 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 | Сущность | Назначение |
 |----------|-----------|
-| `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация. `PreviewId` — ссылка на превью. `ImageWidth`/`ImageHeight` — размеры изображения в пикселях (nullable int, только для графических типов). |
+| `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация (GIN-индекс). `PreviewId` — ссылка на превью (частичный индекс). `ExpiresAt` — TTL слота незагруженного файла (~2 ч, чистится `TempFileCleanupService`). `ImageWidth`/`ImageHeight` — размеры изображения в пикселях (nullable int, только для графических типов). |
 | `TempFile` | Временные файлы с `ExpiresAt`. Индекс по `OriginalFileId`. |
-| `FileHash` | SHA256-хеши для дедупликации. Индекс по `Hash`. |
+| `FileHash` | SHA256-хеши для дедупликации. **Уникальный** индекс `IX_FileHashes_Hash` (с 2026-07-16). |
 | `BadgeImage` | Отдельная таблица (не `UploadFile`). Бакет `badge-images`. PNG без сжатия. |
 | `StickerPack` | `CreatorUserId`, `CoverStickerId`, связь 1:N со `Sticker`. |
 | `Sticker` | `FileId`, `PreviewFileId`, `Emoji`. Макс. 1024px, макс. 12 МБ. |

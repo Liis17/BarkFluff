@@ -29,6 +29,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 | `S3_SERVICE_URL` | URL S3 (default: `http://localhost:9000`) |
 | `S3_BUCKET_NAME` | Имя бакета (default: `client-storage`) |
 | `UPLOAD_TOKEN` | **Обязательный** Bearer-токен для POST-эндпоинтов |
+| `REGISTRY_STORAGE_S3_CHUNKSIZE` | Размер части multipart-загрузки в S3 (default 16 МБ; для Cloudflare R2 рекомендуется 100 МБ) |
 
 ## API Endpoints
 
@@ -62,6 +63,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - `Infrastructure/LocalFileCache` — локальный дисковый кеш (`CACHE_DIR`, default `/app/cache`)
 - `Infrastructure/HashingReadStream` — ~~класса не существует~~; SHA-256 вычисляется инлайн в контроллере через `IncrementalHash` (один проход до отправки в S3)
 - `Services/CacheWarmupService` — `IHostedService`, прогревает кеш при старте контейнера
+- `Services/OldVersionsCleanupService` — `IHostedService`, раз в 7 дней удаляет из S3 и БД **все версии кроме самой новой** по каждой паре `ClientType × ReleaseChannel`
 - `Middleware/TokenAuthMiddleware` — Bearer-токен только для `/set/*`
 - `Persistence/` — EF Core + SQLite
 

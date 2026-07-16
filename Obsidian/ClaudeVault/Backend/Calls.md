@@ -49,7 +49,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 > **История (v1):** `ListCallHistory` отдаёт личные звонки, где пользователь — участник, и **групповые, инициированные им** (`CallerUserId == me`). Полная групповая история (звонки всех чатов, где пользователь состоит) требует серверного lookup чатов пользователя в [[Backend/Messages]] — TODO. `GetActiveCalls` возвращает звонки со статусом `Active`; `participant_user_ids` в v1 пуст (клиент делает `JoinCall`).
 
-> ⚠️ **Proto-синхронизация:** новые `ListCallHistory`/`GetActiveCalls`/`CallHistoryItem`/`ActiveCallItem` добавлены в `Shared/BarkFluff.Proto/calls_api.proto` и `Android/core/src/main/proto/calls_api.proto`. `Mac/Barkfluff/Protos/calls_api.proto` **не синхронизирован** (Swift-код уже ссылается на `ListCallHistory` — DTO согласовать при возврате к Mac/iOS).
+> ⚠️ **Proto-синхронизация:** новые `ListCallHistory`/`GetActiveCalls`/`CallHistoryItem`/`ActiveCallItem` добавлены в `Shared/BarkFluff.Proto/calls_api.proto` и `Android/core/src/main/proto/calls_api.proto`. `Mac/Barkfluff/Protos/calls_api.proto` **не синхронизирован** (Swift-клиент эти методы пока **не использует** — `CallsRepositoryProtocol` содержит только `initiateCall`/`joinCall`/`acceptCall`/`rejectCall`/`endCall`/`setAudioQuality`/`subscribeCallEvents`; DTO согласовать при возврате к Mac/iOS).
 
 ### Push-события (RabbitMQ → [[Backend/CloudMessaging]])
 
@@ -89,7 +89,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
 - **[[Backend/Beacon]]** — отдаёт клиенту `livekit_url` из конфига Calls.
 - **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `Backend/livekit/livekit.yaml`.
-- **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
+- **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); `ChatMemberKickedConsumer` (очередь `chat-member-kicked-calls`, событие `ChatMemberKickedEvent`: при кике пользователя из чата best-effort удаляет его из активной LiveKit-комнаты через `RoomServiceClient.RemoveParticipant`); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
 
 ## Клиенты
 
