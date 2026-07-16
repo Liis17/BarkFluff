@@ -11,7 +11,7 @@ Package: `com.barkfluff.client`
 
 ## Версии
 
-- Kotlin 2.0.0, AGP 8.9.1
+- Kotlin 2.2.20, AGP 8.9.1
 - gRPC-OkHttp 1.60.0 (NOT grpc-netty)
 - ViewBinding, без Hilt/MVVM
 
@@ -212,8 +212,6 @@ Backend заполняет эти поля при доставке сообще�
 - Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
 
 ## Система кеширования
-
-Подробная документация: `Android/Barkfluff.Client.Android/docs/CACHING_SYSTEM.md`
 
 Четыре слоя кеша:
 1. **Runtime URL-кэш** — `AvatarLoader.urlCache` (`ConcurrentHashMap<fileId, URL>`, in-memory)
@@ -505,9 +503,8 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 ## Файловая структура
 
 - `gradle/libs.versions.toml` — все версии зависимостей
-- `app/src/main/proto/` — 11 proto файлов
+- `core/src/main/proto/` — 13 proto файлов
 - `app/src/main/java/com/barkfluff/client/` — все исходники
-- `docs/` — `CACHING_SYSTEM.md`, `MATERIAL3_REPORT.md`, `material_you_3_guide.md`
 - Полная карта проекта — в Obsidian: [[Android-ProjectMap]] + [[Android-FileIndex]] (отдельного `PROJECT_MAP.md` в репозитории нет)
 
 ## Per-chat mute (отключение уведомлений чата)
