@@ -32,6 +32,7 @@ Barkfluff.AdminPanel/
 │   ├── S3BrowserEndpoints.cs          ← /api/s3/*
 │   ├── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
 │   ├── MailEndpoints.cs               ← /api/mail/*
+│   ├── BotsEndpoints.cs               ← /api/bots/*
 │   └── RemoteDockerEndpoints.cs       ← /api/remote/*
 ├── Middleware/
 │   └── TokenAuthMiddleware.cs         ← cookie-аутентификация
@@ -104,6 +105,8 @@ GET /notifications     → v2/notifications.html
 GET /mail              → v2/mail.html
 GET /s3-storage        → v2/s3-storage.html
 GET /s3-browser        → v2/s3-browser.html
+GET /configuration     → v2/configuration.html
+GET /bots              → v2/bots.html
 GET /restarting        → v2/restarting.html (публичный)
 GET /updating          → v2/updating.html (публичный)
 GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
@@ -174,9 +177,9 @@ ImageInfoDto             Id, Repository, Tag, Size, CreatedAt
 
 ### TokenAuthMiddleware
 - Читает GUID из cookie `auth_token`
-- Публичные пути: `/login`, `/restarting`, `/updating`, `/api/auth/request`, `/api/auth/status`
+- Публичные `/api/*` пути: `/api/auth/request`, `/api/auth/status`; для HTML без токена пропускаются `/`, `/Login.html`, `/assets/*`
 - Для `/api/*` → 401 если токен невалиден
-- Для HTML → редирект на `/login`
+- Для HTML без валидного токена → редирект на `/` (корень отдаёт `Login.html`); отдельного маршрута `/login` **нет**
 - Обновляет `LastActivity` при каждом валидном запросе
 - Удаляет истекшие токены при проверке
 
@@ -425,6 +428,8 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 | Метод | Путь | Описание |
 |-------|------|---------|
+| GET | `/api/configuration/all` | Все строки конфигурации через rpc `GetAllConfigurations` |
+| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
 | GET | `/api/configuration/s3-configuration` | S3 конфиг всех бакетов |
 | POST | `/api/configuration/s3/update` | Обновить конфиг бакета `{ bucketId, parameters }` |
 
@@ -523,6 +528,11 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | `AddReservedNameAsync()` | ReservedNamesEndpoints |
 | `RenameReservedNameAsync()` | ReservedNamesEndpoints |
 | `DeleteReservedNameAsync()` | ReservedNamesEndpoints |
+
+### BotsServerApiClient
+| gRPC-метод | Вызывается из |
+|-----------|-------------|
+| `ListBots` / создание системного бота / перегенерация токена / удаление | BotsEndpoints |
 
 ---
 
