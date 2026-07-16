@@ -295,6 +295,17 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
+## Typing-индикатор («печатает…»)
+
+Клиентская интеграция готового API [[Backend/Onliner]] (typing = relay-модель, см. там же). Только V1; список чатов не затронут — индикатор живёт в шапке открытого чата.
+
+- **RealtimeService** (`core/grpc/RealtimeService.kt`): `typingEvents: SharedFlow<TypingEvent>` + стрим `streamWithReconnect("Typing") { collectTyping() }` в `resume()`; `@Volatile subscribedTypingChatIds` читается при каждом открытии стрима (переживает pause/resume). `changeTypingSubscription(chatIds)` — fire-and-forget `ChangeChatsInTypingSubscription` с одним retry через 2с (гонка `FailedPrecondition`, пока стрим не открыт). `sendTypingStatus(chatId, typing)` — fire-and-forget unary heartbeat.
+- **ChatActivity — отправка**: TextWatcher → `onTypingInput(s)`: непустой ввод запускает heartbeat-job (TYPING каждые 4с, стоп при idle ≥5с без CANCELLED); пустое поле / отправка сообщения (программный `text?.clear()` триггерит TextWatcher) / `onStop()` → `stopTypingHeartbeat(sendCancel=true)` → CANCELLED. Флаг `suppressTypingInput` подавляет ложный TYPING при программном `setText()` в `setPendingEdit` (edit-режим).
+- **ChatActivity — приём**: collect `typingEvents` в `subscribeToRealtimeEvents()`; фильтр по chatId (case-insensitive) и своему userId; `typingUsers: LinkedHashMap<Long, Job>` — job гашения 6с на каждого печатающего. Подписка: `onCreate()` → `changeTypingSubscription(listOf(chatId))`, `onDestroy()` → пустой список.
+- **UI**: `renderTypingIndicator()` пишет в `onlineStatusTextView`. 1:1 — «печатает…» вместо онлайн-статуса, восстановление через `lastStatusText` (хелпер `applyOnlineStatus` не даёт онлайн-статусу перетереть typing-текст). Группа — `VISIBLE` + имена из `groupMemberInfoCache` (недостающие догружаются асинхронно, дедуп через `pendingTypingNameFetches`), plurals `typing_indicator_named`, макс 3 имени; после гашения — `GONE`.
+- **Строки**: `typing_indicator` + plurals `typing_indicator_named` в values (RU), values-en/de/es/zh-rCN.
+- Private/secret чаты не затронуты (отдельные Activity).
+
 ## FastAuth QR-сканер (DevicesActivity → QrScannerActivity → FastAuthConfirmActivity)
 
 Флоу: авторизованный мобильный клиент сканирует QR нового устройства и подтверждает/отклоняет вход.
