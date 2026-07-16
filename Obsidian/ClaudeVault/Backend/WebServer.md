@@ -64,7 +64,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 `UsersServerApiClient` создаётся вручную через `GrpcChannel.ForAddress` в `Program.cs` (не через `AddGrpcClient`). `x-auth-token` передаётся вручную в `Metadata` при каждом вызове.
 
-Адрес Users-сервиса (`https://users.barkfluff.com`) и токены **захардкожены** в `Program.cs`.
+Адрес Users-сервиса и токен читаются из конфигурации (`UsersService:Host` / `UsersService:Token`) в `Program.cs` — без hardcoded-значений.
 
 ## Статика
 
@@ -85,4 +85,4 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 ## Зависимости
 
-- `Telegram.Bot 22.8.1`
+- `Telegram.Bot 22.10.0.1`
