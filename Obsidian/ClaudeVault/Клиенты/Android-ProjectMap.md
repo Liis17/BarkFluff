@@ -15,10 +15,10 @@
 | Параметр          | Значение                                                |
 | ----------------- | ------------------------------------------------------- |
 | Пакет             | `com.barkfluff.client`                                  |
-| Язык              | Kotlin 2.0.0                                            |
+| Язык              | Kotlin 2.2.20                                           |
 | AGP               | 8.9.1                                                   |
-| Min SDK           | 26                                                      |
-| Target SDK        | 35                                                      |
+| Min SDK           | 31                                                      |
+| Target SDK        | 36                                                      |
 | gRPC              | `grpc-okhttp` 1.60.0 (НЕ grpc-netty)                    |
 | Image loading     | Coil                                                    |
 | Video             | ExoPlayer (media3-exoplayer 1.3.1)                      |
@@ -42,8 +42,8 @@ SplashActivity (точка входа)
     │                                                      └─► ResetPasswordActivity
     │
     └─► MainActivity (есть токен)
-          ├─ [tab 0] ContactsFragment
-          ├─ [tab 1] ChatsFragment  ←── (default tab)
+          ├─ [tab 0] ChatsFragment  ←── (default tab)
+          ├─ [tab 1] CallsFragment
           └─ [tab 2] ProfileFragment
                           │
                           ├─► AccountSettingsActivity
@@ -54,7 +54,7 @@ SplashActivity (точка входа)
                           ├─► AboutActivity
                           └─► UpdateActivity
 
-ChatsFragment / ContactsFragment
+ChatsFragment
     └─► ChatActivity (отдельный экран чата)
               ├─► ImageViewerActivity (просмотр фото)
               └─► MediaViewerActivity (просмотр видео, ExoPlayer)
@@ -185,8 +185,8 @@ Error codes (из gRPC trailer `x-error-code`):
 
 Главный экран с BottomNavigationView. 3 таба:
 
-- `TAB_CONTACTS = 0` → `ContactsFragment`
-- `TAB_CHATS = 1` → `ChatsFragment` (дефолтный)
+- `TAB_CHATS = 0` → `ChatsFragment` (дефолтный)
+- `TAB_CALLS = 1` → `CallsFragment` (видимость через `mainTabCallsVisible`)
 - `TAB_PROFILE = 2` → `ProfileFragment`
 
 Фрагменты кешируются в `Map<Int, Fragment>`, при переключении — show/hide (не replace), с анимацией slide.
@@ -197,7 +197,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 Проверяет обновления (`UpdateChecker`) → показывает badge на вкладке Profile.
 
-**Связи:** `ChatsFragment`, `ContactsFragment`, `ProfileFragment`, `ChatActivity`, `SplashActivity`, `DeepLinkHandler`, `OpenChatManager`, `UpdateChecker`
+**Связи:** `ChatsFragment`, `CallsFragment`, `ProfileFragment`, `ChatActivity`, `SplashActivity`, `DeepLinkHandler`, `OpenChatManager`, `UpdateChecker`
 
 ---
 
@@ -211,13 +211,13 @@ Error codes (из gRPC trailer `x-error-code`):
 
 ---
 
-### `ContactsFragment.kt`
+### `CallsFragment.kt`
 
 **Тип:** Fragment
 
-Список контактов (друзей/связей). Загружает через Users API. Открывает чат по клику.
+Вкладка звонков (`TAB_CALLS = 1`). Видимость управляется флагом `mainTabCallsVisible`.
 
-**Связи:** `GrpcManager`, `UserAdapter`, `ChatActivity`
+**Связи:** `GrpcManager`, `ChatActivity`
 
 ---
 
@@ -436,30 +436,6 @@ Toggle уведомлений, настройки каналов Android.
 "О приложении": версия, лицензии, ссылки.
 
 **Связи:** `AppVersionUtil`
-
----
-
-### `PreviewImageActivity.kt`
-
-**Тип:** AppCompatActivity
-
-Предпросмотр **локального** изображения перед отправкой. Запускается из `ImagePickerBottomSheet` / `ChatActivity`. Получает `Uri` через `EXTRA_URI`. Отображает изображение через Coil. В будущем — инструменты редактирования.
-
-`createIntent(context, uri)` — статичная фабрика.
-
-**Связи:** `ChatActivity`, `ImagePickerBottomSheet`
-
----
-
-### `PreviewVideoActivity.kt`
-
-**Тип:** AppCompatActivity
-
-Предпросмотр **локального** видео перед отправкой. Получает `Uri` через `EXTRA_URI`. Воспроизводит через ExoPlayer (media3). В будущем — кнопка отправки.
-
-`createIntent(context, uri)` — статичная фабрика.
-
-**Связи:** `ChatActivity`, ExoPlayer (media3-exoplayer)
 
 ---
 
@@ -940,13 +916,14 @@ Object. Создаёт каналы уведомлений Android и показ
 
 ---
 
-## Proto файлы (`app/src/main/proto/`)
+## Proto файлы (`core/src/main/proto/`) — 13 файлов
 
 | Файл                      | Описание                                                                                                                      |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `beacon_api.proto`        | Информация о сервере (эндпоинты, название, `livekit_url`, сервис `calls`)                                                     |
 | `calls_api.proto`         | Звонки на LiveKit SFU: InitiateCall/JoinCall/AcceptCall/RejectCall/EndCall, SubscribeCallEvents, ListCallHistory, GetActiveCalls |
 | `configuration_api.proto` | Централизованная конфигурация                                                                                                 |
+| `developers_api.proto`    | Портал документации для разработчиков                                                                                        |
 | `fast_auth_api.proto`     | QR-авторизация                                                                                                                |
 | `files_api.proto`         | Загрузка/скачивание файлов, preview, URL                                                                                      |
 | `identity_api.proto`      | Auth, 2FA, сброс пароля, сессии, токены                                                                                       |

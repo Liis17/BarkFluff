@@ -20,14 +20,15 @@
 | `LoginActivity.kt` | Авторизация (логин/email, пароль, 2FA OTP); сохраняет токены в EncryptedSharedPreferences |
 | `RegisterActivity.kt` | Регистрация в 9 шагов (имя, username, email, OTP, пароль, аватар, bio, 2FA, завершение) |
 | `ResetPasswordActivity.kt` | Сброс пароля через email (запрос кода → подтверждение → новый пароль) |
-| `MainActivity.kt` | Главный экран; BottomNavigation с 3 табами (Контакты, Чаты, Профиль); обрабатывает deep links и уведомления |
+| `MainActivity.kt` | Главный экран; BottomNavigation с 3 табами (Чаты, Звонки, Профиль); обрабатывает deep links и уведомления |
 | `ChatsFragment.kt` | Список чатов; подписывается на RealtimeService; обновляется при новых сообщениях |
-| `ContactsFragment.kt` | Список контактов (друзей); открывает чат по клику |
 | `CallsFragment.kt` | Вкладка звонков — история (`CallHistoryAdapter`), инициация нового звонка |
 | `ProfileFragment.kt` | Профиль пользователя + меню настроек + постер профиля; кнопка выхода (LogoutHelper) |
 | `ChatActivity.kt` | Экран переписки; пагинация сообщений, вложения всех типов, стикер-панель, фон чата, блюр |
 | `GroupInfoActivity.kt` | Информация о группе: название, аватар, участники; вход в `AddGroupMemberActivity`/редактирование |
 | `AddGroupMemberActivity.kt` | Добавление участника в групповой чат (`MessagesApi.AddUser`) |
+| `CreateChatBottomSheet.kt` | Нижний лист выбора: новый личный чат / новая группа |
+| `CreateGroupChatActivity.kt` | Создание группового чата (выбор участников через `GroupMemberPickerAdapter`, название) |
 | `PinnedMessagesActivity.kt` | Список закреплённых сообщений чата |
 | `PrivateChatActivity.kt` | Экран приватного (E2E через passphrase) чата — шифрование Argon2id |
 | `SecretChatActivity.kt` | Экран секретного чата — Signal Double Ratchet, сообщения не хранятся на сервере |
@@ -86,6 +87,7 @@
 | `calls/CallTelecomManager.kt` | Обёртка над `TelecomManager`: регистрация исходящего/входящего звонка в системе (`addNewIncomingCall`) |
 | `calls/CallTelecomRegistry.kt` | `ConcurrentHashMap` активных `Connection` по `callId` — мост между `BarkFluffConnectionService` и `LiveKitCallEngine` |
 | `calls/CallActionReceiver.kt` | `BroadcastReceiver` для действий из уведомления/лок-скрина (принять/отклонить/завершить звонок) |
+| `calls/CallBatteryOptimizationHelper.kt` | Хелпер запроса исключения из battery optimization (чтобы входящие звонки доходили в Doze) |
 
 ---
 
@@ -144,6 +146,9 @@
 | `adapter/EncryptedMessageAdapter.kt` | `ListAdapter` сообщений приватного/секретного чата (`PrivateChatActivity`/`SecretChatActivity`) |
 | `adapter/ForwardChatPickerAdapter.kt` | Список чатов для пересылки сообщения в `ForwardChatPickerBottomSheet` |
 | `adapter/ReplySwipeCallback.kt` | `ItemTouchHelper.Callback` — свайп сообщения вправо инициирует ответ (reply) |
+| `adapter/ChatSkeletonAdapter.kt` | Скелетон-заглушки списка чатов во время загрузки |
+| `adapter/FolderTabsAdapter.kt` | Горизонтальные вкладки папок чатов над списком |
+| `adapter/GroupMemberPickerAdapter.kt` | Выбор участников при создании группового чата (`CreateGroupChatActivity`) |
 
 ---
 
@@ -260,6 +265,9 @@ App Widget с закреплёнными чатами.
 | `utils/LocaleManager.kt` | app | Применение выбранного языка приложения (`LanguageSettingsActivity`) через `Configuration`/`AppCompatDelegate` |
 | `utils/ServerInfoPrefs.kt` | app | Персистентное хранилище последнего `GetServerInfo` от Beacon (адреса сервисов, `livekitUrl`) |
 | `utils/SpringPress.kt` | app | Пружинистый эффект нажатия для UI-элементов (scale-анимация) |
+| `utils/AudioWaveformExtractor.kt` | app | Извлекает форму волны (waveform) из аудиофайла для голосовых сообщений |
+| `utils/OnlineTimeFormatter.kt` | app | Форматирование времени последней активности пользователя («был(а) в сети …») |
+| `utils/OtpCellsHelper.kt` | app | Хелпер для UI-ячеек ввода OTP-кода |
 
 ---
 
@@ -271,6 +279,7 @@ App Widget с закреплёнными чатами.
 | `views/SquareImageView.kt` | AppCompatImageView с height=width (квадрат); используется в ImageGridAdapter |
 | `views/AspectRatioImageView.kt` | AppCompatImageView с height=width*3/2 (2:3); превью фонов чата |
 | `views/ScannerOverlayView.kt` | Кастомный View: полупрозрачный оверлей с угловыми маркерами для QR-сканера |
+| `view/VoiceWaveformView.kt` | Кастомный View: отрисовка формы волны голосового сообщения (интерактивный прогресс) |
 
 ---
 
@@ -301,13 +310,14 @@ App Widget с закреплёнными чатами.
 
 ---
 
-## Proto-файлы (`app/src/main/proto/`)
+## Proto-файлы (`core/src/main/proto/`) — 13 файлов
 
 | Файл | Сервис |
 |------|--------|
 | `beacon_api.proto` | Информация о сервере и endpoint'ах (включая `livekit_url`, сервис `calls`) |
 | `calls_api.proto` | Звонки: инициация, приём/отклонение/завершение, подписка на события, история, качество голоса |
 | `configuration_api.proto` | Централизованная конфигурация |
+| `developers_api.proto` | Портал документации для разработчиков |
 | `fast_auth_api.proto` | QR-авторизация (FastAuth) |
 | `files_api.proto` | Загрузка/скачивание файлов, URL, preview |
 | `identity_api.proto` | Auth, JWT, 2FA, сессии, сброс пароля |
