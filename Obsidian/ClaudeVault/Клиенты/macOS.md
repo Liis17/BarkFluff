@@ -6,7 +6,7 @@ SwiftUI приложение для macOS. gRPC через grpc-swift.
 > Карта всех файлов проекта: [[Клиенты/macOS-ProjectMap]]
 
 Расположение: `Mac/Barkfluff/`
-Swift 6.2, platforms: macOS 26, iOS 26.
+Swift: app-таргет `SWIFT_VERSION = 6.0` (локальные пакеты BFCore/BFNetworking/BFProto/BFCalls объявляют `swift-tools-version: 6.2`). Platforms: macOS 26, iOS 26.
 
 ## Зависимости
 
@@ -295,6 +295,16 @@ Sandbox: добавлен entitlement `com.apple.security.files.downloads.read-w
 
 Превью медиа в `MediaPreviewCard` отображает **исходные** данные, не оптимизированные — пользователь видит то, что выбрал, а сжатие происходит уже в момент отправки.
 
+## Стикеры (стикер-пикер)
+
+Полноценный стикер-пикер по паритету с iOS/Android. Файлы:
+- `Features/Conversation/ViewModels/StickerPickerViewModel.swift` — состояние паков/недавних
+- `Views/Stickers/{StickerImageView, StickerPickerView, StickersGridView, StickerPackTabsView, StickerThumbView}.swift`
+- `Views/Attachments/StickerMessageView.swift` — рендер стикера в ленте
+- `Helpers/RecentStickersStore.swift` — недавно использованные стикеры
+- вызывается из `Features/Conversation/Views/MessageInputView.swift`
+- BFCore: `Services/Implementations/StickersService.swift`, кеш `CachedStickerPackRecord`/`CachedStickerRecord`
+
 ## Настройки (категории-вкладки)
 
 `SettingsView` — корневой контейнер с навигацией по `SettingsCategory` (enum в `Navigation/SettingsCategory.swift`). Каждая категория — отдельный View + при необходимости свой `@Observable` ViewModel:
@@ -427,7 +437,7 @@ Mac-специфика:
 
 ## Локализация (RU / EN)
 
-Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Resources/Localizable.xcstrings` (sourceLanguage = `ru`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`. Реализация общая с [[Клиенты/iOS]].
+Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Resources/Localizable.xcstrings` (sourceLanguage = `en`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`. Реализация общая с [[Клиенты/iOS]].
 
 **Инфраструктура:**
 - `App/Settings/LocalizationSettings.swift` — `@Observable @MainActor`, `enum AppLanguage { system, ru, en }`, computed `appliedLocale: Locale`, persist через UserDefaults (`localization.language`).

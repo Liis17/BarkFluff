@@ -244,7 +244,7 @@ iOS-клиент выступает в роли **сканера**: автори
 
 ## Локализация (RU / EN)
 
-Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Localizable.xcstrings` (sourceLanguage = `ru`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`.
+Полное двуязычное приложение, мгновенное переключение без перезапуска. Источник истины — `Barkfluff/Localizable.xcstrings` (sourceLanguage = `en`, локализации `ru` + `en`). На первом запуске берётся системная локаль, если не `ru` — fallback на `en`.
 
 **Инфраструктура:**
 - `App/Settings/LocalizationSettings.swift` — `@Observable @MainActor`, перечисление `AppLanguage { system, ru, en }`, computed `appliedLocale: Locale` (fallback `en`), сохранение в UserDefaults (`localization.language`).

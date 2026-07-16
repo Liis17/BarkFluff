@@ -47,6 +47,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
 - Видеосообщение без текстовой подписи выводится без полей облачка: время и статус накладываются на превью. При подписи между превью и текстом остаётся только нижний отступ.
 - ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `main.js` при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
+- `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
 
 ### Звонки (см. [[Backend/Calls]])
 - `js/app/calls.js` (`BF.calls`) — сигнализация: device-scope стрим `SubscribeCallEvents` (паттерн `realtime.js`), call-control `InitiateCall/Accept/Reject/Join/End` + `SetCallAudioQuality`, машина состояний одного звонка, события `incoming/connect/peer_accepted/peer_rejected/ring_dismiss/ended/member/audio_quality_changed`. Запускается в `main.js` рядом с `BF.realtime.startAll()`.

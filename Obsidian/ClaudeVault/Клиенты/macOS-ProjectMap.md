@@ -147,6 +147,14 @@
 | `Conversation/Helpers/MessageGrouper.swift` | Группировка сообщений по дате и автору |
 | `Conversation/Helpers/ScrollPositionManager.swift` | Управление позицией прокрутки, автоскролл |
 | `Conversation/Models/SelectedAttachment.swift` | Модель выбранного для отправки вложения |
+| `Conversation/ViewModels/StickerPickerViewModel.swift` | Состояние стикер-пикера (паки, недавние) |
+| `Views/Stickers/StickerImageView.swift` | Отрисовка изображения стикера |
+| `Views/Stickers/StickerPickerView.swift` | Экран стикер-пикера |
+| `Views/Stickers/StickersGridView.swift` | Сетка стикеров пака |
+| `Views/Stickers/StickerPackTabsView.swift` | Вкладки паков стикеров |
+| `Views/Stickers/StickerThumbView.swift` | Миниатюра стикера |
+| `Views/Attachments/StickerMessageView.swift` | Рендер стикера в ленте сообщений |
+| `Helpers/RecentStickersStore.swift` | Хранилище недавно использованных стикеров |
 
 ---
 
@@ -221,6 +229,12 @@
 | `Settings/Views/CloudStackedBarView.swift` | Stacked-bar диаграмма облачного хранилища |
 | `Settings/Views/AboutAppSettingsView.swift` | Раздел «О приложении» — версия, лицензии |
 | `Settings/Views/AboutServerSettingsView.swift` | Раздел «О сервере» — Beacon-инфо, версии сервиса |
+| `Settings/ViewModels/ChatFoldersListViewModel.swift` | VM списка папок чатов |
+| `Settings/ViewModels/EditChatFolderViewModel.swift` | VM создания/редактирования папки чатов |
+| `Views/ChatFoldersListView.swift` | Экран списка папок чатов |
+| `Views/EditChatFolderView.swift` | Экран создания/редактирования папки |
+| `Views/FolderChatPickerView.swift` | Выбор чатов для добавления в папку |
+| `ChatList/Views/FolderTabChip.swift` | Чип-вкладка папки над списком чатов (`struct ChatFolderTabsBar`) |
 
 ---
 
@@ -357,7 +371,13 @@
 | `Database/Records/CachedChatRecord.swift` | GRDB-запись чата |
 | `Database/Records/CachedMessageRecord.swift` | GRDB-запись сообщения |
 | `Database/Records/CachedFileRecord.swift` | GRDB-запись файла/вложения |
+| `Database/Records/CachedChatFolderRecord.swift` | GRDB-запись папки чатов |
+| `Database/Records/CachedCurrentUserRecord.swift` | GRDB single-row кеш текущего пользователя |
+| `Database/Records/CachedStickerPackRecord.swift` | GRDB-запись пака стикеров |
+| `Database/Records/CachedStickerRecord.swift` | GRDB-запись стикера |
 | `Repositories/Local/LocalChatRepository.swift` | Чтение/запись чатов в персистентный кеш (GRDB) |
+| `Repositories/Local/LocalChatFolderRepository.swift` | Локальный репозиторий папок чатов (GRDB) |
+| `Repositories/Local/LocalCurrentUserRepository.swift` | Локальный репозиторий текущего пользователя (INSERT OR REPLACE single-row) |
 | `Repositories/Local/LocalMessageRepository.swift` | Чтение/запись сообщений в персистентный кеш (GRDB) |
 | `Services/Protocols/AuthServiceProtocol.swift` | Протокол сервиса авторизации |
 | `Services/Protocols/ChatServiceProtocol.swift` | Протокол сервиса чатов |
@@ -379,6 +399,8 @@
 | `Services/Implementations/FastAuthService.swift` | QR-авторизация: `generateToken`/`subscribeToResult` (генератор на новом устройстве) + `scan(fastAuthID:)`/`accept(fastAuthID:, confirmationCode:)`/`reject(...)` (сканер на авторизованном клиенте) |
 | `Services/Implementations/ServerDiscoveryService.swift` | Обнаружение и подключение к BarkFluff-серверу |
 | `Services/Implementations/SharedMediaService.swift` | Загрузка общих медиафайлов диалога |
+| `Services/Implementations/ChatFolderService.swift` | CRUD папок чатов (с локальным кешем GRDB) |
+| `Services/Implementations/StickersService.swift` | Загрузка паков/стикеров (с локальным кешем GRDB) |
 | `Utilities/DateFormatters.swift` | Форматтеры дат для UI |
 | `Utilities/Errors/BFError.swift` | Доменные ошибки приложения |
 | `Utilities/Errors/ErrorLocalizer.swift` | Локализация ошибок для отображения пользователю |

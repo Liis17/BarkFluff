@@ -1,7 +1,7 @@
 # BarkFluff iOS — Карта проекта
 
 Расположение: `iOS/Barkfluff/`
-Платформа: iOS 26, Swift 6.2, SwiftUI + gRPC-Swift 2.0
+Платформа: iOS 26, Swift (app-таргет `SWIFT_VERSION = 5.0`; локальные пакеты — `swift-tools-version: 6.2`), SwiftUI + gRPC-Swift 2.0
 
 > iOS-клиент является адаптацией macOS-клиента. Архитектура и пакеты общие.
 > Описание архитектуры и конвенций: [[Клиенты/iOS]]
@@ -59,7 +59,7 @@
 | `DesignSystem/Components/LoadingView.swift` | Индикатор загрузки |
 | `DesignSystem/Components/OnlineStatusText.swift` | Текстовый онлайн-статус |
 | `DesignSystem/Components/RefreshingIndicatorView.swift` | Полоска "Обновление…" поверх списков |
-| `DesignSystem/Components/SquareImageCropperView.swift` | Квадратный кропер картинки (pinch/pan через `UIScrollView`, выход 1024×1024). Используется в `AvatarStepView`. |
+| `DesignSystem/Components/ImageCropperView.swift` | Квадратный кропер картинки (pinch/pan через `UIScrollView`, выход 1024×1024). Используется в `AvatarStepView`. |
 | `DesignSystem/Components/UnreadBadgeView.swift` | Бейдж непрочитанных |
 | `DesignSystem/LiquidGlass/GlassButtonStyle.swift` | `GlassButtonStyle` + `GlassCapsuleButtonStyle` |
 | `DesignSystem/LiquidGlass/GlassCardView.swift` | Glass карточка |
@@ -103,7 +103,6 @@
 | `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над инпутом, `makeSnippet()` |
 | `Conversation/Views/ForwardedMessageView.swift` | Карточка пересланного сообщения внутри пузыря |
 | `Conversation/Views/ForwardChatPickerView.swift` | Заглушка экрана пересылки (полная реализация: VM есть, UI ещё в разработке) |
-| `Conversation/Views/MessageInputView.swift` | (существующий) поле ввода + вложения |
 | `Conversation/Views/Input/MessageInputView.swift` | Поле ввода: paperclip + кнопка-смайлик стикеров (между attach и текстовым полем) + TextField + send. Открытие пикера через `onStickerTap` callback |
 | `Conversation/Views/Input/AttachmentPreviewStrip.swift` | Полоса предпросмотра |
 | `Conversation/Views/Components/MessageTimeView.swift` | Время + галочки + иконка `pencil` для отредактированных |
