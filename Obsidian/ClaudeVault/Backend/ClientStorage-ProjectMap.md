@@ -11,7 +11,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Program.cs` | Точка входа. Регистрирует DI (`S3StorageService`, `LocalFileCache`, `CacheWarmupService`, EF Core/SQLite), настраивает Kestrel (лимит 512 MB), `ForwardedHeaders`, применяет миграции БД при старте, инициализирует S3-бакет. |
+| `Program.cs` | Точка входа. Регистрирует DI (`S3StorageService`, `LocalFileCache`, `CacheWarmupService`, `OldVersionsCleanupService`, EF Core/SQLite), настраивает Kestrel (лимит 512 MB), `ForwardedHeaders`, применяет миграции БД при старте, инициализирует S3-бакет. |
 | `appsettings.json` | Базовая конфигурация (Logging, AllowedHosts). |
 | `appsettings.Development.json` | Конфигурация для среды разработки. |
 
@@ -51,6 +51,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `Services/CacheWarmupService.cs` | `IHostedService`. При старте контейнера асинхронно (фоново) перебирает все комбинации `ClientType × ReleaseChannel`, проверяет наличие файла в БД и кеше, при отсутствии кеша — скачивает из S3 и сохраняет. Пропускает комбинации без загруженного файла. |
+| `Services/OldVersionsCleanupService.cs` | `IHostedService`. Раз в 7 дней удаляет из S3 и БД все версии кроме самой новой по каждой паре `ClientType × ReleaseChannel` — политика хранения только последнего билда. |
 
 ---
 
@@ -110,7 +111,7 @@ ClientStorageController                   ▼
        ├─ IncrementalHash (SHA-256)       │
        ├─ S3StorageService.UploadAsync    │
        ├─ ClientFile → SQLite            ◄┘
-       └─ UpdateCacheInBackgroundAsync
+       └─ UpdateCacheInBackgroundAsync (сначала из локального temp-файла загрузки; при неудаче — скачивает из S3)
               │
               └─ S3 → LocalFileCache.UpdateAsync
 ```
