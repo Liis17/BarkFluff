@@ -76,6 +76,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -115,6 +116,14 @@ class ChatActivity : AppCompatActivity() {
 
     // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
+
+    // Индикатор набора текста ("печатает...")
+    private var typingHeartbeatJob: Job? = null
+    @Volatile private var lastTypingInputAt = 0L
+    private val typingUsers = LinkedHashMap<Long, Job>()
+    private val pendingTypingNameFetches = mutableSetOf<Long>()
+    private var lastStatusText: CharSequence? = null
+    private var lastIndicatorVisible = false
 
     // Пагинация сообщений
     private var isLoadingMessages = false
@@ -263,6 +272,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.changeOnlineSubscription(listOf(otherUserId))
             loadOnlineStatus(otherUserId)
         }
+
+        // Подписка на индикатор набора текста в этом чате
+        realtimeService.changeTypingSubscription(listOf(chatId))
     }
 
     // targetSdk 35+ форсирует edge-to-edge, fitsSystemWindows="true" в XML больше не работает —
@@ -680,6 +692,67 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Перерисовывает индикатор "печатает..." в onlineStatusTextView поверх онлайн-статуса.
+     * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
+     */
+    private fun renderTypingIndicator() {
+        if (typingUsers.isEmpty()) {
+            if (isGroupChat) {
+                binding.onlineStatusTextView.visibility = View.GONE
+            } else {
+                binding.onlineStatusTextView.text = lastStatusText ?: ""
+            }
+            return
+        }
+
+        if (!isGroupChat) {
+            binding.onlineStatusTextView.text = getString(R.string.typing_indicator)
+            return
+        }
+
+        binding.onlineStatusTextView.visibility = View.VISIBLE
+        val names = mutableListOf<String>()
+        for (userId in typingUsers.keys) {
+            val fullName = groupMemberInfoCache[userId]?.first
+            if (fullName != null) {
+                names.add(fullName.substringBefore(' '))
+            } else {
+                loadMissingTypingMemberName(userId)
+            }
+        }
+
+        binding.onlineStatusTextView.text = if (names.isEmpty()) {
+            getString(R.string.typing_indicator)
+        } else {
+            resources.getQuantityString(
+                R.plurals.typing_indicator_named,
+                typingUsers.size,
+                names.take(3).joinToString(", ")
+            )
+        }
+    }
+
+    /**
+     * Асинхронно подгружает имя/аватар участника группы (для индикатора набора текста),
+     * тем же способом, что и loadGroupMemberInfo — через getUserData.
+     */
+    private fun loadMissingTypingMemberName(userId: Long) {
+        if (!pendingTypingNameFetches.add(userId)) return
+        lifecycleScope.launch {
+            try {
+                val user = grpcManager.getUserData(userId).getOrNull()
+                if (user != null) {
+                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank { "ID $userId" }
+                    groupMemberInfoCache[userId] = name to avatarSourceFor(user)
+                }
+            } finally {
+                pendingTypingNameFetches.remove(userId)
+            }
+            renderTypingIndicator()
+        }
+    }
+
     private fun avatarSourceFor(user: GrpcManager.UserData): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
@@ -836,6 +909,7 @@ class ChatActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 updateSendButtonMode()
+                onTypingInput(s)
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
@@ -946,6 +1020,38 @@ class ChatActivity : AppCompatActivity() {
     private fun tintSendButton(attr: Int) {
         val color = MaterialColors.getColor(binding.sendButton, attr)
         binding.sendButton.imageTintList = ColorStateList.valueOf(color)
+    }
+
+    /**
+     * Реагирует на ввод текста — запускает/останавливает heartbeat отправки статуса набора текста.
+     */
+    private fun onTypingInput(s: CharSequence?) {
+        if (s.isNullOrBlank()) {
+            stopTypingHeartbeat(sendCancel = true)
+            return
+        }
+        lastTypingInputAt = System.currentTimeMillis()
+        if (typingHeartbeatJob == null) {
+            typingHeartbeatJob = lifecycleScope.launch {
+                while (isActive) {
+                    realtimeService.sendTypingStatus(chatId, typing = true)
+                    delay(4_000)
+                    if (System.currentTimeMillis() - lastTypingInputAt >= 5_000) break
+                }
+                typingHeartbeatJob = null
+            }
+        }
+    }
+
+    private fun stopTypingHeartbeat(sendCancel: Boolean) {
+        val job = typingHeartbeatJob
+        if (job != null) {
+            job.cancel()
+            typingHeartbeatJob = null
+            if (sendCancel) {
+                realtimeService.sendTypingStatus(chatId, typing = false)
+            }
+        }
     }
 
     private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
@@ -2314,6 +2420,19 @@ class ChatActivity : AppCompatActivity() {
     private var onlineStatusJob: Job? = null
     private var onlineStatusSubscription: Job? = null
 
+    /**
+     * Записывает онлайн-статус, не давая индикатору набора текста быть перезаписанным:
+     * пока хотя бы один собеседник печатает — onlineStatusTextView остаётся отведён под typing-текст.
+     */
+    private fun applyOnlineStatus(text: CharSequence, indicatorVisible: Boolean) {
+        lastStatusText = text
+        lastIndicatorVisible = indicatorVisible
+        binding.onlineIndicator.visibility = if (indicatorVisible) View.VISIBLE else View.GONE
+        if (typingUsers.isEmpty()) {
+            binding.onlineStatusTextView.text = text
+        }
+    }
+
     private fun loadOnlineStatus(userId: Long) {
         // Отменяем предыдущий job если есть
         onlineStatusJob?.cancel()
@@ -2341,12 +2460,10 @@ class ChatActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
                         if (isOnline) {
-                            binding.onlineStatusTextView.text = "в сети"
-                            binding.onlineIndicator.visibility = View.VISIBLE
+                            applyOnlineStatus("в сети", true)
                         } else {
                             val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
-                            binding.onlineStatusTextView.text = lastSeen
-                            binding.onlineIndicator.visibility = View.GONE
+                            applyOnlineStatus(lastSeen, false)
                         }
                     }
                 }
@@ -2367,16 +2484,13 @@ class ChatActivity : AppCompatActivity() {
                     if (userStatus != null) {
                         val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
                         if (isOnline) {
-                            binding.onlineStatusTextView.text = "в сети"
-                            binding.onlineIndicator.visibility = View.VISIBLE
+                            applyOnlineStatus("в сети", true)
                         } else {
                             val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
-                            binding.onlineStatusTextView.text = lastSeen
-                            binding.onlineIndicator.visibility = View.GONE
+                            applyOnlineStatus(lastSeen, false)
                         }
                     } else {
-                        binding.onlineStatusTextView.text = "был(а) недавно"
-                        binding.onlineIndicator.visibility = View.GONE
+                        applyOnlineStatus("был(а) недавно", false)
                     }
                 }
             }
@@ -2855,6 +2969,25 @@ class ChatActivity : AppCompatActivity() {
         }
 
         // Подписка на онлайн-статусы обрабатывается в loadOnlineStatus()
+
+        // Индикатор "печатает..."
+        lifecycleScope.launch {
+            realtimeService.typingEvents.collect { event ->
+                if (!event.chatId.equals(chatId, ignoreCase = true)) return@collect
+                if (event.userId == currentUserId) return@collect
+                if (event.action == barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED) {
+                    typingUsers.remove(event.userId)?.cancel()
+                } else {
+                    typingUsers.remove(event.userId)?.cancel()
+                    typingUsers[event.userId] = lifecycleScope.launch {
+                        delay(6_000)
+                        typingUsers.remove(event.userId)
+                        renderTypingIndicator()
+                    }
+                }
+                renderTypingIndicator()
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -3209,6 +3342,7 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onStop() {
         finishVoiceRecording(shouldSend = false)
+        stopTypingHeartbeat(sendCancel = true)
         super.onStop()
     }
 
@@ -3220,5 +3354,7 @@ class ChatActivity : AppCompatActivity() {
         loadMessagesJob?.cancel()
         onlineStatusJob?.cancel()
         onlineStatusSubscription?.cancel()
+        stopTypingHeartbeat(sendCancel = true)
+        realtimeService.changeTypingSubscription(emptyList())
     }
 }

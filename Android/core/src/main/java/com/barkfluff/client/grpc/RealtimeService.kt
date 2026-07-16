@@ -49,6 +49,9 @@ class RealtimeService(
     private val _onlineStatuses = MutableSharedFlow<OnlinerApiOuterClass.UserOnlineStatus>(extraBufferCapacity = 64)
     val onlineStatuses: SharedFlow<OnlinerApiOuterClass.UserOnlineStatus> = _onlineStatuses
 
+    private val _typingEvents = MutableSharedFlow<OnlinerApiOuterClass.TypingEvent>(extraBufferCapacity = 64)
+    val typingEvents: SharedFlow<OnlinerApiOuterClass.TypingEvent> = _typingEvents
+
     private val _messageEdited = MutableSharedFlow<UpdatesApiOuterClass.MessageEditedEvent>(extraBufferCapacity = 64)
     val messageEdited: SharedFlow<UpdatesApiOuterClass.MessageEditedEvent> = _messageEdited
 
@@ -108,6 +111,10 @@ class RealtimeService(
     @Volatile
     private var subscribedUserIds: List<Long> = emptyList()
 
+    // Typing subscription state
+    @Volatile
+    private var subscribedTypingChatIds: List<String> = emptyList()
+
     /**
      * Возобновляет стримы реального времени.
      * Безопасно вызывать повторно — пересоздаёт scope если предыдущий был отменён.
@@ -136,6 +143,7 @@ class RealtimeService(
         scope.launch { streamWithReconnect("MessagesUnpinned") { collectMessagesUnpinned() } }
         scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
+        scope.launch { streamWithReconnect("Typing") { collectTyping() } }
         // E2E приватные чаты (user-scope)
         scope.launch { streamWithReconnect("PrivateMessages") { collectPrivateMessages() } }
         scope.launch { streamWithReconnect("PrivateMessageEdits") { collectPrivateMessageEdits() } }
@@ -193,6 +201,61 @@ class RealtimeService(
                 Log.v(TAG, "Online subscription updated: ${userIds.size} users")
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to change online subscription", e)
+            }
+        }
+    }
+
+    /**
+     * Обновляет список чатов для отслеживания индикатора набора текста.
+     * При ошибке — один retry через 2 сек; если и он упал, только логируем
+     * (при реконнекте стрим Typing откроется с актуальным volatile-списком).
+     */
+    fun changeTypingSubscription(chatIds: List<String>) {
+        subscribedTypingChatIds = chatIds
+        val scope = serviceScope ?: return
+        scope.launch {
+            try {
+                val client = grpcManager.onlinerClient ?: return@launch
+                val request = OnlinerApiOuterClass.ChangeChatsInTypingSubscriptionRequest.newBuilder()
+                    .addAllChatIds(chatIds)
+                    .build()
+                client.changeChatsInTypingSubscription(request)
+                Log.v(TAG, "Typing subscription updated: ${chatIds.size} chats")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to change typing subscription, retrying", e)
+                delay(2000)
+                try {
+                    val client = grpcManager.onlinerClient ?: return@launch
+                    val request = OnlinerApiOuterClass.ChangeChatsInTypingSubscriptionRequest.newBuilder()
+                        .addAllChatIds(chatIds)
+                        .build()
+                    client.changeChatsInTypingSubscription(request)
+                    Log.v(TAG, "Typing subscription updated on retry: ${chatIds.size} chats")
+                } catch (e2: Exception) {
+                    Log.w(TAG, "Failed to change typing subscription after retry", e2)
+                }
+            }
+        }
+    }
+
+    /**
+     * Отправляет статус набора текста (heartbeat), fire-and-forget.
+     */
+    fun sendTypingStatus(chatId: String, typing: Boolean) {
+        val scope = serviceScope ?: return
+        scope.launch {
+            try {
+                val client = grpcManager.onlinerClient ?: return@launch
+                val request = OnlinerApiOuterClass.SetTypingStatusRequest.newBuilder()
+                    .setChatId(chatId)
+                    .setAction(
+                        if (typing) OnlinerApiOuterClass.TypingAction.TYPING_ACTION_TYPING
+                        else OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED
+                    )
+                    .build()
+                client.setTypingStatus(request)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to send typing status: ${e.message}")
             }
         }
     }
@@ -397,6 +460,17 @@ class RealtimeService(
         client.subscribeToOnlineStatus(request).collect { status ->
             Log.v(TAG, "Online status: userId=${status.userId}, status=${status.status}")
             _onlineStatuses.emit(status)
+        }
+    }
+
+    private suspend fun collectTyping() {
+        val client = grpcManager.onlinerClient ?: throw IllegalStateException("Onliner client not created")
+        val request = OnlinerApiOuterClass.SubscribeToTypingRequest.newBuilder()
+            .addAllChatIds(subscribedTypingChatIds)
+            .build()
+        client.subscribeToTyping(request).collect { event ->
+            Log.v(TAG, "Typing event: chatId=${event.chatId}, userId=${event.userId}, action=${event.action}")
+            _typingEvents.emit(event)
         }
     }
 

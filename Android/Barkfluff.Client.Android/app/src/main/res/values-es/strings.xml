@@ -621,4 +621,11 @@
     <string name="security_hero_subtitle">Activa 2FA para mayor protección</string>
     <string name="security_section_parameters">Configuración</string>
     <string name="testing_experimental_hint">Las funciones experimentales pueden ser inestables.</string>
+
+    <!-- Typing indicator -->
+    <string name="typing_indicator">escribiendo…</string>
+    <plurals name="typing_indicator_named">
+        <item quantity="one">%1$s está escribiendo…</item>
+        <item quantity="other">%1$s están escribiendo…</item>
+    </plurals>
 </resources>
