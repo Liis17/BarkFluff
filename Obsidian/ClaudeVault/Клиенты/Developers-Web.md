@@ -51,7 +51,8 @@ src/
 ├── api/
 │   └── client.ts        # gRPC-Web клиент + API-функции
 ├── auth/
-│   └── LoginPage.tsx    # Форма авторизации + 2FA
+│   ├── LoginPage.tsx    # Форма авторизации + 2FA
+│   └── tokenManager.ts  # get/save/clear токенов в localStorage (ключ barkfluff_dev_auth) — фактическая логика хранения токенов (не в App.tsx)
 ├── components/
 │   ├── DocsPage.tsx     # Главная страница документации
 │   ├── Layout/
