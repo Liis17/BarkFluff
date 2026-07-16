@@ -120,6 +120,7 @@ class ChatActivity : AppCompatActivity() {
     // Индикатор набора текста ("печатает...")
     private var typingHeartbeatJob: Job? = null
     @Volatile private var lastTypingInputAt = 0L
+    private var suppressTypingInput = false
     private val typingUsers = LinkedHashMap<Long, Job>()
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
@@ -1026,6 +1027,7 @@ class ChatActivity : AppCompatActivity() {
      * Реагирует на ввод текста — запускает/останавливает heartbeat отправки статуса набора текста.
      */
     private fun onTypingInput(s: CharSequence?) {
+        if (suppressTypingInput) return
         if (s.isNullOrBlank()) {
             stopTypingHeartbeat(sendCancel = true)
             return
@@ -1956,7 +1958,10 @@ class ChatActivity : AppCompatActivity() {
         binding.editPreviewContentText.text = preview
         binding.editPreviewBar.visibility = View.VISIBLE
 
+        // Программная установка текста не должна запускать typing-heartbeat
+        suppressTypingInput = true
         binding.messageEditText.setText(item.text)
+        suppressTypingInput = false
         binding.messageEditText.setSelection(binding.messageEditText.text?.length ?: 0)
         binding.messageEditText.requestFocus()
         WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
