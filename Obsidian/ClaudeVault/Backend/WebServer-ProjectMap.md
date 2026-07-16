@@ -54,7 +54,6 @@
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
 | `html/UniqueUsers/paws.page.html` | Специальная страница для пользователя `li_is` с анимированными лапками-следами (SVG + CSS keyframes) |
 | `html/selfhosted.html` | Страница для self-hosted режима |
-| `html/legal/legal.html` | Список юридических документов |
 | `html/legal/privacy-policy.html` | Политика конфиденциальности |
 | `html/legal/terms-of-service.html` | Условия использования |
 | `html/legal/account-deletion.html` | Удаление аккаунта |

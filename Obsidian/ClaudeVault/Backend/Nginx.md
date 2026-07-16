@@ -51,6 +51,7 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `admin-panel.conf` | `panel.barkfluff.com` → [[AdminPanel]] | 51888 | HTTP |
 | `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 | HTTP (gRPC-Web) |
 | `calls.conf` | `calls.barkfluff.com` → [[Calls]] | 7025 (gRPC) | gRPC |
+| `bots.conf` | `bots.barkfluff.com` → [[Bots]] | 7027 (gRPC) + 7028 (HTTP REST) | gRPC + HTTP |
 | `livekit.conf` | `livekit.barkfluff.com` → LiveKit SFU (сигнализация) | 7880 | WSS (WebSocket) |
 
 > ⚠️ Сервисы [[Configuration]] (порт 7003) и [[Notification]] (порт 7004) — **внутренние**, отдельных nginx-конфигов нет (наружу не публикуются).
@@ -136,6 +137,7 @@ WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` �
 | `panel.barkfluff.com` | [[AdminPanel]] |
 | `developers.barkfluff.com` | [[Developers]] |
 | `calls.barkfluff.com` | [[Calls]] (gRPC) |
+| `bots.barkfluff.com` | [[Bots]] (gRPC + HTTP REST) |
 | `livekit.barkfluff.com` | LiveKit SFU (WSS-сигнализация; медиа — напрямую) |
 | `storage.barkfluff.com` | [[ClientStorage]] |
 | `barkfluff.com` / `api.barkfluff.com` | [[WebServer]] (single-server) |

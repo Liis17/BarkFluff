@@ -22,13 +22,12 @@ docker-compose -f docker-compose-dev.yml up web
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 
-Браузерный gRPC-Web (connect-es) ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware собирает этот фрейм из трёх источников:
+Браузерный gRPC-Web (connect-es) ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware (`Program.cs:178-248`) собирает этот фрейм из **двух** источников:
 
-1. **promotedTrailers** — `grpc-status`/`grpc-message`/`x-error-code` из *заголовков* ответа (ловятся в `OnStarting`). Это **trailers-only** случай: бизнес-ошибки (`OtpCodeNeedException` и пр.) бэкенд отдаёт через `RpcException` → статус летит в HTTP/2-**заголовках**.
-2. **IHttpResponseTrailersFeature** — почти всегда пуст (см. ниже).
-3. **`ctx.Items["grpc-upstream-response"]`** — `HttpResponseMessage.TrailingHeaders` upstream-ответа. Ссылку кладёт YARP-трансформ `AddResponseTransform` (фаза заголовков), читаем после `await next()`.
+1. **promotedTrailers** — `grpc-status`/`grpc-message`/`grpc-status-details-bin`/`x-error-code`, продвинутые YARP в *заголовки* ответа; ловятся в `OnStarting` и удаляются из заголовков. Покрывает **trailers-only** случай: бизнес-ошибки (`OtpCodeNeedException` и пр.) бэкенд отдаёт через `RpcException` → статус летит в HTTP/2-**заголовках**.
+2. **IHttpResponseTrailersFeature.Trailers** — читаются после `await next()` и мёржатся поверх promotedTrailers (для успешных ответов, где Kestrel отдаёт реальные HTTP-трейлеры).
 
-> ⚠️ **Почему источник №3 обязателен.** У **успешного** unary-ответа `grpc-status: 0` приходит от бэкенда как HTTP/2-**трейлер**. Канал nginx → web идёт по **HTTP/1.1** (`proxy_http_version 1.1`), где Kestrel не отдаёт `IHttpResponseTrailersFeature` (`SupportsTrailers() == false`), поэтому YARP не может перенести трейлеры в downstream-ответ. Без чтения `TrailingHeaders` напрямую middleware писал **пустой** trailer-frame → connect-es падал с `[internal] protocol error: missing status` (вход проходил на бэке, но фронт не мог прочитать ответ).
+Оба словаря объединяются в `trailerHeaders`, сериализуются в `key: value\r\n` и пишутся trailer-frame'ом (флаг `0x80`, для grpc-web-text — base64).
 
 ## YARP Routes
 
@@ -41,6 +40,7 @@ docker-compose -f docker-compose-dev.yml up web
 | `/barkfluff.updates.UpdatesApi/{**catch-all}` | Updates (7015) | gRPC/HTTP2 |
 | `/barkfluff.onliner.OnlinerApi/{**catch-all}` | Onliner (7009) | gRPC/HTTP2 |
 | `/barkfluff.fast.auth.FastAuthApi/{**catch-all}` | FastAuth (7008) | gRPC/HTTP2 (server-streaming) |
+| `/barkfluff.calls.CallsApi/{**catch-all}` | Calls (7025) | gRPC/HTTP2 (server-streaming, входит в `streamingServices`, 24h timeout) |
 | `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 |
 
 ## Frontend JS Modules (`wwwroot/js/app/`)
@@ -62,7 +62,12 @@ docker-compose -f docker-compose-dev.yml up web
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`. **Компоновка вложений** (`buildMessageElement`): флаги `hasImages`/`imageOnly`/`docsOnly` (по типам вложений, независимо от направления) → классы пузыря `has-images`/`image-only`/`docs-only`. `image-only` (только картинки без текста/forward) — медиа на всю площадь пузыря (`padding:0`), время+галочки полупрозрачным бейджем поверх картинки (`.msg-meta.msg-img-overlay-meta`); с текстом — сетка сверху без полей, время снизу. `docs-only` — компактный padding без двойной рамки. CSS — в `messenger.html` рядом с `.msg-bubble`.
-- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status)
+- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status, private_messages)
+- `calls.js` / `calls-ui.js` — `BF.calls`: звонки через LiveKit (vendor `livekit-client.bundle.js`)
+- `newchat.js` — `BF.newchat`: создание чатов
+- `privatechat.js` — `BF.privateChat`: приватные E2E-чаты (Argon2id через `hash-wasm.umd.min.js`, ключи в localStorage)
+- `sound.js` — `BF.sound`: звуки уведомлений
+- `imageeditor.js` — `BF.imageEditor`: редактор изображений перед отправкой
 - `folders.js` — `BF.folders`: папки чатов (горизонтальные вкладки `#folderTabs` над списком чатов, drag-and-drop реордер, контекстное меню чата `#chatContextMenu` с «Добавить/Удалить из папки», модалка `#folderEditOverlay` с emoji-сеткой 7×3). `init()` обязательно ДО `loadChats` — гайд требует «сперва папки, потом чаты».
 - `pinned.js` — `BF.pinned`: закреплённые сообщения. Плашка `#pinnedBar` под `.chat-header` Telegram-style (`1/N` слева, превью текущего, клик → переключение по кругу + scroll к оригиналу). Большая модалка `#pinnedListOverlay` со всеми пинами (рендер через `BF.messages.buildMessageElement`) + кнопка «Открепить все» с подтверждением.
 - `attach.js` — диалог прикрепления файлов: сегментированный переключатель images/docs, превью (сетка/список с иконкой расширения и размером), поле подписи (`#attachCaption`, prefill из `#messageInput`, Enter=отправка, Shift+Enter=перенос, Escape=закрыть). Подпись передаётся третьим аргументом callback'а (`outFiles, asDocuments, caption`) и используется как текст сообщения. **Клик по превью-картинке** открывает редактор `BF.imageEditor.open(file, cb)`; callback заменяет `item.file` на отредактированный, отзывает старый `previewUrl` и перерендеривает сетку.
@@ -93,6 +98,7 @@ docker-compose -f docker-compose-dev.yml up web
 | pinnedStream | UpdatesApi | SubscribeMessagesPinned | Закреп сообщения (синхронизация плашки `#pinnedBar`) |
 | unpinnedStream | UpdatesApi | SubscribeMessagesUnpinned | Открепление одного сообщения |
 | allUnpinnedStream | UpdatesApi | SubscribeAllMessagesUnpinned | Открепление всех сообщений в чате |
+| privateStream | UpdatesApi | SubscribePrivateMessages | Новые приватные (E2E) сообщения |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
 
 ### Устойчивость стримов и catch-up
@@ -220,6 +226,6 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 
 ## Зависимости
 
-- `Yarp.ReverseProxy` 2.2.0 — единственный NuGet-пакет
+- `Yarp.ReverseProxy` 2.3.0 + `AWSSDK.Core` 4.0.7.4
 - [[Backend/GrpcServer]] — Serilog, MetricsCollector, LoadConfiguration
 - Кастомный `GrpcWebResponseStream` в `Program.cs` — base64-обёртка для server-streaming через gRPC-Web (без `Grpc.AspNetCore.Web`, который несовместим с YARP)

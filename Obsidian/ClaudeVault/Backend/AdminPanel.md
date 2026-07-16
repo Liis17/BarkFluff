@@ -140,9 +140,9 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 ## Ключевые зависимости
 
 - `LiteDB 5.0.21` — embedded NoSQL
-- `Telegram.Bot 22.0.2`
+- `Telegram.Bot 22.10.0.1`
 - `AWSSDK.S3`
-- `MassTransit.RabbitMQ 8.5.2` — publisher для админских событий
+- `MassTransit.RabbitMQ 8.5.9` — publisher для админских событий
 - [[Backend/GrpcServer]] — LoadConfiguration
 - [[Shared/Auth]] — JwtClientInterceptor
 - [[Shared/Queue]] — события RabbitMQ (`AdminBroadcastNotificationEvent`)
@@ -157,6 +157,8 @@ Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 |-------|------|----------|
 | GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations` (+ `serviceName` из enum `ServiceId`) |
 | POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
+| GET | `/api/configuration/s3-configuration` | Конфигурация S3-бакетов |
+| POST | `/api/configuration/s3/update` | Обновление конфигурации S3 |
 
 ## REST API: Notifications
 
