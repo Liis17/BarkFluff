@@ -22,7 +22,7 @@
 | Файл | Описание |
 |------|----------|
 | `Host/FilesApiService.cs` | gRPC-сервис для клиентов (`TokenType.User`). Методы: `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`, `ListStickerPacks`, `GetStickerPack`. |
-| `Host/FilesServerApiService.cs` | gRPC-сервис для внутренних сервисов (`TokenType.Service`). Методы: `GetFileData`, `GetFilesData`, `UploadBadgeImage`, `UploadAvatarServer`, `GetUserStorageInfoServer`, полный CRUD стикерпаков и стикеров, `UploadStickerImage`. |
+| `Host/FilesServerApiService.cs` | gRPC-сервис для внутренних сервисов (`TokenType.Service`). Методы: `GetFileData`, `GetFilesData`, `UploadBadgeImage`, `UploadAvatarServer`, `UploadPosterServer`, `UploadFileServer`, `GetUserStorageInfoServer`, полный CRUD стикерпаков и стикеров, `UploadStickerImage`. |
 | `Host/FilesController.cs` | REST-контроллер. `POST /upload/{uploadId}` — загрузка файла multipart (лимит 512 МБ). `GET /download/{fileId}` — скачивание файла из S3. Инструментирован метриками. |
 
 ---
@@ -49,7 +49,7 @@
 |-------|----------|
 | `Features/UploadAvatarServer/` | Загрузка аватара от имени пользователя (серверный вызов, байты напрямую). Сохраняет в бакет `profile-pictures`. |
 | `Features/UploadBadgeImage/` | Загрузка PNG-изображения бейджа (без сжатия). Сохраняет в отдельную таблицу `BadgeImage` и бакет `badge-images`. |
-| `Features/UploadStickerImage/` | Загрузка изображения стикера. Ресайз до 1024px, макс. 12 МБ. Генерирует превью. |
+| `Features/UploadStickerImage/` | Загрузка изображения стикера. Безусловный ресайз в 512×512 WebP через `ImageCompressor.ProcessStickerAsync` — **без** проверки размера/веса и **без** генерации превью (`PreviewId` не заполняется). Лимиты 12 МБ/1024px действуют только для клиентской загрузки типа `MessageAttachmentSticker` в `UploadFile`. |
 
 ### Стикерпаки и стикеры
 
@@ -71,9 +71,9 @@
 
 | Файл | Описание |
 |------|----------|
-| `Domain/UploadFile.cs` | Основная сущность файла. Поля: `Id` (Guid), `Uploaders` (List\<long\> — дедупликация), `CreatedAt`, `UploadedAt`, `Etag`, `Type`, `Filename`, `PreviewId`, `Size`, `ImageWidth`, `ImageHeight`. |
+| `Domain/UploadFile.cs` | Основная сущность файла. Поля: `Id` (Guid), `Uploaders` (List\<long\> — дедупликация), `CreatedAt`, `UploadedAt`, `ExpiresAt` (TTL слота незагруженного файла, ~2 ч), `Etag`, `Type`, `Filename`, `PreviewId`, `Size`, `ImageWidth`, `ImageHeight`. |
 | `Domain/TempFile.cs` | Временный файл с `ExpiresAt` и ссылкой на `OriginalFileId`. Используется для временных download-ссылок. |
-| `Domain/FileHash.cs` | SHA256-хэш файла. Индекс по `Hash`. Используется для дедупликации при загрузке. |
+| `Domain/FileHash.cs` | SHA256-хэш файла. **Уникальный** индекс `IX_FileHashes_Hash` (с 2026-07-16). Используется для дедупликации при загрузке. |
 | `Domain/BadgeImage.cs` | Отдельная сущность для PNG-изображений бейджей (не `UploadFile`). Бакет `badge-images`. |
 | `Domain/StickerPack.cs` | Стикерпак: `CreatorUserId`, `CoverStickerId`, связь 1:N со `Sticker`. |
 | `Domain/Sticker.cs` | Стикер: `FileId`, `PreviewFileId`, `Emoji`, ссылка на `StickerPack`. |
@@ -114,6 +114,10 @@
 | `20260221215526_AddBadgeImages` | Таблица `BadgeImages`. |
 | `20260316191241_AddStickerPacks` | Таблицы `StickerPacks` и `Stickers`. |
 | `20260430000000_AddImageDimensions` | Поля `ImageWidth`, `ImageHeight` в `UploadedFiles`. |
+| `20260715165101_AddUploadFileExpiresAt` | Поле `ExpiresAt` в `UploadedFiles` (TTL незагруженных слотов). |
+| `20260715194458_AddUploadersGinIndex` | GIN-индекс на `Uploaders` для дедупликации. |
+| `20260715210906_AddPreviewIdIndex` | Частичный индекс на `PreviewId`. |
+| `20260716120000_MakeFileHashUnique` | Уникальный индекс `IX_FileHashes_Hash` (дедуп существующих строк перед наложением). |
 | `FilesContextModelSnapshot.cs` | Снапшот модели EF Core. |
 
 > ⚠️ `Migrations/20250720120530_AddFilesPreview.cs` — артефакт в корне проекта (вне `Persistence/Migrations/`), не подключён к `FilesContext`. Вероятно, устаревший файл.
@@ -126,6 +130,8 @@
 |------|----------|
 | `Services/ImageCompressor.cs` | Сжатие изображений через SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%, белый фон (совместимость без альфа). Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%. Поддержка WebP. |
 | `Services/FileTypeDetector.cs` | Singleton. Определяет тип файла по magic bytes (сигнатуры). Поддерживает: JPEG, PNG, BMP, WebP, HEIC/HEIF/AVIF, TIFF, GIF, MP4, WebM, AVI, MOV/QuickTime, MP3, WAV, FLAC, M4A, OGG, Opus. OGG/Opus → `Voice`, остальное аудио → `Audio`. |
+| `Services/VideoThumbnailExtractor.cs` | Извлечение кадра-превью из видео. |
+| `Services/TempFileCleanupService.cs` | Фоновый `IHostedService`: раз в час удаляет просроченные `TempFile` и просроченные (по `ExpiresAt`) незагруженные слоты `UploadFile`. Регистрируется в `Program.cs`. |
 
 ---
 
