@@ -40,7 +40,7 @@ src/
 │   │               #   MessengerPage, ProfilePage, UserProfileView, PinUnlockDialog
 │   ├── Settings/   # SettingsPage + General/Security/Sessions/Storage/AboutWidget
 │   └── Widgets/    # ~13 переиспользуемых виджетов (аватар, эмодзи-пикер, вложения, бейджи, ...)
-├── Services/       # SessionManager (singleton, PIN-защита, автовосстановление сессии), FileCacheService
+├── Services/       # SessionManager (singleton, PIN-защита, автовосстановление сессии), FileCacheService, NotificationService (singleton, D-Bus + tray fallback)
 ├── Storage/        # SecureStorage (AES-256 шифрование токенов), AppSettings
 └── Utils/          # ErrorHandler, Validators, MessageGrouper, ...
 ```
@@ -64,7 +64,7 @@ src/
 
 ## Паттерны
 
-- **Singleton**: SessionManager, FileCacheService
+- **Singleton**: SessionManager, FileCacheService, NotificationService (D-Bus `org.freedesktop.Notifications` + `QSystemTrayIcon` fallback; отсюда `Qt6::DBus` в стеке)
 - **Template Method**: GrpcClient → наследники
 - **Observer**: Qt Signals/Slots
 - **Optimistic UI**: `Message::createPending()` с отрицательным ID, `markAsSent/markAsFailed`
