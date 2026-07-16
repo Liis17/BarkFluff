@@ -29,6 +29,7 @@
     var allUnpinnedStream = null;
     var privateMsgStream = null;
     var onlineStream = null;
+    var typingStream = null;
     var keepAliveTimer = null;
 
     var updatesBackoff = 2000;
@@ -40,6 +41,7 @@
     var allUnpinnedBackoff = 2000;
     var privateMsgBackoff = 2000;
     var onlineBackoff = 2000;
+    var typingBackoff = 2000;
 
     var INITIAL_BACKOFF = 2000;
     var MAX_BACKOFF = 30000;
@@ -60,6 +62,7 @@
     var allUnpinnedAgeTimer = null;
     var privateMsgAgeTimer = null;
     var onlineAgeTimer  = null;
+    var typingAgeTimer  = null;
 
     var updatesOpenedAt = 0;
     var readOpenedAt    = 0;
@@ -70,6 +73,7 @@
     var allUnpinnedOpenedAt = 0;
     var privateMsgOpenedAt = 0;
     var onlineOpenedAt  = 0;
+    var typingOpenedAt  = 0;
 
     // Время последней активности (data/status) — для watchdog'а.
     var updatesLastActivity = 0;
@@ -81,10 +85,13 @@
     var allUnpinnedLastActivity = 0;
     var privateMsgLastActivity = 0;
     var onlineLastActivity  = 0;
+    var typingLastActivity  = 0;
     var watchdogTimer = null;
 
     // Currently subscribed online user IDs (for reconnection)
     var currentOnlineUserIds = [];
+    // Currently subscribed chat ID for typing status (for reconnection)
+    var currentTypingChatId = null;
 
     // Connection status: true when at least one core stream is alive
     var updatesConnected = false;
@@ -728,6 +735,72 @@
         });
     }
 
+    // --- Typing status ---
+    // Один стрим на открытый чат (не список чатов, как у online).
+
+    function subscribeTyping(chatId, forceRefresh) {
+        if (!chatId) return;
+        currentTypingChatId = chatId;
+
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.onliner;
+            var req = new proto.SubscribeToTypingRequest();
+            req.setChatIdsList([chatId]);
+
+            if (typingStream) { try { typingStream.cancel(); } catch (e) {} }
+            typingStream = BF.clients.onliner.subscribeToTyping(req, meta);
+            typingOpenedAt = Date.now();
+            if (typingAgeTimer) clearTimeout(typingAgeTimer);
+            typingAgeTimer = setTimeout(function () {
+                if (_started && currentTypingChatId) subscribeTyping(currentTypingChatId, false);
+            }, STREAM_MAX_AGE);
+
+            typingLastActivity = Date.now();
+
+            typingStream.on('data', function (evt) {
+                typingBackoff = INITIAL_BACKOFF;
+                typingLastActivity = Date.now();
+                emit('typing', {
+                    chatId: evt.getChatId(),
+                    userId: evt.getUserId(),
+                    action: evt.getAction()
+                });
+            });
+
+            typingStream.on('status', function (status) {
+                typingLastActivity = Date.now();
+                if (status && status.code === 0) typingBackoff = INITIAL_BACKOFF;
+            });
+
+            typingStream.on('error', function (err) {
+                if (!_started || !currentTypingChatId) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeTyping(currentTypingChatId, true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
+                    typingBackoff = Math.min(typingBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            typingStream.on('end', function () {
+                if (Date.now() - typingOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    typingBackoff = INITIAL_BACKOFF;
+                }
+                if (_started && currentTypingChatId) {
+                    setTimeout(function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
+                }
+            });
+        }, function () { handleNoToken(); });
+    }
+
+    function unsubscribeTyping() {
+        currentTypingChatId = null;
+        if (typingStream) { try { typingStream.cancel(); } catch (e) {} typingStream = null; }
+        if (typingAgeTimer) { clearTimeout(typingAgeTimer); typingAgeTimer = null; }
+    }
+
     // --- Keep-alive ping ---
 
     function startKeepAlive() {
@@ -786,6 +859,12 @@
                 subscribeOnline(currentOnlineUserIds);
             }
         }
+        if (typingStream && (now - typingLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            if (currentTypingChatId) {
+                console.warn('[realtime] watchdog: typing stream silent, reconnecting');
+                subscribeTyping(currentTypingChatId);
+            }
+        }
     }
 
     function startWatchdog() {
@@ -815,6 +894,7 @@
             if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
             if (!privateMsgStream) subscribePrivateMessages();
             if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
+            if (currentTypingChatId && !typingStream) subscribeTyping(currentTypingChatId);
         });
     }
 
@@ -871,6 +951,7 @@
         if (allUnpinnedStream) { try { allUnpinnedStream.cancel(); } catch (e) {} allUnpinnedStream = null; }
         if (privateMsgStream) { try { privateMsgStream.cancel(); } catch (e) {} privateMsgStream = null; }
         if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} onlineStream = null; }
+        if (typingStream) { try { typingStream.cancel(); } catch (e) {} typingStream = null; }
         if (updatesAgeTimer) { clearTimeout(updatesAgeTimer); updatesAgeTimer = null; }
         if (readAgeTimer)    { clearTimeout(readAgeTimer);    readAgeTimer    = null; }
         if (editedAgeTimer)  { clearTimeout(editedAgeTimer);  editedAgeTimer  = null; }
@@ -880,6 +961,8 @@
         if (allUnpinnedAgeTimer) { clearTimeout(allUnpinnedAgeTimer); allUnpinnedAgeTimer = null; }
         if (privateMsgAgeTimer) { clearTimeout(privateMsgAgeTimer); privateMsgAgeTimer = null; }
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
+        if (typingAgeTimer)  { clearTimeout(typingAgeTimer);  typingAgeTimer  = null; }
+        currentTypingChatId = null;
         updatesConnected = false;
         readConnected = false;
         editedConnected = false;
@@ -930,6 +1013,8 @@
         reconnect: reconnect,
         subscribeOnline: subscribeOnline,
         changeOnlineSubscription: changeOnlineSubscription,
+        subscribeTyping: subscribeTyping,
+        unsubscribeTyping: unsubscribeTyping,
         isConnected: isConnected
     };
 })();
