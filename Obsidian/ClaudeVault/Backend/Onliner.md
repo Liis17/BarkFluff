@@ -33,7 +33,7 @@ Client → SetOnlineStatus (gRPC)
           → IServerStreamWriter.WriteAsync()
 ```
 
-### Три синглтона-сервиса
+### Пять синглтонов-сервисов (+ Scoped-фильтр)
 
 | Класс | Назначение |
 |-------|-----------|
@@ -56,7 +56,7 @@ Client → SetOnlineStatus (gRPC)
 
 ### Метрики
 
-Полный реестр + объяснение схемы — в файле памяти `project_onliner_metrics.md`. Краткий список:
+Краткий список метрик:
 
 - **gRPC counters:** `get_online_status_requests`, `get_online_status_user_ids_total` (кумулятивная сумма всех запрошенных user_ids — `_metrics.Add`, не Increment), `set_online_status_requests` (heartbeat), `subscribe_requests`, `change_users_in_subscription_requests`
 - **Typing counters:** `set_typing_status_requests`, `typing_heartbeats`, `typing_heartbeats_rejected_by_membership`, `typing_subscribe_requests`, `change_chats_in_typing_subscription_requests`, `typing_subscriptions_registered`, `typing_subscriptions_disconnected`, `typing_subscriptions_hidden_by_membership`, `typing_notifications_sent`, `typing_notification_errors`
