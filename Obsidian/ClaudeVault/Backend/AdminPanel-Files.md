@@ -49,6 +49,7 @@
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
 | `MailEndpoints.cs` | `/api/mail` | Просмотр/отправка писем служебных почтовых ящиков (IMAP/SMTP через MailKit): аккаунты, список писем, письмо, вложения, inline-картинки, пометка прочитанным, отправка. |
+| `BotsEndpoints.cs` | `/api/bots` | Управление ботами через gRPC [[Backend/Bots]]: список, создание системного бота, перегенерация токена, удаление. |
 
 ---
 
@@ -56,7 +57,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `TokenAuthMiddleware.cs` | Проверяет cookie `auth_token` на каждый запрос. Публичные пути: `/login`, `/restarting`, `/updating`, `/favicon.ico`, `/api/auth/request`, `/api/auth/status`. Для `/api/*` → 401, для HTML → redirect `/login`. Обновляет `LastActivity`, удаляет истекшие токены. |
+| `TokenAuthMiddleware.cs` | Проверяет cookie `auth_token` на каждый запрос. Публичные `/api/*`: `/api/auth/request`, `/api/auth/status`; для HTML без токена пропускаются `/`, `/Login.html`, `/assets/*`. Для `/api/*` → 401, для HTML без токена → redirect на `/` (корень отдаёт `Login.html`; отдельного `/login` нет). Обновляет `LastActivity`, удаляет истекшие токены. |
 
 ---
 
@@ -105,7 +106,7 @@
 
 | Файл | Страница | Назначение |
 |------|---------|-----------|
-| `Login.html` | `/login` | Форма входа: поле nickname → polling статуса Telegram-подтверждения |
+| `Login.html` | `/` (без токена) | Форма входа: поле nickname → polling статуса Telegram-подтверждения |
 | `dashboard.html` | `/` | Главная: KPI, трафик, метрики сервисов из Seq-кеша |
 | `services.html` | `/services` | Управление Docker-контейнерами: статус, start/stop/restart/update |
 | `logs.html` | `/logs` | Просмотр логов Seq с фильтрацией по сервису, уровню, тексту |
