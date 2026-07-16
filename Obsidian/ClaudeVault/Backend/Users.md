@@ -121,6 +121,9 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `GetDevicesWithFirebaseTokens(userIds[])` | Получить FCM-токены устройств | Для CloudMessaging/push-уведомлений |
 | `GetDevicesWithFirebaseTokensByDeviceIds(deviceIds[])` | Получить FCM-токены по списку DeviceId | Для админ-рассылки (точечной) |
 | `GetAllDevicesWithFirebaseTokens()` | Получить FCM-токены **всех** устройств с включёнными уведомлениями | Для админ-рассылки (broadcast) |
+| `UpdateProfileServer(userId, first_name, last_name, bio, username)` | Обновить профиль пользователя (service-to-service) | |
+| `SetProfilePosterServer(userId, poster_file_id)` | Установить (или удалить) постер профиля (service-to-service) | Пустой `poster_file_id` → удаление |
+| `GetProfilePosterServer(userId)` | Получить FileId постера профиля (service-to-service) | |
 | `CreateBotUser(username, first_name, bypass_username_rules)` | Создать бот-юзера для [[Backend/Bots]] | Сразу `IsDraft=false, IsBot=true`, без `UserContact` (nullable), Privacy по умолчанию. Идемпотентен: username занят ботом → его id + `already_existed` |
 | `DeleteBotUser(user_id)` | Пометить бот-аккаунт удалённым | Username → `deleted_{id}` (освобождается), `IsDraft=true` (вне поиска). Чаты сохраняются |
 
@@ -212,6 +215,11 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `chat_folder_chat_adds` | AddChatToFolder |
 | `chat_folder_chat_removes` | RemoveChatFromFolder |
 | `chat_folder_reorders` | ReorderChatFolders |
+| `chat_mute_lookups` | GetChatMute (per-chat mute) |
+| `chat_mute_toggles` | SetChatMute (per-chat mute) |
+| `bot_users_create_requests` | CreateBotUser (service-to-service) |
+| `bot_users_delete_requests` | DeleteBotUser (service-to-service) |
+| `profile_updates_server` | UpdateProfileServer (service-to-service) |
 
 ## Конфигурация
 
