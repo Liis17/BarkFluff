@@ -51,13 +51,15 @@ startupMetrics.Set("subscriptions_active_total", 0);
 | `read_by_subscriptions_active`       | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeMessagesRead`.                                              |
 | `messages_edited_subscriptions_active` | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeMessagesEdited`.                                          |
 | `messages_deleted_subscriptions_active`| `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeMessagesDeleted`.                                         |
-| `subscriptions_active_total`         | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Сумма активных подписок всех 4 типов. Используется как индикатор «онлайн-клиентов» в админке.       |
+| `subscriptions_active_total`         | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Сумма активных подписок всех типов стримов. Используется как индикатор «онлайн-клиентов» в админке.       |
+
+> **Остальные типы стримов.** Тот же триплет `<prefix>_subscriptions_opened/closed/active` существует ещё для 12 префиксов (кроме показанных 4): `messages_pinned`, `messages_unpinned`, `all_messages_unpinned`, `private_messages`, `private_message_edits`, `private_message_deletes`, `private_messages_read`, `private_chat_invites`, `private_chat_invite_resolutions`, `secret_chat_invites`, `secret_chat_resolutions`, `secret_messages` — всего 16 типов. Device-scope секретные стримы дополнительно инкрементируют `<prefix>_buffered_only`, когда устройство-получатель оффлайн.
 
 ### RabbitMQ-события (consumers)
 
 | Метрика                              | Где                                              | Описание                                                                                       |
 | ------------------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `rabbitmq_events_consumed`           | все consumer-ы                                   | Общий счётчик потребления RMQ-событий (NewMessage + ReadBy + SessionRevoked + Edited + Deleted). |
+| `rabbitmq_events_consumed`           | все consumer-ы                                   | Общий счётчик потребления RMQ-событий. Инкрементируется всеми 17 consumer-ами (NewMessage/ReadBy/Edited/Deleted/Pinned/Unpinned/AllUnpinned/SessionRevoked + приватные Encrypted*/PrivateMessagesRead/PrivateChatInvite* + секретные Secret*). |
 | `new_message_events_consumed`        | `Consumers/NewMessageConsumer.cs`                | События `NewMessageEvent` из очереди `new-messages-updates-handler`.                           |
 | `new_message_events_errors`          | `Consumers/NewMessageConsumer.cs` (catch)        | Ошибки парсинга бинарного `Message` или паблишинга MediatR-нотификации.                        |
 | `read_by_events_consumed`            | `Consumers/ReadByConsumer.cs`                    | События `MessageReadEvent` из очереди `read-receipts-updates-handler`.                         |

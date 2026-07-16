@@ -12,7 +12,6 @@
 | `Program.cs` | Настройка DI, gRPC, EF Core, Redis, MassTransit (consumers), gRPC-клиенты Users/Files, Serilog, XAuth |
 | `appsettings.json` / `appsettings.Development.json` | Конфигурация подключений (DB, Redis, RabbitMQ, сервисы) |
 | `Dockerfile.slim` | Образ для запуска сервиса в CI и production. |
-| `SECURITY_AUDIT.md` | Аудит безопасности сервиса |
 
 ---
 
@@ -20,8 +19,8 @@
 
 | Файл | Авторизация | Что делает |
 |------|------------|-----------|
-| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, **AddUser, UpdateGroupChat**, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo, PinMessage, UnpinMessage, ListPinnedMessages, UnpinAll, **CreatePrivateChat, AcceptPrivateChat, RejectPrivateChat, SendPrivateMessage, ListPrivateMessages, EditPrivateMessage, DeletePrivateMessage, SendSecretChatInvite, AcceptSecretChatInvite, RejectSecretChatInvite, SendSecretMessage, AckSecretMessage** |
-| `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт), CheckChatMembership (проверка членства для Onliner/typing), **GetChatMemberIds** (ID участников для ринга группового звонка), **PostCallSystemMessage** (системное сообщение об итоге звонка — вызывается [[Backend/Calls]]) |
+| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, **AddUser, UpdateGroupChat**, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo, PinMessage, UnpinMessage, ListPinnedMessages, UnpinAll, **CreatePrivateChat, AcceptPrivateChat, RejectPrivateChat, SendPrivateMessage, ListPrivateMessages, EditPrivateMessage, DeletePrivateMessage, SendSecretChatInvite, AcceptSecretChatInvite, RejectSecretChatInvite, SendSecretMessage, AckSecretMessage, MarkPrivateMessagesAsRead** |
+| `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт), CheckChatMembership (проверка членства для Onliner/typing), **GetChatMemberIds** (ID участников для ринга группового звонка), **PostCallSystemMessage** (системное сообщение об итоге звонка — вызывается [[Backend/Calls]]), **SendMessageServer** (отправка сообщения от имени сервиса) |
 
 ---
 
@@ -73,6 +72,7 @@
 | `Features/ListPrivateMessages/ListPrivateMessagesQuery.cs` + `Handler.cs` | Двунаправленная пагинация шифрованных сообщений (до 50 в каждую сторону) |
 | `Features/EditPrivateMessage/EditPrivateMessageCommand.cs` + `Handler.cs` | Перезаписывает ciphertext/nonce/AAD, выставляет IsEdited+EditedAt, публикует `EncryptedMessageEditedEvent` |
 | `Features/DeletePrivateMessage/DeletePrivateMessageCommand.cs` + `Handler.cs` | Soft-delete (физически очищает все 3 bytea-поля), публикует `EncryptedMessageDeletedEvent`, idempotent |
+| `Features/MarkPrivateMessagesAsRead/MarkPrivateMessagesAsReadCommandHandler.cs` | Отметка приватных сообщений прочитанными (обновляет `PrivateChatReadStates`), публикует `PrivateMessagesReadEvent` |
 | `Features/SendSecretChatInvite/SendSecretChatInviteCommand.cs` + `Handler.cs` | Кладёт PreKeySignalMessage в `SecretMessageBuffer.EnqueueInviteAsync`, публикует `SecretChatInviteEvent` + silent push. Лимит envelope 32Б-16КиБ |
 | `Features/AcceptSecretChatInvite/AcceptSecretChatInviteCommand.cs` + `Handler.cs` | Атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=true)` инициатору. Опционально содержит ответный SignalMessage |
 | `Features/RejectSecretChatInvite/RejectSecretChatInviteCommand.cs` + `Handler.cs` | Атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
@@ -172,6 +172,7 @@
 | `Persistence/Migrations/20260509011814_AddPinnedMessages` | Таблица `PinnedMessages` с FK на Chats и Messages, уникальный индекс `(ChatId, MessageId)` |
 | `Persistence/Migrations/20260509041314_AddPrivateAndSecretChats` | `Chat.Type`/`KdfSalt`/`PassphraseVerifier`, таблица `EncryptedMessages` |
 | `Persistence/Migrations/20260602120000_AddMessageChatIdSentAtIndex` | Индекс `(ChatId, SentAt)` на `Messages` — обязателен для пагинации без seq scan |
+| `Persistence/Migrations/20260710120000_AddPrivateChatListing` | `Chat.CreatedAt`/`PrivateInviteState`/`PrivateUserLowId`/`PrivateUserHighId`, таблица `PrivateChatReadStates` |
 
 ---
 

@@ -48,6 +48,7 @@ builder.Services.AddMediatR(cfg =>
 | `list_chats`              | Список чатов пользователя                                                |
 | `list_messages`           | Список сообщений чата с двунаправленной пагинацией                       |
 | `mark_as_read`            | Отметка набора сообщений прочитанными                                    |
+| `mark_private_messages_as_read` | Отметка приватных (E2E) сообщений прочитанными → `PrivateMessagesReadEvent` |
 | `create_group_chat`       | Создание группового чата + системное сообщение                           |
 | `add_user`                | Добавление участника в групповой чат                                     |
 | `update_group_chat`       | Смена названия/аватара группового чата                                   |
