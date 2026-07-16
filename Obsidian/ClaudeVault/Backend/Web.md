@@ -62,7 +62,7 @@ docker-compose -f docker-compose-dev.yml up web
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`. **Компоновка вложений** (`buildMessageElement`): флаги `hasImages`/`imageOnly`/`docsOnly` (по типам вложений, независимо от направления) → классы пузыря `has-images`/`image-only`/`docs-only`. `image-only` (только картинки без текста/forward) — медиа на всю площадь пузыря (`padding:0`), время+галочки полупрозрачным бейджем поверх картинки (`.msg-meta.msg-img-overlay-meta`); с текстом — сетка сверху без полей, время снизу. `docs-only` — компактный padding без двойной рамки. CSS — в `messenger.html` рядом с `.msg-bubble`.
-- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status, private_messages)
+- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status, private_messages, typing)
 - `calls.js` / `calls-ui.js` — `BF.calls`: звонки через LiveKit (vendor `livekit-client.bundle.js`)
 - `newchat.js` — `BF.newchat`: создание чатов
 - `privatechat.js` — `BF.privateChat`: приватные E2E-чаты (Argon2id через `hash-wasm.umd.min.js`, ключи в localStorage)
@@ -100,6 +100,7 @@ docker-compose -f docker-compose-dev.yml up web
 | allUnpinnedStream | UpdatesApi | SubscribeAllMessagesUnpinned | Открепление всех сообщений в чате |
 | privateStream | UpdatesApi | SubscribePrivateMessages | Новые приватные (E2E) сообщения |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
+| typingStream | OnlinerApi | SubscribeToTyping | Индикатор «печатает…» (только открытый чат) |
 
 ### Устойчивость стримов и catch-up
 
@@ -116,6 +117,17 @@ docker-compose -f docker-compose-dev.yml up web
 - `resyncCurrentChatTail` → `diffFetchedTail`: сверяет хвост открытого чата и применяет **точечный дифф** теми же аппликаторами, что live-события — новые → `appendMessageToView`, правки → `applyMessageEdit` (сравнение по `editedAt`+тексту), удаления → `applyMessageDelete`, прочтения → `applyReadByUpdate` (только галочки, без мутации счётчиков). Без звуков/нотификаций. Fallback на полный `renderMessages` только если новые сообщения не в хвосте (окно прыгало через `scrollToMessage` или своё сообщение ушло раньше дебаунса) или окно пусто. Различий нет → DOM не трогается.
 - `refreshChatListQuiet`: тянет первую страницу `listChats`, сравнивает сигнатуры чатов (`id|title|picture|countUnread|privateInviteState|lastActivityAt|lastMessage`) — `renderChatList` только при реальном различии.
 - Приватные чаты по-прежнему перезагружаются целиком (`reloadCurrentPrivateChat`) — инкремент требует decrypt-aware диффа. Прежний `reloadCurrentChatMessages` (безусловный полный ререндер) удалён.
+
+## Typing-индикатор («печатает…»)
+
+Клиентская интеграция готового API [[Backend/Onliner]] (relay-модель). Индикатор — только в шапке открытого чата (`#chatHeaderStatus`), список чатов не затронут.
+
+- **Модель подписки:** отдельный стрим на открытый чат — `subscribeTyping(chatId)` открывает `SubscribeToTyping([chatId])`, при смене чата стрим переоткрывается; `ChangeChatsInTypingSubscription` не используется. `unsubscribeTyping()` при уходе в приватный чат.
+- **realtime.js:** `subscribeTyping`/`unsubscribeTyping` — зеркало `subscribeOnline` (backoff, age-timer 180с, watchdog 90с, UNAUTHENTICATED→refresh, `reconnectDeadStreams`, `stopAll`); emit `'typing'` `{chatId, userId, action}`. Известное отклонение: `reconnect()` (проактивный token-refresh) typing не переоткрывает — самолечится собственным backoff/watchdog.
+- **api.js:** `setTypingStatus(chatId, typing)` — unary `SetTypingStatus`, action 1=TYPING / 2=CANCELLED, ошибки глотаются.
+- **main.js — отправка:** listener `input` на `#messageInput` (guard `currentChatType !== 0`): первый непустой ввод → TYPING + interval 4с; idle ≥5с → стоп без CANCELLED; пустое поле → CANCELLED. Программный `value=''` НЕ триггерит `input` → явный `stopTypingSend(true)` в начале `sendMessage()`/`sendMessageWithFiles()`. В `openChat()` `stopTypingSend(true)` вызывается ДО перезаписи `currentChatId` (CANCELLED уходит в старый чат).
+- **main.js — приём:** `BF.realtime.on('typing', ...)`: фильтр по chatId (case-insensitive) и `myUserId`; `typingUsers: Map<userId, timeout>` — гашение 6с. `renderTypingIndicator()`: 1:1 — «печатает…», восстановление через `updateChatHeaderOnline(peerId)` (в ней guard `typingUsers.size > 0`); группа — имена из кэша `getUser` («Иван, Мария печатают…», макс 3), восстановление «N участников». `clearTypingReceiveState()` при смене чата.
+- Приватные чаты: heartbeat не шлётся, стрим не открывается.
 
 ## Редактирование и удаление сообщений (`main.js`)
 
