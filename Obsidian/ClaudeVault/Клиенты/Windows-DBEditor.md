@@ -13,7 +13,7 @@ dotnet run --project BarkFluff.DBEditor.csproj
 
 ## Архитектура
 
-**MVVM** с WPF-UI (Fluent design), CommunityToolkit.Mvvm, Npgsql (без EF Core).
+**MVVM** с WPF-UI (Fluent design), CommunityToolkit.Mvvm, Npgsql (без EF Core). `MainWindow`/`AccountSelectorWindow` используют ViewModels; `LoginWindow` — исключение: без ViewModel, бизнес-логика (валидация полей, проверка дублей имён, тест подключения к БД, сохранение) в code-behind.
 
 ### Навигация
 
@@ -30,7 +30,7 @@ App.OnStartup
 
 | Слой | Описание |
 |------|----------|
-| `Views/` | XAML + code-behind (только навигация) |
+| `Views/` | XAML + code-behind (навигация; `LoginWindow` — ещё и бизнес-логика) |
 | `ViewModels/` | `[ObservableProperty]` / `[RelayCommand]` |
 | `Services/DatabaseService.cs` | Прямые SQL через Npgsql |
 | `Services/CredentialsService.cs` | Аккаунты в JSON (`data/accounts.json`) |
