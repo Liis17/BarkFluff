@@ -87,6 +87,13 @@
         if (store[chatId]) { delete store[chatId]; writeStore(store); }
     }
 
+    /** Стереть все ключи приватных чатов (память + localStorage) — вызывается при логауте. */
+    function clearAll() {
+        keyCache.clear();
+        cryptoKeyCache.clear();
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
     // --- KDF + verifier ---
 
     /** Криптостойкий salt для Argon2id (создание чата). */
@@ -188,6 +195,7 @@
         loadKey: loadKey,
         hasKey: hasKey,
         forgetKey: forgetKey,
+        clearAll: clearAll,
         encryptText: encryptText,
         decryptMessage: decryptMessage
     };
