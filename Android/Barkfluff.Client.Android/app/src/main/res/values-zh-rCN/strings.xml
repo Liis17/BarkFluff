@@ -617,4 +617,10 @@
     <string name="security_hero_subtitle">启用双重验证以获得更强保护</string>
     <string name="security_section_parameters">设置</string>
     <string name="testing_experimental_hint">实验功能可能不稳定。</string>
+
+    <!-- Typing indicator -->
+    <string name="typing_indicator">正在输入…</string>
+    <plurals name="typing_indicator_named">
+        <item quantity="other">%1$s 正在输入…</item>
+    </plurals>
 </resources>

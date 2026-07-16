@@ -691,4 +691,13 @@
     <string name="create_chat_private_short">Приватный</string>
     <string name="create_chat_secret">Секретный чат</string>
     <string name="create_chat_secret_short">Секретный</string>
+
+    <!-- Typing indicator -->
+    <string name="typing_indicator">печатает…</string>
+    <plurals name="typing_indicator_named">
+        <item quantity="one">%1$s печатает…</item>
+        <item quantity="few">%1$s печатают…</item>
+        <item quantity="many">%1$s печатают…</item>
+        <item quantity="other">%1$s печатают…</item>
+    </plurals>
 </resources>
