@@ -46,6 +46,10 @@
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
     var onlineStatuses = new Map();
+    var typingUsers = new Map();      // userId -> timeout handle
+    var typingSendActive = false;
+    var typingLastInputAt = 0;
+    var typingSendTimer = null;
     var chatListOffset = 0;
     var chatListTotal = 0;
     var chatListLoading = false;
@@ -332,10 +336,27 @@
         if (chatListEl.scrollTop + chatListEl.clientHeight >= chatListEl.scrollHeight - 100) loadChats();
     });
 
+    // ========== TYPING INDICATOR ==========
+
+    function stopTypingSend(sendCancel) {
+        if (typingSendTimer) { clearInterval(typingSendTimer); typingSendTimer = null; }
+        if (sendCancel && typingSendActive) {
+            BF.api.setTypingStatus(currentChatId, false).catch(function () {});
+        }
+        typingSendActive = false;
+    }
+
+    function clearTypingReceiveState() {
+        typingUsers.forEach(function (timeoutHandle) { clearTimeout(timeoutHandle); });
+        typingUsers.clear();
+    }
+
     // ========== OPEN CHAT ==========
 
     function openChat(chatId) {
         if (chatId === currentChatId) return;
+        stopTypingSend(true);
+        clearTypingReceiveState();
 
         var chatMeta = chats.find(function (c) { return c.id === chatId; });
         if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
@@ -343,6 +364,7 @@
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
+        BF.realtime.subscribeTyping(chatId);
         currentChatInfo = null;
         currentChatType = 0;
         currentChatPeerIsBot = false;
@@ -589,6 +611,7 @@
     function sendMessage() {
         var text = messageInput.value.trim();
         if (!currentChatId) return;
+        stopTypingSend(true);
 
         if (currentChatType === 1) {
             if (text) sendPrivateMessageFlow(text);
@@ -654,6 +677,7 @@
             // вместо правки исходного. Завершите или отмените редактирование.
             return;
         }
+        stopTypingSend(true);
         var text = (caption != null ? caption : messageInput.value).trim();
         var sentChatId = currentChatId;
         sendBtn.disabled = true;
@@ -719,6 +743,25 @@
     messageInput.addEventListener('input', function () {
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+
+        if (!currentChatId || currentChatType !== 0) return;
+        var value = messageInput.value;
+        if (value.trim() === '') {
+            stopTypingSend(true);
+            return;
+        }
+        typingLastInputAt = Date.now();
+        if (!typingSendActive) {
+            typingSendActive = true;
+            BF.api.setTypingStatus(currentChatId, true).catch(function () {});
+            typingSendTimer = setInterval(function () {
+                if (Date.now() - typingLastInputAt >= 5000) {
+                    stopTypingSend(false);
+                } else {
+                    BF.api.setTypingStatus(currentChatId, true).catch(function () {});
+                }
+            }, 4000);
+        }
     });
 
     // ========== FILE UPLOAD ==========
@@ -906,12 +949,14 @@
     }
 
     function openPrivateChat(chat) {
+        stopTypingSend(true);
         if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
 
         currentChatId = chat.id;
         currentChatInfo = null;
         currentChatType = 1;
         currentChatPeerIsBot = false;
+        BF.realtime.unsubscribeTyping();
         messages = [];
         noMoreOlder = false;
         knownMessageIds = new Set();
@@ -1462,6 +1507,25 @@
         if (BF.pinned && BF.pinned.applyAllUnpinnedEvent) BF.pinned.applyAllUnpinnedEvent(data);
     });
 
+    BF.realtime.on('typing', function (data) {
+        if (!currentChatId || String(data.chatId).toLowerCase() !== String(currentChatId).toLowerCase()) return;
+        if (data.userId === myUserId) return;
+        var old = typingUsers.get(data.userId);
+        if (old) clearTimeout(old);
+        if (data.action === 2) {
+            typingUsers.delete(data.userId);
+        } else {
+            typingUsers.set(data.userId, setTimeout(function () {
+                typingUsers.delete(data.userId);
+                renderTypingIndicator();
+            }, 6000));
+            if (currentChatInfo && currentChatInfo.isGroupChat) {
+                getUser(data.userId).then(renderTypingIndicator);
+            }
+        }
+        renderTypingIndicator();
+    });
+
     function handleNewMessage(chatId, msg) {
         if (chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
 
@@ -1559,6 +1623,7 @@
     }
 
     function updateChatHeaderOnline(userId) {
+        if (typingUsers.size > 0) return;
         var entry = onlineStatuses.get(userId);
         var online = entry ? BF.utils.isStatusOnline(entry.status) : false;
         if (online) {
@@ -1567,6 +1632,32 @@
             chatHeaderStatus.textContent = BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
         }
         chatHeaderStatus.classList.toggle('online', online);
+    }
+
+    function renderTypingIndicator() {
+        if (!currentChatId || !currentChatInfo) return;
+
+        if (typingUsers.size === 0) {
+            if (currentChatInfo.isGroupChat) {
+                chatHeaderStatus.textContent = (currentChatInfo.membersId ? currentChatInfo.membersId.length : 0) + ' участников';
+                chatHeaderStatus.classList.remove('online');
+            } else {
+                var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
+                if (peerId) updateChatHeaderOnline(peerId);
+            }
+            return;
+        }
+
+        if (currentChatInfo.isGroupChat) {
+            var names = Array.from(typingUsers.keys()).slice(0, 3).map(function (id) {
+                var user = userCache.get(id);
+                if (!user) return 'Кто-то';
+                return (user.firstName || '').split(' ')[0] || user.username || 'Кто-то';
+            });
+            chatHeaderStatus.textContent = names.join(', ') + (typingUsers.size > 1 ? ' печатают…' : ' печатает…');
+        } else {
+            chatHeaderStatus.textContent = 'печатает…';
+        }
     }
 
     function collectOnlineUserIds() {
