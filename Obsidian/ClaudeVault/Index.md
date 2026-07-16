@@ -27,10 +27,12 @@
 | [[Backend/Users]] | Профили, устройства, бейджи | 7001 |
 | [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
 | [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
+| [[Backend/Users-ChatFolders-ClientGuide]] | Клиентский гайд: папки чатов (UsersApi, XAuth) | — |
 | [[Backend/Users-Rust]] | **Rust drop-in порт Users** (tonic/sqlx/lapin) — тестовый эксперимент | 7001 |
 | [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
 | [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
 | [[Backend/Messages-Metrics]] | Реестр метрик Messages (auto MediatR + доменные + consumer-метрики) | — |
+| [[Backend/Messages-PinnedMessages-ClientGuide]] | Клиентский гайд: закреплённые сообщения (proto + события Updates) | — |
 | [[Backend/Files]] | Файлы, S3, стикеры | 7005 |
 | [[Backend/Files-ProjectMap]] | Карта всех файлов и классов BarkFluff.Files | — |
 | [[Backend/Updates]] | Real-time стриминг событий | 7015 |
@@ -96,6 +98,10 @@
 | [[Клиенты/iOS-ProjectMap]] | Карта всех файлов iOS-клиента с описанием |
 | [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
 | [[Клиенты/Web]] | **Веб-мессенджер** — vanilla-JS SPA (без фреймворка и бандлера), раздаётся BarkFluff.Web. React-переписывание было откачено, актуальность не путать с [[Клиенты/Developers-Web]] |
+
+### Идеи и бэклог
+
+- [[Идеи/Index]] — предложения фич и черновики (звонки, эфемерные сообщения, боты, E2E, реакции, каналы, истории, опросы и др.)
 
 ---
 
