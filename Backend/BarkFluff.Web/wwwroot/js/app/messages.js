@@ -118,8 +118,8 @@
 
         if (fwd.text) {
             var txt = document.createElement('div');
-            txt.className = 'fwd-text';
-            txt.textContent = fwd.text;
+            txt.className = 'fwd-text md';
+            txt.innerHTML = u().renderMarkdown(fwd.text);
             box.appendChild(txt);
         }
 
@@ -446,8 +446,8 @@
 
             if (text) {
                 var textEl = document.createElement('div');
-                textEl.className = 'msg-text';
-                textEl.textContent = text;
+                textEl.className = 'msg-text md';
+                textEl.innerHTML = u().renderMarkdown(text);
                 bubble.appendChild(textEl);
             }
 
