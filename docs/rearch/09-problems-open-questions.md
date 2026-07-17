@@ -22,7 +22,7 @@
 | 7 | MITM при первом контакте | решено | Bootstrap-фетч well-known — только по CA-валидному HTTPS (CA нужен лишь для знакомства, S2S от него не зависит; нода без CA-серта знакомится через ручных пиров); кросс-сверка well-known ↔ Navigator обязательна ([02](02-trust-and-certs.md)) |
 | 8 | Компрометация signing-ключа | принят остаточный риск | Push `KeyRevoked` всем KnownServers (не ждать суточного рефреша). Окно timestamp защищает только от replay — не от свежих подписей украденным ключом. При компрометации единственного ключа восстановление доверия только внеполосно; офлайновый master-ключ — усиление вне MVP ([02](02-trust-and-certs.md)) |
 | 9 | Clock skew между нодами | смягчено | NTP-требование; `Ping` с временем; код ошибки ClockSkew; tie-break в LWW |
-| 10 | Ed25519 в .NET 10: доступность API | **открыто** | Исследовать `System.Security.Cryptography` vs NSec/BouncyCastle — задача Фазы 1 |
+| 10 | Ed25519 в .NET 10: доступность API | решено | BCL не содержит плоского Ed25519; выбран `BouncyCastle.Cryptography` 2.6.2 (managed) — [step-0.5-report.md](phase-0/step-0.5-report.md) |
 | 11 | Replay-атаки | смягчено | timestamp-окно + идемпотентность мутаций по event_id; nonce-кеш исключён из дизайна как избыточный |
 | 35 | SSRF через servername/endpoint (Federation стоит внутри backend-сети) | решено | Обязательная валидация: публичный hostname, запрет приватных диапазонов после резолва, анти-rebinding, только https/grpc; исключение — manual-пиры ([03](03-discovery.md)) |
 | 36 | Подпись `sha256(request-bytes)`: protobuf-сериализация не канонична | решено | Хешируются полученные wire-байты без пере-сериализации (кастомный marshaller); конверт SignedRequest отвергнут; стримы — подпись заголовков + первого сообщения ([02](02-trust-and-certs.md)) |
