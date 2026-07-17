@@ -17,6 +17,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 
 Миграции применяются автоматически при старте.
 
+> Этап 0.4 rearch: `MessagesServerApi` получил 7 RPC-заглушек федеративного импорта/экспорта (`ImportFederatedChat/Message`, `ApplyFederatedEdit/Delete/Read`, `ExportChatEvents`, `CheckFileFederationAccess`) — реализация в Фазе 2, сейчас `Unimplemented`. `SendMessageRequest.source_id`/`GetPersonChatIdRequest` получили параллельные `user_uuid`-поля.
+
 ## Архитектура
 
 ### CQRS через MediatR
@@ -135,7 +137,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 | Сущность | Важные детали |
 |----------|---------------|
 | `Chat` | `LastMessage`, `CountUnread`, `FirstUnreadMessageId` — вычисляются в рантайме, не в БД. `Type` (enum ChatType: Regular/Private/Secret, default=Regular). `KdfSalt` и `PassphraseVerifier` — bytea nullable, заполняются только для `Type=Private`. Чаты с `Type=Secret` сервер не материализует — поле существует только для совместимости proto. `CreatedAt` (timestamptz, default=UtcNow). `PrivateUserLowId`/`PrivateUserHighId` — нормализованная пара участников приватного чата (уникальный индекс). `PrivateInviteState` (enum: Pending/Accepted/Rejected, default=Pending) |
-| `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление. `UserUuid` (Guid?, nullable) — фаза 0 федерации, пока никем не заполняется |
+| `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление. `UserUuid` (Guid?, nullable) — фаза 0 федерации, пока никем не заполняется. Proto `ChatMember` получил параллельные `user_uuid`(5)/`server_name`(6) — этап 0.4, пока не маппится из домена |
 | `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable). Индекс `(ChatId, SentAt)` — обязателен: все выборки сообщений фильтруют по `ChatId` и сортируют по `SentAt`, без него seq scan. **Фаза 0 федерации**: `LastChangeAt` (timestamptz, NOT NULL) — единая UTC-метка последнего изменения, основа будущего LWW; ставится в `MessagesStorage.AddMessage` (=`SentAt`, покрывает все пути создания — обычные и системные сообщения), в `EditMessageCommandHandler` (=`EditedAt`), в `DeleteMessageCommandHandler` (=`UtcNow`); наружу пока не отдаётся. `FederatedId`/`SenderUuid` (Guid?, nullable) — пассивны, пока никем не заполняются; уникальный частичный индекс `(ChatId, FederatedId) WHERE FederatedId IS NOT NULL` — под будущую идемпотентность импорта |
 | `EncryptedMessage` | Шифрованное сообщение приватного чата. Отдельная таблица `EncryptedMessages` (НЕ join с `Messages`). Поля: `Id` (bigserial), `ChatId`, `SenderId`, `SenderDeviceId` (Guid), `SentAt`, `Ciphertext`/`Nonce`/`AssociatedData` (bytea), `IsEdited`, `EditedAt`, `IsDeleted`. Soft-delete очищает все 3 bytea-поля. Индексы по `ChatId` и `(ChatId, SentAt)` |
 | `PrivateChatReadState` | Составной ключ `(ChatId, UserId)`, хранит только ID последнего прочитанного зашифрованного сообщения; используется для `count_unread` без раскрытия содержимого |

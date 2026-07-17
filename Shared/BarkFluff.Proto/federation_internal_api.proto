@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.FederationInternal";
+
+import "google/protobuf/timestamp.proto";
+import "federation_api.proto";
+
+package barkfluff.federation_internal;
+
+// Внутренний API Federation-сервиса. Авторизация — XAuth, TokenType.Service.
+// Реализация — Фаза 1+.
+service FederationInternalApi {
+
+  // Резолв remote-пользователя по FID или UUID (discovery + S2S GetUserProfile)
+  rpc ResolveRemoteUser(ResolveRemoteUserRequest) returns (ResolveRemoteUserResponse);
+
+  // Стриминг файла с origin-ноды (для Files)
+  rpc FetchRemoteFile(FetchRemoteFileRequest) returns (stream barkfluff.federation.FetchFileChunk);
+
+  // Catch-up истории чата с ноды-партнёра (для Messages)
+  rpc FetchRemoteChatHistory(FetchRemoteChatHistoryRequest) returns (barkfluff.federation.FetchChatHistoryResponse);
+
+  // ---- управление пирами (AdminPanel) ----
+  rpc GetKnownServers(GetKnownServersRequest) returns (GetKnownServersResponse);
+  rpc UpsertManualPeer(UpsertManualPeerRequest) returns (UpsertManualPeerResponse);
+  rpc SetServerBlocked(SetServerBlockedRequest) returns (SetServerBlockedResponse);
+  rpc GetFederationStatus(GetFederationStatusRequest) returns (GetFederationStatusResponse);
+}
+
+message ResolveRemoteUserRequest {
+  oneof user {
+    string fid = 1;   // "@username:servername" или "username:servername"
+    string uuid = 2;  // известный UUID (+ server_name обязателен)
+  }
+  string server_name = 3; // обязателен при uuid-резолве
+}
+
+message ResolveRemoteUserResponse {
+  bool found = 1;
+  barkfluff.federation.GetUserProfileResponse profile = 2;
+  string server_name = 3;
+}
+
+message FetchRemoteFileRequest {
+  string server_name = 1;
+  string file_id = 2;
+  int64 range_from = 3;
+  int64 range_to = 4;
+}
+
+message FetchRemoteChatHistoryRequest {
+  string server_name = 1;
+  string chat_id = 2;
+  int64 since_ts_ms = 3;
+  int32 limit = 4;
+}
+
+message KnownServerInfo {
+  string server_name = 1;
+  string federation_endpoint = 2;
+  string source = 3;                             // WellKnown | Navigator | Manual
+  string status = 4;                             // Active | Blocked | Unreachable
+  google.protobuf.Timestamp first_seen_at = 5;
+  google.protobuf.Timestamp last_seen_at = 6;
+  repeated barkfluff.federation.SigningKey keys = 7;
+}
+
+message GetKnownServersRequest { }
+
+message GetKnownServersResponse {
+  repeated KnownServerInfo servers = 1;
+}
+
+message UpsertManualPeerRequest {
+  string server_name = 1;
+  string federation_endpoint = 2;
+  repeated barkfluff.federation.SigningKey keys = 3;
+  repeated string tls_spki_sha256 = 4;
+}
+
+message UpsertManualPeerResponse { }
+
+message SetServerBlockedRequest {
+  string server_name = 1;
+  bool blocked = 2;
+}
+
+message SetServerBlockedResponse { }
+
+message GetFederationStatusRequest { }
+
+message GetFederationStatusResponse {
+  string server_name = 1;
+  bool enabled = 2;
+  repeated barkfluff.federation.SigningKey own_keys = 3;
+  int64 outbox_pending = 4;
+  int64 outbox_deadletter = 5;
+  int32 known_servers_active = 6;
+}

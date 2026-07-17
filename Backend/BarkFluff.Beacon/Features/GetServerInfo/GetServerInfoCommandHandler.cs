@@ -62,19 +62,21 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Calls }, cancellationToken: cancellationToken).ResponseAsync;
         var botsTask = _configurationApiClient
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Bots }, cancellationToken: cancellationToken).ResponseAsync;
+        var federationTask = _configurationApiClient
+            .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Federation }, cancellationToken: cancellationToken).ResponseAsync;
 
         try
         {
-            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask, botsTask);
-            _metrics.Add("configuration_fetch_success", 9);
+            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask, botsTask, federationTask);
+            _metrics.Add("configuration_fetch_success", 10);
         }
         catch
         {
             // Считаем сколько задач отвалилось, остальные считаем успешными.
-            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask, botsTask }
+            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask, botsTask, federationTask }
                 .Count(t => t.IsFaulted);
             _metrics.Add("configuration_fetch_errors", failed);
-            _metrics.Add("configuration_fetch_success", 9 - failed);
+            _metrics.Add("configuration_fetch_success", 10 - failed);
             throw;
         }
 
@@ -87,6 +89,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         var fastAuthSettings = fastAuthTask.Result;
         var callsSettings = callsTask.Result;
         var botsSettings = botsTask.Result;
+        var federationSettings = federationTask.Result;
 
         _logger.LogInformation(
             "Информация о сервере '{ServerName}' успешно собрана. Описание: {Description}",
@@ -120,6 +123,13 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
 
             // Публичный wss://-адрес LiveKit (отдельно от внутреннего LiveKit:Url для Calls -> LiveKit).
             LivekitUrl = GetPublicLivekitUrl(callsSettings.Configurations),
+
+            // Федерация (Фаза 0 rearch): пустая строка/false, пока Federation:ServerName/Enabled не заполнены оператором.
+            ServerName = federationSettings.Configurations
+                .FirstOrDefault(x => x.Section == "Federation" && x.Key == "ServerName")?.Value ?? string.Empty,
+            FederationEnabled = bool.TryParse(
+                federationSettings.Configurations.FirstOrDefault(x => x.Section == "Federation" && x.Key == "Enabled")?.Value,
+                out var federationEnabled) && federationEnabled,
         };
 
         _cache.Set(CacheKey, response, CacheTtl);

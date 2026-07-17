@@ -18,6 +18,8 @@ dotnet build BarkFluff.Onliner.csproj
 
 Миграции применяются автоматически при старте.
 
+> Этап 0.4 rearch: в `onliner_api.proto` добавлены параллельные `user_uuid`/`user_uuids`-поля (Subscribe/Change/Status/Typing) для будущих remote-пользователей + новый сервис `OnlinerServerApi` (UpsertRemoteStatus/InjectRemoteTyping, Фаза 4) — пока только контракт, RPC не реализованы, логика Onliner не менялась.
+
 ## Архитектура
 
 ### Поток смены статуса

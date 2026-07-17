@@ -8,6 +8,7 @@ package barkfluff.onliner;
 
 message SubscribeToOnlineStatusRequest {
   repeated int64 user_ids = 1; // Идентификаторы пользователей
+  repeated string user_uuids = 2; // remote-пользователи (UUID); объединяется с user_ids
 }
 
 message GetOnlineStatusRequest {
@@ -26,10 +27,12 @@ message UserOnlineStatus {
   int64 user_id = 1; // Идентификатор пользователя
   StatusTypeId status = 2; // Тип состояния
   google.protobuf.Timestamp last_seen = 3; // Дата последнего изменения статуса
+  string user_uuid = 4; // заполнен для remote-пользователя (тогда user_id = 0)
 }
 
 message ChangeUsersInSubscriptionRequest {
   repeated int64 user_ids = 1; // Новый массив идентификаторов пользователей
+  repeated string user_uuids = 2; // remote-пользователи (UUID); объединяется с user_ids
 }
 
 message ChangeUsersInSubscriptionResponse {
@@ -51,6 +54,7 @@ message TypingEvent {
   string chat_id = 1; // Чат (Guid-строка), в котором происходит набор
   int64 user_id = 2; // Кто печатает
   TypingAction action = 3; // Действие
+  string user_uuid = 4; // кто печатает, если remote (тогда user_id = 0)
 }
 
 message ChangeChatsInTypingSubscriptionRequest {
@@ -94,3 +98,30 @@ service OnlinerApi {
   // Изменить список чатов, для которых приходят индикаторы набора
   rpc ChangeChatsInTypingSubscription(ChangeChatsInTypingSubscriptionRequest) returns (ChangeChatsInTypingSubscriptionResponse);
 }
+
+// Внутренний API (TokenType.Service): мост федеративного presence/typing.
+// Реализация — Фаза 4.
+service OnlinerServerApi {
+
+  // Federation вливает статус remote-пользователя в in-memory кеш
+  rpc UpsertRemoteStatus(UpsertRemoteStatusRequest) returns (UpsertRemoteStatusResponse);
+
+  // Federation вливает typing remote-пользователя для ретрансляции подписчикам чата
+  rpc InjectRemoteTyping(InjectRemoteTypingRequest) returns (InjectRemoteTypingResponse);
+}
+
+message UpsertRemoteStatusRequest {
+  string user_uuid = 1;
+  StatusTypeId status = 2;
+  google.protobuf.Timestamp last_seen = 3;
+}
+
+message UpsertRemoteStatusResponse { }
+
+message InjectRemoteTypingRequest {
+  string chat_id = 1;
+  string user_uuid = 2;
+  TypingAction action = 3;
+}
+
+message InjectRemoteTypingResponse { }

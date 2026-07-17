@@ -10,6 +10,9 @@ package barkfluff.navigator;
 service NavigatorApi {
   rpc ListServers(ListServersRequest) returns (ListServersResponse);
   rpc RegisterServer(RegisterServerRequest) returns (RegisterServerResponse);
+
+  // Найти сервер по DNS-домену федерации (реализация — Фаза 1)
+  rpc GetServerByName(GetServerByNameRequest) returns (GetServerByNameResponse);
 }
 
 message ListServersRequest {
@@ -34,6 +37,17 @@ message ServerInfo {
   string server_public_name = 5; // Публичное имя сервера
   string location = 6; // Локация сервера
   ServerColor color = 7; // Цвета сервера
+  string server_name = 8;                      // DNS-домен ноды (глобальное имя в федерации)
+  string federation_endpoint = 9;              // публичный S2S-адрес
+  repeated NavigatorSigningKey signing_keys = 10;
+  repeated string tls_spki_sha256 = 11;        // SPKI-отпечатки TLS-серта (для self-signed)
+  repeated int32 federation_protocol_versions = 12;
+}
+
+message NavigatorSigningKey {
+  string key_id = 1;
+  bytes public_key = 2;
+  google.protobuf.Timestamp expired_at = 3;
 }
 
 message ServiceEndpoint {
@@ -47,4 +61,13 @@ message RegisterServerRequest {
 
 message RegisterServerResponse {
   // Можно добавить поля при необходимости, пока пусто
+}
+
+message GetServerByNameRequest {
+  string server_name = 1;
+}
+
+message GetServerByNameResponse {
+  bool found = 1;
+  ServerInfo server = 2;
 }

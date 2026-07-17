@@ -34,6 +34,9 @@ service UsersApi {
   // Найти пользователей по имени/фамилии/юзернейму
   rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
 
+  // Резолв федеративного адреса @username:servername (Фаза 2; до неё — Unimplemented)
+  rpc ResolveFederatedUser(ResolveFederatedUserRequest) returns (ResolveFederatedUserResponse);
+
   // Получить баджи пользователя
   rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
 
@@ -442,6 +445,21 @@ message User{
   string uuid = 13; // Глобально уникальный идентификатор пользователя (Guid), для федерации
 }
 
+message ResolveFederatedUserRequest {
+  string fid = 1; // "@username:servername" (допускается без @)
+}
+
+message ResolveFederatedUserResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string server_name = 4;
+  string first_name = 5;
+  string last_name = 6;
+  string bio = 7;
+  string avatar_url = 8; // проксируемый URL своей ноды (пусто, если скрыт/нет)
+}
+
 // Сообщения для работы с баджами
 
 message Badge {
@@ -762,6 +780,7 @@ message PrivacySettings {
   ProfileFieldVisibility email_visibility = 4;    // видимость почты
   bool search_visible = 5;                        // показывать ли пользователя в выдаче поиска
   ProfileFieldVisibility online_visibility = 6;   // видимость онлайн-статуса
+  bool deny_federated_dm = 7;                     // Запретить входящие сообщения с других серверов (default false = разрешено)
 }
 
 message GetPrivacySettingsRequest { }

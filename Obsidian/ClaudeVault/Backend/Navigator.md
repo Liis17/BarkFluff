@@ -18,6 +18,8 @@ NAVIGATOR_PORT=7010 dotnet run
 - `ListServers` — список активных серверов (без авторизации)
 - `RegisterServer` — регистрация сервера; `AddedBy` = UserId если есть JWT, иначе `"Anonymous"`
 
+> Этап 0.4 rearch: `ServerInfo` получил 5 полей федерации (`server_name`, `federation_endpoint`, `signing_keys`, `tls_spki_sha256`, `federation_protocol_versions`) + новый RPC `GetServerByName` (Фаза 1) — пока только контракт, `NavigatorApiService`/`ServersStorage` их не заполняют/не реализуют.
+
 Поток: `NavigatorApiService` → MediatR → `ListServersQueryHandler` / `RegisterServerCommandHandler` → `ServersStorage`
 
 ## ServersStorage
