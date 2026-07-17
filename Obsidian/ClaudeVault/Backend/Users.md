@@ -26,7 +26,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
+- `Domain/` — `User` (включая `Uuid` — глобальный идентификатор для федерации, см. ниже), `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
 - `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage`, `ChatFolderStorage`, `PrekeyStorage` (Transient)
@@ -40,9 +40,11 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **ID пользователя**: `DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()` при создании — миллисекунды снижают шанс коллизии PK при быстрой регистрации и сохраняют монотонность по времени (важно для `OrderByDescending(u => u.Id)`). Уникальность username/email гарантируется регистронезависимыми UNIQUE-индексами `LOWER("Username")` / `LOWER("Email")` + обработкой `PostgresException 23505` в `UsersStorage.CreateUser` (страховка от гонки check-then-act).
 
+**Uuid пользователя** (Фаза 0 rearch-федерации, [[Backend/Configuration#ServiceId=15]]): `Guid`, генерируется в коде (`Guid.NewGuid()`) при создании в обоих путях — `CreateUser` (draft) и `CreateBotUser`. Уникальный индекс `IX_Users_Uuid` (миграция `AddUserUuid`). У колонки есть страховочный `defaultValueSql: "gen_random_uuid()"` на уровне БД — заполнил все существующие строки при бэкфилле и подстрахует прямые INSERT в обход кода (например [[Backend/Users-Rust|Rust-порт]]). `long Id` остаётся внутренним PK, `Uuid` — будущий межсерверный идентификатор, пока без federation-логики поверх него. Отдаётся в proto `User.uuid` (поле 13, строка).
+
 **Зарезервированные имена**: `ReservedUsernamesService` (Singleton) загружает из конфига `ReservedNames:Usernames` (через запятую).
 
-**Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy. Данные и общий счёт берутся ОДНИМ запросом через оконную функцию `COUNT(*) OVER()` (`Database.SqlQueryRaw<TrigramSearchRow>` → ручной маппинг в `User`) — без второго trigram-скана. `IsBot` выбирается и маппится в результат, поэтому клиенты получают `User.is_bot` и могут отображать ботов отдельно.
+**Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy. Данные и общий счёт берутся ОДНИМ запросом через оконную функцию `COUNT(*) OVER()` (`Database.SqlQueryRaw<TrigramSearchRow>` → ручной маппинг в `User`) — без второго trigram-скана. `IsBot`/`Uuid` выбираются и маппятся в результат, поэтому клиенты получают `User.is_bot`/`User.uuid`.
 
 **Поиск (серверный)**: `SearchUsersServer` — через `GetAllUsersDescending` (если query пустой — все) или поиск по username/user_id. Без ограничения приватности, но только для не-ботов: это источник раздела «Юзеры» AdminPanel; боты управляются во вкладке «Боты».
 

@@ -7,6 +7,8 @@ public class User
     [Key]
     public long Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     public string Username { get; set; }
 
     public string FirstName { get; set; }
