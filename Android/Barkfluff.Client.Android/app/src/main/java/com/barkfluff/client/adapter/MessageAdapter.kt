@@ -42,6 +42,7 @@ import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageLoadHelper
+import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
@@ -312,7 +313,7 @@ class MessageAdapter(
                 binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
-                    binding.messageTextView.text = item.text
+                    MarkdownRenderer.applyTo(binding.messageTextView, item.text)
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
                     binding.messageTextView.visibility = View.GONE
@@ -481,7 +482,7 @@ class MessageAdapter(
                 binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
-                    binding.messageTextView.text = item.text
+                    MarkdownRenderer.applyTo(binding.messageTextView, item.text)
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
                     binding.messageTextView.visibility = View.GONE
@@ -621,7 +622,7 @@ class MessageAdapter(
         }
 
         if (data.text.isNotBlank()) {
-            quote.forwardTextTextView.text = data.text
+            quote.forwardTextTextView.text = MarkdownRenderer.strip(data.text)
             quote.forwardTextTextView.visibility = View.VISIBLE
         } else {
             quote.forwardTextTextView.visibility = View.GONE
@@ -630,7 +631,7 @@ class MessageAdapter(
 
     /** Формирует короткое превью для reply: 1 строка текста ИЛИ "📷 N фото" / "📎 N файлов" если текста нет. */
     private fun buildPreviewLine(text: String, attachments: List<Shared.MessageAttachment>): String {
-        if (text.isNotBlank()) return text
+        if (text.isNotBlank()) return MarkdownRenderer.strip(text)
         if (attachments.isEmpty()) return ""
         val photos = attachments.count {
             it.type == Shared.MessageAttachmentType.IMAGE ||
