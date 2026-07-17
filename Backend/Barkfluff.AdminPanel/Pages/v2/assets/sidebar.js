@@ -154,7 +154,7 @@
     let scrim = document.querySelector('.md-nav-scrim');
     if (!scrim) {
       scrim = el('<div class="md-nav-scrim"></div>');
-      document.body.appendChild(scrim);
+      shell.appendChild(scrim);
     }
 
     toggle.addEventListener('click', function () {
