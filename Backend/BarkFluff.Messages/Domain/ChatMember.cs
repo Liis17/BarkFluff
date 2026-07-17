@@ -14,4 +14,6 @@ public class ChatMember
     public Guid ChatId { get; set; }
 
     public Chat Chat { get; set; }
+
+    public Guid? UserUuid { get; set; }
 }
