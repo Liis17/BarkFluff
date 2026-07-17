@@ -41,10 +41,10 @@ object MarkdownRenderer {
     private val UNORDERED = Regex("^\\s*[-*+]\\s+(.*)")
     private val CODE_INLINE = Regex("`([^`\\n]+)`")
     private val BOLD_STARS = Regex("\\*\\*([^*]+?)\\*\\*")
-    private val BOLD_UNDERS = Regex("__([^_]+?)__")
+    private val BOLD_UNDERS = Regex("(?<!\\w)__([^_]+?)__(?!\\w)")
     private val STRIKE = Regex("~~([^~]+?)~~")
     private val ITALIC_STAR = Regex("\\*([^*]+?)\\*")
-    private val ITALIC_UNDER = Regex("_([^_]+?)_")
+    private val ITALIC_UNDER = Regex("(?<!\\w)_([^_]+?)_(?!\\w)")
     private val LINK = Regex("\\[([^\\]]+)\\]\\(([^)\\s]+)\\)")
 
     private val density = Resources.getSystem().displayMetrics.density
