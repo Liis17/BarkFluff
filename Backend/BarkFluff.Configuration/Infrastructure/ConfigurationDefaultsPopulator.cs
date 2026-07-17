@@ -45,6 +45,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Web, "web" },
         { ServiceId.Calls, "calls" },
         { ServiceId.Bots, "bots" },
+        { ServiceId.Federation, "federation" },
     };
 
     /// <summary>
@@ -65,6 +66,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Web, 7016 },
         { ServiceId.Calls, 7025 },
         { ServiceId.Bots, 7027 },
+        { ServiceId.Federation, 7030 },
     };
 
     /// <summary>
@@ -98,6 +100,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, ("OnlinerDb", "onliner") },
         { ServiceId.Calls, ("CallsDb", "calls") },
         { ServiceId.Bots, ("BotsDb", "bots") },
+        { ServiceId.Federation, ("FederationDb", "federation") },
     };
 
     public ConfigurationDefaultsPopulator(
@@ -337,6 +340,25 @@ public class ConfigurationDefaultsPopulator
             {
                 "Host" => $"http://bots:{DefaultPorts[ServiceId.Bots]}",
                 "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "BotsServiceClient"),
+                _ => null
+            };
+        }
+
+        // --- Federation:Enabled (федерация выключена по умолчанию до Фазы 1+) ---
+        // Federation:ServerName и Federation:ExternalEndpoint намеренно не обрабатываются здесь:
+        // остаются "" — оператор ноды обязан задать сам.
+        if (config.Section == "Federation" && config.Key == "Enabled")
+        {
+            return "false";
+        }
+
+        // --- FederationService (inter-service, для будущих клиентов сервиса Federation) ---
+        if (config.Section == "FederationService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://federation:{DefaultPorts[ServiceId.Federation]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "FederationServiceClient"),
                 _ => null
             };
         }
