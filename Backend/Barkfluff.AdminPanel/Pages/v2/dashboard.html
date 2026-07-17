@@ -140,6 +140,10 @@
         .service-card-body { padding: 16px; }
         .canvas-wrap { position: relative; height: 220px; }
         .svc-loading-indicator { color: var(--md-primary); }
+
+        @media (max-width: 600px) {
+            .service-grid { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+        }
     </style>
 </head>
 <body>
