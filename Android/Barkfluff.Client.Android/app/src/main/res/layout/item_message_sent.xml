@@ -88,7 +88,6 @@
                     android:layout_marginHorizontal="14dp"
                     android:layout_marginTop="4dp"
                     android:layout_marginBottom="4dp"
-                    android:autoLink="web"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnPrimaryContainer"
                     android:visibility="gone"

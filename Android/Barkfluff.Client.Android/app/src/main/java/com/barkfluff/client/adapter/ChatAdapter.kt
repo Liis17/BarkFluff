@@ -11,6 +11,7 @@ import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.MarkdownRenderer
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -143,7 +144,7 @@ class ChatAdapter(
                 binding.privatePreviewSkeleton.visibility = View.GONE
                 val text = lastMessage.text
                 binding.lastMessage.text = when {
-                    text.isNotBlank() -> text.trim()
+                    text.isNotBlank() -> MarkdownRenderer.strip(text)
                     else -> "Вложение"
                 }
                 binding.lastMessage.visibility = View.VISIBLE
