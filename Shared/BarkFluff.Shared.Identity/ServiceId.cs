@@ -32,4 +32,6 @@ public enum ServiceId
 
     Bots = 14,
 
+    Federation = 15,
+
 }
