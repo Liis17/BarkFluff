@@ -30,8 +30,8 @@
 | `CreateChatBottomSheet.kt` | Нижний лист выбора: новый личный чат / новая группа |
 | `CreateGroupChatActivity.kt` | Создание группового чата (выбор участников через `GroupMemberPickerAdapter`, название) |
 | `PinnedMessagesActivity.kt` | Список закреплённых сообщений чата |
-| `PrivateChatActivity.kt` | Экран приватного (E2E через passphrase) чата — шифрование Argon2id |
-| `SecretChatActivity.kt` | Экран секретного чата — Signal Double Ratchet, сообщения не хранятся на сервере |
+| `PrivateChatController.kt` | Логика приватного (E2E passphrase, Argon2id) чата в общем `ChatActivity` (shell) |
+| `SecretChatController.kt` | Логика секретного (Signal Double Ratchet) чата в общем `ChatActivity`; сервер не хранит |
 | `CreateEncryptedChatActivity.kt` | Создание приватного или секретного чата с собеседником |
 | `FolderChatPickerActivity.kt` | Выбор чатов для добавления в папку |
 | `FolderEditActivity.kt` | Создание/редактирование папки чатов (название, состав) |
@@ -143,7 +143,6 @@
 | `adapter/CallHistoryAdapter.kt` | Список истории звонков в `CallsFragment` |
 | `adapter/ChatFoldersAdapter.kt` | Список папок чатов в `ChatFoldersSettingsActivity` |
 | `adapter/GroupMemberAdapter.kt` | Список участников группового чата в `GroupInfoActivity` |
-| `adapter/EncryptedMessageAdapter.kt` | `ListAdapter` сообщений приватного/секретного чата (`PrivateChatActivity`/`SecretChatActivity`) |
 | `adapter/ForwardChatPickerAdapter.kt` | Список чатов для пересылки сообщения в `ForwardChatPickerBottomSheet` |
 | `adapter/ReplySwipeCallback.kt` | `ItemTouchHelper.Callback` — свайп сообщения вправо инициирует ответ (reply) |
 | `adapter/ChatSkeletonAdapter.kt` | Скелетон-заглушки списка чатов во время загрузки |

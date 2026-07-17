@@ -1,6 +1,5 @@
 package com.barkfluff.client
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
@@ -124,10 +123,11 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 val chat = creation.chat
                 val text = if (creation.created) "Приватный чат создан, дождитесь подключения собеседника" else "Открыт существующий приватный чат"
                 Toast.makeText(this@CreateEncryptedChatActivity, text, Toast.LENGTH_LONG).show()
-                val intent = Intent(this@CreateEncryptedChatActivity, PrivateChatActivity::class.java)
-                    .putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
-                    .putExtra(PrivateChatActivity.EXTRA_TITLE, chat.title.ifBlank { "Приватный чат" })
-                startActivity(intent)
+                startActivity(ChatActivity.privateChatIntent(
+                    this@CreateEncryptedChatActivity,
+                    chatId = chat.id,
+                    title = chat.title.ifBlank { "Приватный чат" }
+                ))
                 finish()
             }.onFailure {
                 Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать чат: ${it.message}", Toast.LENGTH_LONG).show()
@@ -156,10 +156,11 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             binding.createButton.isEnabled = true
             result.onSuccess { chat ->
                 Toast.makeText(this@CreateEncryptedChatActivity, "Секретный чат отправлен, ждём подтверждения", Toast.LENGTH_LONG).show()
-                val intent = Intent(this@CreateEncryptedChatActivity, SecretChatActivity::class.java)
-                    .putExtra(SecretChatActivity.EXTRA_SECRET_CHAT_ID, chat.id)
-                    .putExtra(SecretChatActivity.EXTRA_INITIAL_MESSAGE, initialMessage)
-                startActivity(intent)
+                startActivity(ChatActivity.secretChatIntent(
+                    this@CreateEncryptedChatActivity,
+                    secretChatId = chat.id,
+                    initialMessage = initialMessage
+                ))
                 finish()
             }.onFailure {
                 Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать секретный чат: ${it.message}", Toast.LENGTH_LONG).show()

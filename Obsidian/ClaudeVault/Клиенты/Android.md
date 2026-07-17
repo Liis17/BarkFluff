@@ -26,8 +26,8 @@ Package: `com.barkfluff.client`
 - На телефоне `MainActivity` показывает M3 Expressive floating navigation: pill-группа с морфингом активной вкладки (filled icon + label) и отдельный 64dp squircle FAB. Всегда доступны «Чаты» и «Профиль», а «Звонки» добавляются третьей вкладкой при `mainTabCallsVisible`; FAB виден только в чатах. `ChatsFragment` публикует суммарный счётчик непрочитанных через Fragment Result для badge «Чаты» (значения выше 99 отображаются как `99+`). Wide-layout сохраняет прежний navigation rail и medium FAB.
 - `CreateChatBottomSheet` — светлый modal sheet с hero-пунктом обычного чата и равномерной строкой вторичных карточек. «Групповой» есть всегда; «Приватный» и «Секретный» зависят от тестовых `privateChatsEnabled` / `secretChatsEnabled`, поэтому оставшиеся карточки растягиваются на всю строку. Обычный и приватный пути ведут в `SearchActivity`, группа — в `CreateGroupChatActivity`, секретный — в `CreateEncryptedChatActivity` с `EXTRA_INITIAL_TYPE=secret`, чтобы сразу выбрать режим SECRET.
 - Групповой flow: `CreateGroupChatActivity` выбирает нескольких пользователей через поиск, требует название, принимает опциональную обложку и вызывает `CreateGroupChat`.
-- `ChatData` получает `chatType`, `lastActivityAt`, `privateInviteState` и `privateInviterUserId`; `ChatsFragment` подгружает страницы `ListChats` при прокрутке. Приватный чат открывает `PrivateChatActivity`, имеет lock-бейдж рядом с аватаром и skeleton вместо текста последнего сообщения.
-- Инвайт-флоу приватного чата в списке: при `privateInviteState != ACCEPTED` вместо skeleton показывается статус — «Запрос на приватный чат» (приглашённый), «Ожидает подтверждения» (инициатор), «Запрос отклонён». Роль определяется по `privateInviterUserId` vs свой userId. `PrivateChatActivity` в pending-режиме у приглашённого показывает экран «Принять/Отклонить» (принять → passphrase → `acceptPrivateChatInvite`), у инициатора — баннер ожидания с заблокированным вводом (разблокируется по `privateChatInviteResolutions`); вход с push без extras — fallback-фетч состояния через `getChat`. FCM `type=private_chat_invite` → `NotificationHelper.showPrivateInviteNotification`, тап открывает `PrivateChatActivity` (`EXTRA_IS_PRIVATE_CHAT` в `MainActivity.handleChatIntent`).
+- `ChatData` получает `chatType`, `lastActivityAt`, `privateInviteState` и `privateInviterUserId`; `ChatsFragment` подгружает страницы `ListChats` при прокрутке. Приватный чат открывает общий `ChatActivity` (`ChatActivity.privateChatIntent`, `kind=PRIVATE`), имеет lock-бейдж рядом с аватаром и skeleton вместо текста последнего сообщения.
+- Инвайт-флоу приватного чата в списке: при `privateInviteState != ACCEPTED` вместо skeleton показывается статус — «Запрос на приватный чат» (приглашённый), «Ожидает подтверждения» (инициатор), «Запрос отклонён». Роль определяется по `privateInviterUserId` vs свой userId. В общем `ChatActivity` логику ведёт `PrivateChatController`: в pending-режиме у приглашённого — скрытый оверлей `e2eInviteContainer` «Принять/Отклонить» (принять → passphrase → `acceptPrivateChatInvite`), у инициатора — баннер `e2eBanner` с заблокированным вводом (разблокируется по `privateChatInviteResolutions`); вход с push без extras (`inviteState=-1`) — fallback-фетч состояния через `getChat`. FCM `type=private_chat_invite` → `NotificationHelper.showPrivateInviteNotification`, тап открывает приватный чат в `ChatActivity` (`EXTRA_IS_PRIVATE_CHAT` в `MainActivity.handleChatIntent`).
 - Ввод passphrase приватного чата (создание, инвайт, разблокирование) содержит opt-in «Сохранить пароль». В `EncryptedSharedPreferences` сохраняется только производный ключ; при logout ключи очищаются.
 
 - `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`). В phone-варианте `floatingNavContainer` центрирует над ним группу вкладок и FAB с отступом 20dp от нижнего inset; старый невидимый `bottomNavigation` оставлен только для общей ViewBinding-совместимости с `layout-w600dp`.
@@ -295,6 +295,21 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
+## Markdown в сообщениях
+
+Бэкенд хранит текст сообщения как обычную строку с символами разметки — интерпретация markdown целиком на клиенте. Только V1. Кастомный рендерер, без сторонних библиотек.
+
+- **`utils/MarkdownRenderer.kt`** (`object`) — line-based парсер `markdown → SpannableStringBuilder`:
+  - Блоки: заголовки `#…######` (`RelativeSizeSpan` + bold), маркированные `-/*/+` (`BulletSpan`) и нумерованные `1.` (`LeadingMarginSpan`) списки, цитаты `>` (`QuoteSpan` + приглушённый цвет), горизонтальные линии `---/***/___`, ограждённые блоки кода ` ``` ` (monospace + фон + отступ).
+  - Inline: `**bold**`/`__bold__`, `*italic*`/`_italic_`, `~~strike~~`, `` `code` `` (monospace + фон), `[текст](url)` (`URLSpan`). Inline-код защищён от повторного разбора.
+  - Автолинковка «голых» URL через `Patterns.WEB_URL` — вручную, чтобы не затирать markdown-ссылки (в отличие от `Linkify.addLinks`, который стирает существующие `URLSpan`).
+  - Цвета code-фона/цитаты — alpha-overlay поверх `textView.currentTextColor` (работает и на sent, и на received пузыре).
+  - `applyTo(textView, source)` — ставит текст, линкует, включает/**сбрасывает** `movementMethod` (сброс критичен для переиспользования ViewHolder). `strip(source)` — убирает всю разметку в чистый однострочный текст для превью.
+- **Рендер (`applyTo`)**: главный пузырь sent/received (`MessageAdapter` ~315/484, покрывает и закреплённые через `PinnedMessagesActivity`). E2E-чаты (приватный/секретный) рендерятся тем же `MessageAdapter` в общем `ChatActivity` (расшифрованный текст мапится в `MessageItem`).
+- **`autoLink="web"` убран** из `item_message_sent.xml` / `item_message_received.xml` — заменён Linkify внутри рендерера. Контекстное меню сообщения висит на `binding.root.setOnClickListener` (не long-press), поэтому `LinkMovementMethod` сосуществует с тап-в-меню как и раньше.
+- **Strip (чистый текст в превью)**: reply-превью (`buildPreviewLine`), тело пересланного сообщения (`forwardTextTextView`), последнее сообщение в списке чатов (`ChatAdapter`), пуш-уведомление (`NotificationHelper`). Иначе в однострочных превью светились бы символы `**`, `~~`, `` ` ``.
+- Вложенные списки, таблицы, HTML — не поддерживаются (вне «базового» набора).
+
 ## Typing-индикатор («печатает…»)
 
 Клиентская интеграция готового API [[Backend/Onliner]] (typing = relay-модель, см. там же). Только V1; список чатов не затронут — индикатор живёт в шапке открытого чата.
@@ -377,11 +392,11 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 ### UI
 
 - `CreateEncryptedChatActivity` (+ `activity_create_encrypted_chat.xml`) — единый экран создания: выбор типа (Private/Secret через MaterialButtonToggleGroup), ввод peer userId, passphrase ИЛИ peer device + initial message. Spinner устройств заполняется через `ListPeerDevices`.
-- `PrivateChatActivity` (+ `activity_private_chat.xml`) — минимальная история приватного чата: загрузка через `listPrivateMessages` (расшифровка inline), отправка `sendText`, реалтайм через `realtimeService.privateMessages`. При отсутствии локального ключа — диалог запроса passphrase + `unlockExistingChat`.
-- `SecretChatActivity` (+ `activity_secret_chat.xml`) — секретный чат, без истории (сервер не хранит). Только runtime-сообщения через `realtimeService.secretMessages` + `decryptIncoming` + `ack`.
-- `EncryptedMessageAdapter` + `item_encrypted_message.xml` — простой list-адаптер для расшифрованных сообщений (sender label / text / time).
+- Приватный и секретный чаты отображаются в **общем `ChatActivity`** (не в отдельных активити): `ChatActivity.onCreate` по `EXTRA_CHAT_KIND` (`KIND_REGULAR`/`KIND_PRIVATE`/`KIND_SECRET`) на E2E-типах уходит в `setupE2eShell()` и делегирует логику контроллеру. Shell переиспользует `activity_chat.xml`/шапку/`MessageAdapter`, но только текст: прячет вложения/стикеры/голос/меню/звонок/закреплённые. Интенты собираются хелперами `ChatActivity.privateChatIntent` / `secretChatIntent`.
+- `PrivateChatController` — приватный чат: загрузка через `listPrivateMessages` (расшифровка inline), отправка `sendText`, реалтайм `realtimeService.privateMessages`, машина состояний инвайта (`e2eInviteContainer`/`e2eBanner`). При отсутствии локального ключа — диалог passphrase + `unlockExistingChat`.
+- `SecretChatController` — секретный чат, без истории с сервера (не хранит). Только локальный кэш + runtime-сообщения через `realtimeService.secretMessages` + `decryptIncoming` + `ack`. Строковый `messageId` мапится в `Long` для `MessageItem` через стабильный in-session маппинг.
 - `ChatsFragment` — кнопка `encryptedChatButton` в toolbar открывает `CreateEncryptedChatActivity`.
-- AndroidManifest — три новых Activity зарегистрированы.
+- AndroidManifest — отдельные `PrivateChatActivity`/`SecretChatActivity` удалены (слиты в `ChatActivity`); `CreateEncryptedChatActivity` остаётся.
 
 ### Storage prefs
 

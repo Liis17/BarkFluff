@@ -858,12 +858,13 @@ class ChatsFragment : Fragment() {
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
 
         if (chat.chatType == barkfluff.shared.Shared.ChatType.CHAT_TYPE_PRIVATE) {
-            startActivity(Intent(requireContext(), PrivateChatActivity::class.java).apply {
-                putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
-                putExtra(PrivateChatActivity.EXTRA_TITLE, displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) })
-                putExtra(PrivateChatActivity.EXTRA_INVITE_STATE, chat.privateInviteState.number)
-                putExtra(PrivateChatActivity.EXTRA_INVITER_USER_ID, chat.privateInviterUserId)
-            })
+            startActivity(ChatActivity.privateChatIntent(
+                requireContext(),
+                chatId = chat.id,
+                title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) },
+                inviteState = chat.privateInviteState.number,
+                inviterUserId = chat.privateInviterUserId
+            ))
             return
         }
 

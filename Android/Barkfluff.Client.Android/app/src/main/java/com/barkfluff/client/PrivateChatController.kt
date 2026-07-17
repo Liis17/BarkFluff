@@ -1,117 +1,89 @@
 package com.barkfluff.client
 
-import android.os.Bundle
 import android.text.InputType
 import android.util.Log
 import android.view.View
-import android.widget.Toast
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import barkfluff.shared.Shared
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.barkfluff.client.adapter.EncryptedMessageAdapter
-import com.barkfluff.client.adapter.EncryptedMessageItem
-import com.barkfluff.client.data.GlobalParam
+import barkfluff.shared.Shared
+import com.barkfluff.client.adapter.MessageAdapter
+import com.barkfluff.client.adapter.MessageItem
+import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
-import com.barkfluff.client.databinding.ActivityPrivateChatBinding
+import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.repository.PrivateChatRepository
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 /**
- * Минимальный экран приватного чата (E2E через passphrase).
- *
- * Отвечает за: загрузку истории шифротекста (сразу расшифрованного), отправку текстовых
- * сообщений, реалтайм-обновления через RealtimeService.privateMessages.
- *
- * Если у клиента нет ключа в локальном кэше, показывает диалог запроса passphrase
- * и пробует разблокировать существующий чат через PrivateChatRepository.unlockExistingChat.
+ * Контроллер приватного чата (E2E через passphrase). Рендерит в общий shell ChatActivity
+ * (ActivityChatBinding + MessageAdapter). Порт логики бывшего PrivateChatActivity:
+ * загрузка/расшифровка истории, отправка текста, realtime, машина состояний инвайта
+ * (принять/отклонить/ожидание/отклонён) и passphrase-диалоги.
  */
-class PrivateChatActivity : AppCompatActivity() {
+class PrivateChatController(
+    private val activity: AppCompatActivity,
+    private val binding: ActivityChatBinding,
+    private val adapter: MessageAdapter,
+    private val app: BarkFluffApplication,
+    private val globalParam: GlobalParam,
+    private val chatId: String,
+) {
+
+    private val repo: PrivateChatRepository = app.privateChatRepository
+    private val chatCacheRepository: ChatCacheRepository = app.chatCacheRepository
+    private val cacheScope: CacheScope? = CacheScope.from(globalParam)
 
     companion object {
-        const val EXTRA_CHAT_ID = "chat_id"
-        const val EXTRA_TITLE = "chat_title"
-        const val EXTRA_INVITE_STATE = "invite_state"
-        const val EXTRA_INVITER_USER_ID = "inviter_user_id"
-        private const val TAG = "PrivateChatActivity"
+        private const val TAG = "PrivateChatController"
     }
 
-    private lateinit var binding: ActivityPrivateChatBinding
-    private lateinit var globalParam: GlobalParam
-    private lateinit var repo: PrivateChatRepository
-    private lateinit var chatCacheRepository: ChatCacheRepository
-    private var cacheScope: CacheScope? = null
-    private lateinit var adapter: EncryptedMessageAdapter
-
-    private lateinit var chatId: String
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityPrivateChatBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
-            finish(); return
-        }
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: "Приватный чат"
-        binding.toolbar.title = title
-        binding.toolbar.setNavigationOnClickListener { finish() }
-        binding.toolbar.setNavigationIcon(android.R.drawable.ic_menu_close_clear_cancel)
-
-        globalParam = GlobalParam(this)
-        val app = applicationContext as BarkFluffApplication
-        repo = app.privateChatRepository
-
-        chatCacheRepository = app.chatCacheRepository
-        cacheScope = CacheScope.from(globalParam)
-        adapter = EncryptedMessageAdapter()
-        binding.messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
-        binding.messagesRecyclerView.adapter = adapter
-
+    fun start(inviteState: Int, inviterUserId: Long) {
+        binding.messageEditText.setHint(R.string.hint_encrypted_message)
         binding.sendButton.setOnClickListener { onSendClicked() }
-
-        resolveModeAndStart(app)
-
-        observeRealtime(app)
+        binding.e2eInviteAcceptButton.setOnClickListener { promptPassphraseAndAccept() }
+        binding.e2eInviteDeclineButton.setOnClickListener { declineInvite() }
+        resolveModeAndStart(inviteState, inviterUserId)
+        observeRealtime()
     }
 
     /**
-     * Определяет режим экрана по состоянию инвайта: обычный чат, запрос
-     * «принять/отклонить» (приглашённый), ожидание подтверждения (инициатор)
-     * или «запрос отклонён». Состояние берётся из extras, при входе с push —
-     * из ListChats.
+     * Определяет режим экрана по состоянию инвайта. Состояние берётся из extras, при входе
+     * с push (state < 0) — из ListChats через getChat.
      */
-    private fun resolveModeAndStart(app: BarkFluffApplication) {
-        val stateNumber = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
-        val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
+    private fun resolveModeAndStart(stateNumber: Int, inviterUserId: Long) {
         if (stateNumber >= 0) {
-            applyMode(app, stateNumber, inviterUserId)
+            applyMode(stateNumber, inviterUserId)
             return
         }
-        lifecycleScope.launch {
+        activity.lifecycleScope.launch {
             val chat = app.grpcManager.getChat(chatId).getOrNull()
             if (chat == null) {
-                Toast.makeText(this@PrivateChatActivity, "Чат не найден", Toast.LENGTH_LONG).show()
-                finish()
+                Toast.makeText(activity, "Чат не найден", Toast.LENGTH_LONG).show()
+                activity.finish()
                 return@launch
             }
-            if (chat.title.isNotBlank()) binding.toolbar.title = chat.title
-            applyMode(app, chat.privateInviteState.number, chat.privateInviterUserId)
+            if (chat.title.isNotBlank()) {
+                binding.chatNameTextView.text = chat.title
+                binding.chatAvatarPlaceholder.text = chat.title.trim().firstOrNull()?.uppercase() ?: "?"
+            }
+            applyMode(chat.privateInviteState.number, chat.privateInviterUserId)
         }
     }
 
-    private fun applyMode(app: BarkFluffApplication, stateNumber: Int, inviterUserId: Long) {
+    private fun applyMode(stateNumber: Int, inviterUserId: Long) {
         val isInvitee = inviterUserId != 0L && inviterUserId != globalParam.userId
         when (stateNumber) {
             Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_PENDING_VALUE ->
-                if (isInvitee) showInviteRequest() else showWaitingMode(app)
+                if (isInvitee) showInviteRequest() else showWaitingMode()
 
             Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_REJECTED_VALUE ->
                 showRejectedMode()
@@ -124,43 +96,41 @@ class PrivateChatActivity : AppCompatActivity() {
 
     private fun showInviteRequest() {
         setInputEnabled(false)
-        binding.inviteRequestContainer.visibility = View.VISIBLE
-        binding.invitePromptText.text = getString(R.string.private_chat_invite_prompt, binding.toolbar.title)
-        binding.inviteAcceptButton.setOnClickListener { promptPassphraseAndAccept() }
-        binding.inviteDeclineButton.setOnClickListener { declineInvite() }
+        binding.e2eInviteContainer.visibility = View.VISIBLE
+        binding.e2eInvitePrompt.text =
+            activity.getString(R.string.private_chat_invite_prompt, binding.chatNameTextView.text)
     }
 
     private fun promptPassphraseAndAccept() {
-        val content = LinearLayout(this).apply {
+        val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            val margin = (24 * resources.displayMetrics.density).toInt()
+            val margin = (24 * activity.resources.displayMetrics.density).toInt()
             setPadding(margin, 0, margin, 0)
         }
-        val passwordLayout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
-            hint = getString(R.string.private_chat_password_hint)
+        val passwordLayout = TextInputLayout(activity, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+            hint = activity.getString(R.string.private_chat_password_hint)
         }
         val edit = TextInputEditText(passwordLayout.context).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         passwordLayout.addView(edit)
-        val remember = MaterialCheckBox(this).apply {
-            text = getString(R.string.private_chat_remember_password)
+        val remember = MaterialCheckBox(activity).apply {
+            text = activity.getString(R.string.private_chat_remember_password)
             isChecked = false
         }
         content.addView(passwordLayout)
         content.addView(remember)
-        MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(activity)
             .setTitle("Введите passphrase")
             .setMessage("Этот чат зашифрован общим паролем. Введите passphrase, чтобы принять запрос.")
             .setView(content)
             .setPositiveButton("OK") { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 if (passphrase.isEmpty()) return@setPositiveButton
-                lifecycleScope.launch {
-                    val app = applicationContext as BarkFluffApplication
+                activity.lifecycleScope.launch {
                     val chat = app.grpcManager.getChat(chatId).getOrNull()
                     if (chat == null) {
-                        Toast.makeText(this@PrivateChatActivity, "Чат не найден", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, "Чат не найден", Toast.LENGTH_LONG).show()
                         return@launch
                     }
                     repo.acceptPrivateChatInvite(
@@ -170,12 +140,12 @@ class PrivateChatActivity : AppCompatActivity() {
                         chat.passphraseVerifier.toByteArray(),
                         remember.isChecked
                     ).onSuccess {
-                        binding.inviteRequestContainer.visibility = View.GONE
+                        binding.e2eInviteContainer.visibility = View.GONE
                         setInputEnabled(true)
                         loadHistory()
                     }.onFailure {
                         Log.w(TAG, "Failed to accept private chat invite", it)
-                        Toast.makeText(this@PrivateChatActivity, "Неверный passphrase", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, "Неверный passphrase", Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -184,27 +154,27 @@ class PrivateChatActivity : AppCompatActivity() {
     }
 
     private fun declineInvite() {
-        lifecycleScope.launch {
+        activity.lifecycleScope.launch {
             repo.rejectPrivateChat(chatId)
-                .onSuccess { finish() }
+                .onSuccess { activity.finish() }
                 .onFailure {
-                    Toast.makeText(this@PrivateChatActivity, "Не удалось отклонить: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(activity, "Не удалось отклонить: ${it.message}", Toast.LENGTH_LONG).show()
                 }
         }
     }
 
     // ─── Инициатор: ожидание подтверждения / отклонено ───────────────────────
 
-    private fun showWaitingMode(app: BarkFluffApplication) {
+    private fun showWaitingMode() {
         setInputEnabled(false)
-        binding.pendingBanner.text = getString(R.string.private_chat_invite_waiting)
-        binding.pendingBanner.visibility = View.VISIBLE
-        lifecycleScope.launch {
+        binding.e2eBanner.text = activity.getString(R.string.private_chat_invite_waiting)
+        binding.e2eBanner.visibility = View.VISIBLE
+        activity.lifecycleScope.launch {
             app.realtimeService.privateChatInviteResolutions
                 .filter { it.chatId == chatId }
                 .collect { event ->
                     if (event.accepted) {
-                        binding.pendingBanner.visibility = View.GONE
+                        binding.e2eBanner.visibility = View.GONE
                         setInputEnabled(true)
                         ensureUnlockedThenLoad()
                     } else {
@@ -216,8 +186,8 @@ class PrivateChatActivity : AppCompatActivity() {
 
     private fun showRejectedMode() {
         setInputEnabled(false)
-        binding.pendingBanner.text = getString(R.string.private_chat_invite_rejected)
-        binding.pendingBanner.visibility = View.VISIBLE
+        binding.e2eBanner.text = activity.getString(R.string.private_chat_invite_rejected)
+        binding.e2eBanner.visibility = View.VISIBLE
     }
 
     private fun setInputEnabled(enabled: Boolean) {
@@ -235,25 +205,25 @@ class PrivateChatActivity : AppCompatActivity() {
     }
 
     private fun promptPassphraseAndUnlock() {
-        val content = LinearLayout(this).apply {
+        val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            val margin = (24 * resources.displayMetrics.density).toInt()
+            val margin = (24 * activity.resources.displayMetrics.density).toInt()
             setPadding(margin, 0, margin, 0)
         }
-        val passwordLayout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
-            hint = getString(R.string.private_chat_password_hint)
+        val passwordLayout = TextInputLayout(activity, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+            hint = activity.getString(R.string.private_chat_password_hint)
         }
         val edit = TextInputEditText(passwordLayout.context).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         passwordLayout.addView(edit)
-        val remember = MaterialCheckBox(this).apply {
-            text = getString(R.string.private_chat_remember_password)
+        val remember = MaterialCheckBox(activity).apply {
+            text = activity.getString(R.string.private_chat_remember_password)
             isChecked = false
         }
         content.addView(passwordLayout)
         content.addView(remember)
-        MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(activity)
             .setTitle("Введите passphrase")
             .setMessage("Этот чат зашифрован общим паролем. Введите passphrase для расшифровки истории.")
             .setView(content)
@@ -261,15 +231,14 @@ class PrivateChatActivity : AppCompatActivity() {
             .setPositiveButton("OK") { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 if (passphrase.isEmpty()) {
-                    finish()
+                    activity.finish()
                     return@setPositiveButton
                 }
-                lifecycleScope.launch {
-                    val app = applicationContext as BarkFluffApplication
+                activity.lifecycleScope.launch {
                     val chat = app.grpcManager.getChat(chatId).getOrNull()
                     if (chat == null) {
-                        Toast.makeText(this@PrivateChatActivity, "Чат не найден", Toast.LENGTH_LONG).show()
-                        finish()
+                        Toast.makeText(activity, "Чат не найден", Toast.LENGTH_LONG).show()
+                        activity.finish()
                         return@launch
                     }
                     val ok = repo.unlockExistingChat(chat, passphrase, remember.isChecked)
@@ -277,18 +246,18 @@ class PrivateChatActivity : AppCompatActivity() {
                         loadCachedHistory()
                         loadHistory()
                     } else {
-                        Toast.makeText(this@PrivateChatActivity, "Неверный passphrase", Toast.LENGTH_LONG).show()
-                        finish()
+                        Toast.makeText(activity, "Неверный passphrase", Toast.LENGTH_LONG).show()
+                        activity.finish()
                     }
                 }
             }
-            .setNegativeButton("Отмена") { _, _ -> finish() }
+            .setNegativeButton("Отмена") { _, _ -> activity.finish() }
             .show()
     }
 
     private fun loadCachedHistory() {
         val scope = cacheScope ?: return
-        lifecycleScope.launch {
+        activity.lifecycleScope.launch {
             val messages = runCatching {
                 chatCacheRepository.latestPrivateMessages(scope, chatId, limit = 50)
             }.getOrNull().orEmpty()
@@ -300,21 +269,23 @@ class PrivateChatActivity : AppCompatActivity() {
             }
         }
     }
+
     private fun loadHistory() {
-        lifecycleScope.launch {
+        activity.lifecycleScope.launch {
             val result = repo.listMessages(chatId, fromMessageId = 0, offsetBefore = 50, offsetAfter = 0)
             result.onSuccess { messages ->
                 cacheScope?.let { scope ->
-                    lifecycleScope.launch {
+                    activity.lifecycleScope.launch {
                         runCatching { chatCacheRepository.savePrivateMessages(scope, chatId, messages.map { it.raw }) }
                     }
                 }
-                adapter.submitList(messages.map { it.toItem() })
-                binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
+                adapter.submitList(messages.map { it.toItem() }) {
+                    binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
+                }
                 messages.maxOfOrNull { it.raw.id }?.let { repo.markMessagesRead(chatId, it) }
             }.onFailure {
                 Log.w(TAG, "Failed to load private history", it)
-                Toast.makeText(this@PrivateChatActivity, "Не удалось загрузить историю: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "Не удалось загрузить историю: ${it.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -323,27 +294,27 @@ class PrivateChatActivity : AppCompatActivity() {
         val text = binding.messageEditText.text?.toString()?.trim().orEmpty()
         if (text.isEmpty()) return
         binding.messageEditText.setText("")
-        lifecycleScope.launch {
+        activity.lifecycleScope.launch {
             repo.sendText(chatId, text)
                 .onSuccess { sent ->
                     cacheScope?.let { scope ->
-                        lifecycleScope.launch {
+                        activity.lifecycleScope.launch {
                             runCatching { chatCacheRepository.savePrivateMessages(scope, chatId, listOf(sent.raw)) }
                         }
                     }
                     val newList = adapter.currentList + sent.toItem()
                     adapter.submitList(newList) {
-                        binding.messagesRecyclerView.scrollToPosition(newList.lastIndex)
+                        binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
                     }
                 }
                 .onFailure {
-                    Toast.makeText(this@PrivateChatActivity, "Не удалось отправить: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(activity, "Не удалось отправить: ${it.message}", Toast.LENGTH_LONG).show()
                 }
         }
     }
 
-    private fun observeRealtime(app: BarkFluffApplication) {
-        lifecycleScope.launch {
+    private fun observeRealtime() {
+        activity.lifecycleScope.launch {
             app.realtimeService.privateMessages
                 .filter { it.chatId == chatId }
                 .collect { event ->
@@ -354,31 +325,34 @@ class PrivateChatActivity : AppCompatActivity() {
                     val decrypted = repo.decryptIncoming(chatId, event.message) ?: return@collect
                     val newList = adapter.currentList + decrypted.toItem()
                     adapter.submitList(newList) {
-                        binding.messagesRecyclerView.scrollToPosition(newList.lastIndex)
+                        binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
                     }
                     repo.markMessagesRead(chatId, event.message.id)
                 }
         }
-        lifecycleScope.launch {
+        activity.lifecycleScope.launch {
             app.realtimeService.privateMessageDeletes
                 .filter { it.chatId == chatId }
                 .collect { event ->
                     cacheScope?.let { scope ->
                         chatCacheRepository.deletePrivateMessage(scope, chatId, event.messageId)
                     }
-                    val updated = adapter.currentList.filterNot { it.id == "p:${event.messageId}" }
+                    val updated = adapter.currentList.filterNot {
+                        it.type == MessageType.MESSAGE && it.messageId == event.messageId
+                    }
                     adapter.submitList(updated)
                 }
         }
     }
 
-    private fun PrivateChatRepository.DecryptedPrivateMessage.toItem(): EncryptedMessageItem {
-        val isSelf = raw.senderId == globalParam.userId
-        return EncryptedMessageItem(
-            id = "p:${raw.id}",
-            senderLabel = if (isSelf) "Вы" else "ID ${raw.senderId}",
-            plaintext = plaintext,
-            sentAtMillis = raw.sentAt.seconds * 1000L
+    private fun PrivateChatRepository.DecryptedPrivateMessage.toItem(): MessageItem {
+        return MessageItem(
+            messageId = raw.id,
+            senderId = raw.senderId,
+            text = plaintext ?: "[не удалось расшифровать]",
+            timestamp = raw.sentAt.seconds * 1000L,
+            attachments = emptyList(),
+            type = MessageType.MESSAGE
         )
     }
 }

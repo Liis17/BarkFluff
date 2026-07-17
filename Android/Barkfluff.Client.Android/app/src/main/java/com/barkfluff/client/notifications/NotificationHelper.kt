@@ -30,6 +30,7 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.calls.IncomingCallActivity
+import com.barkfluff.client.utils.MarkdownRenderer
 
 object NotificationHelper {
 
@@ -234,12 +235,13 @@ object NotificationHelper {
 
             // MessagingStyle — Android берёт иконку из senderPerson → большая круглая аватарка,
             // setSmallIcon → маленький бейдж в углу аватарки
-            val displayText = if (imageBitmap != null && messageText.isBlank()) {
+            val cleanText = MarkdownRenderer.strip(messageText)
+            val displayText = if (imageBitmap != null && cleanText.isBlank()) {
                 "\uD83D\uDCF7 Фото"
             } else if (imageBitmap != null) {
-                "\uD83D\uDCF7 $messageText"
+                "\uD83D\uDCF7 $cleanText"
             } else {
-                messageText
+                cleanText
             }
 
             val messagingStyle = NotificationCompat.MessagingStyle(mePerson)
@@ -283,7 +285,7 @@ object NotificationHelper {
     /**
      * Уведомление о запросе на приватный чат (type=private_chat_invite).
      * Упрощённая версия showMessageNotification: без action «Прочитано»,
-     * тап открывает PrivateChatActivity через MainActivity (EXTRA_IS_PRIVATE_CHAT).
+     * тап открывает приватный чат в ChatActivity через MainActivity (EXTRA_IS_PRIVATE_CHAT).
      */
     fun showPrivateInviteNotification(
         context: Context,
