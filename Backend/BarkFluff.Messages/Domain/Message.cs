@@ -24,4 +24,10 @@ public class Message
     public bool IsEdited { get; set; }
 
     public DateTime? EditedAt { get; set; }
+
+    public DateTime LastChangeAt { get; set; }
+
+    public Guid? FederatedId { get; set; }
+
+    public Guid? SenderUuid { get; set; }
 }

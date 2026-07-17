@@ -211,6 +211,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         message.Content.Text = request.Text;
         message.IsEdited = true;
         message.EditedAt = DateTime.UtcNow;
+        message.LastChangeAt = message.EditedAt.Value;
 
         await _messagesStorage.SaveChangesAsync();
 
