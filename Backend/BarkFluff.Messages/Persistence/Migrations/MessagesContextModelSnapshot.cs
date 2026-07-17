@@ -91,6 +91,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
 
+                    b.Property<Guid?>("UserUuid")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ChatId", "UserId");
@@ -192,6 +195,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<DateTime?>("EditedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("FederatedId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -202,12 +208,18 @@ namespace BarkFluff.Messages.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<DateTime>("LastChangeAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.PrimitiveCollection<List<long>>("ReadBy")
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
                     b.Property<long>("SenderId")
                         .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SenderUuid")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("timestamp with time zone");
@@ -218,6 +230,10 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChatId", "SentAt");
+
+                    b.HasIndex("ChatId", "FederatedId")
+                        .IsUnique()
+                        .HasFilter("\"FederatedId\" IS NOT NULL");
 
                     b.ToTable("Messages");
                 });
