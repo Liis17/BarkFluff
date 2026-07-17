@@ -20,6 +20,8 @@
 
 ## Фаза 1 — Federation-сервис: каркас, доверие, discovery
 
+> Детальные планы реализации каждого этапа — [phase-1/README.md](phase-1/README.md).
+
 | # | Задача | Проверка |
 |---|--------|----------|
 | 1.1 | Каркас `BarkFluff.Federation` (порт 7030, шаблон платформы, Dockerfile.slim, CI workflow, docker-compose-dev) | Сервис стартует в dev-стеке, метрики видны в Seq |
