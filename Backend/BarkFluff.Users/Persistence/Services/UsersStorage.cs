@@ -73,7 +73,7 @@ public class UsersStorage
         var normalizedSearchTerm = searchTerm.Trim().ToLower();
 
         var sql = @"
-            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
+            SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
@@ -134,7 +134,7 @@ public class UsersStorage
         // Убирает второй тяжёлый trigram-скан и прежний баг, когда ExecuteSqlRawAsync
         // возвращал число затронутых строк (-1 для SELECT) вместо реального COUNT(*).
         var sql = @"
-            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
+            SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""IsBot"", u.""StorageLimitGb"",
                    uc.""Email"", uc.""UserId"",
                    COUNT(*) OVER() AS ""TotalCount""
@@ -167,6 +167,7 @@ public class UsersStorage
         var users = rows.Select(r => new User
         {
             Id = r.Id,
+            Uuid = r.Uuid,
             FirstName = r.FirstName,
             LastName = r.LastName,
             Username = r.Username,
@@ -188,6 +189,7 @@ public class UsersStorage
     private sealed class TrigramSearchRow
     {
         public long Id { get; set; }
+        public Guid Uuid { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
@@ -210,6 +212,7 @@ public class UsersStorage
         var user = new User
         {
             Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Uuid = Guid.NewGuid(),
             Username = username,
             FirstName = firstName,
             LastName = lastName,
@@ -245,6 +248,7 @@ public class UsersStorage
         var user = new User
         {
             Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Uuid = Guid.NewGuid(),
             Username = username,
             FirstName = firstName,
             LastName = string.Empty,

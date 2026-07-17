@@ -258,11 +258,19 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("StorageLimitGb")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("Uuid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Uuid")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
