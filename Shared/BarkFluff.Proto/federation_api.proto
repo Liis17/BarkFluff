@@ -1,0 +1,235 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Federation";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.federation;
+
+// S2S API федерации. Авторизация — НЕ XAuth: Ed25519-подпись запросов
+// (заголовки x-bf-origin/x-bf-destination/x-bf-timestamp/x-bf-key-id/x-bf-signature).
+// Реализация — Фаза 1+. Все идентификаторы пользователей — только UUID/FID,
+// long-ID через границу сервера не ходят.
+service FederationS2SApi {
+
+  // Handshake: версия протокола, имя сервера, серверное время (диагностика clock skew)
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  // Текущие публичные signing-ключи ноды (второй канал к /.well-known/barkfluff)
+  rpc GetServerKeys(GetServerKeysRequest) returns (GetServerKeysResponse);
+
+  // Профиль пользователя этой ноды (с учётом privacy)
+  rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+
+  // Основной канал доставки: батч федеративных событий. Идемпотентность по event_id
+  rpc DeliverEvents(DeliverEventsRequest) returns (DeliverEventsResponse);
+
+  // Catch-up: события чата после указанного курсора (для догона после даунтайма)
+  rpc FetchChatHistory(FetchChatHistoryRequest) returns (FetchChatHistoryResponse);
+
+  // Отдача файла со своего S3 ноде-партнёру (стриминг чанками)
+  rpc FetchFile(FetchFileRequest) returns (stream FetchFileChunk);
+
+  // Стрим онлайн-статусов пользователей этой ноды (агрегированный, один на пару нод)
+  rpc SubscribePresence(SubscribePresenceRequest) returns (stream PresenceEvent);
+
+  // Typing-индикатор (fire-and-forget, без ретраев)
+  rpc DeliverTyping(DeliverTypingRequest) returns (DeliverTypingResponse);
+}
+
+message PingRequest {
+  string origin_server = 1;
+  repeated int32 protocol_versions = 2; // поддерживаемые версии протокола
+}
+
+message PingResponse {
+  string server_name = 1;
+  repeated int32 protocol_versions = 2;
+  google.protobuf.Timestamp server_time = 3; // для диагностики рассинхрона часов
+  repeated string capabilities = 4;          // напр. "presence", "typing"
+}
+
+message GetServerKeysRequest { }
+
+message SigningKey {
+  string key_id = 1;                          // напр. "ed25519:1"
+  bytes public_key = 2;                       // raw 32 байта Ed25519
+  google.protobuf.Timestamp expired_at = 3;   // пусто = активен
+}
+
+message GetServerKeysResponse {
+  string server_name = 1;
+  repeated SigningKey keys = 2;
+}
+
+message GetUserProfileRequest {
+  oneof user {
+    string username = 1; // резолв по имени (FID без @ и :server)
+    string uuid = 2;     // резолв по UUID
+  }
+}
+
+message GetUserProfileResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;                       // пусто, если скрыто privacy
+  FederatedFileRef avatar = 7;          // пусто, если скрыто privacy
+}
+
+// Ссылка на файл, живущий на origin-сервере (файлы не реплицируются)
+message FederatedFileRef {
+  string origin_server = 1;
+  string file_id = 2;
+  string filename = 3;
+  int64 size_bytes = 4;
+  int32 attachment_type = 5;   // значения barkfluff.shared.MessageAttachmentType
+  string preview_file_id = 6;
+  int32 image_width = 7;
+  int32 image_height = 8;
+}
+
+// ---------- События ----------
+
+message FederationEvent {
+  string event_id = 1;                       // uuid, идемпотентность на приёмнике
+  string origin_server = 2;                  // обязан совпадать с x-bf-origin
+  int64 origin_ts_ms = 3;                    // unix ms UTC по часам origin — база LWW
+  bytes origin_signature = 4;                // Ed25519-подпись канонической сериализации события
+                                             // ключом origin (см. 11-plan-review.md С-1): даёт
+                                             // перепроверяемое авторство копий и catch-up-истории.
+                                             // Схема канонизации фиксируется в Фазе 1; в Фазе 0 поле
+                                             // просто зарезервировано в контракте
+  string origin_key_id = 5;                  // key_id ключа, которым подписано событие
+  oneof payload {
+    ChatCreatedPayload chat_created = 10;
+    NewMessagePayload new_message = 11;
+    MessageEditedPayload message_edited = 12;
+    MessageDeletedPayload message_deleted = 13;
+    MessagesReadPayload messages_read = 14;
+    UserProfileChangedPayload profile_changed = 15;
+    UserDeactivatedPayload user_deactivated = 16;
+  }
+}
+
+message FederatedUser {
+  string uuid = 1;
+  string username = 2;
+  string server_name = 3;
+}
+
+message ChatCreatedPayload {
+  string chat_id = 1;                  // Guid — общий для копий на обеих нодах
+  FederatedUser initiator = 2;
+  FederatedUser invitee = 3;           // пользователь ноды-получателя
+}
+
+message NewMessagePayload {
+  string chat_id = 1;
+  string federated_message_id = 2;     // uuid
+  FederatedUser sender = 3;
+  string text = 4;
+  repeated FederatedFileRef attachments = 5;
+  google.protobuf.Timestamp sent_at = 6;
+}
+
+message MessageEditedPayload {
+  string chat_id = 1;
+  string federated_message_id = 2;
+  string new_text = 3;
+  repeated FederatedFileRef attachments = 4;
+}
+
+message MessageDeletedPayload {
+  string chat_id = 1;
+  string federated_message_id = 2;
+}
+
+message MessagesReadPayload {
+  string chat_id = 1;
+  string reader_uuid = 2;
+  string up_to_federated_message_id = 3; // «прочитано до» включительно
+}
+
+message UserProfileChangedPayload {
+  FederatedUser user = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string bio = 4;
+  FederatedFileRef avatar = 5;
+}
+
+message UserDeactivatedPayload {
+  string user_uuid = 1;
+}
+
+message DeliverEventsRequest {
+  repeated FederationEvent events = 1; // лимит размера батча — прикладной, Фаза 2
+}
+
+message EventResult {
+  string event_id = 1;
+  EventStatus status = 2;
+  string error_code = 3;               // напр. "FederatedDmRejected"
+}
+
+enum EventStatus {
+  EVENT_STATUS_UNKNOWN = 0;
+  EVENT_STATUS_OK = 1;
+  EVENT_STATUS_ALREADY_PROCESSED = 2;
+  EVENT_STATUS_REJECTED = 3;           // перманентный отказ — не ретраить
+  EVENT_STATUS_RETRY = 4;              // временная ошибка — ретраить
+}
+
+message DeliverEventsResponse {
+  repeated EventResult results = 1;
+}
+
+message FetchChatHistoryRequest {
+  string chat_id = 1;
+  int64 since_ts_ms = 2;               // отдать события с LastChangeAt > since
+  int32 limit = 3;
+}
+
+message FetchChatHistoryResponse {
+  repeated FederationEvent events = 1; // актуальное состояние, не журнал правок
+  bool has_more = 2;
+}
+
+message FetchFileRequest {
+  string file_id = 1;
+  int64 range_from = 2;                // 0 = с начала
+  int64 range_to = 3;                  // 0 = до конца
+}
+
+message FetchFileChunk {
+  bytes data = 1;
+  int64 total_size = 2;                // в первом чанке
+  string content_type = 3;             // в первом чанке
+}
+
+message SubscribePresenceRequest {
+  repeated string user_uuids = 1;      // пользователи ЭТОЙ ноды, интересующие подписчика
+}
+
+message PresenceEvent {
+  string user_uuid = 1;
+  PresenceStatus status = 2;
+  google.protobuf.Timestamp last_seen = 3;
+}
+
+enum PresenceStatus {
+  PRESENCE_STATUS_UNKNOWN = 0;         // = скрыт privacy
+  PRESENCE_STATUS_ONLINE = 1;
+  PRESENCE_STATUS_OFFLINE = 2;
+}
+
+message DeliverTypingRequest {
+  string chat_id = 1;
+  string sender_uuid = 2;
+  int32 action = 3;                    // значения barkfluff.onliner.TypingAction
+}
+
+message DeliverTypingResponse { }
