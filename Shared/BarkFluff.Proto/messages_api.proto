@@ -220,8 +220,10 @@ message SendMessageRequest {
   
   oneof source_id {
     string chat_id = 1; // Идентификатор чата
-    
+
     int64 user_id = 2; // Идентификатор пользователя (использовать, только если неизвестен id чата)
+
+    string user_uuid = 4; // UUID remote-получателя (федеративный DM; Фаза 2)
   }
   
   OutgoingMessage message = 3; // Отправляемое сообщение
@@ -319,10 +321,14 @@ message Chat {
 }
 
 message ChatMember {
-  
+
   int64 user_id = 1; // Идетификатор пользователя
-  
+
   google.protobuf.Timestamp joined_at = 4; // Когда присоеденился
+
+  string user_uuid = 5; // UUID участника (пусто для локальных до Фазы 2)
+
+  string server_name = 6; // Домен ноды участника (пусто = локальный)
 }
 
 message OutgoingMessage {
@@ -336,6 +342,8 @@ message OutgoingMessage {
 
 message GetPersonChatIdRequest {
   int64 user_id = 1; // Идентификатор пользователя
+
+  string user_uuid = 2; // UUID remote-пользователя; заполнять ЛИБО user_id, ЛИБО user_uuid
 }
 
 message GetPersonChatIdResponse {
@@ -513,6 +521,29 @@ service MessagesServerApi {
   // Отправить сообщение от имени пользователя (вызывает сервис Bots).
   // Авторизацию отправителя (членство бота в чате, запрет инициации чата) выполняет вызывающий сервис.
   rpc SendMessageServer(SendMessageServerRequest) returns(SendMessageResponse);
+
+  // ---- федерация (реализация — Фаза 2, до неё Unimplemented) ----
+
+  // Импортировать федеративный чат, созданный на другой ноде
+  rpc ImportFederatedChat(ImportFederatedChatRequest) returns(ImportFederatedChatResponse);
+
+  // Импортировать сообщение, полученное от ноды-партнёра
+  rpc ImportFederatedMessage(ImportFederatedMessageRequest) returns(ImportFederatedMessageResponse);
+
+  // Применить правку сообщения, пришедшую с другой ноды
+  rpc ApplyFederatedEdit(ApplyFederatedEditRequest) returns(ApplyFederatedEditResponse);
+
+  // Применить удаление сообщения, пришедшее с другой ноды
+  rpc ApplyFederatedDelete(ApplyFederatedDeleteRequest) returns(ApplyFederatedDeleteResponse);
+
+  // Применить отметку "прочитано", пришедшую с другой ноды
+  rpc ApplyFederatedRead(ApplyFederatedReadRequest) returns(ApplyFederatedReadResponse);
+
+  // Отдать события чата после курсора (catch-up для ноды-партнёра, через Federation)
+  rpc ExportChatEvents(ExportChatEventsRequest) returns(ExportChatEventsResponse);
+
+  // Проверить, что файл вложения разрешено отдавать указанной ноде-партнёру
+  rpc CheckFileFederationAccess(CheckFileFederationAccessRequest) returns(CheckFileFederationAccessResponse);
 }
 
 message SendMessageServerRequest {
@@ -609,4 +640,113 @@ message PostCallSystemMessageRequest {
 
 message PostCallSystemMessageResponse {
   bool posted = 1; // false, если личного чата ещё нет (сообщение не записано)
+}
+
+// ---------- Федерация (Фаза 0: только контракт, RPC не реализованы) ----------
+// Плоские DTO вместо barkfluff.federation.* — Messages не должен зависеть от federation_api.proto.
+
+message FederatedFileRefFlat {
+  string origin_server = 1;
+  string file_id = 2;
+  string filename = 3;
+  int64 size_bytes = 4;
+  int32 attachment_type = 5;   // значения barkfluff.shared.MessageAttachmentType
+  string preview_file_id = 6;
+  int32 image_width = 7;
+  int32 image_height = 8;
+}
+
+// Одно событие истории федеративного чата (для ExportChatEvents).
+message FederatedChatEvent {
+  string event_kind = 1;                          // "new_message" | "message_edited" | "message_deleted" | "messages_read"
+  int64 origin_ts_ms = 2;                         // unix ms UTC — база LWW
+  string federated_message_id = 3;
+  string sender_uuid = 4;
+  string sender_username = 5;
+  string sender_server_name = 6;
+  string text = 7;                                // new_message / message_edited (new_text)
+  repeated FederatedFileRefFlat attachments = 8;
+  string reader_uuid = 9;                         // только messages_read
+  string up_to_federated_message_id = 10;         // только messages_read
+}
+
+message ImportFederatedChatRequest {
+  string chat_id = 1;                  // Guid — общий для копий на обеих нодах
+  string initiator_uuid = 2;
+  string initiator_username = 3;
+  string initiator_server_name = 4;
+  int64 invitee_user_id = 5;           // локальный пользователь этой ноды (резолвит Federation)
+  int64 origin_ts_ms = 6;
+}
+
+message ImportFederatedChatResponse {
+  bool imported = 1;
+}
+
+message ImportFederatedMessageRequest {
+  string chat_id = 1;
+  string federated_message_id = 2;
+  string sender_uuid = 3;
+  string sender_username = 4;
+  string sender_server_name = 5;
+  string text = 6;
+  repeated FederatedFileRefFlat attachments = 7;
+  int64 origin_ts_ms = 8;
+}
+
+message ImportFederatedMessageResponse {
+  int64 message_id = 1;                // локальный Id созданного сообщения
+}
+
+message ApplyFederatedEditRequest {
+  string chat_id = 1;
+  string federated_message_id = 2;
+  string new_text = 3;
+  repeated FederatedFileRefFlat attachments = 4;
+  int64 origin_ts_ms = 5;
+}
+
+message ApplyFederatedEditResponse {
+  bool applied = 1;
+}
+
+message ApplyFederatedDeleteRequest {
+  string chat_id = 1;
+  string federated_message_id = 2;
+  int64 origin_ts_ms = 3;
+}
+
+message ApplyFederatedDeleteResponse {
+  bool applied = 1;
+}
+
+message ApplyFederatedReadRequest {
+  string chat_id = 1;
+  string reader_uuid = 2;
+  string up_to_federated_message_id = 3;
+  int64 origin_ts_ms = 4;
+}
+
+message ApplyFederatedReadResponse {
+  bool applied = 1;
+}
+
+message ExportChatEventsRequest {
+  string chat_id = 1;
+  int64 since_ts_ms = 2;               // отдать события с LastChangeAt > since
+  int32 limit = 3;
+}
+
+message ExportChatEventsResponse {
+  repeated FederatedChatEvent events = 1;
+  bool has_more = 2;
+}
+
+message CheckFileFederationAccessRequest {
+  string file_id = 1;
+  string requesting_server = 2;
+}
+
+message CheckFileFederationAccessResponse {
+  bool allowed = 1;
 }

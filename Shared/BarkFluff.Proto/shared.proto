@@ -31,6 +31,10 @@ message Message {
   bool is_edited = 7; // Признак того что сообщение было отредактировано
 
   google.protobuf.Timestamp edited_at = 8; // Дата последней правки сообщения
+
+  string federated_id = 9; // Глобальный ID сообщения в федеративном чате (uuid; пусто для локальных)
+
+  string sender_uuid = 10; // UUID автора (пусто до включения федерации)
 }
 
 message MessageContent {
