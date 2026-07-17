@@ -124,6 +124,8 @@ public class MessagesStorage
 
     public async Task<Message> AddMessage(Message message)
     {
+        message.LastChangeAt = message.SentAt;
+
         var result = await _context.Messages.AddAsync(message);
         await _context.SaveChangesAsync();
 
