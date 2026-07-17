@@ -1,7 +1,6 @@
 package com.barkfluff.client.crypto
 
 import android.app.Activity
-import android.content.Intent
 import android.text.InputType
 import android.util.Log
 import android.widget.Toast
@@ -10,9 +9,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.BarkFluffApplication
-import com.barkfluff.client.PrivateChatActivity
+import com.barkfluff.client.ChatActivity
 import com.barkfluff.client.R
-import com.barkfluff.client.SecretChatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
@@ -117,10 +115,11 @@ object EncryptedInviteHandler {
             )
             result.onSuccess { chat ->
                 Toast.makeText(activity, "Приватный чат принят", Toast.LENGTH_SHORT).show()
-                val intent = Intent(activity, PrivateChatActivity::class.java)
-                    .putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
-                    .putExtra(PrivateChatActivity.EXTRA_TITLE, chat.title.ifBlank { "Приватный чат" })
-                activity.startActivity(intent)
+                activity.startActivity(ChatActivity.privateChatIntent(
+                    activity,
+                    chatId = chat.id,
+                    title = chat.title.ifBlank { "Приватный чат" }
+                ))
             }.onFailure {
                 Toast.makeText(activity, "Не удалось принять чат: ${it.message}", Toast.LENGTH_LONG).show()
             }
@@ -155,10 +154,11 @@ object EncryptedInviteHandler {
             )
             result.onSuccess { (chat, plaintext) ->
                 Toast.makeText(activity, "Секретный чат начат", Toast.LENGTH_SHORT).show()
-                val intent = Intent(activity, SecretChatActivity::class.java)
-                    .putExtra(SecretChatActivity.EXTRA_SECRET_CHAT_ID, chat.id)
-                    .putExtra(SecretChatActivity.EXTRA_INITIAL_MESSAGE, plaintext)
-                activity.startActivity(intent)
+                activity.startActivity(ChatActivity.secretChatIntent(
+                    activity,
+                    secretChatId = chat.id,
+                    initialMessage = plaintext
+                ))
             }.onFailure {
                 Log.w(TAG, "acceptSecret failed", it)
                 Toast.makeText(activity, "Не удалось принять: ${it.message}", Toast.LENGTH_LONG).show()

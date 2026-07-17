@@ -176,10 +176,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Приватный чат: PrivateChatActivity сам зарезолвит состояние инвайта через getChat
+        // Приватный чат: ChatActivity сам зарезолвит состояние инвайта через getChat (inviteState=-1)
         if (isPrivateChat) {
-            startActivity(Intent(this, PrivateChatActivity::class.java).apply {
-                putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chatId)
+            startActivity(ChatActivity.privateChatIntent(this, chatId = chatId, title = "").apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             })
             return
