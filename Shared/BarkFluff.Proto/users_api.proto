@@ -183,6 +183,9 @@ service UsersServerApi {
   // Удалить устройство пользователя
   rpc DeleteUserDevice(DeleteUserDeviceRequest) returns(DeleteUserDeviceResponse);
 
+  // Обновить имя устройства и версию приложения (вызывается Identity при refresh токена)
+  rpc UpdateDeviceAppInfo(UpdateDeviceAppInfoRequest) returns(UpdateDeviceAppInfoResponse);
+
   // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
   rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
 
@@ -614,6 +617,19 @@ message RegisterDeviceRequest {
 
 message RegisterDeviceResponse {
   Device device = 1; // Зарегистрированное устройство
+}
+
+// Запросы и ответы для обновления имени устройства и версии приложения (внутренний эндпоинт)
+
+message UpdateDeviceAppInfoRequest {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string app_name = 4; // Имя приложения (с версией)
+}
+
+message UpdateDeviceAppInfoResponse {
+  bool updated = 1; // true — данные отличались и были записаны
 }
 
 // Запросы и ответы для получения устройств пользователя (внутренний эндпоинт)

@@ -48,7 +48,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Бейджи**: уникальное ограничение (UserId, BadgeId). `Priority` — меньше = выше приоритет (default 1000). Только активные баджи включаются при `GetUserBadges`. Создание всегда устанавливает `IsActive=true`.
 
-**Устройства**: `RegisterDevice` — upsert по DeviceId (Guid). Хранит AppName, OS, Location, FirebaseDeviceToken.
+**Устройства**: `RegisterDevice` — upsert по DeviceId (Guid), обновляет все поля + `AuthorizedAt` (вызывается при логине). Хранит AppName, OS, Location, FirebaseDeviceToken. `UpdateDeviceAppInfo` — лёгкое обновление только `OriginalName` + `AppName` при refresh access-токена; пишет в БД только если значения изменились, `AuthorizedAt`/OS/Location не трогает (`DevicesStorage.UpdateDeviceAppInfoIfChanged`).
 
 **Prekey-bundle (X3DH)**: один bundle на устройство (1:1 с `UserDevice`, PK = DeviceId). Содержит `IdentityPubkey` (Ed25519, постоянный), `SignedPrekey*` (X25519 + signature, ротируется), `RegistrationId` (libsignal), `SignedPrekeyRotatedAt`. Пул `OneTimePrekey` (Many:1, уникальный (DeviceId, PrekeyId)) — расходные ключи. `FetchPrekeyBundle` атомарно claim'ит одну prekey через PostgreSQL `DELETE ... RETURNING ... FOR UPDATE SKIP LOCKED` — параллельные запросы не получают одну и ту же. Сервер не валидирует подпись signed prekey — это делает клиент-получатель через identity_pubkey.
 
@@ -111,6 +111,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `DeleteBadge(id)` | Удалить бадж | |
 | `ExportData(userId)` | GDPR-экспорт данных пользователя | 3 файла: `profile.json`, `messages.json`, `files.json` |
 | `RegisterDevice(...)` | Зарегистрировать устройство | Upsert по DeviceId; вызывается Identity при авторизации |
+| `UpdateDeviceAppInfo(deviceId, userId, originalName, appName)` | Обновить имя устройства + версию приложения | Вызывается Identity при refresh токена; пишет только при изменении, возвращает `updated: bool` |
 | `GetUserDevices(userId)` | Список устройств пользователя | |
 | `DeleteUserDevice(deviceId, userId)` | Удалить устройство | |
 | `GetUserByUsername(username)` | Публичная информация для веб-сервера | Реализован как MediatR-фича `Features/GetUserByUsername` (Query+Handler). Применяет Privacy: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility`. Возвращает `profile_poster_url` (field 7) — получается из PersonalizationStorage + FilesServerApi.GetFileData |
@@ -208,6 +209,7 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `user_searches` | SearchUsers |
 | `firebase_token_updates` | SetFirebaseToken |
 | `device_registrations` | RegisterDevice |
+| `device_app_info_updates` | UpdateDeviceAppInfo |
 | `chat_folder_lookups` | GetChatFolders |
 | `chat_folder_creates` | CreateChatFolder |
 | `chat_folder_updates` | UpdateChatFolder |
