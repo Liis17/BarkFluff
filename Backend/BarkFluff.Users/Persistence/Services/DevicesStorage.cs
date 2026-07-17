@@ -42,6 +42,23 @@ public class DevicesStorage(UsersContext context)
         return device;
     }
 
+    public async Task<bool> UpdateDeviceAppInfoIfChanged(Guid deviceId, long userId, string originalName, string? appName)
+    {
+        var existing = await context.UserDevices
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+
+        if (existing == null)
+            return false; // устройство ещё не зарегистрировано — нечего обновлять
+
+        if (existing.OriginalName == originalName && existing.AppName == appName)
+            return false; // не изменилось — не пишем
+
+        existing.OriginalName = originalName;
+        existing.AppName = appName;
+        await context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<List<UserDevice>> GetDevicesByUserId(long userId)
     {
         return await context.UserDevices

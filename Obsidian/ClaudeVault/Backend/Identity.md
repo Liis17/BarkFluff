@@ -122,6 +122,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 1. Поиск `RefreshToken` по значению
 2. Проверка срока действия и наличия `DeviceId`
 3. Генерация нового JWT access token через `JwtService.GenerateUserToken`
+4. Обновление имени устройства + версии приложения в Users через `UpdateDeviceAppInfo` (только если изменились). Поля `DeviceName/AppName/AppVersion` берутся из `RequestContext` и кладутся в `CreateTokenCommand` **только** в `IdentityApiService.CreateToken` — внутренние вызывающие (`Auth`, `ConfirmResetPassword`, `CreateSessionForUserServer`) их не передают, чтобы серверный сценарий не перезаписал устройство целевого юзера метаданными вызывающего. `AuthorizedAt` при refresh не трогается.
 
 ### Сброс пароля (2 шага)
 1. `ResetPassword` → поиск пользователя, создание `ResetPassword`-записи:
@@ -173,7 +174,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 ## Внешние зависимости
 
-- **Users service** — gRPC `UsersServerApi` (service token): `FindByLogin`, `AddDraftUser`, `OverrideDraftUser`, `ConfirmUser`, `GetById`, `GetUserContacts`, `RegisterDevice`, `GetUserDevices`
+- **Users service** — gRPC `UsersServerApi` (service token): `FindByLogin`, `AddDraftUser`, `OverrideDraftUser`, `ConfirmUser`, `GetById`, `GetUserContacts`, `RegisterDevice`, `UpdateDeviceAppInfo`, `GetUserDevices`
 - **Notification service** — RabbitMQ `EmailNotification` (через MassTransit)
 - **ip-api.com** — HTTP геолокация по IP (`LocationClient`), вызывается при каждом входе/регистрации
 
