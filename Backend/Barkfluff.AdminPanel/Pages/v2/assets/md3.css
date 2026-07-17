@@ -1082,5 +1082,6 @@ html, body {
 
 @media (max-width: 600px) {
   .md-app-bar { flex-wrap: wrap; height: auto; min-height: var(--md-app-bar-height); row-gap: 8px; padding-top: 8px; padding-bottom: 8px; }
+  .md-app-bar > div { flex-wrap: wrap; }
   .md-app-bar h1 { font-size: 18px; }
 }
