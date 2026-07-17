@@ -82,6 +82,7 @@
 | Выдача | `ListChats`/`ListMessages`/`ListChatMembers`: remote-участники через `RemoteUsers` (батч-запрос Users по uuid); имена/аватары в Redis-кеш как сейчас |
 | Membership | `CheckChatMembership`-ответ + federated-признак + ноды-участники (для Onliner) |
 | Анти-дубль fed-DM | Уникальность по UUID-паре + протокол слияния при одновременном создании (отдельная задача, сложная) |
+| Сортировка выдачи | Для федеративных чатов `ListMessages` сортирует по `SentAt` (+ tie-break), **не по локальному Id**: сообщение, импортированное catch-up'ом после даунтайма, получает bigserial в момент импорта и при сортировке по Id встало бы в конец чата. Проверить текущую сортировку |
 
 ## `BarkFluff.Updates` — S
 
@@ -150,9 +151,10 @@ gRPC-клиент `FederationInternalApi` + конфиг `FederationService:Host
 
 ## Nginx — M
 
-- Субдомен `federation.{domain}`: gRPC (HTTP/2) → Federation:7030; TLS — серт ноды (self-signed допустим для S2S: чужие ноды проверяют по SPKI-пину, но для `/.well-known` на apex нужен серт, которому доверяют обычные HTTPS-клиенты — Let's Encrypt на apex остаётся рекомендацией).
+- Субдомен `federation.{domain}`: gRPC (HTTP/2) → Federation:7030; TLS — серт ноды (self-signed допустим для S2S: чужие ноды проверяют по SPKI-пину). Для `/.well-known` на apex CA-валидный серт (Let's Encrypt) **обязателен для публичных нод** — это bootstrap-канал discovery ([02](02-trust-and-certs.md)); нода без него знакомится с новыми пирами только через ручное добавление.
 - `location /.well-known/barkfluff` на apex-домене → статический файл/прокси на Federation.
 - Rate limiting зоны для federation-эндпоинта.
+- Долгоживущие стримы (`SubscribePresence` — часами, `FetchFile` — большие файлы): явные `grpc_read_timeout`/`grpc_send_timeout` и отключение буферизации проксирования — иначе nginx молча рвёт стримы.
 - Обновить референсный конфиг + `docker-compose-dev.yml` (сервис federation + сети).
 
 ## `BarkFluff.Bots`, `BarkFluff.Calls`, `BarkFluff.FastAuth`, `BarkFluff.ClientStorage`, `BarkFluff.Developers` — нет изменений в MVP
@@ -169,7 +171,7 @@ gRPC-клиент `FederationInternalApi` + конфиг `FederationService:Host
 
 1. **Поиск**: распознавание паттерна `@user:server` → вызов `ResolveFederatedUser`; карточка remote-пользователя с FID.
 2. **Идентификаторы**: работа с `oneof peer` (uuid для remote) в отправке сообщений и подписках; собственный `server_name` из Beacon для отличения своих.
-3. **UI**: бейдж/подпись сервера у remote-собеседников (`@bob:chat.example.org`), typing от FID, placeholder «файл недоступен — сервер offline».
+3. **UI**: бейдж/подпись сервера у remote-собеседников (`@bob:chat.example.org`), typing от FID, placeholder «файл недоступен — сервер offline». Servername со смешанными скриптами отображать в punycode (homograph-защита, [01](01-addressing-identity.md)); `filename` из федеративного снапшота экранировать при сохранении и отображении (path traversal, инъекции в UI).
 4. **Настройки приватности**: тумблер «Запретить сообщения с других серверов» (`AllowFederatedDm`).
 5. Деградация: старый клиент против новой ноды не ломается (proto только расширяется); федеративные чаты у старого клиента отображаются с fallback-именем — проверить отдельно.
 
