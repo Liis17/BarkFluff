@@ -113,6 +113,11 @@
         .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .field-grid .full { grid-column: 1 / -1; }
         .field-label { font-size: 12px; font-weight: 500; color: var(--md-on-surface-variant); margin-bottom: 6px; display:block; }
+
+        @media (max-width: 600px) {
+            .field-grid { grid-template-columns: 1fr; }
+            .md-search { width: 100% !important; }
+        }
     </style>
 </head>
 <body>

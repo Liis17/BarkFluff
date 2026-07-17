@@ -64,6 +64,10 @@
 
         .value-edit-wrap { display: flex; align-items: center; gap: 6px; }
         .value-edit-wrap input { flex: 1; min-width: 200px; font-family: 'Roboto Mono', monospace; font-size: 12px; }
+
+        @media (max-width: 600px) {
+            .config-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+        }
     </style>
 </head>
 <body>
