@@ -85,6 +85,18 @@
             border-radius: var(--md-shape-lg);
             display: block;
         }
+
+        @media (max-width: 600px) {
+            .file-row, .table-head {
+                grid-template-columns: 40px 1fr 96px;
+            }
+            .file-row .size,
+            .file-row .date,
+            .table-head > div:nth-child(3),
+            .table-head > div:nth-child(4) {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
