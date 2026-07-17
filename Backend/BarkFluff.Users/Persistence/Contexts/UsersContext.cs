@@ -38,6 +38,11 @@ public class UsersContext : DbContext
             .HasForeignKey<UserContact>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Уникальный индекс для глобального идентификатора пользователя (федерация, Фаза 0)
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Uuid)
+            .IsUnique();
+
         // Настройка связей для UserBadge
         modelBuilder.Entity<UserBadge>()
             .HasOne(ub => ub.User)
