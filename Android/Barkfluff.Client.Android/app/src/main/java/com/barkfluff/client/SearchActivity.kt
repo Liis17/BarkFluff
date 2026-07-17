@@ -241,10 +241,7 @@ class SearchActivity : AppCompatActivity() {
             val result = app.privateChatRepository.createPrivateChat(userData.userId, passphrase, rememberKey)
             result.onSuccess { creation ->
                 val title = "${userData.firstName} ${userData.lastName}".trim().ifBlank { userData.username }
-                startActivity(Intent(this@SearchActivity, PrivateChatActivity::class.java).apply {
-                    putExtra(PrivateChatActivity.EXTRA_CHAT_ID, creation.chat.id)
-                    putExtra(PrivateChatActivity.EXTRA_TITLE, title)
-                })
+                startActivity(ChatActivity.privateChatIntent(this@SearchActivity, chatId = creation.chat.id, title = title))
                 finish()
             }.onFailure {
                 Toast.makeText(this@SearchActivity, "Не удалось открыть приватный чат: ${it.message}", Toast.LENGTH_LONG).show()

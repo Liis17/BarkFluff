@@ -312,20 +312,6 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".PrivateChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".SecretChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait" />
-
-        <activity
             android:name=".ChatFoldersSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"

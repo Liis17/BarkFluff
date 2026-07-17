@@ -208,8 +208,43 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_CHAT_AVATAR_FILE_ID = "chat_avatar_file_id"
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
         private const val EXTRA_OTHER_USER_ID = "other_user_id"
+        private const val EXTRA_CHAT_KIND = "chat_kind"
+        private const val EXTRA_INVITE_STATE = "invite_state"
+        private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
+        private const val EXTRA_INITIAL_MESSAGE = "initial_message"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
+
+        // Тип чата, отображаемого в этом Activity.
+        const val KIND_REGULAR = 0
+        const val KIND_PRIVATE = 1
+        const val KIND_SECRET = 2
+
+        /** Intent для приватного E2E-чата в общем ChatActivity. inviteState<0 = определить из ListChats. */
+        fun privateChatIntent(
+            context: Context,
+            chatId: String,
+            title: String,
+            inviteState: Int = -1,
+            inviterUserId: Long = 0L
+        ): Intent = Intent(context, ChatActivity::class.java).apply {
+            putExtra(EXTRA_CHAT_KIND, KIND_PRIVATE)
+            putExtra(EXTRA_CHAT_ID, chatId)
+            putExtra(EXTRA_CHAT_TITLE, title)
+            putExtra(EXTRA_INVITE_STATE, inviteState)
+            putExtra(EXTRA_INVITER_USER_ID, inviterUserId)
+        }
+
+        /** Intent для секретного E2E-чата в общем ChatActivity. */
+        fun secretChatIntent(
+            context: Context,
+            secretChatId: String,
+            initialMessage: String? = null
+        ): Intent = Intent(context, ChatActivity::class.java).apply {
+            putExtra(EXTRA_CHAT_KIND, KIND_SECRET)
+            putExtra(EXTRA_CHAT_ID, secretChatId)
+            putExtra(EXTRA_INITIAL_MESSAGE, initialMessage)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -246,6 +281,13 @@ class ChatActivity : AppCompatActivity() {
         currentUserId = globalParam.userId
         cacheScope = CacheScope.from(globalParam)
 
+        // E2E-чаты (приватный/секретный) рендерятся в облегчённом shell того же Activity.
+        val chatKind = intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR)
+        if (chatKind != KIND_REGULAR) {
+            setupE2eShell(chatKind)
+            return
+        }
+
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
 
         setupWindowInsets()
@@ -276,6 +318,70 @@ class ChatActivity : AppCompatActivity() {
 
         // Подписка на индикатор набора текста в этом чате
         realtimeService.changeTypingSubscription(listOf(chatId))
+    }
+
+    /**
+     * Облегчённый setup для E2E-чатов (приватный/секретный) в общем shell ChatActivity.
+     * Переиспользует layout/шапку/MessageAdapter обычного чата, но только текст: прячет
+     * вложения/стикеры/голос/меню/звонок/закреплённые и не поднимает подписки обычного чата.
+     * Логика загрузки/отправки/realtime делегируется контроллеру по типу чата.
+     */
+    private fun setupE2eShell(chatKind: Int) {
+        setupWindowInsets()
+
+        // Шапка: только «назад» + имя/аватар-плейсхолдер.
+        binding.btnBack.setOnClickListener { finish() }
+        binding.btnMore.visibility = View.GONE
+        binding.btnAudioCall.visibility = View.GONE
+        binding.pinnedMessageBar.visibility = View.GONE
+        binding.onlineStatusTextView.visibility = View.GONE
+        binding.chatInfoCard.isClickable = false
+        binding.chatNameTextView.text = chatTitle
+        binding.chatAvatarPlaceholder.text = chatTitle.trim().firstOrNull()?.uppercase() ?: "?"
+
+        // Ввод: только текст.
+        binding.attachButton.visibility = View.GONE
+        binding.stickerButton.visibility = View.GONE
+        binding.stickerPanelContainer.visibility = View.GONE
+
+        // Адаптер без вложений и меню действий (все callback'и — дефолтные no-op).
+        val e2eAdapter = MessageAdapter(
+            currentUserId = currentUserId,
+            isGroupChat = false,
+            messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
+            stickerSizeDp = globalParam.chatStickerSizeDp
+        )
+        messageAdapter = e2eAdapter
+        binding.messagesRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@ChatActivity).apply { stackFromEnd = true }
+            adapter = e2eAdapter
+            itemAnimator = MessageItemAnimator()
+        }
+
+        val app = application as BarkFluffApplication
+        when (chatKind) {
+            KIND_PRIVATE -> {
+                val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
+                val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
+                PrivateChatController(this, binding, e2eAdapter, app, globalParam, chatId)
+                    .start(inviteState, inviterUserId)
+            }
+            KIND_SECRET -> {
+                val chat = app.secretChatRepository.getChat(chatId)
+                if (chat == null) {
+                    Toast.makeText(this, "Секретный чат не найден", Toast.LENGTH_LONG).show()
+                    finish()
+                    return
+                }
+                binding.chatNameTextView.text = "Секретный чат · ${chat.peerUserId}"
+                binding.chatAvatarPlaceholder.text = "🔒"
+                SecretChatController(this, binding, e2eAdapter, app, globalParam, chat)
+                    .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
+            }
+        }
+
+        OpenChatManager.setOpenChat(chatId)
+        NotificationHelper.dismissForChat(applicationContext, chatId)
     }
 
     // targetSdk 35+ форсирует edge-to-edge, fitsSystemWindows="true" в XML больше не работает —
