@@ -1,0 +1,112 @@
+# 03 — Discovery: как нода находит другую ноду
+
+## Задача
+
+По `servername` (домен из FID `@user:servername`) нода должна получить:
+1. адрес federation-эндпоинта (host:port для S2S gRPC);
+2. публичные Ed25519 signing keys (+ key_id, сроки);
+3. SPKI-отпечаток TLS-сертификата (для пиннинга при self-signed);
+4. метаданные (публичное имя сервера, версия протокола федерации).
+
+Принятое решение — **гибрид из трёх источников** (в порядке приоритета/фолбэка):
+
+## Источник 1 — DNS / `.well-known` (основной)
+
+`GET https://{servername}/.well-known/barkfluff` → JSON:
+
+```json
+{
+  "server_name": "chat.example.org",
+  "federation": {
+    "endpoint": "https://federation.chat.example.org:443",
+    "tls_spki_sha256": ["base64=="],
+    "protocol_versions": [1]
+  },
+  "signing_keys": {
+    "ed25519:1": { "key": "base64-public-key", "expired_at": null }
+  },
+  "public_name": "Example Chat",
+  "signature": { "key_id": "ed25519:1", "value": "base64-подпись-этого-документа" }
+}
+```
+
+- Раздаётся nginx'ом ноды (статический файл, генерируемый Federation-сервисом, либо proxy на Federation `GET /well-known`).
+- Документ **подписан signing-ключом** — обновления (смена TLS-серта, ротация ключей) проверяемы после первого знакомства.
+- `servername` в документе обязан совпадать с доменом запроса — иначе документ отвергается.
+- Если эндпоинт не отвечает — фолбэк на источники 2 и 3.
+
+Плюс: полностью децентрализовано, работает без Navigator. Минус: первый контакт — TOFU (см. [02-trust-and-certs.md](02-trust-and-certs.md)).
+
+## Источник 2 — Navigator (каталог)
+
+Navigator уже существует (реестр серверов, `navigator.barkfluff.com`), но сегодня он:
+- in-memory (рестарт = потеря реестра);
+- хранит только Beacon-адрес для **клиентов**, ничего про федерацию;
+- регистрация «кто угодно, без подтверждения» (throttling 2 мин).
+
+Расширение для федерации:
+
+| Изменение | Детали |
+|-----------|--------|
+| Персистентность | Перевод `ServersStorage` на PostgreSQL (пакет уже подключён, БД не используется — включить) |
+| Новые поля `ServerInfo` | `ServerName` (домен — становится ключом вместо `{Name}:{BeaconHost}:{BeaconPort}`), `FederationEndpoint`, `SigningKeys[]`, `TlsSpkiSha256[]`, `FederationProtocolVersions[]` |
+| Валидация при регистрации | Navigator сам делает запрос `/.well-known/barkfluff` на заявленный домен и сверяет ключи — регистрация только доказуемого владельца домена |
+| Новый RPC | `GetServerByName(server_name)` — точечный резолв для нод (сейчас есть только `ListServers`) |
+
+Роль Navigator в федерации — **вторичный канал**: каталог публичных нод (для UI выбора сервера и поиска), кросс-проверка ключей при первом контакте, фолбэк-резолв когда `/.well-known` недоступен. Сеть обязана работать при лежащем Navigator: ноды, уже знакомые друг с другом (KnownServers), продолжают общаться.
+
+## Источник 3 — ручной пир (админ)
+
+Сценарий «оба админа — друзья»: ноды не публичны, не зарегистрированы в Navigator, возможно вообще в приватной сети.
+
+- AdminPanel → новая страница «Федерация» → «Добавить пир»: `server_name`, `federation endpoint`, публичный ключ (вставляется вручную или подтягивается с `/.well-known` по кнопке), отпечаток TLS.
+- Запись попадает в KnownServers с `source = manual` и наивысшим приоритетом: ручные данные **не перезатираются** автоматическим discovery (только явным действием админа).
+- Там же: блокировка ноды (`status = blocked`), удаление пира, просмотр ключей и последней активности.
+
+## Реестр KnownServers (в Federation-сервисе, PostgreSQL)
+
+Та самая «база знакомых серверов» из постановки задачи:
+
+```
+KnownServers
+  ServerName        text PK        -- канонический lowercase домен
+  FederationEndpoint text
+  TlsSpkiSha256     text[]
+  Source            enum (WellKnown | Navigator | Manual)
+  Status            enum (Active | Blocked | Unreachable)
+  FirstSeenAt       timestamptz
+  LastSeenAt        timestamptz    -- последний успешный S2S-контакт
+  LastKeyRefreshAt  timestamptz
+  ProtocolVersion   int
+
+KnownServerKeys
+  ServerName  FK
+  KeyId       text
+  PublicKey   bytea
+  ExpiredAt   timestamptz NULL
+  RevokedAt   timestamptz NULL
+  PRIMARY KEY (ServerName, KeyId)
+```
+
+Политика обновления:
+- Ключи рефрешатся раз в сутки для активных пиров и немедленно — при входящем запросе с неизвестным `key_id`.
+- `Unreachable` проставляется после N подряд неуспешных доставок; резолв повторяется с экспоненциальным backoff (outbox продолжает копить события — см. [04-federation-service.md](04-federation-service.md)).
+- Смена ключей у известной ноды без подписи старым ключом → warning-лог + метрика + (опционально) требование ручного подтверждения админом.
+
+## Алгоритм резолва servername (итог)
+
+```
+resolve(servername):
+  1. KnownServers[servername] есть и не протух → использовать
+  2. Manual-запись → использовать как есть (без авто-обновления)
+  3. GET https://{servername}/.well-known/barkfluff → проверить подпись/совпадение домена → upsert KnownServers (source=WellKnown)
+  4. если недоступен → Navigator.GetServerByName(servername) → upsert (source=Navigator)
+  5. всё мимо → ошибка ServerNotFound (пользователю: «сервер не найден или недоступен»)
+```
+
+## Проблемы
+
+- **Двусмысленность servername vs endpoint**: домен из FID может не совпадать с физическим адресом бэкенда (мой пример: `barkfluff.com` — сайт, gRPC — на субдоменах). `/.well-known` как раз и разруливает делегирование: FID остаётся красивым (`@user:barkfluff.com`), endpoint — любой.
+- **Navigator как точка цензуры каталога**: владелец Navigator может не показывать ноду в списке, но не может помешать прямой федерации (источники 1 и 3). Зафиксировать это свойство как инвариант.
+- **Несколько инстансов Navigator** (форки сети со своими каталогами) — вне скоупа MVP; конфиг ноды должен допускать список Navigator-адресов (сейчас `NavigatorUrl` — одиночный).
+- `.well-known` на apex-домене требует, чтобы на 443 порту домена что-то стояло (сайт/WebServer). Для нод без сайта — nginx ноды обязан отдавать этот путь; включить в референсный docker-compose ноды.
