@@ -12,7 +12,7 @@
 dotnet build BarkFluff.Proto.csproj
 ```
 
-Код генерируется `Grpc.Tools` при сборке.
+Код генерируется `Grpc.Tools` при сборке. Проект сам по себе не подключал ни один `.proto` (только AWSSDK.Core, вестигиальная зависимость) — сборка ничего не валидировала. С Фазой 0 rearch добавлены `Google.Protobuf`/`Grpc.AspNetCore.Server`/`Grpc.Tools` + `<Protobuf Include="federation_api.proto"/>`/`federation_internal_api.proto` именно для того, чтобы `dotnet build` этого проекта валидировал синтаксис/импорты черновых федеративных контрактов, пока их не подключил ни один реальный сервис.
 
 ## Proto Files
 
@@ -32,6 +32,8 @@ dotnet build BarkFluff.Proto.csproj
 | `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
 | `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
 | `bots_api.proto` | `BarkFluff.Proto.Bots` | Bot API: `BotsServerApi` (AdminPanel — создание/список/удаление/токены) + `BotsExternalApi` (внешние программы, bot-JWT в `x-auth-token`, политика `TokenType.Bot`) |
+| `federation_api.proto` | `BarkFluff.Proto.Federation` | **Фаза 0 rearch — только контракт, RPC не реализованы.** S2S API `FederationS2SApi` (нода↔нода, авторизация — Ed25519-подпись запросов, НЕ XAuth): Ping, GetServerKeys, GetUserProfile, DeliverEvents/FetchChatHistory (события чатов, `FederationEvent` с `origin_signature`/`origin_key_id`), FetchFile (стрим), SubscribePresence/DeliverTyping |
+| `federation_internal_api.proto` | `BarkFluff.Proto.FederationInternal` | **Фаза 0 — только контракт.** Внутренний API Federation-сервиса (XAuth, TokenType.Service): `FederationInternalApi` — ResolveRemoteUser, FetchRemoteFile/FetchRemoteChatHistory (мост для Files/Messages), управление пирами для AdminPanel (GetKnownServers/UpsertManualPeer/SetServerBlocked/GetFederationStatus). Импортирует `federation_api.proto` |
 
 ## Service Pairs Pattern
 
@@ -68,6 +70,18 @@ dotnet build BarkFluff.Proto.csproj
 - Групповые чаты (V1): `AddUser`/`UpdateGroupChat` в `MessagesApi`; `GetChatMemberIds` (для ринга групповых звонков) и `PostCallSystemMessage` (системное сообщение об итоге звонка — `CallSystemResult`: ENDED/MISSED/REJECTED) в `MessagesServerApi`.
 - Звонки: `calls_api.proto` описывает `CallsApi` (1-на-1 через `callee_user_id` или групповой через `chat_id`, `oneof target`). `SubscribeCallEvents` — device-scoped стрим, как `SubscribeSecretMessages` в Updates. `beacon_api.proto` содержит `livekit_url` (field 13) и `Service calls` (field 14) в `GetServerInfoResponse`.
 - Боты: `User.is_bot` (field 12), `GetUserByUsernameResponse.is_bot` (8) + `id` (9); `UsersServerApi.CreateBotUser`/`DeleteBotUser`; `MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, allow_chat_creation)`; `FilesServerApi.UploadFileServer`; `beacon_api.proto` — `Service bots` (field 15). `BotsExternalApi` аутентифицируется штатным XAuth: bot-JWT (`TokenType.Bot`) в заголовке `x-auth-token` (gRPC и HTTP), выпуск — `IdentityServerApi.CreateBotTokenServer`.
+
+### Федерация (Фаза 0 rearch) — расширения существующих proto
+
+Только поля/RPC-заглушки (`Unimplemented` до реализации в соответствующей фазе), обратная совместимость не нарушена — только добавления.
+
+- `shared.proto` `Message`: `federated_id` (9, uuid, пусто для локальных), `sender_uuid` (10)
+- `users_api.proto`: `User.uuid` (13, из этапа 0.2); `UsersApi.ResolveFederatedUser` (Фаза 2) + `ResolveFederatedUserRequest/Response`; `PrivacySettings.deny_federated_dm` (7, default false = разрешено — именно deny, не allow)
+- `messages_api.proto`: `SendMessageRequest.source_id` oneof + `user_uuid` (4); `GetPersonChatIdRequest.user_uuid` (2); `ChatMember.user_uuid` (5) + `server_name` (6); `MessagesServerApi` — 7 новых RPC федеративного импорта/экспорта (Фаза 2: ImportFederatedChat/Message, ApplyFederatedEdit/Delete/Read, ExportChatEvents, CheckFileFederationAccess) с плоскими DTO (`FederatedFileRefFlat`, `FederatedChatEvent`) — файл **не импортирует** `federation_api.proto`, поля продублированы плоско
+- `onliner_api.proto`: `user_uuids`/`user_uuid` в Subscribe/Change/Status/Typing-сообщениях; новый сервис `OnlinerServerApi` (Фаза 4) — UpsertRemoteStatus/InjectRemoteTyping
+- `navigator_api.proto`: `ServerInfo` +5 полей (server_name, federation_endpoint, signing_keys, tls_spki_sha256, federation_protocol_versions) + `NavigatorSigningKey`; `NavigatorApi.GetServerByName` (Фаза 1)
+- `beacon_api.proto`: `GetServerInfoResponse.server_name` (16), `federation_enabled` (17) — **реализовано** (не заглушка): Beacon читает `Federation:ServerName`/`Federation:Enabled` из Configuration, см. [[Backend/Beacon]]
+- `federation_api.proto`/`federation_internal_api.proto` пока **не подключены** ни в один сервисный `.csproj` (Federation-сервиса ещё нет, Фаза 1) — только в `BarkFluff.Proto.csproj` (см. ниже), чтобы codegen валидировал синтаксис при сборке
 
 ## Подключение в .csproj
 
