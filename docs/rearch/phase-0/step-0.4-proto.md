@@ -8,6 +8,10 @@
 
 Контекст контрактов: [../04-federation-service.md](../04-federation-service.md) (API-поверхности), [../05-chat-replication.md](../05-chat-replication.md) (события), [../06-files.md](../06-files.md) (FederatedFileRef).
 
+**Обязательно перед началом:** прочитать [../11-plan-review.md](../11-plan-review.md), пункты С-1 и И-1 — они влияют на контракт:
+- С-1 учтён ниже: `FederationEvent` несёт `origin_signature`/`origin_key_id` (перепроверяемое авторство событий, одинаковые гарантии для доставки и catch-up).
+- И-1 (подпись wire-байтов запроса, конверт `SignedRequest { bytes payload }` вместо хеша десериализованного сообщения) — решение принимается в Фазе 1 при реализации XFed-интерсептора; текущий контракт это допускает (подпись живёт в metadata-заголовках, тело не меняется). Если Фаза 1 выберет конверт — это будет отдельная правка proto до первого релиза федерации; в Фазе 0 ничего дополнительно делать не нужно.
+
 ---
 
 ## 1. Новый файл `federation_api.proto` — S2S API (нода ↔ нода)
@@ -114,6 +118,12 @@ message FederationEvent {
   string event_id = 1;                       // uuid, идемпотентность на приёмнике
   string origin_server = 2;                  // обязан совпадать с x-bf-origin
   int64 origin_ts_ms = 3;                    // unix ms UTC по часам origin — база LWW
+  bytes origin_signature = 4;                // Ed25519-подпись канонической сериализации события
+                                             // ключом origin (см. 11-plan-review.md С-1): даёт
+                                             // перепроверяемое авторство копий и catch-up-истории.
+                                             // Схема канонизации фиксируется в Фазе 1; в Фазе 0 поле
+                                             // просто зарезервировано в контракте
+  string origin_key_id = 5;                  // key_id ключа, которым подписано событие
   oneof payload {
     ChatCreatedPayload chat_created = 10;
     NewMessagePayload new_message = 11;
