@@ -100,6 +100,16 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 
+#### Тема и акцент
+
+Цветовая схема MD3 задаётся CSS-переменными в `assets/md3.css` (`:root`). Тёмной темы нет — только светлая. Акцент — **терракота** (seed `#8c351c`, из веб-версии мессенджера `BarkFluff.Web`): `--md-primary: #8c351c`, primary-container/secondary-container/tertiary и нейтральные поверхности перекрашены в тёплый нейтраль. Семантические цвета (`--md-error`/`--md-warning`/`--md-success`) не трогаются. Меняешь акцент — правишь токены в `:root`, всё остальное наследует через `var()`. Захардкоженный акцент есть только в графиках Chart.js `dashboard.html` (массив `metricColors[0]` и `mkDataset('Все события', …)`).
+
+#### Мобильная адаптация
+
+Вся адаптивная вёрстка — **только внутри `@media (max-width: …)`**; десктоп (≥ 840px) не меняется. Брейкпоинты: `840px` — боковое меню становится off-canvas drawer; `600px` — схлопывание контента (гриды → 1 колонка, широкие таблицы → `overflow-x`/скрытие второстепенных колонок, шапка → `flex-wrap`).
+
+Off-canvas drawer реализован общим `assets/sidebar.js` (`initMobileNav()`): инъектит гамбургер `.md-nav-toggle` в `.md-app-bar` + `.md-nav-scrim` **внутрь `.md-app-shell`** (важно: scrim показывается селектором-потомком `.md-app-shell.nav-open .md-nav-scrim`, вставка в body его ломает). Toggle переключает класс `.nav-open` на shell; закрытие по scrim/пункту меню/Esc. No-op на standalone-страницах без shell/app-bar (Login/restarting/updating). CSS drawer/scrim — в конце `md3.css`.
+
 ### Устаревшие/мёртвые версии (не трогать)
 
 - **`Pages/Redesigned/`** — старый SPA-вариант (screen-*.js модули), superseded веткой v2. Обслуживается только на `/v2/` (URL, не путать с папкой `Pages/v2/`) через `app.MapGet("/v2/", ...)` → `Redesigned/index.html` + `UseStaticFiles(RequestPath="/v2")` → `Pages/Redesigned/`. Живой код, но не актуальный UI — не дорабатывать.
