@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Features.Auth;
 using BarkFluff.Identity.Features.ConfirmAccount;
@@ -32,12 +33,14 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     private readonly IMediator _mediator;
     private readonly JwtService _jwtService;
     private readonly MetricsCollector _metrics;
+    private readonly RequestContext _requestContext;
 
-    public IdentityApiService(IMediator mediator, JwtService jwtService, MetricsCollector metrics)
+    public IdentityApiService(IMediator mediator, JwtService jwtService, MetricsCollector metrics, RequestContext requestContext)
     {
         _mediator = mediator;
         _jwtService = jwtService;
         _metrics = metrics;
+        _requestContext = requestContext;
     }
 
     public override async Task<AuthResponse> Auth(AuthRequest request, ServerCallContext context)
@@ -62,6 +65,9 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         var command = new CreateTokenCommand
         {
             RefreshToken = request.RefreshToken,
+            DeviceName = _requestContext.DeviceName,
+            AppName = _requestContext.AppName,
+            AppVersion = _requestContext.AppVersion,
         };
 
         return await _mediator.Send(command);

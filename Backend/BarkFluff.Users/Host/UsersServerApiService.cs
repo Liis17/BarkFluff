@@ -21,6 +21,7 @@ using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokens;
 using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokensByDeviceIds;
 using BarkFluff.Users.Features.Devices.GetUserDevices;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
+using BarkFluff.Users.Features.Devices.UpdateDeviceAppInfo;
 using BarkFluff.Users.Features.ExportData;
 using BarkFluff.Users.Features.FindByLogin;
 using BarkFluff.Users.Features.GetUser;
@@ -293,6 +294,18 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         });
         _metrics.Set("last_device_registered_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         return response;
+    }
+
+    public override Task<UpdateDeviceAppInfoResponse> UpdateDeviceAppInfo(UpdateDeviceAppInfoRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("device_app_info_updates");
+        return _mediator.Send(new UpdateDeviceAppInfoCommand
+        {
+            DeviceId = Guid.Parse(request.DeviceId),
+            UserId = request.UserId,
+            OriginalName = request.OriginalName,
+            AppName = request.AppName
+        });
     }
 
     public override Task<GetUserDevicesResponse> GetUserDevices(GetUserDevicesRequest request, ServerCallContext context)
