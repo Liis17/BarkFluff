@@ -43,6 +43,12 @@ public class UsersContext : DbContext
             .HasIndex(u => u.Uuid)
             .IsUnique();
 
+        // БД-дефолт колонки Uuid (совпадает с миграцией AddUserUuid и snapshot);
+        // без этой строки рантайм-модель расходится со снапшотом → PendingModelChangesWarning при Migrate().
+        modelBuilder.Entity<User>()
+            .Property(u => u.Uuid)
+            .HasDefaultValueSql("gen_random_uuid()");
+
         // Настройка связей для UserBadge
         modelBuilder.Entity<UserBadge>()
             .HasOne(ub => ub.User)
