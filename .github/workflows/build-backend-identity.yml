@@ -8,10 +8,6 @@ on:
     paths:
       - 'Backend/BarkFluff.Identity/**'
       - 'Backend/BarkFluff.GrpcServer/**'
-      - 'Shared/BarkFluff.Shared.Auth/**'
-      - 'Shared/BarkFluff.Shared.Exceptions/**'
-      - 'Shared/BarkFluff.Shared.Identity/**'
-      - 'Shared/BarkFluff.Shared.Queue/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
