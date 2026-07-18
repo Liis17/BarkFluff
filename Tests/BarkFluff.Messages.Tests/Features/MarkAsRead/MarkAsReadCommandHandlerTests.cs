@@ -49,7 +49,7 @@ public class MarkAsReadCommandHandlerTests
         await act.Should().ThrowAsync<NoAccessToChatException>();
     }
 
-    [Fact(Skip = "InMemory provider does not support ExecuteSqlRawAsync")]
+    [Fact]
     public async Task Handle_ValidMessages_ReturnsSuccessfully()
     {
         var userId = 1L;
@@ -60,7 +60,44 @@ public class MarkAsReadCommandHandlerTests
 
         await handler.Handle(new MarkAsReadCommand { MessageIds = [msg1.Id, msg2.Id] }, CancellationToken.None);
 
-        _h.PublishEndpointMock.Verify(p => p.Publish(It.IsAny<Shared.Queue.Messages.MessageReadEvent>(), It.IsAny<CancellationToken>()), Times.AtLeast(2));
+        _h.PublishEndpointMock.Verify(
+            p => p.Publish(It.IsAny<Shared.Queue.Messages.MessageReadEvent>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyReadMessage_DoesNotPublishReadEvent()
+    {
+        var userId = 1L;
+        var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
+        var message = await _h.SeedMessage(chat.Id, 2, "message", readBy: [2, userId]);
+        var handler = CreateHandler(userId);
+
+        await handler.Handle(new MarkAsReadCommand { MessageIds = [message.Id] }, CancellationToken.None);
+
+        _h.PublishEndpointMock.Verify(
+            publisher => publisher.Publish(
+                It.IsAny<Shared.Queue.Messages.MessageReadEvent>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_NewRead_PublishesOnlyNewReader()
+    {
+        var userId = 1L;
+        var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
+        var message = await _h.SeedMessage(chat.Id, 2, "message", readBy: [2]);
+        var handler = CreateHandler(userId);
+
+        await handler.Handle(new MarkAsReadCommand { MessageIds = [message.Id] }, CancellationToken.None);
+
+        _h.PublishEndpointMock.Verify(
+            publisher => publisher.Publish(
+                It.Is<Shared.Queue.Messages.MessageReadEvent>(@event =>
+                    @event.NewReadBy.SequenceEqual(new[] { userId })),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

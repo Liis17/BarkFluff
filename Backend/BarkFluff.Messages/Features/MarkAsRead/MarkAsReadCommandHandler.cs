@@ -84,33 +84,48 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             chatMembersCache[chatId] = chatMembers.Select(x => x.UserId).ToList();
         }
 
-        // Обновляем ReadBy для сообщений
-        await _messagesStorage.MarkMessagesAsRead(request.MessageIds, _userContext.UserId);
+        var newlyReadMessages = messages
+            .Where(message => !message.ReadBy.Contains(_userContext.UserId))
+            .ToList();
 
-        _logger.LogDebug("Отправка событий о прочтении в очередь для {MessageCount} сообщений", messages.Count);
+        if (newlyReadMessages.Count == 0)
+        {
+            _logger.LogDebug(
+                "Все запрошенные сообщения уже прочитаны пользователем {UserId}",
+                _userContext.UserId);
+            return;
+        }
+
+        // Обновляем ReadBy только для сообщений, которые пользователь ещё не читал.
+        await _messagesStorage.MarkMessagesAsRead(
+            newlyReadMessages.Select(message => message.Id).ToList(),
+            _userContext.UserId);
+
+        _logger.LogDebug(
+            "Отправка событий о прочтении в очередь для {MessageCount} сообщений",
+            newlyReadMessages.Count);
 
         // Отправляем события параллельно для ускорения
         var sendTasks = new List<Task>();
-        foreach (var message in messages)
+        foreach (var message in newlyReadMessages)
         {
-            if (!message.ReadBy.Contains(_userContext.UserId))
-            {
-                message.ReadBy.Add(_userContext.UserId);
-            }
-
             // Используем кэшированных участников чата
             var chatMembers = chatMembersCache[message.ChatId];
 
-            sendTasks.Add(_readByQueueSender.SendEvent(message.ChatId, message.Id, message.ReadBy, chatMembers));
+            sendTasks.Add(_readByQueueSender.SendEvent(
+                message.ChatId,
+                message.Id,
+                [_userContext.UserId],
+                chatMembers));
         }
 
         await Task.WhenAll(sendTasks);
 
-        _metrics.Add("messages_marked_as_read", messages.Count);
+        _metrics.Add("messages_marked_as_read", newlyReadMessages.Count);
 
         _logger.LogInformation(
             "Успешно отмечено {MessageCount} сообщений как прочитанные пользователем {UserId}",
-            messages.Count,
+            newlyReadMessages.Count,
             _userContext.UserId
         );
     }
