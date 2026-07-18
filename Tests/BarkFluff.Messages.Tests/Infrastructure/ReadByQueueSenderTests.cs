@@ -18,14 +18,17 @@ public class ReadByQueueSenderTests
     {
         var chatId = Guid.NewGuid();
         var readBy = new List<long> { 1, 2 };
+        var newReaders = new List<long> { 2 };
         var chatMembers = new List<long> { 1, 2, 3 };
 
-        await _sender.SendEvent(chatId, 42, readBy, chatMembers);
+        await _sender.SendEvent(chatId, 42, readBy, newReaders, chatMembers);
 
         _publishEndpoint.Verify(p => p.Publish(
             It.Is<Shared.Queue.Messages.MessageReadEvent>(e =>
                 e.ChatId == chatId && e.MessageId == 42 &&
-                e.NewReadBy.SequenceEqual(readBy) && e.ChatMembers.SequenceEqual(chatMembers)),
+                e.NewReadBy.SequenceEqual(readBy) &&
+                e.NewReaders.SequenceEqual(newReaders) &&
+                e.ChatMembers.SequenceEqual(chatMembers)),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 }

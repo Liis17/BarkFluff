@@ -6,7 +6,9 @@ public class MessageReadEvent
 
     public long MessageId { get; set; }
 
-    public List<long> NewReadBy { get; set; }
+    public List<long> NewReadBy { get; set; } = [];
 
-    public List<long> ChatMembers { get; set; }
+    public List<long> NewReaders { get; set; } = [];
+
+    public List<long> ChatMembers { get; set; } = [];
 }
