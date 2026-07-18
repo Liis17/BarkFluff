@@ -19,7 +19,8 @@ public class PushNotificationConsumerTests
     {
         _firebaseService = new Mock<FirebaseService>(
             Mock.Of<ILogger<FirebaseService>>(),
-            Mock.Of<IConfiguration>());
+            Mock.Of<IConfiguration>(),
+            Mock.Of<IDismissPushSender>());
     }
 
     private PushNotificationConsumer CreateConsumer()
