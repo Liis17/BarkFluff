@@ -42,6 +42,31 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Uuid пользователя** (Фаза 0 rearch-федерации, [[Backend/Configuration#ServiceId=15]]): `Guid`, генерируется в коде (`Guid.NewGuid()`) при создании в обоих путях — `CreateUser` (draft) и `CreateBotUser`. Уникальный индекс `IX_Users_Uuid` (миграция `AddUserUuid`). У колонки есть страховочный `defaultValueSql: "gen_random_uuid()"` на уровне БД — заполнил все существующие строки при бэкфилле и подстрахует прямые INSERT в обход кода (например [[Backend/Users-Rust|Rust-порт]]). `long Id` остаётся внутренним PK, `Uuid` — будущий межсерверный идентификатор, пока без federation-логики поверх него. Отдаётся в proto `User.uuid` (поле 13, строка). Этап 0.4: `UsersApi.ResolveFederatedUser` (RPC-заглушка, реализация — Фаза 2) + `PrivacySettings.deny_federated_dm` (field 7, default false = федеративные DM разрешены) добавлены в `users_api.proto`, логики за ними пока нет.
 
+**Remote-пользователи** (этап 2.1, docs/rearch/01-addressing-identity.md): кеш профилей пользователей чужих нод живёт в `Domain/RemoteUser` (миграция `AddRemoteUsers`):
+
+| Поле | Тип | Описание |
+|------|-----|---------|
+| `Uuid` | `Guid` | UUID с origin-ноды (PK) |
+| `Username` | `string` | текущий username (кеш, может протухнуть) |
+| `ServerName` | `string` | punycode A-label lowercase (как `KnownServer.ServerName` в [[Backend/Federation]]) |
+| `FirstName` / `LastName` / `Bio` | `string?` | профильные поля |
+| `AvatarFileId` | `string?` | FileId на origin (рендер/проксирование — Фаза 3) |
+| `IsDeactivated` | `bool` | флаг деактивации (нужен 2.9) |
+| `LastSyncedAt` | `DateTime` | когда профиль обновлялся с origin |
+
+`UNIQUE (Username, ServerName)` — при коллизии побеждает свежий резолв (старая запись по другому UUID удаляется, новая создаётся).
+
+- **`Services/FidParser.cs`** — разбор `@username:servername` (допускается без `@`): username по regex `^[a-zA-Z0-9_]{3,32}$` (переиспользует `UsernameFormatValidator`), servername через `IdnMapping` к punycode A-label lowercase + проверки DNS/IP/localhost (тот же подход, что `ServernameValidator` в Federation). FID без servername (или с ownServerName из `Federation:ServerName`) → локальный пользователь. `LooksLikeFid` — для ветки резолва в `SearchUsers`.
+- **`Persistence/Services/RemoteUsersStorage.cs`** — единая точка записи в кеш. Правила пиннинга:
+  - UUID совпадает с локальной `Users.Uuid` → отказ `LocalUuidCollision` (защита от вредоносной ноды, заявляющей чужой UUID).
+  - UUID уже известен с другим `ServerName` → отказ `ServerNameMismatch` (пиннинг UUID к ноде, docs/rearch/01 §"Спуфинг").
+  - Конфликт `UNIQUE (Username, ServerName)` с другим UUID → побеждает свежий резолв (старая запись удаляется, создаётся новая).
+- **Резолв FID** (`Features/ResolveFederatedUser`): локальный → поиск по username; remote — кеш в `RemoteUsers` (TTL 24ч), при отсутствии/протухании — gRPC к [[Backend/Federation]] `ResolveRemoteUser` и upsert кеша. `Federation:Enabled=false` (если ключ виден Users через конфиг) — `found=false` без похода в сеть. RPC-ошибки Federation не валят запрос — клиенту честный `found=false`.
+- **Server-RPC** (этап 2.1, для Federation/Messages):
+  - `UpsertRemoteUsers` — батч-upsert от Federation (валидация через `RemoteUsersStorage`).
+  - `GetUsersByUuid` — батч-чтение профилей по UUID для Messages (локальные + remote вперемешку, признак `is_remote`).
+  - `GetFederatedProfile` — профиль локального пользователя с privacy-фильтрацией (для S2S `Federation.GetUserProfile`); `found=false` если профиль скрыт целиком или пользователь draft.
+
 **Зарезервированные имена**: `ReservedUsernamesService` (Singleton) загружает из конфига `ReservedNames:Usernames` (через запятую).
 
 **Поиск (клиентский)**: `SearchUsersByTrigram` — trigram fuzzy matching (pg_trgm, порог 0.3), сортировка по `GREATEST(similarity)` DESC. Пустой запрос → пустой результат. Максимум 50 записей. Учитывает `SearchVisible` из Privacy. Данные и общий счёт берутся ОДНИМ запросом через оконную функцию `COUNT(*) OVER()` (`Database.SqlQueryRaw<TrigramSearchRow>` → ручной маппинг в `User`) — без второго trigram-скана. `IsBot`/`Uuid` выбираются и маппятся в результат, поэтому клиенты получают `User.is_bot`/`User.uuid`.
@@ -129,6 +154,9 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `GetProfilePosterServer(userId)` | Получить FileId постера профиля (service-to-service) | |
 | `CreateBotUser(username, first_name, bypass_username_rules)` | Создать бот-юзера для [[Backend/Bots]] | Сразу `IsDraft=false, IsBot=true`, без `UserContact` (nullable), Privacy по умолчанию. Идемпотентен: username занят ботом → его id + `already_existed` |
 | `DeleteBotUser(user_id)` | Пометить бот-аккаунт удалённым | Username → `deleted_{id}` (освобождается), `IsDraft=true` (вне поиска). Чаты сохраняются |
+| `GetFederatedProfile(username\|uuid)` | Privacy-фильтрованный профиль локального пользователя (для [[Backend/Federation]] S2S GetUserProfile) | Этап 2.1. Скрытое поле = пустое; профиль скрыт целиком/draft → `found=false` |
+| `UpsertRemoteUsers(records[])` | Батч-upsert кешей remote-профилей от Federation | Этап 2.1. Per-запись: `ok` / `LocalUuidCollision` / `ServerNameMismatch` / `InvalidUuid` |
+| `GetUsersByUuid(uuids[])` | Батч-чтение профилей для [[Backend/Messages]] (render remote-авторов) | Этап 2.1. Локальные + remote вперемешку, признак `is_remote`/`server_name` |
 
 ### Боты (интеграция с [[Backend/Bots]])
 

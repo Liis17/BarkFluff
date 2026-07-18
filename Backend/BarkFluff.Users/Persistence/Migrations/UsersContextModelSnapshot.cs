@@ -221,6 +221,45 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("Privacies");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.RemoteUser", b =>
+                {
+                    b.Property<Guid>("Uuid")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AvatarFileId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Bio")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeactivated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ServerName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Uuid");
+
+                    b.HasIndex("Username", "ServerName")
+                        .IsUnique();
+
+                    b.ToTable("RemoteUsers");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.User", b =>
                 {
                     b.Property<long>("Id")

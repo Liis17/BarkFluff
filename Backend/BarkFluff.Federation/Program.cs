@@ -6,7 +6,9 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Navigator;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
+using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -76,6 +78,13 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["NavigatorUrl"]!);
         });
+
+        // gRPC-клиент к Users: GetFederatedProfile (этап 2.1, S2S GetUserProfile).
+        builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["UsersService:Host"]!);
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"] ?? string.Empty))
+          .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddXAuth(builder.Configuration);
 

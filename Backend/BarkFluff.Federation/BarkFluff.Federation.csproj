@@ -35,9 +35,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_api.proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_api.proto" GrpcServices="Both" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_internal_api.proto" GrpcServices="Server" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\navigator_api.proto" GrpcServices="Client" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
     </ItemGroup>
 
 </Project>

@@ -6,6 +6,7 @@ using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Users;
 
 using Grpc.Net.Client;
 
@@ -16,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
+using Moq;
 
 namespace BarkFluff.Federation.Tests.Infrastructure;
 
@@ -79,6 +82,11 @@ public sealed class FederationTestHost : IAsyncDisposable
                     services.AddSingleton<INavigatorClient>(new FakeNavigatorClient());
                     services.AddScoped<ServerResolver>();
                     services.AddSingleton<DiscoveryTriggerRateLimiter>();
+
+                    // Users-клиент для FederationS2SApiService.GetUserProfile (этап 2.1) — в интеграционных
+                    // тестах S2S Ping/GetServerKeys он не вызывается, но активация сервиса требует регистрации.
+                    var usersClientMock = new Mock<UsersServerApi.UsersServerApiClient>();
+                    services.AddSingleton(usersClientMock.Object);
                 });
 
                 webHost.Configure(app =>

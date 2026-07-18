@@ -26,19 +26,25 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
     private readonly SigningKeyService _signingKeyService;
     private readonly WellKnownDocumentService _wellKnownDocumentService;
     private readonly ActiveSigningKeyCache _activeSigningKeyCache;
+    private readonly ServerResolver _serverResolver;
+    private readonly S2SChannelFactory _s2sChannelFactory;
 
     public FederationInternalApiService(
         FederationContext context,
         IConfiguration configuration,
         SigningKeyService signingKeyService,
         WellKnownDocumentService wellKnownDocumentService,
-        ActiveSigningKeyCache activeSigningKeyCache)
+        ActiveSigningKeyCache activeSigningKeyCache,
+        ServerResolver serverResolver,
+        S2SChannelFactory s2sChannelFactory)
     {
         _context = context;
         _configuration = configuration;
         _signingKeyService = signingKeyService;
         _wellKnownDocumentService = wellKnownDocumentService;
         _activeSigningKeyCache = activeSigningKeyCache;
+        _serverResolver = serverResolver;
+        _s2sChannelFactory = s2sChannelFactory;
     }
 
     public override async Task<RotateSigningKeyResponse> RotateSigningKey(RotateSigningKeyRequest request, ServerCallContext context)
@@ -154,6 +160,99 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         }));
 
         return response;
+    }
+
+    // Federation.ResolveRemoteUser (этап 2.1): parse FID/UUID+server → ServerResolver →
+    // подписанный S2S GetUserProfile на ноду-владельца → отдача ответа Users.
+    // Federation не пишет пользовательское состояние — RemoteUsers кеширует вызывающий (Users).
+    public override async Task<ResolveRemoteUserResponse> ResolveRemoteUser(ResolveRemoteUserRequest request, ServerCallContext context)
+    {
+        // Federation:Enabled — гейтинг: при выключенной федерации честно отдаём found=false,
+        // никаких сетевых походок.
+        if (!string.Equals(_configuration["Federation:Enabled"], "true", StringComparison.OrdinalIgnoreCase))
+            return new ResolveRemoteUserResponse { Found = false };
+
+        string? username = null;
+        string? uuid = null;
+        string? serverName = null;
+
+        switch (request.UserCase)
+        {
+            case ResolveRemoteUserRequest.UserOneofCase.Fid:
+                if (!TryParseFid(request.Fid, out var parsedUsername, out var parsedServer))
+                    return new ResolveRemoteUserResponse { Found = false };
+                username = parsedUsername;
+                serverName = parsedServer;
+                break;
+            case ResolveRemoteUserRequest.UserOneofCase.Uuid:
+                uuid = request.Uuid;
+                serverName = request.ServerName;
+                if (string.IsNullOrWhiteSpace(serverName) || !ServernameValidator.TryNormalizeSyntax(serverName, out var normalized))
+                    return new ResolveRemoteUserResponse { Found = false };
+                serverName = normalized;
+                break;
+            default:
+                return new ResolveRemoteUserResponse { Found = false };
+        }
+
+        if (string.IsNullOrWhiteSpace(serverName))
+            return new ResolveRemoteUserResponse { Found = false };
+
+        var server = await _serverResolver.ResolveAsync(serverName, context.CancellationToken);
+        if (server is null)
+            return new ResolveRemoteUserResponse { Found = false };
+
+        var s2sRequest = new GetUserProfileRequest();
+        if (username is not null)
+            s2sRequest.Username = username;
+        else
+            s2sRequest.Uuid = uuid!;
+
+        try
+        {
+            var invoker = await _s2sChannelFactory.GetInvokerAsync(server.ServerName, context.CancellationToken);
+            var s2sClient = new FederationS2SApi.FederationS2SApiClient(invoker);
+            var profile = await s2sClient.GetUserProfileAsync(s2sRequest, cancellationToken: context.CancellationToken);
+
+            if (!profile.Found)
+                return new ResolveRemoteUserResponse { Found = false, ServerName = server.ServerName };
+
+            return new ResolveRemoteUserResponse
+            {
+                Found = true,
+                Profile = profile,
+                ServerName = server.ServerName,
+            };
+        }
+        catch (RpcException)
+        {
+            // Сетевая ошибка / пир недоступен — вызывающий (Users) получит found=false и не закеширует мусор.
+            return new ResolveRemoteUserResponse { Found = false, ServerName = server.ServerName };
+        }
+    }
+
+    // Простой FID-парсер внутри Federation: @username:servername → punycode A-label.
+    // Полную валидацию (username regex, anti-SSRF) делает и origin-сервер, и ServerResolver.
+    private static bool TryParseFid(string? raw, out string username, out string serverName)
+    {
+        username = string.Empty;
+        serverName = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        var trimmed = raw.Trim();
+        if (trimmed.StartsWith('@'))
+            trimmed = trimmed[1..];
+
+        var colon = trimmed.IndexOf(':');
+        if (colon <= 0 || colon == trimmed.Length - 1)
+            return false;
+
+        username = trimmed[..colon];
+        var rawServer = trimmed[(colon + 1)..];
+
+        return ServernameValidator.TryNormalizeSyntax(rawServer, out serverName);
     }
 
     private static KnownServerInfo ToKnownServerInfo(KnownServer server)

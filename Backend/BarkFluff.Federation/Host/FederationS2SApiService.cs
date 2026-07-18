@@ -1,5 +1,6 @@
 using BarkFluff.Federation.Services;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Users;
 
 using Google.Protobuf.WellKnownTypes;
 
@@ -14,11 +15,16 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
 {
     private readonly IConfiguration _configuration;
     private readonly SigningKeyService _signingKeyService;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
 
-    public FederationS2SApiService(IConfiguration configuration, SigningKeyService signingKeyService)
+    public FederationS2SApiService(
+        IConfiguration configuration,
+        SigningKeyService signingKeyService,
+        UsersServerApi.UsersServerApiClient usersClient)
     {
         _configuration = configuration;
         _signingKeyService = signingKeyService;
+        _usersClient = usersClient;
     }
 
     public override Task<PingResponse> Ping(PingRequest request, ServerCallContext context)
@@ -50,6 +56,50 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                 ? Timestamp.FromDateTime(DateTime.SpecifyKind(k.ExpiredAt.Value, DateTimeKind.Utc))
                 : null,
         }));
+
+        return response;
+    }
+
+    // S2S профиль пользователя этой ноды (этап 2.1). XFed уже проверил подпись в per-service интерсепторе —
+    // здесь только privacy-фильтрованная отдача через Users.GetFederatedProfile.
+    public override async Task<GetUserProfileResponse> GetUserProfile(GetUserProfileRequest request, ServerCallContext context)
+    {
+        var usersRequest = new GetFederatedProfileRequest();
+        switch (request.UserCase)
+        {
+            case GetUserProfileRequest.UserOneofCase.Username:
+                usersRequest.Username = request.Username;
+                break;
+            case GetUserProfileRequest.UserOneofCase.Uuid:
+                usersRequest.Uuid = request.Uuid;
+                break;
+            default:
+                return new GetUserProfileResponse { Found = false };
+        }
+
+        var profile = await _usersClient.GetFederatedProfileAsync(usersRequest, cancellationToken: context.CancellationToken);
+
+        if (!profile.Found)
+            return new GetUserProfileResponse { Found = false };
+
+        var response = new GetUserProfileResponse
+        {
+            Found = true,
+            Uuid = profile.Uuid,
+            Username = profile.Username,
+            FirstName = profile.FirstName,
+            LastName = profile.LastName,
+            Bio = profile.Bio,
+        };
+
+        if (!string.IsNullOrEmpty(profile.AvatarFileId))
+        {
+            response.Avatar = new FederatedFileRef
+            {
+                OriginServer = _configuration["Federation:ServerName"] ?? string.Empty,
+                FileId = profile.AvatarFileId,
+            };
+        }
 
         return response;
     }

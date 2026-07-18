@@ -230,6 +230,18 @@ service UsersServerApi {
 
   // Удалить бот-аккаунт (для сервиса Bots): освободить username, исключить из поиска. Чаты сохраняются.
   rpc DeleteBotUser(DeleteBotUserRequest) returns(DeleteBotUserResponse);
+
+  // Федерация: батч-upsert кешей remote-профилей (валидация — правила пиннинга uuid к server_name).
+  // Этап 2.1.
+  rpc UpsertRemoteUsers(UpsertRemoteUsersRequest) returns(UpsertRemoteUsersResponse);
+
+  // Messages: батч-чтение профилей по UUID (локальные и remote вперемешку) для отображения remote-авторов.
+  // Этап 2.1.
+  rpc GetUsersByUuid(GetUsersByUuidRequest) returns(GetUsersByUuidResponse);
+
+  // Федерация: профиль локального пользователя (privacy-фильтрованный) по username или uuid.
+  // Используется S2S GetUserProfile. Этап 2.1.
+  rpc GetFederatedProfile(GetFederatedProfileRequest) returns(GetFederatedProfileResponse);
 }
 
 // Удаление бот-аккаунта (серверный, для сервиса Bots)
@@ -990,3 +1002,75 @@ message RotateSignedPrekeyRequest {
 }
 
 message RotateSignedPrekeyResponse { }
+
+// -- Федеративные профили (этап 2.1) --------------------------------------------
+
+// Одна запись батча UpsertRemoteUsers. Federation присылает профиль, полученный с origin-ноды;
+// Users применяет правила пиннинга (uuid↔server_name) и возвращает per-запись результат.
+message UpsertRemoteUserInfo {
+  string uuid = 1;            // UUID с origin-ноды (PK в RemoteUsers)
+  string username = 2;
+  string server_name = 3;     // punycode A-label lowercase
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+  string avatar_file_id = 7;  // FileId на origin (пусто = нет)
+  bool is_deactivated = 8;
+}
+
+message UpsertRemoteUsersRequest {
+  repeated UpsertRemoteUserInfo records = 1;
+}
+
+message UpsertRemoteUserResult {
+  string uuid = 1;
+  bool ok = 2;
+  // Пусто при ok=true. Возможные значения: "LocalUuidCollision", "ServerNameMismatch".
+  string reject_reason = 3;
+}
+
+message UpsertRemoteUsersResponse {
+  repeated UpsertRemoteUserResult results = 1;
+}
+
+// Профиль пользователя по UUID (локальный или remote). Для рендеринга remote-авторов в Messages.
+message UserProfileByUuid {
+  string uuid = 1;
+  bool found = 2;
+  bool is_remote = 3;        // true — RemoteUser, false — локальный User
+  string server_name = 4;    // punycode A-label lowercase (пусто для локального)
+  string username = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string bio = 8;            // локальный: после privacy-фильтра (None здесь — для межсервисного запроса отдаём как есть)
+  string avatar_file_id = 9; // для локального: ProfilePicture; для remote: AvatarFileId на origin
+  bool is_deactivated = 10;  // только для remote
+}
+
+message GetUsersByUuidRequest {
+  repeated string uuids = 1; // Guid в строковой форме
+}
+
+message GetUsersByUuidResponse {
+  repeated UserProfileByUuid users = 1;
+}
+
+// Privacy-фильтрованный профиль локального пользователя для S2S-отдачи (GetUserProfile).
+// bio/avatar_file_id пустые, если скрыты privacy; found=false если профиль скрыт целиком или
+// пользователь деактивирован/черновик.
+message GetFederatedProfileRequest {
+  oneof user {
+    string username = 1; // username без домена
+    string uuid = 2;     // Guid в строковой форме
+  }
+}
+
+message GetFederatedProfileResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+  string avatar_file_id = 7; // FileId на этой ноде (пусто если скрыт/нет)
+}
