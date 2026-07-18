@@ -124,6 +124,17 @@ services:
     depends_on:
       - configuration
 
+  federation:
+    image: docker.barkfluff.com:5000/barkfluff-federation-dev:latest
+    container_name: federation
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   cloud-messaging:
     image: docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:latest
     container_name: cloud-messaging
