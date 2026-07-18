@@ -13,13 +13,19 @@ public class ReadByQueueSender
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task SendEvent(Guid chatId, long messageId, List<long> newReadBy, List<long> chatMembers)
+    public async Task SendEvent(
+        Guid chatId,
+        long messageId,
+        List<long> readBy,
+        List<long> newReaders,
+        List<long> chatMembers)
     {
         var newEvent = new MessageReadEvent()
         {
             ChatId = chatId,
             MessageId = messageId,
-            NewReadBy = newReadBy,
+            NewReadBy = readBy,
+            NewReaders = newReaders,
             ChatMembers = chatMembers
         };
 

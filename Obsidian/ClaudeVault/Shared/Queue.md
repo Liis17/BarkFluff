@@ -8,7 +8,7 @@
 
 События чатов (обычные, plaintext):
 - `NewMessageEvent` — новое сообщение (ChatId, ChatMembers, Message как `byte[]`)
-- `MessageReadEvent` — сообщение прочитано (ChatId, MessageId, NewReadBy, ChatMembers)
+- `MessageReadEvent` — сообщение прочитано (`ChatId`, `MessageId`, `NewReadBy` — полный snapshot читателей для realtime-клиентов, `NewReaders` — delta новых читателей для отмены/dismiss push, `ChatMembers`). При чтении старых событий без `NewReaders` Updates использует `NewReadBy` как fallback.
 - `MessageEditedEvent` — отредактированное сообщение (ChatId, ChatMembers, Message как `byte[]`)
 - `MessageDeletedEvent` — удалённое сообщение (ChatId, ChatMembers, MessageId)
 - `MessagePinnedEvent` / `MessageUnpinnedEvent` / `AllMessagesUnpinnedEvent` — закрепы

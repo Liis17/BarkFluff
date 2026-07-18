@@ -40,6 +40,7 @@ public class ReadByConsumer : IConsumer<MessageReadEvent>
                 ChatId = context.Message.ChatId,
                 ChatMembers = context.Message.ChatMembers,
                 NewReadBy = context.Message.NewReadBy,
+                NewReaders = context.Message.NewReaders,
             };
 
             // Публикуем уведомление через MediatR

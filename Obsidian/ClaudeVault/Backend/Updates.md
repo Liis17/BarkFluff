@@ -73,7 +73,7 @@ ConcurrentDictionary<(long userId, Guid deviceId), ConcurrentDictionary<Guid sub
 
 ### Dismiss push после прочтения
 
-`DismissPushPublisher` (`INotificationHandler<ReadByNotification>`) запускается параллельно с `ReadByCancelPushHandler`. `DismissPushDebouncer` (Singleton) объединяет события в trailing-окне 1 секунда по ключу `(UserId, ChatId)`, после чего публикуется один `DismissPushEvent { ChatId, UserId }` в RabbitMQ. Это схлопывает bulk `MarkAsRead` и защищает FCM от per-device quota bursts. Состояние process-local и best-effort, как остальная push-логика Updates. Событие потребляет [[Backend/CloudMessaging]] и шлёт data-only FCM `type=dismiss_chat_notifications` — клиент скрывает нотификацию чата на остальных устройствах. Если push в 5-сек окне ещё не ушёл, `ReadByCancelPushHandler` его отменит, а dismiss станет no-op на клиенте.
+`DismissPushPublisher` (`INotificationHandler<ReadByNotification>`) запускается параллельно с `ReadByCancelPushHandler` и использует delta `NewReaders`, не меняя snapshot-контракт `NewReadBy` для realtime-клиентов. `DismissPushDebouncer` (Singleton) объединяет события в trailing-окне 1 секунда по ключу `(UserId, ChatId)`, после чего публикуется один `DismissPushEvent { ChatId, UserId }` в RabbitMQ. Это схлопывает same-chat bulk `MarkAsRead`; межчатовые и межрепличные события остаются best-effort, а `QuotaExceeded` дополнительно обрабатывает [[Backend/CloudMessaging]]. Состояние process-local, как остальная push-логика Updates. Если push в 5-сек окне ещё не ушёл, `ReadByCancelPushHandler` его отменит, а dismiss станет no-op на клиенте.
 
 ### gRPC API
 

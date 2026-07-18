@@ -17,8 +17,7 @@ public class AdminBroadcastConsumerTests
     {
         _firebaseService = new Mock<FirebaseService>(
             Mock.Of<ILogger<FirebaseService>>(),
-            Mock.Of<IConfiguration>(),
-            Mock.Of<IDismissPushSender>());
+            Mock.Of<IConfiguration>());
     }
 
     private AdminBroadcastConsumer CreateConsumer()

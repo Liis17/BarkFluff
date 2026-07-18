@@ -83,7 +83,7 @@ public class MarkAsReadCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NewRead_PublishesOnlyNewReader()
+    public async Task Handle_NewRead_PublishesSnapshotAndNewReader()
     {
         var userId = 1L;
         var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
@@ -95,7 +95,8 @@ public class MarkAsReadCommandHandlerTests
         _h.PublishEndpointMock.Verify(
             publisher => publisher.Publish(
                 It.Is<Shared.Queue.Messages.MessageReadEvent>(@event =>
-                    @event.NewReadBy.SequenceEqual(new[] { userId })),
+                    @event.NewReadBy.SequenceEqual(new[] { 2L, userId }) &&
+                    @event.NewReaders.SequenceEqual(new[] { userId })),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
