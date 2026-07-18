@@ -20,6 +20,58 @@ namespace BarkFluff.Federation.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.FederationOutbox", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Destination")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("PayloadBytes")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Destination", "ChatId", "Id")
+                        .HasDatabaseName("IX_Outbox_Destination_ChatId_Id");
+
+                    b.HasIndex("Status", "NextAttemptAt")
+                        .HasDatabaseName("IX_Outbox_Status_NextAttemptAt");
+
+                    b.ToTable("FederationOutbox", (string)null);
+                });
+
             modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.FederationSigningKey", b =>
                 {
                     b.Property<string>("KeyId")
@@ -106,6 +158,23 @@ namespace BarkFluff.Federation.Persistence.Migrations
                     b.HasKey("ServerName", "KeyId");
 
                     b.ToTable("KnownServerKeys");
+                });
+
+            modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.ProcessedEvent", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OriginServer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventId");
+
+                    b.ToTable("ProcessedEvents", (string)null);
                 });
 
             modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.KnownServerKey", b =>

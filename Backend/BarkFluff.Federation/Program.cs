@@ -1,5 +1,7 @@
 using BarkFluff.Federation.BackgroundServices;
+using BarkFluff.Federation.Consumers;
 using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer;
@@ -10,6 +12,8 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
+
+using MassTransit;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -74,6 +78,11 @@ public class Program
         builder.Services.AddSingleton<DiscoveryTriggerRateLimiter>();
         builder.Services.AddHostedService<PeerRefreshBackgroundService>();
 
+        // Outbox (этап 2.2): writer + диспетчер + janitor.
+        builder.Services.AddScoped<OutboxWriter>();
+        builder.Services.AddHostedService<OutboxDispatcher>();
+        builder.Services.AddHostedService<OutboxJanitor>();
+
         builder.Services.AddGrpcClient<NavigatorApi.NavigatorApiClient>(o =>
         {
             o.Address = new Uri(builder.Configuration["NavigatorUrl"]!);
@@ -85,6 +94,31 @@ public class Program
             o.Address = new Uri(builder.Configuration["UsersService:Host"]!);
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"] ?? string.Empty))
           .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddMassTransit(x =>
+        {
+            // Консюмеры внутренних событий → FederationOutbox (этап 2.2).
+            x.AddConsumer<NewMessageFederationConsumer>();
+            x.AddConsumer<MessageEditedFederationConsumer>();
+            x.AddConsumer<MessageDeletedFederationConsumer>();
+            x.AddConsumer<MessageReadFederationConsumer>();
+            x.AddConsumer<SessionRevokedConsumer>();
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"]);
+                    h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+
+                cfg.ReceiveEndpoint("new-messages-federation-handler", e => e.ConfigureConsumer<NewMessageFederationConsumer>(context));
+                cfg.ReceiveEndpoint("messages-edited-federation-handler", e => e.ConfigureConsumer<MessageEditedFederationConsumer>(context));
+                cfg.ReceiveEndpoint("messages-deleted-federation-handler", e => e.ConfigureConsumer<MessageDeletedFederationConsumer>(context));
+                cfg.ReceiveEndpoint("read-receipts-federation-handler", e => e.ConfigureConsumer<MessageReadFederationConsumer>(context));
+                cfg.ReceiveEndpoint("session-revoked-federation", e => e.ConfigureConsumer<SessionRevokedConsumer>(context));
+            });
+        });
 
         builder.Services.AddXAuth(builder.Configuration);
 

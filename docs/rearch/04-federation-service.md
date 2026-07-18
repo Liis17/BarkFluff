@@ -88,9 +88,10 @@ message FederationEvent {
 FederationOutbox
   Id             bigserial PK
   Destination    text          -- server_name
-  EventId        uuid          -- идемпотентность на приёмнике
+  ChatId         uuid NULL     -- для упорядочивания доставки per-(Destination, ChatId); NULL = вне-чатовое (профильные, 2.9)
+  EventId        uuid
   EventType      text
-  PayloadBytes   bytea         -- сериализованный FederationEvent
+  PayloadBytes   bytea
   CreatedAt      timestamptz
   Attempts       int
   NextAttemptAt  timestamptz
