@@ -95,6 +95,12 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - `/.well-known/barkfluff` отдаётся apex-сервером (`barkfluff.single-server.conf`), не `federation.conf` — `location = /.well-known/barkfluff` проксирует на `federation:7031`. Apex для публичных нод требует CA-валидный серт (Let's Encrypt) — это bootstrap-канал; своя rate-limit-зона `federation_wellknown` (5r/s, жёстче).
 - Двух-нодовый стенд (`Backend/dev-federation-testbed/`) расширен: `certs/make-certs.sh` (self-signed + вывод SPKI-отпечатка), `docker-compose.nginx.yml` (nginx-node1/nginx-node2 перед каждой federation-нодой), `nginx/node1.conf`/`node2.conf`, `seed-peers.sql` обновлён на `https://nginx-nodeX` + реальные SPKI. Негативный тест пиннинга — README стенда, раздел 7.
 
+## AdminPanel (этап 1.7)
+
+Страница «Федерация» (`/federation` → `Pages/v2/federation.html`, только `v2/` — актуальный UI) — статус ноды (server_name/enabled/known_servers_active/outbox-нули), таблица ключей (ротация по кнопке с confirm), таблица пиров (блок/разблок, форма «Добавить пир»). Backend — `Endpoints/FederationEndpoints.cs` (`/api/federation/status|peers|keys/rotate`), gRPC-клиент `FederationInternalApi.FederationInternalApiClient` (`FederationService:Host/Token`, без интерцептора кроме `JwtClientInterceptor` — как у соседей). Детали — [[Backend/AdminPanel-ProjectMap]].
+
+**Отклонение от плана**: таблица ключей не показывает колонку "created" — `SigningKey` (wire-сообщение в `federation_api.proto`) не несёт `created_at`, только `key_id`/`public_key`/`expired_at`; расширение публичного S2S-контракта ради косметической колонки в админке не входит в скоуп 1.7.
+
 ## Планы дальнейших этапов
 
-См. `docs/rearch/phase-1/README.md` — 1.7 (AdminPanel).
+Фаза 1 завершена (1.1–1.7). Следующий шаг вне этой фазы — Фаза 2 (outbox, доставка событий, MassTransit/RabbitMQ) по `docs/rearch/10-roadmap.md`.
