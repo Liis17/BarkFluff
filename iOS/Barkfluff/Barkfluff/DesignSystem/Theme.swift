@@ -49,5 +49,7 @@ enum Theme {
     enum Animation {
         static let `default` = SwiftUI.Animation.smooth
         static let spring = SwiftUI.Animation.spring
+        static let press = SwiftUI.Animation.easeOut(duration: 0.12)
+        static let stateChange = SwiftUI.Animation.smooth(duration: 0.2)
     }
 }

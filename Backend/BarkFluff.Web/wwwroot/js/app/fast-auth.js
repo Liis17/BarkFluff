@@ -63,16 +63,26 @@
 
     function showLoading() {
         var e = bindEls();
-        if (e.img) { e.img.hidden = true; e.img.removeAttribute('src'); }
-        if (e.spinner) e.spinner.hidden = false;
+        if (e.img) {
+            e.img.onload = null;
+            e.img.classList.remove('visible');
+            e.img.setAttribute('aria-hidden', 'true');
+        }
+        if (e.spinner) e.spinner.classList.remove('is-hidden');
     }
 
     function showQr(pngBase64) {
         var e = bindEls();
         if (!e.img) return;
-        e.img.src = 'data:image/png;base64,' + pngBase64;
-        e.img.hidden = false;
-        if (e.spinner) e.spinner.hidden = true;
+        var qrSrc = 'data:image/png;base64,' + pngBase64;
+        e.img.onload = function () {
+            if (!started || e.img.getAttribute('src') !== qrSrc) return;
+            e.img.onload = null;
+            e.img.classList.add('visible');
+            e.img.setAttribute('aria-hidden', 'false');
+            if (e.spinner) e.spinner.classList.add('is-hidden');
+        };
+        e.img.src = qrSrc;
     }
 
     function clearTimers() {
