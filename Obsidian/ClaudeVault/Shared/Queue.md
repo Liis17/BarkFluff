@@ -4,6 +4,25 @@
 
 Расположение: `Shared/BarkFluff.Shared.Queue/`
 
+## Namespace: `BarkFluff.Shared.Queue.Federation`
+
+- `FederatedParticipant` — `{ Guid Uuid, string ServerName }` (этап 2.2). Используется расширенными полями message-events (см. ниже) для построения FederationOutbox-строк.
+
+## Расширенные федеративные поля message-событий (этап 2.2)
+
+`NewMessageEvent`, `MessageEditedEvent`, `MessageDeletedEvent`, `MessageReadEvent` получили nullable-поля федеративного контекста. Старые сообщения очереди десериализуются без них (обратная совместимость сохраняется). Заполняет [[Backend/Messages]] начиная с этапа 2.3; в 2.2 поля пустые.
+
+| Поле | Тип | Назначение |
+|---|---|---|
+| `IsFederated` | `bool` | true → Federation строит outbox-строки |
+| `RemoteParticipants` | `List<FederatedParticipant>` | по строке outbox на каждый ServerName |
+| `FederatedId` | `Guid?` | UUID сообщения на origin (идемпотентность) |
+| `SenderUuid` | `Guid?` | UUID remote-автора (для рендера на приёмнике) |
+| `LastChangeAt` | `DateTimeOffset?` | база для LWW (SentAt/EditedAt) |
+| `IsFirstMessageInChat`, `InitiatorUuid`, `InviteeUuid` | — | только `NewMessageEvent`: построение `ChatCreated` без похода в Messages |
+| `SenderDisplayName`, `SenderFid` | `string?` | только `NewMessageEvent`/`MessageEditedEvent`: для пушей [[Backend/CloudMessaging]] (этап 2.8) |
+| `ReaderUuid`, `UpToFederatedMessageId` | `Guid?` | только `MessageReadEvent` |
+
 ## Namespace: `BarkFluff.Shared.Queue.Messages`
 
 События чатов (обычные, plaintext):

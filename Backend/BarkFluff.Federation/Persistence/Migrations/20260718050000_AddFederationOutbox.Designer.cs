@@ -2,6 +2,7 @@
 using BarkFluff.Federation.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -9,9 +10,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BarkFluff.Federation.Persistence.Migrations
 {
     [DbContext(typeof(FederationContext))]
-    partial class FederationContextModelSnapshot : ModelSnapshot
+    [Migration("20260718050000_AddFederationOutbox")]
+    partial class AddFederationOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
