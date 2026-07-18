@@ -9,6 +9,7 @@ using BarkFluff.Users.Infrastructure;
 using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Moq;
 
 namespace BarkFluff.Users.Tests;
@@ -24,6 +25,7 @@ public class TestHelper
     public PersonalizationStorage PersonalizationStorage { get; }
     public ChatFolderStorage ChatFolderStorage { get; }
     public PrekeyStorage PrekeyStorage { get; }
+    public RemoteUsersStorage RemoteUsersStorage { get; }
     public Mock<IPublishEndpoint> PublishEndpointMock { get; }
     public UserInfoQueueSender QueueSender { get; }
     public MetricsCollector Metrics { get; }
@@ -41,6 +43,7 @@ public class TestHelper
         PersonalizationStorage = new PersonalizationStorage(DbContext);
         ChatFolderStorage = new ChatFolderStorage(DbContext);
         PrekeyStorage = new PrekeyStorage(DbContext);
+        RemoteUsersStorage = new RemoteUsersStorage(DbContext);
         PublishEndpointMock = new Mock<IPublishEndpoint>();
         Metrics = new MetricsCollector();
         QueueSender = new BarkFluff.Users.Infrastructure.UserInfoQueueSender(PublishEndpointMock.Object, Metrics);
@@ -188,4 +191,35 @@ public class TestHelper
         await DbContext.SaveChangesAsync();
         return privacy;
     }
+
+    public async Task<RemoteUser> SeedRemoteUser(
+        Guid? uuid = null,
+        string username = "remoteuser",
+        string serverName = "node2.test",
+        string firstName = "Remote",
+        string? lastName = "User",
+        string? bio = null,
+        string? avatarFileId = null,
+        bool isDeactivated = false,
+        DateTime? lastSyncedAt = null)
+    {
+        var remote = new RemoteUser
+        {
+            Uuid = uuid ?? Guid.NewGuid(),
+            Username = username,
+            ServerName = serverName,
+            FirstName = firstName,
+            LastName = lastName,
+            Bio = bio,
+            AvatarFileId = avatarFileId,
+            IsDeactivated = isDeactivated,
+            LastSyncedAt = lastSyncedAt ?? DateTime.UtcNow,
+        };
+
+        DbContext.RemoteUsers.Add(remote);
+        await DbContext.SaveChangesAsync();
+        return remote;
+    }
+
+    public static IConfiguration EmptyConfiguration => new ConfigurationBuilder().AddInMemoryCollection().Build();
 }
