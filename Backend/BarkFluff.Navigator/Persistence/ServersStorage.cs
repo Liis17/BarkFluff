@@ -2,63 +2,77 @@ namespace BarkFluff.Navigator.Persistence;
 
 using Domain;
 
-using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
 
 public class ServersStorage
 {
-    private readonly ConcurrentDictionary<string, (ServerInfo server, DateTime lastSeen)> _servers = new();
-    private readonly ConcurrentDictionary<string, DateTime> _lastRegistrationTimes = new();
+    private readonly NavigatorContext _context;
+    private readonly RegistrationThrottle _throttle;
     private readonly TimeSpan _serverActivePeriod;
-    private readonly TimeSpan _throttlePeriod;
 
-    public ServersStorage(IConfiguration configuration)
+    public ServersStorage(NavigatorContext context, RegistrationThrottle throttle, IConfiguration configuration)
     {
+        _context = context;
+        _throttle = throttle;
         _serverActivePeriod = TimeSpan.FromMinutes(configuration.GetValue<int>("ServerRegistration:ActivePeriodMinutes", 10));
-        _throttlePeriod = TimeSpan.FromMinutes(configuration.GetValue<int>("ServerRegistration:ThrottleMinutes", 2));
     }
 
-    public List<ServerInfo> GetServers()
+    public async Task<List<ServerInfo>> GetServersAsync(CancellationToken ct = default)
+    {
+        var threshold = DateTime.UtcNow - _serverActivePeriod;
+        return await _context.Servers.Where(s => s.LastSeenAt >= threshold).ToListAsync(ct);
+    }
+
+    // Ключ идентичности: ServerName, если задан; иначе легаси Name+BeaconHost+BeaconPort (текущее поведение).
+    public async Task RegisterServerAsync(ServerInfo server, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
-        return _servers.Values
-            .Where(s => (now - s.lastSeen) <= _serverActivePeriod)
-            .Select(s => s.server)
-            .ToList();
-    }
 
-    public void RegisterServer(ServerInfo server)
-    {
-        var now = DateTime.UtcNow;
-        var serverKey = $"{server.Name}:{server.BeaconHost}:{server.BeaconPort}";
+        var throttleKey = !string.IsNullOrWhiteSpace(server.ServerName)
+            ? server.ServerName!
+            : $"{server.Name}:{server.BeaconHost}:{server.BeaconPort}";
 
-        if (_lastRegistrationTimes.TryGetValue(serverKey, out var lastTime)
-            && now - lastTime < _throttlePeriod)
+        _throttle.CheckAndRecord(throttleKey);
+
+        var existing = !string.IsNullOrWhiteSpace(server.ServerName)
+            ? await _context.Servers.FirstOrDefaultAsync(s => s.ServerName == server.ServerName, ct)
+            : await _context.Servers.FirstOrDefaultAsync(
+                s => s.Name == server.Name && s.BeaconHost == server.BeaconHost && s.BeaconPort == server.BeaconPort, ct);
+
+        if (existing == null)
         {
-            var remainingSeconds = (_throttlePeriod - (now - lastTime)).TotalSeconds;
-            throw new InvalidOperationException(
-                $"Слишком частая регистрация сервера. Повторная попытка возможна через {remainingSeconds:F0} секунд."
-            );
+            server.CreatedAt = now;
+            server.LastSeenAt = now;
+            _context.Servers.Add(server);
+        }
+        else
+        {
+            existing.BeaconHost = server.BeaconHost;
+            existing.BeaconPort = server.BeaconPort;
+            existing.Name = server.Name;
+            existing.Description = server.Description;
+            existing.ServerPublicName = server.ServerPublicName;
+            existing.Location = server.Location;
+            existing.ColorLiteHex = server.ColorLiteHex;
+            existing.ColorMainHex = server.ColorMainHex;
+            existing.ColorHardHex = server.ColorHardHex;
+            existing.AddedBy = server.AddedBy;
+            existing.LastSeenAt = now;
+            existing.ServerName = server.ServerName;
+            existing.FederationEndpoint = server.FederationEndpoint;
+            existing.TlsSpkiSha256 = server.TlsSpkiSha256;
+            existing.FederationProtocolVersions = server.FederationProtocolVersions;
+            existing.SigningKeys = server.SigningKeys;
         }
 
-        _servers.AddOrUpdate(
-            serverKey,
-            (server, now),
-            (key, existing) => (server, now)
-        );
-
-        _lastRegistrationTimes[serverKey] = now;
-
-        CleanupExpiredThrottleEntries(now);
+        await _context.SaveChangesAsync(ct);
     }
 
-    private void CleanupExpiredThrottleEntries(DateTime now)
+    public async Task<ServerInfo?> GetByServerNameAsync(string serverName, CancellationToken ct = default)
     {
-        foreach (var entry in _lastRegistrationTimes)
-        {
-            if (now - entry.Value > _throttlePeriod)
-            {
-                _lastRegistrationTimes.TryRemove(entry.Key, out _);
-            }
-        }
+        var normalized = serverName.ToLowerInvariant();
+        var threshold = DateTime.UtcNow - _serverActivePeriod;
+
+        return await _context.Servers.FirstOrDefaultAsync(s => s.ServerName == normalized && s.LastSeenAt >= threshold, ct);
     }
 }

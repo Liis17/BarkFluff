@@ -1,20 +1,53 @@
 using BarkFluff.Navigator.Domain;
 using BarkFluff.Navigator.Features.RegisterServer;
 using BarkFluff.Navigator.Persistence;
+using BarkFluff.Shared.Exceptions.Federation;
 using BarkFluff.Shared.Exceptions.Navigator;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BarkFluff.Navigator.Tests.Features;
 
+file class FakeHostEnvironment : IHostEnvironment
+{
+    public string EnvironmentName { get; set; } = "Development";
+    public string ApplicationName { get; set; } = "Tests";
+    public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+    public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+}
+
+// Тестовый двойник: не ходит в сеть, всегда возвращает заданный результат "well-known подтвердил владение".
+file class StubWellKnownValidator(bool result) : FederationWellKnownValidator(new FakeHostEnvironment(), NullLogger<FederationWellKnownValidator>.Instance)
+{
+    public override Task<bool> ValidateAsync(string normalizedServerName, IReadOnlyList<(string KeyId, byte[] PublicKey)> claimedKeys, CancellationToken ct)
+        => Task.FromResult(result);
+}
+
 public class RegisterServerCommandHandlerTests
 {
-    private readonly ServersStorage _storage =
-        new(new ConfigurationBuilder().Build());
+    private static NavigatorContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<NavigatorContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        return new NavigatorContext(options);
+    }
 
-    private RegisterServerCommandHandler CreateHandler() =>
-        new(_storage, NullLogger<RegisterServerCommandHandler>.Instance);
+    private readonly NavigatorContext _context = CreateContext();
+    private readonly ServersStorage _storage;
+
+    public RegisterServerCommandHandlerTests()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        _storage = new ServersStorage(_context, new RegistrationThrottle(configuration), configuration);
+    }
+
+    private RegisterServerCommandHandler CreateHandler(bool wellKnownResult = true) =>
+        new(_storage, new StubWellKnownValidator(wellKnownResult), NullLogger<RegisterServerCommandHandler>.Instance);
 
     private static ServerInfo ValidServer() => new()
     {
@@ -30,8 +63,8 @@ public class RegisterServerCommandHandlerTests
         AddedBy = "admin",
     };
 
-    private Task<BarkFluff.Proto.Navigator.RegisterServerResponse> Invoke(ServerInfo server) =>
-        CreateHandler().Handle(new RegisterServerCommand { Server = server }, CancellationToken.None);
+    private Task<BarkFluff.Proto.Navigator.RegisterServerResponse> Invoke(ServerInfo server, bool wellKnownResult = true) =>
+        CreateHandler(wellKnownResult).Handle(new RegisterServerCommand { Server = server }, CancellationToken.None);
 
     [Fact]
     public async Task Handle_ValidServer_RegistersAndIsListed()
@@ -39,7 +72,7 @@ public class RegisterServerCommandHandlerTests
         var result = await Invoke(ValidServer());
 
         result.Should().NotBeNull();
-        _storage.GetServers().Should().ContainSingle(s => s.Name == "MyServer");
+        (await _storage.GetServersAsync()).Should().ContainSingle(s => s.Name == "MyServer");
     }
 
     [Theory]
@@ -166,5 +199,38 @@ public class RegisterServerCommandHandlerTests
         server.ColorMainHex = color;
 
         await FluentActions.Awaiting(() => Invoke(server)).Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ServerNameSet_WellKnownConfirms_RegistersWithFederationFields()
+    {
+        var server = ValidServer();
+        server.ServerName = "Chat.Example.ORG"; // проверяем lowercase-нормализацию
+
+        await Invoke(server, wellKnownResult: true);
+
+        var stored = await _storage.GetByServerNameAsync("chat.example.org");
+        stored.Should().NotBeNull();
+        stored!.ServerName.Should().Be("chat.example.org");
+    }
+
+    [Fact]
+    public async Task Handle_ServerNameSet_WellKnownRejects_ThrowsFederationRegistrationRejected()
+    {
+        var server = ValidServer();
+        server.ServerName = "chat.example.org";
+
+        await FluentActions.Awaiting(() => Invoke(server, wellKnownResult: false))
+            .Should().ThrowAsync<FederationRegistrationRejectedException>();
+    }
+
+    [Fact]
+    public async Task Handle_ServerNameIsIpLiteral_ThrowsInvalidServername()
+    {
+        var server = ValidServer();
+        server.ServerName = "10.0.0.1";
+
+        await FluentActions.Awaiting(() => Invoke(server))
+            .Should().ThrowAsync<InvalidServernameException>();
     }
 }

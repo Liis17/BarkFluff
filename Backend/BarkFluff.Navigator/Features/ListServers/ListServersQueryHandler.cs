@@ -20,11 +20,11 @@ public class ListServersQueryHandler : IRequestHandler<ListServersQuery, ListSer
         _logger = logger;
     }
 
-    public Task<ListServersResponse> Handle(ListServersQuery request, CancellationToken cancellationToken)
+    public async Task<ListServersResponse> Handle(ListServersQuery request, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Запрос списка зарегистрированных серверов");
 
-        var servers = _serversStorage.GetServers();
+        var servers = await _serversStorage.GetServersAsync(cancellationToken);
 
         _logger.LogInformation(
             "Получен список серверов. Количество: {ServerCount}",
@@ -57,6 +57,6 @@ public class ListServersQueryHandler : IRequestHandler<ListServersQuery, ListSer
             }
         };
 
-        return Task.FromResult(response);
+        return response;
     }
 }
