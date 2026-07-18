@@ -24,9 +24,11 @@ using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.Devices.UpdateDeviceAppInfo;
 using BarkFluff.Users.Features.ExportData;
 using BarkFluff.Users.Features.FindByLogin;
+using BarkFluff.Users.Features.GetFederatedProfile;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserByUsername;
 using BarkFluff.Users.Features.GetUserContacts;
+using BarkFluff.Users.Features.GetUsersByUuid;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using BarkFluff.Users.Features.Privacy.GetUserPrivacyServer;
@@ -36,6 +38,7 @@ using BarkFluff.Users.Features.Personalization.SetProfilePosterServer;
 using BarkFluff.Users.Features.SetProfilePictureServer;
 using BarkFluff.Users.Features.UpdateProfileServer;
 using BarkFluff.Users.Features.UpdateStorageLimit;
+using BarkFluff.Users.Features.UpsertRemoteUsers;
 
 using Grpc.Core;
 
@@ -476,5 +479,31 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     {
         _metrics.Increment("bot_users_delete_requests");
         return _mediator.Send(new DeleteBotUserCommand { UserId = request.UserId });
+    }
+
+    // -- Федерация (этап 2.1) -------------------------------------------------------
+
+    public override Task<GetFederatedProfileResponse> GetFederatedProfile(GetFederatedProfileRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("federated_profile_requests");
+        Guid? uuid = request.UserCase == GetFederatedProfileRequest.UserOneofCase.Uuid && Guid.TryParse(request.Uuid, out var u)
+            ? u
+            : null;
+        return _mediator.Send(new GetFederatedProfileQuery
+        {
+            Username = request.UserCase == GetFederatedProfileRequest.UserOneofCase.Username ? request.Username : null,
+            Uuid = uuid,
+        });
+    }
+
+    public override Task<UpsertRemoteUsersResponse> UpsertRemoteUsers(UpsertRemoteUsersRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("remote_users_upsert_requests");
+        return _mediator.Send(new UpsertRemoteUsersCommand { Request = request });
+    }
+
+    public override Task<GetUsersByUuidResponse> GetUsersByUuid(GetUsersByUuidRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetUsersByUuidQuery { Request = request });
     }
 }

@@ -30,6 +30,8 @@ public class UsersContext : DbContext
 
     public DbSet<OneTimePrekey> OneTimePrekeys { get; set; }
 
+    public DbSet<RemoteUser> RemoteUsers { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
@@ -141,6 +143,15 @@ public class UsersContext : DbContext
 
         modelBuilder.Entity<OneTimePrekey>()
             .HasIndex(p => p.DeviceId);
+
+        // RemoteUser — кеш профилей пользователей чужих нод (этап 2.1).
+        // PK = Uuid (глобальный идентификатор), UNIQUE (Username, ServerName) — побеждает свежий резолв.
+        modelBuilder.Entity<RemoteUser>()
+            .HasKey(r => r.Uuid);
+
+        modelBuilder.Entity<RemoteUser>()
+            .HasIndex(r => new { r.Username, r.ServerName })
+            .IsUnique();
 
         base.OnModelCreating(modelBuilder);
 
