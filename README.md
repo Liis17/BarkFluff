@@ -11,7 +11,7 @@
 | **Windows** | WPF (.NET 10), Code-behind + Reactive wrappers |
 | **Android** | Kotlin 2.0, gRPC-OkHttp, ViewBinding |
 | **Linux** | C++ Qt 6, CMake, gRPC |
-| **Web** | React 19 + TypeScript, Material 3 Expressive |
+| **Web** | Vanilla JS, gRPC-Web (esbuild-бандл) |
 
 ## Архитектура
 
@@ -35,6 +35,8 @@
 | Notification | 7004 | Email-уведомления (RabbitMQ consumer) |
 | FastAuth | 7008 | QR-авторизация устройств |
 | Calls | 7025 | Аудио/видео звонки на LiveKit SFU |
+| Bots | 7027 / 7028 | Bot API (gRPC + HTTP REST `/bot/{method}`) |
+| Federation | 7030 / 7031 | Межсерверная федерация (S2S), well-known документ |
 | AdminPanel | 51888 | Веб-дашборд администратора |
 | WebServer | 64641 | Публичный HTTP-сервер, раздача статики |
 | Web | 7016 | gRPC-Web прокси + статика |
@@ -56,16 +58,16 @@
 
 ```
 BarkFluff/
-├── Backend/          # Все микросервисы и shared-библиотеки
+├── Backend/          # Все микросервисы (в т.ч. BarkFluff.Web — веб-клиент)
 │   ├── BarkFluff.{Service}/
-│   ├── BarkFluff.GrpcServer/   # Общая инфраструктура (XAuth, Serilog, Metrics)
-│   └── Shared/                  # Proto, Auth, Exceptions, Identity, Queue
+│   └── BarkFluff.GrpcServer/   # Общая инфраструктура (XAuth, Serilog, Metrics)
+├── Shared/           # Proto, Auth, Exceptions, Identity, Queue
+├── Frontend/Developers/  # React-фронтенд портала документации (сервис Developers)
 ├── Android/          # Kotlin-клиент
 ├── Windows/          # WPF-клиент + DBEditor
-├── macOS/            # SwiftUI macOS 26
+├── Mac/              # SwiftUI macOS 26
 ├── iOS/              # SwiftUI iOS 26
 ├── Linux/            # Qt6 / C++20
-├── Web/              # React 19 веб-клиент
 └── Obsidian/ClaudeVault/  # База знаний проекта
 ```
 
@@ -75,8 +77,8 @@ BarkFluff/
 
 ```bash
 cd Backend
-docker-compose -f docker-compose-dev.yml up -d
-docker-compose -f docker-compose-dev.yml ps
+docker compose -f docker-compose-dev.yml up -d
+docker compose -f docker-compose-dev.yml ps
 ```
 
 Порядок зависимостей управляется через `depends_on`. Configuration запускается первым — все остальные сервисы ждут его готовности.
