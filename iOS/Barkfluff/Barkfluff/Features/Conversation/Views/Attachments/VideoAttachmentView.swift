@@ -15,38 +15,41 @@ struct VideoAttachmentView: View {
     let onTap: () -> Void
 
     var body: some View {
-        ZStack {
-            if let previewURL = attachment.previewURL, let url = URL(string: previewURL) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
-                        placeholder
-                    @unknown default:
-                        placeholder
+        Button(action: onTap) {
+            ZStack {
+                if let previewURL = attachment.previewURL, let url = URL(string: previewURL) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure, .empty:
+                            placeholder
+                        @unknown default:
+                            placeholder
+                        }
                     }
+                } else {
+                    placeholder
                 }
-            } else {
-                placeholder
-            }
 
-            // Play button overlay
-            Circle()
-                .fill(.ultraThinMaterial)
-                .frame(width: 50, height: 50)
-                .overlay {
-                    Image(systemName: "play.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .offset(x: 2)
-                }
+                // Play button overlay
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 50, height: 50)
+                    .overlay {
+                        Image(systemName: "play.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .offset(x: 2)
+                    }
+            }
+            .frame(width: 200, height: 150)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg))
         }
-        .frame(width: 200, height: 150)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg))
-        .onTapGesture { onTap() }
+        .buttonStyle(.bfPressable)
+        .accessibilityLabel(Text("conversation.attach.preview.video"))
     }
 
     private var placeholder: some View {

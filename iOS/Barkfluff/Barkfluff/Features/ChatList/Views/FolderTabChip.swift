@@ -9,6 +9,8 @@ import SwiftUI
 import BFCore
 
 struct FolderTabChip: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let icon: String
     let title: String
     let unreadCount: Int
@@ -20,21 +22,21 @@ struct FolderTabChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if !icon.isEmpty {
-                    Text(icon).font(.system(size: 16))
+                    Text(icon).font(.body)
                 } else {
                     Image(systemName: "tray.full.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                 }
 
                 if !compact {
                     Text(title)
-                        .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
                         .lineLimit(1)
                 }
 
                 if unreadCount > 0 {
                     Text("\(unreadCount)")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -42,14 +44,18 @@ struct FolderTabChip: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .frame(minHeight: 44)
             .background(
                 Capsule()
                     .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.gray.opacity(0.12))
             )
             .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            .animation(reduceMotion ? nil : Theme.Animation.stateChange, value: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(unreadCount > 0 ? Text("\(unreadCount)") : Text(""))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

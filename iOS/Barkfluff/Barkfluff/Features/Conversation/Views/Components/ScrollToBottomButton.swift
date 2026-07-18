@@ -18,7 +18,7 @@ struct ScrollToBottomButton: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 44, height: 44)
                     .glassEffect(.regular, in: .circle)
 
                 // Бейдж непрочитанных
@@ -35,7 +35,9 @@ struct ScrollToBottomButton: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
+        .accessibilityLabel(Text("conversation.input.scroll_to_bottom"))
+        .accessibilityValue(unreadCount > 0 ? Text("\(unreadCount)") : Text(""))
     }
 }
 

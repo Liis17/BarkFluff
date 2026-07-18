@@ -11,6 +11,8 @@ import SwiftUI
 
 /// Стиль кнопки с эффектом стекла
 struct GlassButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var prominence: Prominence = .standard
 
     enum Prominence {
@@ -27,8 +29,8 @@ struct GlassButtonStyle: ButtonStyle {
             .padding(.vertical, 10)
             .background(background(for: configuration.isPressed))
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.98 : 1))
+            .animation(reduceMotion ? nil : Theme.Animation.press, value: configuration.isPressed)
     }
 
     @ViewBuilder
@@ -69,6 +71,8 @@ struct GlassButtonStyle: ButtonStyle {
 
 /// Стиль кнопки в форме капсулы
 struct GlassCapsuleButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var prominence: GlassButtonStyle.Prominence = .standard
 
     func makeBody(configuration: Configuration) -> some View {
@@ -79,8 +83,8 @@ struct GlassCapsuleButtonStyle: ButtonStyle {
             .padding(.vertical, 12)
             .background(background(for: configuration.isPressed))
             .clipShape(Capsule())
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.97 : 1))
+            .animation(reduceMotion ? nil : Theme.Animation.press, value: configuration.isPressed)
     }
 
     @ViewBuilder
@@ -117,6 +121,22 @@ struct GlassCapsuleButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - Pressable Button Style
+
+/// Лёгкая реакция на touch-down для частых кнопок без собственной подложки.
+struct PressableButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var pressedScale: CGFloat = 0.97
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? pressedScale : 1))
+            .opacity(reduceMotion && configuration.isPressed ? 0.72 : 1)
+            .animation(reduceMotion ? nil : Theme.Animation.press, value: configuration.isPressed)
+    }
+}
+
 // MARK: - View Extension
 
 extension ButtonStyle where Self == GlassButtonStyle {
@@ -128,4 +148,8 @@ extension ButtonStyle where Self == GlassButtonStyle {
 extension ButtonStyle where Self == GlassCapsuleButtonStyle {
     static var bfGlassCapsule: GlassCapsuleButtonStyle { GlassCapsuleButtonStyle() }
     static var bfGlassCapsuleProminent: GlassCapsuleButtonStyle { GlassCapsuleButtonStyle(prominence: .prominent) }
+}
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    static var bfPressable: PressableButtonStyle { PressableButtonStyle() }
 }
