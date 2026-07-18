@@ -79,14 +79,14 @@ sudo snap install dotnet-sdk --classic --channel=10.0
 ```bash
 dotnet --list-sdks
 # Ожидаемый вывод:
-# 10.0.109 [/usr/lib/dotnet/sdk]
+# 10.0.110 [/var/snap/dotnet/common/dotnet/sdk]
 ```
 
 ---
 
 ## Примечание
 
-Корневой `global.json` закрепляет SDK `10.0.109` без автоматического скачивания и
+Корневой `global.json` закрепляет SDK `10.0.110` без автоматического скачивания и
 без перехода на другую patch-версию. В CI/CD (`.github/workflows/build-backend-*.yml`)
 задача `check-dotnet` проверяет наличие именно этой версии на self-hosted раннере и
 завершает сборку с уведомлением в Telegram, если SDK не установлен.
