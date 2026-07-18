@@ -56,5 +56,33 @@ public class RegisterDeviceCommandHandlerTests : IAsyncDisposable
         result.Device.OriginalName.Should().Be("New Name");
     }
 
+    [Fact]
+    public async Task Handle_DeviceRegisteredToAnotherUser_MovesDevice()
+    {
+        var previousUser = await _h.SeedUser(
+            username: "previous_owner",
+            email: "previous_owner@test.com");
+        var currentUser = await _h.SeedUser(
+            username: "current_owner",
+            email: "current_owner@test.com");
+        var deviceId = Guid.NewGuid();
+        await _h.SeedDevice(deviceId, previousUser.Id, "Old Name");
+        var handler = new RegisterDeviceCommandHandler(
+            _h.DevicesStorage,
+            TestHelper.CreateLogger<RegisterDeviceCommandHandler>());
+
+        await handler.Handle(new RegisterDeviceCommand
+        {
+            DeviceId = deviceId,
+            UserId = currentUser.Id,
+            OriginalName = "New Name",
+            AppName = "BarkFluff"
+        }, CancellationToken.None);
+
+        (await _h.DevicesStorage.GetDevicesByUserId(previousUser.Id)).Should().BeEmpty();
+        (await _h.DevicesStorage.GetDevicesByUserId(currentUser.Id))
+            .Should().ContainSingle(device => device.Id == deviceId && device.OriginalName == "New Name");
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }
