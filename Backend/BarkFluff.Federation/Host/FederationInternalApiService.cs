@@ -17,19 +17,26 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
 {
     private readonly SigningKeyService _signingKeyService;
     private readonly WellKnownDocumentService _wellKnownDocumentService;
+    private readonly ActiveSigningKeyCache _activeSigningKeyCache;
 
-    public FederationInternalApiService(SigningKeyService signingKeyService, WellKnownDocumentService wellKnownDocumentService)
+    public FederationInternalApiService(
+        SigningKeyService signingKeyService,
+        WellKnownDocumentService wellKnownDocumentService,
+        ActiveSigningKeyCache activeSigningKeyCache)
     {
         _signingKeyService = signingKeyService;
         _wellKnownDocumentService = wellKnownDocumentService;
+        _activeSigningKeyCache = activeSigningKeyCache;
     }
 
     public override async Task<RotateSigningKeyResponse> RotateSigningKey(RotateSigningKeyRequest request, ServerCallContext context)
     {
         var (newKey, oldKey) = await _signingKeyService.RotateAsync(context.CancellationToken);
 
-        // Well-known после ротации публикует оба ключа и подписан новым.
+        // Well-known после ротации публикует оба ключа и подписан новым; исходящие XFed-подписи —
+        // новым активным ключом немедленно.
         await _wellKnownDocumentService.RebuildAsync(context.CancellationToken);
+        await _activeSigningKeyCache.RefreshAsync(context.CancellationToken);
 
         return new RotateSigningKeyResponse
         {
