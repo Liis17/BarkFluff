@@ -12,6 +12,10 @@ public class FederationContext : DbContext
 
     public DbSet<KnownServerKey> KnownServerKeys { get; set; }
 
+    public DbSet<FederationOutbox> Outbox { get; set; }
+
+    public DbSet<ProcessedEvent> ProcessedEvents { get; set; }
+
     public FederationContext(DbContextOptions<FederationContext> options)
         : base(options)
     {
@@ -51,6 +55,32 @@ public class FederationContext : DbContext
         {
             entity.HasKey(e => new { e.ServerName, e.KeyId });
             entity.Property(e => e.PublicKey).IsRequired();
+        });
+
+        modelBuilder.Entity<FederationOutbox>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Destination).IsRequired();
+            entity.Property(e => e.EventId).IsRequired();
+            entity.Property(e => e.EventType).IsRequired();
+            entity.Property(e => e.PayloadBytes).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.NextAttemptAt).IsRequired();
+            entity.Property(e => e.Status).HasConversion<int>().IsRequired();
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt })
+                .HasDatabaseName("IX_Outbox_Status_NextAttemptAt");
+            entity.HasIndex(e => new { e.Destination, e.ChatId, e.Id })
+                .HasDatabaseName("IX_Outbox_Destination_ChatId_Id");
+            entity.ToTable("FederationOutbox");
+        });
+
+        modelBuilder.Entity<ProcessedEvent>(entity =>
+        {
+            entity.HasKey(e => e.EventId);
+            entity.Property(e => e.OriginServer).IsRequired();
+            entity.Property(e => e.ReceivedAt).IsRequired();
+            entity.ToTable("ProcessedEvents");
         });
     }
 }

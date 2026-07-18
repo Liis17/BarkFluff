@@ -13,6 +13,7 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8">
@@ -32,6 +33,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
+      <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
     </ItemGroup>
 
     <ItemGroup>

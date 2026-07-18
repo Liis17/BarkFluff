@@ -6,9 +6,81 @@
 
 Расположение: `Backend/BarkFluff.Federation/`
 
-## Текущее состояние: discovery (этап 1.4) + S2S-профиль (этап 2.1)
+## Доставка (этап 2.2)
 
-Нода умеет находить пиров всеми тремя способами (well-known → Navigator → manual), наполняет `KnownServers`/`KnownServerKeys` кодом, защищена от SSRF, фоново рефрешит ключи. Внутренний API управления пирами реализован полностью. Из S2S-RPC реализованы `Ping`/`GetServerKeys`/`GetUserProfile`, внутренние — `ResolveRemoteUser` + управление пирами. Остальные S2S-RPC (доставка событий, catch-up, presence, typing) отвечают `Unimplemented` — тела появятся в последующих этапах Фазы 2.
+Надёжная доставка федеративных событий из [[04-federation-service|docs/rearch/04]].
+
+### Схема FederationDb (новые таблицы с этапа 2.2)
+
+- `FederationOutbox (Id bigserial PK, Destination, ChatId NULL, EventId uuid, EventType, PayloadBytes bytea, CreatedAt, Attempts, NextAttemptAt, Status int, LastError)` — индексы `(Status, NextAttemptAt)` и `(Destination, ChatId, Id)`.
+- `ProcessedEvents (EventId uuid PK, OriginServer, ReceivedAt)` — идемпотентность входящих, TTL 14 дней.
+
+### Outbox-диспетчер (`BackgroundServices/OutboxDispatcher.cs`)
+
+`BackgroundService` с циклом 5 секунд:
+
+- выбирает `Pending` с `NextAttemptAt <= now`, группирует по `Destination`;
+- **упорядочивание per-chat**: событие чата попадает в батч только если у `(Destination, ChatId)` нет более раннего (меньший `Id`) недоставленного Pending-события; `ChatId = NULL` (профильные, 2.9) — без ограничений; между чатами — независимо (без head-of-line blocking);
+- батч ≤ 100 событий и ≤ 1 МБ на вызов `DeliverEvents`;
+- вызов S2S `DeliverEvents` подписанным клиентом (1.3) через `ServerResolver` (1.4) и `S2SChannelFactory`;
+- per-event классификация ответа: `OK`/`ALREADY_PROCESSED` → Delivered; `REJECTED` → DeadLetter немедленно (`LastError = error_code`), очередь чата продолжает ехать; `RETRY` или транспортная ошибка → backoff всем событиям батча;
+- backoff: 30s → 2m → 10m → 1h → 6h (далее кап 6h); `MaxAttempts` (дефолт 20 ≈ 7 суток окна, конфиг `Federation:OutboxMaxAttempts`) → DeadLetter;
+- gauge `outbox_pending` после цикла.
+
+### Janitor (`BackgroundServices/OutboxJanitor.cs`)
+
+Раз в час: `Delivered` старше 7 дней (конфиг `Federation:OutboxDeliveredTtlHours`) и `ProcessedEvents` старше 14 дней (конфиг `Federation:ProcessedEventsTtlHours`) — удаляются.
+
+### EventSigner (`Services/EventSigner.cs`)
+
+Канонизация FederationEvent: сериализация с **очищенными** `origin_signature`/`origin_key_id` (C# protobuf — детерминирована по номерам полей); отправитель подписывает приватным ключом и проставляет поля, получатель очищает и пере-сериализует для проверки. См. [[02-trust-and-certs|docs/rearch/02-trust-and-certs.md]] — раздел «Подпись FederationEvent» (добавлен этапом 2.2).
+
+### OutboxWriter (`Infrastructure/OutboxWriter.cs`)
+
+Общая точка записи: строит wire-bytes из FederationEvent, подписывает активным ключом, ставит строки в outbox для каждой ноды из `destinations` (свой `Federation:ServerName` исключается). Используется RabbitMQ-консюмерами и internal-RPC `EnqueueOutbound`.
+
+### Консюмеры RabbitMQ (`Consumers/`)
+
+Очереди (образец — Updates/CloudMessaging):
+
+| Очередь | Событие | Действие |
+|---|---|---|
+| `new-messages-federation-handler` | [[Shared/Queue#NewMessageEvent]] | Если `IsFederated=true` — построить `ChatCreated` (если `IsFirstMessageInChat`) + `NewMessage`, подписать, в outbox для каждого ServerName из `RemoteParticipants` |
+| `messages-edited-federation-handler` | `MessageEditedEvent` | `MessageEdited` в outbox |
+| `messages-deleted-federation-handler` | `MessageDeletedEvent` | `MessageDeleted` в outbox |
+| `read-receipts-federation-handler` | `MessageReadEvent` | `MessagesRead` в outbox |
+| `session-revoked-federation` | [[Shared/Queue#SessionRevokedEvent]] | Стандартная инвалидация `TokenRevocationCache` (по образцу Users/Messages/Updates) |
+
+Консюмеры игнорируют события при `Federation:Enabled=false` или `IsFederated=false` — нефедеративные чаты не порождают outbox-записей. Поля для построения payload'ов Messages начнёт заполнять в 2.3; в этапе 2.2 текст не передаётся (приёмник возвращает `RETRY:NotImplementedYet`).
+
+### DeliverEvents — серверный пайплайн (этап 2.2)
+
+Реализация `FederationS2SApi.DeliverEvents` в `Host/FederationS2SApiService.cs`. Для каждого события:
+
+1. `origin_server` события == `x-bf-origin` (XFed проверил подпись запроса) → иначе `REJECTED`.
+2. `ProcessedEvents` содержит `event_id` → `ALREADY_PROCESSED`.
+3. Проверка `origin_signature` ключом `origin_key_id` из `KnownServerKeys` → иначе `REJECTED`.
+4. «Нода говорит только за своих»: `author.server_name` внутри payload == origin → иначе `REJECTED`.
+5. Маршрутизация по типу → внутренний вызов. **В этапе 2.2** все чатовые payload'ы возвращают `RETRY` (иморт-RPC в Messages — этап 2.3), каркас маршрутизации и коды готовы.
+6. Успех → запись в `ProcessedEvents` + `OK`. RETRY не индексируется в ProcessedEvents (повторная доставка валидна).
+
+### EnqueueOutbound — internal API
+
+`FederationInternalApi.EnqueueOutbound(event, destinations[])` — прямая постановка подписанного события в outbox. Для ручных тестов и профильных событий (2.9). Консюмеры RabbitMQ используют `OutboxWriter` напрямую, не этот RPC.
+
+### Метрики
+
+- `outbox_pending` (gauge, снимается в конце цикла диспетчера)
+- `outbox_delivered`, `outbox_retry`, `outbox_dispatch_errors`
+- `outbox_deadletter.rejected` / `.max_attempts` / `.federated_dm_rejected`
+- `outbox_deliver_duration_ms_total`
+- `outbox_enqueued_total`
+- `events_received.{type}` — при `OK`
+- `events_duplicate`, `events_rejected.{origin_mismatch|unknown_key|invalid_signature|author_not_origin}`
+
+ + S2S-профиль (этап 2.1) + outbox (этап 2.2)
+
+Нода умеет находить пиров всеми тремя способами (well-known → Navigator → manual), наполняет `KnownServers`/`KnownServerKeys` кодом, защищена от SSRF, фоново рефрешит ключи. Внутренний API управления пирами реализован полностью. Из S2S-RPC реализованы `Ping`/`GetServerKeys`/`GetUserProfile`/`DeliverEvents`, внутренние — `ResolveRemoteUser`/`EnqueueOutbound` + управление пирами. Остальные S2S-RPC (catch-up, presence, typing) отвечают `Unimplemented`.
 
 Федерация по умолчанию выключена (`Federation:Enabled = false`); при пустом `Federation:ServerName` сервис стартует нормально, но ключ всё равно генерируется (безвредно, лог-warning), а well-known отвечает `503`.
 
