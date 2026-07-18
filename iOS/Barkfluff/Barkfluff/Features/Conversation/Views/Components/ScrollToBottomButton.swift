@@ -35,7 +35,9 @@ struct ScrollToBottomButton: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
+        .accessibilityLabel(Text("conversation.input.scroll_to_bottom"))
+        .accessibilityValue(unreadCount > 0 ? Text("\(unreadCount)") : Text(""))
     }
 }
 

@@ -10,6 +10,8 @@ import SwiftUI
 import PhotosUI
 
 struct MessageInputView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @Binding var text: String
     @Binding var selectedAttachments: [SelectedAttachment]
     let isSending: Bool
@@ -33,10 +35,7 @@ struct MessageInputView: View {
                     onPickMedia: { showPhotoPicker = true },
                     onPickDocument: { showDocumentPicker = true }
                 )
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .opacity
-                ))
+                .transition(attachmentTransition)
                 .padding(.horizontal, Theme.Spacing.md)
                 .padding(.top, Theme.Spacing.sm)
             }
@@ -59,7 +58,10 @@ struct MessageInputView: View {
             .padding(.vertical, Theme.Spacing.sm)
         }
         .background(Color.clear)
-        .animation(.spring(duration: 0.3), value: selectedAttachments.count)
+        .animation(
+            reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.3),
+            value: selectedAttachments.count
+        )
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItems, maxSelectionCount: 10, matching: .any(of: [.images, .videos]))
         .onChange(of: selectedPhotoItems) { _, newItems in
             processPhotoItems(newItems)
@@ -109,8 +111,11 @@ struct MessageInputView: View {
             Image(systemName: "paperclip")
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
+        .accessibilityLabel(Text("conversation.input.attachments"))
     }
 
     // MARK: - Sticker Button
@@ -122,8 +127,10 @@ struct MessageInputView: View {
             Image(systemName: "face.smiling")
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
         .accessibilityLabel(Text("conversation.input.stickers"))
     }
 
@@ -154,23 +161,37 @@ struct MessageInputView: View {
             guard canSend else { return }
             onSend()
         } label: {
-            if isSending {
-                ProgressView()
-                    .frame(width: 32, height: 32)
-            } else {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(canSend ? Color.accentColor : Color(uiColor: .systemGray3))
+            Group {
+                if isSending {
+                    ProgressView()
+                } else {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(canSend ? Color.accentColor : Color(uiColor: .systemGray3))
+                }
             }
+            .frame(width: 32, height: 32)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
         .disabled(!canSend && !isSending)
+        .accessibilityLabel(Text("conversation.input.send"))
     }
 
     // MARK: - Computed
 
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedAttachments.isEmpty
+    }
+
+    private var attachmentTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .move(edge: .bottom).combined(with: .opacity),
+            removal: .opacity
+        )
     }
 
     // MARK: - Photo Processing

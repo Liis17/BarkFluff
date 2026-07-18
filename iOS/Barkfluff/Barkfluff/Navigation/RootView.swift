@@ -13,6 +13,7 @@ struct RootView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(DependencyContainer.self) private var container
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -48,7 +49,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showSplash)
-        .animation(.easeInOut(duration: 0.2), value: container.callController.phase)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: container.callController.phase)
         .preferredColorScheme(container.appearanceSettings.colorScheme)
         .task {
             await coordinator.onAppLaunch(

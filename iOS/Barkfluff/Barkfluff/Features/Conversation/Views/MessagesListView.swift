@@ -10,6 +10,8 @@ import BFCore
 
 /// ScrollView с сообщениями
 struct MessagesListView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let items: [MessageListItem]
     let currentUserID: Int64
     let isGroupChat: Bool
@@ -67,10 +69,7 @@ struct MessagesListView: View {
                                 onCopyImage: onCopyImage,
                                 onSaveDocuments: onSaveDocuments
                             )
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .bottom).combined(with: .opacity),
-                                removal: .opacity
-                            ))
+                            .transition(messageTransition)
                             .onAppear {
                                 // Пагинация при достижении первого сообщения
                                 guard scrollPosition.isInitialLoadComplete else { return }
@@ -95,15 +94,19 @@ struct MessagesListView: View {
             }
             .onChange(of: scrollPosition.scrollToID) { _, newID in
                 if let id = newID {
-                    withAnimation(.smooth) {
+                    if reduceMotion {
                         proxy.scrollTo(id, anchor: .bottom)
+                    } else {
+                        withAnimation(.smooth) {
+                            proxy.scrollTo(id, anchor: .bottom)
+                        }
                     }
                 }
             }
             .onChange(of: items.count) { oldCount, newCount in
                 // Автоскролл при новых сообщениях, если были внизу
                 if scrollPosition.isAtBottom, newCount > oldCount {
-                    scrollToBottom(proxy: proxy, animate: true)
+                    scrollToBottom(proxy: proxy, animate: !reduceMotion)
                 }
             }
             .defaultScrollAnchor(.bottom)
@@ -129,6 +132,16 @@ struct MessagesListView: View {
         } else {
             proxy.scrollTo("bottom", anchor: .bottom)
         }
+    }
+
+    private var messageTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .move(edge: .bottom).combined(with: .opacity),
+            removal: .opacity
+        )
     }
 }
 
