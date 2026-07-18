@@ -50,6 +50,7 @@
             --msg-outgoing-bg: var(--msg-out-bg);
             --sidebar-width: 340px;
             --chat-content-width: 800px;
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
         }
         [data-theme="dark"] {
             --bg: #141210;
@@ -777,11 +778,19 @@
 
         /* Quality popover */
         .call-quality-panel {
-            display: none; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+            display: block; position: absolute; left: 50%; bottom: 96px;
+            transform: translateX(-50%) translateY(6px) scale(0.98);
+            transform-origin: bottom center;
             background: #232220; border-radius: 14px; padding: 14px 16px; z-index: 4;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 260px;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
-        .call-quality-panel.open { display: block; }
+        .call-quality-panel.open {
+            opacity: 1; visibility: visible; pointer-events: auto;
+            transform: translateX(-50%) translateY(0) scale(1);
+            transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s linear;
+        }
         .call-quality-group + .call-quality-group { margin-top: 12px; }
         .call-quality-title {
             color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase;
@@ -814,11 +823,19 @@
         .call-ctl-caret svg { width: 12px; height: 12px; }
         .call-ctl-caret:hover { background: #4a4744; }
         .call-ctl-menu {
-            display: none; position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%);
+            display: block; position: absolute; left: 50%; bottom: 72px;
+            transform: translateX(-50%) translateY(6px) scale(0.98);
+            transform-origin: bottom center;
             background: #232220; border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 6;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
-        .call-ctl-menu.open { display: block; }
+        .call-ctl-menu.open {
+            opacity: 1; visibility: visible; pointer-events: auto;
+            transform: translateX(-50%) translateY(0) scale(1);
+            transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s linear;
+        }
         .call-ctl-menu-item {
             display: block; width: 100%; text-align: left; border: none; background: transparent;
             color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; cursor: pointer;
@@ -1519,15 +1536,20 @@
         .attach-btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Drop overlay */
-        .drop-overlay { display: none; position: absolute; inset: 0; z-index: 50;
+        .drop-overlay { display: flex; position: absolute; inset: 0; z-index: 50;
             background: rgba(140,53,28,0.15); border: 3px dashed var(--primary);
             border-radius: 12px; align-items: center; justify-content: center;
-            font-size: 18px; font-weight: 600; color: var(--primary); pointer-events: none; }
-        .chat-area.drag-over .drop-overlay { display: flex; }
+            font-size: 18px; font-weight: 600; color: var(--primary); pointer-events: none;
+            opacity: 0; transform: scale(0.985);
+            transition: opacity 100ms var(--ease-out), transform 100ms var(--ease-out); }
+        .chat-area.drag-over .drop-overlay {
+            opacity: 1; transform: scale(1);
+            transition-duration: 120ms;
+        }
 
         /* Image viewer overlay */
         .image-overlay {
-            display: none;
+            display: flex;
             position: fixed;
             inset: 0;
             z-index: 100;
@@ -1535,15 +1557,35 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
         }
 
-        .image-overlay.visible { display: flex; }
+        .image-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: opacity 150ms var(--ease-out), visibility 0s linear;
+        }
 
-        .image-overlay img {
+        .image-overlay img,
+        .image-overlay video {
             max-width: 90vw;
             max-height: 90vh;
             object-fit: contain;
             border-radius: 8px;
+            opacity: 0;
+            transform: scale(0.98);
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+        }
+
+        .image-overlay.visible img,
+        .image-overlay.visible video {
+            opacity: 1;
+            transform: scale(1);
+            transition-duration: 180ms;
         }
 
         .overlay-nav {
@@ -3364,7 +3406,7 @@
         .newchat-fab:hover { transform: scale(1.05); }
 
         .newchat-menu {
-            display: none;
+            display: block;
             position: absolute;
             right: 14px;
             bottom: 138px;
@@ -3375,9 +3417,21 @@
             padding: 6px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
             min-width: 210px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(6px) scale(0.98);
+            transform-origin: bottom right;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
 
-        .newchat-menu.visible { display: block; }
+        .newchat-menu.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+            transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s linear;
+        }
 
         .newchat-menu button {
             display: flex;
@@ -4127,7 +4181,7 @@
             position: fixed;
             left: 50%;
             bottom: 100px;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(8px);
             background: rgba(0, 0, 0, 0.78);
             color: white;
             font-size: 14px;
@@ -4135,10 +4189,14 @@
             border-radius: 22px;
             z-index: 1100;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
             pointer-events: none;
         }
-        .soon-toast.visible { opacity: 1; }
+        .soon-toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            transition-duration: 160ms;
+        }
 
         @media (max-width: 768px) {
             .forward-modal {
@@ -4464,6 +4522,56 @@
         .audio-play-btn.bf-load-failed {
             opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .call-quality-panel,
+            .call-ctl-menu {
+                transform: translateX(-50%);
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
+            .call-quality-panel.open,
+            .call-ctl-menu.open {
+                transform: translateX(-50%);
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+            .drop-overlay,
+            .chat-area.drag-over .drop-overlay,
+            .newchat-menu,
+            .newchat-menu.visible,
+            .image-overlay img,
+            .image-overlay video,
+            .image-overlay.visible img,
+            .image-overlay.visible video {
+                transform: none;
+            }
+            .drop-overlay,
+            .chat-area.drag-over .drop-overlay {
+                transition: opacity 120ms var(--ease-out);
+            }
+            .newchat-menu {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
+            .newchat-menu.visible {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+            .image-overlay {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
+            .image-overlay.visible {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+            .image-overlay img,
+            .image-overlay video,
+            .image-overlay.visible img,
+            .image-overlay.visible video {
+                transition: opacity 120ms var(--ease-out);
+            }
+            .soon-toast,
+            .soon-toast.visible {
+                transform: translateX(-50%);
+                transition: opacity 120ms var(--ease-out);
+            }
         }
     </style>
     <script>
