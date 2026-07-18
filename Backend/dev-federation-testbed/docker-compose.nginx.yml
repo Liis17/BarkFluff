@@ -1,0 +1,35 @@
+version: '3.8'
+
+# nginx перед каждой нодой стенда (docs/rearch/phase-1/step-1.6-nginx.md, Изменение 4) —
+# self-signed TLS + SPKI-пиннинг вместо plaintext http:// из этапа 1.3.
+#
+# Запуск (из Backend/), после certs/make-certs.sh:
+#   docker compose -f docker-compose-dev.yml -f dev-federation-testbed/docker-compose.node2.yml \
+#     -f dev-federation-testbed/docker-compose.nginx.yml up -d
+
+services:
+  nginx-node1:
+    image: nginx:1.27
+    container_name: nginx-node1
+    restart: always
+    volumes:
+      - ./nginx/node1.conf:/etc/nginx/conf.d/node1.conf:ro
+      - ./certs/node1.crt.pem:/etc/nginx/certs/node1.crt.pem:ro
+      - ./certs/node1.key.pem:/etc/nginx/certs/node1.key.pem:ro
+    depends_on:
+      - federation
+    networks:
+      - barkfluff-network
+
+  nginx-node2:
+    image: nginx:1.27
+    container_name: nginx-node2
+    restart: always
+    volumes:
+      - ./nginx/node2.conf:/etc/nginx/conf.d/node2.conf:ro
+      - ./certs/node2.crt.pem:/etc/nginx/certs/node2.crt.pem:ro
+      - ./certs/node2.key.pem:/etc/nginx/certs/node2.key.pem:ro
+    depends_on:
+      - federation2
+    networks:
+      - barkfluff-network
