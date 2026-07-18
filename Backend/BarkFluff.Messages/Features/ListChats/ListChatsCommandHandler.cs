@@ -5,6 +5,8 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 
+using Grpc.Core;
+
 using MediatR;
 
 using Microsoft.Extensions.Caching.Distributed;
@@ -139,23 +141,37 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
         // Отмечаем чаты, у которых пользователь отключил уведомления (per-chat mute).
         if (grpcChats.Count > 0)
         {
-            var mutedResponse = await _usersServerApiClient.GetMutedChatIdsAsync(
-                new GetMutedChatIdsRequest
-                {
-                    UserId = _userContext.UserId,
-                    ChatIds = { grpcChats.Select(c => c.Id) }
-                });
-
-            if (mutedResponse.MutedChatIds.Count > 0)
+            try
             {
-                var mutedSet = mutedResponse.MutedChatIds.ToHashSet();
-                foreach (var grpcChat in grpcChats)
-                {
-                    if (mutedSet.Contains(grpcChat.Id))
+                var mutedResponse = await _usersServerApiClient.GetMutedChatIdsAsync(
+                    new GetMutedChatIdsRequest
                     {
-                        grpcChat.Muted = true;
+                        UserId = _userContext.UserId,
+                        ChatIds = { grpcChats.Select(c => c.Id) }
+                    },
+                    cancellationToken: cancellationToken);
+
+                if (mutedResponse.MutedChatIds.Count > 0)
+                {
+                    var mutedSet = mutedResponse.MutedChatIds.ToHashSet();
+                    foreach (var grpcChat in grpcChats)
+                    {
+                        if (mutedSet.Contains(grpcChat.Id))
+                        {
+                            grpcChat.Muted = true;
+                        }
                     }
                 }
+            }
+            catch (RpcException ex) when (ex.StatusCode is
+                StatusCode.Unavailable or
+                StatusCode.DeadlineExceeded or
+                StatusCode.ResourceExhausted)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Не удалось получить mute-статусы для пользователя {UserId}; список чатов возвращён с Muted=false",
+                    _userContext.UserId);
             }
         }
 
