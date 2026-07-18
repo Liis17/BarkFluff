@@ -96,6 +96,10 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             return;
         }
 
+        var readBySnapshots = newlyReadMessages.ToDictionary(
+            message => message.Id,
+            message => new List<long>(message.ReadBy) { _userContext.UserId });
+
         // Обновляем ReadBy только для сообщений, которые пользователь ещё не читал.
         await _messagesStorage.MarkMessagesAsRead(
             newlyReadMessages.Select(message => message.Id).ToList(),
@@ -115,6 +119,7 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             sendTasks.Add(_readByQueueSender.SendEvent(
                 message.ChatId,
                 message.Id,
+                readBySnapshots[message.Id],
                 [_userContext.UserId],
                 chatMembers));
         }
