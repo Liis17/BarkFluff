@@ -27,6 +27,7 @@ public static class DependencyInjection
 
         // Регистрируем трекер ожидающих push-уведомлений
         services.AddSingleton<Features.PushNotifications.PendingPushTracker>();
+        services.AddSingleton<Features.PushNotifications.DismissPushDebouncer>();
 
         // Добавляем MediatR с регистрацией обработчиков из сборки Updates
         services.AddMediatR(cfg =>

@@ -34,7 +34,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
 | `AddUser` | Добавление участника в группу (зеркало `KickUser`): проверка прав по `GroupChatInfo.UsersCanKick`, проверка что не состоит (`UserAlreadyMemberChatException`), системное сообщение, рассылка членам + новому |
 | `UpdateGroupChat` | Смена названия и/или аватара группы. Права по `GroupChatInfo.UsersCanKick`. Аватар валидируется через Files (`UploadFileType.ChatPicture`→URL). Системное сообщение, рассылка, возвращает обновлённый `Chat` |
-| `MarkAsRead` | PostgreSQL array операции, публикует `MessageReadEvent` |
+| `MarkAsRead` | PostgreSQL array операции; публикует `MessageReadEvent` только при первом прочтении конкретным пользователем, а `NewReadBy` содержит только нового читателя. Повторный вызов идемпотентен и событие не создаёт |
 | `GetPersonChatId` | Получить или создать обычный личный чат (поддерживает self-chat); при дублях выбирает чат с самым свежим неудалённым сообщением |
 | `GetChatInfo` | Счётчик непрочитанных, последнее сообщение |
 | `ListChatMembers` | Пагинированный список с данными из Users API |
@@ -173,7 +173,7 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 
 ## Флаг muted в chat-info
 
-`Chat` (ListChats) и `GetChatInfoResponse` (GetChatInfo) содержат `muted` (+ `muted_until`) — отключены ли уведомления чата для текущего пользователя. Заполняется через батч-вызов `UsersServerApi.GetMutedChatIds(userId, chatIds)` (см. [[Backend/Users]] → Per-chat mute). Для сервисного токена (вызов из CloudMessaging) флаг не считается. Клиенты используют флаг, чтобы не показывать локальное уведомление.
+`Chat` (ListChats) и `GetChatInfoResponse` (GetChatInfo) содержат `muted` (+ `muted_until`) — отключены ли уведомления чата для текущего пользователя. Заполняется через батч-вызов `UsersServerApi.GetMutedChatIds(userId, chatIds)` (см. [[Backend/Users]] → Per-chat mute). При временных gRPC-ошибках `Unavailable`/`DeadlineExceeded`/`ResourceExhausted` `ListChats` деградирует до `Muted=false`, чтобы недоступность Users не ломала выдачу чатов. Для сервисного токена (вызов из CloudMessaging) флаг не считается. Клиенты используют флаг, чтобы не показывать локальное уведомление.
 
 ## Proto
 

@@ -30,6 +30,7 @@ public class KickUserCommandHandlerTests
             _h.MessagesStorage,
             _usersClient.Object,
             _queueSender,
+            _h.PublishEndpointMock.Object,
             _h.Metrics,
             TestHelper.CreateLogger<KickUserCommandHandler>());
     }

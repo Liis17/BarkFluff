@@ -23,6 +23,13 @@ public class ListChatsCommandHandlerTests
         _filesClient = new Mock<FilesServerApi.FilesServerApiClient>();
         _cacheMock = new Mock<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
         _chatCache = new ChatCache(_cacheMock.Object, TestHelper.CreateLogger<ChatCache>());
+        _usersClient
+            .Setup(client => client.GetMutedChatIdsAsync(
+                It.IsAny<GetMutedChatIdsRequest>(),
+                null,
+                null,
+                It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncCall(new GetMutedChatIdsResponse()));
     }
 
     private ListChatsCommandHandler CreateHandler(long userId)
@@ -125,9 +132,42 @@ public class ListChatsCommandHandlerTests
         result.TotalCount.Should().Be(2);
     }
 
+    [Fact]
+    public async Task Handle_MuteServiceUnavailable_ReturnsChatsAsUnmuted()
+    {
+        var userId = 1L;
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Group", memberUserIds: [userId, 2]);
+        await _h.SeedMessage(chat.Id, userId, "hello");
+        _usersClient
+            .Setup(client => client.GetMutedChatIdsAsync(
+                It.IsAny<GetMutedChatIdsRequest>(),
+                null,
+                null,
+                It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.Unavailable, "Error connecting to subchannel")));
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(
+            new ListChatsCommand { Skip = 0, Size = 10 },
+            CancellationToken.None);
+
+        result.Chats.Should().ContainSingle();
+        result.Chats[0].Muted.Should().BeFalse();
+    }
+
     private void SetupCacheValue(string key, string? value)
     {
         _cacheMock.Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
             .ReturnsAsync(value != null ? System.Text.Encoding.UTF8.GetBytes(value) : null);
+    }
+
+    private static AsyncUnaryCall<TResponse> CreateAsyncCall<TResponse>(TResponse response)
+    {
+        return new AsyncUnaryCall<TResponse>(
+            Task.FromResult(response),
+            Task.FromResult(new Metadata()),
+            () => Status.DefaultSuccess,
+            () => new Metadata(),
+            () => { });
     }
 }
