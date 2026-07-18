@@ -31,8 +31,7 @@ public class NavigatorContext : DbContext
             entity.Property(e => e.SigningKeys)
                 .HasConversion(
                     v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => v == null ? null : JsonSerializer.Deserialize<List<NavigatorSigningKeyInfo>>(v, (JsonSerializerOptions?)null))
-                .HasColumnType("jsonb");
+                    v => v == null ? null : JsonSerializer.Deserialize<List<NavigatorSigningKeyInfo>>(v, (JsonSerializerOptions?)null));
         });
     }
 }

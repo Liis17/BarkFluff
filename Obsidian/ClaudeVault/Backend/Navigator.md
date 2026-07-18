@@ -13,10 +13,10 @@
 
 ```bash
 dotnet build BarkFluff.Navigator.csproj
-NAVIGATOR_DB="Host=localhost;Database=barkfluff_navigator;Username=postgres;Password=..." NAVIGATOR_PORT=7010 dotnet run
+NAVIGATOR_DB="Data Source=navigator.db" NAVIGATOR_PORT=7010 dotnet run
 ```
 
-Миграции (`NavigatorContext`) применяются автоматически при старте (`Database.Migrate()`).
+БД — локальная **SQLite** (`Microsoft.EntityFrameworkCore.Sqlite`). Connection string: env `NAVIGATOR_DB` → ключ `NavigatorDb` в appsettings → дефолт `Data Source=navigator.db`. Схема создаётся при старте через `Database.EnsureCreated()` (без миграций).
 
 ## Архитектура
 
@@ -29,7 +29,7 @@ NAVIGATOR_DB="Host=localhost;Database=barkfluff_navigator;Username=postgres;Pass
 
 ## Персистентность (этап 1.5)
 
-`Persistence/NavigatorContext.cs` — PostgreSQL (было **in-memory**, `ConcurrentDictionary`, терялось при рестарте). Таблица `Servers`: все прежние поля + `LastSeenAt` (заменяет in-memory `lastSeen`) + federation-поля (`ServerName` — уникальный частичный индекс `WHERE ServerName IS NOT NULL`, `FederationEndpoint`, `TlsSpkiSha256 text[]`, `FederationProtocolVersions int[]`, `SigningKeys jsonb` — список `{key_id, public_key_base64, expired_at}`, `NavigatorSigningKeyInfo`).
+`Persistence/NavigatorContext.cs` — SQLite (было **in-memory**, `ConcurrentDictionary`, терялось при рестарте; этапом 1.5 был PostgreSQL, затем переведён на локальную SQLite ради экономии RAM на выделенном хосте). Таблица `Servers`: все прежние поля + `LastSeenAt` (заменяет in-memory `lastSeen`) + federation-поля (`ServerName` — уникальный частичный индекс `WHERE ServerName IS NOT NULL`, `FederationEndpoint`, `TlsSpkiSha256`, `FederationProtocolVersions`, `SigningKeys` — все три хранятся как `TEXT`/JSON: массивы через primitive-collections EF Core, `SigningKeys` через явный JSON-конвертер, список `{key_id, public_key_base64, expired_at}`, `NavigatorSigningKeyInfo`).
 
 `ServersStorage` теперь **Scoped** (использует `NavigatorContext`), а не Singleton — троттлинг регистраций вынесен в отдельный синглтон `RegistrationThrottle` (тот же in-memory `ConcurrentDictionary`, потеря состояния при рестарте безвредна, как и раньше).
 
@@ -37,7 +37,7 @@ NAVIGATOR_DB="Host=localhost;Database=barkfluff_navigator;Username=postgres;Pass
 - `RegisterServerAsync()` — upsert. Ключ идентичности: `ServerName`, если задан; иначе легаси `Name+BeaconHost+BeaconPort`
 - `GetByServerNameAsync()` — lowercase-сравнение, `found=false` если протухло (тот же TTL, что у `GetServers`)
 
-**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды) — этапом 1.5 туда добавлен сервис `navigator-postgres` + переменная `NAVIGATOR_DB`.
+**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды). SQLite-файл хранится в named volume `navigator_data:/app/db`, `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в root-owned volume (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет.
 
 ## Валидация федеративной регистрации (этап 1.5)
 
