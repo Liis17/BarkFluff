@@ -48,6 +48,7 @@ public class DismissPushConsumer : IConsumer<DismissPushEvent>
             var fcmTokens = tokensResponse.Tokens
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
+                .Distinct(StringComparer.Ordinal)
                 .ToList();
 
             if (fcmTokens.Count == 0)
