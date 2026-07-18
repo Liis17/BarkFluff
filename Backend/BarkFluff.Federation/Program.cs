@@ -1,9 +1,11 @@
+using BarkFluff.Federation.BackgroundServices;
 using BarkFluff.Federation.Host;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Navigator;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Identity;
 
@@ -62,6 +64,18 @@ public class Program
         builder.Services.AddSingleton<WellKnownDocumentService>();
         builder.Services.AddSingleton<ActiveSigningKeyCache>();
         builder.Services.AddSingleton<S2SChannelFactory>();
+
+        builder.Services.AddSingleton<ServernameValidator>();
+        builder.Services.AddSingleton<IWellKnownClient, WellKnownClient>();
+        builder.Services.AddScoped<INavigatorClient, NavigatorClient>();
+        builder.Services.AddScoped<ServerResolver>();
+        builder.Services.AddSingleton<DiscoveryTriggerRateLimiter>();
+        builder.Services.AddHostedService<PeerRefreshBackgroundService>();
+
+        builder.Services.AddGrpcClient<NavigatorApi.NavigatorApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["NavigatorUrl"]!);
+        });
 
         builder.Services.AddXAuth(builder.Configuration);
 
