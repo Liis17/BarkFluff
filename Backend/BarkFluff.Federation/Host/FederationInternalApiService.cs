@@ -1,5 +1,6 @@
 using BarkFluff.Federation.Domain.Entities;
 using BarkFluff.Federation.Domain.Enums;
+using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Proto.Federation;
@@ -28,6 +29,7 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
     private readonly ActiveSigningKeyCache _activeSigningKeyCache;
     private readonly ServerResolver _serverResolver;
     private readonly S2SChannelFactory _s2sChannelFactory;
+    private readonly OutboxWriter _outboxWriter;
 
     public FederationInternalApiService(
         FederationContext context,
@@ -36,7 +38,8 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         WellKnownDocumentService wellKnownDocumentService,
         ActiveSigningKeyCache activeSigningKeyCache,
         ServerResolver serverResolver,
-        S2SChannelFactory s2sChannelFactory)
+        S2SChannelFactory s2sChannelFactory,
+        OutboxWriter outboxWriter)
     {
         _context = context;
         _configuration = configuration;
@@ -45,6 +48,7 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         _activeSigningKeyCache = activeSigningKeyCache;
         _serverResolver = serverResolver;
         _s2sChannelFactory = s2sChannelFactory;
+        _outboxWriter = outboxWriter;
     }
 
     public override async Task<RotateSigningKeyResponse> RotateSigningKey(RotateSigningKeyRequest request, ServerCallContext context)
@@ -144,9 +148,8 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         {
             ServerName = _configuration["Federation:ServerName"] ?? string.Empty,
             Enabled = string.Equals(_configuration["Federation:Enabled"], "true", StringComparison.OrdinalIgnoreCase),
-            // Outbox появится в Фазе 2 — сейчас честные нули.
-            OutboxPending = 0,
-            OutboxDeadletter = 0,
+            OutboxPending = await _context.Outbox.LongCountAsync(o => o.Status == OutboxStatus.Pending, context.CancellationToken),
+            OutboxDeadletter = await _context.Outbox.LongCountAsync(o => o.Status == OutboxStatus.DeadLetter, context.CancellationToken),
             KnownServersActive = activeCount,
         };
 
@@ -253,6 +256,37 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         var rawServer = trimmed[(colon + 1)..];
 
         return ServernameValidator.TryNormalizeSyntax(rawServer, out serverName);
+    }
+
+    // EnqueueOutbound (этап 2.2): прямая постановка в outbox. Federation подписывает событие
+    // активным ключом и кладёт по одной строке на каждую ноду из destinations.
+    public override async Task<EnqueueOutboundResponse> EnqueueOutbound(EnqueueOutboundRequest request, ServerCallContext context)
+    {
+        if (request.Event is null)
+            throw new ArgumentException("event is required");
+
+        if (request.Destinations.Count == 0)
+            return new EnqueueOutboundResponse { EventId = request.Event.EventId, Enqueued = 0 };
+
+        Guid? chatId = request.Event.PayloadCase switch
+        {
+            FederationEvent.PayloadOneofCase.ChatCreated => Guid.TryParse(request.Event.ChatCreated.ChatId, out var c1) ? c1 : null,
+            FederationEvent.PayloadOneofCase.NewMessage => Guid.TryParse(request.Event.NewMessage.ChatId, out var c2) ? c2 : null,
+            FederationEvent.PayloadOneofCase.MessageEdited => Guid.TryParse(request.Event.MessageEdited.ChatId, out var c3) ? c3 : null,
+            FederationEvent.PayloadOneofCase.MessageDeleted => Guid.TryParse(request.Event.MessageDeleted.ChatId, out var c4) ? c4 : null,
+            FederationEvent.PayloadOneofCase.MessagesRead => Guid.TryParse(request.Event.MessagesRead.ChatId, out var c5) ? c5 : null,
+            _ => null,
+        };
+
+        var beforeCount = await _context.Outbox.CountAsync(context.CancellationToken);
+        await _outboxWriter.EnqueueSignedAsync(request.Event, chatId, request.Destinations.ToList(), context.CancellationToken);
+        var afterCount = await _context.Outbox.CountAsync(context.CancellationToken);
+
+        return new EnqueueOutboundResponse
+        {
+            EventId = request.Event.EventId,
+            Enqueued = afterCount - beforeCount,
+        };
     }
 
     private static KnownServerInfo ToKnownServerInfo(KnownServer server)

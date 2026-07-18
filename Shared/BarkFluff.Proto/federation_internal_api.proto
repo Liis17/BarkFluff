@@ -21,13 +21,18 @@ service FederationInternalApi {
   rpc FetchRemoteChatHistory(FetchRemoteChatHistoryRequest) returns (barkfluff.federation.FetchChatHistoryResponse);
 
   // ---- управление пирами (AdminPanel) ----
-  rpc GetKnownServers(GetKnownServersRequest) returns (GetKnownServersResponse);
-  rpc UpsertManualPeer(UpsertManualPeerRequest) returns (UpsertManualPeerResponse);
-  rpc SetServerBlocked(SetServerBlockedRequest) returns (SetServerBlockedResponse);
-  rpc GetFederationStatus(GetFederationStatusRequest) returns (GetFederationStatusResponse);
+  rpc GetKnownServers(GetKnownServersRequest) returns(GetKnownServersResponse);
+  rpc UpsertManualPeer(UpsertManualPeerRequest) returns(UpsertManualPeerResponse);
+  rpc SetServerBlocked(SetServerBlockedRequest) returns(SetServerBlockedResponse);
+  rpc GetFederationStatus(GetFederationStatusRequest) returns(GetFederationStatusResponse);
 
   // Плановая ротация: создаёт новый ключ, старому проставляет expired_at = now + overlap
-  rpc RotateSigningKey(RotateSigningKeyRequest) returns (RotateSigningKeyResponse);
+  rpc RotateSigningKey(RotateSigningKeyRequest) returns(RotateSigningKeyResponse);
+
+  // Прямая постановка уже подписанного FederationEvent в outbox (этап 2.2). Для ручных тестов
+  // и профильных событий из других сервисов (2.9). Не используется консюмерами RabbitMQ —
+  // тем достаточно OutboxWriter изнутри Federation.
+  rpc EnqueueOutbound(EnqueueOutboundRequest) returns(EnqueueOutboundResponse);
 }
 
 message ResolveRemoteUserRequest {
@@ -107,4 +112,16 @@ message RotateSigningKeyResponse {
   string new_key_id = 1;
   string old_key_id = 2;
   google.protobuf.Timestamp old_key_expires_at = 3;
+}
+
+// EnqueueOutbound: событие + список нод-адресатов. Federation подписывает активным ключом и
+// кладёт по одной строке outbox на каждую ноду. Для ручных тестов и профильных событий (2.9).
+message EnqueueOutboundRequest {
+  barkfluff.federation.FederationEvent event = 1;
+  repeated string destinations = 2;          // server_name
+}
+
+message EnqueueOutboundResponse {
+  string event_id = 1;
+  int32 enqueued = 2;                         // сколько строк поставлено (минус ownServerName)
 }

@@ -13,6 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
         <PackageReference Include="FluentAssertions" Version="8.10.0" />
         <PackageReference Include="Grpc.Tools" Version="2.80.0">
           <PrivateAssets>all</PrivateAssets>
@@ -30,9 +31,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- Federation.csproj генерирует только Server для federation_api.proto (продовые клиенты
-             появятся в S2SChannelFactory-based коде); тесту нужен Client-стаб для in-proc вызовов. -->
-        <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_api.proto" GrpcServices="Client" />
+        <!-- Federation.csproj с этапа 2.2 генерирует Both (Server + Client) для federation_api.proto —
+             тест получает типы и клиент-класс transitively через ProjectReference. До 2.2 тут лежал
+             явный Client Include, но он конфликтовал (CS0436) с Both из Federation. -->
     </ItemGroup>
 
     <ItemGroup>
