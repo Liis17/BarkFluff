@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Федерация</title>
+    <link rel="stylesheet" href="assets/md3.css">
+    <style>
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            padding: 20px;
+        }
+        .kpi-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .kpi-label { font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--md-on-surface-variant); }
+        .kpi-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-secondary-container);
+            color: var(--md-on-secondary-container);
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .kpi-icon.icon-error { background: var(--md-error-container); color: var(--md-on-error-container); }
+        .kpi-icon.icon-warn  { background: var(--md-warning-container); color: var(--md-on-warning-container); }
+        .kpi-icon.icon-success { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .kpi-value { font-size: 32px; font-weight: 500; line-height: 1.1; color: var(--md-on-surface); letter-spacing: -0.5px; }
+        .kpi-foot { margin-top: 8px; font-size: 12px; color: var(--md-on-surface-variant); }
+
+        .panel { background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: var(--md-shape-lg); padding: 20px; margin-bottom: 24px; }
+        .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+        .panel-head h2 { font-size: 16px; font-weight: 500; margin: 0; }
+
+        .fed-table { width: 100%; border-collapse: collapse; }
+        .fed-table th, .fed-table td {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 14px;
+            border-bottom: 1px solid var(--md-outline-variant);
+        }
+        .fed-table th { color: var(--md-on-surface-variant); font-weight: 500; font-size: 12px; }
+        .fed-table tr:hover td { background: var(--md-surface-container); }
+        .fed-table .actions { display: flex; gap: 4px; justify-content: flex-end; }
+
+        .mono-clip {
+            font-family: monospace;
+            cursor: pointer;
+        }
+
+        .config-warning {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--md-warning-container); color: var(--md-on-warning-container);
+            border-radius: var(--md-shape-md);
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="federation"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <h1>Федерация</h1>
+            <button id="logoutBtn" class="md-icon-btn" title="Выйти">
+                <span class="msr">logout</span>
+            </button>
+        </header>
+
+        <div class="md-page">
+            <div id="notConfiguredWarning" class="config-warning" style="display:none;">
+                <span class="msr">warning</span>
+                <span>Федерация не сконфигурирована на этой ноде (пуст <code>Federation:ServerName</code>).</span>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Server name</span>
+                        <span class="kpi-icon"><span class="msr">dns</span></span>
+                    </div>
+                    <div class="kpi-value" id="statServerName" style="font-size:20px;">—</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Статус</span>
+                        <span class="kpi-icon icon-success"><span class="msr">power</span></span>
+                    </div>
+                    <div class="kpi-value" id="statEnabled" style="font-size:20px;">—</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Известных нод (active)</span>
+                        <span class="kpi-icon"><span class="msr">hub</span></span>
+                    </div>
+                    <div class="kpi-value" id="statActivePeers">—</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Outbox pending</span>
+                        <span class="kpi-icon icon-warn"><span class="msr">outbox</span></span>
+                    </div>
+                    <div class="kpi-value" id="statOutboxPending">—</div>
+                    <div class="kpi-foot">Появится в Фазе 2</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-head">
+                        <span class="kpi-label">Outbox deadletter</span>
+                        <span class="kpi-icon icon-error"><span class="msr">report</span></span>
+                    </div>
+                    <div class="kpi-value" id="statOutboxDeadletter">—</div>
+                    <div class="kpi-foot">Появится в Фазе 2</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Ключи ноды</h2>
+                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="rotateKey()">
+                        <span class="msr size-18">key</span>
+                        Ротация ключа
+                    </button>
+                </div>
+                <div class="md-card" style="padding:0;overflow:auto;">
+                    <table class="fed-table">
+                        <thead>
+                            <tr>
+                                <th>Key ID</th>
+                                <th>Публичный ключ (base64)</th>
+                                <th>Истекает</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keysBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Пиры</h2>
+                    <button class="md-btn md-btn-filled md-btn-square-press" onclick="openAddPeerModal()">
+                        <span class="msr size-18">add</span>
+                        Добавить пир
+                    </button>
+                </div>
+                <div class="md-card" style="padding:0;overflow:auto;">
+                    <table class="fed-table">
+                        <thead>
+                            <tr>
+                                <th>Server name</th>
+                                <th>Endpoint</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>Last seen</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="peersBody"></tbody>
+                    </table>
+                </div>
+                <div id="peersEmptyState" class="md-empty" style="display:none;">
+                    <span class="msr size-48">hub</span>
+                    <h3>Пиров пока нет</h3>
+                    <p>Добавьте пира вручную или дождитесь автоматического discovery (well-known/Navigator).</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Add peer modal -->
+<div id="addPeerScrim" class="md-scrim" onclick="if(event.target===this)closeAddPeerModal()">
+    <div class="md-dialog">
+        <div class="md-dialog-header">
+            <h3>Добавить пира</h3>
+            <button class="md-icon-btn" onclick="closeAddPeerModal()"><span class="msr">close</span></button>
+        </div>
+        <form onsubmit="submitAddPeer(event)">
+            <div class="md-dialog-body">
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                        Server name <span style="color:var(--md-error);">*</span>
+                    </label>
+                    <input type="text" id="peerServerName" required placeholder="chat.example.org" class="md-input-outlined" style="width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                        Federation endpoint <span style="color:var(--md-error);">*</span>
+                    </label>
+                    <input type="text" id="peerEndpoint" required placeholder="https://federation.chat.example.org" class="md-input-outlined" style="width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                        Key ID
+                    </label>
+                    <input type="text" id="peerKeyId" placeholder="ed25519:1" class="md-input-outlined" style="width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                        Публичный ключ (base64)
+                    </label>
+                    <input type="text" id="peerPublicKey" placeholder="base64..." class="md-input-outlined" style="width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                        SPKI-отпечатки TLS (через запятую)
+                    </label>
+                    <input type="text" id="peerSpki" placeholder="base64==, base64==" class="md-input-outlined" style="width:100%;">
+                </div>
+            </div>
+            <div class="md-dialog-actions">
+                <button type="button" class="md-btn md-btn-text" onclick="closeAddPeerModal()">Отмена</button>
+                <button type="submit" id="addPeerBtn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">add</span>
+                    Добавить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="assets/sidebar.js"></script>
+<script>
+    let peers = [];
+
+    async function checkAuth() {
+        try {
+            const r = await fetch('/api/auth/me');
+            if (!r.ok) { window.location.href = '/'; return null; }
+            return await r.json();
+        } catch { window.location.href = '/'; return null; }
+    }
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function formatDate(s) { if (!s) return '—'; return new Date(s).toLocaleString('ru-RU'); }
+    function clipBase64(s) { if (!s) return ''; return s.length > 20 ? s.slice(0, 10) + '…' + s.slice(-6) : s; }
+
+    function statusBadgeClass(status) {
+        if (status === 'Active') return 'md-status-success';
+        if (status === 'Blocked') return 'md-status-error';
+        if (status === 'Unreachable') return 'md-status-warn';
+        return 'md-status-neutral';
+    }
+
+    async function copyText(text) {
+        try { await navigator.clipboard.writeText(text); } catch {}
+    }
+
+    // ---- Status + keys ----
+    async function loadStatus() {
+        try {
+            const r = await fetch('/api/federation/status');
+            if (!r.ok) return;
+            const s = await r.json();
+
+            document.getElementById('notConfiguredWarning').style.display = s.serverName ? 'none' : 'flex';
+            document.getElementById('statServerName').textContent = s.serverName || '—';
+            document.getElementById('statEnabled').textContent = s.enabled ? 'включена' : 'выключена';
+            document.getElementById('statActivePeers').textContent = s.knownServersActive ?? 0;
+            document.getElementById('statOutboxPending').textContent = s.outboxPending ?? 0;
+            document.getElementById('statOutboxDeadletter').textContent = s.outboxDeadletter ?? 0;
+
+            const keysBody = document.getElementById('keysBody');
+            keysBody.innerHTML = (s.ownKeys || []).map(k => `
+                <tr>
+                    <td>${escapeHtml(k.keyId)}</td>
+                    <td class="mono-clip" title="Скопировать" onclick="copyText('${escapeHtml(k.publicKeyBase64)}')">${escapeHtml(clipBase64(k.publicKeyBase64))}</td>
+                    <td>${k.expiredAt ? formatDate(k.expiredAt) : '<span class="md-status md-status-success">активен</span>'}</td>
+                </tr>
+            `).join('');
+        } catch {}
+    }
+
+    window.rotateKey = async function () {
+        if (!confirm('Ротировать ключ ноды? Старый ключ истечёт через настроенное окно перекрытия (по умолчанию 30 дней), пиры обновятся при следующем рефреше.')) return;
+        try {
+            const res = await fetch('/api/federation/keys/rotate', { method: 'POST' });
+            if (!res.ok) { alert('Не удалось ротировать ключ: ' + (await res.text())); return; }
+            await loadStatus();
+        } catch {}
+    };
+
+    // ---- Peers ----
+    async function loadPeers() {
+        try {
+            const r = await fetch('/api/federation/peers');
+            peers = await r.json();
+            renderPeers();
+        } catch {}
+    }
+
+    function renderPeers() {
+        const body = document.getElementById('peersBody');
+        const empty = document.getElementById('peersEmptyState');
+        if (!peers.length) { body.innerHTML = ''; empty.style.display = 'flex'; return; }
+        empty.style.display = 'none';
+
+        body.innerHTML = peers.map(p => `
+            <tr>
+                <td>${escapeHtml(p.serverName)}</td>
+                <td>${escapeHtml(p.federationEndpoint)}</td>
+                <td><span class="md-status md-status-neutral">${escapeHtml(p.source)}</span></td>
+                <td><span class="md-status ${statusBadgeClass(p.status)}">${escapeHtml(p.status)}</span></td>
+                <td>${formatDate(p.lastSeenAt)}</td>
+                <td>
+                    <div class="actions">
+                        ${p.status === 'Blocked'
+                            ? `<button class="md-icon-btn" title="Разблокировать" onclick="toggleBlock('${escapeHtml(p.serverName)}', false)"><span class="msr">lock_open</span></button>`
+                            : `<button class="md-icon-btn" title="Заблокировать" style="color:var(--md-error);" onclick="toggleBlock('${escapeHtml(p.serverName)}', true)"><span class="msr">block</span></button>`}
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.toggleBlock = async function (serverName, blocked) {
+        const action = blocked ? 'заблокировать' : 'разблокировать';
+        if (!confirm(`Точно ${action} ноду ${serverName}?`)) return;
+        try {
+            const res = await fetch(`/api/federation/peers/${encodeURIComponent(serverName)}/block`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blocked }),
+            });
+            if (!res.ok) { alert('Не удалось изменить статус: ' + (await res.text())); return; }
+            await loadPeers();
+        } catch {}
+    };
+
+    // ---- Add peer modal ----
+    window.openAddPeerModal = function () {
+        document.getElementById('peerServerName').value = '';
+        document.getElementById('peerEndpoint').value = '';
+        document.getElementById('peerKeyId').value = '';
+        document.getElementById('peerPublicKey').value = '';
+        document.getElementById('peerSpki').value = '';
+        document.getElementById('addPeerScrim').classList.add('open');
+    };
+    window.closeAddPeerModal = function () { document.getElementById('addPeerScrim').classList.remove('open'); };
+
+    window.submitAddPeer = async function (event) {
+        event.preventDefault();
+        const btn = document.getElementById('addPeerBtn');
+        btn.disabled = true;
+        try {
+            const keyId = document.getElementById('peerKeyId').value.trim();
+            const publicKeyBase64 = document.getElementById('peerPublicKey').value.trim();
+            const spkiRaw = document.getElementById('peerSpki').value.trim();
+
+            const body = {
+                serverName: document.getElementById('peerServerName').value.trim(),
+                endpoint: document.getElementById('peerEndpoint').value.trim(),
+                keys: keyId && publicKeyBase64 ? [{ keyId, publicKeyBase64 }] : [],
+                tlsSpkiSha256: spkiRaw ? spkiRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
+            };
+
+            const res = await fetch('/api/federation/peers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) { alert('Не удалось добавить пира: ' + (await res.text())); return; }
+            closeAddPeerModal();
+            await loadPeers();
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (!confirm('Выйти?')) return;
+        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+        window.location.href = '/';
+    });
+
+    (async function () {
+        const auth = await checkAuth(); if (!auth) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        await Promise.all([loadStatus(), loadPeers()]);
+        document.getElementById('loading-overlay').classList.add('hidden');
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+    })();
+</script>
+</body>
+</html>

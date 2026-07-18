@@ -33,6 +33,7 @@ Barkfluff.AdminPanel/
 │   ├── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
 │   ├── MailEndpoints.cs               ← /api/mail/*
 │   ├── BotsEndpoints.cs               ← /api/bots/*
+│   ├── FederationEndpoints.cs         ← /api/federation/*
 │   └── RemoteDockerEndpoints.cs       ← /api/remote/*
 ├── Middleware/
 │   └── TokenAuthMiddleware.cs         ← cookie-аутентификация
@@ -70,6 +71,7 @@ Barkfluff.AdminPanel/
 │   ├── users.html                     ← управление пользователями
 │   ├── s3-storage.html                ← конфигурация S3
 │   ├── s3-browser.html                ← браузер S3 объектов
+│   ├── federation.html                ← статус/ключи/пиры Federation (rearch phase 1.7)
 │   ├── restarting.html                ← заглушка перезагрузки
 │   ├── updating.html                  ← заглушка обновления
 │   ├── Redesigned/                    ← SPA-редизайн (маршрут /v2/, отдельный эксперимент)
@@ -107,6 +109,7 @@ GET /s3-storage        → v2/s3-storage.html
 GET /s3-browser        → v2/s3-browser.html
 GET /configuration     → v2/configuration.html
 GET /bots              → v2/bots.html
+GET /federation        → v2/federation.html
 GET /restarting        → v2/restarting.html (публичный)
 GET /updating          → v2/updating.html (публичный)
 GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
@@ -534,6 +537,15 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 |-----------|-------------|
 | `ListBots` / создание системного бота / перегенерация токена / удаление | BotsEndpoints |
 
+### FederationInternalApiClient (rearch phase 1.7, [[Backend/Federation]])
+| gRPC-метод | Вызывается из |
+|-----------|-------------|
+| `GetFederationStatusAsync()` | FederationEndpoints — `GET /api/federation/status` |
+| `GetKnownServersAsync()` | FederationEndpoints — `GET /api/federation/peers` |
+| `UpsertManualPeerAsync()` | FederationEndpoints — `POST /api/federation/peers` |
+| `SetServerBlockedAsync()` | FederationEndpoints — `POST /api/federation/peers/{server}/block` |
+| `RotateSigningKeyAsync()` | FederationEndpoints — `POST /api/federation/keys/rotate` |
+
 ---
 
 ## Конфигурация (appsettings.json)
@@ -557,7 +569,8 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
   "UsersService": { "Host": "...", "Token": "..." },
   "FilesService":  { "Host": "...", "Token": "..." },
   "IdentityService": { "Host": "...", "Token": "..." },
-  "ConfigurationService": { "Host": "...", "Token": "..." }
+  "ConfigurationService": { "Host": "...", "Token": "..." },
+  "FederationService": { "Host": "...", "Token": "..." }
 }
 ```
 

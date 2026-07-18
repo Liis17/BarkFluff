@@ -12,6 +12,7 @@
     { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'mood' },
     { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'group' },
     { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'smart_toy' },
+    { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'hub' },
     { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications' },
     { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail' },
     { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune' },

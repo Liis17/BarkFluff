@@ -7,6 +7,7 @@ using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.GrpcServer;
 using BarkFluff.Proto.Bots;
+using BarkFluff.Proto.FederationInternal;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -123,6 +124,11 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["BotsService:Host"] ?? "http://bots:7027");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["BotsService:Token"] ?? string.Empty));
+
+        builder.Services.AddGrpcClient<FederationInternalApi.FederationInternalApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["FederationService:Host"] ?? "http://federation:7030");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FederationService:Token"] ?? string.Empty));
 
         // MassTransit RabbitMQ — для публикации админских событий (push-рассылки и т.п.)
         builder.Services.AddMassTransit(x =>
@@ -246,6 +252,9 @@ public class Program
         // Map Bots Endpoints
         app.MapBotsEndpoints();
 
+        // Map Federation Endpoints
+        app.MapFederationEndpoints();
+
         // Map Configuration Endpoints
         app.MapConfigurationEndpoints();
 
@@ -305,6 +314,7 @@ public class Program
         app.MapGet("/badges", async context => await ServeHtmlFile(context, Path.Combine("v2", "badges.html")));
         app.MapGet("/stickers", async context => await ServeHtmlFile(context, Path.Combine("v2", "stickers.html")));
         app.MapGet("/bots", async context => await ServeHtmlFile(context, Path.Combine("v2", "bots.html")));
+        app.MapGet("/federation", async context => await ServeHtmlFile(context, Path.Combine("v2", "federation.html")));
         app.MapGet("/users", async context => await ServeHtmlFile(context, Path.Combine("v2", "users.html")));
         app.MapGet("/notifications", async context => await ServeHtmlFile(context, Path.Combine("v2", "notifications.html")));
         app.MapGet("/mail", async context => await ServeHtmlFile(context, Path.Combine("v2", "mail.html")));
