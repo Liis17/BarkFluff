@@ -2,7 +2,7 @@
 
 Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** (без фреймворка и бандлера приложения), раздаётся хостом [[Backend/BarkFluff.Web]].
 
-Расположение: `Backend/BarkFluff.Web/wwwroot/` (разметка `messenger.html`, модули `js/app/*.js`).
+Расположение: `Backend/BarkFluff.Web/wwwroot/` (`index.html` — авторизация и регистрация, `messenger.html` — мессенджер, модули `js/app/*.js`).
 
 > ⚠️ Раньше существовало React-переписывание (`Frontend/Web/`), но оно было **намеренно откатано** (коммиты «возвращаемся на старую вебверсию» / «Восстановить веб-версию мессенджера (vanilla, до React)»). Актуальный и развиваемый клиент — этот vanilla-вариант. React-доку считать неактуальной.
 
@@ -86,6 +86,13 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 ### Темы
 - 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
 - Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и inline-SVG иконками действий.
+
+### Motion UI
+- `index.html` и `messenger.html` используют общий ease-out-токен `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` для коротких UI-переходов.
+- На странице авторизации fast-auth QR плавно заменяет спиннер только после загрузки изображения; QR настройки 2FA при регистрации получает отдельный state-reveal. Скрытые QR исключаются из accessibility tree через `aria-hidden`.
+- В мессенджере анимируются только редкие и пространственно значимые состояния: меню FAB создания чата, popover выбора устройств/качества звонка, file-drop feedback, вход/выход media lightbox и success-toast. Списки чатов/сообщений и клавиатурная навигация lightbox остаются мгновенными.
+- Lightbox инвалидирует `overlayFileToken` сразу при закрытии, но очищает media `src` после 120 мс exit-перехода; быстрое повторное открытие отменяет отложенную очистку.
+- `prefers-reduced-motion: reduce` убирает scale/translate из новых переходов и сохраняет только короткий opacity-feedback.
 
 ### Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер)
 
