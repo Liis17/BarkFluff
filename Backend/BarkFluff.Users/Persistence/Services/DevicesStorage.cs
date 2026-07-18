@@ -10,16 +10,42 @@ public class DevicesStorage(UsersContext context)
     public async Task<UserDevice> RegisterOrUpdateDevice(Guid deviceId, long userId, string originalName,
         string? appName, string? operationSystem, string? location)
     {
+        var authorizedAt = DateTime.UtcNow;
+
+        if (context.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "UserDevices"
+                    ("Id", "UserId", "OriginalName", "AuthorizedAt", "AppName", "OperationSystem", "Location", "NotificationsEnabled")
+                VALUES
+                    ({deviceId}, {userId}, {originalName}, {authorizedAt}, {appName}, {operationSystem}, {location}, {true})
+                ON CONFLICT ("Id") DO UPDATE SET
+                    "UserId" = EXCLUDED."UserId",
+                    "OriginalName" = EXCLUDED."OriginalName",
+                    "AuthorizedAt" = EXCLUDED."AuthorizedAt",
+                    "AppName" = EXCLUDED."AppName",
+                    "OperationSystem" = EXCLUDED."OperationSystem",
+                    "Location" = EXCLUDED."Location"
+                """);
+
+            var tracked = context.UserDevices.Local.FirstOrDefault(d => d.Id == deviceId);
+            if (tracked != null)
+                context.Entry(tracked).State = EntityState.Detached;
+
+            return await context.UserDevices.AsNoTracking().SingleAsync(d => d.Id == deviceId);
+        }
+
         var existing = await context.UserDevices
-            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+            .FirstOrDefaultAsync(d => d.Id == deviceId);
 
         if (existing != null)
         {
+            existing.UserId = userId;
             existing.OriginalName = originalName;
             existing.AppName = appName;
             existing.OperationSystem = operationSystem;
             existing.Location = location;
-            existing.AuthorizedAt = DateTime.UtcNow;
+            existing.AuthorizedAt = authorizedAt;
 
             await context.SaveChangesAsync();
             return existing;
@@ -30,7 +56,7 @@ public class DevicesStorage(UsersContext context)
             Id = deviceId,
             UserId = userId,
             OriginalName = originalName,
-            AuthorizedAt = DateTime.UtcNow,
+            AuthorizedAt = authorizedAt,
             AppName = appName,
             OperationSystem = operationSystem,
             Location = location

@@ -112,7 +112,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `UpdateBadge(id, name, description, imageUrl, isActive)` | Обновить бадж | |
 | `DeleteBadge(id)` | Удалить бадж | |
 | `ExportData(userId)` | GDPR-экспорт данных пользователя | 3 файла: `profile.json`, `messages.json`, `files.json` |
-| `RegisterDevice(...)` | Зарегистрировать устройство | Upsert по DeviceId; вызывается Identity при авторизации |
+| `RegisterDevice(...)` | Зарегистрировать устройство | Атомарный PostgreSQL upsert по DeviceId; повторная авторизация обновляет данные и переносит устройство текущему пользователю без конфликта PK. Вызывается Identity при авторизации |
 | `UpdateDeviceAppInfo(deviceId, userId, originalName, appName)` | Обновить имя устройства + версию приложения | Вызывается Identity при refresh токена; пишет только при изменении, возвращает `updated: bool` |
 | `GetUserDevices(userId)` | Список устройств пользователя | |
 | `DeleteUserDevice(deviceId, userId)` | Удалить устройство | |
