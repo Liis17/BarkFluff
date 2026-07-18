@@ -42,6 +42,10 @@ public class Program
         builder.Services.AddGrpc(options =>
         {
             options.Interceptors.Add<ServerExceptionInterceptor>();
+        }).AddServiceOptions<FederationS2SApiService>(options =>
+        {
+            // XFed — не XAuth; проверка подписи только для FederationS2SApi (см. XFedServerInterceptor).
+            options.Interceptors.Add<XFedServerInterceptor>();
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Federation");
 
@@ -56,6 +60,8 @@ public class Program
 
         builder.Services.AddScoped<SigningKeyService>();
         builder.Services.AddSingleton<WellKnownDocumentService>();
+        builder.Services.AddSingleton<ActiveSigningKeyCache>();
+        builder.Services.AddSingleton<S2SChannelFactory>();
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -71,6 +77,9 @@ public class Program
 
             var wellKnownDocumentService = scope.ServiceProvider.GetRequiredService<WellKnownDocumentService>();
             wellKnownDocumentService.RebuildAsync().GetAwaiter().GetResult();
+
+            var activeSigningKeyCache = scope.ServiceProvider.GetRequiredService<ActiveSigningKeyCache>();
+            activeSigningKeyCache.RefreshAsync().GetAwaiter().GetResult();
         }
 
         if (app.Environment.IsDevelopment())
@@ -79,6 +88,8 @@ public class Program
         app.UseRouting();
 
         app.UseXAuth();
+
+        app.UseMiddleware<XFedRawBytesMiddleware>();
 
         app.MapGrpcService<FederationS2SApiService>();
         app.MapGrpcService<FederationInternalApiService>();

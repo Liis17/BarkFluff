@@ -55,7 +55,7 @@ public class ServerExceptionInterceptor : Interceptor
                 { "x-error-code", ex.ErrorCode }
             };
 
-            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.ErrorMessage), trailers);
+            throw new RpcException(new Status(ex.StatusCode, ex.ErrorMessage), trailers);
         }
         catch (Exception ex)
         {

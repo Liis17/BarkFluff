@@ -55,9 +55,12 @@ public class SigningKeyService
     public Task<List<FederationSigningKey>> GetNonRevokedKeysAsync(CancellationToken ct = default)
         => _context.SigningKeys.Where(k => k.RevokedAt == null).ToListAsync(ct);
 
-    public byte[] Sign(FederationSigningKey key, byte[] data)
+    public byte[] Sign(FederationSigningKey key, byte[] data) => SignRaw(key.PrivateKeySeed, data);
+
+    // Используется также XFedClientInterceptor'ом с ключом из ActiveSigningKeyCache (без обращения к БД).
+    public static byte[] SignRaw(byte[] privateKeySeed, byte[] data)
     {
-        var privateKey = new Ed25519PrivateKeyParameters(key.PrivateKeySeed, 0);
+        var privateKey = new Ed25519PrivateKeyParameters(privateKeySeed, 0);
 
         ISigner signer = new Ed25519Signer();
         signer.Init(true, privateKey);

@@ -46,6 +46,83 @@ namespace BarkFluff.Federation.Persistence.Migrations
 
                     b.ToTable("SigningKeys");
                 });
+
+            modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.KnownServer", b =>
+                {
+                    b.Property<string>("ServerName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FederationEndpoint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastKeyRefreshAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ProtocolVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string[]>("TlsSpkiSha256")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.HasKey("ServerName");
+
+                    b.ToTable("KnownServers");
+                });
+
+            modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.KnownServerKey", b =>
+                {
+                    b.Property<string>("ServerName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("KeyId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ServerName", "KeyId");
+
+                    b.ToTable("KnownServerKeys");
+                });
+
+            modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.KnownServerKey", b =>
+                {
+                    b.HasOne("BarkFluff.Federation.Domain.Entities.KnownServer", "Server")
+                        .WithMany("Keys")
+                        .HasForeignKey("ServerName")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Server");
+                });
+
+            modelBuilder.Entity("BarkFluff.Federation.Domain.Entities.KnownServer", b =>
+                {
+                    b.Navigation("Keys");
+                });
 #pragma warning restore 612, 618
         }
     }
