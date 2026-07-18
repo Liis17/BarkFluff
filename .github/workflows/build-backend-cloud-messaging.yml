@@ -29,7 +29,7 @@ jobs:
       - name: "Проверка наличия .NET 10.0 SDK"
         id: check
         run: |
-          if ! dotnet --list-sdks 2>/dev/null | grep -q "^10\."; then
+          if ! dotnet --list-sdks 2>/dev/null | grep -q "^10\.0\.109 "; then
             echo "missing=true" >> "$GITHUB_OUTPUT"
           else
             echo "missing=false" >> "$GITHUB_OUTPUT"
@@ -96,11 +96,6 @@ jobs:
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.110'
 
       - name: "\u2699\uFE0F dotnet publish (Linux Release)"
         run: |
