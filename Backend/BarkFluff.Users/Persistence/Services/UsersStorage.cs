@@ -51,6 +51,26 @@ public class UsersStorage
         return users;
     }
 
+    public Task<User?> GetByUuid(Guid uuid)
+    {
+        return _usersContext.Users
+            .AsNoTracking()
+            .Include(u => u.Contact)
+            .FirstOrDefaultAsync(x => x.Uuid == uuid);
+    }
+
+    public async Task<List<User>> GetByUuids(IReadOnlyCollection<Guid> uuids)
+    {
+        if (uuids.Count == 0)
+            return new List<User>();
+
+        return await _usersContext.Users
+            .AsNoTracking()
+            .Include(u => u.Contact)
+            .Where(x => uuids.Contains(x.Uuid))
+            .ToListAsync();
+    }
+
     /// <summary>
     /// Метод для поиска пользователей по имени, фамилии или имени пользователя.
     /// Использует полнотекстовый поиск PostgreSQL для эффективного поиска с учетом нечеткого соответствия.

@@ -6,9 +6,9 @@
 
 Расположение: `Backend/BarkFluff.Federation/`
 
-## Текущее состояние: discovery (этап 1.4)
+## Текущее состояние: discovery (этап 1.4) + S2S-профиль (этап 2.1)
 
-Нода умеет находить пиров всеми тремя способами (well-known → Navigator → manual), наполняет `KnownServers`/`KnownServerKeys` кодом, защищена от SSRF, фоново рефрешит ключи. Внутренний API управления пирами реализован полностью. S2S-RPC, кроме `Ping`/`GetServerKeys`, по-прежнему отвечают `Unimplemented` — тела появятся в Фазе 2 (доставка событий), XFed+discovery уже покрывают их как класс методов.
+Нода умеет находить пиров всеми тремя способами (well-known → Navigator → manual), наполняет `KnownServers`/`KnownServerKeys` кодом, защищена от SSRF, фоново рефрешит ключи. Внутренний API управления пирами реализован полностью. Из S2S-RPC реализованы `Ping`/`GetServerKeys`/`GetUserProfile`, внутренние — `ResolveRemoteUser` + управление пирами. Остальные S2S-RPC (доставка событий, catch-up, presence, typing) отвечают `Unimplemented` — тела появятся в последующих этапах Фазы 2.
 
 Федерация по умолчанию выключена (`Federation:Enabled = false`); при пустом `Federation:ServerName` сервис стартует нормально, но ключ всё равно генерируется (безвредно, лог-warning), а well-known отвечает `503`.
 
@@ -68,8 +68,8 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 
 ## gRPC API
 
-- `FederationS2SApi` (`federation_api.proto`) — S2S-трафик, авторизация — XFed (не XAuth). Реализованы `Ping`, `GetServerKeys`.
-- `FederationInternalApi` (`federation_internal_api.proto`) — внутренний API (для AdminPanel и других сервисов ноды), XAuth `TokenType.Service`. Реализованы `RotateSigningKey`, `GetKnownServers`, `UpsertManualPeer`, `SetServerBlocked`, `GetFederationStatus`.
+- `FederationS2SApi` (`federation_api.proto`) — S2S-трафик, авторизация — XFed (не XAuth). Реализованы `Ping`, `GetServerKeys`, `GetUserProfile` (этап 2.1: профиль локального пользователя через `UsersServerApi.GetFederatedProfile` с privacy-фильтрацией).
+- `FederationInternalApi` (`federation_internal_api.proto`) — внутренний API (для AdminPanel и других сервисов ноды), XAuth `TokenType.Service`. Реализованы `RotateSigningKey`, `GetKnownServers`, `UpsertManualPeer`, `SetServerBlocked`, `GetFederationStatus`, `ResolveRemoteUser` (этап 2.1: parse FID/UUID → `ServerResolver` → подписанный S2S `GetUserProfile` на ноду-владельца). Federation не хранит пользовательское состояние — кеш remote-профилей ведёт [[Backend/Users]] (через `UpsertRemoteUsers`).
 
 ## Конфигурация
 
@@ -83,6 +83,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - `Federation:Insecure:AllowUntrustedWellKnownTls` — dev-флаг отключения CA-валидации well-known-фетча, действует только при `ASPNETCORE_ENVIRONMENT=Development`.
 - `NavigatorUrl` — адрес Navigator (`http://navigator:7010` по умолчанию); ключ раньше был только у Beacon (ServiceId=3), этапом 1.4 заведён и для Federation (ServiceId=15).
 - `FederationService:Host/Token` — ключи для клиентов сервиса Federation (populator, этап 0.1).
+- `UsersService:Host/Token` — ключи для gRPC-клиента к [[Backend/Users]] (нужен с этапа 2.1 для `GetUserProfile` → `GetFederatedProfile`). Глобальные (ServiceId=0), уже раздаются `ConfigurationDefaultsPopulator`.
 
 ## Метрики
 
@@ -103,4 +104,4 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 
 ## Планы дальнейших этапов
 
-Фаза 1 завершена (1.1–1.7). Следующий шаг вне этой фазы — Фаза 2 (outbox, доставка событий, MassTransit/RabbitMQ) по `docs/rearch/10-roadmap.md`.
+Фаза 1 завершена (1.1–1.7). Этап 2.1 завершён (S2S `GetUserProfile` + внутренний `ResolveRemoteUser`). Следующий шаг — Фаза 2 (outbox, доставка событий, MassTransit/RabbitMQ) по `docs/rearch/10-roadmap.md`, планы по каждому этапу в `docs/rearch/phase-2/`.

@@ -33,7 +33,10 @@ using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
 using BarkFluff.Users.Features.Prekeys.RotateSignedPrekey;
 using BarkFluff.Users.Features.Privacy.GetPrivacySettings;
 using BarkFluff.Users.Features.Privacy.UpdatePrivacySettings;
+using BarkFluff.Users.Features.ResolveFederatedUser;
+using BarkFluff.Users.Features.SearchUsers;
 using BarkFluff.Users.Features.SetProfilePicture;
+using BarkFluff.Users.Services;
 
 using Grpc.Core;
 
@@ -149,6 +152,22 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
                 Offset = 0
             };
 
+            // FID-паттерн (@username:servername) → ветка резолва (единичный результат), не trigram-поиск.
+            if (FidParser.LooksLikeFid(request.Query))
+            {
+                var resolved = await _mediator.Send(new ResolveFederatedUserQuery { Fid = request.Query });
+                if (resolved.Found)
+                {
+                    return new SearchUsersResponse
+                    {
+                        Users = { ToUserProto(resolved) },
+                        TotalCount = 1,
+                    };
+                }
+
+                return new SearchUsersResponse();
+            }
+
             var command = new SearchUsersQuery { Query = request.Query, Size = request.Pagination.Size, Skip = request.Pagination.Offset };
 
             var response = await _mediator.Send(command);
@@ -161,6 +180,26 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
             _metrics.Increment("user_search_errors");
             throw;
         }
+    }
+
+    public override Task<ResolveFederatedUserResponse> ResolveFederatedUser(ResolveFederatedUserRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("federated_resolves_requests");
+        return _mediator.Send(new ResolveFederatedUserQuery { Fid = request.Fid ?? string.Empty });
+    }
+
+    private static User ToUserProto(ResolveFederatedUserResponse r)
+    {
+        return new User
+        {
+            Id = 0, // remote-пользователь не имеет локального long-ID
+            Uuid = r.Uuid,
+            Username = r.Username,
+            FirstName = r.FirstName,
+            LastName = r.LastName,
+            Bio = r.Bio,
+            ProfilePicture = r.AvatarUrl,
+        };
     }
 
     public override Task<GetUserBadgesResponse> GetUserBadges(GetUserBadgesRequest request, ServerCallContext context)
