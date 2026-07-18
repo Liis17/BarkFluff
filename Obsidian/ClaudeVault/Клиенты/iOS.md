@@ -186,6 +186,14 @@ Barkfluff/
 
 API совпадает с macOS 26. Перенесены `GlassButtonStyle`, `GlassCardView`, `GlassModifiers` (`.glassEffect`, `.glassCard`, `.glassPanel`, `.shimmer`).
 
+## UI motion и accessibility
+
+- В `DesignSystem/Theme.swift` определены два коротких motion-токена: `press` (`easeOut`, 0.12 с) и `stateChange` (`smooth`, 0.2 с). Для частых кнопок без собственной подложки используется `PressableButtonStyle`: обычный touch-down даёт scale до 0.97, а при Reduce Motion — мгновенную смену opacity без перемещения.
+- `GlassButtonStyle`, `GlassCapsuleButtonStyle` и `InteractiveGlassCardView` используют тот же Reduce Motion-aware press-паттерн. Интерактивная glass-карточка реализована через стандартный `ButtonStyle`, без конкурирующего с прокруткой `DragGesture`.
+- Частые touch-действия имеют минимальную интерактивную область 44×44 pt: табы папок, прикрепление/стикеры/отправка сообщения и кнопка прокрутки вниз. Табы папок используют Dynamic Type-совместимые системные стили вместо фиксированных размеров шрифта.
+- `MessageInputView` и `MessagesListView` при включённом Reduce Motion заменяют move-переходы на opacity; программный скролл сообщений становится мгновенным. Анимация смены состояния полноэкранного оверлея звонка в `RootView` также отключается.
+- Строки чатов и видео-вложения — семантические `Button`, а icon-only действия поля ввода и прокрутки имеют локализованные VoiceOver labels в `Localizable.xcstrings`.
+
 ## Code Conventions
 
 - Комментарии на русском
