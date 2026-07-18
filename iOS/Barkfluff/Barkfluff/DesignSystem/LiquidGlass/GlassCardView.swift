@@ -46,8 +46,6 @@ struct InteractiveGlassCardView<Content: View>: View {
     var content: Content
     var action: () -> Void
 
-    @State private var isPressed = false
-
     var cornerRadius: CGFloat = 16
     var padding: CGFloat = 16
 
@@ -77,15 +75,8 @@ struct InteractiveGlassCardView<Content: View>: View {
                         .strokeBorder(.white.opacity(0.1), lineWidth: 1)
                 }
                 .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
-                .scaleEffect(isPressed ? 0.98 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableButtonStyle(pressedScale: 0.98))
     }
 }
 
