@@ -6,27 +6,16 @@ services:
   navigator:
     image: docker.barkfluff.com:5000/barkfluff-navigator:latest
     restart: always
+    user: root
     ports: [ "${NAVIGATOR_PORT}:${NAVIGATOR_PORT}" ]
     environment:
       <<: *common-variables
       NAVIGATOR_PORT: ${NAVIGATOR_PORT}
-      # Этап 1.5 rearch: Navigator вне платформенного шаблона (без LoadConfiguration) — БД через
-      # переменную окружения напрямую, не через Configuration-сервис.
-      NAVIGATOR_DB: "Host=navigator-postgres;Database=${NAVIGATOR_POSTGRES_DB};Username=${NAVIGATOR_POSTGRES_USER};Password=${NAVIGATOR_POSTGRES_PASSWORD}"
-    depends_on:
-      - navigator-postgres
-    networks:
-      - barkfluff-network
-
-  navigator-postgres:
-    image: postgres:18
-    restart: always
-    environment:
-      POSTGRES_USER: "${NAVIGATOR_POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${NAVIGATOR_POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${NAVIGATOR_POSTGRES_DB}"
+      # Этап 1.5 rearch: Navigator вне платформенного шаблона (без LoadConfiguration) — локальная
+      # SQLite-БД, путь через переменную окружения напрямую, не через Configuration-сервис.
+      NAVIGATOR_DB: "Data Source=/app/db/navigator.db"
     volumes:
-      - navigator_pgdata:/var/lib/postgresql
+      - navigator_data:/app/db
     networks:
       - barkfluff-network
 
@@ -35,4 +24,4 @@ networks:
     driver: bridge
 
 volumes:
-  navigator_pgdata:
+  navigator_data:
