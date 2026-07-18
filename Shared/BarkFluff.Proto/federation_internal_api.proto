@@ -25,6 +25,9 @@ service FederationInternalApi {
   rpc UpsertManualPeer(UpsertManualPeerRequest) returns (UpsertManualPeerResponse);
   rpc SetServerBlocked(SetServerBlockedRequest) returns (SetServerBlockedResponse);
   rpc GetFederationStatus(GetFederationStatusRequest) returns (GetFederationStatusResponse);
+
+  // Плановая ротация: создаёт новый ключ, старому проставляет expired_at = now + overlap
+  rpc RotateSigningKey(RotateSigningKeyRequest) returns (RotateSigningKeyResponse);
 }
 
 message ResolveRemoteUserRequest {
@@ -96,4 +99,12 @@ message GetFederationStatusResponse {
   int64 outbox_pending = 4;
   int64 outbox_deadletter = 5;
   int32 known_servers_active = 6;
+}
+
+message RotateSigningKeyRequest { }
+
+message RotateSigningKeyResponse {
+  string new_key_id = 1;
+  string old_key_id = 2;
+  google.protobuf.Timestamp old_key_expires_at = 3;
 }
