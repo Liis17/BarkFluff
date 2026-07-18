@@ -23,7 +23,7 @@ public class ReadByCancelPushHandler : INotificationHandler<ReadByNotification>
 
     public Task Handle(ReadByNotification notification, CancellationToken cancellationToken)
     {
-        foreach (var userId in notification.NewReadBy)
+        foreach (var userId in notification.ReadersWithNewRead)
         {
             _pendingPushTracker.CancelPending(notification.MessageId, userId);
 

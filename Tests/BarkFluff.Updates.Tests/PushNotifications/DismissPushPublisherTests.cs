@@ -31,6 +31,11 @@ public class DismissPushPublisherTests
                 It.Is<DismissPushEvent>(@event => @event.ChatId == chatId && @event.UserId == 42),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+        publishEndpoint.Verify(
+            endpoint => endpoint.Publish(
+                It.IsAny<DismissPushEvent>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private static ReadByNotification CreateNotification(Guid chatId, long messageId, long userId)
@@ -39,7 +44,8 @@ public class DismissPushPublisherTests
         {
             ChatId = chatId,
             MessageId = messageId,
-            NewReadBy = [userId],
+            NewReadBy = [10, userId],
+            NewReaders = [userId],
             ChatMembers = [userId]
         };
     }

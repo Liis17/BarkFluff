@@ -16,10 +16,15 @@ public class FirebaseService
     private readonly FirebaseMessaging? _messaging;
     private readonly IDismissPushSender? _dismissPushSender;
 
+    public FirebaseService(ILogger<FirebaseService> logger, IConfiguration configuration)
+        : this(logger, configuration, null)
+    {
+    }
+
     public FirebaseService(
         ILogger<FirebaseService> logger,
         IConfiguration configuration,
-        IDismissPushSender? dismissPushSender = null)
+        IDismissPushSender? dismissPushSender)
     {
         _logger = logger;
         _dismissPushSender = dismissPushSender;

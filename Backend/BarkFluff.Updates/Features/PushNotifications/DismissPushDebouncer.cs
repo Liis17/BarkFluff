@@ -38,7 +38,14 @@ public class DismissPushDebouncer
             if (!_pending.TryUpdate(key, current, previous))
                 continue;
 
-            previous.Cancel();
+            try
+            {
+                previous.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The replaced invocation completed between lookup and cancellation.
+            }
             break;
         }
 

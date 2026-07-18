@@ -8,7 +8,13 @@ public class ReadByNotification : INotification
 
     public long MessageId { get; set; }
 
-    public List<long> NewReadBy { get; set; }
+    public List<long> NewReadBy { get; set; } = [];
 
-    public List<long> ChatMembers { get; set; }
+    public List<long> NewReaders { get; set; } = [];
+
+    public List<long> ChatMembers { get; set; } = [];
+
+    public IReadOnlyList<long> ReadersWithNewRead => NewReaders.Count > 0
+        ? NewReaders
+        : NewReadBy;
 }

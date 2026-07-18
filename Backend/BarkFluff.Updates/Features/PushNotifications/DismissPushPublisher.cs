@@ -31,7 +31,7 @@ public class DismissPushPublisher : INotificationHandler<ReadByNotification>
 
     public async Task Handle(ReadByNotification notification, CancellationToken cancellationToken)
     {
-        var publishTasks = notification.NewReadBy
+        var publishTasks = notification.ReadersWithNewRead
             .Distinct()
             .Select(userId => _debouncer.RunAsync(
                 userId,

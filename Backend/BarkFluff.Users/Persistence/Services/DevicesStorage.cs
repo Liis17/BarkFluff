@@ -12,8 +12,10 @@ public class DevicesStorage(UsersContext context)
     {
         var authorizedAt = DateTime.UtcNow;
 
-        if (context.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        if (context.Database.ProviderName is "Npgsql.EntityFrameworkCore.PostgreSQL"
+            or "Microsoft.EntityFrameworkCore.Sqlite")
         {
+            // DeviceId globally identifies an app installation; re-authentication transfers it to the current user.
             await context.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO "UserDevices"
                     ("Id", "UserId", "OriginalName", "AuthorizedAt", "AppName", "OperationSystem", "Location", "NotificationsEnabled")
