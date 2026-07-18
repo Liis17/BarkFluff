@@ -164,6 +164,21 @@ public class MessagesStorage
 
     public async Task MarkMessagesAsRead(List<long> messageIds, long userId)
     {
+        if (_context.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            var messages = await _context.Messages
+                .Where(message => messageIds.Contains(message.Id) && !message.IsDeleted)
+                .ToListAsync();
+
+            foreach (var message in messages.Where(message => !message.ReadBy.Contains(userId)))
+            {
+                message.ReadBy.Add(userId);
+            }
+
+            await _context.SaveChangesAsync();
+            return;
+        }
+
         // Use PostgreSQL-specific array operations for optimal performance
         await _context.Database.ExecuteSqlRawAsync(@"
             UPDATE ""Messages""
