@@ -259,6 +259,44 @@ public class FirebaseServiceTests : IDisposable
 
             await act.Should().NotThrowAsync();
         }
+
+        [Fact]
+        public async Task QuotaExceeded_LogsSingleWarningWithoutError()
+        {
+            var sender = new Mock<IDismissPushSender>();
+            sender
+                .Setup(value => value.SendAsync(
+                    It.IsAny<IReadOnlyList<string>>(),
+                    "chat1",
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync([
+                    new DismissPushSendResult(false, MessagingErrorCode.QuotaExceeded, new Exception("quota")),
+                    new DismissPushSendResult(false, MessagingErrorCode.QuotaExceeded, new Exception("quota"))
+                ]);
+            var service = new FirebaseService(
+                _loggerMock.Object,
+                Mock.Of<IConfiguration>(),
+                sender.Object);
+
+            await service.SendDismissBatchAsync(["token1", "token2"], "chat1");
+
+            _loggerMock.Verify(
+                logger => logger.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((value, _) => value.ToString()!.Contains("квота FCM")),
+                    null,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+            _loggerMock.Verify(
+                logger => logger.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception?>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never);
+        }
     }
 
     public class SendAdminBroadcastBatchAsync : FirebaseServiceTests
