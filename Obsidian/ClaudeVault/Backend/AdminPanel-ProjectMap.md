@@ -243,6 +243,8 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 | `RestartAllServicesAsync()` | compose restart barkfluff |
 | `UpdateAllServicesAsync()` | pull + compose up -d |
 
+> `RestartAllServicesAsync`/`UpdateAllServicesAsync` (эндпоинты `/restart-all`, `/update-all`) вызываются **только** мёртвой `Pages/Redesigned/`. Активный v2 `services.html` реализует «Перезапустить все»/«Обновить все» на клиенте: перебирает `servicesData` (из `/services/status`), фильтрует по `BarkFluff.*` (`barkfluffContainers()`) и дёргает per-container `restart`/`pull`. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk **не** попадает — только ручной per-row перезапуск. `BarkFluff.Federation` добавлен в `KnownServices` + `ServiceToContainerMap` (`SeqEndpoints.cs`) → виден в фильтре логов, таблице сервисов и bulk-действиях.
+
 ### SeqService
 `HttpClient` → Seq REST API.
 

@@ -37,7 +37,7 @@ NAVIGATOR_DB="Data Source=navigator.db" NAVIGATOR_PORT=7010 dotnet run
 - `RegisterServerAsync()` — upsert. Ключ идентичности: `ServerName`, если задан; иначе легаси `Name+BeaconHost+BeaconPort`
 - `GetByServerNameAsync()` — lowercase-сравнение, `found=false` если протухло (тот же TTL, что у `GetServers`)
 
-**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды). SQLite-файл хранится в named volume `navigator_data:/app/db`, `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в root-owned volume (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет.
+**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды). SQLite-файл лежит в bind-mount `./db:/app/db` (папка `db/` рядом с самим compose-файлом на хосте), `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в bind-каталог (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет.
 
 ## Валидация федеративной регистрации (этап 1.5)
 
