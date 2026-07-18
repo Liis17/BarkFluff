@@ -17,7 +17,8 @@ public class DismissPushConsumerTests
     {
         _firebaseService = new Mock<FirebaseService>(
             Mock.Of<ILogger<FirebaseService>>(),
-            Mock.Of<IConfiguration>());
+            Mock.Of<IConfiguration>(),
+            Mock.Of<IDismissPushSender>());
     }
 
     private DismissPushConsumer CreateConsumer()
@@ -61,6 +62,27 @@ public class DismissPushConsumerTests
         _firebaseService.Verify(
             f => f.SendDismissBatchAsync(
                 It.Is<IReadOnlyList<string>>(t => t.SequenceEqual(new List<string> { "token-1", "token-2" })),
+                chatId.ToString(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Consume_DuplicateTokens_SendsEachTokenOnce()
+    {
+        var consumer = CreateConsumer();
+        var chatId = Guid.NewGuid();
+        var context = CreateContext(new DismissPushEvent { ChatId = chatId, UserId = 42 });
+
+        SetupGetDevicesWithTokens(
+            new DeviceFirebaseToken { UserId = 42, DeviceId = "device-1", FirebaseToken = "same-token" },
+            new DeviceFirebaseToken { UserId = 42, DeviceId = "device-2", FirebaseToken = "same-token" });
+
+        await consumer.Consume(context.Object);
+
+        _firebaseService.Verify(
+            f => f.SendDismissBatchAsync(
+                It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "same-token" })),
                 chatId.ToString(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
