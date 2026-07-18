@@ -37,6 +37,7 @@
     <ItemGroup>
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_api.proto" GrpcServices="Server" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_internal_api.proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\navigator_api.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>

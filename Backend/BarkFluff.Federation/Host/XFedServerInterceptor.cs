@@ -25,17 +25,23 @@ public class XFedServerInterceptor : Interceptor
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<XFedServerInterceptor> _logger;
+    private readonly ServerResolver _resolver;
+    private readonly DiscoveryTriggerRateLimiter _rateLimiter;
 
     public XFedServerInterceptor(
         FederationContext context,
         IConfiguration configuration,
         MetricsCollector metrics,
-        ILogger<XFedServerInterceptor> logger)
+        ILogger<XFedServerInterceptor> logger,
+        ServerResolver resolver,
+        DiscoveryTriggerRateLimiter rateLimiter)
     {
         _context = context;
         _configuration = configuration;
         _metrics = metrics;
         _logger = logger;
+        _resolver = resolver;
+        _rateLimiter = rateLimiter;
     }
 
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
@@ -101,7 +107,21 @@ public class XFedServerInterceptor : Interceptor
         var knownKey = await _context.KnownServerKeys
             .FirstOrDefaultAsync(k => k.ServerName == origin && k.KeyId == keyId);
 
-        if (knownKey == null || knownKey.RevokedAt != null || (knownKey.ExpiredAt != null && knownKey.ExpiredAt <= DateTime.UtcNow))
+        var keyUsable = knownKey != null && knownKey.RevokedAt == null && (knownKey.ExpiredAt == null || knownKey.ExpiredAt > DateTime.UtcNow);
+
+        // Discovery-на-лету (docs/rearch/03-discovery.md, "Политика обновления"): неизвестный
+        // origin/key_id → резолв → повторная проверка один раз. Rate-limit per-server защищает
+        // от флуда случайными key_id.
+        if (!keyUsable && _rateLimiter.TryTrigger(origin))
+        {
+            await _resolver.ResolveAsync(origin);
+
+            knownKey = await _context.KnownServerKeys
+                .FirstOrDefaultAsync(k => k.ServerName == origin && k.KeyId == keyId);
+            keyUsable = knownKey != null && knownKey.RevokedAt == null && (knownKey.ExpiredAt == null || knownKey.ExpiredAt > DateTime.UtcNow);
+        }
+
+        if (!keyUsable)
             throw new XFedUnauthenticatedException("Неизвестный или истёкший ключ пира");
 
         var httpContext = context.GetHttpContext();
@@ -120,7 +140,7 @@ public class XFedServerInterceptor : Interceptor
 
         var canonical = XFedCanonicalString.Build(origin, destination, timestampMs, context.Method, requestBytes);
 
-        if (!SigningKeyService.Verify(knownKey.PublicKey, canonical, signature))
+        if (!SigningKeyService.Verify(knownKey!.PublicKey, canonical, signature))
         {
             _metrics.Increment("s2s_signature_failures");
             _logger.LogWarning("XFed: подпись не прошла проверку, origin={Origin}", origin);

@@ -71,6 +71,14 @@ public sealed class FederationTestHost : IAsyncDisposable
                     services.AddDbContext<FederationContext>(o => o.UseInMemoryDatabase(dbName));
                     services.AddScoped<SigningKeyService>();
                     services.AddSingleton<MetricsCollector>();
+
+                    // Discovery-на-лету (1.4) не тестируется здесь отдельно (см. ServerResolverTests) —
+                    // фейки без сети, всегда "не нашли", чтобы XFedServerInterceptor честно падал
+                    // на "неизвестный ключ" вместо реального DNS/HTTP.
+                    services.AddSingleton<IWellKnownClient>(new FakeWellKnownClient());
+                    services.AddSingleton<INavigatorClient>(new FakeNavigatorClient());
+                    services.AddScoped<ServerResolver>();
+                    services.AddSingleton<DiscoveryTriggerRateLimiter>();
                 });
 
                 webHost.Configure(app =>
