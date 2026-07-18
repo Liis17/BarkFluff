@@ -35,18 +35,13 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Pr
 builder.Services.AddXAuth(builder.Configuration);
 
 // Navigator вне платформенного шаблона (публичная инфраструктура вне ноды) — без LoadConfiguration,
-// БД через переменную окружения NAVIGATOR_DB, фолбэк — ключ NavigatorDb в appsettings.
+// локальная SQLite-БД: путь через переменную окружения NAVIGATOR_DB, фолбэк — ключ NavigatorDb в
+// appsettings, дефолт — файл рядом с сервисом.
 var navigatorConnectionString = Environment.GetEnvironmentVariable("NAVIGATOR_DB")
-    ?? builder.Configuration["NavigatorDb"];
+    ?? builder.Configuration["NavigatorDb"]
+    ?? "Data Source=navigator.db";
 
-if (string.IsNullOrWhiteSpace(navigatorConnectionString))
-    throw new InvalidOperationException("БД Navigator не сконфигурирована: задайте NAVIGATOR_DB (env) или NavigatorDb (appsettings).");
-
-builder.Services.AddDbContext<NavigatorContext>(o => o.UseNpgsql(navigatorConnectionString, npgsql =>
-{
-    npgsql.EnableRetryOnFailure(3);
-    npgsql.CommandTimeout(30);
-}));
+builder.Services.AddDbContext<NavigatorContext>(o => o.UseSqlite(navigatorConnectionString));
 
 builder.Services.AddScoped<ServersStorage>();
 builder.Services.AddSingleton<RegistrationThrottle>();
@@ -57,7 +52,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var ctx = scope.ServiceProvider.GetRequiredService<NavigatorContext>();
-    ctx.Database.Migrate();
+    ctx.Database.EnsureCreated();
 }
 
 app.MapGrpcReflectionService();
