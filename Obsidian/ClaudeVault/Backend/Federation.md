@@ -6,9 +6,9 @@
 
 Расположение: `Backend/BarkFluff.Federation/`
 
-## Текущее состояние: XFed-подписи (этап 1.3)
+## Текущее состояние: discovery (этап 1.4)
 
-Весь S2S-трафик, кроме `GetServerKeys` (bootstrap, останется неподписанным навсегда), проверяется по Ed25519-подписи (XFed). Остальные S2S-RPC (кроме `Ping`) по-прежнему отвечают `Unimplemented` — реализация тела появится вместе с проверкой в 1.4+, но XFed уже покрывает их как класс методов (`UnaryServerHandler`/`ServerStreamingServerHandler`). Внутренний API реализует `RotateSigningKey`; discovery/пиры — 1.4.
+Нода умеет находить пиров всеми тремя способами (well-known → Navigator → manual), наполняет `KnownServers`/`KnownServerKeys` кодом, защищена от SSRF, фоново рефрешит ключи. Внутренний API управления пирами реализован полностью. S2S-RPC, кроме `Ping`/`GetServerKeys`, по-прежнему отвечают `Unimplemented` — тела появятся в Фазе 2 (доставка событий), XFed+discovery уже покрывают их как класс методов.
 
 Федерация по умолчанию выключена (`Federation:Enabled = false`); при пустом `Federation:ServerName` сервис стартует нормально, но ключ всё равно генерируется (безвредно, лог-warning), а well-known отвечает `503`.
 
@@ -44,13 +44,23 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - Проверка — `Host/XFedServerInterceptor.cs`, per-service интерсептор (`AddServiceOptions<FederationS2SApiService>`), порядок проверок по доку 02: заголовки → `destination` → окно времени (`Federation:SignatureWindowSeconds`, дефолт 300с в коде) → ключ пира в `KnownServerKeys` → подпись → блоклист (`KnownServers.Status`). Успех кладёт origin в `context.UserState["xfed-origin"]`.
 - Подпись исходящих — `Services/XFedClientInterceptor.cs` (по образцу `JwtClientInterceptor`), активный ключ берёт из `Services/ActiveSigningKeyCache.cs` (синглтон-кеш, обновляется при старте и после `RotateSigningKey` — сам ключ не читается из БД на каждый вызов).
 - `Services/S2SChannelFactory.cs` — единственный путь исходящих S2S: кеш `CallInvoker` per-destination, `SocketsHttpHandler.SslOptions.RemoteCertificateValidationCallback` проверяет SPKI (`X509Certificate2.PublicKey.ExportSubjectPublicKeyInfo()` → SHA256 → сравнение с `KnownServers.TlsSpkiSha256`), цепочка CA игнорируется намеренно (self-signed). Пустой список пинов → fail-closed (TLS отклоняется). Plaintext (`http://`) — только для стенда, TLS/nginx — этап 1.6.
-- Таблицы `KnownServers`/`KnownServerKeys` (см. [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]) в 1.3 только читаются; наполнение — этап 1.4 (сейчас сидируются вручную SQL на стенде).
+- Таблицы `KnownServers`/`KnownServerKeys` (см. [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]) — записываются `ServerResolver` (1.4); в 1.3 только читались.
 
 **Отклонение от плана, зафиксированное в коммите**: `BaseGrpcException` (Shared/BarkFluff.Shared.Exceptions) получил виртуальное свойство `StatusCode` (дефолт `FailedPrecondition` — 100% обратная совместимость со всеми существующими исключениями), `ServerExceptionInterceptor` использует его вместо жёсткого `FailedPrecondition`. Понадобилось, т.к. глобальные интерсепторы gRPC оборачивают per-service (Context7 aspnetcore.docs: «globally-configured interceptors run before service-specific ones») — `XFedServerInterceptor` бросает типизированные `BaseGrpcException`-потомки (`Shared/BarkFluff.Shared.Exceptions/Federation/`: `XFedUnauthenticatedException`, `ClockSkewDetectedException`, `FederationServerBlockedException`, `FederationNotConfiguredException`) вместо хендкодинга сырых `RpcException` (что рискованно конфликтует с общим catch-блоком `ServerExceptionInterceptor`, который иначе переписал бы статус на `Unknown`).
 
+## Discovery (этап 1.4)
+
+- `Services/ServernameValidator.cs` — анти-SSRF, единая точка перед ЛЮБЫМ исходящим запросом (well-known-фетч и будущие gRPC-эндпоинты): punycode-нормализация к A-label (`IdnMapping`, ловит гомограф-атаки типа кириллической «а»), запрет IP-литералов/`localhost`, DNS-резолв + отклонение приватных/зарезервированных диапазонов (RFC 1918, loopback, link-local, ULA, multicast) — кроме `Source = Manual`. Anti-rebinding: `SocketsHttpHandler.ConnectCallback` коннектится по уже провалидированному IP, не по повторному резолву.
+- `Services/WellKnownClient.cs` — источник 1: `GET https://{servername}/.well-known/barkfluff` по CA-валидному HTTPS (без trust-all — bootstrap-канал), лимит 64 КБ/10с, проверка `server_name` + JCS-канонизация + Ed25519-verify ключом из самого документа (self-certifying). Dev-флаг `Federation:Insecure:AllowUntrustedWellKnownTls` отключает CA-валидацию — читается только при `ASPNETCORE_ENVIRONMENT=Development`.
+- `Services/NavigatorClient.cs` — источник 2: `NavigatorApi.GetServerByName` (публичный, без XAuth, как у Beacon). Требует Navigator с реализованным RPC — этап 1.5.
+- `Services/ServerResolver.cs` — алгоritm резолва дословно по [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]: KnownServers свежий(<24ч)/Manual → как есть; иначе well-known → фолбэк Navigator → `null` (ServerNotFound). Кросс-сверка ключей обязательна при первом контакте, если оба источника отвечают (расхождение → отказ, метрика `crosscheck_mismatches`). Смена ключей у известной ноды принимается, только если новый документ всё ещё содержит хотя бы один ранее доверенный ключ (`HasTrustedContinuity`) — иначе запись не трогаем.
+- Discovery-на-лету — в `XFedServerInterceptor`: неизвестный `(origin, key_id)` → `ServerResolver.ResolveAsync` → повторная проверка один раз. `Services/DiscoveryTriggerRateLimiter.cs` — не чаще раза в 5 минут per-server (in-memory), иначе флуд случайными key_id заставляет ноду долбить чужой well-known.
+- `BackgroundServices/PeerRefreshBackgroundService.cs` — раз в час проверяет due-пиров (не-Manual, Active/Unreachable): рефреш раз в сутки; после 3 неудач подряд → `Unreachable`, дальше экспоненциальный backoff (2^N часов, кап 24ч); успех возвращает `Active`. Счётчик неудач — in-memory (как троттлинг регистрации в Navigator), потеря при рестарте безвредна.
+- Internal-RPC (`FederationInternalApiService`): `GetKnownServers`, `UpsertManualPeer` (валидация только синтаксиса, без проверки диапазонов), `SetServerBlocked`, `GetFederationStatus` (outbox-счётчики — честные нули до Фазы 2).
+
 ## Тесты
 
-`Tests/BarkFluff.Federation.Tests/` — 13 тестов, все зелёные без Docker/Postgres (EF InMemory + `Microsoft.AspNetCore.TestHost`): каноническая строка (fixed vector), Sign/Verify roundtrip + негативы, in-proc `TestServer`-хост гоняет реальный `FederationS2SApiService`+`XFedServerInterceptor`+`XFedRawBytesMiddleware` — валидный `Ping` OK, отсутствие заголовков/битая подпись/чужой `destination` → `Unauthenticated`, просроченный `timestamp` → `Unauthenticated` + `x-error-code=ClockSkewDetected`, заблокированный origin → `PermissionDenied`, `GetServerKeys` без подписи — OK.
+`Tests/BarkFluff.Federation.Tests/` — 50 тестов, все зелёные без Docker/Postgres (EF InMemory + `Microsoft.AspNetCore.TestHost`): каноническая строка (fixed vector), Sign/Verify roundtrip + негативы, in-proc `TestServer`-хост гоняет реальный `FederationS2SApiService`+`XFedServerInterceptor`+`XFedRawBytesMiddleware` — валидный `Ping` OK, отсутствие заголовков/битая подпись/чужой `destination` → `Unauthenticated`, просроченный `timestamp` → `Unauthenticated` + `x-error-code=ClockSkewDetected`, заблокированный origin → `PermissionDenied`, `GetServerKeys` без подписи — OK. Плюс (1.4): `ServernameValidatorTests` (таблица IP-литерал/localhost/punycode-гомограф/приватные диапазоны/http-исключение для manual), `ServerResolverTests` (фейковые `IWellKnownClient`/`INavigatorClient` — порядок фолбэков, кросс-сверка, ServerNotFound, Manual не трогается, кеш, блоклист, доверенная цепочка при ротации).
 
 ## Двух-нодовый стенд
 
@@ -59,7 +69,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 ## gRPC API
 
 - `FederationS2SApi` (`federation_api.proto`) — S2S-трафик, авторизация — XFed (не XAuth). Реализованы `Ping`, `GetServerKeys`.
-- `FederationInternalApi` (`federation_internal_api.proto`) — внутренний API (для AdminPanel и других сервисов ноды), XAuth `TokenType.Service`. Реализован `RotateSigningKey`; остальное — `Unimplemented` до 1.4.
+- `FederationInternalApi` (`federation_internal_api.proto`) — внутренний API (для AdminPanel и других сервисов ноды), XAuth `TokenType.Service`. Реализованы `RotateSigningKey`, `GetKnownServers`, `UpsertManualPeer`, `SetServerBlocked`, `GetFederationStatus`.
 
 ## Конфигурация
 
@@ -70,12 +80,15 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - `Federation:WellKnownPort` — порт HTTP/1-листенера well-known, дефолт 7031 в коде.
 - `Federation:KeyRotationOverlapDays` — окно перекрытия при ротации, дефолт 30 в коде.
 - `Federation:SignatureWindowSeconds` — окно анти-replay XFed, дефолт 300 в коде.
+- `Federation:Insecure:AllowUntrustedWellKnownTls` — dev-флаг отключения CA-валидации well-known-фетча, действует только при `ASPNETCORE_ENVIRONMENT=Development`.
+- `NavigatorUrl` — адрес Navigator (`http://navigator:7010` по умолчанию); ключ раньше был только у Beacon (ServiceId=3), этапом 1.4 заведён и для Federation (ServiceId=15).
 - `FederationService:Host/Token` — ключи для клиентов сервиса Federation (populator, этап 0.1).
 
-## Метрики XFed
+## Метрики
 
-`s2s_requests_in`/`s2s_requests_out`, `s2s_signature_failures`, `s2s_clock_skew_rejections`, `s2s_spki_pin_rejections` — через `MetricsCollector`.
+- XFed: `s2s_requests_in`/`s2s_requests_out`, `s2s_signature_failures`, `s2s_clock_skew_rejections`, `s2s_spki_pin_rejections`.
+- Discovery: `discovery_lookups.{wellknown|navigator|manual|cache}`, `discovery_failures`, `known_servers_active` (gauge, снимается `PeerRefreshBackgroundService`), `wellknown_signature_failures`, `crosscheck_mismatches`.
 
 ## Планы дальнейших этапов
 
-См. `docs/rearch/phase-1/README.md` — 1.4 (discovery, KnownServers), 1.6 (nginx), 1.7 (AdminPanel).
+См. `docs/rearch/phase-1/README.md` — 1.5 (Navigator PostgreSQL + `GetServerByName`, нужен для реальной проверки источника 2), 1.6 (nginx), 1.7 (AdminPanel).
