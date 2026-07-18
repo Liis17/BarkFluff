@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 
 using BarkFluff.Navigator.Persistence;
 using BarkFluff.Proto.Navigator;
+using BarkFluff.Shared.Exceptions.Federation;
 using BarkFluff.Shared.Exceptions.Navigator;
 
 using MediatR;
@@ -20,15 +21,20 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
     private static partial Regex HexColorRegex();
 
     private readonly ServersStorage _serversStorage;
+    private readonly FederationWellKnownValidator _wellKnownValidator;
     private readonly ILogger<RegisterServerCommandHandler> _logger;
 
-    public RegisterServerCommandHandler(ServersStorage serversStorage, ILogger<RegisterServerCommandHandler> logger)
+    public RegisterServerCommandHandler(
+        ServersStorage serversStorage,
+        FederationWellKnownValidator wellKnownValidator,
+        ILogger<RegisterServerCommandHandler> logger)
     {
         _serversStorage = serversStorage;
+        _wellKnownValidator = wellKnownValidator;
         _logger = logger;
     }
 
-    public Task<RegisterServerResponse> Handle(RegisterServerCommand request, CancellationToken cancellationToken)
+    public async Task<RegisterServerResponse> Handle(RegisterServerCommand request, CancellationToken cancellationToken)
     {
         var server = request.Server;
 
@@ -113,7 +119,28 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         ValidateHexColor(server.ColorMainHex);
         ValidateHexColor(server.ColorHardHex);
 
-        _serversStorage.RegisterServer(server);
+        // Легаси-регистрация (без server_name) — без изменений. С server_name — доказуемое
+        // владение доменом через /.well-known/barkfluff (docs/rearch/03-discovery.md, "Источник 2").
+        if (!string.IsNullOrWhiteSpace(server.ServerName))
+        {
+            if (!FederationServernameGuard.TryNormalize(server.ServerName, out var normalized))
+                throw new InvalidServernameException();
+
+            server.ServerName = normalized;
+
+            var claimedKeys = (server.SigningKeys ?? [])
+                .Select(k => (k.KeyId, Convert.FromBase64String(k.PublicKeyBase64)))
+                .ToList();
+
+            var valid = await _wellKnownValidator.ValidateAsync(normalized, claimedKeys, cancellationToken);
+            if (!valid)
+            {
+                _logger.LogWarning("Регистрация с server_name={ServerName} отклонена: well-known не подтвердил владение", normalized);
+                throw new FederationRegistrationRejectedException();
+            }
+        }
+
+        await _serversStorage.RegisterServerAsync(server, cancellationToken);
 
         _logger.LogInformation(
             "Сервер '{ServerName}' ({PublicName}) успешно зарегистрирован",
@@ -121,7 +148,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
             server.ServerPublicName
         );
 
-        return Task.FromResult(new RegisterServerResponse());
+        return new RegisterServerResponse();
     }
 
     private static bool IsValidBeaconHost(string host)
