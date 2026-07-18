@@ -801,6 +801,7 @@
         var dropOverlay = document.createElement('div');
         dropOverlay.className = 'drop-overlay';
         dropOverlay.textContent = 'Отпустите для отправки';
+        dropOverlay.setAttribute('aria-hidden', 'true');
         chatArea.appendChild(dropOverlay);
 
         var dragCounter = 0;
@@ -1736,6 +1737,8 @@
 
     // ========== MEDIA OVERLAY ==========
     var overlayFileToken = 0;
+    var overlayOpenFrame = null;
+    var overlayCloseTimer = null;
 
     // Выставляет display + src для overlay-элементов; сбрасывает data-флаги resilient,
     // чтобы при новом открытии bindResilientMedia обрабатывал ошибки с чистого старта.
@@ -1757,13 +1760,24 @@
     }
 
     function showMediaOverlay(type, url, fileId) {
+        if (overlayCloseTimer) {
+            clearTimeout(overlayCloseTimer);
+            overlayCloseTimer = null;
+        }
+        if (overlayOpenFrame) cancelAnimationFrame(overlayOpenFrame);
         if (fileId) {
             overlayImage.setAttribute('data-bf-file-id', fileId);
             overlayVideo.setAttribute('data-bf-file-id', fileId);
+        } else {
+            overlayImage.removeAttribute('data-bf-file-id');
+            overlayVideo.removeAttribute('data-bf-file-id');
         }
         var token = ++overlayFileToken;
         applyOverlaySrc(type, url);
-        imageOverlay.classList.add('visible');
+        overlayOpenFrame = requestAnimationFrame(function () {
+            overlayOpenFrame = null;
+            if (token === overlayFileToken) imageOverlay.classList.add('visible');
+        });
         // Presigned-ссылки протухают при долгой сессии. При открытии полноразмерного
         // просмотра перезапрашиваем свежий URL по fileId, чтобы избежать 404.
         if (fileId) {
@@ -1775,6 +1789,34 @@
             });
         }
         viewerInit(fileId);
+    }
+
+    function cleanupMediaOverlay() {
+        overlayCloseTimer = null;
+        if (imageOverlay.classList.contains('visible')) return;
+        overlayImage.removeAttribute('data-bf-file-id');
+        overlayVideo.removeAttribute('data-bf-file-id');
+        overlayImage.removeAttribute('data-bf-refreshed');
+        overlayImage.removeAttribute('data-bf-failed');
+        overlayVideo.removeAttribute('data-bf-refreshed');
+        overlayVideo.removeAttribute('data-bf-failed');
+        overlayImage.src = '';
+        overlayVideo.pause();
+        overlayVideo.src = '';
+        viewerState.index = -1;
+        if (overlayPrev) overlayPrev.hidden = true;
+        if (overlayNext) overlayNext.hidden = true;
+    }
+
+    function closeMediaOverlay() {
+        overlayFileToken++;
+        if (overlayOpenFrame) {
+            cancelAnimationFrame(overlayOpenFrame);
+            overlayOpenFrame = null;
+        }
+        imageOverlay.classList.remove('visible');
+        if (overlayCloseTimer) clearTimeout(overlayCloseTimer);
+        overlayCloseTimer = setTimeout(cleanupMediaOverlay, 120);
     }
 
     // ----- Листаемый просмотрщик: картинки + видео всего чата через ListChatAttachments -----
@@ -1893,20 +1935,7 @@
 
     imageOverlay.addEventListener('click', function (e) {
         if (e.target === overlayVideo) return;
-        overlayFileToken++;
-        imageOverlay.classList.remove('visible');
-        overlayImage.removeAttribute('data-bf-file-id');
-        overlayVideo.removeAttribute('data-bf-file-id');
-        overlayImage.removeAttribute('data-bf-refreshed');
-        overlayImage.removeAttribute('data-bf-failed');
-        overlayVideo.removeAttribute('data-bf-refreshed');
-        overlayVideo.removeAttribute('data-bf-failed');
-        overlayImage.src = '';
-        overlayVideo.pause();
-        overlayVideo.src = '';
-        viewerState.index = -1;
-        if (overlayPrev) overlayPrev.hidden = true;
-        if (overlayNext) overlayNext.hidden = true;
+        closeMediaOverlay();
     });
 
     // ========== PROFILE OVERLAY ==========
