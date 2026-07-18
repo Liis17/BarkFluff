@@ -89,6 +89,12 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - XFed: `s2s_requests_in`/`s2s_requests_out`, `s2s_signature_failures`, `s2s_clock_skew_rejections`, `s2s_spki_pin_rejections`.
 - Discovery: `discovery_lookups.{wellknown|navigator|manual|cache}`, `discovery_failures`, `known_servers_active` (gauge, снимается `PeerRefreshBackgroundService`), `wellknown_signature_failures`, `crosscheck_mismatches`.
 
+## Nginx (этап 1.6)
+
+- `Backend/nginx/federation.conf` — субдомен `federation.barkfluff.com`, по образцу `users.conf`: `grpc_pass grpc://federation:7030`, но таймауты `3600s` (как у `calls.conf`) — `SubscribePresence`/`FetchFile` (Фазы 3-4) долгоживущие. У `ngx_http_grpc_module` нет директивы отключения буферизации ответа (в отличие от `proxy_buffering` для HTTP-проксирования — проверено по официальной документации nginx); DATA-фреймы HTTP/2 и так прокидываются по мере поступления. Rate-limit `federation_s2s` (30r/s) — см. [[Backend/Nginx]].
+- `/.well-known/barkfluff` отдаётся apex-сервером (`barkfluff.single-server.conf`), не `federation.conf` — `location = /.well-known/barkfluff` проксирует на `federation:7031`. Apex для публичных нод требует CA-валидный серт (Let's Encrypt) — это bootstrap-канал; своя rate-limit-зона `federation_wellknown` (5r/s, жёстче).
+- Двух-нодовый стенд (`Backend/dev-federation-testbed/`) расширен: `certs/make-certs.sh` (self-signed + вывод SPKI-отпечатка), `docker-compose.nginx.yml` (nginx-node1/nginx-node2 перед каждой federation-нодой), `nginx/node1.conf`/`node2.conf`, `seed-peers.sql` обновлён на `https://nginx-nodeX` + реальные SPKI. Негативный тест пиннинга — README стенда, раздел 7.
+
 ## Планы дальнейших этапов
 
-См. `docs/rearch/phase-1/README.md` — 1.5 (Navigator PostgreSQL + `GetServerByName`, нужен для реальной проверки источника 2), 1.6 (nginx), 1.7 (AdminPanel).
+См. `docs/rearch/phase-1/README.md` — 1.7 (AdminPanel).

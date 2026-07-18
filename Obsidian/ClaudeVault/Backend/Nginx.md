@@ -52,6 +52,7 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 | HTTP (gRPC-Web) |
 | `calls.conf` | `calls.barkfluff.com` → [[Calls]] | 7025 (gRPC) | gRPC |
 | `bots.conf` | `bots.barkfluff.com` → [[Bots]] | 7027 (gRPC) + 7028 (HTTP REST) | gRPC + HTTP |
+| `federation.conf` | `federation.barkfluff.com` → [[Federation]] | 7030 (gRPC) + 7031 (well-known, только apex) | gRPC |
 | `livekit.conf` | `livekit.barkfluff.com` → LiveKit SFU (сигнализация) | 7880 | WSS (WebSocket) |
 
 > ⚠️ Сервисы [[Configuration]] (порт 7003) и [[Notification]] (порт 7004) — **внутренние**, отдельных nginx-конфигов нет (наружу не публикуются).
@@ -70,6 +71,8 @@ Security-аудит (S1/D2): rate limit на анонимные (без JWT) э�
 - `limit_req_zone $binary_remote_addr zone=beacon_anon:10m rate=5r/s;` — используется в `beacon.conf` (`burst=10 nodelay`)
 - `limit_req_zone $binary_remote_addr zone=fastauth_anon:10m rate=2r/s;` — используется в `fast-auth.conf` (`burst=5 nodelay`), защищает `GenerateFastAuthToken`
 - `limit_conn_zone $binary_remote_addr zone=fastauth_streams:10m;` — используется в `fast-auth.conf` (`limit_conn fastauth_streams 10`), ограничивает число одновременных стримов `SubscribeFastAuthResult` с одного IP
+- `limit_req_zone $binary_remote_addr zone=federation_s2s:10m rate=30r/s;` — `federation.conf` (`burst=20 nodelay`), S2S-трафик между нодами
+- `limit_req_zone $binary_remote_addr zone=federation_wellknown:10m rate=5r/s;` — apex-location `/.well-known/barkfluff` (`burst=5 nodelay`)
 
 ### `01-ssl-params.conf`
 Общий сниппет SSL, подключается через `include /etc/nginx/conf.d/01-ssl-params.conf;` во всех сервисных конфигах.
@@ -113,6 +116,19 @@ gRPC по образцу `updates.conf` (`grpc://calls:7025`), но `grpc_read/s
 `SubscribeCallEvents` долгоживущий и должен переживать простои (доставка входящих звонков).
 Webhook-порт 7026 наружу не выходит (LiveKit достукивается до `calls:7026` по docker-сети).
 
+### `federation.conf`
+gRPC по образцу `users.conf` (`grpc://federation:7030`), но `grpc_read/send_timeout 3600s` (как у
+`calls.conf`) — `SubscribePresence` (Фаза 4) и `FetchFile` (Фаза 3) долгоживущие/тяжёлые. TLS-серт
+ноды может быть self-signed (S2S проверяет SPKI-пин, не CA — [[Federation]]). Rate-limit
+`federation_s2s` (30r/s, `00-rate-limits.conf`) — S2S-батчи легитимно часты, зона шире самой
+нагруженной анонимной (`beacon_anon`); точный тюнинг — Фаза 6.2.
+
+`/.well-known/barkfluff` отдаётся НЕ этим конфигом, а apex-сервером (`barkfluff.single-server.conf`
+и любой другой server-блок, обслуживающий сам `barkfluff.com`) — location `= /.well-known/barkfluff`
+проксирует на `federation:7031` (HTTP/1-листенер well-known, отдельный от gRPC-порта 7030). На apex
+для публичных нод обязателен CA-валидный серт (Let's Encrypt) — это bootstrap-канал discovery;
+своя rate-limit-зона `federation_wellknown` (5r/s, жёстче — редкие запросы).
+
 ### `livekit.conf`
 WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` — WSS это HTTP/1.1 Upgrade),
 `proxy_pass http://livekit:7880` с `Upgrade/Connection` (через `map $http_upgrade $connection_upgrade`),
@@ -138,6 +154,7 @@ WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` �
 | `developers.barkfluff.com` | [[Developers]] |
 | `calls.barkfluff.com` | [[Calls]] (gRPC) |
 | `bots.barkfluff.com` | [[Bots]] (gRPC + HTTP REST) |
+| `federation.barkfluff.com` | [[Federation]] (S2S gRPC, self-signed + SPKI-пин) |
 | `livekit.barkfluff.com` | LiveKit SFU (WSS-сигнализация; медиа — напрямую) |
 | `storage.barkfluff.com` | [[ClientStorage]] |
 | `barkfluff.com` / `api.barkfluff.com` | [[WebServer]] (single-server) |
