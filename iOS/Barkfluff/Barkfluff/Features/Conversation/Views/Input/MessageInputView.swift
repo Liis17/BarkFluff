@@ -111,7 +111,7 @@ struct MessageInputView: View {
             Image(systemName: "paperclip")
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
-                .frame(width: 44, height: 44)
+                .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.bfPressable)
@@ -127,7 +127,7 @@ struct MessageInputView: View {
             Image(systemName: "face.smiling")
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
-                .frame(width: 44, height: 44)
+                .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.bfPressable)
@@ -170,7 +170,7 @@ struct MessageInputView: View {
                         .foregroundStyle(canSend ? Color.accentColor : Color(uiColor: .systemGray3))
                 }
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 32, height: 32)
             .contentShape(Rectangle())
         }
         .buttonStyle(.bfPressable)

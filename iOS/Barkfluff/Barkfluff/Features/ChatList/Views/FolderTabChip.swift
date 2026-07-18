@@ -22,21 +22,21 @@ struct FolderTabChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if !icon.isEmpty {
-                    Text(icon).font(.body)
+                    Text(icon).font(.system(size: 16))
                 } else {
                     Image(systemName: "tray.full.fill")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 14, weight: .semibold))
                 }
 
                 if !compact {
                     Text(title)
-                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
                         .lineLimit(1)
                 }
 
                 if unreadCount > 0 {
                     Text("\(unreadCount)")
-                        .font(.caption2.weight(.semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -44,7 +44,7 @@ struct FolderTabChip: View {
                 }
             }
             .padding(.horizontal, 12)
-            .frame(minHeight: 44)
+            .padding(.vertical, 6)
             .background(
                 Capsule()
                     .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.gray.opacity(0.12))
