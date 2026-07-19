@@ -43,7 +43,7 @@ ProcessedEvents
 - `List<FederatedParticipant> RemoteParticipants` — `{ Guid Uuid, string ServerName }`
 - `Guid? FederatedId`, `Guid? SenderUuid`, `DateTimeOffset? LastChangeAt`
 - для `NewMessageEvent` дополнительно: `bool IsFirstMessageInChat` + uuid'ы инициатора/приглашённого — чтобы консюмер мог построить `ChatCreated` без похода в Messages
-- отображаемое имя отправителя (`SenderDisplayName`, `SenderFid`) — понадобится 2.8; заведи поля сразу
+- `SenderFid` (`@username:servername`) — нужен уже сейчас (`ChatCreated`, подпись remote-отправителя). `SenderDisplayName` (имя для пушей) **не заводить здесь** — потребление в 2.8, поле заведёт этап 2.8 (CLAUDE.md §2 «ничего спекулятивного»; P2-08)
 
 Только добавление свойств (десериализация старых сообщений очереди не ломается). Заполняет их Messages в 2.3 — в этом этапе поля пустые.
 

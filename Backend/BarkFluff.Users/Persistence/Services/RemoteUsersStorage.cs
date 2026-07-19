@@ -2,6 +2,7 @@ using BarkFluff.Users.Domain;
 using BarkFluff.Users.Persistence.Contexts;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Users.Persistence.Services;
 
@@ -11,10 +12,12 @@ namespace BarkFluff.Users.Persistence.Services;
 public class RemoteUsersStorage
 {
     private readonly UsersContext _context;
+    private readonly ILogger<RemoteUsersStorage> _logger;
 
-    public RemoteUsersStorage(UsersContext context)
+    public RemoteUsersStorage(UsersContext context, ILogger<RemoteUsersStorage> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     /// <summary>
@@ -84,12 +87,22 @@ public class RemoteUsersStorage
         // 1) UUID не должен принадлежать локальному пользователю этой ноды.
         var localCollision = await _context.Users.AnyAsync(u => u.Uuid == uuid, ct);
         if (localCollision)
+        {
+            _logger.LogWarning(
+                "RemoteUsers upsert отклонён (LocalUuidCollision): uuid {Uuid} принадлежит локальному пользователю, origin {ServerName}",
+                uuid, serverName);
             return new UpsertResult(UpsertStatus.RejectedLocalUuidCollision, null);
+        }
 
         // 2) UUID уже известен как remote, но с другим ServerName → пиннинг нарушен.
         var byUuid = await _context.RemoteUsers.FirstOrDefaultAsync(r => r.Uuid == uuid, ct);
         if (byUuid is not null && byUuid.ServerName != serverName)
+        {
+            _logger.LogWarning(
+                "RemoteUsers upsert отклонён (ServerNameMismatch): uuid {Uuid} запиннен к {ExpectedServerName}, получен {ActualServerName}",
+                uuid, byUuid.ServerName, serverName);
             return new UpsertResult(UpsertStatus.RejectedServerNameMismatch, byUuid);
+        }
 
         // 3) Конфликт (Username, ServerName) с другим UUID — username освободился/занялся на origin.
         // Побеждает свежий резолв: старая запись (по старому UUID) удаляется, ниже создаётся новая.

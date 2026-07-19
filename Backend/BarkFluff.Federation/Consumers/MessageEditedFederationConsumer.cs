@@ -7,7 +7,6 @@ using BarkFluff.Shared.Queue.Messages;
 using MassTransit;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Federation.Consumers;
 
@@ -16,18 +15,15 @@ public class MessageEditedFederationConsumer : IConsumer<MessageEditedEvent>
     private readonly OutboxWriter _writer;
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
-    private readonly ILogger<MessageEditedFederationConsumer> _logger;
 
     public MessageEditedFederationConsumer(
         OutboxWriter writer,
         IConfiguration configuration,
-        MetricsCollector metrics,
-        ILogger<MessageEditedFederationConsumer> logger)
+        MetricsCollector metrics)
     {
         _writer = writer;
         _configuration = configuration;
         _metrics = metrics;
-        _logger = logger;
     }
 
     public async Task Consume(ConsumeContext<MessageEditedEvent> context)

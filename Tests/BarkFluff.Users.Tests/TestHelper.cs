@@ -43,7 +43,7 @@ public class TestHelper
         PersonalizationStorage = new PersonalizationStorage(DbContext);
         ChatFolderStorage = new ChatFolderStorage(DbContext);
         PrekeyStorage = new PrekeyStorage(DbContext);
-        RemoteUsersStorage = new RemoteUsersStorage(DbContext);
+        RemoteUsersStorage = new RemoteUsersStorage(DbContext, CreateLogger<RemoteUsersStorage>());
         PublishEndpointMock = new Mock<IPublishEndpoint>();
         Metrics = new MetricsCollector();
         QueueSender = new BarkFluff.Users.Infrastructure.UserInfoQueueSender(PublishEndpointMock.Object, Metrics);

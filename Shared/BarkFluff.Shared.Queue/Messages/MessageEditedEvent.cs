@@ -21,6 +21,5 @@ public class MessageEditedEvent
 
     public DateTimeOffset? LastChangeAt { get; set; }
 
-    public string? SenderDisplayName { get; set; }
     public string? SenderFid { get; set; }
 }

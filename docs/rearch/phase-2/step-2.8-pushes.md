@@ -7,12 +7,12 @@
 ## Контекст
 
 - [../05-chat-replication.md](../05-chat-replication.md), «Пуши и realtime»; [../08-service-migration.md](../08-service-migration.md), секция CloudMessaging.
-- Поля `SenderDisplayName`/`SenderFid` в расширенном `NewMessageEvent` заведены в 2.2, заполняются Messages с 2.3.
+- `SenderFid` в расширенном `NewMessageEvent` заведён в 2.2. `SenderDisplayName` (отображаемое имя для пушей) заводится **в этом этапе** — 2.2 намеренно его не держал, чтобы не оставлять спекулятивное поле без потребления (P2-08).
 - Требуется выполненный 2.3.
 
 ## Изменение 1 — Messages: заполнение имени при импорте
 
-`ImportFederatedMessage` (2.3) публикует `NewMessageEvent` — проверь, что `SenderDisplayName` (из `RemoteUsers` через `Users.GetUsersByUuid`, кеш) и `SenderFid` (`@username:servername`) заполняются. Имени нет (профиль скрыт/не синхронизирован) → `SenderDisplayName` пустой, `SenderFid` обязателен.
+Заведи поле `SenderDisplayName` в `NewMessageEvent` (2.2 его не держал). `ImportFederatedMessage` (2.3-путь) публикует `NewMessageEvent` — заполняй `SenderDisplayName` (из `RemoteUsers` через `Users.GetUsersByUuid`, кеш) и `SenderFid` (`@username:servername`). Имени нет (профиль скрыт/не синхронизирован) → `SenderDisplayName` пустой, `SenderFid` обязателен.
 
 ## Изменение 2 — CloudMessaging
 
