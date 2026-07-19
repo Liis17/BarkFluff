@@ -23,6 +23,7 @@ public class XFedServerInterceptor : Interceptor
 
     private readonly FederationContext _context;
     private readonly IConfiguration _configuration;
+    private readonly FederationSwitch _switch;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<XFedServerInterceptor> _logger;
     private readonly ServerResolver _resolver;
@@ -31,6 +32,7 @@ public class XFedServerInterceptor : Interceptor
     public XFedServerInterceptor(
         FederationContext context,
         IConfiguration configuration,
+        FederationSwitch federationSwitch,
         MetricsCollector metrics,
         ILogger<XFedServerInterceptor> logger,
         ServerResolver resolver,
@@ -38,6 +40,7 @@ public class XFedServerInterceptor : Interceptor
     {
         _context = context;
         _configuration = configuration;
+        _switch = federationSwitch;
         _metrics = metrics;
         _logger = logger;
         _resolver = resolver;
@@ -49,6 +52,8 @@ public class XFedServerInterceptor : Interceptor
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
+        EnsureActive();
+
         if (!IsExempt(context.Method))
             await ValidateAsync(context);
 
@@ -61,10 +66,20 @@ public class XFedServerInterceptor : Interceptor
         ServerCallContext context,
         ServerStreamingServerMethod<TRequest, TResponse> continuation)
     {
+        EnsureActive();
+
         if (!IsExempt(context.Method))
             await ValidateAsync(context);
 
         await continuation(request, responseStream, context);
+    }
+
+    // P1-04/P1-05: единый выключатель входящего S2S. Применяется ДО IsExempt — покрывает и bootstrap
+    // GetServerKeys, поэтому при выключенной/несконфигурированной ноде ключи не отдаются.
+    private void EnsureActive()
+    {
+        if (!_switch.IsActive)
+            throw new FederationNotConfiguredException();
     }
 
     private static bool IsExempt(string method) => method.EndsWith(ExemptMethodSuffix, StringComparison.Ordinal);

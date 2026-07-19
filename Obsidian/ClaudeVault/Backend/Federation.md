@@ -82,7 +82,9 @@
 
 Нода умеет находить пиров всеми тремя способами (well-known → Navigator → manual), наполняет `KnownServers`/`KnownServerKeys` кодом, защищена от SSRF, фоново рефрешит ключи. Внутренний API управления пирами реализован полностью. Из S2S-RPC реализованы `Ping`/`GetServerKeys`/`GetUserProfile`/`DeliverEvents`, внутренние — `ResolveRemoteUser`/`EnqueueOutbound` + управление пирами. Остальные S2S-RPC (catch-up, presence, typing) отвечают `Unimplemented`.
 
-Федерация по умолчанию выключена (`Federation:Enabled = false`); при пустом `Federation:ServerName` сервис стартует нормально, но ключ всё равно генерируется (безвредно, лог-warning), а well-known отвечает `503`.
+Федерация по умолчанию выключена (`Federation:Enabled = false`); при пустом `Federation:ServerName` сервис стартует нормально, но ключ всё равно генерируется (безвредно, лог-warning).
+
+Единый выключатель — `FederationSwitch` (`IsActive = Enabled && ServerName задан`, P1-04). Гейчит **все** federation-пути: входящий S2S (XFed-интерсептор, до IsExempt — покрывает и bootstrap `GetServerKeys`, P1-05), публикацию well-known (`503`), фоновый peer-refresh и исходящий outbox-диспетчер. Internal API (`GetFederationStatus` и пр.) остаётся доступным оператору независимо. При неактивной ноде S2S отвечает `FailedPrecondition` (`FederationNotConfigured`). Чтобы нода федерировала — задать `Federation:Enabled=true` в Configuration.
 
 ## Сборка
 
