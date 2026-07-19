@@ -87,6 +87,9 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
             .FirstOrDefaultAsync(s => s.ServerName == normalized, context.CancellationToken);
 
         var now = DateTime.UtcNow;
+        var isNew = existing == null;
+        var oldEndpoint = existing?.FederationEndpoint;
+        var oldSpki = existing?.TlsSpkiSha256;
 
         if (existing == null)
         {
@@ -117,6 +120,12 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         KnownServerKeyReconciler.Reconcile(existing, docKeys, now);
 
         await _context.SaveChangesAsync(context.CancellationToken);
+
+        // P1-08: смена endpoint/SPKI → сбросить кешированный S2S-канал.
+        var newSpki = request.TlsSpkiSha256.ToArray();
+        if (!isNew && (oldEndpoint != request.FederationEndpoint || !(oldSpki ?? []).SequenceEqual(newSpki)))
+            _s2sChannelFactory.Invalidate(normalized);
+
         return new UpsertManualPeerResponse();
     }
 

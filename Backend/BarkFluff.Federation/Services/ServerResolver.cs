@@ -15,6 +15,7 @@ public class ServerResolver
     private readonly FederationContext _context;
     private readonly IWellKnownClient _wellKnownClient;
     private readonly INavigatorClient _navigatorClient;
+    private readonly IS2SChannelInvalidator _channelInvalidator;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<ServerResolver> _logger;
 
@@ -22,12 +23,14 @@ public class ServerResolver
         FederationContext context,
         IWellKnownClient wellKnownClient,
         INavigatorClient navigatorClient,
+        IS2SChannelInvalidator channelInvalidator,
         MetricsCollector metrics,
         ILogger<ServerResolver> logger)
     {
         _context = context;
         _wellKnownClient = wellKnownClient;
         _navigatorClient = navigatorClient;
+        _channelInvalidator = channelInvalidator;
         _metrics = metrics;
         _logger = logger;
     }
@@ -141,6 +144,10 @@ public class ServerResolver
     {
         var now = DateTime.UtcNow;
 
+        var isNew = existing == null;
+        var oldEndpoint = existing?.FederationEndpoint;
+        var oldSpki = existing?.TlsSpkiSha256;
+
         if (existing == null)
         {
             existing = new KnownServer
@@ -163,6 +170,11 @@ public class ServerResolver
         KnownServerKeyReconciler.Reconcile(existing, doc.SigningKeys, now, _logger);
 
         await _context.SaveChangesAsync(ct);
+
+        // P1-08: смена endpoint/SPKI → сбросить кешированный S2S-канал (следующий вызов пересоберёт).
+        if (!isNew && (oldEndpoint != doc.FederationEndpoint || !(oldSpki ?? []).SequenceEqual(doc.TlsSpkiSha256)))
+            _channelInvalidator.Invalidate(servername);
+
         return existing;
     }
 }
