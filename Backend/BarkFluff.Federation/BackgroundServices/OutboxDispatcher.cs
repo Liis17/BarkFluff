@@ -34,15 +34,18 @@ public class OutboxDispatcher : BackgroundService
     private const int MaxBatchBytes = 1_000_000;
 
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<OutboxDispatcher> _logger;
 
     public OutboxDispatcher(
         IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
         MetricsCollector metrics,
         ILogger<OutboxDispatcher> logger)
     {
         _scopeFactory = scopeFactory;
+        _configuration = configuration;
         _metrics = metrics;
         _logger = logger;
     }
@@ -200,7 +203,10 @@ public class OutboxDispatcher : BackgroundService
                     _metrics.Increment("outbox_deadletter.rejected");
                     // Privacy-отказ → FederatedChatRejectedEvent (этап 2.5).
                     if (result.ErrorCode == "FederatedDmRejected")
+                    {
                         _metrics.Increment("outbox_deadletter.federated_dm_rejected");
+                        PublishChatRejected(row);
+                    }
                     break;
 
                 case EventStatus.Retry:
@@ -257,7 +263,15 @@ public class OutboxDispatcher : BackgroundService
     {
         // По умолчанию: 20 попыток по экспоненте до 6ч — кумулятивно ~7 суток окна ретраев.
         const int defaultMaxAttempts = 20;
-        var raw = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<IConfiguration>()["Federation:OutboxMaxAttempts"];
+        var raw = _configuration["Federation:OutboxMaxAttempts"];
         return int.TryParse(raw, out var parsed) && parsed > 0 ? parsed : defaultMaxAttempts;
+    }
+
+    // Заглушка публикации FederatedChatRejectedEvent (spec 2.2 §Изменение 5): именованная точка,
+    // вызывается на privacy-DeadLetter. На этапе 2.5 здесь подключается IBus.Publish → Messages
+    // помечает чат Rejected, отправителю отдаётся понятная ошибка. Место искать не нужно.
+    private void PublishChatRejected(FederationOutbox row)
+    {
+        // TODO(2.5): опубликовать FederatedChatRejectedEvent(row.Destination, row.ChatId).
     }
 }
