@@ -151,4 +151,43 @@ public class XFedIntegrationTests
 
         response.ServerName.Should().Be(OwnServerName);
     }
+
+    // P1-04: при Federation:Enabled=false нода не принимает S2S-трафик — включая bootstrap GetServerKeys.
+    [Fact]
+    public async Task Ping_FederationDisabled_ThrowsFailedPrecondition()
+    {
+        await using var host = await FederationTestHost.CreateAsync(OwnServerName, enabled: false);
+        var client = host.CreateClient();
+
+        var act = async () => await client.PingAsync(new PingRequest { OriginServer = PeerServerName });
+
+        var ex = await act.Should().ThrowAsync<RpcException>();
+        ex.Which.StatusCode.Should().Be(StatusCode.FailedPrecondition);
+        ex.Which.Trailers.GetValue("x-error-code").Should().Be(new FederationNotConfiguredException().ErrorCode);
+    }
+
+    [Fact]
+    public async Task GetServerKeys_FederationDisabled_ThrowsFailedPrecondition()
+    {
+        await using var host = await FederationTestHost.CreateAsync(OwnServerName, enabled: false);
+        var client = host.CreateClient();
+
+        var act = async () => await client.GetServerKeysAsync(new GetServerKeysRequest());
+
+        var ex = await act.Should().ThrowAsync<RpcException>();
+        ex.Which.StatusCode.Should().Be(StatusCode.FailedPrecondition);
+    }
+
+    // P1-05: при пустом Federation:ServerName GetServerKeys не отдаёт ключи (нода не сконфигурирована).
+    [Fact]
+    public async Task GetServerKeys_EmptyServerName_ThrowsFailedPrecondition()
+    {
+        await using var host = await FederationTestHost.CreateAsync(ownServerName: "");
+        var client = host.CreateClient();
+
+        var act = async () => await client.GetServerKeysAsync(new GetServerKeysRequest());
+
+        var ex = await act.Should().ThrowAsync<RpcException>();
+        ex.Which.StatusCode.Should().Be(StatusCode.FailedPrecondition);
+    }
 }

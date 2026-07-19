@@ -20,13 +20,15 @@ public class PeerRefreshBackgroundService : BackgroundService
     private const int UnreachableThreshold = 3;
 
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly FederationSwitch _switch;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<PeerRefreshBackgroundService> _logger;
     private readonly ConcurrentDictionary<string, int> _consecutiveFailures = new();
 
-    public PeerRefreshBackgroundService(IServiceScopeFactory scopeFactory, MetricsCollector metrics, ILogger<PeerRefreshBackgroundService> logger)
+    public PeerRefreshBackgroundService(IServiceScopeFactory scopeFactory, FederationSwitch federationSwitch, MetricsCollector metrics, ILogger<PeerRefreshBackgroundService> logger)
     {
         _scopeFactory = scopeFactory;
+        _switch = federationSwitch;
         _metrics = metrics;
         _logger = logger;
     }
@@ -51,6 +53,10 @@ public class PeerRefreshBackgroundService : BackgroundService
 
     private async Task RefreshDuePeersAsync(CancellationToken ct)
     {
+        // P1-04: выключенная/несконфигурированная нода не ведёт сетевой refresh пиров.
+        if (!_switch.IsActive)
+            return;
+
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<FederationContext>();
         var resolver = scope.ServiceProvider.GetRequiredService<ServerResolver>();
