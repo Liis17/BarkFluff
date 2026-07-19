@@ -20,10 +20,10 @@
 | P1-07 | P2 | Shared-документация исключений не обновлена | Открыта |
 | P1-08 | P1 | Кеш S2S-каналов не обновляется после смены endpoint/SPKI | Открыта |
 | P1-09 | P1 | Reconciliation ключей пира append-only и продублирован | Открыта |
-| P1-10 | P1 | Discovery-controlled gRPC endpoint обходит anti-SSRF | Открыта |
+| P1-10 | P1 | Discovery-controlled gRPC endpoint обходит anti-SSRF | **Исправлена** (Батч 2C: валидация схемы + IP-пиннинг в S2SChannelFactory) |
 | P1-11 | P1 | Ротация ключей пира не подтверждается старым доверенным ключом | Открыта |
 | P1-12 | P1 | Manual-пиры не получают доверенные обновления ключей | Открыта |
-| P1-13 | P1 | Navigator допускает DNS rebinding при проверке well-known | Открыта |
+| P1-13 | P1 | Navigator допускает DNS rebinding при проверке well-known | **Исправлена** (Батч 2C: SocketsHttpHandler.ConnectCallback + IP-пиннинг) |
 | P1-14 | P2 | `LastSeenAt` записывается не по своему контракту | Открыта |
 | P1-15 | P2 | Discovery не возвращает требуемую ошибку `ServerNotFound` | Открыта |
 | P1-16 | P2 | AdminPanel теряет машинный код gRPC-ошибок | Открыта |

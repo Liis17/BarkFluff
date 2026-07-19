@@ -7,9 +7,8 @@ namespace BarkFluff.Navigator.Features.RegisterServer;
 // Минимальная анти-SSRF проверка для федеративной регистрации (docs/rearch/03-discovery.md,
 // "Обязательная валидация servername и endpoint"). Осознанное дублирование
 // BarkFluff.Federation.Services.ServernameValidator — Navigator публичен и не имеет общего кода
-// с Federation. Упрощение относительно Federation: без anti-rebinding IP-пиннинга (HttpClient
-// сам резолвит хост при фетче) — приемлемо, т.к. это только проверка перед регистрацией в каталоге,
-// не привилегированный канал.
+// с Federation. Резолв возвращает конкретный публичный IP (ResolvePublicAddressAsync), которым
+// валидатор пиннит соединение (anti-rebinding, P1-13) — как в Federation.WellKnownClient.
 public static class FederationServernameGuard
 {
     public static bool TryNormalize(string raw, out string normalized)
@@ -45,6 +44,11 @@ public static class FederationServernameGuard
     }
 
     public static async Task<bool> ResolvesToPublicAddressAsync(string hostname, CancellationToken ct = default)
+        => await ResolvePublicAddressAsync(hostname, ct) != null;
+
+    // P1-13: возвращает конкретный публичный IP для anti-rebinding пиннинга — соединяемся по нему,
+    // а не повторным резолвом hostname между проверкой и коннектом.
+    public static async Task<IPAddress?> ResolvePublicAddressAsync(string hostname, CancellationToken ct = default)
     {
         IPAddress[] addresses;
         try
@@ -53,10 +57,10 @@ public static class FederationServernameGuard
         }
         catch (SocketException)
         {
-            return false;
+            return null;
         }
 
-        return addresses.Any(ip => !IsPrivateOrReserved(ip));
+        return addresses.FirstOrDefault(ip => !IsPrivateOrReserved(ip));
     }
 
     private static bool IsPrivateOrReserved(IPAddress ip)
