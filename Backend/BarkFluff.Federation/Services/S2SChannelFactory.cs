@@ -16,15 +16,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Federation.Services;
 
+// Инвалидация кешированного канала при смене endpoint/SPKI пира (P1-08). Узкий сеам, чтобы
+// ServerResolver мог инвалидировать канал, не завися от всей фабрики (и её сетевых зависимостей).
+public interface IS2SChannelInvalidator
+{
+    void Invalidate(string serverName);
+}
+
 // Единственный путь исходящих S2S-запросов (docs/rearch/02-trust-and-certs.md, "Слой 1"):
 // TLS c self-signed допустим — цепочка CA не проверяется, вместо неё SPKI-пиннинг публичного
 // ключа TLS-сертификата пира. Канал кеширован per-destination, подписывающий интерсептор
 // (XFedClientInterceptor) навешен один раз при создании.
 // Discovery (KnownServers наполняется кодом) — этап 1.4; здесь пиры уже должны существовать
 // в таблице (ручной SQL-сид на стенде).
-public class S2SChannelFactory
+public class S2SChannelFactory : IS2SChannelInvalidator
 {
-    private readonly ConcurrentDictionary<string, CallInvoker> _invokers = new();
+    private sealed record CachedChannel(GrpcChannel Channel, CallInvoker Invoker);
+
+    private readonly ConcurrentDictionary<string, CachedChannel> _channels = new();
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
@@ -51,8 +60,8 @@ public class S2SChannelFactory
 
     public async Task<CallInvoker> GetInvokerAsync(string serverName, CancellationToken ct = default)
     {
-        if (_invokers.TryGetValue(serverName, out var cached))
-            return cached;
+        if (_channels.TryGetValue(serverName, out var cached))
+            return cached.Invoker;
 
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<FederationContext>();
@@ -61,16 +70,25 @@ public class S2SChannelFactory
         if (server == null)
             throw new InvalidOperationException($"Нода '{serverName}' не найдена в KnownServers (discovery — этап 1.4, на стенде — ручной SQL-сид)");
 
-        var invoker = await BuildInvokerAsync(
+        var built = await BuildChannelAsync(
             server.ServerName,
             server.FederationEndpoint,
             server.TlsSpkiSha256,
             server.Source == KnownServerSource.Manual,
             ct);
-        return _invokers.GetOrAdd(serverName, invoker);
+        return _channels.GetOrAdd(serverName, built).Invoker;
     }
 
-    private async Task<CallInvoker> BuildInvokerAsync(
+    // P1-08: после доверенной смены endpoint/SPKI кешированный канал обязан быть пересобран, иначе
+    // процесс продолжит использовать старый адрес/пин. Инвалидация редкая (только при смене),
+    // поэтому remove + Dispose без refcount — приемлемый компромисс (аналог: outbox ретраит транзиент).
+    public void Invalidate(string serverName)
+    {
+        if (_channels.TryRemove(serverName, out var cached))
+            cached.Channel.Dispose();
+    }
+
+    private async Task<CachedChannel> BuildChannelAsync(
         string serverName,
         string endpoint,
         IReadOnlyCollection<string> tlsSpkiSha256,
@@ -141,7 +159,8 @@ public class S2SChannelFactory
         // Plaintext (http://) — допускается только на стенде (без TLS/nginx, до этапа 1.6).
 
         var channel = GrpcChannel.ForAddress(endpoint, new GrpcChannelOptions { HttpHandler = handler });
+        var invoker = channel.Intercept(new XFedClientInterceptor(_configuration, _keyCache, _metrics, serverName));
 
-        return channel.Intercept(new XFedClientInterceptor(_configuration, _keyCache, _metrics, serverName));
+        return new CachedChannel(channel, invoker);
     }
 }

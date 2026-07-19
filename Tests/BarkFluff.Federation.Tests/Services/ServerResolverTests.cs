@@ -24,8 +24,14 @@ public class ServerResolverTests
         return new FederationContext(options);
     }
 
-    private static ServerResolver CreateResolver(FederationContext context, FakeWellKnownClient wellKnown, FakeNavigatorClient navigator)
-        => new(context, wellKnown, navigator, new MetricsCollector(), NullLogger<ServerResolver>.Instance);
+    private sealed class RecordingInvalidator : IS2SChannelInvalidator
+    {
+        public List<string> Invalidated { get; } = [];
+        public void Invalidate(string serverName) => Invalidated.Add(serverName);
+    }
+
+    private static ServerResolver CreateResolver(FederationContext context, FakeWellKnownClient wellKnown, FakeNavigatorClient navigator, IS2SChannelInvalidator? invalidator = null)
+        => new(context, wellKnown, navigator, invalidator ?? new RecordingInvalidator(), new MetricsCollector(), NullLogger<ServerResolver>.Instance);
 
     // Well-known документ «подписан» первым ключом по умолчанию (WellKnownClient сообщает key_id+pubkey
     // фактического подписанта). Для attack-кейсов подписант задаётся явно через DocSigned.
@@ -370,4 +376,52 @@ public class ServerResolverTests
         result.Keys.Single(k => k.KeyId == "ed25519:0").RevokedAt.Should().NotBeNull(); // исчезнувший отозван
         result.Keys.Should().Contain(k => k.KeyId == "ed25519:2");
     }
+
+    // P1-08: доверенная смена endpoint пира инвалидирует кешированный S2S-канал.
+    [Fact]
+    public async Task ResolveAsync_EndpointChanged_InvalidatesChannel()
+    {
+        await using var context = CreateContext();
+        var key = FakeKey(1);
+        context.KnownServers.Add(SeededPeer("https://old.chat.example.org", key));
+        await context.SaveChangesAsync();
+
+        var invalidator = new RecordingInvalidator();
+        var wellKnown = new FakeWellKnownClient { Result = Doc("chat.example.org", "https://new.chat.example.org", ("ed25519:1", key)) };
+        var resolver = CreateResolver(context, wellKnown, new FakeNavigatorClient(), invalidator);
+
+        await resolver.ResolveAsync("chat.example.org");
+
+        invalidator.Invalidated.Should().Contain("chat.example.org");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_EndpointUnchanged_DoesNotInvalidateChannel()
+    {
+        await using var context = CreateContext();
+        var key = FakeKey(1);
+        context.KnownServers.Add(SeededPeer("https://same.chat.example.org", key));
+        await context.SaveChangesAsync();
+
+        var invalidator = new RecordingInvalidator();
+        var wellKnown = new FakeWellKnownClient { Result = Doc("chat.example.org", "https://same.chat.example.org", ("ed25519:1", key)) };
+        var resolver = CreateResolver(context, wellKnown, new FakeNavigatorClient(), invalidator);
+
+        await resolver.ResolveAsync("chat.example.org");
+
+        invalidator.Invalidated.Should().BeEmpty();
+    }
+
+    private static KnownServer SeededPeer(string endpoint, byte[] key) => new()
+    {
+        ServerName = "chat.example.org",
+        FederationEndpoint = endpoint,
+        TlsSpkiSha256 = [],
+        Source = KnownServerSource.WellKnown,
+        Status = KnownServerStatus.Active,
+        FirstSeenAt = DateTime.UtcNow.AddDays(-2),
+        LastSeenAt = DateTime.UtcNow.AddDays(-2),
+        LastKeyRefreshAt = DateTime.UtcNow.AddDays(-2),
+        Keys = [new KnownServerKey { ServerName = "chat.example.org", KeyId = "ed25519:1", PublicKey = key }],
+    };
 }
