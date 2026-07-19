@@ -71,6 +71,7 @@ public class Program
         builder.Services.AddSingleton<ActiveSigningKeyCache>();
         builder.Services.AddSingleton<S2SChannelFactory>();
 
+        builder.Services.AddSingleton<FederationSwitch>();
         builder.Services.AddSingleton<ServernameValidator>();
         builder.Services.AddSingleton<IWellKnownClient, WellKnownClient>();
         builder.Services.AddScoped<INavigatorClient, NavigatorClient>();
@@ -151,8 +152,12 @@ public class Program
         app.MapGrpcService<FederationS2SApiService>();
         app.MapGrpcService<FederationInternalApiService>();
 
-        app.MapGet("/.well-known/barkfluff", (WellKnownDocumentService wellKnownDocumentService) =>
+        app.MapGet("/.well-known/barkfluff", (WellKnownDocumentService wellKnownDocumentService, FederationSwitch federationSwitch) =>
         {
+            // P1-04: выключенная/несконфигурированная нода не публикует well-known.
+            if (!federationSwitch.IsActive)
+                return Results.Json(new { error = "federation not configured" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
             var document = wellKnownDocumentService.GetCachedDocument();
             if (document == null)
                 return Results.Json(new { error = "federation not configured" }, statusCode: StatusCodes.Status503ServiceUnavailable);

@@ -40,7 +40,8 @@ public sealed class FederationTestHost : IAsyncDisposable
 
     public static async Task<FederationTestHost> CreateAsync(
         string ownServerName = "node-a.test",
-        int signatureWindowSeconds = 300)
+        int signatureWindowSeconds = 300,
+        bool enabled = true)
     {
         var dbName = Guid.NewGuid().ToString();
 
@@ -54,6 +55,7 @@ public sealed class FederationTestHost : IAsyncDisposable
                     cfg.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["Federation:ServerName"] = ownServerName,
+                        ["Federation:Enabled"] = enabled ? "true" : "false",
                         ["Federation:SignatureWindowSeconds"] = signatureWindowSeconds.ToString(),
                     });
                 });
@@ -73,6 +75,7 @@ public sealed class FederationTestHost : IAsyncDisposable
 
                     services.AddDbContext<FederationContext>(o => o.UseInMemoryDatabase(dbName));
                     services.AddScoped<SigningKeyService>();
+                    services.AddSingleton<FederationSwitch>();
                     services.AddSingleton<MetricsCollector>();
 
                     // Discovery-на-лету (1.4) не тестируется здесь отдельно (см. ServerResolverTests) —

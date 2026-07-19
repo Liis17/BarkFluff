@@ -35,17 +35,20 @@ public class OutboxDispatcher : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly FederationSwitch _switch;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<OutboxDispatcher> _logger;
 
     public OutboxDispatcher(
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
+        FederationSwitch federationSwitch,
         MetricsCollector metrics,
         ILogger<OutboxDispatcher> logger)
     {
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _switch = federationSwitch;
         _metrics = metrics;
         _logger = logger;
     }
@@ -74,6 +77,10 @@ public class OutboxDispatcher : BackgroundService
 
     private async Task DispatchOnceAsync(CancellationToken ct)
     {
+        // P1-04: выключенная/несконфигурированная нода не шлёт исходящий federation-трафик.
+        if (!_switch.IsActive)
+            return;
+
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<FederationContext>();
         var resolver = scope.ServiceProvider.GetRequiredService<ServerResolver>();

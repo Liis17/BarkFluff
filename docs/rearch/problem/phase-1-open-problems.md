@@ -14,8 +14,8 @@
 | P1-01 | P1 | Ротация signing-ключа не атомарна и не защищена от конкуренции | Открыта |
 | P1-02 | P2 | Нет regression-тестов жизненного цикла ключей и well-known | Открыта |
 | P1-03 | P2 | `Obsidian/ClaudeVault/Shared/Proto.md` описывает устаревшее состояние Federation API | Открыта |
-| P1-04 | P1 | `Federation:Enabled=false` не выключает federation endpoints и фоновые процессы | Открыта |
-| P1-05 | P1 | `GetServerKeys` возвращает ключи при пустом `Federation:ServerName` | Открыта |
+| P1-04 | P1 | `Federation:Enabled=false` не выключает federation endpoints и фоновые процессы | **Исправлена** (Батч 2A: `FederationSwitch`) |
+| P1-05 | P1 | `GetServerKeys` возвращает ключи при пустом `Federation:ServerName` | **Исправлена** (Батч 2A: гейт в XFed-интерсепторе) |
 | P1-06 | P2 | Обязательные live-критерии Phase 1 не подтверждены | Открыта |
 | P1-07 | P2 | Shared-документация исключений не обновлена | Открыта |
 | P1-08 | P1 | Кеш S2S-каналов не обновляется после смены endpoint/SPKI | Открыта |
