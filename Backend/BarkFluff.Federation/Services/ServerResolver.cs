@@ -106,6 +106,34 @@ public class ServerResolver
         return await UpsertAsync(normalized, chosen, source, existing, ct);
     }
 
+    // P1-12: manual-запись не перезатирается автоматическим discovery (ResolveAsync возвращает её мгновенно),
+    // но плановую ротацию ключей у дружественной ноды подтягиваем безопасно — вызывается фоновым
+    // PeerRefreshBackgroundService, не на hot-path. Обновление принимается ТОЛЬКО если новый well-known
+    // подписан уже доверенным ключом (тот же континуитет, что у discovery-пиров, P1-11). Недоступный или
+    // приватный (well-known с isManual=false отвергнет приватный servername) — запись остаётся как задал
+    // админ; фиксируем попытку, чтобы уважать интервал refresh.
+    public async Task RefreshManualPeerAsync(KnownServer existing, CancellationToken ct = default)
+    {
+        if (existing.Source != KnownServerSource.Manual || existing.Status == KnownServerStatus.Blocked)
+            return;
+
+        var due = existing.LastKeyRefreshAt == null || DateTime.UtcNow - existing.LastKeyRefreshAt >= KeyRefreshInterval;
+        if (!due)
+            return;
+
+        var doc = await _wellKnownClient.FetchAsync(existing.ServerName, ct);
+        if (doc != null && HasTrustedContinuity(existing, doc))
+        {
+            _metrics.Increment("manual_peer_refresh.applied");
+            await UpsertAsync(existing.ServerName, doc, KnownServerSource.Manual, existing, ct);
+            return;
+        }
+
+        _metrics.Increment("manual_peer_refresh.skipped");
+        existing.LastKeyRefreshAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(ct);
+    }
+
     private static bool KeysMatch(RemoteServerDocument a, RemoteServerDocument b)
     {
         var aKeys = a.SigningKeys.ToDictionary(k => k.KeyId, k => k.PublicKey);

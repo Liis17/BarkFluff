@@ -424,4 +424,103 @@ public class ServerResolverTests
         LastKeyRefreshAt = DateTime.UtcNow.AddDays(-2),
         Keys = [new KnownServerKey { ServerName = "chat.example.org", KeyId = "ed25519:1", PublicKey = key }],
     };
+
+    private static KnownServer ManualPeer(byte[] key, DateTime lastRefresh) => new()
+    {
+        ServerName = "friend.example.org",
+        FederationEndpoint = "https://fed.friend.example.org",
+        TlsSpkiSha256 = [],
+        Source = KnownServerSource.Manual,
+        Status = KnownServerStatus.Active,
+        FirstSeenAt = DateTime.UtcNow.AddDays(-100),
+        LastSeenAt = DateTime.UtcNow.AddDays(-100),
+        LastKeyRefreshAt = lastRefresh,
+        Keys = [new KnownServerKey { ServerName = "friend.example.org", KeyId = "ed25519:1", PublicKey = key }],
+    };
+
+    // P1-12: плановая ротация ключей у manual-пира подтягивается, если новый документ подписан
+    // старым доверенным ключом; Source остаётся Manual.
+    [Fact]
+    public async Task RefreshManualPeer_TrustedRotation_UpdatesKeys_KeepsManual()
+    {
+        await using var context = CreateContext();
+        var key = FakeKey(1);
+        var peer = ManualPeer(key, DateTime.UtcNow.AddDays(-2));
+        context.KnownServers.Add(peer);
+        await context.SaveChangesAsync();
+
+        var wellKnown = new FakeWellKnownClient
+        {
+            Result = Doc("friend.example.org", "https://fed.friend.example.org", ("ed25519:1", key), ("ed25519:2", FakeKey(2))),
+        };
+        var resolver = CreateResolver(context, wellKnown, new FakeNavigatorClient());
+
+        await resolver.RefreshManualPeerAsync(peer);
+
+        peer.Keys.Should().Contain(k => k.KeyId == "ed25519:2");
+        peer.Source.Should().Be(KnownServerSource.Manual);
+    }
+
+    // Документ без доверенной подписи (подписан недоверенным ключом, старый лишь скопирован в список)
+    // → manual-запись не меняется.
+    [Fact]
+    public async Task RefreshManualPeer_UntrustedDoc_KeepsExisting()
+    {
+        await using var context = CreateContext();
+        var key = FakeKey(1);
+        var peer = ManualPeer(key, DateTime.UtcNow.AddDays(-2));
+        context.KnownServers.Add(peer);
+        await context.SaveChangesAsync();
+
+        var wellKnown = new FakeWellKnownClient
+        {
+            Result = DocSigned("friend.example.org", "https://evil.example.org",
+                ("ed25519:9", FakeKey(9)), ("ed25519:1", key), ("ed25519:9", FakeKey(9))),
+        };
+        var resolver = CreateResolver(context, wellKnown, new FakeNavigatorClient());
+
+        await resolver.RefreshManualPeerAsync(peer);
+
+        peer.Keys.Should().ContainSingle(k => k.KeyId == "ed25519:1");
+        peer.Keys.Should().NotContain(k => k.KeyId == "ed25519:9");
+        peer.FederationEndpoint.Should().Be("https://fed.friend.example.org");
+    }
+
+    [Fact]
+    public async Task RefreshManualPeer_WellKnownUnavailable_KeepsExisting()
+    {
+        await using var context = CreateContext();
+        var key = FakeKey(1);
+        var peer = ManualPeer(key, DateTime.UtcNow.AddDays(-2));
+        context.KnownServers.Add(peer);
+        await context.SaveChangesAsync();
+
+        var wellKnown = new FakeWellKnownClient { Result = null };
+        var resolver = CreateResolver(context, wellKnown, new FakeNavigatorClient());
+
+        await resolver.RefreshManualPeerAsync(peer);
+
+        peer.Keys.Should().ContainSingle(k => k.KeyId == "ed25519:1");
+        wellKnown.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task RefreshManualPeer_NotDue_SkipsFetch()
+    {
+        await using var context = CreateContext();
+        var key = FakeKey(1);
+        var peer = ManualPeer(key, DateTime.UtcNow); // только что обновлён
+        context.KnownServers.Add(peer);
+        await context.SaveChangesAsync();
+
+        var wellKnown = new FakeWellKnownClient
+        {
+            Result = Doc("friend.example.org", "https://fed.friend.example.org", ("ed25519:1", key), ("ed25519:2", FakeKey(2))),
+        };
+        var resolver = CreateResolver(context, wellKnown, new FakeNavigatorClient());
+
+        await resolver.RefreshManualPeerAsync(peer);
+
+        wellKnown.CallCount.Should().Be(0);
+    }
 }
