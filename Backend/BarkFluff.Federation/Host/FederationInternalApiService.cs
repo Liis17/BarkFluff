@@ -106,20 +106,15 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         existing.LastSeenAt = now;
         existing.LastKeyRefreshAt = now;
 
-        var existingKeyIds = existing.Keys.Select(k => k.KeyId).ToHashSet();
-        foreach (var key in request.Keys)
-        {
-            if (existingKeyIds.Contains(key.KeyId))
-                continue;
-
-            existing.Keys.Add(new KnownServerKey
-            {
-                ServerName = normalized,
-                KeyId = key.KeyId,
-                PublicKey = key.PublicKey.ToByteArray(),
-                ExpiredAt = key.ExpiredAt != null ? key.ExpiredAt.ToDateTime() : null,
-            });
-        }
+        // P1-09: единая reconciliation (тот же путь, что у discovery). Admin-набор ключей
+        // авторитетен: присутствующие синхронизируются, исчезнувшие отзываются, новые добавляются.
+        var docKeys = request.Keys
+            .Select(k => new RemoteSigningKey(
+                k.KeyId,
+                k.PublicKey.ToByteArray(),
+                k.ExpiredAt != null ? k.ExpiredAt.ToDateTime() : null))
+            .ToList();
+        KnownServerKeyReconciler.Reconcile(existing, docKeys, now);
 
         await _context.SaveChangesAsync(context.CancellationToken);
         return new UpsertManualPeerResponse();
