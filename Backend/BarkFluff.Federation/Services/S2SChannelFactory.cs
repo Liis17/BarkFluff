@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
+using BarkFluff.Federation.Domain.Enums;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.GrpcServer.Metrics;
 
@@ -26,6 +28,7 @@ public class S2SChannelFactory
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly ServernameValidator _validator;
     private readonly ActiveSigningKeyCache _keyCache;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<S2SChannelFactory> _logger;
@@ -33,12 +36,14 @@ public class S2SChannelFactory
     public S2SChannelFactory(
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
+        ServernameValidator validator,
         ActiveSigningKeyCache keyCache,
         MetricsCollector metrics,
         ILogger<S2SChannelFactory> logger)
     {
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _validator = validator;
         _keyCache = keyCache;
         _metrics = metrics;
         _logger = logger;
@@ -56,14 +61,53 @@ public class S2SChannelFactory
         if (server == null)
             throw new InvalidOperationException($"Нода '{serverName}' не найдена в KnownServers (discovery — этап 1.4, на стенде — ручной SQL-сид)");
 
-        var invoker = BuildInvoker(server.ServerName, server.FederationEndpoint, server.TlsSpkiSha256);
+        var invoker = await BuildInvokerAsync(
+            server.ServerName,
+            server.FederationEndpoint,
+            server.TlsSpkiSha256,
+            server.Source == KnownServerSource.Manual,
+            ct);
         return _invokers.GetOrAdd(serverName, invoker);
     }
 
-    private CallInvoker BuildInvoker(string serverName, string endpoint, IReadOnlyCollection<string> tlsSpkiSha256)
+    private async Task<CallInvoker> BuildInvokerAsync(
+        string serverName,
+        string endpoint,
+        IReadOnlyCollection<string> tlsSpkiSha256,
+        bool isManual,
+        CancellationToken ct)
     {
         var uri = new Uri(endpoint);
-        var handler = new SocketsHttpHandler();
+
+        // P1-10: discovery-controlled endpoint валидируется перед ЛЮБЫМ соединением — схема,
+        // резолв в допустимый IP и пиннинг этого IP (anti-rebinding). Manual-пиры — исключение
+        // из проверки диапазонов (приватная сеть), но не из проверки схемы.
+        if (!ServernameValidator.IsSchemeAllowed(uri.Scheme, isManual))
+            throw new InvalidOperationException($"Схема эндпоинта '{uri.Scheme}' ноды '{serverName}' не разрешена");
+
+        var validatedIp = await _validator.ResolveAndValidateAsync(uri.Host, isManual, ct);
+        if (validatedIp == null)
+            throw new InvalidOperationException($"Эндпоинт ноды '{serverName}' не резолвится в допустимый IP (анти-SSRF)");
+
+        var handler = new SocketsHttpHandler
+        {
+            // Anti-rebinding: соединяемся строго по провалидированному IP; hostname сохраняется
+            // для TLS SNI и SPKI-пиннинга (не повторный резолв).
+            ConnectCallback = async (connectContext, cancellationToken) =>
+            {
+                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                try
+                {
+                    await socket.ConnectAsync(validatedIp, connectContext.DnsEndPoint.Port, cancellationToken);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            },
+        };
 
         if (uri.Scheme == "https")
         {

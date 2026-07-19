@@ -1,3 +1,5 @@
+using System.Net.Security;
+using System.Net.Sockets;
 using System.Text.Json;
 
 namespace BarkFluff.Navigator.Features.RegisterServer;
@@ -22,7 +24,10 @@ public class FederationWellKnownValidator
 
     public virtual async Task<bool> ValidateAsync(string normalizedServerName, IReadOnlyList<(string KeyId, byte[] PublicKey)> claimedKeys, CancellationToken ct)
     {
-        if (!await FederationServernameGuard.ResolvesToPublicAddressAsync(normalizedServerName, ct))
+        // P1-13: резолвим один раз в публичный IP и пиннимся к нему (anti-rebinding) — без повторного
+        // резолва hostname между проверкой и коннектом, где DNS-ответ мог бы смениться на приватный.
+        var validatedIp = await FederationServernameGuard.ResolvePublicAddressAsync(normalizedServerName, ct);
+        if (validatedIp == null)
             return false;
 
         // Dev-флаг для стенда (self-signed до этапа 1.6) — только вне production, по аналогии
@@ -30,10 +35,29 @@ public class FederationWellKnownValidator
         var insecure = !_environment.IsProduction() &&
             string.Equals(Environment.GetEnvironmentVariable("NAVIGATOR_INSECURE_WELLKNOWN"), "1", StringComparison.Ordinal);
 
-        using var handler = new HttpClientHandler();
+        using var handler = new SocketsHttpHandler
+        {
+            ConnectCallback = async (context, cancellationToken) =>
+            {
+                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                try
+                {
+                    await socket.ConnectAsync(validatedIp, context.DnsEndPoint.Port, cancellationToken);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            },
+        };
         if (insecure)
         {
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            handler.SslOptions = new SslClientAuthenticationOptions
+            {
+                RemoteCertificateValidationCallback = (_, _, _, _) => true,
+            };
             _logger.LogWarning("NAVIGATOR_INSECURE_WELLKNOWN=1 — CA-валидация well-known отключена (не production)");
         }
 
