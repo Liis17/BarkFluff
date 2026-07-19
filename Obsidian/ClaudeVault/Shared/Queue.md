@@ -20,7 +20,7 @@
 | `SenderUuid` | `Guid?` | UUID remote-автора (для рендера на приёмнике) |
 | `LastChangeAt` | `DateTimeOffset?` | база для LWW (SentAt/EditedAt) |
 | `IsFirstMessageInChat`, `InitiatorUuid`, `InviteeUuid` | — | только `NewMessageEvent`: построение `ChatCreated` без похода в Messages |
-| `SenderDisplayName`, `SenderFid` | `string?` | только `NewMessageEvent`/`MessageEditedEvent`: для пушей [[Backend/CloudMessaging]] (этап 2.8) |
+| `SenderFid` | `string?` | `NewMessageEvent`/`MessageEditedEvent`: FID отправителя (для `ChatCreated` и пушей [[Backend/CloudMessaging]]). `SenderDisplayName` (имя) заводится в 2.8 при потреблении |
 | `ReaderUuid`, `UpToFederatedMessageId` | `Guid?` | только `MessageReadEvent` |
 
 ## Namespace: `BarkFluff.Shared.Queue.Messages`
