@@ -11,7 +11,7 @@
 
 | ID | Приоритет | Проблема | Статус |
 |---|---|---|---|
-| P1-01 | P1 | Ротация signing-ключа не атомарна и не защищена от конкуренции | Открыта |
+| P1-01 | P1 | Ротация signing-ключа не атомарна и не защищена от конкуренции | **Исправлена** (Батч 2B: один SaveChanges + retry на PK-конфликт) |
 | P1-02 | P2 | Нет regression-тестов жизненного цикла ключей и well-known | Открыта |
 | P1-03 | P2 | `Obsidian/ClaudeVault/Shared/Proto.md` описывает устаревшее состояние Federation API | Открыта |
 | P1-04 | P1 | `Federation:Enabled=false` не выключает federation endpoints и фоновые процессы | **Исправлена** (Батч 2A: `FederationSwitch`) |
