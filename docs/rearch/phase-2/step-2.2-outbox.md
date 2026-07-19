@@ -84,7 +84,7 @@ Janitor (второй `BackgroundService` или таймер в том же): D
 1. `origin_server` события == `x-bf-origin` подписи (XFed уже проверил подпись запроса) — нет → `REJECTED`.
 2. `ProcessedEvents` содержит `event_id` → `ALREADY_PROCESSED`.
 3. Проверка `origin_signature` события (Изменение 3) ключами origin — невалидна → `REJECTED`.
-4. «Нода говорит только за своих»: uuid/server_name автора внутри payload принадлежит origin — нет → `REJECTED`.
+4. «Нода говорит только за своих»: для payload'ов, несущих автора (`ChatCreated`/`NewMessage`/`ProfileChanged`), `server_name` автора внутри payload == origin — нет → `REJECTED`. Для `MessageEdited`/`MessageDeleted`/`MessagesRead` автора в payload **нет** (и добавлять его нельзя — он был бы атакер-контролируем): принадлежность автора/читателя origin проверяется **на слое импорта Messages** локальным резолвом домашней ноды по `SenderUuid`/`reader_uuid` — см. step-2.4 §Изменение 3/4 (P2-02). Здесь для этих типов пункт 4 — no-op.
 5. Маршрутизация по типу payload → внутренний вызов (Messages/Users). **В этом этапе** обработчики чатовых payload'ов возвращают `RETRY` с ошибкой `NotImplementedYet` (импорт — 2.3); каркас маршрутизации и коды готовы.
 6. Успех внутреннего вызова → запись `ProcessedEvents` + `OK`. Внутренний вызов упал транзиентно → `RETRY` (без записи в ProcessedEvents!).
 

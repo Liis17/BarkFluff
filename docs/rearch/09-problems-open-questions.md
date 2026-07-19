@@ -36,12 +36,12 @@
 | 14 | Дозаполнение дыр после долгого даунтайма (> окна ретраев) | решено | `FetchChatHistory` catch-up + dead-letter видимость в AdminPanel |
 | 15 | Порядок событий | смягчено | Упорядочивание outbox per-(destination, chat); приёмник дозапрашивает неизвестные сообщения при edit-на-несуществующее |
 | 16 | `ReadBy` — массив long, не вмещает remote | решено | `FederatedReadStates` отдельной таблицей |
-| 17 | Pin-сообщения в fed-чатах | **открыто** | MVP: не федерировать или запретить — решить при реализации Фазы 2 |
+| 17 | Pin-сообщения в fed-чатах | решено | Pin не федерируется (локальное состояние каждой ноды); pin/unpin не трогают `Message.LastChangeAt`, иначе ломают LWW входящих правок ([05](05-chat-replication.md)) |
 | 37 | Потеря события на стыке Messages → RabbitMQ → outbox (краш между коммитом БД и publish) | смягчено | Publisher confirms + сверка `(chat_id, last_event_ts)` в Ping закрывает дыру постфактум ([05](05-chat-replication.md)); transactional outbox в БД Messages — правильное закрытие, бэклог |
 | 38 | Head-of-line blocking очереди чата при перманентно отвергаемом событии | решено | Классификация ответов DeliverEvents: retryable → backoff, permanent → сразу DeadLetter, очередь чата едет дальше ([04](04-federation-service.md)) |
 | 39 | «Тихие дыры»: получатель не знает о пропущенных событиях | решено | Сверка `(chat_id, last_event_ts)` в Ping / при восстановлении связи → FetchChatHistory ([05](05-chat-replication.md)) |
 | 40 | Семантика удаления fed-DM не была определена | решено | Локальное действие (как email), не федерируется; новое входящее сообщение воссоздаёт чат-копию ([05](05-chat-replication.md)) |
-| 41 | Поздний импорт (catch-up) ломает сортировку по локальному Id | решено | Для fed-чатов ListMessages сортирует по SentAt + tie-break ([08](08-service-migration.md)) |
+| 41 | Поздний импорт (catch-up) ломает сортировку по локальному Id | решено | `MessagesStorage`/`ChatsStorage` уже сортируют по `SentAt`; tie-break `ThenBy(Id)` добавляется в 2.3 для стабильности при равных метках (`Id` — node-local: кросс-нодовый порядок при равных `SentAt` не гарантируется, но это вне требования) ([08](08-service-migration.md), step-2.3) |
 
 ## Файлы
 

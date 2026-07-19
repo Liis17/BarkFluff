@@ -42,14 +42,14 @@ message FederationEvent {
                                // origin: перепроверяемое авторство копий + те же гарантии
                                // для catch-up-истории, что и у прямой доставки
   string origin_key_id = 5;
-  oneof payload {
-    NewMessagePayload new_message = 10;
-    MessageEditedPayload message_edited = 11;
-    MessageDeletedPayload message_deleted = 12;
-    MessagesReadPayload messages_read = 13;
-    UserProfileChangedPayload profile_changed = 14;
-    UserDeactivatedPayload user_deactivated = 15;
-    ChatCreatedPayload chat_created = 16;
+  oneof payload {                                 // номера — как в federation_api.proto (0.4)
+    ChatCreatedPayload chat_created = 10;
+    NewMessagePayload new_message = 11;
+    MessageEditedPayload message_edited = 12;
+    MessageDeletedPayload message_deleted = 13;
+    MessagesReadPayload messages_read = 14;
+    UserProfileChangedPayload profile_changed = 15;
+    UserDeactivatedPayload user_deactivated = 16;
   }
 }
 ```
@@ -62,7 +62,7 @@ message FederationEvent {
 | `EnqueueOutbound(destination_server, FederationEvent)` | (обычно не нужен — см. RabbitMQ ниже) | Прямая постановка события в outbox |
 | `FetchRemoteFile(server_name, file_ref)` | Files | Стриминг файла с origin-ноды |
 | `FetchRemoteChatHistory(server_name, chat_id, cursor)` | Messages | Catch-up истории |
-| `GetKnownServers / UpsertManualPeer / BlockServer / UnblockServer` | AdminPanel | Управление пирами |
+| `GetKnownServers / UpsertManualPeer / SetServerBlocked` | AdminPanel | Управление пирами (`SetServerBlocked(server_name, blocked)` — единый вкл/выкл блок вместо пары Block/Unblock) |
 | `GetFederationStatus` | AdminPanel / Beacon | Ключи, outbox-глубина, состояние пиров |
 
 ### 3. RabbitMQ (MassTransit)
