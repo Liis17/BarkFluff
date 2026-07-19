@@ -44,7 +44,7 @@ public class NewMessageEvent
     /// <summary>UUID приглашённого (для ChatCreated).</summary>
     public Guid? InviteeUuid { get; set; }
 
-    // Для пушей (этап 2.8) — завести поля сразу.
-    public string? SenderDisplayName { get; set; }
+    /// <summary>FID отправителя (@username:servername) — для ChatCreated и подписи remote-отправителя.</summary>
+    // SenderDisplayName (отображаемое имя для пушей) заводится в 2.8 — вместе с потреблением.
     public string? SenderFid { get; set; }
 }

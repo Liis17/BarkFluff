@@ -8,7 +8,6 @@ using BarkFluff.Shared.Queue.Messages;
 using MassTransit;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Federation.Consumers;
 
@@ -20,18 +19,15 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
     private readonly OutboxWriter _writer;
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
-    private readonly ILogger<NewMessageFederationConsumer> _logger;
 
     public NewMessageFederationConsumer(
         OutboxWriter writer,
         IConfiguration configuration,
-        MetricsCollector metrics,
-        ILogger<NewMessageFederationConsumer> logger)
+        MetricsCollector metrics)
     {
         _writer = writer;
         _configuration = configuration;
         _metrics = metrics;
-        _logger = logger;
     }
 
     public async Task Consume(ConsumeContext<NewMessageEvent> context)
@@ -71,14 +67,17 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
             await _writer.EnqueueSignedAsync(chatCreated, msg.ChatId, destinations, ct);
         }
 
+        // event_id — новый uuid (spec 2.2 §Изменение 4, как ChatCreated и остальные консюмеры);
+        // federated_message_id — стабильный id сообщения, вычисляется один раз (P2-01).
+        var federatedMessageId = msg.FederatedId ?? Guid.NewGuid();
         var newMessage = BuildEvent(
-            msg.FederatedId ?? Guid.NewGuid(),
+            Guid.NewGuid(),
             origin,
             ts,
             evt => evt.NewMessage = new NewMessagePayload
             {
                 ChatId = msg.ChatId.ToString(),
-                FederatedMessageId = (msg.FederatedId ?? Guid.NewGuid()).ToString(),
+                FederatedMessageId = federatedMessageId.ToString(),
                 Sender = new FederatedUser
                 {
                     Uuid = (msg.SenderUuid ?? Guid.Empty).ToString(),
