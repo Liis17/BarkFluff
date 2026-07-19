@@ -184,7 +184,9 @@ public class WellKnownClient : IWellKnownClient
                 ? pvEl.EnumerateArray().Select(e => e.GetInt32()).ToArray()
                 : [];
 
-            return new RemoteServerDocument(serverName!, endpoint, tlsSpki, protocolVersions, keys);
+            // Идентификатор+pubkey ключа, реально проверившего подпись документа — основа континуитета
+            // доверия при ротации известного пира (P1-11).
+            return new RemoteServerDocument(serverName!, endpoint, tlsSpki, protocolVersions, keys, keyId, signingPublicKey);
         }
         catch (Exception ex) when (ex is JsonException or FormatException or KeyNotFoundException or InvalidOperationException)
         {
