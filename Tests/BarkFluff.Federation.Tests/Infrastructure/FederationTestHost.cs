@@ -83,6 +83,7 @@ public sealed class FederationTestHost : IAsyncDisposable
                     // на "неизвестный ключ" вместо реального DNS/HTTP.
                     services.AddSingleton<IWellKnownClient>(new FakeWellKnownClient());
                     services.AddSingleton<INavigatorClient>(new FakeNavigatorClient());
+                    services.AddSingleton(Mock.Of<IS2SChannelInvalidator>());
                     services.AddScoped<ServerResolver>();
                     services.AddSingleton<DiscoveryTriggerRateLimiter>();
 

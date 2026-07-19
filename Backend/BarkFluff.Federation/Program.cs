@@ -70,6 +70,7 @@ public class Program
         builder.Services.AddSingleton<WellKnownDocumentService>();
         builder.Services.AddSingleton<ActiveSigningKeyCache>();
         builder.Services.AddSingleton<S2SChannelFactory>();
+        builder.Services.AddSingleton<IS2SChannelInvalidator>(sp => sp.GetRequiredService<S2SChannelFactory>());
 
         builder.Services.AddSingleton<FederationSwitch>();
         builder.Services.AddSingleton<ServernameValidator>();
