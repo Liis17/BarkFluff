@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace BarkFluff.Federation.BackgroundServices;
 
 // Фоновый рефреш KnownServers (docs/rearch/03-discovery.md, "Политика обновления"): раз в сутки
-// для Active непринудительных (не-Manual) пиров, Unreachable — экспоненциальный backoff.
+// для Active discovery-пиров, Unreachable — экспоненциальный backoff. Manual-пиры (P1-12) —
+// безопасный refresh ключей по континуитету (ResolveAsync их не перезатирает), без Unreachable-логики.
 // Счётчик подряд-неудач — in-memory (как троттлинг регистрации в Navigator): потеря состояния
 // при рестарте безвредна, худший случай — один лишний цикл до повторной пометки Unreachable.
 public class PeerRefreshBackgroundService : BackgroundService
@@ -62,14 +63,21 @@ public class PeerRefreshBackgroundService : BackgroundService
         var resolver = scope.ServiceProvider.GetRequiredService<ServerResolver>();
 
         var candidates = await context.KnownServers
-            .Where(s => s.Source != KnownServerSource.Manual
-                        && (s.Status == KnownServerStatus.Active || s.Status == KnownServerStatus.Unreachable))
+            .Where(s => s.Status == KnownServerStatus.Active || s.Status == KnownServerStatus.Unreachable)
             .ToListAsync(ct);
 
         var now = DateTime.UtcNow;
 
         foreach (var server in candidates)
         {
+            // P1-12: manual-пиры не участвуют в Unreachable-backoff (админ-управляемы), но плановую
+            // ротацию их ключей подтягиваем безопасно через континуитет-проверку.
+            if (server.Source == KnownServerSource.Manual)
+            {
+                await resolver.RefreshManualPeerAsync(server, ct);
+                continue;
+            }
+
             var failures = _consecutiveFailures.GetOrAdd(server.ServerName, 0);
             var backoff = server.Status == KnownServerStatus.Unreachable
                 ? TimeSpan.FromHours(Math.Min(24, Math.Pow(2, failures)))
