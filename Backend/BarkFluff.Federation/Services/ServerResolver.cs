@@ -122,13 +122,19 @@ public class ServerResolver
 
     private static bool HasTrustedContinuity(KnownServer existing, RemoteServerDocument newDoc)
     {
-        foreach (var oldKey in existing.Keys.Where(k => k.RevokedAt == null))
-        {
-            if (newDoc.SigningKeys.Any(newKey => newKey.KeyId == oldKey.KeyId && newKey.PublicKey.AsSpan().SequenceEqual(oldKey.PublicKey)))
-                return true;
-        }
+        // P1-11: континуитет доверия устанавливается ключом, который РЕАЛЬНО проверил подпись документа
+        // (SignedByKeyId+pubkey), и только если этот ключ у нас уже доверенный (не отозван, не истёк).
+        // Присутствия старого pubkey в списке signing_keys НЕдостаточно — атакующий может скопировать
+        // чужой публичный ключ в список и подписать документ собственным ключом. Navigator-документ
+        // не подписан (SignedByKeyId == null) → смена набора ключей через него не принимается.
+        if (newDoc.SignedByKeyId == null || newDoc.SignedByPublicKey == null)
+            return false;
 
-        return false;
+        return existing.Keys.Any(k =>
+            k.RevokedAt == null
+            && (k.ExpiredAt == null || k.ExpiredAt > DateTime.UtcNow)
+            && k.KeyId == newDoc.SignedByKeyId
+            && k.PublicKey.AsSpan().SequenceEqual(newDoc.SignedByPublicKey));
     }
 
     private async Task<KnownServer> UpsertAsync(string servername, RemoteServerDocument doc, KnownServerSource source, KnownServer? existing, CancellationToken ct)
@@ -153,20 +159,8 @@ public class ServerResolver
         existing.LastSeenAt = now;
         existing.LastKeyRefreshAt = now;
 
-        var existingKeyIds = existing.Keys.Select(k => k.KeyId).ToHashSet();
-        foreach (var remoteKey in doc.SigningKeys)
-        {
-            if (existingKeyIds.Contains(remoteKey.KeyId))
-                continue;
-
-            existing.Keys.Add(new KnownServerKey
-            {
-                ServerName = servername,
-                KeyId = remoteKey.KeyId,
-                PublicKey = remoteKey.PublicKey,
-                ExpiredAt = remoteKey.ExpiredAt,
-            });
-        }
+        // P1-09: единая reconciliation (добавить/синхронизировать/отозвать), а не только добавление.
+        KnownServerKeyReconciler.Reconcile(existing, doc.SigningKeys, now, _logger);
 
         await _context.SaveChangesAsync(ct);
         return existing;
