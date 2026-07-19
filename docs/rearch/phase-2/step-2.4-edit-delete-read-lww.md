@@ -38,14 +38,14 @@ FederatedReadStates
 Обработчики (зовёт Federation, маршрутизация уже есть в 2.2):
 
 1. Чат неизвестен → `RETRY:ChatUnknown`; сообщение по `FederatedId` неизвестно → `RETRY:MessageUnknown` (оба — триггеры catch-up в 2.6).
-2. **Автор == отправитель события**: `sender_uuid` события == `Message.SenderUuid`. Иначе `REJECTED` — без этой проверки чужая нода правит/удаляет наши сообщения в нашей же копии.
+2. **Origin владеет автором правимого сообщения** (закрывает P2-02). Payload `MessageEdited`/`MessageDeleted` **не несёт** идентичность автора — и не должен: любое поле автора в payload атакер-контролируемо (чужая нода солжёт `server_name`). Проверка — локальная у получателя: по `(ChatId, FederatedId)` найти сообщение `M`, взять `M.SenderUuid`, резолвнуть его **домашнюю ноду** (`Users` локально → своя нода; иначе `RemoteUsers[SenderUuid].ServerName`, запиннен при знакомстве) и сверить `homeserver(M.SenderUuid) == x-bf-origin` события. Иначе `REJECTED`. Отклоняет два вектора: (а) чужая нода правит/удаляет сообщение **локального** автора в нашей копии (`homeserver = своя ≠ origin`); (б) партнёрская нода правит сообщение **не своего** пользователя. Проверки `sender_uuid == Message.SenderUuid` **недостаточно** (не ловит вектор «а») и такого поля в payload нет — не полагаться на него.
 3. LWW (Изменение 2). Применение: правка — текст + `EditedAt`/`LastChangeAt = origin_ts` (семантика вложений — Фаза 3); удаление — существующий soft-delete + `LastChangeAt`.
 4. Обновить `FederatedMessageEvents` (событие-победитель заменяет предыдущее; для удалённого — хранится delete-событие).
 5. Опубликовать обычные внутренние события (`MessageEditedEvent`/`MessageDeletedEvent`) → Updates разносит своим клиентам штатно.
 
 ## Изменение 4 — `ApplyFederatedRead`
 
-1. Чат неизвестен → `RETRY:ChatUnknown`; `reader_uuid` — remote-участник чата, иначе `REJECTED`.
+1. Чат неизвестен → `RETRY:ChatUnknown`; `reader_uuid` — remote-участник чата **и** его домашняя нода == origin события (`homeserver(reader_uuid) == x-bf-origin`), иначе `REJECTED` (P2-02: `MessagesReadPayload.reader_uuid` есть, но `server_name` читателя нет — принадлежность резолвится локально, как для edit/delete).
 2. Upsert `FederatedReadStates` по `up_to_federated_message_id` (идемпотентно; «прочитано до» — более старое событие не откатывает более новое: сравнивай по `origin_ts` события либо по `SentAt` сообщения).
 3. Внутреннее `MessageReadEvent` → Updates.
 

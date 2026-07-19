@@ -74,7 +74,8 @@ RemoteUsers
 
 Две части:
 
-- **Users**: server-RPC (добавь в `UsersServerApi`: `GetFederatedProfile(username | uuid)`) — профиль локального пользователя с privacy-фильтрацией. Переиспользуй логику существующего публичного `GetUserByUsername` (поля `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility` — прочитай актуальные имена в Privacy-домене Users): скрытое поле = пустое в ответе; профиль скрыт целиком → `found=false`. Деактивированный/забаненный → `found=false`.
+- **Users**: server-RPC (добавь в `UsersServerApi`: `GetFederatedProfile(username | uuid)`) — профиль локального пользователя с privacy-фильтрацией. Переиспользуй логику существующего публичного `GetUserByUsername` (поля `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility` — прочитай актуальные имена в Privacy-домене Users): скрытое поле = пустое в ответе; профиль скрыт целиком → `found=false`. Также фильтровать `IsDraft`.
+  > **Согласованное отклонение (P2-04):** «деактивированный/забаненный → `found=false`» **не реализуется** — в домене `User` нет состояния деактивации/бана (есть только `IsDraft`/`IsBot`), концепта бана нет даже локально. Вводить lifecycle-состояние ради федерации — вне скоупа Фазы 2. Когда/если такой флаг появится (напр. вместе с сервисом блокировок из [../09](../09-problems-open-questions.md)) — добавить его в этот фильтр. `RemoteUsers.IsDeactivated` на приёмной стороне уже есть под будущее.
 - **Federation**: реализация `FederationS2SApi.GetUserProfile` (была `Unimplemented`): XFed уже проверил подпись (1.3) → вызов `Users.GetFederatedProfile` → маппинг в `GetUserProfileResponse`. Блоклист-проверка origin — как в остальных S2S-обработчиках 1.3/1.4.
 
 ## Изменение 6 — `FederationInternalApi.ResolveRemoteUser`
