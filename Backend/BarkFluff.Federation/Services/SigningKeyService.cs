@@ -79,22 +79,41 @@ public class SigningKeyService
     }
 
     // Плановая ротация: новый ключ становится активным, старому проставляется ExpiredAt = now + overlap.
+    //
+    // P1-01: вставка нового ключа и ExpiredAt старого применяются ОДНИМ SaveChangesAsync (одна
+    // транзакция) — краш «между сохранениями» больше не может оставить два бессрочно активных ключа.
+    // KeyId — первичный ключ, поэтому конкурентная ротация, вычислившая тот же ed25519:N, ловится
+    // как DbUpdateException и повторяется с пересчётом номера и перечиткой активного ключа.
     public async Task<(FederationSigningKey NewKey, FederationSigningKey OldKey)> RotateAsync(CancellationToken ct = default)
     {
-        var oldKey = await GetActiveKeyAsync(ct);
-
         var overlapDays = 30;
         var overlapConfig = _configuration["Federation:KeyRotationOverlapDays"];
         if (!string.IsNullOrWhiteSpace(overlapConfig) && int.TryParse(overlapConfig, out var parsedOverlap))
             overlapDays = parsedOverlap;
 
-        var nextN = await GetNextKeyNumberAsync(ct);
-        var newKey = await GenerateAndStoreKeyAsync($"ed25519:{nextN}", ct);
+        const int maxAttempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            var oldKey = await GetActiveKeyAsync(ct);
+            var nextN = await GetNextKeyNumberAsync(ct);
+            var newKey = BuildKey($"ed25519:{nextN}");
 
-        oldKey.ExpiredAt = DateTime.UtcNow.AddDays(overlapDays);
-        await _context.SaveChangesAsync(ct);
+            _context.SigningKeys.Add(newKey);
+            oldKey.ExpiredAt = DateTime.UtcNow.AddDays(overlapDays);
 
-        return (newKey, oldKey);
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+                return (newKey, oldKey);
+            }
+            catch (DbUpdateException) when (attempt < maxAttempts)
+            {
+                // Конкурентная ротация заняла тот же KeyId (PK-конфликт). Откатываем несохранённое
+                // состояние трекера и повторяем: активный ключ и nextN перечитываются заново.
+                _context.Entry(newKey).State = EntityState.Detached;
+                await _context.Entry(oldKey).ReloadAsync(ct);
+            }
+        }
     }
 
     private async Task<int> GetNextKeyNumberAsync(CancellationToken ct)
@@ -114,6 +133,14 @@ public class SigningKeyService
 
     private async Task<FederationSigningKey> GenerateAndStoreKeyAsync(string keyId, CancellationToken ct)
     {
+        var entity = BuildKey(keyId);
+        _context.SigningKeys.Add(entity);
+        await _context.SaveChangesAsync(ct);
+        return entity;
+    }
+
+    private static FederationSigningKey BuildKey(string keyId)
+    {
         var random = new SecureRandom();
         var kpGen = new Ed25519KeyPairGenerator();
         kpGen.Init(new KeyGenerationParameters(random, 256));
@@ -121,17 +148,12 @@ public class SigningKeyService
         var privateKey = (Ed25519PrivateKeyParameters)kp.Private;
         var publicKey = (Ed25519PublicKeyParameters)kp.Public;
 
-        var entity = new FederationSigningKey
+        return new FederationSigningKey
         {
             KeyId = keyId,
             PublicKey = publicKey.GetEncoded(),
             PrivateKeySeed = privateKey.GetEncoded(),
             CreatedAt = DateTime.UtcNow,
         };
-
-        _context.SigningKeys.Add(entity);
-        await _context.SaveChangesAsync(ct);
-
-        return entity;
     }
 }
