@@ -62,7 +62,10 @@ public class PeerRefreshBackgroundService : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<FederationContext>();
         var resolver = scope.ServiceProvider.GetRequiredService<ServerResolver>();
 
+        // Keys нужны RefreshManualPeerAsync для проверки континуитета доверия (HasTrustedContinuity
+        // смотрит existing.Keys) — без Include коллекция пуста и manual-рефреш никогда не применяется.
         var candidates = await context.KnownServers
+            .Include(s => s.Keys)
             .Where(s => s.Status == KnownServerStatus.Active || s.Status == KnownServerStatus.Unreachable)
             .ToListAsync(ct);
 
