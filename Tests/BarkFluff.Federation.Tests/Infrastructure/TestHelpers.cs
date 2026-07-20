@@ -13,8 +13,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Moq;
-
 namespace BarkFluff.Federation.Tests.Infrastructure;
 
 // Общие хелперы юнит-тестов Federation: InMemory-БД с шарингом между контекстами,
@@ -101,17 +99,7 @@ public static class TestHelpers
 
     // ServerCallContext с UserState["xfed-origin"] — то, что XFedServerInterceptor кладёт после проверки.
     public static ServerCallContext CreateCallContext(string? xfedOrigin = null)
-    {
-        var context = new Mock<ServerCallContext>();
-        context.Setup(c => c.CancellationToken).Returns(CancellationToken.None);
-
-        var state = new Dictionary<object, object>();
-        if (xfedOrigin != null)
-            state["xfed-origin"] = xfedOrigin;
-        context.Setup(c => c.UserState).Returns(state);
-
-        return context.Object;
-    }
+        => new TestServerCallContext(xfedOrigin);
 
     // Фоновые сервисы (диспетчер/janitor/refresh) выполняют первую итерацию сразу при StartAsync —
     // ждём наблюдаемый эффект в БД вместо фиксированного Sleep.
