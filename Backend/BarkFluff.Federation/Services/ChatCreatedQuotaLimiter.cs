@@ -18,10 +18,21 @@ public class ChatCreatedQuotaLimiter : IChatCreatedQuotaLimiter
         _configuration = configuration;
     }
 
-    /// <summary>Инкрементирует счётчик origin за текущий час; false — квота на этот час исчерпана.</summary>
-    public async Task<bool> TryConsumeAsync(string origin)
+    /// <summary>
+    /// Инкрементирует счётчик origin за текущий час; false — квота на этот час исчерпана.
+    /// Списание идемпотентно по eventId (маркер с TTL = окно квоты): ретрай одного и того же
+    /// ещё не обработанного ChatCreated (OutboxDispatcher.ApplyRetry) не должен списывать квоту
+    /// повторно — иначе временная недоступность Messages сама по себе исчерпывает лимит origin.
+    /// </summary>
+    public async Task<bool> TryConsumeAsync(string origin, Guid eventId)
     {
         var db = _redis.GetDatabase();
+
+        var chargeKey = $"fed:chatcreated:charged:{eventId}";
+        var firstCharge = await db.StringSetAsync(chargeKey, "1", TimeSpan.FromHours(1), When.NotExists);
+        if (!firstCharge)
+            return true; // уже учтено предыдущей попыткой доставки этого же события.
+
         var key = $"fed:chatcreated:{origin}:{DateTime.UtcNow:yyyyMMddHH}";
 
         var count = await db.StringIncrementAsync(key);
