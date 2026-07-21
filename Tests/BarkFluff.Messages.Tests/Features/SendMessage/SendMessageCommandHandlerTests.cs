@@ -255,7 +255,8 @@ public class SendMessageCommandHandlerTests
                 && e.RemoteParticipants.Count == 1
                 && e.RemoteParticipants[0].Uuid == remoteUuid
                 && e.SenderUuid == localUuid
-                && e.SenderFid == "@alice:remote.test"),
+                && e.SenderFid == "@alice:remote.test"
+                && e.LastChangeAt.HasValue),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

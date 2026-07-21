@@ -500,7 +500,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 isFirstMessageInFedChat,
                 fedInitiatorUuid,
                 fedInviteeUuid,
-                senderFid);
+                senderFid,
+                lastChangeAt: message.LastChangeAt);
         }
         else
         {

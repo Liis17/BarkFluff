@@ -63,4 +63,21 @@ public class ImportFederatedMessageCommandHandlerTests
 
         await act.Should().ThrowAsync<FederatedChatNotActiveException>();
     }
+
+    [Fact]
+    public async Task Handle_ValidImport_PublishesNewMessageEventWithLastChangeAt()
+    {
+        // Баг #8: LastChangeAt обязан прокидываться в опубликованный NewMessageEvent, иначе
+        // NewMessageFederationConsumer падает на wall-clock время обработки вместо origin_ts.
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+        var handler = CreateHandler();
+
+        await handler.Handle(new ImportFederatedMessageCommand(
+            BuildRequest(chat.Id, Guid.NewGuid(), remoteUuid)), CancellationToken.None);
+
+        _h.PublishEndpointMock.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.NewMessageEvent>(e => e.LastChangeAt.HasValue),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

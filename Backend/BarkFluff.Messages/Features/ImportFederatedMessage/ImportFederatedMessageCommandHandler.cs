@@ -165,7 +165,8 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
             senderUuid,
             r.SenderUsername,
             remoteMember.ServerName ?? string.Empty,
-            ownServer);
+            ownServer,
+            lastChangeAt: message.LastChangeAt);
 
         _metrics.Increment("federation_import_message_created");
         _logger.LogInformation(
