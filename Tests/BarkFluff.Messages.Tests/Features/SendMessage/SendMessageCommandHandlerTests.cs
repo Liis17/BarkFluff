@@ -44,11 +44,11 @@ public class SendMessageCommandHandlerTests
             TestHelper.CreateLogger<SendMessageCommandHandler>());
     }
 
-    private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User")
+    private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User", string username = "testuser")
     {
         var response = new GetByIdResponse
         {
-            User = new User { Id = userId, FirstName = firstName, LastName = lastName }
+            User = new User { Id = userId, FirstName = firstName, LastName = lastName, Username = username }
         };
         _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(new AsyncUnaryCall<GetByIdResponse>(
@@ -237,6 +237,7 @@ public class SendMessageCommandHandlerTests
         var localUuid = Guid.NewGuid();
         var remoteUuid = Guid.NewGuid();
         var chat = await _h.SeedFederatedChat(userId, localUuid, remoteUuid, "remote.test");
+        SetupUsersClient(userId, username: "alice");
         var handler = CreateHandler(userId);
 
         var result = await handler.Handle(new SendMessageCommand
@@ -253,7 +254,8 @@ public class SendMessageCommandHandlerTests
                 e.IsFederated
                 && e.RemoteParticipants.Count == 1
                 && e.RemoteParticipants[0].Uuid == remoteUuid
-                && e.SenderUuid == localUuid),
+                && e.SenderUuid == localUuid
+                && e.SenderFid == "@alice:remote.test"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
