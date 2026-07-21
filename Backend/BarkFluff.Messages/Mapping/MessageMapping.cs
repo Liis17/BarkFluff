@@ -8,7 +8,7 @@ using Proto.Shared;
 
 public static class MessageMapping
 {
-    public static Message ToGrpc(this Domain.Message message)
+    public static Message ToGrpc(this Domain.Message message, IReadOnlyList<Guid>? federatedReadBy = null)
     {
         var grpc = new Message
         {
@@ -32,10 +32,13 @@ public static class MessageMapping
         if (message.SenderUuid.HasValue)
             grpc.SenderUuid = message.SenderUuid.Value.ToString();
 
+        if (federatedReadBy is { Count: > 0 })
+            grpc.FederatedReadBy.Add(federatedReadBy.Select(u => u.ToString()));
+
         return grpc;
     }
 
-    public static Message ToGrpc(this Domain.Message message, Dictionary<string, UploadFileInfo> filesInfoMap)
+    public static Message ToGrpc(this Domain.Message message, Dictionary<string, UploadFileInfo> filesInfoMap, IReadOnlyList<Guid>? federatedReadBy = null)
     {
         var grpc = new Message
         {
@@ -58,6 +61,9 @@ public static class MessageMapping
 
         if (message.SenderUuid.HasValue)
             grpc.SenderUuid = message.SenderUuid.Value.ToString();
+
+        if (federatedReadBy is { Count: > 0 })
+            grpc.FederatedReadBy.Add(federatedReadBy.Select(u => u.ToString()));
 
         return grpc;
     }
