@@ -8,5 +8,5 @@ public class FakeChatCreatedQuotaLimiter : IChatCreatedQuotaLimiter
 {
     public bool AlwaysReject { get; set; }
 
-    public Task<bool> TryConsumeAsync(string origin) => Task.FromResult(!AlwaysReject);
+    public Task<bool> TryConsumeAsync(string origin, Guid eventId) => Task.FromResult(!AlwaysReject);
 }
