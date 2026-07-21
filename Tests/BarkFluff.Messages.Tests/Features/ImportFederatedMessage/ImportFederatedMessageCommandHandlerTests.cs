@@ -80,4 +80,23 @@ public class ImportFederatedMessageCommandHandlerTests
             It.Is<Shared.Queue.Messages.NewMessageEvent>(e => e.LastChangeAt.HasValue),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_DuplicateFederatedId_ReturnsExistingMessageId()
+    {
+        // Регрессия: (3) идемпотентность по (ChatId, FederatedId) — повторная доставка того же
+        // NewMessage возвращает уже созданное сообщение вместо повторной вставки.
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+        var federatedId = Guid.NewGuid();
+        var handler = CreateHandler();
+
+        var first = await handler.Handle(new ImportFederatedMessageCommand(
+            BuildRequest(chat.Id, federatedId, remoteUuid)), CancellationToken.None);
+        var second = await handler.Handle(new ImportFederatedMessageCommand(
+            BuildRequest(chat.Id, federatedId, remoteUuid)), CancellationToken.None);
+
+        second.MessageId.Should().Be(first.MessageId);
+        _h.DbContext.Messages.Count(m => m.ChatId == chat.Id && m.FederatedId == federatedId).Should().Be(1);
+    }
 }

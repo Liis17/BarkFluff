@@ -134,7 +134,19 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
             },
         };
 
-        message = await _messagesStorage.AddMessage(message);
+        try
+        {
+            message = await _messagesStorage.AddMessage(message);
+        }
+        catch (DbUpdateException)
+        {
+            // Уникальный индекс (ChatId, FederatedId) — конкурентная повторная доставка/ретрай
+            // того же NewMessage; идемпотентно возвращаем уже созданное сообщение.
+            var raced = await _messagesStorage.GetByFederatedIdAsync(chatId, federatedId);
+            if (raced is null)
+                throw;
+            return new ImportFederatedMessageResponse { MessageId = raced.Id };
+        }
 
         // (6) FederatedMessageEvents — wire-байты подписанного FederationEvent (catch-up 2.6) + метка
         // (origin_server, event_id) для LWW tie-break последующих ApplyFederatedEdit/Delete (2.4).

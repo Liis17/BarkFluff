@@ -26,15 +26,29 @@ public class FederatedReadStatesStorage
 
         if (existing is null)
         {
-            _context.FederatedReadStates.Add(new FederatedReadState
+            var newState = new FederatedReadState
             {
                 ChatId = chatId,
                 UserUuid = userUuid,
                 LastReadFederatedMessageId = lastReadFederatedMessageId,
                 ReadAt = readAt,
-            });
-            await _context.SaveChangesAsync();
-            return true;
+            };
+            _context.FederatedReadStates.Add(newState);
+            try
+            {
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException)
+            {
+                // PK (ChatId, UserUuid) — гонка одновременной первой отметки "прочитано"
+                // (конкурентная доставка/ретрай); переигрываем как update ниже.
+                _context.Entry(newState).State = EntityState.Detached;
+                existing = await _context.FederatedReadStates
+                    .FirstOrDefaultAsync(s => s.ChatId == chatId && s.UserUuid == userUuid);
+                if (existing is null)
+                    throw;
+            }
         }
 
         if (!LwwResolver.ShouldApplyRead(existing.ReadAt, readAt))
