@@ -259,9 +259,12 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
 
     public override async Task<GetPersonChatIdResponse> GetPersonChatId(GetPersonChatIdRequest request, ServerCallContext context)
     {
+        // request.UserId — plain proto3 int64 (не oneof/optional), при незаполненном поле приходит 0,
+        // а не null. Без этой проверки request.UserId == 0 ? null : ... federated-ветка по UserUuid
+        // в GetPersonChatIdCommandHandler (гейт "UserId is null") недостижима.
         var command = new GetPersonChatIdCommand
         {
-            UserId = request.UserId,
+            UserId = request.UserId == 0 ? null : request.UserId,
         };
 
         if (Guid.TryParse(request.UserUuid, out var userUuid))
