@@ -243,7 +243,9 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                     {
                         // Квота per-origin (этап 2.5): защита от спам-волны создания чатов. Троттлинг —
                         // временное состояние (RETRY), не порча события; событие уедет на следующем окне.
-                        if (!await _chatCreatedQuotaLimiter.TryConsumeAsync(origin))
+                        // evt.EventId уже провалидирован как parseable в ProcessEventAsync — повторный
+                        // parse здесь безопасен.
+                        if (!await _chatCreatedQuotaLimiter.TryConsumeAsync(origin, Guid.Parse(evt.EventId)))
                         {
                             _metrics.Increment("chatcreated_quota_exceeded." + origin);
                             _logger.LogWarning("ChatCreated quota exceeded для origin={Origin}", origin);
