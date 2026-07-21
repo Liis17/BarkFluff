@@ -10,6 +10,12 @@ public class SendMessageCommand : IRequest<SendMessageResponse>
 
     public long? UserId { get; set; }
 
+    /// <summary>
+    /// UUID remote-получателя для fed-DM (этап 2.3). Взаимоисключающе с ChatId/UserId:
+    /// клиент сначала резолвит FID → user_uuid, затем шлёт сообщение.
+    /// </summary>
+    public Guid? UserUuid { get; set; }
+
     public OutgoingMessage? Message { get; set; }
 
     /// <summary>

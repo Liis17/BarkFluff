@@ -10,6 +10,7 @@ using MassTransit;
 
 using Proto.Files;
 
+using Shared.Queue.Federation;
 using Shared.Queue.Messages;
 
 public class MessageQueueSender
@@ -28,6 +29,71 @@ public class MessageQueueSender
             ChatId = chatId,
             ChatMembers = chatMembers,
             Message = message.ToGrpc(filesInfoMap).ToByteArray()
+        };
+
+        await _publishEndpoint.Publish(newMessageEvent);
+    }
+
+    /// <summary>
+    /// Публикация импортированного fed-сообщения (этап 2.3). Заполняет федеративные поля:
+    /// Updates/CloudMessaging стримят/пушат только локальным получателям, на удалённую ноду сообщение
+    /// не пересылается (оно пришло оттуда). SenderDisplayName/FID — этап 2.8.
+    /// </summary>
+    public async Task SendImportedMessage(
+        Message message,
+        Guid chatId,
+        List<long> localChatMembers,
+        Guid senderUuid,
+        string senderUsername,
+        string senderServerName,
+        string ownServerName)
+    {
+        var newMessageEvent = new NewMessageEvent
+        {
+            ChatId = chatId,
+            ChatMembers = localChatMembers,
+            Message = message.ToGrpc().ToByteArray(),
+            IsFederated = true,
+            SenderUuid = senderUuid,
+            SenderFid = $"@{senderUsername}:{senderServerName}",
+            // RemoteParticipants для импортированного сообщения не нужен (отправлять никуда не надо),
+            // но без них консюмер Federation просто не войдёт вpublish-ветку — что и требуется.
+            RemoteParticipants = new List<FederatedParticipant>(),
+        };
+
+        await _publishEndpoint.Publish(newMessageEvent);
+    }
+
+    /// <summary>
+    /// Публикация исходящего fed-сообщения (этап 2.3): локальная рассылка + федеративные поля
+    /// для консюмера Federation (→ outbox → нода-партнёр).
+    /// </summary>
+    public async Task SendFederatedMessage(
+        Message message,
+        Guid chatId,
+        List<long> localChatMembers,
+        Dictionary<string, UploadFileInfo>? filesInfoMap,
+        Guid federatedId,
+        Guid senderUuid,
+        List<FederatedParticipant> remoteParticipants,
+        bool isFirstMessageInChat,
+        Guid? initiatorUuid,
+        Guid? inviteeUuid,
+        string? senderFid)
+    {
+        var newMessageEvent = new NewMessageEvent
+        {
+            ChatId = chatId,
+            ChatMembers = localChatMembers,
+            Message = message.ToGrpc(filesInfoMap).ToByteArray(),
+            IsFederated = true,
+            FederatedId = federatedId,
+            SenderUuid = senderUuid,
+            RemoteParticipants = remoteParticipants,
+            IsFirstMessageInChat = isFirstMessageInChat,
+            InitiatorUuid = initiatorUuid,
+            InviteeUuid = inviteeUuid,
+            SenderFid = senderFid,
         };
 
         await _publishEndpoint.Publish(newMessageEvent);

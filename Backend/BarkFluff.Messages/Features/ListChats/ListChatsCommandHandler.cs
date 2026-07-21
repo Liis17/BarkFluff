@@ -66,7 +66,11 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
                 var memberId = chat.Members![0].UserId == _userContext.UserId
                     ? chat.Members[1].UserId
                     : chat.Members[0].UserId;
-                missing.Add((chat, memberId));
+
+                // fed-DM с remote-собеседником (UserId = NULL) — Users.ListByIds не разрешит,
+                // профиль remote-стороны тянут отдельно (Фаза 5). Кеш-мисс оставляем пустым.
+                if (memberId is { } peerId)
+                    missing.Add((chat, peerId));
             }
             else
             {

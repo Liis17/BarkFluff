@@ -25,6 +25,8 @@ public class MessagesContext : DbContext
 
     public DbSet<PrivateChatReadState> PrivateChatReadStates { get; set; }
 
+    public DbSet<FederatedMessageEvent> FederatedMessageEvents { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
@@ -33,6 +35,7 @@ public class MessagesContext : DbContext
         modelBuilder.ApplyConfiguration(new PinnedMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EncryptedMessageConfiguration());
         modelBuilder.ApplyConfiguration(new PrivateChatReadStateConfiguration());
+        modelBuilder.ApplyConfiguration(new FederatedMessageEventConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }
