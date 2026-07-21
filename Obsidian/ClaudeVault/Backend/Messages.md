@@ -181,3 +181,42 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 - `shared.proto` — None
 - `users_api.proto` — Client
 - `files_api.proto` — Client
+
+## Федеративные DM (этап 2.3, docs/rearch/05-chat-replication.md)
+
+Каждый сервер хранит свою копию fed-DM (1-на-1 между нодами), синхронизируемую доставкой событий. Локальные чаты работают как раньше — все fed-ветки под `IsFederated=true`.
+
+### Схема
+
+- `Chats.IsFederated bool`, `Chats.FederatedStatus int` (Active=0/Rejected=1/Merged=2), `Chats.FederatedUuidLow/High uuid` — нормализованная пара UUID участников fed-DM (low < high по строковой форме `"D"` lowercase, ordinal — единый победитель на обеих нодах). Уникальный индекс пары только для `IsFederated AND FederatedStatus=0` (анти-дубль одновременного создания).
+- `Messages.SenderId long NULL` (remote-автор не имеет локального аккаунта), `Messages.SenderUuid uuid NULL` (появился в 0.3, теперь заполняется при импорте).
+- `ChatMembers.UserId long NULL` (remote-участник fed-DM), `ChatMembers.ServerName text NULL` (домен remote-участника; NULL для локальных).
+- `FederatedMessageEvents(ChatId, FederatedId, EventBytes, ReceivedAt)` — wire-байты последнего применённого state-event (для catch-up 2.6: отдаётся с той же подписью origin).
+
+### Импорт (входящие fed-события)
+
+- `MessagesServerApi.ImportFederatedChat` (Federation → Messages при `ChatCreatedPayload`): валидации → upsert initiator через `UsersServerApi.UpsertRemoteUsers` → анти-дубль UUID-пары → создание копии чата (`ChatsStorage.CreateFederatedChatAsync`).
+- `MessagesServerApi.ImportFederatedMessage` (`NewMessagePayload`): проверки sender ∈ remote-members, clamp `origin_ts_ms`, лимиты контента → вставка `Message(SenderId=NULL, SenderUuid, FederatedId, LastChangeAt=origin_ts)` → запись `FederatedMessageEvents` → публикация `NewMessageEvent` (IsFederated=true, без remote-рассылки) для локальных Updates/CloudMessaging.
+
+Валидации — в `Features.Federation.FederationImportValidator` (clamp метки, текст ≤ 4096, вложения ≤ 10, 512 МБ лимит). Все Fed-исключения в `Shared.Exceptions/Messages/` (`TimestampInFutureException`, `UnknownInviteeException`, `DuplicateFederatedDmException`, `ChatUnknownException`, `RemoteUserNotResolvedException`, `FederatedGroupsNotSupported`, `RemoteProfileRejectedException`).
+
+`ChatUnknownException` имеет `StatusCode.NotFound` → Federation мапит на RETRY (catch-up 2.6 дотянет). Остальные валидационные — `FailedPrecondition` → Federation мапит на REJECTED (permanent).
+
+### Исходящий путь
+
+- `SendMessage(user_uuid)` / `GetPersonChatId(user_uuid)`: резолв через `UsersServerApi.GetUsersByUuid` — если remote, fed-ветка; если локальный → fallback на ordinary personal-чат.
+- Fed-ветка: находит существующий fed-DM по UUID-паре или создаёт (`IsFirstMessageInChat=true` для консюмера). `Message` сохраняется с `FederatedId/SenderUuid/LastChangeAt`.
+- `MessageQueueSender.SendFederatedMessage` публикует `NewMessageEvent` с расширенными полями 2.2 (`IsFederated=true`, `RemoteParticipants`, `FederatedId`, `SenderUuid`, `IsFirstMessageInChat`, `InitiatorUuid/InviteeUuid`, `SenderFid`).
+- `NewMessageFederationConsumer` (Federation) парсит `byte[] Message` (proto `barkfluff.shared.Message`) и кладёт `Text` в `NewMessagePayload` (раньше в 2.2 был заглушкой). `ChatCreated` + `NewMessage` идут в outbox на ноду-партнёра.
+
+### Маршрутизация Federation
+
+`FederationS2SApiService.RouteToInternalAsync` (этап 2.3): `ChatCreated` → `ImportFederatedChat`, `NewMessage` → `ImportFederatedMessage`. gRPC-клиент `MessagesServerApi.MessagesServerApiClient` зарегистрирован в Program.cs Federation (`MessagesService:Host/Token`). Маппинг `RpcException.StatusCode → EventStatus`: `FailedPrecondition/InvalidArgument/PermissionDenied/AlreadyExists` → REJECTED; `NotFound/Unavailable/DeadlineExceeded/Aborted/Cancelled` → RETRY.
+
+`Edit`/`Delete`/`Read` payload'ы → RETRY до 2.4 (Apply-RPC). `ProfileChanged`/`UserDeactivated` → RETRY до 2.9.
+
+### Выдача
+
+- `Mapping.MessageMapping` отдаёт `federated_id`/`sender_uuid` (раньше поля в proto были, но не заполнялись).
+- `Mapping.ChatMemberMapping` отдаёт `user_uuid`/`server_name` (для remote-участника; `user_id=0` если `UserId=NULL`).
+- Все хендлеры, работающие с `chat.Members`, фильтруют remote-участников через расширение `ChatMemberExtensions.LocalUserIds()` (remote не получает внутренних Queue-событий).

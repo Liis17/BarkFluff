@@ -5,7 +5,10 @@ using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+
+using Grpc.Core;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -24,9 +27,24 @@ public class DeliverEventsTests
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
+            Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
             context,
             new MetricsCollector());
         return (context, service);
+    }
+
+    private static (FederationContext Context, FederationS2SApiService Service, Mock<MessagesServerApi.MessagesServerApiClient> MessagesMock) CreateWithMessagesMock()
+    {
+        var context = TestHelpers.CreateContext();
+        var messagesMock = new Mock<MessagesServerApi.MessagesServerApiClient>();
+        var service = new FederationS2SApiService(
+            TestHelpers.CreateConfiguration(),
+            TestHelpers.CreateSigningKeyService(context),
+            Mock.Of<UsersServerApi.UsersServerApiClient>(),
+            messagesMock.Object,
+            context,
+            new MetricsCollector());
+        return (context, service, messagesMock);
     }
 
     // Ключ «origin-ноды»: генерируем честную пару и сидируем публичную часть в KnownServerKeys.
@@ -204,18 +222,53 @@ public class DeliverEventsTests
     }
 
     [Fact]
-    public async Task DeliverEvents_ValidChatEvent_RetryAndNotIndexed()
+    public async Task DeliverEvents_ValidChatEvent_RoutedToMessagesAndIndexed()
     {
-        var (context, service) = Create();
+        // Этап 2.3: chat payload маршрутизируется в MessagesServerApi.ImportFederatedMessage.
+        // При OK событие индексируется в ProcessedEvents (идемпотентность).
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupMessagesImport(messagesMock, new ImportFederatedMessageResponse());
+
         var key = await SeedOriginKeyAsync(context);
         var evt = SignedNewMessage(key);
 
         var result = await DeliverOneAsync(service, evt);
 
-        // Этап 2.2: чатовые payload'ы → RETRY (импорт-RPC Messages — этап 2.3);
-        // RETRY не индексируется в ProcessedEvents (повторная доставка валидна).
+        result.Status.Should().Be(EventStatus.Ok);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(1);
+        messagesMock.Verify(c => c.ImportFederatedMessageAsync(
+            It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessagesTransient_RetryAndNotIndexed()
+    {
+        // Если Messages временно недоступен (Unavailable) → RETRY, идемпотентность не пишется.
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ImportFederatedMessageAsync(
+                It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.Unavailable, "messages down")));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedNewMessage(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
         result.Status.Should().Be(EventStatus.Retry);
         (await context.ProcessedEvents.CountAsync()).Should().Be(0);
+    }
+
+    private static void SetupMessagesImport(Mock<MessagesServerApi.MessagesServerApiClient> mock, ImportFederatedMessageResponse resp)
+    {
+        mock.Setup(c => c.ImportFederatedMessageAsync(
+                It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ImportFederatedMessageResponse>(
+                Task.FromResult(resp),
+                Task.FromResult(new Metadata()),
+                () => Status.DefaultSuccess,
+                () => new Metadata(),
+                () => { }));
     }
 
     [Fact]

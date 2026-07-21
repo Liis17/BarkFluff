@@ -69,6 +69,7 @@ public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, G
                     LastName = local.LastName,
                     Bio = local.Bio ?? string.Empty,
                     AvatarFileId = local.ProfilePicture ?? string.Empty,
+                    UserId = local.Id,
                 });
             }
             else if (remoteByUuid.TryGetValue(uuid, out var remote))

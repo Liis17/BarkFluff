@@ -2,6 +2,7 @@ using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Queue.Federation;
 using BarkFluff.Shared.Queue.Messages;
 
@@ -42,6 +43,21 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
         var origin = _configuration["Federation:ServerName"] ?? string.Empty;
         var ts = (msg.LastChangeAt ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds();
 
+        // Текст и метаданные сообщения (этап 2.3): Messages заполняет byte[] Message как сериализованный
+        // barkfluff.shared.Message — парсим, чтобы прокинуть Text в NewMessagePayload.
+        Proto.Shared.Message? wireMessage = null;
+        if (msg.Message is { Length: > 0 })
+        {
+            try
+            {
+                wireMessage = Proto.Shared.Message.Parser.ParseFrom(msg.Message);
+            }
+            catch
+            {
+                wireMessage = null;
+            }
+        }
+
         if (msg.IsFirstMessageInChat
             && msg.InitiatorUuid.HasValue
             && msg.InviteeUuid.HasValue
@@ -49,13 +65,14 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
         {
             // ChatCreated предшествует NewMessage. initiator — наш пользователь (origin нода),
             // invitee — remote (на destination), но оба поля отдаём одинаково для обеих сторон.
+            var initiatorUsername = TryParseUsernameFromFid(msg.SenderFid);
             var chatCreated = BuildEvent(Guid.NewGuid(), origin, ts, evt => evt.ChatCreated = new ChatCreatedPayload
             {
                 ChatId = msg.ChatId.ToString(),
                 Initiator = new FederatedUser
                 {
                     Uuid = msg.InitiatorUuid.Value.ToString(),
-                    Username = msg.SenderFid ?? string.Empty,
+                    Username = initiatorUsername,
                     ServerName = origin,
                 },
                 Invitee = new FederatedUser
@@ -81,16 +98,26 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
                 Sender = new FederatedUser
                 {
                     Uuid = (msg.SenderUuid ?? Guid.Empty).ToString(),
+                    Username = TryParseUsernameFromFid(msg.SenderFid),
                     ServerName = origin,
                 },
-                // Текст не извлекается из byte[] Message в этом этапе — Messages будет передавать
-                // готовое представление в 2.3. Для прохождения конвейра (RETRY:NotImplementedYet)
-                // текст не нужен.
-                Text = string.Empty,
+                Text = wireMessage?.Content?.Text ?? string.Empty,
+                SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(
+                    msg.LastChangeAt ?? DateTimeOffset.UtcNow),
             });
         await _writer.EnqueueSignedAsync(newMessage, msg.ChatId, destinations, ct);
 
         _metrics.Increment("federation_consumer_new_message");
+    }
+
+    private static string TryParseUsernameFromFid(string? fid)
+    {
+        if (string.IsNullOrEmpty(fid))
+            return string.Empty;
+        // FID: "@username:server" или "username:server" → username
+        var s = fid.TrimStart('@');
+        var colon = s.IndexOf(':');
+        return colon > 0 ? s[..colon] : s;
     }
 
     private bool IsFederationEnabled()

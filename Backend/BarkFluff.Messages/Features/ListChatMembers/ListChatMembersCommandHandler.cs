@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -48,7 +49,10 @@ public class ListChatMembersCommandHandler : IRequestHandler<ListChatMembersComm
         }
 
         var members = await _chatsStorage.GetChatMembers(request.ChatId, request.Skip, request.Count);
-        var usersResponse = await _usersServerApiClient.ListByIdsAsync(new ListByIdsRequest { Ids = { members.Select(x => x.UserId).ToList() } });
+        // Remote-участник fed-DM (этап 2.3) не имеет локального UserId — Users.ListByIds о нём ничего не знает,
+        // его профиль (как и для остальных remote) тянут отдельно через Users.GetUsersByUuid (Фаза 5 — рендер).
+        var localMemberIds = members.LocalUserIds();
+        var usersResponse = await _usersServerApiClient.ListByIdsAsync(new ListByIdsRequest { Ids = { localMemberIds } });
 
         var totalCount = await _chatsStorage.GetTotalChatMembers(request.ChatId);
 

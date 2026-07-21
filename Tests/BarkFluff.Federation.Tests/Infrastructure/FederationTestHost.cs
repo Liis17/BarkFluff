@@ -6,6 +6,7 @@ using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 
 using Grpc.Net.Client;
@@ -91,6 +92,12 @@ public sealed class FederationTestHost : IAsyncDisposable
                     // тестах S2S Ping/GetServerKeys он не вызывается, но активация сервиса требует регистрации.
                     var usersClientMock = new Mock<UsersServerApi.UsersServerApiClient>();
                     services.AddSingleton(usersClientMock.Object);
+
+                    // Messages-клиент для FederationS2SApiService (этап 2.3, ImportFederatedChat/Message) —
+                    // те же рассуждения: эти тесты S2S Ping/GetServerKeys/DeliverEvents-delivery не зовут
+                    // импорт-RPC (для них есть отдельные юнит-тесты), но активация требует регистрации.
+                    var messagesClientMock = new Mock<MessagesServerApi.MessagesServerApiClient>();
+                    services.AddSingleton(messagesClientMock.Object);
                 });
 
                 webHost.Configure(app =>
