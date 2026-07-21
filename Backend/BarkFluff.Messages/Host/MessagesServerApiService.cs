@@ -1,3 +1,6 @@
+using BarkFluff.Messages.Features.ApplyFederatedDelete;
+using BarkFluff.Messages.Features.ApplyFederatedEdit;
+using BarkFluff.Messages.Features.ApplyFederatedRead;
 using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.ExportData;
 using BarkFluff.Messages.Features.GetChatMemberIds;
@@ -29,10 +32,9 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         _mediator = mediator;
     }
 
-    // ---- Федерация (этап 2.3): ImportFederatedChat / ImportFederatedMessage ----
-    // Зовёт только Federation своей ноды (TokenType.Service). Применяют валидации и хелперы
-    // Features.Federation (docs/rearch/05-chat-replication.md).
-    // ApplyFederatedEdit/Delete/Read + ExportChatEvents — этапы 2.4/2.6, до них Unimplemented.
+    // ---- Федерация: ImportFederatedChat / ImportFederatedMessage (2.3), ApplyFederatedEdit/Delete/Read
+    // (2.4) ----. Зовёт только Federation своей ноды (TokenType.Service). Применяют валидации и хелперы
+    // Features.Federation (docs/rearch/05-chat-replication.md). ExportChatEvents — этап 2.6, до него Unimplemented.
 
     public override async Task<ImportFederatedChatResponse> ImportFederatedChat(
         ImportFederatedChatRequest request,
@@ -46,6 +48,27 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         ServerCallContext context)
     {
         return await _mediator.Send(new ImportFederatedMessageCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ApplyFederatedEditResponse> ApplyFederatedEdit(
+        ApplyFederatedEditRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ApplyFederatedEditCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ApplyFederatedDeleteResponse> ApplyFederatedDelete(
+        ApplyFederatedDeleteRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ApplyFederatedDeleteCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ApplyFederatedReadResponse> ApplyFederatedRead(
+        ApplyFederatedReadRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ApplyFederatedReadCommand(request), context.CancellationToken);
     }
 
     public override Task<GetUserAllMessagesResponse> GetUserAllMessages(
