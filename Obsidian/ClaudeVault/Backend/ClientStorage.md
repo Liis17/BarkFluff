@@ -26,7 +26,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 |----------|----------|
 | `S3_ACCESS_KEY` | Ключ доступа |
 | `S3_SECRET_KEY` | Секретный ключ |
-| `S3_SERVICE_URL` | URL S3 (default: `http://localhost:9000`) |
+| `S3_SERVICE_URL` | URL S3 (default: `http://localhost:9000`). **В продакшене — S3-совместимое хранилище от HostKey**, не MinIO; MinIO остаётся только локальным dev-хранилищем (на сервере его нет) |
 | `S3_BUCKET_NAME` | Имя бакета (default: `client-storage`) |
 | `UPLOAD_TOKEN` | **Обязательный** Bearer-токен для POST-эндпоинтов |
 | `REGISTRY_STORAGE_S3_CHUNKSIZE` | Размер части multipart-загрузки в S3 (default 16 МБ; для Cloudflare R2 рекомендуется 100 МБ) |
