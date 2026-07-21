@@ -168,21 +168,28 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 }
                 else
                 {
-                    chatId = Guid.NewGuid();
-                    await _chatsStorage.CreateFederatedChatAsync(
-                        chatId.Value,
+                    var newChatId = Guid.NewGuid();
+                    var raceResult = await _chatsStorage.CreateFederatedChatAsync(
+                        newChatId,
                         senderId,
                         senderUuid,
                         targetUuid,
                         target.ServerName,
                         uuidLow,
                         uuidHigh);
-                    isFirstMessageInFedChat = true;
-                    fedInitiatorUuid = senderUuid;
-                    fedInviteeUuid = targetUuid;
-                    _metrics.Increment("chats_created_federated");
-                    _logger.LogInformation("Создан fed-чат {ChatId} между {SenderUuid} и {TargetUuid}",
-                        chatId.Value, senderUuid, targetUuid);
+                    chatId = raceResult.Id;
+
+                    if (raceResult.Id == newChatId)
+                    {
+                        isFirstMessageInFedChat = true;
+                        fedInitiatorUuid = senderUuid;
+                        fedInviteeUuid = targetUuid;
+                        _metrics.Increment("chats_created_federated");
+                        _logger.LogInformation("Создан fed-чат {ChatId} между {SenderUuid} и {TargetUuid}",
+                            chatId.Value, senderUuid, targetUuid);
+                    }
+                    // иначе — проиграли гонку одновременного создания: переиспользуем чат победителя,
+                    // он уже отправил ChatCreated.
                 }
 
                 isFederated = true;

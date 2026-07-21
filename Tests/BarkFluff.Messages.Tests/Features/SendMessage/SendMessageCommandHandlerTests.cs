@@ -280,6 +280,67 @@ public class SendMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ConcurrentFederatedChatCreation_AdoptsWinnerChat()
+    {
+        // Баг #9a: два параллельных SendMessage(user_uuid=X) для нового fed-DM — CreateFederatedChatAsync
+        // под конфликтом уникального индекса пары внутренне возвращает чат ПОБЕДИТЕЛЯ гонки (другой Id).
+        // Обработчик обязан принять его, а не продолжать со своим локально сгенерированным chatId
+        // (иначе сообщение осиротеет — Message.ChatId без реального Chat/ChatMember).
+        var userId = 1L;
+        var localUuid = Guid.NewGuid();
+        var targetUuid = Guid.NewGuid();
+
+        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetByIdResponse>(
+                Task.FromResult(new GetByIdResponse { User = new User { Id = userId, Username = "alice", Uuid = localUuid.ToString() } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _usersClient.Setup(c => c.GetUsersByUuidAsync(It.IsAny<GetUsersByUuidRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetUsersByUuidResponse>(
+                Task.FromResult(new GetUsersByUuidResponse
+                {
+                    Users = { new UserProfileByUuid { Uuid = targetUuid.ToString(), Found = true, IsRemote = true, ServerName = "remote.test" } },
+                }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        // "Победитель" гонки — реальный persisted чат с ДРУГОЙ uuid-парой (чтобы pre-check
+        // FindActiveFederatedChatByUuidPairAsync для настоящей пары localUuid/targetUuid его не находил
+        // и код действительно дошёл до CreateFederatedChatAsync), но с валидным членством отправителя.
+        var winnerChat = await _h.SeedFederatedChat(userId, localUuid, Guid.NewGuid(), "other.test");
+
+        var chatsStorageMock = new Mock<ChatsStorage>(_h.DbContext) { CallBase = true };
+        chatsStorageMock
+            .Setup(s => s.CreateFederatedChatAsync(
+                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(winnerChat);
+
+        var handler = new SendMessageCommandHandler(
+            chatsStorageMock.Object,
+            _usersClient.Object,
+            _h.CreateUserContext(userId),
+            _filesClient.Object,
+            _chatCache,
+            _h.MessagesStorage,
+            _queueSender,
+            _h.Metrics,
+            TestHelper.CreateLogger<SendMessageCommandHandler>());
+
+        await handler.Handle(new SendMessageCommand
+        {
+            UserUuid = targetUuid,
+            Message = new OutgoingMsg { Text = "race" }
+        }, CancellationToken.None);
+
+        _h.DbContext.Messages.Should().ContainSingle(m => m.ChatId == winnerChat.Id);
+        _h.PublishEndpointMock.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.NewMessageEvent>(e =>
+                e.ChatId == winnerChat.Id
+                && !e.IsFirstMessageInChat
+                && e.InitiatorUuid == null
+                && e.InviteeUuid == null),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_UnsupportedFileType_ThrowsFileNotSupportedException()
     {
         var userId = 1L;

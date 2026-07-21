@@ -488,7 +488,7 @@ public class ChatsStorage
     /// Создать fed-DM с локальным участником и remote-участником.
     /// Возвращает существующий Active-чат пары, если гонка создания прошла раньше (unique index).
     /// </summary>
-    public async Task<Chat> CreateFederatedChatAsync(
+    public virtual async Task<Chat> CreateFederatedChatAsync(
         Guid chatId,
         long localUserId,
         Guid localUserUuid,

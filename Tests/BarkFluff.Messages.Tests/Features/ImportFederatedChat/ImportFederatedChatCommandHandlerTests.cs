@@ -1,4 +1,5 @@
 using BarkFluff.Messages.Features.ImportFederatedChat;
+using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
@@ -131,5 +132,37 @@ public class ImportFederatedChatCommandHandlerTests
             BuildRequest(existing.Id, initiatorUuid, inviteeUuid)), CancellationToken.None);
 
         response.Imported.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ConcurrentImport_ThrowsDuplicateFederatedDmException()
+    {
+        // Баг #9b: два ChatCreated для одной UUID-пары с разными ChatId, обработанные почти
+        // одновременно — CreateFederatedChatAsync под конфликтом уникального индекса пары
+        // внутренне возвращает чат ПОБЕДИТЕЛЯ (другой Id). Молчаливый Imported=true был бы неверен:
+        // конкретный запрошенный chatId так и не сохранился — переиспользуем уже существующее
+        // DuplicateFederatedDmException вместо тихого успеха.
+        SetupInvitee(found: true, isRemote: false, isDeactivated: false, userId: 1);
+        SetupUpsertOk();
+
+        var winnerChat = await _h.SeedFederatedChat(1, Guid.NewGuid(), Guid.NewGuid(), "remote.test");
+
+        var chatsStorageMock = new Mock<ChatsStorage>(_h.DbContext) { CallBase = true };
+        chatsStorageMock
+            .Setup(s => s.CreateFederatedChatAsync(
+                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(winnerChat);
+
+        var handler = new ImportFederatedChatCommandHandler(
+            chatsStorageMock.Object,
+            _usersClient.Object,
+            TestHelper.CreateConfiguration("home.test"),
+            _h.Metrics,
+            TestHelper.CreateLogger<ImportFederatedChatCommandHandler>());
+
+        var act = async () => await handler.Handle(new ImportFederatedChatCommand(
+            BuildRequest(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid())), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DuplicateFederatedDmException>();
     }
 }

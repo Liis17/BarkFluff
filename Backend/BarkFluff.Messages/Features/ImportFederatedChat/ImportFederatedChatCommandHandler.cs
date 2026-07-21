@@ -125,8 +125,10 @@ public class ImportFederatedChatCommandHandler : IRequestHandler<ImportFederated
             throw new DuplicateFederatedDmException();
         }
 
-        // (4) создать копию чата.
-        await _chatsStorage.CreateFederatedChatAsync(
+        // (4) создать копию чата. Под конкурентной гонкой (два ChatCreated для одной UUID-пары
+        // с разными ChatId) уникальный индекс пары может заставить storage вернуть чужой чат —
+        // тогда наш chatId так и не сохранился, и молчаливый Imported=true был бы неверен.
+        var created = await _chatsStorage.CreateFederatedChatAsync(
             chatId,
             invitee.UserId,
             inviteeUuid,
@@ -134,6 +136,13 @@ public class ImportFederatedChatCommandHandler : IRequestHandler<ImportFederated
             r.InitiatorServerName,
             uuidLow,
             uuidHigh);
+        if (created.Id != chatId)
+        {
+            _logger.LogWarning(
+                "ImportFederatedChat: гонка создания — incoming={Incoming} проиграл existing={Existing}",
+                chatId, created.Id);
+            throw new DuplicateFederatedDmException();
+        }
 
         _metrics.Increment("federation_import_chat_created");
         _logger.LogInformation(
