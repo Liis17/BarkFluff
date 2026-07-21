@@ -8,27 +8,24 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BarkFluff.Configuration.Persistence.Migrations
 {
     /// <summary>
-    /// Inter-service ключ MessagesService для Federation (ServiceId = 15 — Federation, см.
-    /// BarkFluff.Shared.Identity.ServiceId; по образцу AddBotsConfiguration, где тот же MessagesService
-    /// заведён под ServiceId Bots = 14 — каждый потребитель хранит ключ в СВОЁМ бакете).
-    /// Federation вызывает MessagesServerApi.ImportFederatedChat / ImportFederatedMessage (этап 2.3,
-    /// docs/rearch/phase-2/step-2.3-messages-import.md) при маршрутизации входящих S2S-событий.
-    /// Значения заполняет ConfigurationDefaultsPopulator при старте Configuration.
+    /// Federation:ChatCreatedHourlyLimit (ServiceId = 15 — Federation, см. BarkFluff.Shared.Identity.ServiceId)
+    /// — квота ChatCreated per-origin (этап 2.5, docs/rearch/phase-2/step-2.5-privacy-antispam.md,
+    /// «Изменение 4»). Значение заполняет ConfigurationDefaultsPopulator (default "100" при старте Configuration).
+    /// Заодно заводим Redis (нужен ChatCreatedQuotaLimiter — Federation его раньше не использовал).
     /// </summary>
     [DbContext(typeof(ConfigurationContext))]
-    [Migration("20260721020000_AddFederationMessagesServiceConfiguration")]
-    public partial class AddFederationMessagesServiceConfiguration : Migration
+    [Migration("20260721050000_AddFederationChatCreatedQuotaConfiguration")]
+    public partial class AddFederationChatCreatedQuotaConfiguration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Идемпотентно: вставляем ключ только если его ещё нет.
             migrationBuilder.Sql(@"
                 INSERT INTO ""Configurations"" (""Section"", ""Key"", ""Value"", ""EditedAt"", ""EditedBy"", ""EditedFrom"", ""ServiceId"")
                 SELECT v.""Section"", v.""Key"", '', NOW(), 'system', 'migration', 15
                 FROM (VALUES
-                    ('MessagesService', 'Host'),
-                    ('MessagesService', 'Token')
+                    ('Federation', 'ChatCreatedHourlyLimit'),
+                    ('Redis', '')
                 ) AS v(""Section"", ""Key"")
                 WHERE NOT EXISTS (
                     SELECT 1 FROM ""Configurations"" c
@@ -44,7 +41,8 @@ namespace BarkFluff.Configuration.Persistence.Migrations
                 DELETE FROM ""Configurations""
                 WHERE ""ServiceId"" = 15
                   AND ""EditedFrom"" = 'migration'
-                  AND ""Section"" = 'MessagesService';
+                  AND ((""Section"" = 'Federation' AND ""Key"" = 'ChatCreatedHourlyLimit')
+                    OR (""Section"" = 'Redis' AND ""Key"" = ''));
             ");
         }
     }

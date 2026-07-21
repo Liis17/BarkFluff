@@ -27,6 +27,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
     private readonly FederationContext _context;
     private readonly MetricsCollector _metrics;
+    private readonly IChatCreatedQuotaLimiter _chatCreatedQuotaLimiter;
+    private readonly ILogger<FederationS2SApiService> _logger;
 
     public FederationS2SApiService(
         IConfiguration configuration,
@@ -34,7 +36,9 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         UsersServerApi.UsersServerApiClient usersClient,
         MessagesServerApi.MessagesServerApiClient messagesClient,
         FederationContext context,
-        MetricsCollector metrics)
+        MetricsCollector metrics,
+        IChatCreatedQuotaLimiter chatCreatedQuotaLimiter,
+        ILogger<FederationS2SApiService> logger)
     {
         _configuration = configuration;
         _signingKeyService = signingKeyService;
@@ -42,6 +46,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         _messagesClient = messagesClient;
         _context = context;
         _metrics = metrics;
+        _chatCreatedQuotaLimiter = chatCreatedQuotaLimiter;
+        _logger = logger;
     }
 
     public override Task<PingResponse> Ping(PingRequest request, ServerCallContext context)
@@ -222,6 +228,15 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             {
                 case FederationEvent.PayloadOneofCase.ChatCreated:
                     {
+                        // Квота per-origin (этап 2.5): защита от спам-волны создания чатов. Троттлинг —
+                        // временное состояние (RETRY), не порча события; событие уедет на следующем окне.
+                        if (!await _chatCreatedQuotaLimiter.TryConsumeAsync(origin))
+                        {
+                            _metrics.Increment("chatcreated_quota_exceeded." + origin);
+                            _logger.LogWarning("ChatCreated quota exceeded для origin={Origin}", origin);
+                            return EventStatus.Retry;
+                        }
+
                         var p = evt.ChatCreated;
                         await _messagesClient.ImportFederatedChatAsync(new ImportFederatedChatRequest
                         {

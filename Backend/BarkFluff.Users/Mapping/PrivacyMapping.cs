@@ -14,6 +14,7 @@ public static class PrivacyMapping
             EmailVisibility = (ProfileFieldVisibility)(int)domain.EmailVisibility,
             SearchVisible = domain.SearchVisible,
             OnlineVisibility = (ProfileFieldVisibility)(int)domain.OnlineVisibility,
+            DenyFederatedDm = domain.DenyFederatedDm,
         };
     }
 
@@ -27,6 +28,7 @@ public static class PrivacyMapping
             EmailVisibility = (Domain.ProfileFieldVisibility)(int)grpc.EmailVisibility,
             SearchVisible = grpc.SearchVisible,
             OnlineVisibility = (Domain.ProfileFieldVisibility)(int)grpc.OnlineVisibility,
+            DenyFederatedDm = grpc.DenyFederatedDm,
         };
     }
 }
