@@ -6,6 +6,7 @@ using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
 
@@ -226,7 +227,27 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
         var memberIds = members.LocalUserIds();
 
-        await _messageQueueSender.SendEdited(message, message.ChatId, memberIds, filesInfoMap);
+        if (message.FederatedId.HasValue)
+        {
+            // Исходящий fed-путь (этап 2.4): правка в fed-чате → остальные fed-поля для консюмера
+            // Federation (docs/rearch/05, «Правка / удаление»).
+            var remoteParticipants = members
+                .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
+                .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
+                .ToList();
+
+            await _messageQueueSender.SendEdited(
+                message, message.ChatId, memberIds, filesInfoMap,
+                isFederated: true,
+                federatedId: message.FederatedId,
+                senderUuid: message.SenderUuid,
+                remoteParticipants: remoteParticipants,
+                lastChangeAt: message.LastChangeAt);
+        }
+        else
+        {
+            await _messageQueueSender.SendEdited(message, message.ChatId, memberIds, filesInfoMap);
+        }
 
         _metrics.Increment("messages_edited");
         if (hasText)

@@ -36,6 +36,19 @@ public class MessageEditedFederationConsumer : IConsumer<MessageEditedEvent>
         var origin = _configuration["Federation:ServerName"] ?? string.Empty;
         var ts = (msg.LastChangeAt ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds();
 
+        // Messages заполняет byte[] Message как сериализованный barkfluff.shared.Message (этап 2.3/2.4).
+        string newText;
+        try
+        {
+            newText = msg.Message is { Length: > 0 }
+                ? Proto.Shared.Message.Parser.ParseFrom(msg.Message).Content?.Text ?? string.Empty
+                : string.Empty;
+        }
+        catch
+        {
+            newText = string.Empty;
+        }
+
         var evt = new FederationEvent
         {
             EventId = Guid.NewGuid().ToString(),
@@ -46,7 +59,7 @@ public class MessageEditedFederationConsumer : IConsumer<MessageEditedEvent>
         {
             ChatId = msg.ChatId.ToString(),
             FederatedMessageId = (msg.FederatedId ?? Guid.NewGuid()).ToString(),
-            NewText = string.Empty, // текст не извлекается из byte[] Message до 2.3.
+            NewText = newText,
         };
 
         await _writer.EnqueueSignedAsync(evt, msg.ChatId, destinations, context.CancellationToken);

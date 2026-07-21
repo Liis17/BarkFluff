@@ -1,4 +1,4 @@
-# Handoff — Фаза 2 (федеративные DM), состояние на 2026-07-21
+# Handoff — Фаза 2 (федеративные DM), состояние на 2026-07-21 (обновлено после 2.4)
 
 ## Общая картина
 
@@ -11,8 +11,24 @@
 | 2.1 | `2522916d` | Users: `RemoteUsers`, резолв FID, S2S-профиль с privacy |
 | 2.2 | `cb866333` | Outbox, `ProcessedEvents`, консюмеры, `DeliverEvents` |
 | fixes | `f0865a07` | P2-01/03/05/08/11 — фиксы shipped-кода 2.1/2.2 |
+| 2.3 | `aafe8797` | Импорт федеративных чатов и сообщений (`ImportFederatedChat/Message`) |
+| 2.4 | *(следующий коммит)* | Edit/Delete/Read федеративных DM + LWW — детали ниже |
 
-### Выполнено, **не закоммичено** (69 изменённых файлов)
+### Этап 2.4 — реализован
+
+- **LWW**: `Features.Federation.LwwResolver` — `ShouldApplyMessageChange` (новее/старше/tie-break `(origin_server, event_id)`/удаление терминально) и `ShouldApplyRead` (монотонное "не откатывает более новое"). `FederatedMessageEvents` дополнен колонками `OriginServer`/`EventId` — хранят метку последнего применённого события для tie-break.
+- **`FederatedReadStates(ChatId, UserUuid, LastReadFederatedMessageId, ReadAt)`** — миграция `20260721030000_AddFederatedReadStates` (та же миграция добавляет колонки `OriginServer`/`EventId` в `FederatedMessageEvents`).
+- **`ApplyFederatedEdit`/`ApplyFederatedDelete`/`ApplyFederatedRead`** handlers (`Features.ApplyFederated{Edit,Delete,Read}`) — P2-02 origin-проверка через `FederationImportValidator.ResolveHomeServer` (резолв домашней ноды автора/читателя **по `ChatMember` того же чата**, без обращения к Users — в 1-на-1 fed-DM оба участника уже в `ChatMembers`). Проверка REJECTED через новое исключение `FederatedOriginMismatchException`.
+- **Proto**: `origin_server`/`event_id`/`raw_event` добавлены в `ApplyFederatedEditRequest`/`ApplyFederatedDeleteRequest`; `origin_server` в `ApplyFederatedReadRequest`; `event_id` в `ImportFederatedMessageRequest` (для tie-break с первого события). `shared.proto Message.federated_read_by` (repeated string uuid).
+- **Federation routing**: `FederationS2SApiService.RouteToInternalAsync` — `MessageEdited/MessageDeleted/MessagesRead` теперь маршрутизируются в `ApplyFederated*` (были `RETRY` заглушкой). `MessageEditedFederationConsumer` перестал быть заглушкой — извлекает `NewText` из `byte[] Message`.
+- **Исходящий путь — важный пререк, не только "новый функционал"**: `SendMessageCommandHandler` **чинит реальный пробел 2.3** — путь отправки по уже известному `chat_id` (не только по `user_uuid` первого сообщения) не помечал сообщение как федеративное вовсе. Без этого фикса федерировалось бы только самое первое сообщение любой переписки. Признак теперь — наличие remote-участника (`ChatMember.ServerName` не пусто) среди участников чата, не требует доп. вызова Users.
+- `EditMessageCommandHandler`/`DeleteMessageCommandHandler`/`MarkAsReadCommandHandler` дозаполняют fed-поля исходящих событий при `Message.FederatedId.HasValue`. `MarkAsRead` агрегирует несколько прочитанных сообщений одного fed-чата в одно "up to" событие (по максимальному `Id`), не шлёт N дублей.
+- `ListMessagesCommandHandler` отдаёт `federated_read_by` — объединение `FederatedReadStates` с текущей страницей (приближение: `message.SentAt <= state.ReadAt`, без резолва anchor-сообщения отдельным запросом). Рендер на клиентах — Фаза 5, здесь только данные.
+- **Тесты**: Federation.Tests 204/204 (было 198, +6: consumer text extraction + 5 routing/RETRY/REJECTED). Messages.Tests 282/290 passed (было 248, +34 новых теста, те же 8 pre-existing failures не связаны с федерацией). Новые файлы: `LwwResolverTests` (10), `ApplyFederatedEditCommandHandlerTests` (7), `ApplyFederatedDeleteCommandHandlerTests` (6), `ApplyFederatedReadCommandHandlerTests` (6) + точечные добавления в существующие тесты Edit/Delete/MarkAsRead/SendMessage/ListMessages.
+- **Obsidian**: `Backend/Messages.md` дополнен разделом «Edit/Delete/Read федеративных DM + LWW (этап 2.4)».
+- **Не сделано в 2.4** (осознанно, по плану): `ExportChatEvents`/`FetchChatHistory`/catch-up после RETRY — этап 2.6. Вложения при правке — семантика в Фазе 3. Клиентский рендер `federated_read_by` — Фаза 5.
+
+### Ранее выполнено, **не закоммичено на момент записи** (уже закоммичено как 2.3, см. таблицу выше)
 
 **2.3 полностью реализован в staging:**
 
@@ -52,16 +68,9 @@
 
 ## Следующие этапы (читать каждый план перед реализацией)
 
-### 2.4 — Edit/Delete/Read через федерацию + LWW
-**Файл плана**: `step-2.4-edit-delete-read-lww.md`
+### 2.4 — Edit/Delete/Read через федерацию + LWW — ГОТОВО
 
-Что делать:
-- Миграция `FederatedReadStates` (ChatId, UserUuid, LastReadFederatedMessageId, ReadAt)
-- LWW-хелпер: `event.origin_ts_ms > local.LastChangeAt` → применить; tie-break `(origin_ts_ms, origin_server, event_id)`; удаление терминально (правка после удаления → игнорировать)
-- `ApplyFederatedEdit`/`ApplyFederatedDelete` RPC: проверка `homeserver(SenderUuid) == x-bf-origin`; иначе REJECTED (закрывает P2-02)
-- `ApplyFederatedRead` RPC: upsert `FederatedReadStates`; отдача объединения локальных + федеративных прочтений
-- Исходящий путь: локальные edit/delete/read в fed-чате → расширенные Queue-события → консюмеры Federation → outbox
-- RETRY:ChatUnknown / RETRY:MessageUnknown при неизвестном чате/сообщении (триггеры catch-up 2.6)
+См. секцию «Этап 2.4 — реализован» выше. Файл плана `step-2.4-edit-delete-read-lww.md` выполнен полностью, кроме явно отложенного в 2.6/Фазу 3/Фазу 5.
 
 ### 2.5 — Privacy AllowFederatedDm, отказ до отправителя, квота
 **Файл плана**: `step-2.5-privacy-antispam.md`
@@ -150,12 +159,17 @@
 `Backend/dev-federation-testbed/` — двух-нодовый стенд. node2 пока не имеет сервисов Users/Messages/Updates (будет добавлено в конце 2.3 или отдельно). До этого E2E-проверки только юнит-тестами.
 
 ### Тесты
-- Federation.Tests — **198/198 passed** (после изменений 2.3)
-- Messages.Tests — 8 pre-existing failures (не от 2.3)
-- Новые тесты: `FederationImportValidatorTests` (10), `FederatedUuidPairTests` (1)
+- Federation.Tests — **204/204 passed** (после изменений 2.4; было 198 после 2.3)
+- Messages.Tests — **282/290 passed**, 8 pre-existing failures (не от федерации — см. раздел выше)
+- Новые тесты 2.3: `FederationImportValidatorTests` (10), `FederatedUuidPairTests` (1)
+- Новые тесты 2.4: `LwwResolverTests` (10), `ApplyFederatedEditCommandHandlerTests` (7), `ApplyFederatedDeleteCommandHandlerTests` (6), `ApplyFederatedReadCommandHandlerTests` (6), точечные добавления в EditMessage/DeleteMessage/MarkAsRead/SendMessage/ListMessages тесты + Federation `DeliverEventsTests`/`MessageEditedFederationConsumerTests`
 
 ### Уже реализованные infra-зависимости (не менять)
 - `ChatsStorage` → методы `GetFederatedChatAsync`, `FindActiveFederatedChatByUuidPairAsync`, `CreateFederatedChatAsync`
-- `MessageQueueSender` → `SendImportedMessage`, `SendFederatedMessage`
+- `MessageQueueSender` → `SendImportedMessage`, `SendFederatedMessage`, `SendEdited`/`SendDeleted` (fed-поля — опциональные параметры, этап 2.4)
+- `ReadByQueueSender.SendEvent` — fed-поля опциональными параметрами (этап 2.4)
+- `FederatedReadStatesStorage` → `UpsertAsync` (идемпотентно, монотонно через `LwwResolver.ShouldApplyRead`), `GetForChatAsync`
+- `Features.Federation.LwwResolver` → `ShouldApplyMessageChange`, `ShouldApplyRead` — переиспользовать, не дублировать логику LWW в новом коде
+- `Features.Federation.FederationImportValidator.ResolveHomeServer(chat, uuid, ownServer)` — резолв домашней ноды участника fed-чата по `ChatMember`, без обращения к Users
 - Маппинг Federation для `RpcException.StatusCode → EventStatus`: FailedPrecondition/InvalidArgument/PermissionDenied/AlreadyExists → REJECTED; NotFound/Unavailable/DeadlineExceeded/Aborted/Cancelled → RETRY
 - `Message.SenderId` nullable, `ChatMember.UserId` nullable — все хендлеры выдачи используют `ChatMemberExtensions.LocalUserIds()` для фильтрации remote-участников

@@ -212,8 +212,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         return new EventResult { EventId = evt.EventId, Status = routeResult };
     }
 
-    // Маршрутизация события в прикладной сервис своей ноды (этап 2.3: ChatCreated/NewMessage → MessagesServerApi).
-    // Остальные payload'ы пока возвращают RETRY (Apply-RPC — 2.4, профильные — 2.9, catch-up — 2.6).
+    // Маршрутизация события в прикладной сервис своей ноды: ChatCreated/NewMessage → MessagesServerApi (2.3),
+    // MessageEdited/MessageDeleted/MessagesRead → Apply-RPC (2.4). Профильные payload'ы — 2.9, пока RETRY.
     private async Task<EventStatus> RouteToInternalAsync(FederationEvent evt, string origin, CancellationToken ct)
     {
         try
@@ -254,8 +254,47 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                         return EventStatus.Ok;
                     }
                 case FederationEvent.PayloadOneofCase.MessageEdited:
+                    {
+                        var p = evt.MessageEdited;
+                        await _messagesClient.ApplyFederatedEditAsync(new ApplyFederatedEditRequest
+                        {
+                            ChatId = p.ChatId,
+                            FederatedMessageId = p.FederatedMessageId,
+                            NewText = p.NewText,
+                            OriginTsMs = evt.OriginTsMs,
+                            OriginServer = origin,
+                            EventId = evt.EventId,
+                            RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                        }, cancellationToken: ct);
+                        return EventStatus.Ok;
+                    }
                 case FederationEvent.PayloadOneofCase.MessageDeleted:
+                    {
+                        var p = evt.MessageDeleted;
+                        await _messagesClient.ApplyFederatedDeleteAsync(new ApplyFederatedDeleteRequest
+                        {
+                            ChatId = p.ChatId,
+                            FederatedMessageId = p.FederatedMessageId,
+                            OriginTsMs = evt.OriginTsMs,
+                            OriginServer = origin,
+                            EventId = evt.EventId,
+                            RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                        }, cancellationToken: ct);
+                        return EventStatus.Ok;
+                    }
                 case FederationEvent.PayloadOneofCase.MessagesRead:
+                    {
+                        var p = evt.MessagesRead;
+                        await _messagesClient.ApplyFederatedReadAsync(new ApplyFederatedReadRequest
+                        {
+                            ChatId = p.ChatId,
+                            ReaderUuid = p.ReaderUuid,
+                            UpToFederatedMessageId = p.UpToFederatedMessageId,
+                            OriginTsMs = evt.OriginTsMs,
+                            OriginServer = origin,
+                        }, cancellationToken: ct);
+                        return EventStatus.Ok;
+                    }
                 case FederationEvent.PayloadOneofCase.ProfileChanged:
                 case FederationEvent.PayloadOneofCase.UserDeactivated:
                     return EventStatus.Retry;

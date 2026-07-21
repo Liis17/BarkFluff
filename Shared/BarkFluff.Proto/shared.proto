@@ -35,6 +35,8 @@ message Message {
   string federated_id = 9; // Глобальный ID сообщения в федеративном чате (uuid; пусто для локальных)
 
   string sender_uuid = 10; // UUID автора (пусто до включения федерации)
+
+  repeated string federated_read_by = 11; // UUID remote-участников, прочитавших сообщение (FederatedReadStates; рендер — Фаза 5)
 }
 
 message MessageContent {

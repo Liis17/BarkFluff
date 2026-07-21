@@ -25,6 +25,7 @@ public class ListMessagesCommandHandlerTests
             _h.CreateUserContext(userId),
             _h.ChatsStorage,
             _h.MessagesStorage,
+            _h.FederatedReadStatesStorage,
             _filesClient.Object,
             TestHelper.CreateLogger<ListMessagesCommandHandler>());
     }
@@ -131,5 +132,27 @@ public class ListMessagesCommandHandlerTests
         }, CancellationToken.None);
 
         result.Messages.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Handle_FederatedChat_MergesFederatedReadStates()
+    {
+        // docs/rearch/05, «Read receipts»: выдача объединяет локальные ReadBy и федеративные прочтения.
+        var userId = 1L;
+        var localUuid = Guid.NewGuid();
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(userId, localUuid, remoteUuid, "remote.test");
+        var sentAt = DateTime.UtcNow.AddMinutes(-10);
+        var message = await _h.SeedFederatedMessage(chat.Id, Guid.NewGuid(), senderUuid: localUuid, senderId: userId,
+            text: "hi", lastChangeAt: sentAt);
+
+        await _h.FederatedReadStatesStorage.UpsertAsync(chat.Id, remoteUuid, message.FederatedId, sentAt.AddMinutes(5));
+
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(new ListMessagesCommand { ChatId = chat.Id, Count = 50 }, CancellationToken.None);
+
+        result.Messages.Should().ContainSingle();
+        result.Messages[0].FederatedReadBy.Should().ContainSingle(remoteUuid.ToString());
     }
 }

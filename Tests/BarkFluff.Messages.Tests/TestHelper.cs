@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
+using BarkFluff.Messages.Features.Federation;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Shared.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace BarkFluff.Messages.Tests;
 
@@ -18,6 +20,7 @@ public class TestHelper
     public MessagesStorage MessagesStorage { get; }
     public PinnedMessagesStorage PinnedMessagesStorage { get; }
     public EncryptedMessagesStorage EncryptedMessagesStorage { get; }
+    public FederatedReadStatesStorage FederatedReadStatesStorage { get; }
     public Mock<IPublishEndpoint> PublishEndpointMock { get; }
     public MetricsCollector Metrics { get; }
 
@@ -32,6 +35,7 @@ public class TestHelper
         MessagesStorage = new MessagesStorage(DbContext, ChatsStorage);
         PinnedMessagesStorage = new PinnedMessagesStorage(DbContext);
         EncryptedMessagesStorage = new EncryptedMessagesStorage(DbContext);
+        FederatedReadStatesStorage = new FederatedReadStatesStorage(DbContext);
         PublishEndpointMock = new Mock<IPublishEndpoint>();
         Metrics = new MetricsCollector();
     }
@@ -59,6 +63,13 @@ public class TestHelper
     public static ILogger<T> CreateLogger<T>()
     {
         return Mock.Of<ILogger<T>>();
+    }
+
+    public static IConfiguration CreateConfiguration(string serverName = "home.test")
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Federation:ServerName"] = serverName })
+            .Build();
     }
 
     public async Task<Chat> SeedChat(
@@ -160,6 +171,66 @@ public class TestHelper
         DbContext.PinnedMessages.Add(pin);
         await DbContext.SaveChangesAsync();
         return pin;
+    }
+
+    // Fed-DM (этапы 2.3/2.4): один локальный участник + один remote. Используется тестами
+    // ApplyFederatedEdit/Delete/Read и LWW-сценариев.
+    public async Task<Chat> SeedFederatedChat(
+        long localUserId,
+        Guid localUserUuid,
+        Guid remoteUuid,
+        string remoteServerName,
+        FederatedStatus status = FederatedStatus.Active)
+    {
+        var (low, high) = FederatedUuidPair.Normalize(localUserUuid, remoteUuid);
+        var chat = new Chat
+        {
+            IsGroupChat = false,
+            Type = ChatType.Regular,
+            IsFederated = true,
+            FederatedStatus = status,
+            FederatedUuidLow = low,
+            FederatedUuidHigh = high,
+            Members = new List<ChatMember>
+            {
+                new() { UserId = localUserId, UserUuid = localUserUuid, JoinedAt = DateTime.UtcNow },
+                new() { UserId = null, UserUuid = remoteUuid, ServerName = remoteServerName, JoinedAt = DateTime.UtcNow },
+            },
+        };
+
+        DbContext.Chats.Add(chat);
+        await DbContext.SaveChangesAsync();
+        return chat;
+    }
+
+    public async Task<Message> SeedFederatedMessage(
+        Guid chatId,
+        Guid federatedId,
+        Guid? senderUuid,
+        long? senderId = null,
+        string? text = "test",
+        DateTime? lastChangeAt = null,
+        bool isDeleted = false)
+    {
+        var changeAt = lastChangeAt ?? DateTime.UtcNow;
+        var message = new Message
+        {
+            Id = Interlocked.Increment(ref _nextId),
+            ChatId = chatId,
+            SenderId = senderId,
+            SenderUuid = senderUuid,
+            FederatedId = federatedId,
+            SentAt = changeAt,
+            LastChangeAt = changeAt,
+            IsDeleted = isDeleted,
+            Type = MessageContentType.Generic,
+            ReadBy = new List<long>(),
+            Content = new MessageContent { Text = text, Attachments = new List<MessageAttachment>() },
+        };
+
+        DbContext.Messages.Add(message);
+        await DbContext.SaveChangesAsync();
+        return message;
     }
 
     public async Task<GroupChatInfo> SeedGroupChatInfo(

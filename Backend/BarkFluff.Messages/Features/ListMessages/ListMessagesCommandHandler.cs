@@ -17,15 +17,18 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
     private readonly UserContext _userContext;
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
+    private readonly FederatedReadStatesStorage _federatedReadStatesStorage;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly ILogger<ListMessagesCommandHandler> _logger;
 
-    public ListMessagesCommandHandler(UserContext userContext, ChatsStorage chatsStorage, MessagesStorage messagesStorage, FilesServerApi.FilesServerApiClient filesServerApiClient,
+    public ListMessagesCommandHandler(UserContext userContext, ChatsStorage chatsStorage, MessagesStorage messagesStorage,
+        FederatedReadStatesStorage federatedReadStatesStorage, FilesServerApi.FilesServerApiClient filesServerApiClient,
         ILogger<ListMessagesCommandHandler> logger)
     {
         _userContext = userContext;
         _chatsStorage = chatsStorage;
         _messagesStorage = messagesStorage;
+        _federatedReadStatesStorage = federatedReadStatesStorage;
         _filesServerApiClient = filesServerApiClient;
         _logger = logger;
     }
@@ -120,9 +123,30 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
                 request.ChatId
             );
 
+            // Объединение с федеративными прочтениями (этап 2.4, docs/rearch/05, «Read receipts»):
+            // remote-читатель прочитал сообщение, если оно отправлено не позже, чем выпущена его
+            // последняя отметка "прочитано" для этого чата. Клиентский рендер — Фаза 5.
+            Dictionary<long, List<Guid>>? federatedReadByMap = null;
+            if (messages.Any(m => m.FederatedId.HasValue))
+            {
+                var readStates = await _federatedReadStatesStorage.GetForChatAsync(request.ChatId);
+                if (readStates.Count > 0)
+                {
+                    federatedReadByMap = messages
+                        .Where(m => m.FederatedId.HasValue)
+                        .Select(m => new
+                        {
+                            m.Id,
+                            Readers = readStates.Where(s => m.SentAt <= s.ReadAt).Select(s => s.UserUuid).ToList()
+                        })
+                        .Where(x => x.Readers.Count > 0)
+                        .ToDictionary(x => x.Id, x => x.Readers);
+                }
+            }
+
             return new ListMessagesResponse()
             {
-                Messages = { messages.Select(x => x.ToGrpc(filesInfoMap)) }
+                Messages = { messages.Select(x => x.ToGrpc(filesInfoMap, federatedReadByMap?.GetValueOrDefault(x.Id))) }
             };
         }
         catch (FromMessageNotFoundException ex)

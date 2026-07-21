@@ -7,6 +7,8 @@ using BarkFluff.Proto.Federation;
 using BarkFluff.Shared.Queue.Federation;
 using BarkFluff.Shared.Queue.Messages;
 
+using Google.Protobuf;
+
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
@@ -90,6 +92,26 @@ public class MessageEditedFederationConsumerTests
         parsed.MessageEdited.FederatedMessageId.Should().Be(message.FederatedId!.Value.ToString());
         parsed.OriginServer.Should().Be(TestHelpers.OwnServerName);
         parsed.OriginTsMs.Should().Be(message.LastChangeAt!.Value.ToUnixTimeMilliseconds());
+    }
+
+    [Fact]
+    public async Task Consume_Federated_ExtractsNewTextFromWireMessage()
+    {
+        // Этап 2.4: текст правки извлекается из byte[] Message (сериализованный barkfluff.shared.Message),
+        // как это уже делает NewMessageFederationConsumer для нового сообщения.
+        var (context, consumer) = Create();
+        await TestHelpers.EnsureActiveKeyAsync(context);
+        var message = FederatedEdit("peer.test");
+        message.Message = new Proto.Shared.Message
+        {
+            Content = new Proto.Shared.MessageContent { Text = "edited text" },
+        }.ToByteArray();
+
+        await consumer.Consume(ConsumeContextOf(message));
+
+        var row = await context.Outbox.SingleAsync();
+        var parsed = FederationEvent.Parser.ParseFrom(row.PayloadBytes);
+        parsed.MessageEdited.NewText.Should().Be("edited text");
     }
 
     [Fact]

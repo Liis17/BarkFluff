@@ -43,4 +43,18 @@ public static class FederationImportValidator
         if (count > MaxAttachmentsPerMessage)
             throw new TooManyAttachmentsException();
     }
+
+    /// <summary>
+    /// Домашняя нода участника fed-чата: свой сервер для локального члена, ChatMember.ServerName —
+    /// для remote (docs/rearch/05, ApplyFederatedEdit/Delete/Read — «нода говорит только за своих»,
+    /// P2-02). Null, если uuid не участник этого чата.
+    /// </summary>
+    public static string? ResolveHomeServer(Domain.Chat chat, Guid userUuid, string ownServer)
+    {
+        var member = chat.Members?.FirstOrDefault(m => m.UserUuid == userUuid);
+        if (member is null)
+            return null;
+
+        return string.IsNullOrEmpty(member.ServerName) ? ownServer : member.ServerName;
+    }
 }

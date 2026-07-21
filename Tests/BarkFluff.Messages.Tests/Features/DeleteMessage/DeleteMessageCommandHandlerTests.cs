@@ -132,4 +132,26 @@ public class DeleteMessageCommandHandlerTests
 
         _h.PublishEndpointMock.Verify(p => p.Publish(It.IsAny<Shared.Queue.Messages.MessageUnpinnedEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_FederatedChat_PublishesDeletedEventWithFederatedFields()
+    {
+        var userId = 1L;
+        var localUuid = Guid.NewGuid();
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(userId, localUuid, remoteUuid, "remote.test");
+        var federatedId = Guid.NewGuid();
+        var message = await _h.SeedFederatedMessage(chat.Id, federatedId, senderUuid: localUuid, senderId: userId, text: "bye");
+        var handler = CreateHandler(userId);
+
+        await handler.Handle(new DeleteMessageCommand { MessageId = message.Id }, CancellationToken.None);
+
+        _h.PublishEndpointMock.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.MessageDeletedEvent>(e =>
+                e.IsFederated
+                && e.FederatedId == federatedId
+                && e.RemoteParticipants.Count == 1
+                && e.RemoteParticipants[0].Uuid == remoteUuid),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

@@ -411,6 +411,29 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             );
         }
 
+        _logger.LogDebug("Получение списка участников чата {ChatId}", chatId.Value);
+
+        var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
+
+        // Отправка последующих сообщений в уже существующий fed-DM через chat_id (docs/rearch/05,
+        // «Отправка последующих сообщений»): признак федеративности берём из состава участников —
+        // remote-участник (UserId=NULL, ServerName задан) есть только у fed-чатов. Ветка выше
+        // (request.UserUuid) покрывает только первое сообщение/явную адресацию по uuid.
+        if (!isFederated)
+        {
+            var remoteMembers = members
+                .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
+                .ToList();
+            if (remoteMembers.Count > 0)
+            {
+                isFederated = true;
+                senderUuid = members.FirstOrDefault(m => m.UserId == senderId)?.UserUuid ?? Guid.Empty;
+                remoteParticipants = remoteMembers
+                    .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
+                    .ToList();
+            }
+        }
+
         var message = new Message
         {
             ChatId = chatId.Value,
@@ -431,10 +454,6 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             message.FederatedId = federatedId;
             message.SenderUuid = senderUuid;
         }
-
-        _logger.LogDebug("Получение списка участников чата {ChatId}", chatId.Value);
-
-        var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
 
         _logger.LogDebug(
             "Сохранение сообщения в БД. Чат: {ChatId}, Участников: {MemberCount}",

@@ -229,6 +229,35 @@ public class SendMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ExistingFederatedChatViaChatId_MarksMessageFederated()
+    {
+        // Отправка последующих сообщений в уже существующий fed-DM через chat_id (docs/rearch/05,
+        // «Отправка последующих сообщений») — не только через явный user_uuid первого сообщения.
+        var userId = 1L;
+        var localUuid = Guid.NewGuid();
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(userId, localUuid, remoteUuid, "remote.test");
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(new SendMessageCommand
+        {
+            ChatId = chat.Id,
+            Message = new OutgoingMsg { Text = "second message" }
+        }, CancellationToken.None);
+
+        result.Message.FederatedId.Should().NotBeNullOrEmpty();
+        result.Message.SenderUuid.Should().Be(localUuid.ToString());
+
+        _h.PublishEndpointMock.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.NewMessageEvent>(e =>
+                e.IsFederated
+                && e.RemoteParticipants.Count == 1
+                && e.RemoteParticipants[0].Uuid == remoteUuid
+                && e.SenderUuid == localUuid),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_UnsupportedFileType_ThrowsFileNotSupportedException()
     {
         var userId = 1L;

@@ -201,4 +201,33 @@ public class EditMessageCommandHandlerTests
 
         _h.PublishEndpointMock.Verify(p => p.Publish(It.IsAny<Shared.Queue.Messages.MessageEditedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_FederatedChat_PublishesEditedEventWithFederatedFields()
+    {
+        // Исходящий fed-путь (этап 2.4): правка своего сообщения в fed-DM должна нести FederatedId/
+        // SenderUuid/RemoteParticipants, чтобы консюмер Federation положил её в outbox.
+        var userId = 1L;
+        var localUuid = Guid.NewGuid();
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(userId, localUuid, remoteUuid, "remote.test");
+        var federatedId = Guid.NewGuid();
+        var message = await _h.SeedFederatedMessage(chat.Id, federatedId, senderUuid: localUuid, senderId: userId, text: "original");
+        var handler = CreateHandler(userId);
+
+        await handler.Handle(new EditMessageCommand
+        {
+            MessageId = message.Id,
+            Text = "edited"
+        }, CancellationToken.None);
+
+        _h.PublishEndpointMock.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.MessageEditedEvent>(e =>
+                e.IsFederated
+                && e.FederatedId == federatedId
+                && e.SenderUuid == localUuid
+                && e.RemoteParticipants.Count == 1
+                && e.RemoteParticipants[0].Uuid == remoteUuid),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

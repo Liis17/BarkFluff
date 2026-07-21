@@ -324,9 +324,35 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("OriginServer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("ChatId", "FederatedId");
 
                     b.ToTable("FederatedMessageEvents");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.FederatedReadState", b =>
+                {
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserUuid")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastReadFederatedMessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ChatId", "UserUuid");
+
+                    b.ToTable("FederatedReadStates");
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
