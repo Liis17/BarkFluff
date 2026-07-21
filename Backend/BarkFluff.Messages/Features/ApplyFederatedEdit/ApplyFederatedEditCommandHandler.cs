@@ -133,10 +133,11 @@ public class ApplyFederatedEditCommandHandler : IRequestHandler<ApplyFederatedEd
             existingEvent.ReceivedAt = DateTime.UtcNow;
             if (r.RawEvent is { Length: > 0 })
                 existingEvent.EventBytes = r.RawEvent.ToByteArray();
+            await _context.SaveChangesAsync(cancellationToken);
         }
         else
         {
-            _context.FederatedMessageEvents.Add(new Domain.FederatedMessageEvent
+            var newEvent = new Domain.FederatedMessageEvent
             {
                 ChatId = chatId,
                 FederatedId = federatedId,
@@ -144,9 +145,31 @@ public class ApplyFederatedEditCommandHandler : IRequestHandler<ApplyFederatedEd
                 ReceivedAt = DateTime.UtcNow,
                 OriginServer = r.OriginServer,
                 EventId = incomingEventId,
-            });
+            };
+            _context.FederatedMessageEvents.Add(newEvent);
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                // PK (ChatId, FederatedId) — гонка первого события для этого сообщения (edit/delete
+                // почти одновременно); мутация message уже закоммичена выше, откатывать нельзя —
+                // переигрываем как update найденной чужой строки.
+                _context.Entry(newEvent).State = EntityState.Detached;
+                var raced = await _context.FederatedMessageEvents
+                    .FirstOrDefaultAsync(e => e.ChatId == chatId && e.FederatedId == federatedId, cancellationToken);
+                if (raced is null)
+                    throw;
+
+                raced.OriginServer = r.OriginServer;
+                raced.EventId = incomingEventId;
+                raced.ReceivedAt = DateTime.UtcNow;
+                if (r.RawEvent is { Length: > 0 })
+                    raced.EventBytes = r.RawEvent.ToByteArray();
+                await _context.SaveChangesAsync(cancellationToken);
+            }
         }
-        await _context.SaveChangesAsync(cancellationToken);
 
         var localMemberIds = chat.Members?.LocalUserIds() ?? new List<long>();
         await _messageQueueSender.SendEdited(
