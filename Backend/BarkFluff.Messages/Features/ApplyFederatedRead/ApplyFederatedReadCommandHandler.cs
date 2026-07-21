@@ -60,10 +60,18 @@ public class ApplyFederatedReadCommandHandler : IRequestHandler<ApplyFederatedRe
         Guid? upToFederatedId = Guid.TryParse(r.UpToFederatedMessageId, out var upTo) ? upTo : null;
 
         var chat = await _chatsStorage.GetFederatedChatAsync(chatId);
-        if (chat is null || chat.FederatedStatus != FederatedStatus.Active)
+        if (chat is null)
         {
             _logger.LogDebug("ApplyFederatedRead: чат {ChatId} неизвестен → RETRY", chatId);
             throw new ChatUnknownException();
+        }
+
+        // Rejected/Merged — перманентное состояние (в отличие от "ещё не синхронизирован" выше),
+        // ретраить бессмысленно.
+        if (chat.FederatedStatus != FederatedStatus.Active)
+        {
+            _logger.LogDebug("ApplyFederatedRead: чат {ChatId} не активен (статус {Status})", chatId, chat.FederatedStatus);
+            throw new FederatedChatNotActiveException();
         }
 
         // P2-02: читатель обязан быть remote-участником этого чата, и origin события — его домашняя нода.

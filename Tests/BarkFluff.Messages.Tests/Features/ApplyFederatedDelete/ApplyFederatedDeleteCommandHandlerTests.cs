@@ -1,3 +1,4 @@
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Features.ApplyFederatedDelete;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
@@ -51,6 +52,32 @@ public class ApplyFederatedDeleteCommandHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<ChatUnknownException>();
+    }
+
+    [Fact]
+    public async Task Handle_RejectedChat_ThrowsFederatedChatNotActiveException()
+    {
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), Guid.NewGuid(), "remote.test", FederatedStatus.Rejected);
+        var handler = CreateHandler();
+
+        var act = async () => await handler.Handle(new ApplyFederatedDeleteCommand(
+            BuildRequest(chat.Id, Guid.NewGuid(), "remote.test", DateTime.UtcNow)),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<FederatedChatNotActiveException>();
+    }
+
+    [Fact]
+    public async Task Handle_MergedChat_ThrowsFederatedChatNotActiveException()
+    {
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), Guid.NewGuid(), "remote.test", FederatedStatus.Merged);
+        var handler = CreateHandler();
+
+        var act = async () => await handler.Handle(new ApplyFederatedDeleteCommand(
+            BuildRequest(chat.Id, Guid.NewGuid(), "remote.test", DateTime.UtcNow)),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<FederatedChatNotActiveException>();
     }
 
     [Fact]
