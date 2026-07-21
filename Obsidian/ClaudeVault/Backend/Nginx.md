@@ -81,6 +81,8 @@ Security-аудит (S1/D2): rate limit на анонимные (без JWT) э�
 - Протоколы: `TLSv1.2 TLSv1.3`
 - Session cache: `shared:SSL:10m`, timeout: `10m`
 
+> ⚠️ **Известный инцидент:** серт `barkfluff.com` настоящий (не самоподписанный), но если в `barkfluff.com-crt.pem` лежит только листовой сертификат без intermediate — клиенты, которые сами достраивают цепочку до корня (Android/OkHttp, а не только браузеры с их встроенными intermediate-кешами), не проходят TLS-валидацию на нестандартных WSS-эндпоинтах (например LiveKit-сигнализация, см. [[Backend/Calls]]). Диагностика: `grep -c "BEGIN CERTIFICATE" barkfluff.com-crt.pem` должно быть **2+** (лист + intermediate). Фикс — заменить файл на fullchain (обычно `fullchain.pem` от certbot) и `docker exec nginx_proxy nginx -s reload`.
+
 ### `barkfluff.single-server.conf`
 Конфигурация для **single-server деплоя** (не Docker-Compose). Упстримы указывают на `127.0.0.1:<port>`.
 - `storage.barkfluff.com` → [[ClientStorage]] `:7050`

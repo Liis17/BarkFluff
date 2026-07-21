@@ -17,6 +17,8 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 Миграции применяются автоматически при старте.
 
+> ⚠️ **Известный баг тулинга (актуально минимум на `dotnet ef`/EFCore 10.0.8):** `dotnet ef migrations add` в этом окружении падает `System.MissingMethodException: Method not found: 'System.String Microsoft.EntityFrameworkCore.Diagnostics.AbstractionsStrings.ArgumentIsEmpty(System.Object)'`. Затрагивает любой сервис, не только Users. Обход — писать миграцию вручную: 3 файла в `Persistence/Migrations/` (`{timestamp}_{Name}.cs` Up/Down, `{timestamp}_{Name}.Designer.cs` с `[Migration]`+`[DbContext]`+полным `BuildTargetModel`, и обновить `*ContextModelSnapshot.cs`). Образец в Users — `20260417120000_AddUserPrivacy.*`. Проверка drift без БД (эта команда РАБОТАЕТ, в отличие от `migrations add`): `dotnet ef migrations has-pending-model-changes --project ... --no-build`. **Важно:** если в snapshot руками прописан `.HasDefaultValueSql(...)`/`.ValueGeneratedOnAdd()` (как у `User.Uuid` выше), это же нужно продублировать Fluent-конфигом в `OnModelCreating` — иначе snapshot разойдётся с рантайм-моделью и `ctx.Database.Migrate()` при старте упадёт `PendingModelChangesWarning` (крэш-луп контейнера).
+
 ## Архитектура
 
 ### Два gRPC-сервиса

@@ -9,6 +9,7 @@
 
 ### Архитектура и паттерны
 - [[Архитектура]] — tech stack, таблица сервисов с портами, XAuth, CQRS, gRPC-клиент, RabbitMQ, Proto
+- [[Тестирование]] — состояние unit-тестов бэкенда, паттерны (SQLite vs InMemory, размокивание Redis), известные ограничения
 
 ### Backend — микросервисы
 
@@ -16,6 +17,7 @@
 |------|--------|------|
 | [[Backend/Configuration]] | Централизованная конфигурация | 7003 |
 | [[Backend/Configuration-ProjectMap]] | Карта всех файлов и классов Configuration | — |
+| [[Backend/Configuration-Metrics]] | Реестр метрик Configuration (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Beacon]] | Точка входа клиентов | 7002 |
 | [[Backend/Beacon-ProjectMap]] | Карта всех файлов и классов Beacon | — |
 | [[Backend/Beacon-Metrics]] | Реестр метрик Beacon (через ServiceMetrics-логи в Seq) | — |
@@ -24,6 +26,7 @@
 | [[Backend/GrpcServer-ProjectMap]] | Карта всех файлов и классов GrpcServer | — |
 | [[Backend/Identity]] | Auth, JWT, 2FA, сессии | 7000 |
 | [[Backend/Identity-ProjectMap]] | Карта всех файлов и классов Identity | — |
+| [[Backend/Identity-Metrics]] | Реестр метрик Identity (auth/OTP/sessions/password/geolocation) | — |
 | [[Backend/Users]] | Профили, устройства, бейджи | 7001 |
 | [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
 | [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
@@ -40,6 +43,7 @@
 | [[Backend/Updates-Metrics]] | Реестр метрик Updates (подписки, broadcast, push) | — |
 | [[Backend/Onliner]] | Онлайн-статусы | 7009 |
 | [[Backend/Onliner-ProjectMap]] | Карта всех файлов и классов Onliner | — |
+| [[Backend/Onliner-Metrics]] | Реестр метрик Onliner (gRPC, typing, подписки/storage gauges) | — |
 | [[Backend/Notification]] | Email-уведомления (RabbitMQ consumer) | 7004 |
 | [[Backend/Notification-ProjectMap]] | Карта всех файлов и классов Notification | — |
 | [[Backend/FastAuth]] | QR-авторизация устройств | 7008 |
@@ -85,7 +89,7 @@
 | [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
 | [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
 | [[Клиенты/Android-FileIndex]] | Индекс файлов Android-клиента с кратким описанием каждого |
-| [[Клиенты/Android-V2]] | **V2** — Jetpack Compose + Material 3 Expressive поверх общего модуля `:core` |
+| [[Клиенты/Android-V2]] | **V2** (⚠️ заброшен/тестовый, не трогать) — Jetpack Compose + Material 3 Expressive поверх общего модуля `:core` |
 | [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
 | [[Клиенты/Windows-WPF-ProjectMap]] | Карта всех файлов и классов WPF-клиента |
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
