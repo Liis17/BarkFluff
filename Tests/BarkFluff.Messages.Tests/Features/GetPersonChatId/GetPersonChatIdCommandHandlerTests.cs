@@ -3,6 +3,7 @@ using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Messages;
 
 using Grpc.Core;
 
@@ -97,6 +98,27 @@ public class GetPersonChatIdCommandHandlerTests
         var result = await handler.Handle(new GetPersonChatIdCommand { UserId = 2 }, CancellationToken.None);
 
         result.ChatId.Should().Be(newerChat.Id.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_UuidNotFound_ThrowsRemoteUserNotResolvedException()
+    {
+        // Баг #5: неразрешённый UserUuid (Found=false) не должен приводить к необработанному
+        // InvalidOperationException в fallback-пути ниже (request.UserId!.Value).
+        var targetUuid = Guid.NewGuid();
+        var response = new GetUsersByUuidResponse
+        {
+            Users = { new UserProfileByUuid { Uuid = targetUuid.ToString(), Found = false } },
+        };
+        _usersClient.Setup(c => c.GetUsersByUuidAsync(It.IsAny<GetUsersByUuidRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetUsersByUuidResponse>(
+                Task.FromResult(response), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        var handler = CreateHandler(1);
+
+        var act = async () => await handler.Handle(
+            new GetPersonChatIdCommand { UserId = null, UserUuid = targetUuid }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<RemoteUserNotResolvedException>();
     }
 
     [Fact]

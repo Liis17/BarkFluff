@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
 
@@ -44,6 +45,9 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
             var byUuid = await _usersServerApiClient.GetUsersByUuidAsync(
                 new GetUsersByUuidRequest { Uuids = { targetUuid.ToString() } }, cancellationToken: cancellationToken);
             var target = byUuid.Users.FirstOrDefault();
+
+            if (target is null || !target.Found)
+                throw new RemoteUserNotResolvedException();
 
             if (target is { Found: true, IsRemote: true } && !string.IsNullOrEmpty(target.ServerName))
             {
