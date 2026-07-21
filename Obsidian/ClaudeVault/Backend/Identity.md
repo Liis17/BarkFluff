@@ -207,7 +207,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - **LocationClient**: `geolocation_requests`, `geolocation_success`, `geolocation_errors`
 - **Gauge**: `service_started_unix` (для uptime)
 
-Полный реестр и где они инкрементируются — см. файл памяти `project_identity_metrics.md`.
+📄 Полный реестр и где они инкрементируются → [[Backend/Identity-Metrics]]
 
 ## Боты и email
 

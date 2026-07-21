@@ -48,6 +48,12 @@ dotnet tool restore
 dotnet tool run dotnet-ef migrations add MigrationName --project Backend/BarkFluff.Configuration
 ```
 
+## Метрики
+
+Инструментирован `MetricsCollector` (общая схема, см. [[Backend/Beacon-Metrics]]): счётчики запросов/успехов/ошибок/длительности на `GetConfiguration`, `UpdateConfiguration`, Reserved Names, плюс gauges по БД (`configurations_total`, `db_healthy`) и миграциям при старте.
+
+📄 Полный реестр метрик → [[Backend/Configuration-Metrics]]
+
 ## Proto
 
 `Shared/BarkFluff.Proto/configuration_api.proto` (`GrpcServices="Server"`).
