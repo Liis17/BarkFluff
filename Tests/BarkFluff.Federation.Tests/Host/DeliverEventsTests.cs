@@ -271,6 +271,162 @@ public class DeliverEventsTests
                 () => { }));
     }
 
+    // Этап 2.4: MessageEdited/MessageDeleted/MessagesRead маршрутизируются в ApplyFederatedEdit/Delete/Read.
+    // Payload'ы этих типов не несут identity автора (P2-02 проверяется локально в Messages) — Federation
+    // лишь прокидывает origin (уже сверенный с x-bf-origin) и event_id для LWW tie-break.
+
+    private static FederationEvent Signed(FederationSigningKey key, string origin, Action<FederationEvent> setPayload)
+    {
+        var evt = new FederationEvent
+        {
+            EventId = Guid.NewGuid().ToString(),
+            OriginServer = origin,
+            OriginTsMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+        };
+        setPayload(evt);
+        EventSigner.Sign(evt, key);
+        return evt;
+    }
+
+    private static FederationEvent SignedMessageEdited(FederationSigningKey key, string origin = Origin)
+        => Signed(key, origin, evt => evt.MessageEdited = new MessageEditedPayload
+        {
+            ChatId = Guid.NewGuid().ToString(),
+            FederatedMessageId = Guid.NewGuid().ToString(),
+            NewText = "edited",
+        });
+
+    private static FederationEvent SignedMessageDeleted(FederationSigningKey key, string origin = Origin)
+        => Signed(key, origin, evt => evt.MessageDeleted = new MessageDeletedPayload
+        {
+            ChatId = Guid.NewGuid().ToString(),
+            FederatedMessageId = Guid.NewGuid().ToString(),
+        });
+
+    private static FederationEvent SignedMessagesRead(FederationSigningKey key, string origin = Origin)
+        => Signed(key, origin, evt => evt.MessagesRead = new MessagesReadPayload
+        {
+            ChatId = Guid.NewGuid().ToString(),
+            ReaderUuid = Guid.NewGuid().ToString(),
+            UpToFederatedMessageId = Guid.NewGuid().ToString(),
+        });
+
+    private static void SetupApplyEdit(Mock<MessagesServerApi.MessagesServerApiClient> mock, ApplyFederatedEditResponse resp)
+    {
+        mock.Setup(c => c.ApplyFederatedEditAsync(It.IsAny<ApplyFederatedEditRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ApplyFederatedEditResponse>(
+                Task.FromResult(resp), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    private static void SetupApplyDelete(Mock<MessagesServerApi.MessagesServerApiClient> mock, ApplyFederatedDeleteResponse resp)
+    {
+        mock.Setup(c => c.ApplyFederatedDeleteAsync(It.IsAny<ApplyFederatedDeleteRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ApplyFederatedDeleteResponse>(
+                Task.FromResult(resp), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    private static void SetupApplyRead(Mock<MessagesServerApi.MessagesServerApiClient> mock, ApplyFederatedReadResponse resp)
+    {
+        mock.Setup(c => c.ApplyFederatedReadAsync(It.IsAny<ApplyFederatedReadRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ApplyFederatedReadResponse>(
+                Task.FromResult(resp), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageEdited_RoutedToApplyFederatedEditWithOrigin()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupApplyEdit(messagesMock, new ApplyFederatedEditResponse { Applied = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageEdited(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(1);
+        messagesMock.Verify(c => c.ApplyFederatedEditAsync(
+            It.Is<ApplyFederatedEditRequest>(r =>
+                r.ChatId == evt.MessageEdited.ChatId
+                && r.FederatedMessageId == evt.MessageEdited.FederatedMessageId
+                && r.NewText == evt.MessageEdited.NewText
+                && r.OriginServer == Origin
+                && r.EventId == evt.EventId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageEditedTransient_RetryAndNotIndexed()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ApplyFederatedEditAsync(It.IsAny<ApplyFederatedEditRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.NotFound, "message unknown")));
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageEdited(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Retry);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageEditedRejected_RejectedAndIndexed()
+    {
+        // FailedPrecondition (P2-02 author mismatch и т.п.) — перманентный отказ, но событие всё же
+        // считается обработанным (ретраить бессмысленно — источник не изменится).
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ApplyFederatedEditAsync(It.IsAny<ApplyFederatedEditRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.FailedPrecondition, "author mismatch")));
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageEdited(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Rejected);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageDeleted_RoutedToApplyFederatedDeleteWithOrigin()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupApplyDelete(messagesMock, new ApplyFederatedDeleteResponse { Applied = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageDeleted(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ApplyFederatedDeleteAsync(
+            It.Is<ApplyFederatedDeleteRequest>(r =>
+                r.ChatId == evt.MessageDeleted.ChatId
+                && r.FederatedMessageId == evt.MessageDeleted.FederatedMessageId
+                && r.OriginServer == Origin
+                && r.EventId == evt.EventId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessagesRead_RoutedToApplyFederatedReadWithOrigin()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupApplyRead(messagesMock, new ApplyFederatedReadResponse { Applied = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessagesRead(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ApplyFederatedReadAsync(
+            It.Is<ApplyFederatedReadRequest>(r =>
+                r.ChatId == evt.MessagesRead.ChatId
+                && r.ReaderUuid == evt.MessagesRead.ReaderUuid
+                && r.UpToFederatedMessageId == evt.MessagesRead.UpToFederatedMessageId
+                && r.OriginServer == Origin),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task DeliverEvents_UnknownPayloadType_Rejected()
     {

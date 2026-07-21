@@ -99,25 +99,57 @@ public class MessageQueueSender
         await _publishEndpoint.Publish(newMessageEvent);
     }
 
-    public async Task SendEdited(Message message, Guid chatId, List<long> chatMembers, Dictionary<string, UploadFileInfo>? filesInfoMap = null)
+    /// <summary>
+    /// Публикация правки (этап 2.4). Федеративные поля заполняются как для исходящего пути (локальная
+    /// правка в fed-чате → remoteParticipants непустой, консюмер Federation положит в outbox), так и для
+    /// входящего apply-пути (правка пришла с другой ноды → remoteParticipants=[] осознанно пусто,
+    /// консюмер Federation её пропустит — переотправлять её обратно не нужно).
+    /// </summary>
+    public async Task SendEdited(
+        Message message,
+        Guid chatId,
+        List<long> chatMembers,
+        Dictionary<string, UploadFileInfo>? filesInfoMap = null,
+        bool isFederated = false,
+        Guid? federatedId = null,
+        Guid? senderUuid = null,
+        List<FederatedParticipant>? remoteParticipants = null,
+        DateTimeOffset? lastChangeAt = null)
     {
         var editedEvent = new MessageEditedEvent()
         {
             ChatId = chatId,
             ChatMembers = chatMembers,
-            Message = message.ToGrpc(filesInfoMap).ToByteArray()
+            Message = message.ToGrpc(filesInfoMap).ToByteArray(),
+            IsFederated = isFederated,
+            FederatedId = federatedId,
+            SenderUuid = senderUuid,
+            RemoteParticipants = remoteParticipants ?? new List<FederatedParticipant>(),
+            LastChangeAt = lastChangeAt,
         };
 
         await _publishEndpoint.Publish(editedEvent);
     }
 
-    public async Task SendDeleted(Guid chatId, long messageId, List<long> chatMembers)
+    /// <summary>Публикация удаления (этап 2.4) — см. SendEdited про исходящий/входящий путь.</summary>
+    public async Task SendDeleted(
+        Guid chatId,
+        long messageId,
+        List<long> chatMembers,
+        bool isFederated = false,
+        Guid? federatedId = null,
+        List<FederatedParticipant>? remoteParticipants = null,
+        DateTimeOffset? lastChangeAt = null)
     {
         var deletedEvent = new MessageDeletedEvent()
         {
             ChatId = chatId,
             ChatMembers = chatMembers,
-            MessageId = messageId
+            MessageId = messageId,
+            IsFederated = isFederated,
+            FederatedId = federatedId,
+            RemoteParticipants = remoteParticipants ?? new List<FederatedParticipant>(),
+            LastChangeAt = lastChangeAt,
         };
 
         await _publishEndpoint.Publish(deletedEvent);

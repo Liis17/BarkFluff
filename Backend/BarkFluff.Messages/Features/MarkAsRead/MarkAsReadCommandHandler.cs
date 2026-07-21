@@ -4,6 +4,7 @@ using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
 
@@ -66,6 +67,10 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
         // Кэш участников чатов для оптимизации - получаем один раз для каждого чата
         var chatMembersCache = new Dictionary<Guid, List<long>>();
 
+        // Полный состав участников (этап 2.4) — нужен для fed-чатов: remote-участники для outbox
+        // Federation и UUID текущего читателя в этом чате.
+        var chatFullMembersCache = new Dictionary<Guid, List<ChatMember>>();
+
         // Проверяем доступ к каждому чату и кэшируем участников
         foreach (var chatId in chatIds)
         {
@@ -83,6 +88,7 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             // Получаем участников чата один раз и кэшируем
             var chatMembers = await _chatsStorage.GetChatMembers(chatId, 0, int.MaxValue);
             chatMembersCache[chatId] = chatMembers.LocalUserIds();
+            chatFullMembersCache[chatId] = chatMembers;
         }
 
         var newlyReadMessages = messages
@@ -106,6 +112,13 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             newlyReadMessages.Select(message => message.Id).ToList(),
             _userContext.UserId);
 
+        // Fed-чаты (этап 2.4): прочтение федерируется как "прочитано до X", а не по сообщению —
+        // выбираем одно сообщение-якорь (максимальный Id среди только что прочитанных) на чат.
+        var fedAnchorByChatId = newlyReadMessages
+            .Where(m => m.FederatedId.HasValue)
+            .GroupBy(m => m.ChatId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(m => m.Id).First());
+
         _logger.LogDebug(
             "Отправка событий о прочтении в очередь для {MessageCount} сообщений",
             newlyReadMessages.Count);
@@ -117,12 +130,37 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             // Используем кэшированных участников чата
             var chatMembers = chatMembersCache[message.ChatId];
 
-            sendTasks.Add(_readByQueueSender.SendEvent(
-                message.ChatId,
-                message.Id,
-                readBySnapshots[message.Id],
-                [_userContext.UserId],
-                chatMembers));
+            var isFedAnchor = fedAnchorByChatId.TryGetValue(message.ChatId, out var anchor) && anchor.Id == message.Id;
+            if (isFedAnchor)
+            {
+                var fullMembers = chatFullMembersCache[message.ChatId];
+                var remoteParticipants = fullMembers
+                    .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
+                    .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
+                    .ToList();
+                var readerUuid = fullMembers.FirstOrDefault(m => m.UserId == _userContext.UserId)?.UserUuid;
+
+                sendTasks.Add(_readByQueueSender.SendEvent(
+                    message.ChatId,
+                    message.Id,
+                    readBySnapshots[message.Id],
+                    [_userContext.UserId],
+                    chatMembers,
+                    isFederated: true,
+                    readerUuid: readerUuid,
+                    upToFederatedMessageId: message.FederatedId,
+                    remoteParticipants: remoteParticipants,
+                    lastChangeAt: DateTimeOffset.UtcNow));
+            }
+            else
+            {
+                sendTasks.Add(_readByQueueSender.SendEvent(
+                    message.ChatId,
+                    message.Id,
+                    readBySnapshots[message.Id],
+                    [_userContext.UserId],
+                    chatMembers));
+            }
         }
 
         await Task.WhenAll(sendTasks);

@@ -135,15 +135,19 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
 
         message = await _messagesStorage.AddMessage(message);
 
-        // (6) FederatedMessageEvents — wire-байты подписанного FederationEvent (catch-up 2.6).
+        // (6) FederatedMessageEvents — wire-байты подписанного FederationEvent (catch-up 2.6) + метка
+        // (origin_server, event_id) для LWW tie-break последующих ApplyFederatedEdit/Delete (2.4).
         if (r.RawEvent is { Length: > 0 })
         {
+            Guid.TryParse(r.EventId, out var eventId);
             _context.FederatedMessageEvents.Add(new FederatedMessageEvent
             {
                 ChatId = chatId,
                 FederatedId = federatedId,
                 EventBytes = r.RawEvent.ToByteArray(),
                 ReceivedAt = DateTime.UtcNow,
+                OriginServer = remoteMember.ServerName ?? string.Empty,
+                EventId = eventId,
             });
             await _context.SaveChangesAsync(cancellationToken);
         }
