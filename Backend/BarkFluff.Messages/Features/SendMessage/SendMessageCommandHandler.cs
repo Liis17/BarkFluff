@@ -442,6 +442,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 remoteParticipants = remoteMembers
                     .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
                     .ToList();
+
+                // senderFid для этой ветки не резолвится выше (та ветка — только для нового fed-чата
+                // через UserUuid) — без него удалённая нода получает пустой Sender.Username на каждое
+                // сообщение после первого в чате.
+                var selfResp = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
+                senderFid = $"@{selfResp.User.Username}:{remoteParticipants[0].ServerName}";
             }
         }
 
