@@ -93,18 +93,20 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
 
         _logger.LogDebug("Удаление пользователя {UserId} из чата {ChatId}", chatMember.UserId, request.ChatId);
 
-        await _chatsStorage.RemoveChatMember(request.ChatId, chatMember.UserId);
+        var kickedUserId = chatMember.UserId!.Value;
+
+        await _chatsStorage.RemoveChatMember(request.ChatId, kickedUserId);
 
         await _publishEndpoint.Publish(new ChatMemberKickedEvent
         {
             ChatId = request.ChatId,
-            UserId = chatMember.UserId,
+            UserId = kickedUserId,
         });
 
         var administatorUserInfoResponse = await
             _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
 
-        var kickedUserInfoResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = chatMember.UserId });
+        var kickedUserInfoResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = kickedUserId });
 
         var adminName = $"{administatorUserInfoResponse.User.FirstName} {administatorUserInfoResponse.User.LastName}";
 
@@ -127,15 +129,14 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
 
         _logger.LogDebug("Отправка системного сообщения об исключении пользователя");
 
-        await _messageQueueSender.SendMessage(kickSystemMessage, request.ChatId, chatInfo.Members!
-            .Select(x => x.UserId).ToList());
+        await _messageQueueSender.SendMessage(kickSystemMessage, request.ChatId, chatInfo.Members!.LocalUserIds());
 
         _metrics.Increment("users_kicked");
 
         _logger.LogInformation(
             "Пользователь {KickedUser} ({KickedUserId}) успешно исключен из чата {ChatId} администратором {AdminUser} ({AdminId})",
             kickedName,
-            chatMember.UserId,
+            kickedUserId,
             request.ChatId,
             adminName,
             _userContext.UserId

@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
@@ -96,22 +97,32 @@ public class GetChatInfoCommandHandler : IRequestHandler<GetChatInfoCommand, Get
                     ? chat.Members[1].UserId
                     : chat.Members[0].UserId;
 
-                var userInfo = await _usersServerApiClient.GetByIdAsync(
-                    new GetByIdRequest { UserId = memberId }
-                );
+                if (memberId is not { } peerId)
+                {
+                    // fed-DM с remote-собеседником — title/picture по cache-miss не enrich'аются
+                    // (remote-профиль живёт в Users.RemoteUsers и тянутся отдельно, Фаза 5).
+                    response.Title = string.Empty;
+                    response.Picture = string.Empty;
+                }
+                else
+                {
+                    var userInfo = await _usersServerApiClient.GetByIdAsync(
+                        new GetByIdRequest { UserId = peerId }
+                    );
 
-                response.Title = $"{userInfo.User.FirstName} {userInfo.User.LastName}";
-                response.Picture = userInfo.User.ProfilePicture ?? string.Empty;
+                    response.Title = $"{userInfo.User.FirstName} {userInfo.User.LastName}";
+                    response.Picture = userInfo.User.ProfilePicture ?? string.Empty;
 
-                // Сохраняем в кэш
-                await _chatCache.SetChatName(request.ChatId, _userContext.UserId, response.Title);
-                await _chatCache.SetChatImage(request.ChatId, _userContext.UserId, response.Picture);
+                    // Сохраняем в кэш
+                    await _chatCache.SetChatName(request.ChatId, _userContext.UserId, response.Title);
+                    await _chatCache.SetChatImage(request.ChatId, _userContext.UserId, response.Picture);
 
-                _logger.LogDebug(
-                    "Загружены и кэшированы данные для личного чата {ChatId} с пользователем {MemberId}",
-                    request.ChatId,
-                    memberId
-                );
+                    _logger.LogDebug(
+                        "Загружены и кэшированы данные для личного чата {ChatId} с пользователем {MemberId}",
+                        request.ChatId,
+                        peerId
+                    );
+                }
             }
         }
         else
@@ -125,7 +136,7 @@ public class GetChatInfoCommandHandler : IRequestHandler<GetChatInfoCommand, Get
         var chatWithMembers = await _chatsStorage.GetChat(request.ChatId);
         if (chatWithMembers?.Members != null)
         {
-            response.MembersId.AddRange(chatWithMembers.Members.Select(m => m.UserId));
+            response.MembersId.AddRange(chatWithMembers.Members.LocalUserIds());
         }
 
         // Флаг отключённых уведомлений для этого чата (только для пользовательского контекста)

@@ -1,3 +1,4 @@
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 
@@ -29,7 +30,7 @@ public class GetChatMemberIdsQueryHandler
 
         var members = await _chatsStorage.GetChatMembers(chatId, 0, int.MaxValue);
 
-        response.UserIds.AddRange(members.Select(m => m.UserId));
+        response.UserIds.AddRange(members.LocalUserIds());
 
         return response;
     }

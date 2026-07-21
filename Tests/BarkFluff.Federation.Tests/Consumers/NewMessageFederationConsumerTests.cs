@@ -130,7 +130,7 @@ public class NewMessageFederationConsumerTests
         chatCreated.PayloadCase.Should().Be(FederationEvent.PayloadOneofCase.ChatCreated);
         chatCreated.ChatCreated.ChatId.Should().Be(message.ChatId.ToString());
         chatCreated.ChatCreated.Initiator.Uuid.Should().Be(message.InitiatorUuid!.Value.ToString());
-        chatCreated.ChatCreated.Initiator.Username.Should().Be("@alice:node-a.test");
+        chatCreated.ChatCreated.Initiator.Username.Should().Be("alice");
         chatCreated.ChatCreated.Initiator.ServerName.Should().Be(TestHelpers.OwnServerName);
         chatCreated.ChatCreated.Invitee.Uuid.Should().Be(message.InviteeUuid!.Value.ToString());
         chatCreated.ChatCreated.Invitee.ServerName.Should().Be("peer.test");

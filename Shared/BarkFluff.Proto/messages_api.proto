@@ -675,7 +675,7 @@ message ImportFederatedChatRequest {
   string initiator_uuid = 2;
   string initiator_username = 3;
   string initiator_server_name = 4;
-  int64 invitee_user_id = 5;           // локальный пользователь этой ноды (резолвит Federation)
+  string invitee_uuid = 5;             // UUID локального пользователя-получателя этой ноды (резолвит Federation)
   int64 origin_ts_ms = 6;
 }
 
@@ -692,6 +692,7 @@ message ImportFederatedMessageRequest {
   string text = 6;
   repeated FederatedFileRefFlat attachments = 7;
   int64 origin_ts_ms = 8;
+  bytes raw_event = 9;                  // wire-байты подписанного FederationEvent (для catch-up 2.6, не парсится Messages)
 }
 
 message ImportFederatedMessageResponse {

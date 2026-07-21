@@ -140,6 +140,11 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             case SendMessageRequest.SourceIdOneofCase.UserId:
                 command.UserId = request.UserId;
                 break;
+            case SendMessageRequest.SourceIdOneofCase.UserUuid when Guid.TryParse(request.UserUuid, out Guid userUuid):
+                command.UserUuid = userUuid;
+                break;
+            case SendMessageRequest.SourceIdOneofCase.UserUuid:
+                throw new ChatIdNotValidException();
         }
 
         return await _mediator.Send(command);
@@ -256,8 +261,11 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
     {
         var command = new GetPersonChatIdCommand
         {
-            UserId = request.UserId
+            UserId = request.UserId,
         };
+
+        if (Guid.TryParse(request.UserUuid, out var userUuid))
+            command.UserUuid = userUuid;
 
         return await _mediator.Send(command);
     }

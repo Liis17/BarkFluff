@@ -35,6 +35,36 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
 
     public async Task<GetPersonChatIdResponse> Handle(GetPersonChatIdCommand request, CancellationToken cancellationToken)
     {
+        // fed-ветка: user_uuid → вернуть chat_id активного fed-DM, если он есть.
+        // Авто-создание fed-чата в GetPersonChatId не делаем: клиент сначала шлёт SendMessage(user_uuid),
+        // там чат создаётся как «первое сообщение» (IsFirstMessageInChat=true для fed-консьюмера).
+        // Это совпадает с семантикой ChatCreated + NewMessage (docs/rearch/05, «Создание чата»).
+        if (request.UserUuid is { } targetUuid && request.UserId is null)
+        {
+            var byUuid = await _usersServerApiClient.GetUsersByUuidAsync(
+                new GetUsersByUuidRequest { Uuids = { targetUuid.ToString() } }, cancellationToken: cancellationToken);
+            var target = byUuid.Users.FirstOrDefault();
+
+            if (target is { Found: true, IsRemote: true } && !string.IsNullOrEmpty(target.ServerName))
+            {
+                var selfResp = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
+                if (Guid.TryParse(selfResp.User.Uuid, out var selfUuid))
+                {
+                    var (lo, hi) = BarkFluff.Messages.Features.Federation.FederatedUuidPair.Normalize(selfUuid, targetUuid);
+                    var existing = await _chatsStorage.FindActiveFederatedChatByUuidPairAsync(lo, hi);
+                    if (existing is not null)
+                        return new GetPersonChatIdResponse { ChatId = existing.Id.ToString() };
+                }
+
+                // fed-чата ещё нет — отдаём пустой; клиент резолвит перед отправкой и шлёт SendMessage.
+                return new GetPersonChatIdResponse { ChatId = string.Empty };
+            }
+
+            // Не remote — fallback на локальный путь ниже, используя resolved UserId.
+            if (target is { Found: true, IsRemote: false })
+                request.UserId = target.UserId;
+        }
+
         _logger.LogInformation(
             "Получение ID чата между пользователем {UserId} и {TargetUserId}",
             _userContext.UserId,
@@ -42,7 +72,7 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
         );
 
         // Получаем информацию о пользователе
-        var personResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId });
+        var personResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId!.Value });
 
         // Проверяем существование чата
         var existingChatId = await _chatsStorage.GetUserChatIdWithPerson(personResponse.User.Id, _userContext.UserId);
