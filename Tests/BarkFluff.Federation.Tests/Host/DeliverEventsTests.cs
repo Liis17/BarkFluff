@@ -486,6 +486,91 @@ public class DeliverEventsTests
     }
 
     [Fact]
+    public async Task DeliverEvents_ChatCreatedPermanentRejectionWithErrorCode_PropagatesErrorCodeToResult()
+    {
+        // Баг #1: код ошибки permanent-исключения (например FederatedDmRejected) обязан долететь до
+        // EventResult.ErrorCode — иначе OutboxDispatcher не сможет опубликовать FederatedChatRejectedEvent.
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = false });
+        var trailers = new Metadata { { "x-error-code", "FederatedDmRejected" } };
+        messagesMock
+            .Setup(c => c.ImportFederatedChatAsync(It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.FailedPrecondition, "denied"), trailers));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedChatCreated(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Rejected);
+        result.ErrorCode.Should().Be("FederatedDmRejected");
+    }
+
+    [Fact]
+    public async Task DeliverEvents_UnclassifiedStatusCode_RetryNotThrown()
+    {
+        // Баг #2: StatusCode.Unknown (например, из общего ServerExceptionInterceptor Messages) не подпадает
+        // ни под IsPermanent, ни под IsTransient — должен безопасно деградировать до RETRY, а не падать наружу.
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ImportFederatedMessageAsync(It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.Unknown, "unexpected")));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedNewMessage(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Retry);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_OneEventThrowsUnexpectedException_OtherEventsStillProcessed()
+    {
+        // Баг #2: необработанное исключение (не RpcException) на одном событии не должно ронять весь батч
+        // DeliverEvents — остальные события в том же запросе обрабатываются как обычно.
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = false });
+        messagesMock
+            .Setup(c => c.ImportFederatedMessageAsync(It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new InvalidOperationException("непредвиденная ошибка"));
+        messagesMock
+            .Setup(c => c.ImportFederatedChatAsync(It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ImportFederatedChatResponse>(
+                Task.FromResult(new ImportFederatedChatResponse { Imported = true }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt1 = SignedNewMessage(key);
+        var evt2 = SignedChatCreated(key);
+
+        var request = new DeliverEventsRequest();
+        request.Events.Add(evt1);
+        request.Events.Add(evt2);
+        var response = await service.DeliverEvents(request, TestHelpers.CreateCallContext(Origin));
+
+        response.Results.Should().HaveCount(2);
+        response.Results[0].Status.Should().Be(EventStatus.Retry);
+        response.Results[1].Status.Should().Be(EventStatus.Ok);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_NewMessage_IncludesEventId()
+    {
+        // Баг #7: EventId обязан прокидываться в ImportFederatedMessageRequest — иначе LWW tie-break на
+        // приёмнике теряет истинный event_id первого создания сообщения (остаётся Guid.Empty).
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupMessagesImport(messagesMock, new ImportFederatedMessageResponse());
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedNewMessage(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ImportFederatedMessageAsync(
+            It.Is<ImportFederatedMessageRequest>(r => r.EventId == evt.EventId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task DeliverEvents_UnknownPayloadType_Rejected()
     {
         var (context, service) = Create();

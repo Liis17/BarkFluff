@@ -147,7 +147,20 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         var response = new DeliverEventsResponse();
         foreach (var evt in request.Events)
         {
-            var result = await ProcessEventAsync(evt, origin, context.CancellationToken);
+            EventResult result;
+            try
+            {
+                result = await ProcessEventAsync(evt, origin, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Один "плохой" евент не должен ронять весь батч DeliverEvents — RETRY, остальные события
+                // в батче обрабатываются как обычно.
+                _logger.LogError(ex, "Необработанная ошибка обработки события {EventId} от {Origin}", evt.EventId, origin);
+                _metrics.Increment("events_unhandled_error");
+                result = new EventResult { EventId = evt.EventId, Status = EventStatus.Retry };
+            }
+
             response.Results.Add(result);
         }
 
@@ -201,8 +214,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
 
         // Маршрутизация. В этапе 2.2 — все чатовые возвращали NotImplementedYet; в 2.3 ChatCreated/NewMessage
         // идут в MessagesServerApi (ImportFederatedChat/ImportFederatedMessage).
-        var routeResult = await RouteToInternalAsync(evt, origin, ct);
-        if (routeResult == EventStatus.Ok)
+        var (routeStatus, routeErrorCode) = await RouteToInternalAsync(evt, origin, ct);
+        if (routeStatus == EventStatus.Ok)
         {
             // Записываем идемпотентность только после успеха (RETRY не должен индексироваться).
             _context.ProcessedEvents.Add(new ProcessedEvent
@@ -215,12 +228,12 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             _metrics.Increment("events_received." + evt.PayloadCase.ToString().ToLowerInvariant());
         }
 
-        return new EventResult { EventId = evt.EventId, Status = routeResult };
+        return new EventResult { EventId = evt.EventId, Status = routeStatus, ErrorCode = routeErrorCode ?? string.Empty };
     }
 
     // Маршрутизация события в прикладной сервис своей ноды: ChatCreated/NewMessage → MessagesServerApi (2.3),
     // MessageEdited/MessageDeleted/MessagesRead → Apply-RPC (2.4). Профильные payload'ы — 2.9, пока RETRY.
-    private async Task<EventStatus> RouteToInternalAsync(FederationEvent evt, string origin, CancellationToken ct)
+    private async Task<(EventStatus Status, string? ErrorCode)> RouteToInternalAsync(FederationEvent evt, string origin, CancellationToken ct)
     {
         try
         {
@@ -234,7 +247,7 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                         {
                             _metrics.Increment("chatcreated_quota_exceeded." + origin);
                             _logger.LogWarning("ChatCreated quota exceeded для origin={Origin}", origin);
-                            return EventStatus.Retry;
+                            return (EventStatus.Retry, null);
                         }
 
                         var p = evt.ChatCreated;
@@ -247,7 +260,7 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             InviteeUuid = p.Invitee.Uuid,
                             OriginTsMs = evt.OriginTsMs,
                         }, cancellationToken: ct);
-                        return EventStatus.Ok;
+                        return (EventStatus.Ok, null);
                     }
                 case FederationEvent.PayloadOneofCase.NewMessage:
                     {
@@ -264,9 +277,10 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             SenderServerName = p.Sender.ServerName,
                             Text = p.Text,
                             OriginTsMs = sentAtMs,
+                            EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
                         }, cancellationToken: ct);
-                        return EventStatus.Ok;
+                        return (EventStatus.Ok, null);
                     }
                 case FederationEvent.PayloadOneofCase.MessageEdited:
                     {
@@ -281,7 +295,7 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
                         }, cancellationToken: ct);
-                        return EventStatus.Ok;
+                        return (EventStatus.Ok, null);
                     }
                 case FederationEvent.PayloadOneofCase.MessageDeleted:
                     {
@@ -295,7 +309,7 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
                         }, cancellationToken: ct);
-                        return EventStatus.Ok;
+                        return (EventStatus.Ok, null);
                     }
                 case FederationEvent.PayloadOneofCase.MessagesRead:
                     {
@@ -308,25 +322,34 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             OriginTsMs = evt.OriginTsMs,
                             OriginServer = origin,
                         }, cancellationToken: ct);
-                        return EventStatus.Ok;
+                        return (EventStatus.Ok, null);
                     }
                 case FederationEvent.PayloadOneofCase.ProfileChanged:
                 case FederationEvent.PayloadOneofCase.UserDeactivated:
-                    return EventStatus.Retry;
+                    return (EventStatus.Retry, null);
                 default:
-                    return EventStatus.Rejected;
+                    return (EventStatus.Rejected, null);
             }
         }
         catch (RpcException ex) when (IsPermanent(ex))
         {
-            _metrics.Increment("events_rejected." + MapPermanentErrorCode(ex));
-            return EventStatus.Rejected;
+            var code = MapPermanentErrorCode(ex);
+            _metrics.Increment("events_rejected." + code);
+            return (EventStatus.Rejected, code);
         }
         catch (RpcException ex) when (IsTransient(ex))
         {
             // ChatUnknown / MessageUnknown / недоступность Messages → RETRY (catch-up 2.6 дотянет).
             _metrics.Increment("events_retry." + ex.StatusCode);
-            return EventStatus.Retry;
+            return (EventStatus.Retry, null);
+        }
+        catch (RpcException ex)
+        {
+            // Неклассифицированный StatusCode (например Unknown из общего ServerExceptionInterceptor) —
+            // безопасный дефолт RETRY вместо падения наружу и обрыва всего батча DeliverEvents.
+            _logger.LogWarning(ex, "Неклассифицированный StatusCode {StatusCode} при маршрутизации события, RETRY", ex.StatusCode);
+            _metrics.Increment("events_retry.unclassified." + ex.StatusCode);
+            return (EventStatus.Retry, null);
         }
     }
 
