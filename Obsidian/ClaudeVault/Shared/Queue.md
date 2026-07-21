@@ -7,6 +7,7 @@
 ## Namespace: `BarkFluff.Shared.Queue.Federation`
 
 - `FederatedParticipant` — `{ Guid Uuid, string ServerName }` (этап 2.2). Используется расширенными полями message-events (см. ниже) для построения FederationOutbox-строк.
+- `FederatedChatRejectedEvent` — `{ Guid ChatId, string Reason }` (этап 2.5). Publisher — [[Backend/Federation]] (`OutboxDispatcher`, DeadLetter с `ErrorCode="FederatedDmRejected"`); consumer — [[Backend/Messages]] (`FederatedChatRejectedConsumer`, очередь `federated-chat-rejected-messages`) → `Chat.FederatedStatus = Rejected`.
 
 ## Расширенные федеративные поля message-событий (этап 2.2)
 

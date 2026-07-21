@@ -198,6 +198,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("BioVisibility")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("DenyFederatedDm")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("EmailVisibility")
                         .HasColumnType("integer");
 
