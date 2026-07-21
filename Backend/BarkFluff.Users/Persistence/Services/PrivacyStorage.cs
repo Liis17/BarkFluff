@@ -19,6 +19,13 @@ public class PrivacyStorage
         return _usersContext.Privacies.FirstOrDefaultAsync(p => p.UserId == userId);
     }
 
+    // Батч-чтение для GetUsersByUuid (этап 2.5) — без похода в БД на каждого пользователя.
+    // Отсутствие строки трактуется как значения по умолчанию (Privacy ещё не создана).
+    public Task<List<Privacy>> GetByUserIds(List<long> userIds)
+    {
+        return _usersContext.Privacies.Where(p => userIds.Contains(p.UserId)).ToListAsync();
+    }
+
     public async Task<Privacy> GetOrCreate(long userId)
     {
         var existing = await Get(userId);
@@ -48,6 +55,7 @@ public class PrivacyStorage
         privacy.EmailVisibility = updated.EmailVisibility;
         privacy.SearchVisible = updated.SearchVisible;
         privacy.OnlineVisibility = updated.OnlineVisibility;
+        privacy.DenyFederatedDm = updated.DenyFederatedDm;
 
         await _usersContext.SaveChangesAsync();
         return privacy;

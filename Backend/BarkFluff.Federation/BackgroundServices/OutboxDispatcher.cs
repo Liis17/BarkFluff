@@ -6,8 +6,11 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Shared.Queue.Federation;
 
 using Grpc.Core;
+
+using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -85,6 +88,7 @@ public class OutboxDispatcher : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<FederationContext>();
         var resolver = scope.ServiceProvider.GetRequiredService<ServerResolver>();
         var channelFactory = scope.ServiceProvider.GetRequiredService<S2SChannelFactory>();
+        var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
 
         var now = DateTime.UtcNow;
         var maxAttempts = GetMaxAttempts();
@@ -98,7 +102,7 @@ public class OutboxDispatcher : BackgroundService
             .ToListAsync(ct);
 
         foreach (var destination in destinations)
-            await DispatchDestinationAsync(context, resolver, channelFactory, destination, now, maxAttempts, ct);
+            await DispatchDestinationAsync(context, resolver, channelFactory, publishEndpoint, destination, now, maxAttempts, ct);
 
         // Gauge: текущая глубина Pending.
         var pendingCount = await context.Outbox.CountAsync(r => r.Status == OutboxStatus.Pending, ct);
@@ -109,6 +113,7 @@ public class OutboxDispatcher : BackgroundService
         FederationContext context,
         ServerResolver resolver,
         S2SChannelFactory channelFactory,
+        IPublishEndpoint publishEndpoint,
         string destination,
         DateTime now,
         int maxAttempts,
@@ -209,10 +214,14 @@ public class OutboxDispatcher : BackgroundService
                     row.LastError = result.ErrorCode;
                     _metrics.Increment("outbox_deadletter.rejected");
                     // Privacy-отказ → FederatedChatRejectedEvent (этап 2.5).
-                    if (result.ErrorCode == "FederatedDmRejected")
+                    if (result.ErrorCode == "FederatedDmRejected" && row.ChatId.HasValue)
                     {
                         _metrics.Increment("outbox_deadletter.federated_dm_rejected");
-                        PublishChatRejected(row);
+                        await publishEndpoint.Publish(new FederatedChatRejectedEvent
+                        {
+                            ChatId = row.ChatId.Value,
+                            Reason = result.ErrorCode,
+                        }, ct);
                     }
                     break;
 
@@ -272,13 +281,5 @@ public class OutboxDispatcher : BackgroundService
         const int defaultMaxAttempts = 20;
         var raw = _configuration["Federation:OutboxMaxAttempts"];
         return int.TryParse(raw, out var parsed) && parsed > 0 ? parsed : defaultMaxAttempts;
-    }
-
-    // Заглушка публикации FederatedChatRejectedEvent (spec 2.2 §Изменение 5): именованная точка,
-    // вызывается на privacy-DeadLetter. На этапе 2.5 здесь подключается IBus.Publish → Messages
-    // помечает чат Rejected, отправителю отдаётся понятная ошибка. Место искать не нужно.
-    private void PublishChatRejected(FederationOutbox row)
-    {
-        // TODO(2.5): опубликовать FederatedChatRejectedEvent(row.Destination, row.ChatId).
     }
 }

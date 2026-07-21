@@ -440,11 +440,38 @@ public class ChatsStorage
 
     // ---- Федеративные DM (этап 2.3) ---------------------------------------
 
+    /// <summary>
+    /// FederatedStatus чата (для нефедеративных всегда Active — поле для них не используется).
+    /// Null, если чат не найден.
+    /// </summary>
+    public Task<FederatedStatus?> GetFederatedStatusAsync(Guid chatId)
+    {
+        return _context.Chats
+            .Where(c => c.Id == chatId)
+            .Select(c => (FederatedStatus?)c.FederatedStatus)
+            .FirstOrDefaultAsync();
+    }
+
     public Task<Chat?> GetFederatedChatAsync(Guid chatId)
     {
         return _context.Chats
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == chatId && c.IsFederated);
+    }
+
+    /// <summary>
+    /// Помечает fed-чат Rejected (этап 2.5, FederatedChatRejectedEvent). No-op, если чат не найден
+    /// или уже не Active (идемпотентно — повторная доставка события не должна ничего сломать).
+    /// </summary>
+    public async Task<bool> MarkFederatedChatRejectedAsync(Guid chatId)
+    {
+        var chat = await _context.Chats.FirstOrDefaultAsync(c => c.Id == chatId && c.IsFederated);
+        if (chat is null || chat.FederatedStatus != Domain.FederatedStatus.Active)
+            return false;
+
+        chat.FederatedStatus = Domain.FederatedStatus.Rejected;
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     public Task<Chat?> FindActiveFederatedChatByUuidPairAsync(Guid uuidLow, Guid uuidHigh)
