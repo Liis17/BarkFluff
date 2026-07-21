@@ -58,6 +58,8 @@ Client → SetOnlineStatus (gRPC)
 
 ### Метрики
 
+📄 Полный реестр метрик → [[Backend/Onliner-Metrics]]
+
 Краткий список метрик:
 
 - **gRPC counters:** `get_online_status_requests`, `get_online_status_user_ids_total` (кумулятивная сумма всех запрошенных user_ids — `_metrics.Add`, не Increment), `set_online_status_requests` (heartbeat), `subscribe_requests`, `change_users_in_subscription_requests`
