@@ -11,6 +11,7 @@ using BarkFluff.Proto.Users;
 using Grpc.Core;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
@@ -20,7 +21,7 @@ public class DeliverEventsTests
 {
     private const string Origin = "peer.test";
 
-    private static (FederationContext Context, FederationS2SApiService Service) Create()
+    private static (FederationContext Context, FederationS2SApiService Service) Create(IChatCreatedQuotaLimiter? quotaLimiter = null)
     {
         var context = TestHelpers.CreateContext();
         var service = new FederationS2SApiService(
@@ -29,11 +30,14 @@ public class DeliverEventsTests
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
             Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
             context,
-            new MetricsCollector());
+            new MetricsCollector(),
+            quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
+            NullLogger<FederationS2SApiService>.Instance);
         return (context, service);
     }
 
-    private static (FederationContext Context, FederationS2SApiService Service, Mock<MessagesServerApi.MessagesServerApiClient> MessagesMock) CreateWithMessagesMock()
+    private static (FederationContext Context, FederationS2SApiService Service, Mock<MessagesServerApi.MessagesServerApiClient> MessagesMock) CreateWithMessagesMock(
+        IChatCreatedQuotaLimiter? quotaLimiter = null)
     {
         var context = TestHelpers.CreateContext();
         var messagesMock = new Mock<MessagesServerApi.MessagesServerApiClient>();
@@ -43,7 +47,9 @@ public class DeliverEventsTests
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
             messagesMock.Object,
             context,
-            new MetricsCollector());
+            new MetricsCollector(),
+            quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
+            NullLogger<FederationS2SApiService>.Instance);
         return (context, service, messagesMock);
     }
 
@@ -77,6 +83,24 @@ public class DeliverEventsTests
                     Uuid = Guid.NewGuid().ToString(),
                     ServerName = authorServer ?? origin,
                 },
+            },
+        };
+        EventSigner.Sign(evt, key);
+        return evt;
+    }
+
+    private static FederationEvent SignedChatCreated(FederationSigningKey key, string origin = Origin)
+    {
+        var evt = new FederationEvent
+        {
+            EventId = Guid.NewGuid().ToString(),
+            OriginServer = origin,
+            OriginTsMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ChatCreated = new ChatCreatedPayload
+            {
+                ChatId = Guid.NewGuid().ToString(),
+                Initiator = new FederatedUser { Uuid = Guid.NewGuid().ToString(), ServerName = origin },
+                Invitee = new FederatedUser { Uuid = Guid.NewGuid().ToString(), ServerName = TestHelpers.OwnServerName },
             },
         };
         EventSigner.Sign(evt, key);
@@ -425,6 +449,40 @@ public class DeliverEventsTests
                 && r.UpToFederatedMessageId == evt.MessagesRead.UpToFederatedMessageId
                 && r.OriginServer == Origin),
             null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_ChatCreatedQuotaExceeded_RetryAndNotRouted()
+    {
+        // Этап 2.5: квота per-origin — превышение не должно долетать до Messages, RETRY (не порча события).
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedChatCreated(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Retry);
+        messagesMock.Verify(c => c.ImportFederatedChatAsync(
+            It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Never);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_ChatCreatedWithinQuota_RoutedToImportFederatedChat()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = false });
+        messagesMock.Setup(c => c.ImportFederatedChatAsync(It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ImportFederatedChatResponse>(
+                Task.FromResult(new ImportFederatedChatResponse { Imported = true }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedChatCreated(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ImportFederatedChatAsync(
+            It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -7,11 +7,15 @@ using BarkFluff.GrpcServer.Metrics;
 
 using Grpc.Core;
 
+using MassTransit;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using Moq;
 
 namespace BarkFluff.Federation.Tests.Infrastructure;
 
@@ -69,7 +73,8 @@ public static class TestHelpers
         IConfiguration? configuration = null,
         IWellKnownClient? wellKnownClient = null,
         INavigatorClient? navigatorClient = null,
-        ServernameValidator? servernameValidator = null)
+        ServernameValidator? servernameValidator = null,
+        IPublishEndpoint? publishEndpoint = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -86,6 +91,8 @@ public static class TestHelpers
         services.AddSingleton<IS2SChannelInvalidator>(sp => sp.GetRequiredService<S2SChannelFactory>());
         services.AddScoped<ServerResolver>();
         services.AddSingleton<DiscoveryTriggerRateLimiter>();
+        // OutboxDispatcher (2.5) публикует FederatedChatRejectedEvent на privacy-DeadLetter.
+        services.AddSingleton(publishEndpoint ?? Mock.Of<IPublishEndpoint>());
         return services.BuildServiceProvider();
     }
 

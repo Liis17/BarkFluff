@@ -21,6 +21,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Serilog;
 
+using StackExchange.Redis;
+
 namespace BarkFluff.Federation;
 
 public class Program
@@ -80,6 +82,12 @@ public class Program
         builder.Services.AddScoped<ServerResolver>();
         builder.Services.AddSingleton<DiscoveryTriggerRateLimiter>();
         builder.Services.AddHostedService<PeerRefreshBackgroundService>();
+
+        // Redis (этап 2.5) — квота ChatCreated per-origin (ChatCreatedQuotaLimiter).
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
+                ?? throw new InvalidOperationException("Redis configuration is missing")));
+        builder.Services.AddSingleton<IChatCreatedQuotaLimiter, ChatCreatedQuotaLimiter>();
 
         // Outbox (этап 2.2): writer + диспетчер + janitor.
         builder.Services.AddScoped<OutboxWriter>();

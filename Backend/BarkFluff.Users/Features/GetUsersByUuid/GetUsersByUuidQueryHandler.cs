@@ -13,15 +13,18 @@ public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, G
 {
     private readonly UsersStorage _usersStorage;
     private readonly RemoteUsersStorage _remoteUsersStorage;
+    private readonly PrivacyStorage _privacyStorage;
     private readonly MetricsCollector _metrics;
 
     public GetUsersByUuidQueryHandler(
         UsersStorage usersStorage,
         RemoteUsersStorage remoteUsersStorage,
+        PrivacyStorage privacyStorage,
         MetricsCollector metrics)
     {
         _usersStorage = usersStorage;
         _remoteUsersStorage = remoteUsersStorage;
+        _privacyStorage = privacyStorage;
         _metrics = metrics;
     }
 
@@ -41,6 +44,12 @@ public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, G
 
         var localUsers = await _usersStorage.GetByUuids(parsed);
         var localByUuid = localUsers.ToDictionary(u => u.Uuid);
+
+        // Privacy для локальных (этап 2.5) — батч, без похода в БД на каждого пользователя.
+        var localUserIds = localUsers.Where(u => !u.IsDraft).Select(u => u.Id).ToList();
+        var privacyByUserId = localUserIds.Count > 0
+            ? (await _privacyStorage.GetByUserIds(localUserIds)).ToDictionary(p => p.UserId)
+            : new Dictionary<long, Domain.Privacy>();
 
         var remoteUuids = parsed.Where(u => !localByUuid.ContainsKey(u)).ToList();
         var remoteUsers = remoteUuids.Count > 0
@@ -70,6 +79,7 @@ public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, G
                     Bio = local.Bio ?? string.Empty,
                     AvatarFileId = local.ProfilePicture ?? string.Empty,
                     UserId = local.Id,
+                    DenyFederatedDm = privacyByUserId.TryGetValue(local.Id, out var privacy) && privacy.DenyFederatedDm,
                 });
             }
             else if (remoteByUuid.TryGetValue(uuid, out var remote))

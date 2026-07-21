@@ -11,13 +11,15 @@ using Microsoft.Extensions.Configuration;
 
 namespace BarkFluff.Messages.Features.ImportFederatedChat;
 
-// Применение входящего ChatCreated (docs/rearch/05, шаги 1-5 в step-2.3):
+// Применение входящего ChatCreated (docs/rearch/05, шаги в step-2.3/2.5):
 // 1) invitee — локальный активный пользователь этой ноды (резолв через Users.GetUsersByUuid);
-// 2) upsert профиля инициатора (Users.UpsertRemoteUsers);
-// 3) анти-дубль: чат с этим ChatId уже есть → OK (идемпотентность); Active fed-DM той же UUID-пары
-//    с другим ChatId → REJECTED:DuplicateFederatedDm (протокол слияния — этап 2.7);
-// 4) создать копию чата с парой участников (local + remote);
-// 5) privacy-проверка AllowFederatedDm — этап 2.5; здесь принимаем всех.
+// 2) идемпотентность: чат с этим ChatId уже есть → OK;
+// 3) privacy: invitee.DenyFederatedDm=true и чат новый → REJECTED:FederatedDmRejected (этап 2.5;
+//    OutboxDispatcher origin-ноды превратит это в FederatedChatRejectedEvent);
+// 4) upsert профиля инициатора (Users.UpsertRemoteUsers);
+// 5) анти-дубль: Active fed-DM той же UUID-пары с другим ChatId → REJECTED:DuplicateFederatedDm
+//    (протокол слияния — этап 2.7);
+// 6) создать копию чата с парой участников (local + remote).
 public class ImportFederatedChatCommandHandler : IRequestHandler<ImportFederatedChatCommand, ImportFederatedChatResponse>
 {
     private readonly ChatsStorage _chatsStorage;
@@ -71,10 +73,21 @@ public class ImportFederatedChatCommandHandler : IRequestHandler<ImportFederated
             throw new UnknownInviteeException();
         }
 
-        // Идемпотентность: чат уже импортирован.
+        // Идемпотентность: чат уже импортирован (повторная доставка ChatCreated не должна упасть,
+        // даже если invitee включил запрет позже — privacy действует только на НОВЫЕ fed-чаты).
         var existing = await _chatsStorage.GetFederatedChatAsync(chatId);
         if (existing is not null)
             return new ImportFederatedChatResponse { Imported = false };
+
+        // Privacy-отказ (этап 2.5): проверяется только для нового чата.
+        if (invitee.DenyFederatedDm)
+        {
+            _logger.LogInformation(
+                "ImportFederatedChat: invitee {InviteeUuid} запретил входящие fed-DM — чат {ChatId} отклонён",
+                inviteeUuid, chatId);
+            _metrics.Increment("federation_import_chat_rejected_privacy");
+            throw new FederatedDmRejectedException();
+        }
 
         // (2) upsert профиля инициатора. LocalUuidCollision/ServerNameMismatch → permanent отказ.
         var initiatorProfile = await _usersClient.UpsertRemoteUsersAsync(

@@ -98,6 +98,9 @@ public sealed class FederationTestHost : IAsyncDisposable
                     // импорт-RPC (для них есть отдельные юнит-тесты), но активация требует регистрации.
                     var messagesClientMock = new Mock<MessagesServerApi.MessagesServerApiClient>();
                     services.AddSingleton(messagesClientMock.Object);
+
+                    // Квота ChatCreated (этап 2.5) — фейк без Redis, всегда пропускает.
+                    services.AddSingleton<IChatCreatedQuotaLimiter>(new FakeChatCreatedQuotaLimiter());
                 });
 
                 webHost.Configure(app =>

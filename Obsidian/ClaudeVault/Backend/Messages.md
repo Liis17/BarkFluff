@@ -255,3 +255,20 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 ### Новые исключения
 
 `FederatedOriginMismatchException` (`Shared.Exceptions/Messages/`, default `FailedPrecondition` → REJECTED) — P2-02: событие говорит не за своих.
+
+## Privacy DenyFederatedDm + отказ до отправителя (этап 2.5, docs/rearch/phase-2/step-2.5-privacy-antispam.md)
+
+- `ImportFederatedChatCommandHandler`: после идемпотентности (чат уже импортирован — пропускаем
+  privacy-проверку, флаг влияет только на НОВЫЕ чаты) проверяет `invitee.DenyFederatedDm` (из
+  `UsersServerApi.GetUsersByUuid`, см. [[Backend/Users]]) → `FederatedDmRejectedException`.
+- `FederatedDmRejectedException` (`Shared.Exceptions/Messages/`) — единственное исключение в проекте
+  с ErrorCode-**строкой**, а не GUID: `"FederatedDmRejected"` (не `default FailedPrecondition` по коду,
+  сам код совпадает с `x-error-code`, который сверяет `OutboxDispatcher` origin-ноды — см.
+  [[Backend/Federation]]).
+- `FederatedChatRejectedConsumer` (MassTransit, очередь `federated-chat-rejected-messages`): получает
+  `FederatedChatRejectedEvent` от Federation → `ChatsStorage.MarkFederatedChatRejectedAsync` ставит
+  `Chat.FederatedStatus = Rejected` (idempotent: no-op, если чат не найден или уже не Active).
+- `SendMessageCommandHandler`: для существующего чата дополнительно проверяет
+  `ChatsStorage.GetFederatedStatusAsync` — `Rejected` → `FederatedDmRejectedException` (та же ошибка,
+  что и при первичном отказе; повторная отправка в отклонённый чат не уходит в бесконечный RETRY через
+  Federation, а падает сразу на этой ноде).

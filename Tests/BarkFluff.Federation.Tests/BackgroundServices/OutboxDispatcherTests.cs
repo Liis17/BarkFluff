@@ -5,23 +5,29 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Shared.Queue.Federation;
 
 using Google.Protobuf;
+
+using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using Moq;
 
 namespace BarkFluff.Federation.Tests.BackgroundServices;
 
 public class OutboxDispatcherTests
 {
     private static async Task<(TestHelpers.TestDatabase Db, ServiceProvider Provider, OutboxDispatcher Dispatcher)> CreateDispatcherAsync(
-        IDictionary<string, string?>? configOverrides = null)
+        IDictionary<string, string?>? configOverrides = null,
+        IPublishEndpoint? publishEndpoint = null)
     {
         var db = TestHelpers.CreateDatabase();
         var configuration = TestHelpers.CreateConfiguration(configOverrides);
-        var provider = TestHelpers.CreateProvider(db, configuration);
+        var provider = TestHelpers.CreateProvider(db, configuration, publishEndpoint: publishEndpoint);
 
         // Активный ключ нужен XFedClientInterceptor'у при реальных исходящих вызовах.
         await using (var seed = TestHelpers.CreateContext(db))
@@ -315,6 +321,76 @@ public class OutboxDispatcherTests
             var noResultRow = await ReloadAsync(db, noResult.Id);
             noResultRow.Attempts.Should().Be(1);
             noResultRow.LastError.Should().Be("no_result");
+        }
+    }
+
+    [Fact]
+    public async Task Dispatch_FederatedDmRejected_PublishesFederatedChatRejectedEvent()
+    {
+        // Этап 2.5: privacy-отказ ChatCreated (DenyFederatedDm) на DeadLetter → origin-нода узнаёт
+        // через FederatedChatRejectedEvent и помечает свою копию чата Rejected.
+        var stub = new StubS2SApi();
+        await using var server = await LoopbackS2SServer.StartAsync(stub);
+        var publishMock = new Mock<IPublishEndpoint>();
+
+        var (db, provider, dispatcher) = await CreateDispatcherAsync(publishEndpoint: publishMock.Object);
+        using (provider)
+        {
+            await SeedManualPeerAsync(db, server.HostName, server.Endpoint);
+            var chatId = Guid.NewGuid();
+            var rejected = await SeedRowAsync(db, server.HostName, chatId);
+
+            stub.OnDeliverEvents = request => new DeliverEventsResponse
+            {
+                Results =
+                {
+                    new EventResult { EventId = rejected.EventId.ToString(), Status = EventStatus.Rejected, ErrorCode = "FederatedDmRejected" },
+                },
+            };
+
+            await dispatcher.StartAsync(CancellationToken.None);
+            await TestHelpers.WaitUntilAsync(
+                async () => (await ReloadAsync(db, rejected.Id)).Status == OutboxStatus.DeadLetter,
+                "строка должна уйти в DeadLetter");
+            await dispatcher.StopAsync(CancellationToken.None);
+
+            publishMock.Verify(p => p.Publish(
+                It.Is<FederatedChatRejectedEvent>(e => e.ChatId == chatId && e.Reason == "FederatedDmRejected"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+    }
+
+    [Fact]
+    public async Task Dispatch_RejectedWithoutChatId_DoesNotPublishFederatedChatRejectedEvent()
+    {
+        // Вне-чатовые события (ChatId=null, напр. профильные 2.9) не порождают FederatedChatRejectedEvent.
+        var stub = new StubS2SApi();
+        await using var server = await LoopbackS2SServer.StartAsync(stub);
+        var publishMock = new Mock<IPublishEndpoint>();
+
+        var (db, provider, dispatcher) = await CreateDispatcherAsync(publishEndpoint: publishMock.Object);
+        using (provider)
+        {
+            await SeedManualPeerAsync(db, server.HostName, server.Endpoint);
+            var rejected = await SeedRowAsync(db, server.HostName, chatId: null);
+
+            stub.OnDeliverEvents = request => new DeliverEventsResponse
+            {
+                Results =
+                {
+                    new EventResult { EventId = rejected.EventId.ToString(), Status = EventStatus.Rejected, ErrorCode = "FederatedDmRejected" },
+                },
+            };
+
+            await dispatcher.StartAsync(CancellationToken.None);
+            await TestHelpers.WaitUntilAsync(
+                async () => (await ReloadAsync(db, rejected.Id)).Status == OutboxStatus.DeadLetter,
+                "строка должна уйти в DeadLetter");
+            await dispatcher.StopAsync(CancellationToken.None);
+
+            publishMock.Verify(p => p.Publish(
+                It.IsAny<FederatedChatRejectedEvent>(),
+                It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

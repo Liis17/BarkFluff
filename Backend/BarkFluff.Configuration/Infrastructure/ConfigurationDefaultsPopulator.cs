@@ -352,6 +352,12 @@ public class ConfigurationDefaultsPopulator
             return "false";
         }
 
+        // --- Federation:ChatCreatedHourlyLimit (квота per-origin, этап 2.5) ---
+        if (config.Section == "Federation" && config.Key == "ChatCreatedHourlyLimit")
+        {
+            return "100";
+        }
+
         // --- FederationService (inter-service, для будущих клиентов сервиса Federation) ---
         if (config.Section == "FederationService")
         {

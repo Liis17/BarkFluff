@@ -1,4 +1,4 @@
-# Handoff — Фаза 2 (федеративные DM), состояние на 2026-07-21 (обновлено после 2.4)
+# Handoff — Фаза 2 (федеративные DM), состояние на 2026-07-21 (обновлено после 2.5)
 
 ## Общая картина
 
@@ -12,7 +12,8 @@
 | 2.2 | `cb866333` | Outbox, `ProcessedEvents`, консюмеры, `DeliverEvents` |
 | fixes | `f0865a07` | P2-01/03/05/08/11 — фиксы shipped-кода 2.1/2.2 |
 | 2.3 | `aafe8797` | Импорт федеративных чатов и сообщений (`ImportFederatedChat/Message`) |
-| 2.4 | *(следующий коммит)* | Edit/Delete/Read федеративных DM + LWW — детали ниже |
+| 2.4 | `bb3e8157` | Edit/Delete/Read федеративных DM + LWW |
+| 2.5 | *(следующий коммит)* | Privacy `DenyFederatedDm`, отказ до отправителя, квота `ChatCreated` — детали ниже |
 
 ### Этап 2.4 — реализован
 
@@ -28,33 +29,21 @@
 - **Obsidian**: `Backend/Messages.md` дополнен разделом «Edit/Delete/Read федеративных DM + LWW (этап 2.4)».
 - **Не сделано в 2.4** (осознанно, по плану): `ExportChatEvents`/`FetchChatHistory`/catch-up после RETRY — этап 2.6. Вложения при правке — семантика в Фазе 3. Клиентский рендер `federated_read_by` — Фаза 5.
 
-### Ранее выполнено, **не закоммичено на момент записи** (уже закоммичено как 2.3, см. таблицу выше)
+### Этап 2.5 — реализован
 
-**2.3 полностью реализован в staging:**
+- **Users**: `Privacy.DenyFederatedDm` (bool, default false) + миграция `20260721040000_AddDenyFederatedDm`; `PrivacyMapping`/`PrivacyStorage.Update` дополнены. `GetUsersByUuidQueryHandler` отдаёт флаг в `UserProfileByUuid.deny_federated_dm` для локальных (батч через новый `PrivacyStorage.GetByUserIds` — без похода в БД на каждого); remote всегда `false`. Proto-поле `deny_federated_dm` в `PrivacySettings`(7) уже существовало с 0.4.
+- **`FederatedDmRejectedException`** (`Shared.Exceptions/Messages/`) — единственное исключение в проекте с `ErrorCode` = литеральная строка `"FederatedDmRejected"` (не GUID): так `OutboxDispatcher` сравнивает `x-error-code` напрямую.
+- **`ImportFederatedChatCommandHandler`**: после идемпотентности (существующий чат — privacy не проверяется, флаг влияет только на новые чаты) проверяет `invitee.DenyFederatedDm` → бросает исключение выше.
+- **`FederatedChatRejectedEvent`** (`Shared.Queue.Federation`, `{ Guid ChatId, string Reason }`). Publisher — `OutboxDispatcher.DispatchDestinationAsync`: при `Rejected` с `ErrorCode == "FederatedDmRejected"` и `row.ChatId.HasValue` — публикует через `IPublishEndpoint` (раньше был TODO-стаб `PublishChatRejected`, оставленный этапом 2.2). Consumer — новый `Messages.Consumers.FederatedChatRejectedConsumer` (очередь `federated-chat-rejected-messages`) → `ChatsStorage.MarkFederatedChatRejectedAsync` ставит `Chat.FederatedStatus = Rejected` (idempotent).
+- **`SendMessageCommandHandler`**: для существующего чата дополнительно проверяет `ChatsStorage.GetFederatedStatusAsync` — `Rejected` → `FederatedDmRejectedException` сразу на этой ноде (не уходит в бесконечный RETRY через Federation).
+- **Квота `ChatCreated` per-origin**: `Federation.Services.ChatCreatedQuotaLimiter` (`IChatCreatedQuotaLimiter`) — Redis-счётчик `fed:chatcreated:{origin}:{yyyyMMddHH}`, лимит `Federation:ChatCreatedHourlyLimit` (default 100). Проверяется в `RouteToInternalAsync`, `case ChatCreated`, до вызова `ImportFederatedChat` — превышение → `RETRY` + метрика `chatcreated_quota_exceeded.{origin}` + warning-лог (добавлен `ILogger<FederationS2SApiService>`, которого раньше не было). Federation получил первую зависимость от Redis (`Microsoft.Extensions.Caching.StackExchangeRedis` пакет + `IConnectionMultiplexer` в DI).
+- **Configuration**: новая миграция `20260721050000_AddFederationChatCreatedQuotaConfiguration` (`Federation:ChatCreatedHourlyLimit` + `Redis` под ServiceId=15) + default `"100"` в `ConfigurationDefaultsPopulator`.
+- **Найден и исправлен баг из 2.3**: миграция `20260721020000_AddFederationMessagesServiceConfiguration` сеяла `MessagesService:Host/Token` под `ServiceId=6` (Messages) вместо `ServiceId=15` (Federation) — по образцу `AddBotsConfiguration`, где тот же `MessagesService` заведён под ServiceId Bots=14, каждый потребитель хранит ключ в СВОЁМ бакете. Итог бага: `builder.LoadConfiguration(ServiceId.Federation)` никогда не получил бы эти значения — Federation упал бы при старте (`new Uri(null!)` в `AddGrpcClient<MessagesServerApi...>`). Исправлено прямым редактированием миграции (не fix-forward: миграция создана в этой же цепочке работы, ещё не применялась ни к одной реальной БД).
+- **Tests**: Federation.Tests 208/208 (было 204, +4: 2 OutboxDispatcher FederatedChatRejectedEvent + 2 DeliverEvents quota routing/RETRY). Messages.Tests 290/298 passed (было 282, +8: ImportFederatedChat×4, SendMessage Rejected×1, FederatedChatRejectedConsumer×3), те же 8 pre-existing failures. Users.Tests 291/293 passed (+6: PrivacyMapping DenyFederatedDm roundtrip обновлён, GetUsersByUuidQueryHandlerTests новый файл×3) — **1 pre-existing непричастный к 2.5 сбой**: `DevicesStorageConcurrencyTests.RegisterOrUpdateDevice_ConcurrentCalls_KeepSingleDevice` (реальная гонка двух SQLite-соединений, падает детерминированно на этой машине независимо от моих изменений — не чинил, вне скоупа 2.5).
+- **Obsidian**: `Backend/Users.md` (DenyFederatedDm), `Backend/Messages.md` (Rejected-статус, консюмер), `Backend/Federation.md` (квота + FederatedChatRejectedEvent, попутно актуализирован раздел DeliverEvents/консюмеров, отстававший с 2.2), `Shared/Queue.md` (FederatedChatRejectedEvent).
+- **Не сделано в 2.5** (осознанно, по плану): пользовательская блокировка конкретных отправителей, клиентский UI-тумблер (Фаза 5), автоблок ноды по квоте (только метрика + ручной блок).
 
-- **Domain**: `Chat.IsFederated/FederatedStatus/FederatedUuidLow+High`; `ChatMember.UserId` nullable + `ServerName`; `Message.SenderId` nullable; `FederatedStatus` enum; `FederatedMessageEvent` entity; `ChatMemberExtensions.LocalUserIds()`.
-- **EF Core**: `MessagesContext` + Configurations (`FederatedStatus` default, unique index UUID-пары, `FederatedMessageEvent`); миграция `20260721010000_AddFederatedChatSchema` (ручная, три файла); snapshot обновлён.
-- **Config migration**: `20260721020000_AddFederationMessagesServiceConfiguration`.
-- **Proto**: `messages_api.proto` → `invitee_uuid` в `ImportFederatedChatRequest`, `raw_event` в `ImportFederatedMessageRequest`; `users_api.proto` → `user_id` в `UserProfileByUuid`.
-- **Exceptions** (9 новых): `ChatUnknownException`, `DuplicateFederatedDmException`, `FederatedGroupsNotSupported`, `FederatedMessageUnknownException`, `RemoteProfileRejectedException`, `RemoteUserNotResolvedException`, `TimestampInFutureException`, `UnknownInviteeException`, `MessageTextTooLongException`, `TooManyAttachmentsException`.
-- **Helpers**: `FederationImportValidator` (clamp меток, лимиты, origin-проверка), `FederatedUuidPair`.
-- **ImportFederatedChatCommandHandler**: валидация → upsert initiator → анти-дубль UUID-пары → создание чата.
-- **ImportFederatedMessageCommandHandler**: валидация → идемпотентность → вставка `Message` → `FederatedMessageEvents` → `NewMessageEvent`.
-- **SendMessageCommandHandler**: ветка `request.UserUuid` (резолв через `Users.GetUsersByUuid`, создание/reuse fed-чата, публикация с fed-полями).
-- **GetPersonChatIdCommandHandler**: ветка `UserUuid` (только find, без авто-создания).
-- **MessageQueueSender**: `SendImportedMessage` (без remote-публикации), `SendFederatedMessage` (исходящий fed-путь).
-- **MessagesApiService**: `source_id OneofCase.UserUuid` → ветка с uuid-peer.
-- **MessagesServerApiService**: `ImportFederatedChat`, `ImportFederatedMessage` (остальные Unimplemented).
-- **Mapping**: `MessageMapping` → `federated_id`/`sender_uuid`; `ChatMemberMapping` → `user_uuid`/`server_name`.
-- **Federation.csproj**: добавлен `messages_api.proto` (GrpcServices=Client).
-- **FederationS2SApiService**: `MessagesServerApiClient` зарегистрирован; `RouteToInternalAsync` отправляет `ChatCreated→ImportFederatedChat`, `NewMessage→ImportFederatedMessage`, остальное → RETRY.
-- **NewMessageFederationConsumer**: парсит `byte[] Message` (proto `barkfluff.shared.Message`) для текста; кладёт `Text` и `Sender.Username` (парсинг SenderFid).
-- **MessageMapping**: добавлено отображение `FederatedId` и `SenderUuid` в proto.
-- **ChatMemberMapping**: добавлено отображение `UserUuid` и `ServerName` в proto.
-- **Tests**: Federation.Tests **198/198 passed**; новые тесты `FederationImportValidatorTests` (10) + `FederatedUuidPairTests` (1) — pass. Починены: `FederationS2SApiService` конструктор, `NewMessageFederationConsumerTests.Username`, `DeliverEventsTests` (маршрутизация в Messages).
-- **Obsidian** дополнен: `Backend/Messages.md` (секция федеративных DM), `Shared/Queue.md` (федеративный контекст событий).
-
-### Pre-existing баги (не от 2.3)
+### Pre-existing баги (не от федерации)
 
 8 падающих тестов в `Messages.Tests` (не связаны с федерацией):
 - `GetChatInfoCommandHandlerTests`, `CreatePrivateChatCommandHandlerTests`, `RejectPrivateChatCommandHandlerTests`, `SendPrivateMessageCommandHandlerTests` — NRE от `GetMutedChatIdsAsync`/`PrivateChatInviteNotFoundException`.
@@ -69,18 +58,10 @@
 ## Следующие этапы (читать каждый план перед реализацией)
 
 ### 2.4 — Edit/Delete/Read через федерацию + LWW — ГОТОВО
+См. секцию «Этап 2.4 — реализован» выше.
 
-См. секцию «Этап 2.4 — реализован» выше. Файл плана `step-2.4-edit-delete-read-lww.md` выполнен полностью, кроме явно отложенного в 2.6/Фазу 3/Фазу 5.
-
-### 2.5 — Privacy AllowFederatedDm, отказ до отправителя, квота
-**Файл плана**: `step-2.5-privacy-antispam.md`
-
-Что делать:
-- Users: `DenyFederatedDm` поле в privacy-модели + миграция + маппинг `deny_federated_dm` в proto
-- Messages: `ImportFederatedChat` проверяет `DenyFederatedDm` → `FederatedDmRejected` (permanent REJECTED)
-- `FederatedChatRejectedEvent` Queue-событие → консюмер → `Chat.FederatedStatus = Rejected`
-- Квота `ChatCreated` per-origin: Redis-счётчик `fed:chatcreated:{origin}:{hour}`, лимит `Federation:ChatCreatedHourlyLimit` (default 100)
-- Повторная отправка в Rejected-чат → понятная ошибка
+### 2.5 — Privacy DenyFederatedDm, отказ до отправителя, квота — ГОТОВО
+См. секцию «Этап 2.5 — реализован» выше. Файл плана `step-2.5-privacy-antispam.md` выполнен полностью.
 
 ### 2.6 — Catch-up: ExportChatEvents, FetchChatHistory, SyncChatStates
 **Файл плана**: `step-2.6-catchup.md`
@@ -159,17 +140,23 @@
 `Backend/dev-federation-testbed/` — двух-нодовый стенд. node2 пока не имеет сервисов Users/Messages/Updates (будет добавлено в конце 2.3 или отдельно). До этого E2E-проверки только юнит-тестами.
 
 ### Тесты
-- Federation.Tests — **204/204 passed** (после изменений 2.4; было 198 после 2.3)
-- Messages.Tests — **282/290 passed**, 8 pre-existing failures (не от федерации — см. раздел выше)
+- Federation.Tests — **208/208 passed** (после изменений 2.5; было 204 после 2.4, 198 после 2.3)
+- Messages.Tests — **290/298 passed**, 8 pre-existing failures (не от федерации — см. раздел выше)
+- Users.Tests — **291/293 passed**, 1 pre-existing failure не от 2.5 (SQLite-гонка в `DevicesStorageConcurrencyTests`, см. раздел «Этап 2.5»), 1 skipped
 - Новые тесты 2.3: `FederationImportValidatorTests` (10), `FederatedUuidPairTests` (1)
 - Новые тесты 2.4: `LwwResolverTests` (10), `ApplyFederatedEditCommandHandlerTests` (7), `ApplyFederatedDeleteCommandHandlerTests` (6), `ApplyFederatedReadCommandHandlerTests` (6), точечные добавления в EditMessage/DeleteMessage/MarkAsRead/SendMessage/ListMessages тесты + Federation `DeliverEventsTests`/`MessageEditedFederationConsumerTests`
+- Новые тесты 2.5: `ImportFederatedChatCommandHandlerTests` (4), `FederatedChatRejectedConsumerTests` (3), `GetUsersByUuidQueryHandlerTests` (3, Users.Tests), точечные добавления в `SendMessageCommandHandlerTests`, `PrivacyMappingTests`, Federation `OutboxDispatcherTests`/`DeliverEventsTests`
 
 ### Уже реализованные infra-зависимости (не менять)
-- `ChatsStorage` → методы `GetFederatedChatAsync`, `FindActiveFederatedChatByUuidPairAsync`, `CreateFederatedChatAsync`
+- `ChatsStorage` → методы `GetFederatedChatAsync`, `FindActiveFederatedChatByUuidPairAsync`, `CreateFederatedChatAsync`, `GetFederatedStatusAsync`, `MarkFederatedChatRejectedAsync` (2.5)
 - `MessageQueueSender` → `SendImportedMessage`, `SendFederatedMessage`, `SendEdited`/`SendDeleted` (fed-поля — опциональные параметры, этап 2.4)
 - `ReadByQueueSender.SendEvent` — fed-поля опциональными параметрами (этап 2.4)
 - `FederatedReadStatesStorage` → `UpsertAsync` (идемпотентно, монотонно через `LwwResolver.ShouldApplyRead`), `GetForChatAsync`
 - `Features.Federation.LwwResolver` → `ShouldApplyMessageChange`, `ShouldApplyRead` — переиспользовать, не дублировать логику LWW в новом коде
 - `Features.Federation.FederationImportValidator.ResolveHomeServer(chat, uuid, ownServer)` — резолв домашней ноды участника fed-чата по `ChatMember`, без обращения к Users
+- `Users.PrivacyStorage.GetByUserIds(userIds)` — батч-чтение Privacy для `GetUsersByUuid` (2.5)
+- `Federation.Services.IChatCreatedQuotaLimiter` / `ChatCreatedQuotaLimiter` — квота ChatCreated per-origin (2.5); тестовый двойник `FakeChatCreatedQuotaLimiter` в `Federation.Tests.Infrastructure`
+- `FederatedDmRejectedException.ErrorCode` — литеральная строка `"FederatedDmRejected"` (единственное исключение проекта вне GUID-паттерна, см. «Этап 2.5»)
 - Маппинг Federation для `RpcException.StatusCode → EventStatus`: FailedPrecondition/InvalidArgument/PermissionDenied/AlreadyExists → REJECTED; NotFound/Unavailable/DeadlineExceeded/Aborted/Cancelled → RETRY
 - `Message.SenderId` nullable, `ChatMember.UserId` nullable — все хендлеры выдачи используют `ChatMemberExtensions.LocalUserIds()` для фильтрации remote-участников
+- **ServiceId для Configuration-миграций сервисов**: `BarkFluff.Shared.Identity.ServiceId` (Federation=15, Messages=6, Bots=14, ...) — каждый потребитель inter-service ключа (`XxxService:Host/Token`) хранит его в СВОЁМ ServiceId-бакете, не в бакете вызываемого сервиса (см. найденный баг 2.3 в разделе «Этап 2.5»)

@@ -208,6 +208,17 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 );
                 throw new NoAccessToChatException();
             }
+
+            // Fed-чат, отклонённый partner-нодой (privacy DenyFederatedDm, этап 2.5) — понятная
+            // ошибка вместо тихой отправки в чат, который вторая сторона никогда не увидит.
+            var federatedStatus = await _chatsStorage.GetFederatedStatusAsync(chatId.Value);
+            if (federatedStatus == FederatedStatus.Rejected)
+            {
+                _logger.LogWarning(
+                    "Попытка отправки в отклонённый fed-чат {ChatId} пользователем {UserId}",
+                    chatId.Value, senderId);
+                throw new FederatedDmRejectedException();
+            }
         }
 
         if (chatId is null)

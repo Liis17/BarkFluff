@@ -258,6 +258,25 @@ public class SendMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RejectedFederatedChat_ThrowsFederatedDmRejectedException()
+    {
+        // Этап 2.5: чат отклонён (invitee запретил fed-DM) — понятная ошибка вместо тихой отправки
+        // в чат, который вторая сторона никогда не увидит.
+        var userId = 1L;
+        var chat = await _h.SeedFederatedChat(
+            userId, Guid.NewGuid(), Guid.NewGuid(), "remote.test", Domain.FederatedStatus.Rejected);
+        var handler = CreateHandler(userId);
+
+        var act = async () => await handler.Handle(new SendMessageCommand
+        {
+            ChatId = chat.Id,
+            Message = new OutgoingMsg { Text = "hello" }
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<FederatedDmRejectedException>();
+    }
+
+    [Fact]
     public async Task Handle_UnsupportedFileType_ThrowsFileNotSupportedException()
     {
         var userId = 1L;
