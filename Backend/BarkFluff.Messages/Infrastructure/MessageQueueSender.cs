@@ -46,7 +46,8 @@ public class MessageQueueSender
         Guid senderUuid,
         string senderUsername,
         string senderServerName,
-        string ownServerName)
+        string ownServerName,
+        DateTimeOffset? lastChangeAt = null)
     {
         var newMessageEvent = new NewMessageEvent
         {
@@ -59,6 +60,7 @@ public class MessageQueueSender
             // RemoteParticipants для импортированного сообщения не нужен (отправлять никуда не надо),
             // но без них консюмер Federation просто не войдёт вpublish-ветку — что и требуется.
             RemoteParticipants = new List<FederatedParticipant>(),
+            LastChangeAt = lastChangeAt,
         };
 
         await _publishEndpoint.Publish(newMessageEvent);
@@ -79,7 +81,8 @@ public class MessageQueueSender
         bool isFirstMessageInChat,
         Guid? initiatorUuid,
         Guid? inviteeUuid,
-        string? senderFid)
+        string? senderFid,
+        DateTimeOffset? lastChangeAt = null)
     {
         var newMessageEvent = new NewMessageEvent
         {
@@ -94,6 +97,7 @@ public class MessageQueueSender
             InitiatorUuid = initiatorUuid,
             InviteeUuid = inviteeUuid,
             SenderFid = senderFid,
+            LastChangeAt = lastChangeAt,
         };
 
         await _publishEndpoint.Publish(newMessageEvent);
