@@ -38,6 +38,67 @@ public class MessageQueueSenderTests
     }
 
     [Fact]
+    public async Task SendFederatedMessage_WithLastChangeAt_SetsOnEvent()
+    {
+        // Баг #8: LastChangeAt раньше не выставлялся на NewMessageEvent, из-за чего
+        // NewMessageFederationConsumer падал на wall-clock время обработки вместо реального
+        // времени отправки.
+        var message = new Domain.Message
+        {
+            Id = 1,
+            ChatId = Guid.NewGuid(),
+            SenderId = 1,
+            SentAt = DateTime.UtcNow,
+            ReadBy = [1],
+            Type = Domain.MessageContentType.Generic,
+            Content = new Domain.MessageContent { Text = "hello" }
+        };
+        var chatId = Guid.NewGuid();
+        var federatedId = Guid.NewGuid();
+        var senderUuid = Guid.NewGuid();
+        var lastChangeAt = new DateTimeOffset(DateTime.UtcNow.AddMinutes(-5), TimeSpan.Zero);
+        var remoteParticipants = new List<Shared.Queue.Federation.FederatedParticipant>
+        {
+            new() { Uuid = Guid.NewGuid(), ServerName = "remote.test" },
+        };
+
+        await _sender.SendFederatedMessage(
+            message, chatId, [1], null, federatedId, senderUuid, remoteParticipants,
+            isFirstMessageInChat: false, initiatorUuid: null, inviteeUuid: null, senderFid: "@alice:remote.test",
+            lastChangeAt: lastChangeAt);
+
+        _publishEndpoint.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.NewMessageEvent>(e => e.LastChangeAt == lastChangeAt),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendImportedMessage_WithLastChangeAt_SetsOnEvent()
+    {
+        var message = new Domain.Message
+        {
+            Id = 1,
+            ChatId = Guid.NewGuid(),
+            SenderUuid = Guid.NewGuid(),
+            SentAt = DateTime.UtcNow,
+            ReadBy = [],
+            Type = Domain.MessageContentType.Generic,
+            Content = new Domain.MessageContent { Text = "hello" }
+        };
+        var chatId = Guid.NewGuid();
+        var senderUuid = Guid.NewGuid();
+        var lastChangeAt = new DateTimeOffset(DateTime.UtcNow.AddMinutes(-5), TimeSpan.Zero);
+
+        await _sender.SendImportedMessage(
+            message, chatId, [1], senderUuid, "alice", "remote.test", "home.test",
+            lastChangeAt: lastChangeAt);
+
+        _publishEndpoint.Verify(p => p.Publish(
+            It.Is<Shared.Queue.Messages.NewMessageEvent>(e => e.LastChangeAt == lastChangeAt),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task SendEdited_PublishesMessageEditedEvent()
     {
         var message = new Domain.Message
