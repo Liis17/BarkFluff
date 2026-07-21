@@ -79,14 +79,15 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
             throw new ChatUnknownException();
         }
 
-        // (2) статус.
+        // (2) статус. В отличие от "чат ещё не синхронизирован" (RETRY выше) — Rejected/Merged это
+        // перманентное состояние, ретраить бессмысленно.
         if (chat.FederatedStatus != FederatedStatus.Active)
         {
             // 2.5 (Rejected) / 2.7 (Merged) — пока принимаем только Active.
             _logger.LogWarning(
                 "ImportFederatedMessage: чат {ChatId} имеет статус {Status}, сообщение отклонено",
                 chatId, chat.FederatedStatus);
-            throw new ChatUnknownException();
+            throw new FederatedChatNotActiveException();
         }
 
         // (3) идемпотентность.

@@ -62,10 +62,18 @@ public class ApplyFederatedDeleteCommandHandler : IRequestHandler<ApplyFederated
         Guid.TryParse(r.EventId, out var incomingEventId);
 
         var chat = await _chatsStorage.GetFederatedChatAsync(chatId);
-        if (chat is null || chat.FederatedStatus != FederatedStatus.Active)
+        if (chat is null)
         {
             _logger.LogDebug("ApplyFederatedDelete: чат {ChatId} неизвестен → RETRY", chatId);
             throw new ChatUnknownException();
+        }
+
+        // Rejected/Merged — перманентное состояние (в отличие от "ещё не синхронизирован" выше),
+        // ретраить бессмысленно.
+        if (chat.FederatedStatus != FederatedStatus.Active)
+        {
+            _logger.LogDebug("ApplyFederatedDelete: чат {ChatId} не активен (статус {Status})", chatId, chat.FederatedStatus);
+            throw new FederatedChatNotActiveException();
         }
 
         var message = await _messagesStorage.GetByFederatedIdAsync(chatId, federatedId);
