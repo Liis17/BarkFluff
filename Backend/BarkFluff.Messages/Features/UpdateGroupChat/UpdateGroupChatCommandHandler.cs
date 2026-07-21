@@ -170,8 +170,7 @@ public class UpdateGroupChatCommandHandler : IRequestHandler<UpdateGroupChatComm
 
         _logger.LogDebug("Отправка системного сообщения об изменении чата");
 
-        await _messageQueueSender.SendMessage(systemMessage, request.ChatId, chatInfo.Members!
-            .Select(x => x.UserId).ToList());
+        await _messageQueueSender.SendMessage(systemMessage, request.ChatId, chatInfo.Members!.LocalUserIds());
 
         _metrics.Increment("group_chats_updated");
 

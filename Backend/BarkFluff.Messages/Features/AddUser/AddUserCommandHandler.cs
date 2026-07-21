@@ -115,7 +115,7 @@ public class AddUserCommandHandler : IRequestHandler<AddUserCommand>
 
         _logger.LogDebug("Отправка системного сообщения о добавлении пользователя");
 
-        var recipients = chatInfo.Members!.Select(x => x.UserId).ToList();
+        var recipients = chatInfo.Members!.LocalUserIds();
         recipients.Add(request.UserId);
 
         await _messageQueueSender.SendMessage(addSystemMessage, request.ChatId, recipients);

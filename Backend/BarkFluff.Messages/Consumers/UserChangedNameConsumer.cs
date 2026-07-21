@@ -52,7 +52,12 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
             {
                 var personDm = chat.Members![0].UserId == userId ? chat.Members[1].UserId : chat.Members[0].UserId;
 
-                await _chatCache.SetChatName(chat.Id, personDm, newName);
+                // Remote-участник fed-DM (этап 2.3) не имеет локального UserId — кеш чата
+                // ключуется по long id, для него неприменим (профиль remote-стороны — Users.RemoteUsers).
+                if (personDm is not { } personDmId)
+                    continue;
+
+                await _chatCache.SetChatName(chat.Id, personDmId, newName);
             }
 
             _logger.LogInformation(

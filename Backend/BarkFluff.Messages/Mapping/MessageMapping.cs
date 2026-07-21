@@ -15,7 +15,7 @@ public static class MessageMapping
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc)),
             ReadBy = { message.ReadBy },
-            SenderId = message.SenderId,
+            SenderId = message.SenderId ?? 0,
             Content = message.Content?.ToGrpc(),
             Type = (MessageContentType)(int)message.Type,
             IsEdited = message.IsEdited
@@ -25,6 +25,12 @@ public static class MessageMapping
         {
             grpc.EditedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.EditedAt.Value, DateTimeKind.Utc));
         }
+
+        if (message.FederatedId.HasValue)
+            grpc.FederatedId = message.FederatedId.Value.ToString();
+
+        if (message.SenderUuid.HasValue)
+            grpc.SenderUuid = message.SenderUuid.Value.ToString();
 
         return grpc;
     }
@@ -36,7 +42,7 @@ public static class MessageMapping
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc)),
             ReadBy = { message.ReadBy },
-            SenderId = message.SenderId,
+            SenderId = message.SenderId ?? 0,
             Content = message.Content?.ToGrpc(filesInfoMap),
             Type = (MessageContentType)(int)message.Type,
             IsEdited = message.IsEdited
@@ -46,6 +52,12 @@ public static class MessageMapping
         {
             grpc.EditedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.EditedAt.Value, DateTimeKind.Utc));
         }
+
+        if (message.FederatedId.HasValue)
+            grpc.FederatedId = message.FederatedId.Value.ToString();
+
+        if (message.SenderUuid.HasValue)
+            grpc.SenderUuid = message.SenderUuid.Value.ToString();
 
         return grpc;
     }

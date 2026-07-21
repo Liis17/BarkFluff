@@ -14,6 +14,8 @@ using MessageAttachment = BarkFluff.Messages.Domain.MessageAttachment;
 
 namespace BarkFluff.Messages.Features.EditMessage;
 
+using BarkFluff.Messages.Domain;
+
 public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, EditMessageResponse>
 {
     private const int MaxTextLength = 4096;
@@ -222,7 +224,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         );
 
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
-        var memberIds = members.Select(x => x.UserId).ToList();
+        var memberIds = members.LocalUserIds();
 
         await _messageQueueSender.SendEdited(message, message.ChatId, memberIds, filesInfoMap);
 

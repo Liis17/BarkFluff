@@ -8,6 +8,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Navigator;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -95,6 +96,13 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["UsersService:Host"]!);
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"] ?? string.Empty))
+          .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        // gRPC-клиент к Messages: ImportFederatedChat/ImportFederatedMessage (этап 2.3, S2S DeliverEvents routing).
+        builder.Services.AddGrpcClient<MessagesServerApi.MessagesServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["MessagesService:Host"]!);
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"] ?? string.Empty))
           .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddMassTransit(x =>

@@ -92,7 +92,7 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
             request.Nonce,
             request.AssociatedData);
 
-        var memberIds = chat.Members!.Select(m => m.UserId).ToList();
+        var memberIds = chat.Members!.LocalUserIds();
         await _queueSender.SendNew(saved, memberIds);
 
         _metrics.Increment("private_messages_sent");

@@ -437,6 +437,86 @@ public class ChatsStorage
 
         return chat;
     }
+
+    // ---- Федеративные DM (этап 2.3) ---------------------------------------
+
+    public Task<Chat?> GetFederatedChatAsync(Guid chatId)
+    {
+        return _context.Chats
+            .Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == chatId && c.IsFederated);
+    }
+
+    public Task<Chat?> FindActiveFederatedChatByUuidPairAsync(Guid uuidLow, Guid uuidHigh)
+    {
+        return _context.Chats
+            .Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.IsFederated
+                && c.FederatedStatus == Domain.FederatedStatus.Active
+                && c.FederatedUuidLow == uuidLow
+                && c.FederatedUuidHigh == uuidHigh);
+    }
+
+    /// <summary>
+    /// Создать fed-DM с локальным участником и remote-участником.
+    /// Возвращает существующий Active-чат пары, если гонка создания прошла раньше (unique index).
+    /// </summary>
+    public async Task<Chat> CreateFederatedChatAsync(
+        Guid chatId,
+        long localUserId,
+        Guid localUserUuid,
+        Guid remoteUuid,
+        string remoteServerName,
+        Guid uuidLow,
+        Guid uuidHigh)
+    {
+        var chat = new Chat
+        {
+            Id = chatId,
+            IsGroupChat = false,
+            Type = ChatType.Regular,
+            IsFederated = true,
+            FederatedStatus = Domain.FederatedStatus.Active,
+            FederatedUuidLow = uuidLow,
+            FederatedUuidHigh = uuidHigh,
+            Members = new List<ChatMember>
+            {
+                new()
+                {
+                    UserId = localUserId,
+                    UserUuid = localUserUuid,
+                    JoinedAt = DateTime.UtcNow,
+                },
+                new()
+                {
+                    UserId = null,
+                    UserUuid = remoteUuid,
+                    ServerName = remoteServerName,
+                    JoinedAt = DateTime.UtcNow,
+                },
+            },
+        };
+
+        _context.Chats.Add(chat);
+        try
+        {
+            await _context.SaveChangesAsync();
+            return chat;
+        }
+        catch (DbUpdateException)
+        {
+            // Уникальный индекс пары устраняет гонку одновременного создания.
+            _context.Entry(chat).State = EntityState.Detached;
+            foreach (var member in chat.Members)
+                _context.Entry(member).State = EntityState.Detached;
+
+            var existing = await FindActiveFederatedChatByUuidPairAsync(uuidLow, uuidHigh);
+            if (existing is not null)
+                return existing;
+
+            throw;
+        }
+    }
 }
 
 public record PrivateChatCreationResult(Chat Chat, bool Created);

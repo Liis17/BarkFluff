@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
@@ -80,7 +81,7 @@ public class EditPrivateMessageCommandHandler : IRequestHandler<EditPrivateMessa
             request.Nonce,
             request.AssociatedData);
 
-        var memberIds = chat.Members?.Select(m => m.UserId).ToList() ?? new List<long>();
+        var memberIds = chat.Members?.LocalUserIds() ?? new List<long>();
         await _queueSender.SendEdited(updated, memberIds);
 
         _metrics.Increment("private_messages_edited");

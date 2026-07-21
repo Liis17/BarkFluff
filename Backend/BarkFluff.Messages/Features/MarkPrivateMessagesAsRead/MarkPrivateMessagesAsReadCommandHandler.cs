@@ -61,7 +61,7 @@ public class MarkPrivateMessagesAsReadCommandHandler : IRequestHandler<MarkPriva
                 request.ChatId,
                 _userContext.UserId,
                 lastReadId,
-                chat.Members!.Select(member => member.UserId).ToList());
+                chat.Members!.LocalUserIds());
         }
     }
 }

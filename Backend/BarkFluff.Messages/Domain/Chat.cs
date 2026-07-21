@@ -43,4 +43,16 @@ public class Chat
     // Инициатор приватного инвайта: пока чат не Accepted, единственный реальный
     // member — инициатор. Вычисляется в выборке, не хранится в БД.
     public long? PrivateInviterUserId { get; set; }
+
+    // Федеративный DM (этап 2.3, docs/rearch/05-chat-replication.md). IsFederated=false — обычный
+    // локальный чат, остальные поля не используются.
+    public bool IsFederated { get; set; }
+
+    public FederatedStatus FederatedStatus { get; set; } = FederatedStatus.Active;
+
+    // Нормализованная пара UUID участников fed-DM (Low < High лексикографически, см. 2.7).
+    // Уникальна для Active-чатов — анти-дубль одновременного создания.
+    public Guid? FederatedUuidLow { get; set; }
+
+    public Guid? FederatedUuidHigh { get; set; }
 }

@@ -3,8 +3,11 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Messages;
 
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 using Grpc.Core;
@@ -21,6 +24,7 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly IConfiguration _configuration;
     private readonly SigningKeyService _signingKeyService;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
     private readonly FederationContext _context;
     private readonly MetricsCollector _metrics;
 
@@ -28,12 +32,14 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         IConfiguration configuration,
         SigningKeyService signingKeyService,
         UsersServerApi.UsersServerApiClient usersClient,
+        MessagesServerApi.MessagesServerApiClient messagesClient,
         FederationContext context,
         MetricsCollector metrics)
     {
         _configuration = configuration;
         _signingKeyService = signingKeyService;
         _usersClient = usersClient;
+        _messagesClient = messagesClient;
         _context = context;
         _metrics = metrics;
     }
@@ -187,8 +193,9 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             return Rejected(evt, "author_not_origin");
         }
 
-        // Маршрутизация. В этапе 2.2 — все чатовые возвращают NotImplementedYet (импорт в Messages — 2.3).
-        var routeResult = RouteToInternal(evt, origin);
+        // Маршрутизация. В этапе 2.2 — все чатовые возвращали NotImplementedYet; в 2.3 ChatCreated/NewMessage
+        // идут в MessagesServerApi (ImportFederatedChat/ImportFederatedMessage).
+        var routeResult = await RouteToInternalAsync(evt, origin, ct);
         if (routeResult == EventStatus.Ok)
         {
             // Записываем идемпотентность только после успеха (RETRY не должен индексироваться).
@@ -205,23 +212,84 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         return new EventResult { EventId = evt.EventId, Status = routeResult };
     }
 
-    private EventStatus RouteToInternal(FederationEvent evt, string origin)
+    // Маршрутизация события в прикладной сервис своей ноды (этап 2.3: ChatCreated/NewMessage → MessagesServerApi).
+    // Остальные payload'ы пока возвращают RETRY (Apply-RPC — 2.4, профильные — 2.9, catch-up — 2.6).
+    private async Task<EventStatus> RouteToInternalAsync(FederationEvent evt, string origin, CancellationToken ct)
     {
-        // Этап 2.2: импорт-RPC в Messages ещё не реализован (2.3). Все чатовые payload'ы возвращают RETRY.
-        // Профильные payload'ы (2.9) — здесь тоже RETRY.
-        switch (evt.PayloadCase)
+        try
         {
-            case FederationEvent.PayloadOneofCase.ChatCreated:
-            case FederationEvent.PayloadOneofCase.NewMessage:
-            case FederationEvent.PayloadOneofCase.MessageEdited:
-            case FederationEvent.PayloadOneofCase.MessageDeleted:
-            case FederationEvent.PayloadOneofCase.MessagesRead:
-            case FederationEvent.PayloadOneofCase.ProfileChanged:
-            case FederationEvent.PayloadOneofCase.UserDeactivated:
-                return EventStatus.Retry;
-            default:
-                return EventStatus.Rejected;
+            switch (evt.PayloadCase)
+            {
+                case FederationEvent.PayloadOneofCase.ChatCreated:
+                    {
+                        var p = evt.ChatCreated;
+                        await _messagesClient.ImportFederatedChatAsync(new ImportFederatedChatRequest
+                        {
+                            ChatId = p.ChatId,
+                            InitiatorUuid = p.Initiator.Uuid,
+                            InitiatorUsername = p.Initiator.Username,
+                            InitiatorServerName = p.Initiator.ServerName,
+                            InviteeUuid = p.Invitee.Uuid,
+                            OriginTsMs = evt.OriginTsMs,
+                        }, cancellationToken: ct);
+                        return EventStatus.Ok;
+                    }
+                case FederationEvent.PayloadOneofCase.NewMessage:
+                    {
+                        var p = evt.NewMessage;
+                        var sentAtMs = p.SentAt is null
+                            ? evt.OriginTsMs
+                            : ((DateTimeOffset)p.SentAt.ToDateTimeOffset()).ToUnixTimeMilliseconds();
+                        await _messagesClient.ImportFederatedMessageAsync(new ImportFederatedMessageRequest
+                        {
+                            ChatId = p.ChatId,
+                            FederatedMessageId = p.FederatedMessageId,
+                            SenderUuid = p.Sender.Uuid,
+                            SenderUsername = p.Sender.Username,
+                            SenderServerName = p.Sender.ServerName,
+                            Text = p.Text,
+                            OriginTsMs = sentAtMs,
+                            RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                        }, cancellationToken: ct);
+                        return EventStatus.Ok;
+                    }
+                case FederationEvent.PayloadOneofCase.MessageEdited:
+                case FederationEvent.PayloadOneofCase.MessageDeleted:
+                case FederationEvent.PayloadOneofCase.MessagesRead:
+                case FederationEvent.PayloadOneofCase.ProfileChanged:
+                case FederationEvent.PayloadOneofCase.UserDeactivated:
+                    return EventStatus.Retry;
+                default:
+                    return EventStatus.Rejected;
+            }
         }
+        catch (RpcException ex) when (IsPermanent(ex))
+        {
+            _metrics.Increment("events_rejected." + MapPermanentErrorCode(ex));
+            return EventStatus.Rejected;
+        }
+        catch (RpcException ex) when (IsTransient(ex))
+        {
+            // ChatUnknown / MessageUnknown / недоступность Messages → RETRY (catch-up 2.6 дотянет).
+            _metrics.Increment("events_retry." + ex.StatusCode);
+            return EventStatus.Retry;
+        }
+    }
+
+    // Permanent-валидации: FailedPrecondition — бизнес-валидации (TimestampInFuture, UnknownInvitee,
+    // DuplicateFederatedDm, ...). NotFound — это ChatUnknown/MssageUnknown (RETRY, не permanent).
+    private static bool IsPermanent(RpcException ex)
+        => ex.StatusCode is StatusCode.FailedPrecondition or StatusCode.InvalidArgument
+           or StatusCode.PermissionDenied or StatusCode.AlreadyExists;
+
+    private static bool IsTransient(RpcException ex)
+        => ex.StatusCode is StatusCode.NotFound or StatusCode.Unavailable or StatusCode.DeadlineExceeded
+           or StatusCode.Aborted or StatusCode.Cancelled;
+
+    private static string MapPermanentErrorCode(RpcException ex)
+    {
+        var code = ex.Trailers.GetValue("x-error-code");
+        return code ?? ex.StatusCode.ToString();
     }
 
     private static bool PayloadAuthorBelongsToOrigin(FederationEvent evt, string origin)

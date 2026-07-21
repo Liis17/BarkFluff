@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -96,7 +97,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         }
 
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
-        var memberIds = members.Select(x => x.UserId).ToList();
+        var memberIds = members.LocalUserIds();
 
         await _messageQueueSender.SendDeleted(message.ChatId, message.Id, memberIds);
 

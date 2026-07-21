@@ -1,6 +1,8 @@
 using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.ExportData;
 using BarkFluff.Messages.Features.GetChatMemberIds;
+using BarkFluff.Messages.Features.ImportFederatedChat;
+using BarkFluff.Messages.Features.ImportFederatedMessage;
 using BarkFluff.Messages.Features.PostCallSystemMessage;
 using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Proto.Messages;
@@ -25,6 +27,25 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
     public MessagesServerApiService(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    // ---- Федерация (этап 2.3): ImportFederatedChat / ImportFederatedMessage ----
+    // Зовёт только Federation своей ноды (TokenType.Service). Применяют валидации и хелперы
+    // Features.Federation (docs/rearch/05-chat-replication.md).
+    // ApplyFederatedEdit/Delete/Read + ExportChatEvents — этапы 2.4/2.6, до них Unimplemented.
+
+    public override async Task<ImportFederatedChatResponse> ImportFederatedChat(
+        ImportFederatedChatRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ImportFederatedChatCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ImportFederatedMessageResponse> ImportFederatedMessage(
+        ImportFederatedMessageRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ImportFederatedMessageCommand(request), context.CancellationToken);
     }
 
     public override Task<GetUserAllMessagesResponse> GetUserAllMessages(

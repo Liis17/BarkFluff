@@ -8,10 +8,18 @@ public static class ChatMemberMapping
 {
     public static ChatMember ToGrpc(this Domain.ChatMember chatMember)
     {
-        return new ChatMember
+        var grpc = new ChatMember
         {
-            UserId = chatMember.UserId,
+            UserId = chatMember.UserId ?? 0,
             JoinedAt = Timestamp.FromDateTime(chatMember.JoinedAt)
         };
+
+        if (chatMember.UserUuid.HasValue)
+            grpc.UserUuid = chatMember.UserUuid.Value.ToString();
+
+        if (!string.IsNullOrEmpty(chatMember.ServerName))
+            grpc.ServerName = chatMember.ServerName;
+
+        return grpc;
     }
 }

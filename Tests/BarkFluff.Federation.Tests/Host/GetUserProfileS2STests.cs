@@ -3,6 +3,7 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 
 using Grpc.Core;
@@ -21,6 +22,7 @@ public class GetUserProfileS2STests
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             usersClient.Object,
+            Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
             context,
             new MetricsCollector());
         return (usersClient, service);

@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Shared.Exceptions.Messages;
@@ -81,7 +82,7 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 
             // Получаем участников чата один раз и кэшируем
             var chatMembers = await _chatsStorage.GetChatMembers(chatId, 0, int.MaxValue);
-            chatMembersCache[chatId] = chatMembers.Select(x => x.UserId).ToList();
+            chatMembersCache[chatId] = chatMembers.LocalUserIds();
         }
 
         var newlyReadMessages = messages
