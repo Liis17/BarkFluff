@@ -101,6 +101,7 @@
       "Bash(rm -f \"K:/source/BarkFluff/bots-simplewrap.png\" \"K:/source/BarkFluff/mail-simplewrap.png\")",
       "Bash(CONFIGURATION_HOST=localhost CONFIGURATION_DATABASE=configuration CONFIGURATION_USERNAME=postgres CONFIGURATION_PASSWORD=postgres dotnet tool run dotnet-ef migrations list --project Backend/BarkFluff.Configuration/BarkFluff.Configuration.csproj)",
       "Bash(USERS_HOST=localhost USERS_DATABASE=users USERS_USERNAME=postgres USERS_PASSWORD=postgres dotnet tool run dotnet-ef migrations add AddUserUuid --project Backend/BarkFluff.Users/BarkFluff.Users.csproj)",
+      "Skill(code-review)"
       "Bash(xargs cat)"
     ],
     "deny": [],

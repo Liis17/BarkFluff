@@ -157,6 +157,14 @@ public class MessagesStorage
             .FirstOrDefaultAsync(m => m.Id == id);
     }
 
+    // Поиск fed-сообщения по стабильному межнодовому id (docs/rearch/05, ApplyFederatedEdit/Delete,
+    // этап 2.4). Не фильтрует IsDeleted — удаление терминально, и LWW должен видеть текущее состояние.
+    public async Task<Message?> GetByFederatedIdAsync(Guid chatId, Guid federatedId)
+    {
+        return await _context.Messages
+            .FirstOrDefaultAsync(m => m.ChatId == chatId && m.FederatedId == federatedId);
+    }
+
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();

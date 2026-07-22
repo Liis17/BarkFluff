@@ -181,3 +181,94 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 - `shared.proto` — None
 - `users_api.proto` — Client
 - `files_api.proto` — Client
+
+## Федеративные DM (этап 2.3, docs/rearch/05-chat-replication.md)
+
+Каждый сервер хранит свою копию fed-DM (1-на-1 между нодами), синхронизируемую доставкой событий. Локальные чаты работают как раньше — все fed-ветки под `IsFederated=true`.
+
+### Схема
+
+- `Chats.IsFederated bool`, `Chats.FederatedStatus int` (Active=0/Rejected=1/Merged=2), `Chats.FederatedUuidLow/High uuid` — нормализованная пара UUID участников fed-DM (low < high по строковой форме `"D"` lowercase, ordinal — единый победитель на обеих нодах). Уникальный индекс пары только для `IsFederated AND FederatedStatus=0` (анти-дубль одновременного создания).
+- `Messages.SenderId long NULL` (remote-автор не имеет локального аккаунта), `Messages.SenderUuid uuid NULL` (появился в 0.3, теперь заполняется при импорте).
+- `ChatMembers.UserId long NULL` (remote-участник fed-DM), `ChatMembers.ServerName text NULL` (домен remote-участника; NULL для локальных).
+- `FederatedMessageEvents(ChatId, FederatedId, EventBytes, ReceivedAt, OriginServer, EventId)` — wire-байты последнего применённого state-event (для catch-up 2.6: отдаётся с той же подписью origin). `OriginServer`/`EventId` (этап 2.4) — метка последнего применённого события для LWW tie-break последующих правок/удалений.
+- `FederatedReadStates(ChatId, UserUuid, LastReadFederatedMessageId, ReadAt)` — этап 2.4: прочтения remote-участников fed-DM («прочитано до X»); локальные читатели остаются в `Message.ReadBy`.
+
+### Импорт (входящие fed-события)
+
+- `MessagesServerApi.ImportFederatedChat` (Federation → Messages при `ChatCreatedPayload`): валидации → upsert initiator через `UsersServerApi.UpsertRemoteUsers` → анти-дубль UUID-пары → создание копии чата (`ChatsStorage.CreateFederatedChatAsync`).
+- `MessagesServerApi.ImportFederatedMessage` (`NewMessagePayload`): проверки sender ∈ remote-members, clamp `origin_ts_ms`, лимиты контента → вставка `Message(SenderId=NULL, SenderUuid, FederatedId, LastChangeAt=origin_ts)` → запись `FederatedMessageEvents` → публикация `NewMessageEvent` (IsFederated=true, без remote-рассылки) для локальных Updates/CloudMessaging.
+
+Валидации — в `Features.Federation.FederationImportValidator` (clamp метки, текст ≤ 4096, вложения ≤ 10, 512 МБ лимит). Все Fed-исключения в `Shared.Exceptions/Messages/` (`TimestampInFutureException`, `UnknownInviteeException`, `DuplicateFederatedDmException`, `ChatUnknownException`, `FederatedChatNotActiveException`, `RemoteUserNotResolvedException`, `FederatedGroupsNotSupported`, `RemoteProfileRejectedException`).
+
+`ChatUnknownException` имеет `StatusCode.NotFound` → Federation мапит на RETRY (catch-up 2.6 дотянет) — для чата, которого ещё нет локально. `FederatedChatNotActiveException` (code-review rearch-phase2) — отдельно для чата, который ЕСТЬ, но `FederatedStatus != Active` (Rejected/Merged): permanent, `FailedPrecondition` → REJECTED, ретраить бессмысленно (статус уже не станет Active). Остальные валидационные — тоже `FailedPrecondition` → REJECTED (permanent).
+
+### Исходящий путь
+
+- `SendMessage(user_uuid)` / `GetPersonChatId(user_uuid)`: резолв через `UsersServerApi.GetUsersByUuid` — если remote, fed-ветка; если локальный → fallback на ordinary personal-чат.
+- Fed-ветка: находит существующий fed-DM по UUID-паре или создаёт (`IsFirstMessageInChat=true` для консюмера). `Message` сохраняется с `FederatedId/SenderUuid/LastChangeAt`.
+- `MessageQueueSender.SendFederatedMessage` публикует `NewMessageEvent` с расширенными полями 2.2 (`IsFederated=true`, `RemoteParticipants`, `FederatedId`, `SenderUuid`, `IsFirstMessageInChat`, `InitiatorUuid/InviteeUuid`, `SenderFid`).
+- `NewMessageFederationConsumer` (Federation) парсит `byte[] Message` (proto `barkfluff.shared.Message`) и кладёт `Text` в `NewMessagePayload` (раньше в 2.2 был заглушкой). `ChatCreated` + `NewMessage` идут в outbox на ноду-партнёра.
+
+### Маршрутизация Federation
+
+`FederationS2SApiService.RouteToInternalAsync`: `ChatCreated` → `ImportFederatedChat`, `NewMessage` → `ImportFederatedMessage` (2.3); `MessageEdited` → `ApplyFederatedEdit`, `MessageDeleted` → `ApplyFederatedDelete`, `MessagesRead` → `ApplyFederatedRead` (2.4). gRPC-клиент `MessagesServerApi.MessagesServerApiClient` зарегистрирован в Program.cs Federation (`MessagesService:Host/Token`). Маппинг `RpcException.StatusCode → EventStatus`: `FailedPrecondition/InvalidArgument/PermissionDenied/AlreadyExists` → REJECTED; `NotFound/Unavailable/DeadlineExceeded/Aborted/Cancelled` → RETRY.
+
+`ProfileChanged`/`UserDeactivated` → RETRY до 2.9.
+
+### Выдача
+
+- `Mapping.MessageMapping` отдаёт `federated_id`/`sender_uuid` (раньше поля в proto были, но не заполнялись); `federated_read_by` (repeated string uuid, этап 2.4) — remote-читатели, объединённые из `FederatedReadStates` (см. ниже).
+- `Mapping.ChatMemberMapping` отдаёт `user_uuid`/`server_name` (для remote-участника; `user_id=0` если `UserId=NULL`).
+- Все хендлеры, работающие с `chat.Members`, фильтруют remote-участников через расширение `ChatMemberExtensions.LocalUserIds()` (remote не получает внутренних Queue-событий).
+
+## Edit/Delete/Read федеративных DM + LWW (этап 2.4, docs/rearch/05-chat-replication.md, docs/rearch/phase-2/step-2.4-edit-delete-read-lww.md)
+
+### LWW-разрешение конфликтов
+
+`Features.Federation.LwwResolver` — чистые функции без побочных эффектов (юнит-тесты в `LwwResolverTests`):
+- `ShouldApplyMessageChange(...)` — для правки/удаления: `event.origin_ts_ms > local.LastChangeAt` → применить; меньше → игнор (ответ OK, не ошибка); равно → tie-break лексикографически `(origin_server, event_id)`; **если сообщение уже удалено локально — терминально, любое дальнейшее событие (правка ИЛИ повторное удаление) игнорируется независимо от меток**.
+- `ShouldApplyRead(currentReadAt, incomingOriginTs)` — для прочтений: монотонное "более старое не откатывает более новое" (read-события идемпотентны по природе, полноценный tie-break не нужен).
+
+Метка (origin_server, event_id) последнего применённого к сообщению события хранится в `FederatedMessageEvents.OriginServer/EventId` (обновляется на каждое успешное применение edit/delete) — источник для сравнения при следующем входящем событии.
+
+### `ApplyFederatedEdit` / `ApplyFederatedDelete` (P2-02)
+
+Обработчики (`Features.ApplyFederatedEdit`, `Features.ApplyFederatedDelete`) вызываются только Federation:
+1. Чат неизвестен → `ChatUnknownException` (RETRY, catch-up 2.6 дотянет); чат есть, но `FederatedStatus != Active` → `FederatedChatNotActiveException` (permanent, не RETRY — статус уже не станет Active); сообщение по `(ChatId, FederatedId)` не найдено → `FederatedMessageUnknownException` (RETRY, catch-up 2.6 дотянет).
+2. **P2-02**: payload `MessageEditedPayload`/`MessageDeletedPayload` не несёт identity автора (намеренно — он был бы attacker-controlled). Проверка — локально: `FederationImportValidator.ResolveHomeServer(chat, message.SenderUuid, ownServer)` резолвит домашнюю ноду автора ПРАВИМОГО сообщения по `ChatMember` этого же чата (свой сервер, если `ChatMember.ServerName` пусто — это локальный member; иначе `ChatMember.ServerName`) и сверяет с `ApplyFederatedEditRequest.origin_server` (заполняет Federation из уже проверенного XFed `x-bf-origin`, НЕ из payload). Несовпадение → `FederatedOriginMismatchException` (REJECTED). Закрывает оба вектора: чужая нода правит сообщение локального автора, и партнёрская нода правит сообщение не своего пользователя.
+3. `LwwResolver.ShouldApplyMessageChange` → применить или проигнорировать (Applied=false в ответе, не исключение).
+4. Обновление `FederatedMessageEvents` (событие-победитель заменяет предыдущее: `EventBytes`/`OriginServer`/`EventId`/`ReceivedAt`).
+5. Публикация `MessageEditedEvent`/`MessageDeletedEvent` для локального Updates-фан-аута — `RemoteParticipants=[]` осознанно (событие пришло с той ноды, повторно отправлять его туда же не нужно; `NewMessageFederationConsumer`-семейство консюмеров игнорирует `RemoteParticipants.Count == 0`). Удаление дополнительно снимает локальный pin (`PinnedMessagesStorage.RemoveByMessageIdAsync` + `MessageUnpinnedEvent`) — pin не федерируется, но не может пережить удаление сообщения.
+
+### `ApplyFederatedRead`
+
+`Features.ApplyFederatedRead`: чат неизвестен → RETRY; чат есть, но не Active → `FederatedChatNotActiveException` (permanent); `reader_uuid` обязан быть remote-участником ЭТОГО чата и его домашняя нода == `origin_server` (тот же `ResolveHomeServer`, что и для edit/delete) → иначе `FederatedOriginMismatchException`. Upsert `FederatedReadStates` идемпотентно и монотонно (`FederatedReadStatesStorage.UpsertAsync` → `LwwResolver.ShouldApplyRead`). Если сообщение "до которого" ещё не импортировано локально (дыра, дотянется catch-up 2.6) — прочтение всё равно сохраняется, просто локальная рассылка `MessageReadEvent` пропускается (нечего показать).
+
+### Исходящий путь (локальные edit/delete/read в fed-чате)
+
+- `EditMessageCommandHandler`/`DeleteMessageCommandHandler`: если `message.FederatedId.HasValue` — собирают `RemoteParticipants` из `ChatMembers` чата и передают в `MessageQueueSender.SendEdited/SendDeleted` (те же методы, что и для локального фан-аута — федеративные поля теперь опциональные параметры, а не отдельные методы).
+- `SendMessageCommandHandler`: путь "существующий fed-DM через `chat_id`" (не только явный `user_uuid` первого сообщения) теперь тоже помечает сообщение `FederatedId`/`SenderUuid` и строит `RemoteParticipants` — иначе второе и последующие сообщения переписки не федерировались бы вовсе. Признак fed-чата — наличие среди `ChatMembers` записи с `ServerName` (remote-участник).
+- `MarkAsReadCommandHandler`: прочтение федерируется как "прочитано до X" (`up_to_federated_message_id`), а не по сообщению — среди нескольких прочитанных за раз в одном fed-чате выбирается одно сообщение-якорь (максимальный `Id`), только для него `ReadByQueueSender.SendEvent` получает fed-поля (`ReaderUuid`=UUID локального читателя в этом чате, `UpToFederatedMessageId`, `RemoteParticipants`).
+- `MessageEditedFederationConsumer` (Federation) теперь извлекает `NewText` из `byte[] Message` (парсит `barkfluff.shared.Message`, как и `NewMessageFederationConsumer`) — раньше было заглушкой.
+
+### Новые исключения
+
+`FederatedOriginMismatchException` (`Shared.Exceptions/Messages/`, default `FailedPrecondition` → REJECTED) — P2-02: событие говорит не за своих.
+
+## Privacy DenyFederatedDm + отказ до отправителя (этап 2.5, docs/rearch/phase-2/step-2.5-privacy-antispam.md)
+
+- `ImportFederatedChatCommandHandler`: после идемпотентности (чат уже импортирован — пропускаем
+  privacy-проверку, флаг влияет только на НОВЫЕ чаты) проверяет `invitee.DenyFederatedDm` (из
+  `UsersServerApi.GetUsersByUuid`, см. [[Backend/Users]]) → `FederatedDmRejectedException`.
+- `FederatedDmRejectedException` (`Shared.Exceptions/Messages/`) — единственное исключение в проекте
+  с ErrorCode-**строкой**, а не GUID: `"FederatedDmRejected"` (не `default FailedPrecondition` по коду,
+  сам код совпадает с `x-error-code`, который сверяет `OutboxDispatcher` origin-ноды — см.
+  [[Backend/Federation]]).
+- `FederatedChatRejectedConsumer` (MassTransit, очередь `federated-chat-rejected-messages`): получает
+  `FederatedChatRejectedEvent` от Federation → `ChatsStorage.MarkFederatedChatRejectedAsync` ставит
+  `Chat.FederatedStatus = Rejected` (idempotent: no-op, если чат не найден или уже не Active).
+- `SendMessageCommandHandler`: для существующего чата дополнительно проверяет
+  `ChatsStorage.GetFederatedStatusAsync` — `Rejected` → `FederatedDmRejectedException` (та же ошибка,
+  что и при первичном отказе; повторная отправка в отклонённый чат не уходит в бесконечный RETRY через
+  Federation, а падает сразу на этой ноде).

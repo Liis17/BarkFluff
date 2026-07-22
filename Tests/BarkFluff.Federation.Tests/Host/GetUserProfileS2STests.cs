@@ -1,11 +1,15 @@
 using BarkFluff.Federation.Host;
 using BarkFluff.Federation.Persistence.Contexts;
+using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 
 using Grpc.Core;
+
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
@@ -21,8 +25,11 @@ public class GetUserProfileS2STests
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             usersClient.Object,
+            Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
             context,
-            new MetricsCollector());
+            new MetricsCollector(),
+            new FakeChatCreatedQuotaLimiter(),
+            NullLogger<FederationS2SApiService>.Instance);
         return (usersClient, service);
     }
 

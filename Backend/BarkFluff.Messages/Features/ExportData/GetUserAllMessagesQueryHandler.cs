@@ -49,7 +49,7 @@ public class GetUserAllMessagesQueryHandler : IRequestHandler<GetUserAllMessages
             {
                 Id = message.Id,
                 ChatId = message.ChatId.ToString(),
-                SenderId = message.SenderId,
+                SenderId = message.SenderId ?? 0,
                 SentAt = Timestamp.FromDateTime(message.SentAt),
                 Text = message.Content?.Text ?? string.Empty,
                 ContentType = (int)message.Type
@@ -101,10 +101,11 @@ public class GetUserAllMessagesQueryHandler : IRequestHandler<GetUserAllMessages
                 IsGroupChat = chat.IsGroupChat
             };
 
-            // Добавляем участников чата
+            // Добавляем участников чата (remote-участник fed-DM без UserId в экспорт не попадает —
+            // у пользователя этой ноды нет собственного идентификатора для него).
             var members = allChatMembers
-                .Where(cm => cm.ChatId == chat.Id)
-                .Select(cm => cm.UserId)
+                .Where(cm => cm.ChatId == chat.Id && cm.UserId.HasValue)
+                .Select(cm => cm.UserId!.Value)
                 .Distinct();
 
             exportChat.MemberIds.AddRange(members);

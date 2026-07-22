@@ -70,7 +70,7 @@ public class UnpinMessageCommandHandler : IRequestHandler<UnpinMessageCommand, U
         await _pinnedMessagesStorage.SaveChangesAsync();
 
         var members = await _chatsStorage.GetChatMembers(request.ChatId, 0, int.MaxValue);
-        var memberIds = members.Select(x => x.UserId).ToList();
+        var memberIds = members.LocalUserIds();
 
         var unpinnerName = await GetUserDisplayNameAsync(_userContext.UserId);
 

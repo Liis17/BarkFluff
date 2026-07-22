@@ -7,6 +7,7 @@
 ## Namespace: `BarkFluff.Shared.Queue.Federation`
 
 - `FederatedParticipant` — `{ Guid Uuid, string ServerName }` (этап 2.2). Используется расширенными полями message-events (см. ниже) для построения FederationOutbox-строк.
+- `FederatedChatRejectedEvent` — `{ Guid ChatId, string Reason }` (этап 2.5). Publisher — [[Backend/Federation]] (`OutboxDispatcher`, DeadLetter с `ErrorCode="FederatedDmRejected"`); consumer — [[Backend/Messages]] (`FederatedChatRejectedConsumer`, очередь `federated-chat-rejected-messages`) → `Chat.FederatedStatus = Rejected`.
 
 ## Расширенные федеративные поля message-событий (этап 2.2)
 
@@ -89,3 +90,18 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
 ## Добавление нового события
 
 Добавить новый POCO-класс в соответствующий namespace. Нет базовых классов для Messages/Users событий — просто POCO.
+
+## Федеративный контекст событий (этап 2.2/2.3)
+
+Расширенные поля на существующих событиях — обратно совместимо (старые консюмеры игнорируют их, десериализация не ломается). Поля заполняются Messages **только для fed-чатов**.
+
+- `NewMessageEvent`: `IsFederated`, `List<FederatedParticipant> RemoteParticipants`, `Guid? FederatedId`, `Guid? SenderUuid`, `DateTimeOffset? LastChangeAt`, `bool IsFirstMessageInChat`, `Guid? InitiatorUuid`, `Guid? InviteeUuid`, `string? SenderFid` (`@username:server`).
+- `MessageEditedEvent` / `MessageDeletedEvent`: тот же набор (без `IsFirstMessageInChat/InitiatorUuid/InviteeUuid`).
+- `MessageReadEvent`: `IsFederated`, `RemoteParticipants`, `Guid? ReaderUuid`, `Guid? UpToFederatedMessageId`, `DateTimeOffset? LastChangeAt`.
+
+`FederatedParticipant { Guid Uuid; string ServerName }` — remote-участник fed-чата на чужой ноде. Список нужен консюмеру Federation для формирования `destinations` outbox-строк (по одной на ноду).
+
+`MessageQueueSender` (`BarkFluff.Messages.Infrastructure`) держит 3 варианта публикации:
+- `SendMessage(...)` — обычный путь, fed-поля default.
+- `SendFederatedMessage(...)` — исходящий fed-путь (создание чата + сообщение); заполняет fed-поля, консюмер Federation кладёт в outbox.
+- `SendImportedMessage(...)` — импортированное сообщение (от ноды-партнёра): `IsFederated=true`, но `RemoteParticipants=пусто` — консюмер Federation не входит в publish-ветку (сообщение пришло снаружи, наружу не пересылается).

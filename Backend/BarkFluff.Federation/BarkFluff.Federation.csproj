@@ -23,6 +23,7 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
         <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
         <PackageReference Include="JsonCanonicalizer" Version="1.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.8" />
     </ItemGroup>
 
     <ItemGroup>
@@ -41,6 +42,7 @@
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_internal_api.proto" GrpcServices="Server" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\navigator_api.proto" GrpcServices="Client" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Client" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
     </ItemGroup>
 

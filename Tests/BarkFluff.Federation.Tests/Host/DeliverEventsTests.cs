@@ -5,9 +5,13 @@ using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 
+using Grpc.Core;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
@@ -17,16 +21,36 @@ public class DeliverEventsTests
 {
     private const string Origin = "peer.test";
 
-    private static (FederationContext Context, FederationS2SApiService Service) Create()
+    private static (FederationContext Context, FederationS2SApiService Service) Create(IChatCreatedQuotaLimiter? quotaLimiter = null)
     {
         var context = TestHelpers.CreateContext();
         var service = new FederationS2SApiService(
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
+            Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
             context,
-            new MetricsCollector());
+            new MetricsCollector(),
+            quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
+            NullLogger<FederationS2SApiService>.Instance);
         return (context, service);
+    }
+
+    private static (FederationContext Context, FederationS2SApiService Service, Mock<MessagesServerApi.MessagesServerApiClient> MessagesMock) CreateWithMessagesMock(
+        IChatCreatedQuotaLimiter? quotaLimiter = null)
+    {
+        var context = TestHelpers.CreateContext();
+        var messagesMock = new Mock<MessagesServerApi.MessagesServerApiClient>();
+        var service = new FederationS2SApiService(
+            TestHelpers.CreateConfiguration(),
+            TestHelpers.CreateSigningKeyService(context),
+            Mock.Of<UsersServerApi.UsersServerApiClient>(),
+            messagesMock.Object,
+            context,
+            new MetricsCollector(),
+            quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
+            NullLogger<FederationS2SApiService>.Instance);
+        return (context, service, messagesMock);
     }
 
     // Ключ «origin-ноды»: генерируем честную пару и сидируем публичную часть в KnownServerKeys.
@@ -59,6 +83,24 @@ public class DeliverEventsTests
                     Uuid = Guid.NewGuid().ToString(),
                     ServerName = authorServer ?? origin,
                 },
+            },
+        };
+        EventSigner.Sign(evt, key);
+        return evt;
+    }
+
+    private static FederationEvent SignedChatCreated(FederationSigningKey key, string origin = Origin)
+    {
+        var evt = new FederationEvent
+        {
+            EventId = Guid.NewGuid().ToString(),
+            OriginServer = origin,
+            OriginTsMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ChatCreated = new ChatCreatedPayload
+            {
+                ChatId = Guid.NewGuid().ToString(),
+                Initiator = new FederatedUser { Uuid = Guid.NewGuid().ToString(), ServerName = origin },
+                Invitee = new FederatedUser { Uuid = Guid.NewGuid().ToString(), ServerName = TestHelpers.OwnServerName },
             },
         };
         EventSigner.Sign(evt, key);
@@ -204,18 +246,328 @@ public class DeliverEventsTests
     }
 
     [Fact]
-    public async Task DeliverEvents_ValidChatEvent_RetryAndNotIndexed()
+    public async Task DeliverEvents_ValidChatEvent_RoutedToMessagesAndIndexed()
     {
-        var (context, service) = Create();
+        // Этап 2.3: chat payload маршрутизируется в MessagesServerApi.ImportFederatedMessage.
+        // При OK событие индексируется в ProcessedEvents (идемпотентность).
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupMessagesImport(messagesMock, new ImportFederatedMessageResponse());
+
         var key = await SeedOriginKeyAsync(context);
         var evt = SignedNewMessage(key);
 
         var result = await DeliverOneAsync(service, evt);
 
-        // Этап 2.2: чатовые payload'ы → RETRY (импорт-RPC Messages — этап 2.3);
-        // RETRY не индексируется в ProcessedEvents (повторная доставка валидна).
+        result.Status.Should().Be(EventStatus.Ok);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(1);
+        messagesMock.Verify(c => c.ImportFederatedMessageAsync(
+            It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessagesTransient_RetryAndNotIndexed()
+    {
+        // Если Messages временно недоступен (Unavailable) → RETRY, идемпотентность не пишется.
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ImportFederatedMessageAsync(
+                It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.Unavailable, "messages down")));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedNewMessage(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
         result.Status.Should().Be(EventStatus.Retry);
         (await context.ProcessedEvents.CountAsync()).Should().Be(0);
+    }
+
+    private static void SetupMessagesImport(Mock<MessagesServerApi.MessagesServerApiClient> mock, ImportFederatedMessageResponse resp)
+    {
+        mock.Setup(c => c.ImportFederatedMessageAsync(
+                It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ImportFederatedMessageResponse>(
+                Task.FromResult(resp),
+                Task.FromResult(new Metadata()),
+                () => Status.DefaultSuccess,
+                () => new Metadata(),
+                () => { }));
+    }
+
+    // Этап 2.4: MessageEdited/MessageDeleted/MessagesRead маршрутизируются в ApplyFederatedEdit/Delete/Read.
+    // Payload'ы этих типов не несут identity автора (P2-02 проверяется локально в Messages) — Federation
+    // лишь прокидывает origin (уже сверенный с x-bf-origin) и event_id для LWW tie-break.
+
+    private static FederationEvent Signed(FederationSigningKey key, string origin, Action<FederationEvent> setPayload)
+    {
+        var evt = new FederationEvent
+        {
+            EventId = Guid.NewGuid().ToString(),
+            OriginServer = origin,
+            OriginTsMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+        };
+        setPayload(evt);
+        EventSigner.Sign(evt, key);
+        return evt;
+    }
+
+    private static FederationEvent SignedMessageEdited(FederationSigningKey key, string origin = Origin)
+        => Signed(key, origin, evt => evt.MessageEdited = new MessageEditedPayload
+        {
+            ChatId = Guid.NewGuid().ToString(),
+            FederatedMessageId = Guid.NewGuid().ToString(),
+            NewText = "edited",
+        });
+
+    private static FederationEvent SignedMessageDeleted(FederationSigningKey key, string origin = Origin)
+        => Signed(key, origin, evt => evt.MessageDeleted = new MessageDeletedPayload
+        {
+            ChatId = Guid.NewGuid().ToString(),
+            FederatedMessageId = Guid.NewGuid().ToString(),
+        });
+
+    private static FederationEvent SignedMessagesRead(FederationSigningKey key, string origin = Origin)
+        => Signed(key, origin, evt => evt.MessagesRead = new MessagesReadPayload
+        {
+            ChatId = Guid.NewGuid().ToString(),
+            ReaderUuid = Guid.NewGuid().ToString(),
+            UpToFederatedMessageId = Guid.NewGuid().ToString(),
+        });
+
+    private static void SetupApplyEdit(Mock<MessagesServerApi.MessagesServerApiClient> mock, ApplyFederatedEditResponse resp)
+    {
+        mock.Setup(c => c.ApplyFederatedEditAsync(It.IsAny<ApplyFederatedEditRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ApplyFederatedEditResponse>(
+                Task.FromResult(resp), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    private static void SetupApplyDelete(Mock<MessagesServerApi.MessagesServerApiClient> mock, ApplyFederatedDeleteResponse resp)
+    {
+        mock.Setup(c => c.ApplyFederatedDeleteAsync(It.IsAny<ApplyFederatedDeleteRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ApplyFederatedDeleteResponse>(
+                Task.FromResult(resp), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    private static void SetupApplyRead(Mock<MessagesServerApi.MessagesServerApiClient> mock, ApplyFederatedReadResponse resp)
+    {
+        mock.Setup(c => c.ApplyFederatedReadAsync(It.IsAny<ApplyFederatedReadRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ApplyFederatedReadResponse>(
+                Task.FromResult(resp), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageEdited_RoutedToApplyFederatedEditWithOrigin()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupApplyEdit(messagesMock, new ApplyFederatedEditResponse { Applied = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageEdited(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(1);
+        messagesMock.Verify(c => c.ApplyFederatedEditAsync(
+            It.Is<ApplyFederatedEditRequest>(r =>
+                r.ChatId == evt.MessageEdited.ChatId
+                && r.FederatedMessageId == evt.MessageEdited.FederatedMessageId
+                && r.NewText == evt.MessageEdited.NewText
+                && r.OriginServer == Origin
+                && r.EventId == evt.EventId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageEditedTransient_RetryAndNotIndexed()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ApplyFederatedEditAsync(It.IsAny<ApplyFederatedEditRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.NotFound, "message unknown")));
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageEdited(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Retry);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageEditedRejected_RejectedAndIndexed()
+    {
+        // FailedPrecondition (P2-02 author mismatch и т.п.) — перманентный отказ, но событие всё же
+        // считается обработанным (ретраить бессмысленно — источник не изменится).
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ApplyFederatedEditAsync(It.IsAny<ApplyFederatedEditRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.FailedPrecondition, "author mismatch")));
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageEdited(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Rejected);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessageDeleted_RoutedToApplyFederatedDeleteWithOrigin()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupApplyDelete(messagesMock, new ApplyFederatedDeleteResponse { Applied = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessageDeleted(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ApplyFederatedDeleteAsync(
+            It.Is<ApplyFederatedDeleteRequest>(r =>
+                r.ChatId == evt.MessageDeleted.ChatId
+                && r.FederatedMessageId == evt.MessageDeleted.FederatedMessageId
+                && r.OriginServer == Origin
+                && r.EventId == evt.EventId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_MessagesRead_RoutedToApplyFederatedReadWithOrigin()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupApplyRead(messagesMock, new ApplyFederatedReadResponse { Applied = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedMessagesRead(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ApplyFederatedReadAsync(
+            It.Is<ApplyFederatedReadRequest>(r =>
+                r.ChatId == evt.MessagesRead.ChatId
+                && r.ReaderUuid == evt.MessagesRead.ReaderUuid
+                && r.UpToFederatedMessageId == evt.MessagesRead.UpToFederatedMessageId
+                && r.OriginServer == Origin),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_ChatCreatedQuotaExceeded_RetryAndNotRouted()
+    {
+        // Этап 2.5: квота per-origin — превышение не должно долетать до Messages, RETRY (не порча события).
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = true });
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedChatCreated(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Retry);
+        messagesMock.Verify(c => c.ImportFederatedChatAsync(
+            It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Never);
+        (await context.ProcessedEvents.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_ChatCreatedWithinQuota_RoutedToImportFederatedChat()
+    {
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = false });
+        messagesMock.Setup(c => c.ImportFederatedChatAsync(It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ImportFederatedChatResponse>(
+                Task.FromResult(new ImportFederatedChatResponse { Imported = true }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedChatCreated(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ImportFederatedChatAsync(
+            It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_ChatCreatedPermanentRejectionWithErrorCode_PropagatesErrorCodeToResult()
+    {
+        // Баг #1: код ошибки permanent-исключения (например FederatedDmRejected) обязан долететь до
+        // EventResult.ErrorCode — иначе OutboxDispatcher не сможет опубликовать FederatedChatRejectedEvent.
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = false });
+        var trailers = new Metadata { { "x-error-code", "FederatedDmRejected" } };
+        messagesMock
+            .Setup(c => c.ImportFederatedChatAsync(It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.FailedPrecondition, "denied"), trailers));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedChatCreated(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Rejected);
+        result.ErrorCode.Should().Be("FederatedDmRejected");
+    }
+
+    [Fact]
+    public async Task DeliverEvents_UnclassifiedStatusCode_RetryNotThrown()
+    {
+        // Баг #2: StatusCode.Unknown (например, из общего ServerExceptionInterceptor Messages) не подпадает
+        // ни под IsPermanent, ни под IsTransient — должен безопасно деградировать до RETRY, а не падать наружу.
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        messagesMock
+            .Setup(c => c.ImportFederatedMessageAsync(It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.Unknown, "unexpected")));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedNewMessage(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Retry);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_OneEventThrowsUnexpectedException_OtherEventsStillProcessed()
+    {
+        // Баг #2: необработанное исключение (не RpcException) на одном событии не должно ронять весь батч
+        // DeliverEvents — остальные события в том же запросе обрабатываются как обычно.
+        var (context, service, messagesMock) = CreateWithMessagesMock(new FakeChatCreatedQuotaLimiter { AlwaysReject = false });
+        messagesMock
+            .Setup(c => c.ImportFederatedMessageAsync(It.IsAny<ImportFederatedMessageRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Throws(new InvalidOperationException("непредвиденная ошибка"));
+        messagesMock
+            .Setup(c => c.ImportFederatedChatAsync(It.IsAny<ImportFederatedChatRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<ImportFederatedChatResponse>(
+                Task.FromResult(new ImportFederatedChatResponse { Imported = true }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var key = await SeedOriginKeyAsync(context);
+        var evt1 = SignedNewMessage(key);
+        var evt2 = SignedChatCreated(key);
+
+        var request = new DeliverEventsRequest();
+        request.Events.Add(evt1);
+        request.Events.Add(evt2);
+        var response = await service.DeliverEvents(request, TestHelpers.CreateCallContext(Origin));
+
+        response.Results.Should().HaveCount(2);
+        response.Results[0].Status.Should().Be(EventStatus.Retry);
+        response.Results[1].Status.Should().Be(EventStatus.Ok);
+    }
+
+    [Fact]
+    public async Task DeliverEvents_NewMessage_IncludesEventId()
+    {
+        // Баг #7: EventId обязан прокидываться в ImportFederatedMessageRequest — иначе LWW tie-break на
+        // приёмнике теряет истинный event_id первого создания сообщения (остаётся Guid.Empty).
+        var (context, service, messagesMock) = CreateWithMessagesMock();
+        SetupMessagesImport(messagesMock, new ImportFederatedMessageResponse());
+        var key = await SeedOriginKeyAsync(context);
+        var evt = SignedNewMessage(key);
+
+        var result = await DeliverOneAsync(service, evt);
+
+        result.Status.Should().Be(EventStatus.Ok);
+        messagesMock.Verify(c => c.ImportFederatedMessageAsync(
+            It.Is<ImportFederatedMessageRequest>(r => r.EventId == evt.EventId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

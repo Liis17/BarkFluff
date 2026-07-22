@@ -105,7 +105,7 @@ public class PinMessageCommandHandler : IRequestHandler<PinMessageCommand, PinMe
         await _pinnedMessagesStorage.SaveChangesAsync();
 
         var members = await _chatsStorage.GetChatMembers(request.ChatId, 0, int.MaxValue);
-        var memberIds = members.Select(x => x.UserId).ToList();
+        var memberIds = members.LocalUserIds();
 
         var pinnerName = await GetUserDisplayNameAsync(_userContext.UserId);
 

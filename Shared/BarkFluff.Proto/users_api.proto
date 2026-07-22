@@ -1045,6 +1045,8 @@ message UserProfileByUuid {
   string bio = 8;            // локальный: после privacy-фильтра (None здесь — для межсервисного запроса отдаём как есть)
   string avatar_file_id = 9; // для локального: ProfilePicture; для remote: AvatarFileId на origin
   bool is_deactivated = 10;  // только для remote
+  int64 user_id = 11;        // только для локального (для remote = 0): numeric ID для создания ChatMember
+  bool deny_federated_dm = 12; // только для локального (для remote всегда false): privacy-запрет входящих fed-DM (этап 2.5)
 }
 
 message GetUsersByUuidRequest {

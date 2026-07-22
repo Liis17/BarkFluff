@@ -3,8 +3,11 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Messages;
 
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 using Grpc.Core;
@@ -21,21 +24,30 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly IConfiguration _configuration;
     private readonly SigningKeyService _signingKeyService;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
     private readonly FederationContext _context;
     private readonly MetricsCollector _metrics;
+    private readonly IChatCreatedQuotaLimiter _chatCreatedQuotaLimiter;
+    private readonly ILogger<FederationS2SApiService> _logger;
 
     public FederationS2SApiService(
         IConfiguration configuration,
         SigningKeyService signingKeyService,
         UsersServerApi.UsersServerApiClient usersClient,
+        MessagesServerApi.MessagesServerApiClient messagesClient,
         FederationContext context,
-        MetricsCollector metrics)
+        MetricsCollector metrics,
+        IChatCreatedQuotaLimiter chatCreatedQuotaLimiter,
+        ILogger<FederationS2SApiService> logger)
     {
         _configuration = configuration;
         _signingKeyService = signingKeyService;
         _usersClient = usersClient;
+        _messagesClient = messagesClient;
         _context = context;
         _metrics = metrics;
+        _chatCreatedQuotaLimiter = chatCreatedQuotaLimiter;
+        _logger = logger;
     }
 
     public override Task<PingResponse> Ping(PingRequest request, ServerCallContext context)
@@ -135,7 +147,20 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         var response = new DeliverEventsResponse();
         foreach (var evt in request.Events)
         {
-            var result = await ProcessEventAsync(evt, origin, context.CancellationToken);
+            EventResult result;
+            try
+            {
+                result = await ProcessEventAsync(evt, origin, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Один "плохой" евент не должен ронять весь батч DeliverEvents — RETRY, остальные события
+                // в батче обрабатываются как обычно.
+                _logger.LogError(ex, "Необработанная ошибка обработки события {EventId} от {Origin}", evt.EventId, origin);
+                _metrics.Increment("events_unhandled_error");
+                result = new EventResult { EventId = evt.EventId, Status = EventStatus.Retry };
+            }
+
             response.Results.Add(result);
         }
 
@@ -187,9 +212,10 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             return Rejected(evt, "author_not_origin");
         }
 
-        // Маршрутизация. В этапе 2.2 — все чатовые возвращают NotImplementedYet (импорт в Messages — 2.3).
-        var routeResult = RouteToInternal(evt, origin);
-        if (routeResult == EventStatus.Ok)
+        // Маршрутизация. В этапе 2.2 — все чатовые возвращали NotImplementedYet; в 2.3 ChatCreated/NewMessage
+        // идут в MessagesServerApi (ImportFederatedChat/ImportFederatedMessage).
+        var (routeStatus, routeErrorCode) = await RouteToInternalAsync(evt, origin, ct);
+        if (routeStatus == EventStatus.Ok)
         {
             // Записываем идемпотентность только после успеха (RETRY не должен индексироваться).
             _context.ProcessedEvents.Add(new ProcessedEvent
@@ -202,26 +228,147 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             _metrics.Increment("events_received." + evt.PayloadCase.ToString().ToLowerInvariant());
         }
 
-        return new EventResult { EventId = evt.EventId, Status = routeResult };
+        return new EventResult { EventId = evt.EventId, Status = routeStatus, ErrorCode = routeErrorCode ?? string.Empty };
     }
 
-    private EventStatus RouteToInternal(FederationEvent evt, string origin)
+    // Маршрутизация события в прикладной сервис своей ноды: ChatCreated/NewMessage → MessagesServerApi (2.3),
+    // MessageEdited/MessageDeleted/MessagesRead → Apply-RPC (2.4). Профильные payload'ы — 2.9, пока RETRY.
+    private async Task<(EventStatus Status, string? ErrorCode)> RouteToInternalAsync(FederationEvent evt, string origin, CancellationToken ct)
     {
-        // Этап 2.2: импорт-RPC в Messages ещё не реализован (2.3). Все чатовые payload'ы возвращают RETRY.
-        // Профильные payload'ы (2.9) — здесь тоже RETRY.
-        switch (evt.PayloadCase)
+        try
         {
-            case FederationEvent.PayloadOneofCase.ChatCreated:
-            case FederationEvent.PayloadOneofCase.NewMessage:
-            case FederationEvent.PayloadOneofCase.MessageEdited:
-            case FederationEvent.PayloadOneofCase.MessageDeleted:
-            case FederationEvent.PayloadOneofCase.MessagesRead:
-            case FederationEvent.PayloadOneofCase.ProfileChanged:
-            case FederationEvent.PayloadOneofCase.UserDeactivated:
-                return EventStatus.Retry;
-            default:
-                return EventStatus.Rejected;
+            switch (evt.PayloadCase)
+            {
+                case FederationEvent.PayloadOneofCase.ChatCreated:
+                    {
+                        // Квота per-origin (этап 2.5): защита от спам-волны создания чатов. Троттлинг —
+                        // временное состояние (RETRY), не порча события; событие уедет на следующем окне.
+                        // evt.EventId уже провалидирован как parseable в ProcessEventAsync — повторный
+                        // parse здесь безопасен.
+                        if (!await _chatCreatedQuotaLimiter.TryConsumeAsync(origin, Guid.Parse(evt.EventId)))
+                        {
+                            _metrics.Increment("chatcreated_quota_exceeded." + origin);
+                            _logger.LogWarning("ChatCreated quota exceeded для origin={Origin}", origin);
+                            return (EventStatus.Retry, null);
+                        }
+
+                        var p = evt.ChatCreated;
+                        await _messagesClient.ImportFederatedChatAsync(new ImportFederatedChatRequest
+                        {
+                            ChatId = p.ChatId,
+                            InitiatorUuid = p.Initiator.Uuid,
+                            InitiatorUsername = p.Initiator.Username,
+                            InitiatorServerName = p.Initiator.ServerName,
+                            InviteeUuid = p.Invitee.Uuid,
+                            OriginTsMs = evt.OriginTsMs,
+                        }, cancellationToken: ct);
+                        return (EventStatus.Ok, null);
+                    }
+                case FederationEvent.PayloadOneofCase.NewMessage:
+                    {
+                        var p = evt.NewMessage;
+                        var sentAtMs = p.SentAt is null
+                            ? evt.OriginTsMs
+                            : ((DateTimeOffset)p.SentAt.ToDateTimeOffset()).ToUnixTimeMilliseconds();
+                        await _messagesClient.ImportFederatedMessageAsync(new ImportFederatedMessageRequest
+                        {
+                            ChatId = p.ChatId,
+                            FederatedMessageId = p.FederatedMessageId,
+                            SenderUuid = p.Sender.Uuid,
+                            SenderUsername = p.Sender.Username,
+                            SenderServerName = p.Sender.ServerName,
+                            Text = p.Text,
+                            OriginTsMs = sentAtMs,
+                            EventId = evt.EventId,
+                            RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                        }, cancellationToken: ct);
+                        return (EventStatus.Ok, null);
+                    }
+                case FederationEvent.PayloadOneofCase.MessageEdited:
+                    {
+                        var p = evt.MessageEdited;
+                        await _messagesClient.ApplyFederatedEditAsync(new ApplyFederatedEditRequest
+                        {
+                            ChatId = p.ChatId,
+                            FederatedMessageId = p.FederatedMessageId,
+                            NewText = p.NewText,
+                            OriginTsMs = evt.OriginTsMs,
+                            OriginServer = origin,
+                            EventId = evt.EventId,
+                            RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                        }, cancellationToken: ct);
+                        return (EventStatus.Ok, null);
+                    }
+                case FederationEvent.PayloadOneofCase.MessageDeleted:
+                    {
+                        var p = evt.MessageDeleted;
+                        await _messagesClient.ApplyFederatedDeleteAsync(new ApplyFederatedDeleteRequest
+                        {
+                            ChatId = p.ChatId,
+                            FederatedMessageId = p.FederatedMessageId,
+                            OriginTsMs = evt.OriginTsMs,
+                            OriginServer = origin,
+                            EventId = evt.EventId,
+                            RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                        }, cancellationToken: ct);
+                        return (EventStatus.Ok, null);
+                    }
+                case FederationEvent.PayloadOneofCase.MessagesRead:
+                    {
+                        var p = evt.MessagesRead;
+                        await _messagesClient.ApplyFederatedReadAsync(new ApplyFederatedReadRequest
+                        {
+                            ChatId = p.ChatId,
+                            ReaderUuid = p.ReaderUuid,
+                            UpToFederatedMessageId = p.UpToFederatedMessageId,
+                            OriginTsMs = evt.OriginTsMs,
+                            OriginServer = origin,
+                        }, cancellationToken: ct);
+                        return (EventStatus.Ok, null);
+                    }
+                case FederationEvent.PayloadOneofCase.ProfileChanged:
+                case FederationEvent.PayloadOneofCase.UserDeactivated:
+                    return (EventStatus.Retry, null);
+                default:
+                    return (EventStatus.Rejected, null);
+            }
         }
+        catch (RpcException ex) when (IsPermanent(ex))
+        {
+            var code = MapPermanentErrorCode(ex);
+            _metrics.Increment("events_rejected." + code);
+            return (EventStatus.Rejected, code);
+        }
+        catch (RpcException ex) when (IsTransient(ex))
+        {
+            // ChatUnknown / MessageUnknown / недоступность Messages → RETRY (catch-up 2.6 дотянет).
+            _metrics.Increment("events_retry." + ex.StatusCode);
+            return (EventStatus.Retry, null);
+        }
+        catch (RpcException ex)
+        {
+            // Неклассифицированный StatusCode (например Unknown из общего ServerExceptionInterceptor) —
+            // безопасный дефолт RETRY вместо падения наружу и обрыва всего батча DeliverEvents.
+            _logger.LogWarning(ex, "Неклассифицированный StatusCode {StatusCode} при маршрутизации события, RETRY", ex.StatusCode);
+            _metrics.Increment("events_retry.unclassified." + ex.StatusCode);
+            return (EventStatus.Retry, null);
+        }
+    }
+
+    // Permanent-валидации: FailedPrecondition — бизнес-валидации (TimestampInFuture, UnknownInvitee,
+    // DuplicateFederatedDm, ...). NotFound — это ChatUnknown/MssageUnknown (RETRY, не permanent).
+    private static bool IsPermanent(RpcException ex)
+        => ex.StatusCode is StatusCode.FailedPrecondition or StatusCode.InvalidArgument
+           or StatusCode.PermissionDenied or StatusCode.AlreadyExists;
+
+    private static bool IsTransient(RpcException ex)
+        => ex.StatusCode is StatusCode.NotFound or StatusCode.Unavailable or StatusCode.DeadlineExceeded
+           or StatusCode.Aborted or StatusCode.Cancelled;
+
+    private static string MapPermanentErrorCode(RpcException ex)
+    {
+        var code = ex.Trailers.GetValue("x-error-code");
+        return code ?? ex.StatusCode.ToString();
     }
 
     private static bool PayloadAuthorBelongsToOrigin(FederationEvent evt, string origin)

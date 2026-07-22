@@ -83,6 +83,7 @@ public class Program
         builder.Services.AddTransient<MessagesStorage>();
         builder.Services.AddTransient<PinnedMessagesStorage>();
         builder.Services.AddTransient<EncryptedMessagesStorage>();
+        builder.Services.AddTransient<FederatedReadStatesStorage>();
         builder.Services.AddSingleton<SecretMessageBuffer>();
         builder.Services.AddSingleton<PrivateChatInviteStore>();
         builder.Services.AddTransient<MessageQueueSender>();
@@ -95,6 +96,7 @@ public class Program
             x.AddConsumer<UserChangedAvatarConsumer>();
             x.AddConsumer<UserChangedNameConsumer>();
             x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<FederatedChatRejectedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -117,6 +119,11 @@ public class Program
                 cfg.ReceiveEndpoint("session-revoked-messages", e =>
                 {
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("federated-chat-rejected-messages", e =>
+                {
+                    e.ConfigureConsumer<FederatedChatRejectedConsumer>(context);
                 });
             });
         });

@@ -675,7 +675,7 @@ message ImportFederatedChatRequest {
   string initiator_uuid = 2;
   string initiator_username = 3;
   string initiator_server_name = 4;
-  int64 invitee_user_id = 5;           // локальный пользователь этой ноды (резолвит Federation)
+  string invitee_uuid = 5;             // UUID локального пользователя-получателя этой ноды (резолвит Federation)
   int64 origin_ts_ms = 6;
 }
 
@@ -692,6 +692,8 @@ message ImportFederatedMessageRequest {
   string text = 6;
   repeated FederatedFileRefFlat attachments = 7;
   int64 origin_ts_ms = 8;
+  bytes raw_event = 9;                  // wire-байты подписанного FederationEvent (для catch-up 2.6, не парсится Messages)
+  string event_id = 10;                 // event_id доставки (LWW tie-break последующих ApplyFederatedEdit/Delete, этап 2.4)
 }
 
 message ImportFederatedMessageResponse {
@@ -704,6 +706,9 @@ message ApplyFederatedEditRequest {
   string new_text = 3;
   repeated FederatedFileRefFlat attachments = 4;
   int64 origin_ts_ms = 5;
+  string origin_server = 6; // x-bf-origin события (проверенный Federation) — для проверки "правит только автор" (P2-02)
+  string event_id = 7;      // event_id доставки — LWW tie-break при равенстве origin_ts_ms
+  bytes raw_event = 8;      // wire-байты подписанного FederationEvent (catch-up 2.6, не парсится Messages)
 }
 
 message ApplyFederatedEditResponse {
@@ -714,6 +719,9 @@ message ApplyFederatedDeleteRequest {
   string chat_id = 1;
   string federated_message_id = 2;
   int64 origin_ts_ms = 3;
+  string origin_server = 4; // x-bf-origin события — см. ApplyFederatedEditRequest
+  string event_id = 5;      // LWW tie-break — см. ApplyFederatedEditRequest
+  bytes raw_event = 6;      // см. ApplyFederatedEditRequest
 }
 
 message ApplyFederatedDeleteResponse {
@@ -725,6 +733,7 @@ message ApplyFederatedReadRequest {
   string reader_uuid = 2;
   string up_to_federated_message_id = 3;
   int64 origin_ts_ms = 4;
+  string origin_server = 5; // x-bf-origin события — читатель обязан принадлежать этой ноде (P2-02)
 }
 
 message ApplyFederatedReadResponse {

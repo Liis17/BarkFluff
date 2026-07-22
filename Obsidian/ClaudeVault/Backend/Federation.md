@@ -45,13 +45,14 @@
 
 | Очередь | Событие | Действие |
 |---|---|---|
-| `new-messages-federation-handler` | [[Shared/Queue#NewMessageEvent]] | Если `IsFederated=true` — построить `ChatCreated` (если `IsFirstMessageInChat`) + `NewMessage`, подписать, в outbox для каждого ServerName из `RemoteParticipants` |
-| `messages-edited-federation-handler` | `MessageEditedEvent` | `MessageEdited` в outbox |
+| `new-messages-federation-handler` | [[Shared/Queue#NewMessageEvent]] | Если `IsFederated=true` — построить `ChatCreated` (если `IsFirstMessageInChat`) + `NewMessage` (текст парсится из `byte[] Message`, этап 2.3), подписать, в outbox для каждого ServerName из `RemoteParticipants` |
+| `messages-edited-federation-handler` | `MessageEditedEvent` | `MessageEdited` в outbox (`NewText` — из `byte[] Message`, этап 2.4) |
 | `messages-deleted-federation-handler` | `MessageDeletedEvent` | `MessageDeleted` в outbox |
 | `read-receipts-federation-handler` | `MessageReadEvent` | `MessagesRead` в outbox |
+| `federated-chat-rejected-messages` (Messages, не Federation) | `FederatedChatRejectedEvent` | См. «Квота и privacy-отказ (этап 2.5)» ниже — публикуется этой нодой, потребляется [[Backend/Messages]] |
 | `session-revoked-federation` | [[Shared/Queue#SessionRevokedEvent]] | Стандартная инвалидация `TokenRevocationCache` (по образцу Users/Messages/Updates) |
 
-Консюмеры игнорируют события при `Federation:Enabled=false` или `IsFederated=false` — нефедеративные чаты не порождают outbox-записей. Поля для построения payload'ов Messages начнёт заполнять в 2.3; в этапе 2.2 текст не передаётся (приёмник возвращает `RETRY:NotImplementedYet`).
+Консюмеры игнорируют события при `Federation:Enabled=false` или `IsFederated=false` — нефедеративные чаты не порождают outbox-записей.
 
 ### DeliverEvents — серверный пайплайн (этап 2.2)
 
@@ -60,8 +61,8 @@
 1. `origin_server` события == `x-bf-origin` (XFed проверил подпись запроса) → иначе `REJECTED`.
 2. `ProcessedEvents` содержит `event_id` → `ALREADY_PROCESSED`.
 3. Проверка `origin_signature` ключом `origin_key_id` из `KnownServerKeys` → иначе `REJECTED`.
-4. «Нода говорит только за своих»: `author.server_name` внутри payload == origin → иначе `REJECTED`.
-5. Маршрутизация по типу → внутренний вызов. **В этапе 2.2** все чатовые payload'ы возвращают `RETRY` (иморт-RPC в Messages — этап 2.3), каркас маршрутизации и коды готовы.
+4. «Нода говорит только за своих»: `author.server_name` внутри payload == origin → иначе `REJECTED` (для `MessageEdited`/`MessageDeleted`/`MessagesRead` в payload identity автора нет намеренно — проверка P2-02 делается локально в Messages, см. [[Backend/Messages]]).
+5. Маршрутизация по типу (`RouteToInternalAsync`) → внутренний вызов `MessagesServerApi`: `ChatCreated`→`ImportFederatedChat` (2.3, с квотой per-origin — ниже), `NewMessage`→`ImportFederatedMessage` (2.3), `MessageEdited/Deleted/MessagesRead`→`ApplyFederatedEdit/Delete/Read` (2.4). Профильные payload'ы (`ProfileChanged`/`UserDeactivated`) — RETRY до 2.9.
 6. Успех → запись в `ProcessedEvents` + `OK`. RETRY не индексируется в ProcessedEvents (повторная доставка валидна).
 
 ### EnqueueOutbound — internal API
@@ -77,6 +78,47 @@
 - `outbox_enqueued_total`
 - `events_received.{type}` — при `OK`
 - `events_duplicate`, `events_rejected.{origin_mismatch|unknown_key|invalid_signature|author_not_origin}`
+- `chatcreated_quota_exceeded.{origin}` — этап 2.5, см. ниже
+- `federated_chat_rejected_consumed` — Messages, консюмер `FederatedChatRejectedEvent`
+
+## Квота ChatCreated и privacy-отказ (этап 2.5, docs/rearch/phase-2/step-2.5-privacy-antispam.md)
+
+### Квота ChatCreated per-origin
+
+`Services/ChatCreatedQuotaLimiter` (`IChatCreatedQuotaLimiter`) — защита от спам-волны создания
+чатов одной нодой. Redis-счётчик `fed:chatcreated:{origin}:{yyyyMMddHH}` (часовое окно), инкремент
++ TTL 1ч на первый инкремент. Лимит — `Federation:ChatCreatedHourlyLimit` (конфиг, default 100).
+
+Списание идемпотентно по `eventId` (rearch-phase2, code-review): `TryConsumeAsync(origin, eventId)`
+сначала выставляет redis-маркер `fed:chatcreated:charged:{eventId}` (`SET NX EX 1ч`) — если маркер
+уже стоял, квота уже была учтена этим же событием раньше и повторный инкремент не делается. Без
+этого ретраи ещё не обработанного `ChatCreated` (OutboxDispatcher.ApplyRetry — событие не
+индексируется в ProcessedEvents, пока не получит `Ok`) списывали квоту на каждую попытку, и
+временная недоступность Messages сама по себе исчерпывала лимит origin.
+
+Проверяется в `FederationS2SApiService.RouteToInternalAsync`, `case ChatCreated`, **до** вызова
+`ImportFederatedChat` — превышение → `EventStatus.Retry` (троттлинг — временное состояние, не порча
+события) + метрика `chatcreated_quota_exceeded.{origin}` + warning-лог; `ImportFederatedChat` не
+вызывается вовсе (Messages не видит спам-трафик).
+
+Federation впервые использует Redis — конфиг `Redis` заведён в ServiceId=15 (свой бакет; было
+пропущено, заводить пришлось этим же этапом).
+
+### FederatedDmRejected → FederatedChatRejectedEvent
+
+Privacy-отказ (`invitee.DenyFederatedDm=true` на удалённой ноде, см. [[Backend/Users]]) долетает
+обратно до отправителя через `OutboxDispatcher`:
+
+1. `ImportFederatedChat` на принимающей ноде бросает `FederatedDmRejectedException` (`ErrorCode =
+   "FederatedDmRejected"` — литеральная строка, а не GUID, единственное такое исключение в проекте).
+2. `DeliverEvents` мапит `FailedPrecondition` → `EventStatus.Rejected`, `error_code` в ответе =
+   `"FederatedDmRejected"`.
+3. На origin-ноде `OutboxDispatcher` ставит строку в `DeadLetter`; если `result.ErrorCode ==
+   "FederatedDmRejected"` **и** `row.ChatId` задан — публикует `FederatedChatRejectedEvent { ChatId,
+   Reason }` (namespace `Shared.Queue.Federation`).
+4. [[Backend/Messages]] консюмирует событие → `Chat.FederatedStatus = Rejected` на origin-ноде;
+   дальнейшая отправка в этот чат падает понятной ошибкой `FederatedDmRejectedException` без
+   повторных бесплодных попыток через федерацию.
 
  + S2S-профиль (этап 2.1) + outbox (этап 2.2)
 

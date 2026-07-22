@@ -1,3 +1,4 @@
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -72,7 +73,7 @@ public class PostCallSystemMessageCommandHandler
         systemMessage = await _messagesStorage.AddMessage(systemMessage);
 
         var members = await _chatsStorage.GetChatMembers(chatId, 0, int.MaxValue);
-        await _messageQueueSender.SendMessage(systemMessage, chatId, members.Select(m => m.UserId).ToList());
+        await _messageQueueSender.SendMessage(systemMessage, chatId, members.LocalUserIds());
 
         _logger.LogInformation("Системное сообщение о звонке записано в чат {ChatId}", chatId);
         return new PostCallSystemMessageResponse { Posted = true };

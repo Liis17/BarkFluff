@@ -168,7 +168,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ## Приватность
 
-`Privacy` (1:1 с `User`). Поля: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility`, `EmailVisibility`, `OnlineVisibility` (enum `All=0, Friends=1, None=2`), `SearchVisible`.
+`Privacy` (1:1 с `User`). Поля: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility`, `EmailVisibility`, `OnlineVisibility` (enum `All=0, Friends=1, None=2`), `SearchVisible`, `DenyFederatedDm` (bool, default false, этап 2.5).
 
 Запись создаётся автоматически в `ConfirmUser`. Дефолты: профиль виден всем, email скрыт (`None`).
 
@@ -178,6 +178,18 @@ FRIENDS трактуется как NONE до появления сервиса 
 - `GetUserByUsername` — если `!ProfileVisibleOnSite` → found=false; avatar/bio фильтруются по visibility; poster_url получается через FilesServerApi (если ошибка — пустая строка)
 - `SearchUsers` — `SearchVisible=false` исключает из поиска, но пользователь видит сам себя
 - [[Backend/Onliner]] — `OnlineVisibilityFilter` по `OnlineVisibility`
+
+### DenyFederatedDm (этап 2.5, docs/rearch/05-chat-replication.md)
+
+Запрет входящих федеративных DM. Действует **только на создание новых** fed-чатов — уже
+существующие продолжают получать сообщения (намеренно, семантика «запретить писать мне первым»).
+
+- `GetUsersByUuidQueryHandler` отдаёт флаг в `UserProfileByUuid.deny_federated_dm` для локальных
+  пользователей (батч через `PrivacyStorage.GetByUserIds` — без похода в БД на каждого); для remote
+  всегда `false` (не их privacy). [[Backend/Messages]] использует значение при резолве invitee в
+  `ImportFederatedChat` — второй gRPC-поход в Users на каждый импорт не нужен.
+- Proto `deny_federated_dm` в `PrivacySettings` (7) появился ещё в 0.4; маппинг `PrivacyMapping`
+  (`ToGrpc`/`ToDomain`) и `PrivacyStorage.Update` дополнены этапом 2.5.
 
 ## Персонализация
 

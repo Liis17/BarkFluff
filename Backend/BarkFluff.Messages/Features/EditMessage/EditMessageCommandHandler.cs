@@ -14,6 +14,8 @@ using MessageAttachment = BarkFluff.Messages.Domain.MessageAttachment;
 
 namespace BarkFluff.Messages.Features.EditMessage;
 
+using BarkFluff.Messages.Domain;
+
 public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, EditMessageResponse>
 {
     private const int MaxTextLength = 4096;
@@ -222,9 +224,26 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         );
 
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
-        var memberIds = members.Select(x => x.UserId).ToList();
+        var memberIds = members.LocalUserIds();
 
-        await _messageQueueSender.SendEdited(message, message.ChatId, memberIds, filesInfoMap);
+        if (message.FederatedId.HasValue)
+        {
+            // Исходящий fed-путь (этап 2.4): правка в fed-чате → остальные fed-поля для консюмера
+            // Federation (docs/rearch/05, «Правка / удаление»).
+            var remoteParticipants = members.RemoteParticipants();
+
+            await _messageQueueSender.SendEdited(
+                message, message.ChatId, memberIds, filesInfoMap,
+                isFederated: true,
+                federatedId: message.FederatedId,
+                senderUuid: message.SenderUuid,
+                remoteParticipants: remoteParticipants,
+                lastChangeAt: message.LastChangeAt);
+        }
+        else
+        {
+            await _messageQueueSender.SendEdited(message, message.ChatId, memberIds, filesInfoMap);
+        }
 
         _metrics.Increment("messages_edited");
         if (hasText)
