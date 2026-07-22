@@ -20,7 +20,7 @@ namespace BarkFluff.Bots.Tests.Consumers;
 
 public class LoginNotificationConsumerTests
 {
-    private readonly BotRegistryCache _registry = new();
+    private readonly BotRegistryCache _registry = new(Mock.Of<IBus>(), Mock.Of<ILogger<BotRegistryCache>>());
     private readonly Mock<MessagesProto.MessagesServerApi.MessagesServerApiClient> _messagesClient = new();
     private readonly LoginNotificationConsumer _consumer;
 

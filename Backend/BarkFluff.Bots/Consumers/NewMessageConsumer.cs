@@ -1,4 +1,5 @@
 using BarkFluff.Bots.Domain;
+using BarkFluff.Bots.Messages;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
 using BarkFluff.Bots.Services.BotFather;
@@ -19,7 +20,6 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
 {
     private readonly BotRegistryCache _registryCache;
     private readonly BotUpdatesStorage _updatesStorage;
-    private readonly BotUpdateNotifier _notifier;
     private readonly BotFatherService _botFatherService;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly MetricsCollector _metrics;
@@ -28,7 +28,6 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
     public NewMessageConsumer(
         BotRegistryCache registryCache,
         BotUpdatesStorage updatesStorage,
-        BotUpdateNotifier notifier,
         BotFatherService botFatherService,
         UsersServerApi.UsersServerApiClient usersClient,
         MetricsCollector metrics,
@@ -36,7 +35,6 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
     {
         _registryCache = registryCache;
         _updatesStorage = updatesStorage;
-        _notifier = notifier;
         _botFatherService = botFatherService;
         _usersClient = usersClient;
         _metrics = metrics;
@@ -82,7 +80,8 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
 
                 default:
                     var updateId = await _updatesStorage.Add(botId, payloadJson);
-                    _notifier.Signal(botId);
+                    // Fan-out сигнал: разбудить long-poll/стрим-waiter'а бота на любом инстансе.
+                    await context.Publish(new BotUpdateSignalEvent { BotId = botId });
                     _metrics.Increment("bot_updates_stored");
 
                     _logger.LogDebug(
