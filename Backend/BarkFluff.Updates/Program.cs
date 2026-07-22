@@ -67,8 +67,10 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<ReadByConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("session-revoked-updates", e =>
+        cfg.ReceiveEndpoint($"session-revoked-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<SessionRevokedConsumer>(context);
         });
 
