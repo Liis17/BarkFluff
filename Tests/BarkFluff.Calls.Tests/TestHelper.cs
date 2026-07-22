@@ -74,7 +74,7 @@ public static class TestHelper
         return new CallsService(
             db,
             new LiveKitTokenService(settings),
-            subscriptions,
+            new LocalCallEventDispatcher(subscriptions),
             quality,
             new CallTimeoutScheduler(Mock.Of<IServiceScopeFactory>(), NullLogger<CallTimeoutScheduler>.Instance),
             messagesClient ?? Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
@@ -102,6 +102,22 @@ public static class TestHelper
         db.SaveChanges();
         return session;
     }
+}
+
+/// <summary>
+/// Тестовый диспетчер: доставляет события напрямую в локальный менеджер (без RabbitMQ),
+/// чтобы тесты проверяли доменную логику CallsService (кому какое событие), а не транспорт.
+/// </summary>
+public sealed class LocalCallEventDispatcher(CallEventSubscriptionsManager subscriptions) : ICallEventDispatcher
+{
+    public Task SendToUserAsync(long userId, CallEvent evt)
+        => subscriptions.SendToUserAsync(userId, evt);
+
+    public Task SendToUserExceptDeviceAsync(long userId, Guid exceptDeviceId, CallEvent evt)
+        => subscriptions.SendToUserExceptDeviceAsync(userId, exceptDeviceId, evt);
+
+    public Task SendToUsersAsync(IEnumerable<long> userIds, CallEvent evt)
+        => subscriptions.SendToUsersAsync(userIds, evt);
 }
 
 /// <summary>Фейковый device-поток: вместо отправки по сети складывает события в список.</summary>
