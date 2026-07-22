@@ -57,13 +57,19 @@ builder.Services.AddMassTransit(x =>
             h.Password(builder.Configuration["RabbitMQ:Password"]);
         });
 
-        cfg.ReceiveEndpoint("new-messages-updates-handler", e =>
+        // Все стрим-эндпоинты — fan-out: уникальная очередь на инстанс, чтобы каждый инстанс получал
+        // копию события и доставлял её своим локальным подписчикам gRPC-стримов (см. updates.md).
+        cfg.ReceiveEndpoint($"new-messages-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<NewMessageConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("read-receipts-updates-handler", e =>
+        cfg.ReceiveEndpoint($"read-receipts-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<ReadByConsumer>(context);
         });
 
@@ -74,73 +80,101 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<SessionRevokedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("messages-edited-updates-handler", e =>
+        cfg.ReceiveEndpoint($"messages-edited-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<MessageEditedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("messages-deleted-updates-handler", e =>
+        cfg.ReceiveEndpoint($"messages-deleted-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<MessageDeletedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("messages-pinned-updates-handler", e =>
+        cfg.ReceiveEndpoint($"messages-pinned-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<MessagePinnedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("messages-unpinned-updates-handler", e =>
+        cfg.ReceiveEndpoint($"messages-unpinned-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<MessageUnpinnedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("all-messages-unpinned-updates-handler", e =>
+        cfg.ReceiveEndpoint($"all-messages-unpinned-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<AllMessagesUnpinnedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("new-encrypted-messages-updates-handler", e =>
+        cfg.ReceiveEndpoint($"new-encrypted-messages-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<NewEncryptedMessageConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("encrypted-messages-edited-updates-handler", e =>
+        cfg.ReceiveEndpoint($"encrypted-messages-edited-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<EncryptedMessageEditedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("encrypted-messages-deleted-updates-handler", e =>
+        cfg.ReceiveEndpoint($"encrypted-messages-deleted-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<EncryptedMessageDeletedConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("private-messages-read-updates-handler", e =>
+        cfg.ReceiveEndpoint($"private-messages-read-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<PrivateMessagesReadConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("private-chat-invites-updates-handler", e =>
+        cfg.ReceiveEndpoint($"private-chat-invites-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<PrivateChatInviteConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("private-chat-invite-resolutions-updates-handler", e =>
+        cfg.ReceiveEndpoint($"private-chat-invite-resolutions-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<PrivateChatInviteResolutionConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("secret-chat-invites-updates-handler", e =>
+        cfg.ReceiveEndpoint($"secret-chat-invites-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<SecretChatInviteConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("secret-chat-invite-resolutions-updates-handler", e =>
+        cfg.ReceiveEndpoint($"secret-chat-invite-resolutions-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<SecretChatInviteResolutionConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("new-secret-messages-updates-handler", e =>
+        cfg.ReceiveEndpoint($"new-secret-messages-updates-{InstanceId.Current}", e =>
         {
+            e.AutoDelete = true;
+            e.Durable = false;
             e.ConfigureConsumer<NewSecretMessageConsumer>(context);
         });
     });
