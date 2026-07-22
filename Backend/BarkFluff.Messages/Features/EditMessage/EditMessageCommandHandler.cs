@@ -6,7 +6,6 @@ using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
-using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
 
@@ -231,10 +230,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         {
             // Исходящий fed-путь (этап 2.4): правка в fed-чате → остальные fed-поля для консюмера
             // Federation (docs/rearch/05, «Правка / удаление»).
-            var remoteParticipants = members
-                .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
-                .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
-                .ToList();
+            var remoteParticipants = members.RemoteParticipants();
 
             await _messageQueueSender.SendEdited(
                 message, message.ChatId, memberIds, filesInfoMap,
