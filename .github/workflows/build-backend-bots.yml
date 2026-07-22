@@ -7,7 +7,6 @@ on:
       - master
     paths:
       - 'Backend/BarkFluff.Bots/**'
-      - 'Backend/BarkFluff.GrpcServer/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
