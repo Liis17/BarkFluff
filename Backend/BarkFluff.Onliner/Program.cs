@@ -18,6 +18,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Serilog;
 
+using StackExchange.Redis;
+
 namespace BarkFluff.Onliner;
 
 public class Program
@@ -46,7 +48,12 @@ public class Program
                 npgsql.CommandTimeout(30);
             }));
 
-        // Регистрируем все Onliner сервисы (Storage, Notifier, Background Services, MediatR)
+        // Redis — общий presence-стор и распределённый single-runner (масштабирование, см. onliner.md).
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
+                ?? throw new InvalidOperationException("Redis configuration is missing")));
+
+        // Регистрируем все Onliner сервисы (Presence, Notifier, Background Services, MediatR)
         builder.Services.AddOnlinerServices();
 
         // Регистрируем handler для streaming (не через MediatR)
@@ -71,6 +78,8 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<OnlineStatusChangedConsumer>();
+            x.AddConsumer<TypingChangedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -85,6 +94,22 @@ public class Program
                     e.AutoDelete = true;
                     e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс получает копию изменения статуса/набора и доставляет
+                // своим локальным gRPC-подпискам (стрим подписчика живёт на одном инстансе).
+                cfg.ReceiveEndpoint($"online-status-changed-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<OnlineStatusChangedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint($"typing-changed-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<TypingChangedConsumer>(context);
                 });
             });
         });

@@ -1,7 +1,10 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Onliner.Messages;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
+
+using MassTransit;
 
 using MediatR;
 
@@ -10,21 +13,21 @@ namespace BarkFluff.Onliner.Features.SetOnlineStatus;
 public class SetOnlineStatusCommandHandler : IRequestHandler<SetOnlineStatusCommand, SetOnlineStatusResponse>
 {
     private readonly UserContext _userContext;
-    private readonly OnlineStatusStorage _storage;
-    private readonly OnlineStatusNotifier _notifier;
+    private readonly IPresenceStore _presence;
+    private readonly IPublishEndpoint _publish;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<SetOnlineStatusCommandHandler> _logger;
 
     public SetOnlineStatusCommandHandler(
         UserContext userContext,
-        OnlineStatusStorage storage,
-        OnlineStatusNotifier notifier,
+        IPresenceStore presence,
+        IPublishEndpoint publish,
         MetricsCollector metrics,
         ILogger<SetOnlineStatusCommandHandler> logger)
     {
         _userContext = userContext;
-        _storage = storage;
-        _notifier = notifier;
+        _presence = presence;
+        _publish = publish;
         _metrics = metrics;
         _logger = logger;
     }
@@ -37,24 +40,23 @@ public class SetOnlineStatusCommandHandler : IRequestHandler<SetOnlineStatusComm
 
         _logger.LogTrace("Setting online status for user {UserId}", userId);
 
-        // Обновляем статус в in-memory storage
-        bool statusChanged = _storage.UpdateStatus(userId);
+        // Heartbeat в общий presence-стор (Redis). true — переход Offline/absent → Online.
+        // Переход Online → Offline обрабатывает OfflineDetectionService (single-runner).
+        var becameOnline = await _presence.MarkOnlineAsync(userId, cancellationToken);
 
-        // Если статус изменился - уведомляем подписчиков
-        // Переход Offline → Online обрабатывается здесь
-        // Переход Online → Offline обрабатывается в OfflineDetectionService
-        if (statusChanged)
+        if (becameOnline)
         {
             _metrics.Increment("status_changes.online");
 
-            var currentStatus = _storage.GetStatus(userId);
+            _logger.LogDebug("User {UserId} status changed to Online, publishing to subscribers", userId);
 
-            if (currentStatus != null)
+            // Fan-out: событие доставят подписчикам все инстансы (стрим подписчика может жить на другом).
+            await _publish.Publish(new OnlineStatusChangedEvent
             {
-                _logger.LogDebug("User {UserId} status changed to {Status}, notifying subscribers",
-                    userId, currentStatus.Status);
-                await _notifier.NotifyStatusChanged(userId, currentStatus, cancellationToken);
-            }
+                UserId = userId,
+                Status = (int)Domain.Enums.StatusTypeId.Online,
+                LastSeen = DateTime.UtcNow,
+            }, cancellationToken);
         }
 
         return new SetOnlineStatusResponse();
