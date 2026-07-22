@@ -13,12 +13,12 @@ public class GetBotUpdatesQueryHandler : IRequestHandler<GetBotUpdatesQuery, Lis
 
     private readonly BotUpdatesStorage _updatesStorage;
     private readonly BotUpdateNotifier _notifier;
-    private readonly BotPollingGuard _pollingGuard;
+    private readonly IBotPollingGuard _pollingGuard;
 
     public GetBotUpdatesQueryHandler(
         BotUpdatesStorage updatesStorage,
         BotUpdateNotifier notifier,
-        BotPollingGuard pollingGuard)
+        IBotPollingGuard pollingGuard)
     {
         _updatesStorage = updatesStorage;
         _notifier = notifier;
@@ -30,7 +30,7 @@ public class GetBotUpdatesQueryHandler : IRequestHandler<GetBotUpdatesQuery, Lis
         var limit = Math.Clamp(request.Limit, 1, MaxUpdatesLimit);
         var timeout = Math.Clamp(request.TimeoutSeconds, 0, MaxLongPollTimeoutSeconds);
 
-        if (!_pollingGuard.TryEnter(request.BotId))
+        if (!await _pollingGuard.TryEnterAsync(request.BotId))
             throw new BotPollingConflictException();
 
         try
@@ -50,7 +50,7 @@ public class GetBotUpdatesQueryHandler : IRequestHandler<GetBotUpdatesQuery, Lis
         }
         finally
         {
-            _pollingGuard.Exit(request.BotId);
+            await _pollingGuard.ExitAsync(request.BotId);
         }
     }
 }

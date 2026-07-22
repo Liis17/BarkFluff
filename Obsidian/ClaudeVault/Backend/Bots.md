@@ -15,7 +15,7 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 
 - `Features/` — CQRS (MediatR): admin (`CreateSystemBot`, `ListBots`, `DeleteBot`, `RegenerateToken`) + внешний API (`GetMe`, `SendBotMessage`, `SendBotFile`, `GetBotUserInfo`, `GetBotUpdates`)
 - `Host/` — `BotsServerApiService`, `BotsExternalApiService` + `BotAuthInterceptor`; `Http/` — `BotApiEndpoints`, `BotAuthEndpointFilter`, `BotApiResponse`
-- `Services/` — `BotRegistryCache`, `BotAccessValidator`, `BotCallerContext`, `BotRateLimiter`, `BotPollingGuard`, `BotUpdateNotifier`, `UpdateJsonMapper`, `BotFather/`; hosted: `SystemBotsSeeder`, `BotsCleanupService`
+- `Services/` — `BotRegistryCache`, `BotAccessValidator`, `BotCallerContext`, `IBotRateLimiter`/`RedisBotRateLimiter`, `IBotPollingGuard`/`RedisBotPollingGuard`, `BotUpdateNotifier`, `UpdateJsonMapper`, `BotFather/`; hosted: `SystemBotsSeeder`, `BotsCleanupService`
 - `Infrastructure/` — только `BotTokenIssuer` (обёртка gRPC-клиента [[Backend/Identity]])
 - `Mapping/` — `BotMapping`, `BotMessageMapping`, `BotUpdateMapping` (Domain/proto → gRPC/HTTP-ответы)
 - `Persistence/` — `BotsContext`, storages, миграции; `Consumers/` — `NewMessageConsumer`, `LoginNotificationConsumer`
@@ -33,11 +33,11 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 
 - **Токен бота** — общесистемный долгоживущий JWT (`TokenType.Bot`, exp 9999): claims `x-user-id` (= botId), `x-token-type=Bot`, `x-bot-token-id` (uuid выпуска). Выпускает [[Backend/Identity]] (`IdentityServerApi.CreateBotTokenServer`) через `Infrastructure/BotTokenIssuer`; Bots хранит только `TokenId` (plaintext-JWT показывается один раз: BotFather / AdminPanel / RegenerateToken).
 - **Авторизация внешнего API**: штатный XAuth (заголовок `x-auth-token`) + политика `[Authorize(Policy = nameof(TokenType.Bot))]`. После JWT-валидации `BotAccessValidator` (общий синглтон) сверяет claim `x-bot-token-id` с `TokenId` в кэше (мгновенный отзыв: `RegenerateToken`/`DeleteBot` убивают старый JWT, переживает рестарты — источник истины Postgres), проверяет `SystemRole == None` и rate-limit. Обёртки: `Host/BotAuthInterceptor` (gRPC, через `AddServiceOptions`) и `Host/Http/BotAuthEndpointFilter` (401/429 в формате Bot API). Бот текущего запроса — scoped `Services/BotCallerContext` (из `UserContext.UserId` + кэш). Политика `User` bot-JWT не принимает — на другие API платформы токен не проходит.
-- **`BotRegistryCache`** — in-memory реестр всех ботов (Bots — единственный писатель; Redis не нужен в v1). Грузится сидером, обновляется в местах записи; авторитативен для сверки `TokenId`.
+- **`BotRegistryCache`** — локальный кэш всех ботов. Грузится сидером, обновляется в местах записи; авторитативен для сверки `TokenId`. При масштабировании изменения (Set/Remove) рассылаются fan-out событием `BotRegistryChangedEvent`, консьюмер на каждом инстансе перечитывает бота из БД (иначе XAuth на другом инстансе видел бы старый `TokenId` после регенерации).
 - **CQRS**: внешний API идёт через Features (`GetMe`, `SendBotMessage` — общий для gRPC/HTTP, `SendBotFile` — квота 1 ГБ + upload, `GetBotUserInfo`, `GetBotUpdates` — long-poll в хендлере). Host тонкий; `SubscribeUpdates` остаётся в Host (server-streaming в MediatR не ложится). Маппинг Domain/proto → ответы — в `Mapping/` (`BotMapping`, `BotMessageMapping`, `BotUpdateMapping`). В `Infrastructure/` — только `BotTokenIssuer`; hosted-сервисы (`BotsCleanupService`, `SystemBotsSeeder`) — в `Services/`.
-- **Приём входящих**: второй consumer `NewMessageEvent` (очередь `new-messages-bots-handler`, fanout, [[Backend/Updates]] не затронут). Пересечение `ChatMembers` с реестром ботов (исключая отправителя) → `BotUpdates` (jsonb payload, Telegram-like) + сигнал `BotUpdateNotifier` (TaskCompletionSource per bot).
+- **Приём входящих**: второй consumer `NewMessageEvent` (очередь `new-messages-bots-handler`, competing — сохраняет update один раз, [[Backend/Updates]] не затронут). Пересечение `ChatMembers` с реестром ботов (исключая отправителя) → `BotUpdates` (jsonb payload, Telegram-like) + публикация fan-out `BotUpdateSignalEvent`; консьюмер на каждом инстансе будит свои локальные waiter'ы `BotUpdateNotifier` (TaskCompletionSource per bot) — сигнал доходит до poller'а на любом инстансе (update шарится через БД).
 - **`getUpdates(offset)`** подтверждает и удаляет строки `< offset`. Ретеншн: `BotsCleanupService` раз в час (BotUpdates >24ч, BotFatherSessions >30 мин).
-- **Лимиты**: `BotRateLimiter` 30 req/s на бота (общий для gRPC и HTTP); `BotPollingGuard` — один активный поток getUpdates/SubscribeUpdates на бота (как Telegram; снимает гонку по `LastConfirmedUpdateId`). Квота хранилища вложений бота — 1 ГБ (проверка перед `UploadFileServer`).
+- **Лимиты**: `IBotRateLimiter`/`RedisBotRateLimiter` — 30 req/s на бота, общий счётчик на все инстансы через Redis `INCR` (иначе 30×N); `IBotPollingGuard`/`RedisBotPollingGuard` — один активный поток getUpdates/SubscribeUpdates на бота глобально через распределённый лок `SET pollguard:{botId} NX EX` (TTL 90с переживает падение инстанса, долгие стримы продлевают его). Квота хранилища вложений бота — 1 ГБ (проверка перед `UploadFileServer`).
 - **Бот не пишет первым**: чат бот↔пользователь создаётся только когда пользователь напишет боту; авторизацию отправки делает `SendMessageServer` в [[Backend/Messages]] (членство при `chat_id`, запрет авто-DM при `user_id`). Исключение — системные боты (`allow_chat_creation`, login-notifier).
 
 ## Системные боты (in-process, не под rate-limit, без внешнего токена)
@@ -118,5 +118,4 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 ## Не реализовано (v1)
 
 - Webhook-доставка входящих (только long-poll + gRPC-стрим).
-- Горизонтальное масштабирование (BotRegistryCache/notifier — in-memory; переезд в Redis при необходимости).
 - Клиентский бейдж «bot» (поле `is_bot` в proto уже есть — клиентская задача вне плана).

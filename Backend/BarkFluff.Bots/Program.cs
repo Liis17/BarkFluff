@@ -19,6 +19,8 @@ using BarkFluff.Shared.Identity;
 
 using MassTransit;
 
+using StackExchange.Redis;
+
 using Microsoft.EntityFrameworkCore;
 
 using Serilog;
@@ -63,10 +65,14 @@ public class Program
         builder.Services.AddScoped<BotFatherService>();
         builder.Services.AddScoped<SystemBotsSeeder>();
         builder.Services.AddHttpClient();
+        // Redis — общий rate-limit и распределённый polling-guard (масштабирование, см. bots.md).
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
+                ?? throw new InvalidOperationException("Redis configuration is missing")));
         builder.Services.AddSingleton<BotRegistryCache>();
         builder.Services.AddSingleton<BotUpdateNotifier>();
-        builder.Services.AddSingleton<BotRateLimiter>();
-        builder.Services.AddSingleton<BotPollingGuard>();
+        builder.Services.AddSingleton<IBotRateLimiter, RedisBotRateLimiter>();
+        builder.Services.AddSingleton<IBotPollingGuard, RedisBotPollingGuard>();
         builder.Services.AddSingleton<BotAccessValidator>();
         builder.Services.AddScoped<BotCallerContext>();
         builder.Services.AddScoped<BotTokenIssuer>();
@@ -102,6 +108,8 @@ public class Program
         {
             x.AddConsumer<NewMessageConsumer>();
             x.AddConsumer<LoginNotificationConsumer>();
+            x.AddConsumer<BotUpdateSignalConsumer>();
+            x.AddConsumer<BotRegistryChangedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -119,6 +127,22 @@ public class Program
                 cfg.ReceiveEndpoint("email-notifications-bots-handler", e =>
                 {
                     e.ConfigureConsumer<LoginNotificationConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс будит своих локальных poll/стрим-waiter'ов и инвалидирует
+                // свой кэш реестра (уникальная очередь на инстанс, см. bots.md).
+                cfg.ReceiveEndpoint($"bot-update-signal-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<BotUpdateSignalConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint($"bot-registry-changed-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<BotRegistryChangedConsumer>(context);
                 });
             });
         });

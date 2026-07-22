@@ -17,7 +17,7 @@ public class BotAuthEndpointFilter : IEndpointFilter
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        switch (_validator.Validate(context.HttpContext.User))
+        switch (await _validator.ValidateAsync(context.HttpContext.User))
         {
             case BotAccessStatus.Unauthenticated:
                 return BotApiResponse.Error(StatusCodes.Status401Unauthorized, "Невалидный токен бота");
