@@ -16,7 +16,6 @@ using MassTransit;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BarkFluff.Calls.Tests;
@@ -76,7 +75,6 @@ public static class TestHelper
             new LiveKitTokenService(settings),
             new LocalCallEventDispatcher(subscriptions),
             quality,
-            new CallTimeoutScheduler(Mock.Of<IServiceScopeFactory>(), NullLogger<CallTimeoutScheduler>.Instance),
             messagesClient ?? Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
             Mock.Of<IPublishEndpoint>(),
             CreateUserContext(actingUserId, deviceId),

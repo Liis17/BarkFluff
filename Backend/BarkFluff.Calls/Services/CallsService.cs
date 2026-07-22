@@ -28,7 +28,6 @@ public class CallsService
     private readonly LiveKitTokenService _tokens;
     private readonly ICallEventDispatcher _dispatcher;
     private readonly CallQualityStore _quality;
-    private readonly CallTimeoutScheduler _timeouts;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
     private readonly IPublishEndpoint _publish;
     private readonly UserContext _userContext;
@@ -40,7 +39,6 @@ public class CallsService
         LiveKitTokenService tokens,
         ICallEventDispatcher dispatcher,
         CallQualityStore quality,
-        CallTimeoutScheduler timeouts,
         MessagesServerApi.MessagesServerApiClient messagesClient,
         IPublishEndpoint publish,
         UserContext userContext,
@@ -51,7 +49,6 @@ public class CallsService
         _tokens = tokens;
         _dispatcher = dispatcher;
         _quality = quality;
-        _timeouts = timeouts;
         _messagesClient = messagesClient;
         _publish = publish;
         _userContext = userContext;
@@ -102,7 +99,7 @@ public class CallsService
         _db.CallSessions.Add(session);
         await _db.SaveChangesAsync(ct);
 
-        _timeouts.Schedule(session.Id);
+        // Таймаут ринга обрабатывает durable-sweeper (CallRingTimeoutSweeper) — переживает перезапуск инстанса.
 
         var incoming = new CallEvent
         {
@@ -167,7 +164,6 @@ public class CallsService
             session.Status = CallStatus.Active;
             session.AnsweredAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
-            _timeouts.Cancel(session.Id);
             _metrics.Increment("calls_answered");
         }
 
@@ -246,7 +242,6 @@ public class CallsService
             {
                 Finalize(session, CallEndReasonKind.Rejected, userId);
                 await _db.SaveChangesAsync(ct);
-                _timeouts.Cancel(session.Id);
                 await PostCallSystemMessageAsync(session, ct);
             }
 
@@ -277,7 +272,6 @@ public class CallsService
             var reason = session.AnsweredAt.HasValue ? CallEndReasonKind.Hangup : CallEndReasonKind.Missed;
             Finalize(session, reason, userId);
             await _db.SaveChangesAsync(ct);
-            _timeouts.Cancel(session.Id);
             await NotifyEndedAsync(session, ct);
             await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "ended", ct);
             await PostCallSystemMessageAsync(session, ct);
@@ -446,20 +440,28 @@ public class CallsService
 
     // ── Системные пути (таймаут / webhooks LiveKit) ────────────────────────
 
-    /// <summary>Таймаут ринга — звонок никто не принял.</summary>
-    public async Task TimeoutAsync(Guid callId)
+    /// <summary>Таймаут ринга — звонок никто не принял. Вызывается durable-sweeper'ом на любом инстансе.</summary>
+    public async Task TimeoutAsync(Guid callId, CancellationToken ct = default)
     {
-        var session = await _db.CallSessions.FirstOrDefaultAsync(c => c.Id == callId);
-        if (session is null || session.Status != CallStatus.Ringing)
+        // Атомарный захват: ровно один инстанс переведёт Ringing→Ended (условие Status=Ringing в UPDATE).
+        // Остальные (или повторные проходы) получат 0 строк и выйдут — доставка событий и системного
+        // сообщения происходит ровно один раз даже при параллельных sweeper'ах нескольких инстансов.
+        var claimed = await _db.CallSessions
+            .Where(c => c.Id == callId && c.Status == CallStatus.Ringing)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.Status, CallStatus.Ended)
+                .SetProperty(c => c.EndReason, CallEndReasonKind.Missed)
+                .SetProperty(c => c.EndedAt, DateTime.UtcNow), ct);
+
+        if (claimed == 0)
         {
-            return;
+            return; // уже не Ringing (принят/завершён) или обработан другим инстансом
         }
 
-        Finalize(session, CallEndReasonKind.Missed, endedByUserId: null);
-        await _db.SaveChangesAsync();
-        await NotifyEndedAsync(session, CancellationToken.None);
-        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, CancellationToken.None), "timeout", CancellationToken.None);
-        await PostCallSystemMessageAsync(session, CancellationToken.None);
+        var session = await _db.CallSessions.AsNoTracking().FirstAsync(c => c.Id == callId, ct);
+        await NotifyEndedAsync(session, ct);
+        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "timeout", ct);
+        await PostCallSystemMessageAsync(session, ct);
         _metrics.Increment("calls_missed");
         _logger.LogInformation("Звонок {CallId} помечен пропущенным (таймаут)", callId);
     }
@@ -476,7 +478,6 @@ public class CallsService
         var reason = session.AnsweredAt.HasValue ? CallEndReasonKind.Hangup : CallEndReasonKind.Missed;
         Finalize(session, reason, endedByUserId: null);
         await _db.SaveChangesAsync();
-        _timeouts.Cancel(session.Id);
         await NotifyEndedAsync(session, CancellationToken.None);
         await PublishDismissAsync(session, await GetRingRecipientsAsync(session, CancellationToken.None), "ended", CancellationToken.None);
         await PostCallSystemMessageAsync(session, CancellationToken.None);
