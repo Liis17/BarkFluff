@@ -93,6 +93,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Backend/BarkFluff.Navigator/Admin/package-lock.json
+
+      - name: "⚛️ Build Navigator admin UI"
+        working-directory: Backend/BarkFluff.Navigator/Admin
+        run: |
+          npm ci
+          npm run build
+
       - name: "\u2699\uFE0F dotnet publish (Linux Release)"
         run: |
           dotnet publish Backend/BarkFluff.Navigator/BarkFluff.Navigator.csproj \

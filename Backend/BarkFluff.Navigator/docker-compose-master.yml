@@ -11,11 +11,16 @@ services:
     environment:
       <<: *common-variables
       NAVIGATOR_PORT: ${NAVIGATOR_PORT}
+      NAVIGATOR_HTTP_PORT: ${NAVIGATOR_HTTP_PORT}
+      NavigatorAdmin__Username: ${NAVIGATOR_ADMIN_USERNAME}
+      NavigatorAdmin__Password: ${NAVIGATOR_ADMIN_PASSWORD}
       # Этап 1.5 rearch: Navigator вне платформенного шаблона (без LoadConfiguration) — локальная
       # SQLite-БД, путь через переменную окружения напрямую, не через Configuration-сервис.
       NAVIGATOR_DB: "Data Source=/app/db/navigator.db"
     volumes:
       - ./db:/app/db
+    expose:
+      - "${NAVIGATOR_HTTP_PORT}"
     networks:
       - barkfluff-network
 
