@@ -1,7 +1,7 @@
 # BarkFluff.Navigator
 
-Управляет реестром доступных серверов BarkFluff. Порт: **7010**.
-Публичный эндпоинт: `navigator.barkfluff.com:443 (plaintext HTTP/2).
+Управляет реестром доступных серверов BarkFluff. Порты по умолчанию: **7010** (внутренний gRPC/HTTP2) и **7011** (внутренний HTTP/1.1 для админки).
+Публичный эндпоинт: `navigator.barkfluff.com:443` (TLS завершается в [[Backend/Nginx]]).
 
 Расположение: `Backend/BarkFluff.Navigator/`
 
@@ -27,6 +27,14 @@ NAVIGATOR_DB="Data Source=navigator.db" NAVIGATOR_PORT=7010 dotnet run
 
 Поток: `NavigatorApiService` → MediatR → `ListServersQueryHandler` / `RegisterServerCommandHandler` / `GetServerByNameQueryHandler` → `ServersStorage`
 
+### Веб-админка
+
+React-сборка находится в `Backend/BarkFluff.Navigator/Admin/`; её production-файлы в `wwwroot/admin/` включаются в publish проекта. Navigator сам раздаёт их и HTTP API на отдельном HTTP/1.1-порту, а nginx публикует их как `https://navigator.barkfluff.com/admin/`. API `/admin/api/session`, `/admin/api/servers` и `/admin/api/logout` требуют cookie-сессию; `/admin/api/login` создаёт её после проверки логина и пароля.
+
+Учётные данные **обязательны** и не имеют дефолтных значений: `NavigatorAdmin__Username` и `NavigatorAdmin__Password` внутри контейнера. Compose передаёт их из `.env` переменных `NAVIGATOR_ADMIN_USERNAME` и `NAVIGATOR_ADMIN_PASSWORD`. Cookie защищена (`Secure`, `HttpOnly`, `SameSite=Strict`) и действует 8 часов.
+
+GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish` запускает `npm ci` и `npm run build` в `Admin/`, поэтому runner всегда пересобирает React-ассеты из исходников.
+
 ## Персистентность (этап 1.5)
 
 `Persistence/NavigatorContext.cs` — SQLite (было **in-memory**, `ConcurrentDictionary`, терялось при рестарте; этапом 1.5 был PostgreSQL, затем переведён на локальную SQLite ради экономии RAM на выделенном хосте). Таблица `Servers`: все прежние поля + `LastSeenAt` (заменяет in-memory `lastSeen`) + federation-поля (`ServerName` — уникальный частичный индекс `WHERE ServerName IS NOT NULL`, `FederationEndpoint`, `TlsSpkiSha256`, `FederationProtocolVersions`, `SigningKeys` — все три хранятся как `TEXT`/JSON: массивы через primitive-collections EF Core, `SigningKeys` через явный JSON-конвертер, список `{key_id, public_key_base64, expired_at}`, `NavigatorSigningKeyInfo`).
@@ -37,7 +45,7 @@ NAVIGATOR_DB="Data Source=navigator.db" NAVIGATOR_PORT=7010 dotnet run
 - `RegisterServerAsync()` — upsert. Ключ идентичности: `ServerName`, если задан; иначе легаси `Name+BeaconHost+BeaconPort`
 - `GetByServerNameAsync()` — lowercase-сравнение, `found=false` если протухло (тот же TTL, что у `GetServers`)
 
-**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды). SQLite-файл лежит в bind-mount `./db:/app/db` (папка `db/` рядом с самим compose-файлом на хосте), `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в bind-каталог (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет.
+**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды). SQLite-файл лежит в bind-mount `./db:/app/db` (папка `db/` рядом с самим compose-файлом на хосте), `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в bind-каталог (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет. `NAVIGATOR_PORT` задаёт gRPC-порт, `NAVIGATOR_HTTP_PORT` — внутренний HTTP-порт админки; наружу к нему обращается только [[Backend/Nginx]].
 
 ## Валидация федеративной регистрации (этап 1.5)
 

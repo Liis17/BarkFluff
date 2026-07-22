@@ -14,6 +14,13 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Update="wwwroot\**\*">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\navigator_api.proto" GrpcServices="Server" />
 
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\beacon_api.proto" GrpcServices="Client" />

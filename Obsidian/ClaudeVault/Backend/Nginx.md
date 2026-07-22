@@ -42,6 +42,7 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `identity.conf` | `identity.barkfluff.com` → [[Identity]] | 7000 | gRPC |
 | `users.conf` | `users.barkfluff.com` → [[Users]] | 7001 | gRPC |
 | `beacon.conf` | `beacon.barkfluff.com` → [[Beacon]] | 7002 | gRPC |
+| `navigator.conf` | `navigator.barkfluff.com` → [[Navigator]] | 64646 (gRPC) + 64647 (HTTP `/admin/`) | gRPC + HTTP |
 | `files.conf` | `files.barkfluff.com` → [[Files]] | 7005 (gRPC) + 7006 (HTTP `/web/`) | gRPC + HTTP |
 | `messages.conf` | `messages.barkfluff.com` → [[Messages]] | 7007 | gRPC |
 | `fast-auth.conf` | `fast-auth.barkfluff.com` → [[FastAuth]] | 7008 | gRPC |
@@ -95,6 +96,9 @@ Security-аудит (S1/D2): rate limit на анонимные (без JWT) э�
 - `/` → gRPC `:7005` (основной API)
 - `/web/` → HTTP `:7006` с rewrite и `client_max_body_size 512m`, таймауты 600s для больших файлов
 
+### `navigator.conf`
+`navigator.barkfluff.com` совмещает публичный gRPC-реестр и React-админку [[Backend/Navigator]]. `/` перенаправляет на `/admin/`; `/admin/` проксируется как HTTP на внутренний порт Navigator `64647`; все прочие пути идут через `grpc_pass` на `64646`. В production compose имя upstream — `navigator`; в dev-варианте, где сервис называется `navigator-dev`, его нужно заменить в конфиге.
+
 ### `web.conf`
 Два location:
 - `/api/files/upload/` — увеличенный `client_max_body_size 512m`, таймауты 600s (YARP пробрасывает загрузку файлов)
@@ -146,6 +150,7 @@ WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` �
 | `identity.barkfluff.com` | [[Identity]] |
 | `users.barkfluff.com` | [[Users]] |
 | `beacon.barkfluff.com` | [[Beacon]] |
+| `navigator.barkfluff.com` | [[Navigator]] (gRPC + `/admin/`) |
 | `files.barkfluff.com` | [[Files]] |
 | `messages.barkfluff.com` | [[Messages]] |
 | `fast-auth.barkfluff.com` | [[FastAuth]] |
