@@ -3,6 +3,7 @@ using BarkFluff.Bots.Features.GetBotUpdates;
 using BarkFluff.Bots.Persistence;
 using BarkFluff.Bots.Persistence.Services;
 using BarkFluff.Bots.Services;
+using BarkFluff.Bots.Tests.Fakes;
 using BarkFluff.Shared.Exceptions.Bots;
 
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,7 @@ namespace BarkFluff.Bots.Tests.Features;
 public class GetBotUpdatesQueryHandlerTests
 {
     private readonly BotsContext _context;
-    private readonly BotPollingGuard _pollingGuard = new();
+    private readonly InMemoryBotPollingGuard _pollingGuard = new();
     private readonly GetBotUpdatesQueryHandler _handler;
 
     public GetBotUpdatesQueryHandlerTests()
@@ -47,7 +48,7 @@ public class GetBotUpdatesQueryHandlerTests
     [Fact]
     public async Task Handle_ActivePollingStream_ThrowsConflict()
     {
-        _pollingGuard.TryEnter(1);
+        await _pollingGuard.TryEnterAsync(1);
 
         await Assert.ThrowsAsync<BotPollingConflictException>(
             () => _handler.Handle(new GetBotUpdatesQuery { BotId = 1, Limit = 10 }, CancellationToken.None));

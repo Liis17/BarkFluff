@@ -13,15 +13,15 @@ namespace BarkFluff.Bots.Services;
 public class BotAccessValidator
 {
     private readonly BotRegistryCache _registryCache;
-    private readonly BotRateLimiter _rateLimiter;
+    private readonly IBotRateLimiter _rateLimiter;
 
-    public BotAccessValidator(BotRegistryCache registryCache, BotRateLimiter rateLimiter)
+    public BotAccessValidator(BotRegistryCache registryCache, IBotRateLimiter rateLimiter)
     {
         _registryCache = registryCache;
         _rateLimiter = rateLimiter;
     }
 
-    public BotAccessStatus Validate(ClaimsPrincipal principal)
+    public async Task<BotAccessStatus> ValidateAsync(ClaimsPrincipal principal)
     {
         if (principal.FindFirst(IdentityClaims.TokenType)?.Value != TokenType.Bot.ToString())
             return BotAccessStatus.Unauthenticated;
@@ -39,7 +39,7 @@ public class BotAccessValidator
         if (string.IsNullOrEmpty(tokenId) || tokenId != bot.TokenId)
             return BotAccessStatus.Unauthenticated;
 
-        return _rateLimiter.TryAcquire(botId)
+        return await _rateLimiter.TryAcquireAsync(botId)
             ? BotAccessStatus.Allowed
             : BotAccessStatus.RateLimited;
     }

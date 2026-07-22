@@ -30,7 +30,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
     private readonly IMediator _mediator;
     private readonly BotCallerContext _callerContext;
     private readonly BotUpdateNotifier _notifier;
-    private readonly BotPollingGuard _pollingGuard;
+    private readonly IBotPollingGuard _pollingGuard;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<BotsExternalApiService> _logger;
@@ -39,7 +39,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         IMediator mediator,
         BotCallerContext callerContext,
         BotUpdateNotifier notifier,
-        BotPollingGuard pollingGuard,
+        IBotPollingGuard pollingGuard,
         IServiceScopeFactory scopeFactory,
         MetricsCollector metrics,
         ILogger<BotsExternalApiService> logger)
@@ -86,7 +86,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
     {
         var bot = _callerContext.Bot;
 
-        if (!_pollingGuard.TryEnter(bot.Id))
+        if (!await _pollingGuard.TryEnterAsync(bot.Id))
         {
             throw new RpcException(new Status(StatusCode.ResourceExhausted, "У бота уже есть активный поток получения update'ов"));
         }
@@ -107,6 +107,9 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 
             while (!context.CancellationToken.IsCancellationRequested)
             {
+                // Продлеваем распределённый лок — долгоживущий стрим держит слот дольше его TTL.
+                await _pollingGuard.RenewAsync(bot.Id);
+
                 List<Domain.BotUpdate> batch;
 
                 // Отдельный scope на итерацию — DbContext не живёт всё время стрима
@@ -135,7 +138,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         }
         finally
         {
-            _pollingGuard.Exit(bot.Id);
+            await _pollingGuard.ExitAsync(bot.Id);
             _logger.LogDebug("Стрим update'ов бота {BotId} закрыт", bot.Id);
         }
     }

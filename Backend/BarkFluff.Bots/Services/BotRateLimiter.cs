@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using StackExchange.Redis;
 
 namespace BarkFluff.Bots.Services;
 
@@ -6,23 +6,33 @@ namespace BarkFluff.Bots.Services;
 /// Per-bot rate-limit внешнего API (общий для gRPC-интерцептора и HTTP endpoint-фильтра).
 /// Fixed window 1 секунда, 30 запросов на бота (как у Telegram).
 /// </summary>
-public class BotRateLimiter
+public interface IBotRateLimiter
+{
+    Task<bool> TryAcquireAsync(long botId);
+}
+
+/// <summary>
+/// Redis-реализация: общий счётчик на все инстансы (иначе бот получал бы 30×N req/s).
+/// Скользящее окно через INCR ключа <c>botrate:{botId}:{unixSecond}</c> + EXPIRE; ключ на секунду
+/// самоочищается (см. docs/scaling/bots.md).
+/// </summary>
+public class RedisBotRateLimiter(IConnectionMultiplexer redis) : IBotRateLimiter
 {
     private const int RequestsPerSecond = 30;
 
-    private readonly ConcurrentDictionary<long, (long WindowSecond, int Count)> _windows = new();
-
-    public bool TryAcquire(long botId)
+    public async Task<bool> TryAcquireAsync(long botId)
     {
-        var nowSecond = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var db = redis.GetDatabase();
+        var second = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var key = $"botrate:{botId}:{second}";
 
-        var updated = _windows.AddOrUpdate(
-            botId,
-            _ => (nowSecond, 1),
-            (_, current) => current.WindowSecond == nowSecond
-                ? (current.WindowSecond, current.Count + 1)
-                : (nowSecond, 1));
+        var count = await db.StringIncrementAsync(key);
+        if (count == 1)
+        {
+            // TTL с запасом на границу секунды — ключ живёт недолго и самоочищается.
+            await db.KeyExpireAsync(key, TimeSpan.FromSeconds(2));
+        }
 
-        return updated.Count <= RequestsPerSecond;
+        return count <= RequestsPerSecond;
     }
 }

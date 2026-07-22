@@ -18,28 +18,28 @@ public class BotAuthInterceptor : Interceptor
         _validator = validator;
     }
 
-    public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
+    public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
         TRequest request,
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
-        Validate(context);
-        return continuation(request, context);
+        await ValidateAsync(context);
+        return await continuation(request, context);
     }
 
-    public override Task ServerStreamingServerHandler<TRequest, TResponse>(
+    public override async Task ServerStreamingServerHandler<TRequest, TResponse>(
         TRequest request,
         IServerStreamWriter<TResponse> responseStream,
         ServerCallContext context,
         ServerStreamingServerMethod<TRequest, TResponse> continuation)
     {
-        Validate(context);
-        return continuation(request, responseStream, context);
+        await ValidateAsync(context);
+        await continuation(request, responseStream, context);
     }
 
-    private void Validate(ServerCallContext context)
+    private async Task ValidateAsync(ServerCallContext context)
     {
-        switch (_validator.Validate(context.GetHttpContext().User))
+        switch (await _validator.ValidateAsync(context.GetHttpContext().User))
         {
             case BotAccessStatus.Unauthenticated:
                 throw new RpcException(new Status(StatusCode.Unauthenticated, "Невалидный токен бота"));
