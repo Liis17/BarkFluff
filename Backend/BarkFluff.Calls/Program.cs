@@ -1,3 +1,4 @@
+using BarkFluff.Calls.BackgroundServices;
 using BarkFluff.Calls.Consumers;
 using BarkFluff.Calls.Host;
 using BarkFluff.Calls.Persistence;
@@ -48,7 +49,8 @@ public class Program
         builder.Services.AddSingleton<LiveKitTokenService>();
         builder.Services.AddSingleton<CallEventSubscriptionsManager>();
         builder.Services.AddSingleton<CallQualityStore>();
-        builder.Services.AddSingleton<CallTimeoutScheduler>();
+        // Durable-таймаут ринга: опрос БД + атомарный захват (переживает рестарт, ровно-однократно при N инстансах).
+        builder.Services.AddHostedService<CallRingTimeoutSweeper>();
         builder.Services.AddSingleton(sp =>
         {
             var settings = sp.GetRequiredService<LiveKitSettings>();
