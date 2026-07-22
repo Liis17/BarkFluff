@@ -4,7 +4,6 @@ using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Shared.Exceptions.Messages;
-using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
 
@@ -134,10 +133,7 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             if (isFedAnchor)
             {
                 var fullMembers = chatFullMembersCache[message.ChatId];
-                var remoteParticipants = fullMembers
-                    .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
-                    .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
-                    .ToList();
+                var remoteParticipants = fullMembers.RemoteParticipants();
                 var readerUuid = fullMembers.FirstOrDefault(m => m.UserId == _userContext.UserId)?.UserUuid;
 
                 sendTasks.Add(_readByQueueSender.SendEvent(

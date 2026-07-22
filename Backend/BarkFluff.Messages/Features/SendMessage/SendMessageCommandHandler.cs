@@ -439,16 +439,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         // (request.UserUuid) покрывает только первое сообщение/явную адресацию по uuid.
         if (!isFederated)
         {
-            var remoteMembers = members
-                .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
-                .ToList();
+            var remoteMembers = members.RemoteParticipants();
             if (remoteMembers.Count > 0)
             {
                 isFederated = true;
                 senderUuid = members.FirstOrDefault(m => m.UserId == senderId)?.UserUuid ?? Guid.Empty;
-                remoteParticipants = remoteMembers
-                    .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
-                    .ToList();
+                remoteParticipants = remoteMembers;
 
                 // senderFid для этой ветки не резолвится выше (та ветка — только для нового fed-чата
                 // через UserUuid) — без него удалённая нода получает пустой Sender.Username на каждое

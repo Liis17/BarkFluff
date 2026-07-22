@@ -5,7 +5,6 @@ using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
-using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
 
@@ -103,10 +102,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         if (message.FederatedId.HasValue)
         {
             // Исходящий fed-путь (этап 2.4) — см. EditMessageCommandHandler.
-            var remoteParticipants = members
-                .Where(m => !string.IsNullOrEmpty(m.ServerName) && m.UserUuid.HasValue)
-                .Select(m => new FederatedParticipant { Uuid = m.UserUuid!.Value, ServerName = m.ServerName! })
-                .ToList();
+            var remoteParticipants = members.RemoteParticipants();
 
             await _messageQueueSender.SendDeleted(
                 message.ChatId, message.Id, memberIds,
