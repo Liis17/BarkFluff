@@ -19,14 +19,14 @@ namespace BarkFluff.Calls.Services;
 /// <summary>
 /// Доменная логика жизненного цикла звонка: ringing → active → ended.
 /// Backend делает call-control + выдачу LiveKit-токенов; медиа идёт мимо backend.
-/// Доставка ринга — in-process через <see cref="CallEventSubscriptionsManager"/>
-/// (device-scope, как SubscribeSecretMessages в Updates).
+/// Доставка ринга — через <see cref="ICallEventDispatcher"/> (fan-out по RabbitMQ на все
+/// инстансы; каждый доставляет своим локальным device-scope стримам).
 /// </summary>
 public class CallsService
 {
     private readonly CallsContext _db;
     private readonly LiveKitTokenService _tokens;
-    private readonly CallEventSubscriptionsManager _subscriptions;
+    private readonly ICallEventDispatcher _dispatcher;
     private readonly CallQualityStore _quality;
     private readonly CallTimeoutScheduler _timeouts;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
@@ -38,7 +38,7 @@ public class CallsService
     public CallsService(
         CallsContext db,
         LiveKitTokenService tokens,
-        CallEventSubscriptionsManager subscriptions,
+        ICallEventDispatcher dispatcher,
         CallQualityStore quality,
         CallTimeoutScheduler timeouts,
         MessagesServerApi.MessagesServerApiClient messagesClient,
@@ -49,7 +49,7 @@ public class CallsService
     {
         _db = db;
         _tokens = tokens;
-        _subscriptions = subscriptions;
+        _dispatcher = dispatcher;
         _quality = quality;
         _timeouts = timeouts;
         _messagesClient = messagesClient;
@@ -174,8 +174,8 @@ public class CallsService
         var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
 
         // Уведомляем инициатора и гасим ринг на остальных устройствах ответившего.
-        await _subscriptions.SendToUserAsync(session.CallerUserId, accepted);
-        await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+        await _dispatcher.SendToUserAsync(session.CallerUserId, accepted);
+        await _dispatcher.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
 
         // Гасим push-нотификацию входящего звонка на всех устройствах получателей.
         await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "accepted", ct);
@@ -207,7 +207,7 @@ public class CallsService
 
         // Гасим ринг на остальных устройствах присоединившегося.
         var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
-        await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+        await _dispatcher.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
 
         _metrics.Increment("calls_joined");
         _logger.LogInformation("Пользователь {UserId} присоединился к звонку {CallId}", userId, session.Id);
@@ -233,7 +233,7 @@ public class CallsService
         {
             await EnsureParticipantAsync(session, userId, ct);
             // В группе один отказ не завершает звонок — лишь гасим ринг на устройствах отказавшегося.
-            await _subscriptions.SendToUserAsync(userId, rejected);
+            await _dispatcher.SendToUserAsync(userId, rejected);
         }
         else
         {
@@ -251,8 +251,8 @@ public class CallsService
             }
 
             // Инициатору — «отклонён»; всем устройствам получателя — гасим ринг.
-            await _subscriptions.SendToUserAsync(session.CallerUserId, rejected);
-            await _subscriptions.SendToUserAsync(userId, rejected);
+            await _dispatcher.SendToUserAsync(session.CallerUserId, rejected);
+            await _dispatcher.SendToUserAsync(userId, rejected);
             _metrics.Increment("calls_rejected");
         }
 
@@ -316,7 +316,7 @@ public class CallsService
         };
 
         // Рассылаем всем участникам, включая инициатора смены — единый источник истины.
-        await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+        await _dispatcher.SendToUsersAsync(await GetParticipantsAsync(session), evt);
 
         _logger.LogInformation("Качество голоса звонка {CallId} → {Quality} (сменил {UserId})",
             session.Id, quality, userId);
@@ -504,7 +504,7 @@ public class CallsService
         };
 
         var recipients = (await GetParticipantsAsync(session)).Where(id => id != userId);
-        await _subscriptions.SendToUsersAsync(recipients, evt);
+        await _dispatcher.SendToUsersAsync(recipients, evt);
     }
 
     // ── Вспомогательное ────────────────────────────────────────────────────
@@ -522,7 +522,7 @@ public class CallsService
     }
 
     private Task RingAsync(IReadOnlyList<long> recipients, CallEvent incoming)
-        => _subscriptions.SendToUsersAsync(recipients, incoming);
+        => _dispatcher.SendToUsersAsync(recipients, incoming);
 
     /// <summary>Погасить push-нотификацию входящего звонка на устройствах получателей.</summary>
     private async Task PublishDismissAsync(CallSession session, IReadOnlyList<long> recipients, string reason, CancellationToken ct)
@@ -554,7 +554,7 @@ public class CallsService
             }
         };
 
-        await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+        await _dispatcher.SendToUsersAsync(await GetParticipantsAsync(session), evt);
     }
 
     /// <summary>Системное сообщение об итоге звонка в чат (best-effort, не блокирует call-control).</summary>

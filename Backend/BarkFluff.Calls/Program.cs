@@ -64,6 +64,8 @@ public class Program
             return new RoomServiceClient(httpUrl, settings.ApiKey, settings.ApiSecret);
         });
         builder.Services.AddScoped<CallsService>();
+        // Доставка событий звонка — через RabbitMQ fan-out (корректно при нескольких инстансах).
+        builder.Services.AddScoped<ICallEventDispatcher, CallEventDispatcher>();
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -77,6 +79,7 @@ public class Program
         {
             x.AddConsumer<SessionRevokedConsumer>();
             x.AddConsumer<ChatMemberKickedConsumer>();
+            x.AddConsumer<CallEventDeliveryConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -96,6 +99,15 @@ public class Program
                 cfg.ReceiveEndpoint("chat-member-kicked-calls", e =>
                 {
                     e.ConfigureConsumer<ChatMemberKickedConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс получает копию события звонка и доставляет своим
+                // локальным gRPC-подпискам (стрим клиента живёт на одном инстансе).
+                cfg.ReceiveEndpoint($"call-event-delivery-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<CallEventDeliveryConsumer>(context);
                 });
             });
         });
