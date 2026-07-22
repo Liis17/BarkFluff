@@ -9,9 +9,6 @@ on:
       - 'Windows/BarkFluff.Client.WPF/**'
       - 'Windows/BarkFluff.WebApi.Core/**'
       - 'Windows/client-rebuild.trigger'
-      - 'Shared/BarkFluff.Shared.Exceptions/**'
-      - 'Shared/BarkFluff.Shared.Auth/**'
-      - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
   workflow_dispatch:
 
 permissions:
@@ -171,24 +168,6 @@ jobs:
           RANDOM_NUM=$((RANDOM % 9000 + 1000))
           TAG="${{ github.ref_name }}-${TIMESTAMP}-${COMMIT_HASH}-${RANDOM_NUM}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: "🚀 Создать релиз"
-        uses: softprops/action-gh-release@v2
-        with:
-          repository: ${{ secrets.OWNER_RELEASE_REPO }}/${{ secrets.RELEASE_REPO_NAME }}
-          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: "BarkFluff WPF Client v${{ steps.meta.outputs.version }}"
-          body: |
-            ## 📦 BarkFluff WPF Client
-
-            **Версия:** `${{ steps.meta.outputs.version }}`
-            **Ветка:** `${{ github.ref_name }}`
-            **Коммит:** `${{ github.sha }}`
-            **Автор:** ${{ github.actor }}
-          draft: false
-          prerelease: false
-          files: wpf-build.zip
 
       - name: "📤 Загрузка на сервер обновлений"
         run: |
