@@ -11,18 +11,18 @@ namespace BarkFluff.Onliner.BackgroundServices;
 /// </summary>
 public class MetricsSnapshotService : BackgroundService
 {
-    private readonly OnlineStatusStorage _storage;
+    private readonly IPresenceStore _presence;
     private readonly OnlineStatusSubscriptionsManager _subscriptionsManager;
     private readonly MetricsCollector _metrics;
 
     private static readonly TimeSpan SnapshotInterval = TimeSpan.FromSeconds(2);
 
     public MetricsSnapshotService(
-        OnlineStatusStorage storage,
+        IPresenceStore presence,
         OnlineStatusSubscriptionsManager subscriptionsManager,
         MetricsCollector metrics)
     {
-        _storage = storage;
+        _presence = presence;
         _subscriptionsManager = subscriptionsManager;
         _metrics = metrics;
     }
@@ -31,10 +31,11 @@ public class MetricsSnapshotService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            // Подписки — per-instance (локальный менеджер); online_users_count — глобальный (из Redis),
+            // одинаков на всех инстансах: на дашбордах агрегировать max/avg, не sum.
             _metrics.Set("active_subscriptions", _subscriptionsManager.GetActiveSubscriptionsCount());
             _metrics.Set("tracked_unique_users", _subscriptionsManager.GetTrackedUniqueUsersCount());
-            _metrics.Set("online_users_count", _storage.GetOnlineCount());
-            _metrics.Set("storage_total_count", _storage.GetTotalCount());
+            _metrics.Set("online_users_count", (int)await _presence.GetOnlineCountAsync(stoppingToken));
 
             try
             {
