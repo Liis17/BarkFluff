@@ -7,7 +7,6 @@ on:
       - master
     paths:
       - 'Backend/BarkFluff.Beacon/**'
-      - 'Backend/BarkFluff.GrpcServer/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
