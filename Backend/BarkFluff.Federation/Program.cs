@@ -134,7 +134,12 @@ public class Program
                 cfg.ReceiveEndpoint("messages-edited-federation-handler", e => e.ConfigureConsumer<MessageEditedFederationConsumer>(context));
                 cfg.ReceiveEndpoint("messages-deleted-federation-handler", e => e.ConfigureConsumer<MessageDeletedFederationConsumer>(context));
                 cfg.ReceiveEndpoint("read-receipts-federation-handler", e => e.ConfigureConsumer<MessageReadFederationConsumer>(context));
-                cfg.ReceiveEndpoint("session-revoked-federation", e => e.ConfigureConsumer<SessionRevokedConsumer>(context));
+                cfg.ReceiveEndpoint($"session-revoked-federation-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
             });
         });
 
