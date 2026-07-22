@@ -4,6 +4,7 @@ x-common-variables: &common-variables
 
 services:
   navigator-dev:
+    container_name: navigator
     image: docker.barkfluff.com:5000/barkfluff-navigator-dev:latest
     restart: always
     user: root
