@@ -116,8 +116,10 @@ public class Program
                     e.ConfigureConsumer<UserChangedAvatarConsumer>(context);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-messages", e =>
+                cfg.ReceiveEndpoint($"session-revoked-messages-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
 

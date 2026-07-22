@@ -80,8 +80,10 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-onliner", e =>
+                cfg.ReceiveEndpoint($"session-revoked-onliner-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });

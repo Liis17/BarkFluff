@@ -87,8 +87,10 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-files", e =>
+                cfg.ReceiveEndpoint($"session-revoked-files-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });
