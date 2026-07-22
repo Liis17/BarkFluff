@@ -89,6 +89,13 @@
 чатов одной нодой. Redis-счётчик `fed:chatcreated:{origin}:{yyyyMMddHH}` (часовое окно), инкремент
 + TTL 1ч на первый инкремент. Лимит — `Federation:ChatCreatedHourlyLimit` (конфиг, default 100).
 
+Списание идемпотентно по `eventId` (rearch-phase2, code-review): `TryConsumeAsync(origin, eventId)`
+сначала выставляет redis-маркер `fed:chatcreated:charged:{eventId}` (`SET NX EX 1ч`) — если маркер
+уже стоял, квота уже была учтена этим же событием раньше и повторный инкремент не делается. Без
+этого ретраи ещё не обработанного `ChatCreated` (OutboxDispatcher.ApplyRetry — событие не
+индексируется в ProcessedEvents, пока не получит `Ok`) списывали квоту на каждую попытку, и
+временная недоступность Messages сама по себе исчерпывала лимит origin.
+
 Проверяется в `FederationS2SApiService.RouteToInternalAsync`, `case ChatCreated`, **до** вызова
 `ImportFederatedChat` — превышение → `EventStatus.Retry` (троттлинг — временное состояние, не порча
 события) + метрика `chatcreated_quota_exceeded.{origin}` + warning-лог; `ImportFederatedChat` не
