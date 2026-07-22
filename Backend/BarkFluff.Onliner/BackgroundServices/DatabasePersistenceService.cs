@@ -7,26 +7,33 @@ using Microsoft.EntityFrameworkCore;
 namespace BarkFluff.Onliner.BackgroundServices;
 
 /// <summary>
-/// Background service для периодического сохранения статусов в БД
-/// Выполняется каждые 10 минут
+/// Single-runner персист онлайн last-seen в БД раз в 10 минут: один инстанс (Redis-лидер) читает
+/// снимок онлайн-пользователей из общего presence-стора и апсертит их last-seen в БД. Offline
+/// last-seen пишет OfflineDetectionService в момент перехода. Апсерт идемпотентен.
 /// </summary>
 public class DatabasePersistenceService : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly OnlineStatusStorage _storage;
+    private const string LockKey = "onliner:lock:db-persistence";
+
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IPresenceStore _presence;
+    private readonly RedisSingleRunner _singleRunner;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<DatabasePersistenceService> _logger;
 
     private static readonly TimeSpan SaveInterval = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan LockTtl = TimeSpan.FromMinutes(5);
 
     public DatabasePersistenceService(
-        IServiceProvider serviceProvider,
-        OnlineStatusStorage storage,
+        IServiceScopeFactory scopeFactory,
+        IPresenceStore presence,
+        RedisSingleRunner singleRunner,
         MetricsCollector metrics,
         ILogger<DatabasePersistenceService> logger)
     {
-        _serviceProvider = serviceProvider;
-        _storage = storage;
+        _scopeFactory = scopeFactory;
+        _presence = presence;
+        _singleRunner = singleRunner;
         _metrics = metrics;
         _logger = logger;
     }
@@ -37,14 +44,24 @@ public class DatabasePersistenceService : BackgroundService
             "Database Persistence Service started. Save interval: {Interval} minutes",
             SaveInterval.TotalMinutes);
 
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await Task.Delay(SaveInterval, stoppingToken);
+        using var timer = new PeriodicTimer(SaveInterval);
 
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
             _metrics.Increment("db_persistence_runs");
             try
             {
+                // Single-runner: снапшот в БД пишет один инстанс за тик.
+                if (!await _singleRunner.TryAcquireAsync(LockKey, LockTtl))
+                {
+                    continue;
+                }
+
                 await SaveStatusesToDatabaseAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -58,49 +75,36 @@ public class DatabasePersistenceService : BackgroundService
 
     private async Task SaveStatusesToDatabaseAsync(CancellationToken cancellationToken)
     {
-        var allStatuses = _storage.GetAllStatuses();
+        var onlineStatuses = await _presence.GetOnlineSnapshotAsync(cancellationToken);
 
-        if (allStatuses.Count == 0)
+        if (onlineStatuses.Count == 0)
         {
-            _logger.LogDebug("No statuses to save to database");
+            _logger.LogDebug("No online statuses to save to database");
             return;
         }
 
-        _logger.LogInformation("Saving {Count} statuses to database", allStatuses.Count);
+        _logger.LogInformation("Saving {Count} online statuses to database", onlineStatuses.Count);
 
-        // Создаем scope для scoped DbContext
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<OnlineStatusContext>();
 
-        try
+        foreach (var status in onlineStatuses)
         {
-            // Используем bulk update/insert подход
-            foreach (var status in allStatuses)
+            var existing = await dbContext.UsersOnlineStatuses
+                .FirstOrDefaultAsync(s => s.UserId == status.UserId, cancellationToken);
+
+            if (existing != null)
             {
-                var existing = await dbContext.UsersOnlineStatuses
-                    .FirstOrDefaultAsync(s => s.UserId == status.UserId, cancellationToken);
-
-                if (existing != null)
-                {
-                    // Update — UserOnlineStatus имеет init-only свойства, поэтому
-                    // обновляем значения через EF Change Tracker
-                    dbContext.Entry(existing).CurrentValues.SetValues(status);
-                }
-                else
-                {
-                    // Insert
-                    dbContext.UsersOnlineStatuses.Add(status);
-                }
+                dbContext.Entry(existing).CurrentValues.SetValues(status);
             }
+            else
+            {
+                dbContext.UsersOnlineStatuses.Add(status);
+            }
+        }
 
-            var savedCount = await dbContext.SaveChangesAsync(cancellationToken);
-            _metrics.Add("db_records_saved_total", savedCount);
-            _logger.LogInformation("Successfully saved {Count} status records to database", savedCount);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save statuses to database");
-            throw;
-        }
+        var savedCount = await dbContext.SaveChangesAsync(cancellationToken);
+        _metrics.Add("db_records_saved_total", savedCount);
+        _logger.LogInformation("Successfully saved {Count} status records to database", savedCount);
     }
 }

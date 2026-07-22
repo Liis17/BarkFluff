@@ -1,7 +1,10 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Onliner.Messages;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
+
+using MassTransit;
 
 using MediatR;
 
@@ -10,18 +13,18 @@ namespace BarkFluff.Onliner.Features.SetTypingStatus;
 public class SetTypingStatusCommandHandler : IRequestHandler<SetTypingStatusCommand, SetTypingStatusResponse>
 {
     private readonly UserContext _userContext;
-    private readonly TypingNotifier _notifier;
+    private readonly IPublishEndpoint _publish;
     private readonly ChatMembershipFilter _membershipFilter;
     private readonly MetricsCollector _metrics;
 
     public SetTypingStatusCommandHandler(
         UserContext userContext,
-        TypingNotifier notifier,
+        IPublishEndpoint publish,
         ChatMembershipFilter membershipFilter,
         MetricsCollector metrics)
     {
         _userContext = userContext;
-        _notifier = notifier;
+        _publish = publish;
         _membershipFilter = membershipFilter;
         _metrics = metrics;
     }
@@ -49,7 +52,13 @@ public class SetTypingStatusCommandHandler : IRequestHandler<SetTypingStatusComm
             ? TypingAction.Typing
             : request.Action;
 
-        await _notifier.NotifyTyping(request.ChatId, userId, action, cancellationToken);
+        // Fan-out: набор ретранслируют подписчикам чата все инстансы (стрим подписчика может жить на другом).
+        await _publish.Publish(new TypingChangedEvent
+        {
+            ChatId = request.ChatId,
+            UserId = userId,
+            Action = (int)action,
+        }, cancellationToken);
 
         return new SetTypingStatusResponse();
     }

@@ -2,7 +2,7 @@
 
 Трекинг онлайн-статусов пользователей. Порт: **7009** (.NET 10).
 
-Принцип: **in-memory first**. Все статусы в `ConcurrentDictionary`. PostgreSQL обновляется в фоне каждые 10 минут. Real-time оповещения через gRPC server-streaming без RabbitMQ.
+Принцип: **presence в Redis** (общий источник истины для всех инстансов). Статусы — sorted set `onliner:presence` (member=userId, score=last-seen ms) через `IPresenceStore`/`RedisPresenceStore`. PostgreSQL — вторичное хранилище last-seen (обновляется в фоне). Real-time оповещения — gRPC server-streaming, доставка событий между инстансами через **RabbitMQ fan-out** (стрим подписчика живёт на одном инстансе). Масштабируется горизонтально (см. `docs/scaling/onliner.md`).
 
 Помимо онлайн-статусов сервис обслуживает **индикаторы набора текста** (typing) — чистый ретранслятор без БД и фоновых сервисов (см. ниже).
 
@@ -39,7 +39,7 @@ Client → SetOnlineStatus (gRPC)
 
 | Класс | Назначение |
 |-------|-----------|
-| `OnlineStatusStorage` | In-memory кэш `ConcurrentDictionary<long, UserOnlineStatus>`. `UserOnlineStatus` — иммутабельный `record`; `UpdateStatus`/`SetOffline` обновляют запись через CAS (`TryGetValue` + `TryUpdate`/`TryAdd`), не мутируя существующий объект |
+| `IPresenceStore` / `RedisPresenceStore` | Общий presence-стор в Redis (sorted set `onliner:presence`). `MarkOnlineAsync` (ZADD, added=переход online), `SetOfflineAsync` (ZREM, атомарно дедуплицирует offline-переход между инстансами), `GetOnlineAsync`, `GetStaleUsersAsync`, `GetOnlineSnapshotAsync`. Online = член множества; offline-записей не хранит (offline last-seen — в БД) |
 | `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов по userId и subscriptionId. Дополнительно держит обратный индекс `trackedUserId → (connectionId → Stream)`, благодаря чему `GetStreamsTrackingUser` работает за O(1) |
 | `OnlineStatusNotifier` | Рассылает изменения по стримам, отслеживающим пользователя |
 | `TypingSubscriptionsManager` | Реестр typing-стримов по `chatId` (прямой индекс `subscriberId → подписки` + обратный `chatId → стримы`). Аналог `OnlineStatusSubscriptionsManager`, но ключ — чат, а обратный индекс хранит `SubscriberId`, чтобы не слать набор обратно самому печатающему |
@@ -52,9 +52,9 @@ Client → SetOnlineStatus (gRPC)
 
 ### Фоновые сервисы
 
-- **OfflineDetectionService**: каждую секунду — пользователи без активности >5 сек → Offline. Инкрементирует `offline_detection_runs`/`status_changes.offline`/`offline_detection_errors`
-- **DatabasePersistenceService**: каждые 10 минут — сохранение всех статусов в PostgreSQL. Update существующих записей идёт через `Entry().CurrentValues.SetValues()` (свойства `UserOnlineStatus` — `init`-only). Метрики: `db_persistence_runs`, `db_persistence_errors`, `db_records_saved_total`
-- **MetricsSnapshotService**: каждые 2 секунды снимает gauge-показатели (`active_subscriptions`, `tracked_unique_users`, `online_users_count`, `storage_total_count`) из in-memory сервисов в `MetricsCollector.Set`. Без него gauge-метрики через `Increment`/`Add(-1)` не работают, потому что `_counters` сбрасываются в `SnapshotAndReset` каждые 5 секунд
+- **OfflineDetectionService**: **single-runner** (Redis-лок `RedisSingleRunner`) — каждую секунду один инстанс находит в presence пользователей без активности >5 сек, снимает их (`ZREM`), пишет offline last-seen в БД и публикует fan-out событие подписчикам. Инкрементирует `offline_detection_runs`/`status_changes.offline`/`offline_detection_errors`
+- **DatabasePersistenceService**: **single-runner** (Redis-лок) — каждые 10 минут один инстанс читает снимок онлайн-пользователей из presence-стора и апсертит их last-seen в PostgreSQL (через `Entry().CurrentValues.SetValues()`; свойства `init`-only). Offline last-seen пишет `OfflineDetectionService` в момент перехода. Метрики: `db_persistence_runs`, `db_persistence_errors`, `db_records_saved_total`
+- **MetricsSnapshotService**: каждые 2 секунды снимает gauge-показатели (`active_subscriptions`, `tracked_unique_users` — per-instance; `online_users_count` — глобальный из Redis) в `MetricsCollector.Set`. Без него gauge-метрики через `Increment`/`Add(-1)` не работают, потому что `_counters` сбрасываются в `SnapshotAndReset` каждые 5 секунд
 
 ### Метрики
 
@@ -66,7 +66,7 @@ Client → SetOnlineStatus (gRPC)
 - **Typing counters:** `set_typing_status_requests`, `typing_heartbeats`, `typing_heartbeats_rejected_by_membership`, `typing_subscribe_requests`, `change_chats_in_typing_subscription_requests`, `typing_subscriptions_registered`, `typing_subscriptions_disconnected`, `typing_subscriptions_hidden_by_membership`, `typing_notifications_sent`, `typing_notification_errors`
 - **Membership filter:** `membership_checks`, `membership_check_errors`
 - **Подписки:** `subscriptions_registered`, `subscriptions_disconnected`, `subscriptions_hidden_by_privacy`, gauges `active_subscriptions`, `tracked_unique_users`
-- **Storage:** gauges `online_users_count`, `storage_total_count`; counters `status_changes.online`, `status_changes.offline`
+- **Presence:** gauge `online_users_count` (глобальный, из Redis); counters `status_changes.online`, `status_changes.offline`
 - **Notifier:** `status_notifications_sent`, `status_notification_errors`
 - **Privacy filter:** `visibility_checks`, `visibility_check_errors`
 - **BG-сервисы:** `offline_detection_runs/_errors`, `db_persistence_runs/_errors`, `db_records_saved_total`
@@ -92,7 +92,7 @@ Client → SetOnlineStatus (gRPC)
 
 Клиентская интеграция: [[Клиенты/Android]] (V1) и [[Backend/Web]] — секции «Typing-индикатор».
 
-**Relay-модель (Telegram-style):** сервер не хранит состояние набора и не имеет фонового экспайра. Клиент шлёт `SetTypingStatus(chatId)` периодически (~каждые 4-5 сек) пока печатает; сервер ретранслирует `TypingEvent` всем, кто подписан на этот `chatId` через `SubscribeToTyping`, **кроме самого печатающего** (фильтр по `SubscriberId` в обратном индексе). Индикатор гаснет **по локальному таймауту на клиенте** (~6 сек) или сразу при получении `action=CANCELLED` (клиент шлёт его при очистке поля ввода).
+**Relay-модель (Telegram-style):** сервер не хранит состояние набора и не имеет фонового экспайра. Клиент шлёт `SetTypingStatus(chatId)` периодически (~каждые 4-5 сек) пока печатает; сервер публикует `TypingChangedEvent` в **RabbitMQ fan-out**, консьюмер на каждом инстансе ретранслирует `TypingEvent` всем, кто подписан на этот `chatId` через `SubscribeToTyping`, **кроме самого печатающего** (фильтр по `SubscriberId` в обратном индексе на инстансе-владельце стрима). Индикатор гаснет **по локальному таймауту на клиенте** (~6 сек) или сразу при получении `action=CANCELLED` (клиент шлёт его при очистке поля ввода).
 
 `chat_id` — **Guid-строка** (как везде в платформе; `Chat.Id` в Messages — `Guid`). Обратный индекс `TypingSubscriptionsManager` ключуется по этой строке.
 
@@ -111,11 +111,13 @@ Client → SetOnlineStatus (gRPC)
 ## База данных
 
 Одна таблица `UsersOnlineStatuses`: `UserId` (PK), `Status` (int, enum), `LastSeen` (timestamptz).
-БД — вторичное хранилище; источник истины — in-memory.
+БД — вторичное хранилище (offline last-seen); источник истины о presence — Redis (`onliner:presence`).
 
 ## Конфигурация
 
 - `OnlinerDb` — PostgreSQL connection string
+- `Redis` — connection string общего presence-стора и распределённого single-runner (**новая зависимость** при масштабировании)
+- `RabbitMQ:Host/Username/Password` — fan-out доставка статусов/typing между инстансами
 - `UsersService:Host/Token` — gRPC-клиент для проверки `OnlineVisibility`
 - `MessagesService:Host/Token` — gRPC-клиент для проверки членства в чате (typing). **Должны быть провижены в Configuration-сервисе** (новая зависимость Onliner → Messages)
 

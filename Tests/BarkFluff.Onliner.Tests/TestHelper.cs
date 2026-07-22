@@ -4,19 +4,22 @@ using BarkFluff.Onliner.Domain.Entities;
 using BarkFluff.Onliner.Domain.Enums;
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Onliner.Services;
+using BarkFluff.Onliner.Tests.Fakes;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace BarkFluff.Onliner.Tests;
 
 public class TestHelper
 {
     public OnlineStatusContext DbContext { get; }
-    public OnlineStatusStorage Storage { get; }
+    public InMemoryPresenceStore Presence { get; }
     public OnlineStatusSubscriptionsManager SubscriptionsManager { get; }
     public OnlineStatusNotifier Notifier { get; }
     public Mock<UsersServerApi.UsersServerApiClient> UsersClientMock { get; }
@@ -29,7 +32,7 @@ public class TestHelper
             .Options;
 
         DbContext = new OnlineStatusContext(options);
-        Storage = new OnlineStatusStorage();
+        Presence = new InMemoryPresenceStore();
         SubscriptionsManager = new OnlineStatusSubscriptionsManager();
         Metrics = new MetricsCollector();
         UsersClientMock = new Mock<UsersServerApi.UsersServerApiClient>();
@@ -117,5 +120,17 @@ public class TestHelper
         };
         DbContext.UsersOnlineStatuses.Add(entity);
         await DbContext.SaveChangesAsync();
+    }
+
+    /// <summary>RedisSingleRunner с mock-мультиплексором: методы захвата лока не вызываются в тестах
+    /// (проверяем приватный проход напрямую), нужен лишь для конструктора фоновых сервисов.</summary>
+    public static RedisSingleRunner CreateSingleRunner() => new(Mock.Of<IConnectionMultiplexer>());
+
+    /// <summary>Scope-factory над тем же in-memory DbContext (фоновые сервисы резолвят контекст в scope).</summary>
+    public IServiceScopeFactory CreateScopeFactory()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(DbContext);
+        return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
     }
 }

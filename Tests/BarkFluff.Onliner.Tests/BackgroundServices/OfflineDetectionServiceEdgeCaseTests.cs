@@ -1,44 +1,47 @@
+using System.Reflection;
+
 using BarkFluff.Onliner.BackgroundServices;
-using BarkFluff.Onliner.Services;
-using Grpc.Core;
+using BarkFluff.Onliner.Messages;
+
+using MassTransit;
 
 namespace BarkFluff.Onliner.Tests.BackgroundServices;
 
 public class OfflineDetectionServiceEdgeCaseTests
 {
+    private static readonly MethodInfo SweepMethod =
+        typeof(OfflineDetectionService).GetMethod("CheckAndUpdateOfflineStatusesAsync",
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
     private readonly TestHelper _h = new();
+    private readonly List<OnlineStatusChangedEvent> _published = [];
+    private readonly Mock<IBus> _bus = new();
 
-    [Fact]
-    public async Task ExecuteAsync_UserAlreadyOffline_NoNotification()
+    public OfflineDetectionServiceEdgeCaseTests()
     {
-        _h.Storage.UpdateStatus(1);
-        _h.Storage.SetOffline(1);
-
-        var stream = new Mock<IServerStreamWriter<ProtoUserOnlineStatus>>();
-        _h.SubscriptionsManager.RegisterSubscription(10, [1], stream.Object);
-
-        using var cts = new CancellationTokenSource();
-        var service = new TestableOfflineDetectionService(
-            _h.Storage, _h.Notifier, TestHelper.CreateLogger<OfflineDetectionService>(), _h.Metrics);
-
-        var task = service.RunAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(7));
-        cts.Cancel();
-
-        stream.Verify(
-            s => s.WriteAsync(It.IsAny<ProtoUserOnlineStatus>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _bus
+            .Setup(b => b.Publish(It.IsAny<OnlineStatusChangedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<OnlineStatusChangedEvent, CancellationToken>((e, _) => _published.Add(e))
+            .Returns(Task.CompletedTask);
     }
 
-    private class TestableOfflineDetectionService : OfflineDetectionService
+    [Fact]
+    public async Task Sweep_UserAlreadyOffline_NoNotification()
     {
-        public TestableOfflineDetectionService(
-            OnlineStatusStorage storage,
-            OnlineStatusNotifier notifier,
-            ILogger<OfflineDetectionService> logger,
-            MetricsCollector metrics)
-            : base(storage, notifier, logger, metrics) { }
+        // Пользователь уже не в presence (offline) — sweep не найдёт кандидатов, событий не будет.
+        await _h.Presence.MarkOnlineAsync(1);
+        await _h.Presence.SetOfflineAsync(1);
 
-        public Task RunAsync(CancellationToken ct) => ExecuteAsync(ct);
+        var service = new OfflineDetectionService(
+            _h.Presence,
+            TestHelper.CreateSingleRunner(),
+            _bus.Object,
+            _h.CreateScopeFactory(),
+            TestHelper.CreateLogger<OfflineDetectionService>(),
+            _h.Metrics);
+
+        await (Task)SweepMethod.Invoke(service, [CancellationToken.None])!;
+
+        _published.Should().BeEmpty();
     }
 }

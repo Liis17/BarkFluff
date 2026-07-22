@@ -1,20 +1,33 @@
-using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Onliner.Consumers;
 using BarkFluff.Onliner.Features.SetOnlineStatus;
-using BarkFluff.Onliner.Services;
+using BarkFluff.Onliner.Messages;
+
 using Grpc.Core;
+
+using MassTransit;
 
 namespace BarkFluff.Onliner.Tests.Features.SetOnlineStatus;
 
 public class SetOnlineStatusCommandHandlerTests
 {
     private readonly TestHelper _h = new();
+    private readonly List<OnlineStatusChangedEvent> _published = [];
+    private readonly Mock<IPublishEndpoint> _publish = new();
+
+    public SetOnlineStatusCommandHandlerTests()
+    {
+        _publish
+            .Setup(p => p.Publish(It.IsAny<OnlineStatusChangedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<OnlineStatusChangedEvent, CancellationToken>((e, _) => _published.Add(e))
+            .Returns(Task.CompletedTask);
+    }
 
     private SetOnlineStatusCommandHandler CreateHandler(long userId)
     {
         return new SetOnlineStatusCommandHandler(
             _h.CreateUserContext(userId),
-            _h.Storage,
-            _h.Notifier,
+            _h.Presence,
+            _publish.Object,
             _h.Metrics,
             TestHelper.CreateLogger<SetOnlineStatusCommandHandler>());
     }
@@ -32,22 +45,34 @@ public class SetOnlineStatusCommandHandlerTests
     {
         var handler = CreateHandler(1);
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        var status = _h.Storage.GetStatus(1);
+        var status = await _h.Presence.GetOnlineAsync(1);
         status.Should().NotBeNull();
         status!.Status.Should().Be(DomainStatusTypeId.Online);
     }
 
     [Fact]
-    public async Task Handle_StatusChanged_NotifiesSubscribers()
+    public async Task Handle_StatusChanged_PublishesOnlineEvent()
+    {
+        var handler = CreateHandler(1);
+        await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
+        _published.Should().ContainSingle(e => e.UserId == 1 && e.Status == (int)DomainStatusTypeId.Online);
+    }
+
+    [Fact]
+    public async Task Handle_StatusChanged_DeliveredToSubscribersViaConsumer()
     {
         var stream = new Mock<IServerStreamWriter<ProtoUserOnlineStatus>>();
         _h.SubscriptionsManager.RegisterSubscription(10, [1], stream.Object);
+
         var handler = CreateHandler(1);
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
+
+        // Fan-out консьюмер на инстансе подписчика доставляет опубликованное событие его стриму.
+        var consumer = new OnlineStatusChangedConsumer(_h.Notifier);
+        await consumer.Consume(ConsumeContextFor(_published.Single()));
+
         stream.Verify(
-            s => s.WriteAsync(
-                It.Is<ProtoUserOnlineStatus>(m => m.UserId == 1),
-                It.IsAny<CancellationToken>()),
+            s => s.WriteAsync(It.Is<ProtoUserOnlineStatus>(m => m.UserId == 1), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -62,17 +87,13 @@ public class SetOnlineStatusCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_StatusNotChanged_DoesNotNotify()
+    public async Task Handle_StatusNotChanged_DoesNotPublish()
     {
-        var stream = new Mock<IServerStreamWriter<ProtoUserOnlineStatus>>();
-        _h.SubscriptionsManager.RegisterSubscription(10, [1], stream.Object);
         var handler = CreateHandler(1);
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        stream.Invocations.Clear();
+        _published.Clear();
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        stream.Verify(
-            s => s.WriteAsync(It.IsAny<ProtoUserOnlineStatus>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _published.Should().BeEmpty();
     }
 
     [Fact]
@@ -87,30 +108,14 @@ public class SetOnlineStatusCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_TransitionOfflineToOnline_NotifiesSubscribers()
-    {
-        var stream = new Mock<IServerStreamWriter<ProtoUserOnlineStatus>>();
-        _h.SubscriptionsManager.RegisterSubscription(10, [1], stream.Object);
-        var handler = CreateHandler(1);
-        await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        _h.Storage.SetOffline(1);
-        stream.Invocations.Clear();
-        await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        stream.Verify(
-            s => s.WriteAsync(It.IsAny<ProtoUserOnlineStatus>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_TransitionOfflineToOnline_IncrementsOnlineMetric()
+    public async Task Handle_TransitionOfflineToOnline_PublishesAgain()
     {
         var handler = CreateHandler(1);
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        _h.Storage.SetOffline(1);
-        _h.Metrics.SnapshotAndReset();
+        await _h.Presence.SetOfflineAsync(1);
+        _published.Clear();
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        var snapshot = _h.Metrics.SnapshotAndReset();
-        snapshot.Should().ContainKey("status_changes.online");
+        _published.Should().ContainSingle(e => e.UserId == 1);
     }
 
     [Fact]
@@ -118,8 +123,8 @@ public class SetOnlineStatusCommandHandlerTests
     {
         var handler = CreateHandler(42);
         await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
-        _h.Storage.GetStatus(42).Should().NotBeNull();
-        _h.Storage.GetStatus(1).Should().BeNull();
+        (await _h.Presence.GetOnlineAsync(42)).Should().NotBeNull();
+        (await _h.Presence.GetOnlineAsync(1)).Should().BeNull();
     }
 
     [Fact]
@@ -128,5 +133,13 @@ public class SetOnlineStatusCommandHandlerTests
         var handler = CreateHandler(1);
         var act = async () => await handler.Handle(new SetOnlineStatusCommand(), CancellationToken.None);
         await act.Should().NotThrowAsync();
+    }
+
+    private static ConsumeContext<OnlineStatusChangedEvent> ConsumeContextFor(OnlineStatusChangedEvent message)
+    {
+        var context = new Mock<ConsumeContext<OnlineStatusChangedEvent>>();
+        context.SetupGet(c => c.Message).Returns(message);
+        context.SetupGet(c => c.CancellationToken).Returns(CancellationToken.None);
+        return context.Object;
     }
 }

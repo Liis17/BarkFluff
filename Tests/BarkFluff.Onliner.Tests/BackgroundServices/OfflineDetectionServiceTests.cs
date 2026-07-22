@@ -1,132 +1,90 @@
+using System.Reflection;
+
 using BarkFluff.Onliner.BackgroundServices;
-using BarkFluff.Onliner.Services;
-using Grpc.Core;
+using BarkFluff.Onliner.Messages;
+
+using MassTransit;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Onliner.Tests.BackgroundServices;
 
 public class OfflineDetectionServiceTests
 {
-    private readonly TestHelper _h = new();
+    private static readonly MethodInfo SweepMethod =
+        typeof(OfflineDetectionService).GetMethod("CheckAndUpdateOfflineStatusesAsync",
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
 
-    private TestableOfflineDetectionService CreateService()
+    private readonly TestHelper _h = new();
+    private readonly List<OnlineStatusChangedEvent> _published = [];
+    private readonly Mock<IBus> _bus = new();
+
+    public OfflineDetectionServiceTests()
     {
-        return new TestableOfflineDetectionService(
-            _h.Storage,
-            _h.Notifier,
+        _bus
+            .Setup(b => b.Publish(It.IsAny<OnlineStatusChangedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<OnlineStatusChangedEvent, CancellationToken>((e, _) => _published.Add(e))
+            .Returns(Task.CompletedTask);
+    }
+
+    private OfflineDetectionService CreateService()
+    {
+        return new OfflineDetectionService(
+            _h.Presence,
+            TestHelper.CreateSingleRunner(),
+            _bus.Object,
+            _h.CreateScopeFactory(),
             TestHelper.CreateLogger<OfflineDetectionService>(),
             _h.Metrics);
     }
 
+    private static Task SweepAsync(OfflineDetectionService service)
+        => (Task)SweepMethod.Invoke(service, [CancellationToken.None])!;
+
     [Fact]
-    public async Task ExecuteAsync_MarksOfflineUsersAsOffline()
+    public async Task Sweep_StaleUser_MarkedOfflineAndPublished()
     {
-        _h.Storage.UpdateStatus(1);
-        _h.Storage.UpdateStatus(2);
+        await _h.Presence.MarkOnlineAsync(1);
+        _h.Presence.SetLastSeen(1, DateTime.UtcNow.AddSeconds(-10));
 
-        using var cts = new CancellationTokenSource();
-        var service = CreateService();
-        var task = service.StartAsync(cts.Token);
+        await SweepAsync(CreateService());
 
-        await Task.Delay(TimeSpan.FromSeconds(7));
-        cts.Cancel();
+        (await _h.Presence.GetOnlineAsync(1)).Should().BeNull();
+        _published.Should().ContainSingle(e => e.UserId == 1 && e.Status == (int)DomainStatusTypeId.Offline);
 
-        var status1 = _h.Storage.GetStatus(1);
-        var status2 = _h.Storage.GetStatus(2);
-        status1!.Status.Should().Be(DomainStatusTypeId.Offline);
-        status2!.Status.Should().Be(DomainStatusTypeId.Offline);
+        var dbStatus = await _h.DbContext.UsersOnlineStatuses.FindAsync(1L);
+        dbStatus.Should().NotBeNull();
+        dbStatus!.Status.Should().Be(DomainStatusTypeId.Offline);
     }
 
     [Fact]
-    public async Task ExecuteAsync_NotifiesSubscribersOnOffline()
+    public async Task Sweep_StaleUser_IncrementsOfflineMetric()
     {
-        _h.Storage.UpdateStatus(1);
-        var stream = new Mock<IServerStreamWriter<ProtoUserOnlineStatus>>();
-        _h.SubscriptionsManager.RegisterSubscription(10, [1], stream.Object);
+        await _h.Presence.MarkOnlineAsync(1);
+        _h.Presence.SetLastSeen(1, DateTime.UtcNow.AddSeconds(-10));
 
-        using var cts = new CancellationTokenSource();
-        var service = CreateService();
-        var task = service.StartAsync(cts.Token);
-
-        await Task.Delay(TimeSpan.FromSeconds(7));
-        cts.Cancel();
-
-        stream.Verify(
-            s => s.WriteAsync(
-                It.Is<ProtoUserOnlineStatus>(m => m.UserId == 1 && m.Status == ProtoStatusTypeId.StatusOffline),
-                It.IsAny<CancellationToken>()),
-            Times.AtLeastOnce);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_IncrementsOfflineDetectionRuns()
-    {
-        using var cts = new CancellationTokenSource(1500);
-        var service = CreateService();
-        var task = service.StartAsync(cts.Token);
-
-        await Task.Delay(1500);
-        cts.Cancel();
-
-        var snapshot = _h.Metrics.SnapshotAndReset();
-        snapshot.Should().ContainKey("offline_detection_runs");
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_DoesNotMarkRecentOnlineUser()
-    {
-        using var cts = new CancellationTokenSource();
-        var service = CreateService();
-        var task = service.StartAsync(cts.Token);
-
-        await Task.Delay(1500);
-        _h.Storage.UpdateStatus(1);
-        await Task.Delay(1500);
-        cts.Cancel();
-
-        var status = _h.Storage.GetStatus(1);
-        status!.Status.Should().Be(DomainStatusTypeId.Online);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_IncrementsStatusChangesOffline()
-    {
-        _h.Storage.UpdateStatus(1);
-
-        using var cts = new CancellationTokenSource();
-        var service = CreateService();
-        var task = service.StartAsync(cts.Token);
-
-        await Task.Delay(TimeSpan.FromSeconds(7));
-        cts.Cancel();
+        await SweepAsync(CreateService());
 
         var snapshot = _h.Metrics.SnapshotAndReset();
         snapshot.Should().ContainKey("status_changes.offline");
     }
 
     [Fact]
-    public async Task ExecuteAsync_NoOnlineUsers_RunsDetectionWithoutErrors()
+    public async Task Sweep_RecentUser_NotMarkedOffline()
     {
-        using var cts = new CancellationTokenSource(1500);
-        var service = CreateService();
-        var task = service.StartAsync(cts.Token);
+        await _h.Presence.MarkOnlineAsync(1);
 
-        await Task.Delay(1500);
-        cts.Cancel();
+        await SweepAsync(CreateService());
 
-        var snapshot = _h.Metrics.SnapshotAndReset();
-        snapshot.Should().ContainKey("offline_detection_runs");
-        snapshot.Should().NotContainKey("offline_detection_errors");
+        (await _h.Presence.GetOnlineAsync(1)).Should().NotBeNull();
+        _published.Should().BeEmpty();
     }
 
-    private class TestableOfflineDetectionService : OfflineDetectionService
+    [Fact]
+    public async Task Sweep_NoUsers_NoPublishNoError()
     {
-        public TestableOfflineDetectionService(
-            OnlineStatusStorage storage,
-            OnlineStatusNotifier notifier,
-            ILogger<OfflineDetectionService> logger,
-            MetricsCollector metrics)
-            : base(storage, notifier, logger, metrics) { }
-
-        public new Task StartAsync(CancellationToken ct) => ExecuteAsync(ct);
+        var act = async () => await SweepAsync(CreateService());
+        await act.Should().NotThrowAsync();
+        _published.Should().BeEmpty();
     }
 }

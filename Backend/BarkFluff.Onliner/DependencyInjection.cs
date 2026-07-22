@@ -7,8 +7,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddOnlinerServices(this IServiceCollection services)
     {
-        // Singleton сервисы для управления состоянием
-        services.AddSingleton<OnlineStatusStorage>();
+        // Presence — общий стор в Redis (разделяется всеми инстансами) + распределённый single-runner.
+        services.AddSingleton<IPresenceStore, RedisPresenceStore>();
+        services.AddSingleton<RedisSingleRunner>();
         services.AddSingleton<OnlineStatusSubscriptionsManager>();
         services.AddSingleton<OnlineStatusNotifier>();
 
