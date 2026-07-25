@@ -275,6 +275,31 @@
         <item name="ensureMinTouchTargetSize">false</item>
     </style>
 
+    <!-- Онбординг: чип статуса в карточке ноды (онлайн / пинг / регион). -->
+    <style name="Widget.Barkfluff.Server.StatusChip" parent="Widget.Material3.Chip.Assist">
+        <item name="android:clickable">false</item>
+        <item name="android:focusable">false</item>
+        <item name="android:textColor">?attr/colorOnPrimaryContainer</item>
+        <item name="chipBackgroundColor">?attr/colorPrimaryContainer</item>
+        <item name="chipCornerRadius">@dimen/shape_corner_full</item>
+        <item name="chipIconTint">?attr/colorOnPrimaryContainer</item>
+        <item name="chipIconSize">15dp</item>
+        <item name="chipMinHeight">32dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">10dp</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
+    <!-- Онбординг: H1 экрана выбора ноды (32sp/800 по макету 2c). -->
+    <style name="TextAppearance.Barkfluff.Onboarding.Headline" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textSize">32sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingMultiplier">1.05</item>
+    </style>
+
     <!-- Регистрация (архетип "c") -->
     <style name="TextAppearance.Barkfluff.Register.Headline" parent="TextAppearance.Material3.DisplaySmall">
         <item name="android:textStyle">bold</item>
