@@ -13,6 +13,9 @@ on:
       - 'Android/gradle.properties'
       - 'Android/gradle/**'
       - 'Android/android-rebuild.trigger'
+      # Legal-markdown едет в APK через таск copyLegalDocs — обновление соглашений
+      # должно пересобирать клиент.
+      - 'Backend/Barkfluff.WebServer/html/legal/**'
   workflow_dispatch:
 
 permissions:

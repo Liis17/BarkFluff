@@ -16,6 +16,52 @@ fun getSigningProp(envKey: String, propKey: String): String? {
     }
 }
 
+/**
+ * Копирует локализованные markdown-версии юридических документов из WebServer в assets/legal.
+ * Источник — единственный: Backend/Barkfluff.WebServer/html/legal, тот же, что отдаёт сайт.
+ * Пустой результат — ошибка сборки: APK без актуальных соглашений выпускать нельзя.
+ */
+abstract class CopyLegalDocsTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFiles: ConfigurableFileCollection
+
+    @get:Input
+    abstract val sourceDescription: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        val docs = sourceFiles.files.filter { it.isFile }
+        if (docs.isEmpty()) {
+            throw GradleException(
+                "Не найдены legal-документы в ${sourceDescription.get()}. " +
+                    "Сборка остановлена: APK не должен уходить без актуальных соглашений."
+            )
+        }
+
+        val target = outputDirectory.get().asFile.resolve("legal")
+        target.deleteRecursively()
+        target.mkdirs()
+        docs.forEach { it.copyTo(target.resolve(it.name), overwrite = true) }
+        logger.lifecycle("legal: скопировано ${docs.size} документов в assets/legal")
+    }
+}
+
+val legalSourceDir = rootProject.layout.projectDirectory.dir("../Backend/Barkfluff.WebServer/html/legal")
+
+val copyLegalDocs = tasks.register<CopyLegalDocsTask>("copyLegalDocs") {
+    description = "Копирует локализованные legal-markdown из WebServer в assets"
+    sourceFiles.from(legalSourceDir.asFileTree.matching {
+        include("TERMS_OF_SERVICE.*.md", "PRIVACY_POLICY.*.md")
+    })
+    sourceDescription.set(legalSourceDir.asFile.path)
+    // outputDirectory назначает сам AGP через addGeneratedSourceDirectory ниже.
+}
+
 android {
     namespace = "com.barkfluff.client"
     compileSdk = 36
@@ -89,6 +135,15 @@ android {
             // libsignal-android.aar кладёт в jni/<abi>/ libsignal_jni_testing.so (~75 МБ/ABI) — не нужен в production.
             excludes += "**/libsignal_jni_testing.so"
         }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            copyLegalDocs,
+            CopyLegalDocsTask::outputDirectory
+        )
     }
 }
 
