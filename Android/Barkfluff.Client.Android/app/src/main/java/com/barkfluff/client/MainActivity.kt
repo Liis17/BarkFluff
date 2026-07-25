@@ -101,6 +101,18 @@ class MainActivity : AppCompatActivity() {
         handlePendingDeepLink()
         checkForUpdates()
         registerPrekeyBundleIfNeeded()
+        startRealtimeAfterLogin()
+    }
+
+    /**
+     * Поднимает realtime-стримы после входа: ProcessLifecycleOwner.onStart уже отработал
+     * (на экране логина, где токенов ещё не было) и повторно не вызовется.
+     * Оба resume() идемпотентны — при холодном старте залогиненного пользователя ничего не делают.
+     */
+    private fun startRealtimeAfterLogin() {
+        val app = applicationContext as BarkFluffApplication
+        app.realtimeService.resume()
+        app.callEventsService.resume()
     }
 
     private fun registerPrekeyBundleIfNeeded() {
