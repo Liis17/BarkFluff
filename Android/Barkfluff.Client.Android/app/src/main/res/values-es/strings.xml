@@ -32,12 +32,12 @@
 
     <!-- Login Screen -->
     <string name="login_welcome">Bienvenido</string>
-    <string name="login_subtitle">Inicia sesión en tu cuenta</string>
+    <string name="login_subtitle">Inicia sesión para volver a tu manada.</string>
     <string name="hint_username_or_email">Usuario o correo</string>
     <string name="hint_password">Contraseña</string>
     <string name="forgot_password">¿Olvidaste tu contraseña?</string>
     <string name="btn_login">Iniciar sesión</string>
-    <string name="btn_change_server">Cambiar conexión al servidor</string>
+    <string name="btn_change_server">Cambiar de nodo</string>
     <string name="btn_create_account">Crear cuenta</string>
     <string name="login_first_time_here">¿Primera vez aquí?</string>
 
@@ -47,8 +47,10 @@
     <string name="btn_confirm">Confirmar</string>
 
     <!-- Select Server -->
-    <string name="server_title">Conexión al servidor</string>
-    <string name="server_subtitle">Elige un servidor público</string>
+    <string name="server_title">"Elige\nun nodo"</string>
+    <string name="server_subtitle">¿A qué manada nos conectamos hoy?</string>
+    <string name="server_custom_row_title">Nodo propio</string>
+    <string name="server_custom_row_subtitle">Introducir la dirección manualmente</string>
     <string name="server_custom">Conectar a otro servidor</string>
     <string name="hint_server_address">https://miservidor.com:443</string>
     <string name="node_trust_warning">Conéctate solo a nodos en los que confíes. Tus datos se almacenan en el nodo de su propietario; el desarrollador de la aplicación no se responsabiliza de ellos.</string>
@@ -56,9 +58,9 @@
     <string name="self_hosted_title">Tu propio servidor</string>
     <string name="self_hosted_description">Despliega tu propio servidor BarkFluff</string>
     <string name="btn_learn_more_server">Saber más</string>
-    <string name="server_help_hint">¿Problemas para conectar? Consulta nuestra guía de configuración del servidor.</string>
-    <string name="server_item_name_placeholder">Nombre del servidor</string>
-    <string name="server_item_description_placeholder">Descripción del servidor</string>
+    <string name="server_help_hint">¿No sabes qué elegir? Consulta nuestra guía de configuración de nodos.</string>
+    <string name="server_item_name_placeholder">Nombre del nodo</string>
+    <string name="server_item_description_placeholder">Descripción del nodo</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Información personal</string>
