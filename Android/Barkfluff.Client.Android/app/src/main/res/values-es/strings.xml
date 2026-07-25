@@ -19,10 +19,7 @@
     <string name="welcome_title">Una mensajería para tu manada</string>
     <string name="welcome_description">Chatea con amigos, comparte momentos y mantente en contacto con quienes te importan</string>
     <string name="btn_start">Comenzar</string>
-    <string name="btn_learn_more">Saber más</string>
-    <string name="menu_about">Acerca de</string>
     <string name="menu_privacy">Privacidad</string>
-    <string name="menu_help">Ayuda</string>
 
     <!-- Documentos legales (hoja de consentimiento antes de elegir el nodo) -->
     <string name="legal_sheet_title">Condiciones de uso</string>
@@ -52,9 +49,9 @@
     <!-- Select Server -->
     <string name="server_title">Conexión al servidor</string>
     <string name="server_subtitle">Elige un servidor público</string>
-    <string name="server_public">Servidores públicos</string>
     <string name="server_custom">Conectar a otro servidor</string>
     <string name="hint_server_address">https://miservidor.com:443</string>
+    <string name="node_trust_warning">Conéctate solo a nodos en los que confíes. Tus datos se almacenan en el nodo de su propietario; el desarrollador de la aplicación no se responsabiliza de ellos.</string>
     <string name="btn_connect">Conectar</string>
     <string name="self_hosted_title">Tu propio servidor</string>
     <string name="self_hosted_description">Despliega tu propio servidor BarkFluff</string>
@@ -62,7 +59,6 @@
     <string name="server_help_hint">¿Problemas para conectar? Consulta nuestra guía de configuración del servidor.</string>
     <string name="server_item_name_placeholder">Nombre del servidor</string>
     <string name="server_item_description_placeholder">Descripción del servidor</string>
-    <string name="server_item_location_placeholder">Ubicación • @publicname</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Información personal</string>
