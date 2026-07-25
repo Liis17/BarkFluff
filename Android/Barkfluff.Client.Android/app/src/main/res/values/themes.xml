@@ -291,6 +291,15 @@
         <item name="ensureMinTouchTargetSize">false</item>
     </style>
 
+    <!-- Онбординг: hero-заголовок экрана входа (40sp/800 по макету 3c). -->
+    <style name="TextAppearance.Barkfluff.Onboarding.Hero" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="android:textSize">40sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:letterSpacing">-0.025</item>
+        <item name="android:lineSpacingMultiplier">1.02</item>
+    </style>
+
     <!-- Онбординг: H1 экрана выбора ноды (32sp/800 по макету 2c). -->
     <style name="TextAppearance.Barkfluff.Onboarding.Headline" parent="TextAppearance.Material3.HeadlineMedium">
         <item name="android:textSize">32sp</item>
