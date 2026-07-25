@@ -55,25 +55,18 @@
     <Content Include="html\legal\account-deletion.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="html\legal\ACCOUNT_DELETION.md">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="html\legal\encryption.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="html\legal\ENCRYPTION.md">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\legal\privacy-policy.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="html\legal\PRIVACY_POLICY.md">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="html\legal\terms-of-service.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="html\legal\TERMS_OF_SERVICE.md">
+    <!-- Markdown-источники legal: локализованные варианты (*.ru.md, *.en.md, ...) едут в
+         мобильные клиенты, поэтому включаем маской, чтобы новая локаль не требовала правки csproj. -->
+    <Content Include="html\legal\*.md">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\UniqueUsers\paws.page.html">
