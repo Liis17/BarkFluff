@@ -41,8 +41,8 @@
     <string name="forgot_password">Забыли пароль?</string>
     <string name="btn_login">Войти</string>
     <string name="btn_change_server">Изменить подключение к серверу</string>
-    <string name="btn_create_account">Создать новый аккаунт</string>
-    <string name="footer_text">2025 BarkFluff. Никакие права не защищены.</string>
+    <string name="btn_create_account">Создать аккаунт</string>
+    <string name="login_first_time_here">Впервые здесь?</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">Двухфакторная аутентификация</string>

@@ -41,8 +41,8 @@
     <string name="forgot_password">Forgot password?</string>
     <string name="btn_login">Sign in</string>
     <string name="btn_change_server">Change server connection</string>
-    <string name="btn_create_account">Create new account</string>
-    <string name="footer_text">2025 BarkFluff. No rights reserved.</string>
+    <string name="btn_create_account">Create account</string>
+    <string name="login_first_time_here">First time here?</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">Two-factor authentication</string>

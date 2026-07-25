@@ -9,6 +9,9 @@ import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
@@ -32,7 +35,13 @@ class LoginActivity : AppCompatActivity() {
         private val USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._]{3,}$")
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
+
+        /** Отступы hero-блока; складываются с системными инсетами. */
+        private const val LOGIN_TOP_PADDING_DP = 20
+        private const val LOGIN_BOTTOM_PADDING_DP = 16
     }
+
+    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var globalParam: GlobalParam
@@ -56,6 +65,17 @@ class LoginActivity : AppCompatActivity() {
 
         globalParam = GlobalParam(this)
         grpcManager = GrpcManager()
+
+        // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
+        // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(
+                top = systemBars.top + LOGIN_TOP_PADDING_DP.dpToPx(),
+                bottom = systemBars.bottom + LOGIN_BOTTOM_PADDING_DP.dpToPx()
+            )
+            insets
+        }
 
         otpBoxes = listOf(
             binding.otpBox1, binding.otpBox2, binding.otpBox3,

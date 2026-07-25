@@ -38,8 +38,8 @@
     <string name="forgot_password">忘记密码？</string>
     <string name="btn_login">登录</string>
     <string name="btn_change_server">更改服务器连接</string>
-    <string name="btn_create_account">创建新账户</string>
-    <string name="footer_text">2025 BarkFluff。不保留任何权利。</string>
+    <string name="btn_create_account">创建账户</string>
+    <string name="login_first_time_here">第一次来？</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">双重验证</string>

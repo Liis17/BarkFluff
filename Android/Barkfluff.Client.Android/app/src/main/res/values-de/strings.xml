@@ -38,8 +38,8 @@
     <string name="forgot_password">Passwort vergessen?</string>
     <string name="btn_login">Anmelden</string>
     <string name="btn_change_server">Serververbindung ändern</string>
-    <string name="btn_create_account">Neues Konto erstellen</string>
-    <string name="footer_text">2025 BarkFluff. Keine Rechte vorbehalten.</string>
+    <string name="btn_create_account">Konto erstellen</string>
+    <string name="login_first_time_here">Zum ersten Mal hier?</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">Zwei-Faktor-Authentifizierung</string>
