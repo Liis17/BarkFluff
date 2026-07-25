@@ -297,7 +297,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         }
 
         binding.strengthContainer.backgroundTintList = ColorStateList.valueOf(tier.containerColor)
-        binding.strengthIcon.setColorFilter(tier.contentColor)
+        binding.strengthIcon.imageTintList = ColorStateList.valueOf(tier.contentColor)
         binding.strengthLabel.setTextColor(tier.contentColor)
         binding.strengthLabel.text = getString(tier.labelRes)
 
@@ -500,7 +500,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         )
 
         val activeColor = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
-        val trackColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSurfaceContainerHighest)
+        val trackColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOutlineVariant)
         val segments = listOf(binding.segment1, binding.segment2, binding.segment3)
         segments.forEachIndexed { i, segment ->
             segment.backgroundTintList = ColorStateList.valueOf(if (i < step) activeColor else trackColor)
