@@ -19,10 +19,7 @@
     <string name="welcome_title">"Твоя стая\nуже здесь."</string>
     <string name="welcome_description">Общайтесь без границ — быстро, приватно, только со своей стаей</string>
     <string name="btn_start">Начать</string>
-    <string name="btn_learn_more">Узнать больше</string>
-    <string name="menu_about">О проекте</string>
     <string name="menu_privacy">Конфиденциальность</string>
-    <string name="menu_help">Справка</string>
     <string name="welcome_chip_fast">Быстро</string>
     <string name="welcome_chip_private">Приватно</string>
     <string name="welcome_chip_own_pack">Своя стая</string>
@@ -55,9 +52,10 @@
     <!-- Select Server -->
     <string name="server_title">Выбери сервер</string>
     <string name="server_subtitle">Выберите публичный сервер</string>
-    <string name="server_public">Публичные серверы</string>
     <string name="server_custom">Подключиться к другому серверу</string>
     <string name="hint_server_address">https://myserver.com:443</string>
+    <string name="hint_server_address_example" translatable="false">beacon.servername.com:443</string>
+    <string name="node_trust_warning">Подключайтесь только к тем нодам, которым доверяете. Ваши данные хранятся у владельца ноды; разработчик приложения не несёт за них ответственности.</string>
     <string name="btn_connect">Подключиться</string>
     <string name="server_status_online">Онлайн</string>
     <string name="server_ping_ms">%1$d мс</string>
@@ -69,7 +67,6 @@
     <string name="server_help_hint">Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера.</string>
     <string name="server_item_name_placeholder">Название сервера</string>
     <string name="server_item_description_placeholder">Описание сервера</string>
-    <string name="server_item_location_placeholder">Локация • @publicname</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Личная информация</string>

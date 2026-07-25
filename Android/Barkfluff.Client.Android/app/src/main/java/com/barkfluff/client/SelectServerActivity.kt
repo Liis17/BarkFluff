@@ -91,6 +91,9 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+        // «Своя нода» разворачивает поле ручного ввода (макет 2c)
+        binding.customServerRow.setOnClickListener { toggleCustomServerPanel() }
+
         // Кнопка подключения
         binding.connectButton.setOnClickListener {
             val address = binding.serverAddressEditText.text.toString().trim()
@@ -98,6 +101,15 @@ class SelectServerActivity : AppCompatActivity() {
                 connectToServer(address)
             }
         }
+    }
+
+    private fun toggleCustomServerPanel() {
+        val expanded = binding.customServerPanel.visibility != View.VISIBLE
+        binding.customServerPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+        binding.customServerChevron.animate()
+            .rotation(if (expanded) 180f else 0f)
+            .setDuration(180L)
+            .start()
     }
 
     private fun loadServerList() {

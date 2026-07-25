@@ -12,6 +12,7 @@ import com.barkfluff.client.R
 import com.barkfluff.client.data.ServerDataElement
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -49,9 +50,10 @@ class ServerAdapter(
         private val serverIconTile: MaterialCardView = itemView.findViewById(R.id.serverIconTile)
         private val title: TextView = itemView.findViewById(R.id.serverTitle)
         private val description: TextView = itemView.findViewById(R.id.serverDescription)
-        private val locationAndPublicName: TextView = itemView.findViewById(R.id.serverLocationAndPublicName)
+        private val handle: TextView = itemView.findViewById(R.id.serverHandle)
         private val chipOnline: Chip = itemView.findViewById(R.id.chipOnline)
         private val chipPing: Chip = itemView.findViewById(R.id.chipPing)
+        private val chipRegion: Chip = itemView.findViewById(R.id.chipRegion)
         private val connectCta = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.serverConnectCta)
 
         private var pingJob: Job? = null
@@ -65,29 +67,24 @@ class ServerAdapter(
             title.text = server.title
             description.text = server.description
 
-            // Формируем строку локации и публичного имени
-            val locationText = buildString {
-                if (server.location.isNotBlank()) {
-                    append(server.location)
-                }
-                if (server.publicName.isNotBlank()) {
-                    if (isNotEmpty()) {
-                        append(" • ")
-                    }
-                    append("@${server.publicName}")
-                }
-            }
-
-            if (locationText.isNotBlank()) {
-                locationAndPublicName.text = locationText
-                locationAndPublicName.visibility = View.VISIBLE
+            // Макет 2c: регион — чип в общей строке, публичное имя — отдельная строка ниже
+            if (server.location.isNotBlank()) {
+                chipRegion.text = server.location
+                chipRegion.visibility = View.VISIBLE
             } else {
-                locationAndPublicName.visibility = View.GONE
+                chipRegion.visibility = View.GONE
             }
 
-            // Цвет icon-tile
-            val defaultColor = androidx.core.content.ContextCompat.getColor(
-                itemView.context, R.color.onboarding_button_background
+            if (server.publicName.isNotBlank()) {
+                handle.text = "@${server.publicName}"
+                handle.visibility = View.VISIBLE
+            } else {
+                handle.visibility = View.GONE
+            }
+
+            // Цвет icon-tile: своё значение ноды, иначе — primary активной темы
+            val defaultColor = MaterialColors.getColor(
+                itemView, androidx.appcompat.R.attr.colorPrimary
             )
             try {
                 if (server.hexColor.isNotBlank()) {

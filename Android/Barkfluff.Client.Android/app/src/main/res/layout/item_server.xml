@@ -8,27 +8,29 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@color/onboarding_card_surface"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
     app:cardCornerRadius="@dimen/shape_corner_extra_large"
-    app:cardElevation="3dp">
+    app:cardElevation="2dp"
+    app:rippleColor="?attr/colorPrimary">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <!-- Icon-tile сервера -->
+            <!-- Icon-tile ноды -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/serverIconTile"
                 android:layout_width="@dimen/server_icon_tile_size"
                 android:layout_height="@dimen/server_icon_tile_size"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="14dp"
                 app:cardBackgroundColor="?attr/colorPrimary"
                 app:cardCornerRadius="@dimen/shape_corner_large"
                 app:cardElevation="0dp">
@@ -37,20 +39,20 @@
                     android:id="@+id/serverIconGlyph"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:padding="14dp"
+                    android:contentDescription="@null"
+                    android:padding="13dp"
                     android:src="@drawable/ic_storage"
-                    app:tint="@color/onboarding_chip_background" />
+                    app:tint="?attr/colorOnPrimary" />
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Информация о сервере -->
+            <!-- Информация о ноде -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
-                <!-- Название сервера + verified -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -65,114 +67,102 @@
                         android:maxLines="1"
                         android:text="@string/server_item_name_placeholder"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="@color/onboarding_title_text" />
+                        android:textColor="?attr/colorOnSurface"
+                        android:textStyle="bold" />
 
                     <ImageView
                         android:id="@+id/serverVerifiedIcon"
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="4dp"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@null"
                         android:src="@drawable/ic_check_circle"
-                        app:tint="@color/onboarding_button_background" />
+                        app:tint="?attr/colorPrimary" />
 
                 </LinearLayout>
 
-                <!-- Описание -->
                 <TextView
                     android:id="@+id/serverDescription"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="2dp"
                     android:ellipsize="end"
                     android:maxLines="2"
                     android:text="@string/server_item_description_placeholder"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="@color/onboarding_subtitle_text" />
-
-                <!-- Чипы: Онлайн / пинг -->
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/serverChipsGroup"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    app:chipSpacingHorizontal="6dp"
-                    app:singleLine="true">
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipOnline"
-                        style="@style/Widget.Material3.Chip.Assist"
-                        android:layout_width="wrap_content"
-                        android:layout_height="28dp"
-                        android:clickable="false"
-                        android:focusable="false"
-                        android:text="@string/server_status_online"
-                        android:textColor="@color/onboarding_success_text"
-                        app:chipBackgroundColor="@color/onboarding_success_background"
-                        app:chipIcon="@drawable/dot_online_indicator"
-                        app:chipIconSize="8dp"
-                        app:chipIconTint="@color/profile_presence_online"
-                        app:chipStrokeWidth="0dp" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipPing"
-                        style="@style/Widget.Material3.Chip.Assist"
-                        android:layout_width="wrap_content"
-                        android:layout_height="28dp"
-                        android:layout_marginStart="6dp"
-                        android:clickable="false"
-                        android:focusable="false"
-                        android:textColor="@color/onboarding_chip_text"
-                        android:visibility="gone"
-                        app:chipBackgroundColor="@color/onboarding_chip_background"
-                        app:chipIcon="@drawable/ic_bolt"
-                        app:chipIconTint="@color/onboarding_chip_text"
-                        app:chipStrokeWidth="0dp" />
-
-                </com.google.android.material.chip.ChipGroup>
-
-                <!-- Локация и публичное имя -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:src="@drawable/ic_location"
-                        app:tint="@color/onboarding_meta_text" />
-
-                    <TextView
-                        android:id="@+id/serverLocationAndPublicName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:text="@string/server_item_location_placeholder"
-                        android:textAppearance="?attr/textAppearanceLabelSmall"
-                        android:textColor="@color/onboarding_meta_text" />
-
-                </LinearLayout>
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <!-- CTA «Подключиться» -->
+        <!-- Чипы одной строкой: Онлайн / пинг / регион (макет 2c) -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/serverChipsGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:chipSpacingHorizontal="8dp"
+            app:singleLine="false">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipOnline"
+                style="@style/Widget.Barkfluff.Server.StatusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/server_status_online"
+                android:textColor="@color/onboarding_success_text"
+                app:chipBackgroundColor="@color/onboarding_success_background"
+                app:chipIcon="@drawable/dot_online_indicator"
+                app:chipIconSize="8dp"
+                app:chipIconTint="@color/profile_presence_online" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipPing"
+                style="@style/Widget.Barkfluff.Server.StatusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:chipIcon="@drawable/ic_bolt" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipRegion"
+                style="@style/Widget.Barkfluff.Server.StatusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:chipIcon="@drawable/ic_location" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Публичное имя ноды -->
+        <TextView
+            android:id="@+id/serverHandle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+        <!-- CTA «Подключиться» внутри карточки -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/serverConnectCta"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="12dp"
+            android:layout_height="@dimen/server_card_cta_height"
+            android:layout_marginTop="16dp"
             android:text="@string/btn_connect"
             android:textAllCaps="false"
-            android:textAppearance="?attr/textAppearanceLabelLarge"
-            android:textColor="@color/white"
-            app:backgroundTint="@color/onboarding_button_background"
-            app:cornerRadius="@dimen/shape_corner_full" />
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnPrimary"
+            app:backgroundTint="?attr/colorPrimary"
+            app:cornerRadius="@dimen/shape_corner_full"
+            app:icon="@drawable/ic_arrow_forward"
+            app:iconGravity="textEnd"
+            app:iconPadding="10dp"
+            app:iconTint="?attr/colorOnPrimary" />
 
     </LinearLayout>
 
