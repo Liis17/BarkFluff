@@ -21,6 +21,52 @@ Package: `com.barkfluff.client`
 - Локальное хранилище: SharedPreferences + EncryptedSharedPreferences для токенов
 - Навигация: Welcome → SelectServer → Login → Chats
 
+## Онбординг (Welcome → SelectServer → Login)
+
+Три экрана свёрстаны по референсу `Barkfluff Onboarding 1c2c3c - Final.dc.html` (спека — `Barkfluff Onboarding - Spec.md`, см. [[Клиенты/DesignDocument]]).
+
+### Цвета — только роли темы
+
+Онбординг **не** использует статичную brand-палитру: все цвета берутся через `?attr/colorPrimary`, `?attr/colorOnSurface`, `?attr/colorPrimaryContainer`, `?attr/colorSurfaceContainerLowest` и т.д., как в `RegisterActivity` и подстраницах настроек 2a. Работает Material You и тёмная тема.
+
+Статичными остались только семантические цвета: `onboarding_success_background` / `onboarding_success_text` (чип «Онлайн») и `profile_presence_online`. Остальные `onboarding_*` удалены из `colors.xml`.
+
+⚠️ **Инсеты.** Ни `activity_welcome.xml`, ни `activity_login.xml` не ставят `fitsSystemWindows` на корень. Инсеты применяются к внутреннему `contentPanel` в коде Activity. Иначе корень уезжает вниз, над ним остаётся полоса `windowBackground` другого цвета, а декоративные круги обрезаются по нижней границе статус-бара. Не возвращать `fitsSystemWindows` на корень этих двух экранов.
+
+### Экран 1 — Welcome (макет 1c)
+
+- Композиция: две распорки `layout_weight=1` отжимают hero-блок от верха и прижимают CTA к низу.
+- Чипы-фичи — стиль `Widget.Barkfluff.Welcome.FeatureChip`; высота через `chipMinHeight`, а не `layout_height` (фиксированная высота сжимает текст с иконкой).
+- Под CTA — только ссылка «Конфиденциальность», открывает legal-лист в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
+- «Начать» → модалка согласия (см. ниже) → `SelectServerActivity`.
+
+### Экран 2 — SelectServer (макет 2c)
+
+- Карточка ноды (`item_server.xml`): чипы «Онлайн» / пинг / регион одной строкой, публичное имя `@handle` отдельной строкой, CTA «Подключиться» 52dp внутри карточки.
+- «Своя нода» — кликабельная dashed-строка, разворачивает поле адреса и свою кнопку подключения; шеврон поворачивается на 180°. Свёрнуто по умолчанию.
+- Внизу — предупреждение `node_trust_warning`: данные хранятся у владельца ноды, разработчик приложения за них не отвечает.
+
+### Экран 3 — Login (макет 3c)
+
+- Left-aligned hero без карточки-обёртки: круг за верхним краем, логотип 72dp, заголовок 40sp/800.
+- Мини-лейблы над полями (`TextAppearance.Barkfluff.Register.FieldLabel`), поля FilledBox с `colorSurfaceContainerHighest`.
+- Внизу «Впервые здесь? Создать аккаунт» + ссылка смены ноды.
+- Блок ошибки (`errorText`) сам несёт фон `bg_login_error`. Раньше он лежал внутри `errorCard` с `visibility=gone`, которую никто не показывал, — ошибки входа не отображались вообще. Не оборачивать его снова в скрытый контейнер.
+
+### Терминология
+
+UI говорит **«нода»**, не «сервер» — проект перешёл на нодовую систему. Ключи ресурсов (`server_title`, `btn_change_server`, …) намеренно оставлены прежними: поменялся только текст. «Сервер авторизации» в `LoginActivity` — внутренний сервис Identity, а не нода, и переименованию не подлежит.
+
+## Юридические документы и модалка согласия
+
+Источник — `Backend/Barkfluff.WebServer/html/legal/*.md`, тот же, что у сайта (см. [[Backend/WebServer]]).
+
+- **Сборка.** Gradle-таск `copyLegalDocs` (`app/build.gradle.kts`) копирует `TERMS_OF_SERVICE.*.md` и `PRIVACY_POLICY.*.md` в `assets/legal/`. Подключён через `androidComponents.onVariants { ... addGeneratedSourceDirectory(...) }`, а не `preBuild.dependsOn` — Gradle 9 строг к неявным зависимостям с merge-assets. Путь вывода назначает AGP (`build/generated/assets/copyLegalDocs/`), задавать `outputDirectory` вручную бессмысленно. Пустой результат копирования **останавливает сборку**: APK без актуальных соглашений выпускать нельзя. CI `build-client-android.yml` триггерится на `Backend/Barkfluff.WebServer/html/legal/**`.
+- **`utils/LegalDocsRepository.kt`** — читает `legal/<DOC>.<lang>.md` по активной локали (маппинг как в `LocaleManager`), fallback — `ru`. Таблицы markdown разворачивает в списки, потому что `MarkdownRenderer` таблицы не поддерживает.
+- **Редакция.** `revision()` берёт дату «Последнее обновление» из шапки и **всегда из русского файла**: значение уходит в `GlobalParam.acceptedLegalRevision`, и локализованная строка превращала бы смену языка приложения в «новую редакцию». Regex не требует ASCII-двоеточия — в zh-CN шапка использует полноширинное `：`.
+- **`LegalConsentBottomSheet`** — два таба (соглашение / конфиденциальность), рендер через `MarkdownRenderer`, чекбокс + «Принять»/«Отмена». В режиме согласия лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` — только чтение и «Закрыть».
+- **Согласие хранится как редакция, а не флаг** (`GlobalParam.acceptedLegalRevision`): обновили соглашение — согласие запрашивается заново.
+
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
 
 - На телефоне `MainActivity` показывает M3 Expressive floating navigation: pill-группа с морфингом активной вкладки (filled icon + label) и отдельный 64dp squircle FAB. Всегда доступны «Чаты» и «Профиль», а «Звонки» добавляются третьей вкладкой при `mainTabCallsVisible`; FAB виден только в чатах. `ChatsFragment` публикует суммарный счётчик непрочитанных через Fragment Result для badge «Чаты» (значения выше 99 отображаются как `99+`). Wide-layout сохраняет прежний navigation rail и medium FAB.
@@ -520,6 +566,7 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 
 - Поддержанные языки: **ru**, **en**, **de**, **es**, **zh-CN** + «Системный» (сбрасывает override).
 - Ресурсы: `res/values/strings.xml` (ru, default) + `values-en/`, `values-de/`, `values-es/`, `values-zh-rCN/`.
+- Юридические документы локализованы **не через strings.xml**, а отдельными markdown-файлами в `assets/legal/` — см. раздел про модалку согласия выше.
 - `res/xml/locales_config.xml` перечисляет все 5 локалей; `AndroidManifest.xml` ссылается через `android:localeConfig="@xml/locales_config"`.
 - `utils/LocaleManager.kt` — `apply(language)` маппит `GlobalParam.LANGUAGE_*` константы в `LocaleListCompat`; `"system"` → `getEmptyLocaleList()`.
 - Хранение: `GlobalParam.appLanguage` (обычный `SharedPreferences`, ключ `app_language`, сохраняется при `clearUserData()` — это настройка устройства, не аккаунта).

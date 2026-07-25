@@ -67,6 +67,7 @@
     <string name="server_help_hint">Не знаете, что выбрать? Ознакомьтесь с руководством по настройке ноды.</string>
     <string name="server_item_name_placeholder">Название ноды</string>
     <string name="server_item_description_placeholder">Описание ноды</string>
+    <string name="server_item_handle" translatable="false">\@%1$s</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Личная информация</string>

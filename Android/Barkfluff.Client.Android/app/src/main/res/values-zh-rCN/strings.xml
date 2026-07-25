@@ -20,6 +20,9 @@
     <string name="welcome_description">与朋友聊天，分享瞬间，与重要的人保持联系</string>
     <string name="btn_start">开始</string>
     <string name="menu_privacy">隐私</string>
+    <string name="welcome_chip_fast">快速</string>
+    <string name="welcome_chip_private">私密</string>
+    <string name="welcome_chip_own_pack">你的伙伴群</string>
 
     <!-- 法律文件（选择节点前的同意面板） -->
     <string name="legal_sheet_title">使用条款</string>
@@ -55,6 +58,8 @@
     <string name="hint_server_address">https://myserver.com:443</string>
     <string name="node_trust_warning">请只连接你信任的节点。你的数据保存在节点所有者处；应用开发者对此不承担责任。</string>
     <string name="btn_connect">连接</string>
+    <string name="server_status_online">在线</string>
+    <string name="server_ping_ms">%1$d 毫秒</string>
     <string name="self_hosted_title">你自己的服务器</string>
     <string name="self_hosted_description">部署你自己的 BarkFluff 服务器</string>
     <string name="btn_learn_more_server">了解更多</string>
