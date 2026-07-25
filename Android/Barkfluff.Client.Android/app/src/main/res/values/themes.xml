@@ -257,6 +257,24 @@
         <item name="drawableTint">?attr/colorOnSurfaceVariant</item>
     </style>
 
+    <!-- Онбординг: чип-фича на экране приветствия. Высота через chipMinHeight —
+         фиксированная layout_height сжимала текст с иконкой. -->
+    <style name="Widget.Barkfluff.Welcome.FeatureChip" parent="Widget.Material3.Chip.Assist">
+        <item name="android:clickable">false</item>
+        <item name="android:focusable">false</item>
+        <item name="android:textColor">?attr/colorOnPrimaryContainer</item>
+        <item name="chipBackgroundColor">?attr/colorPrimaryContainer</item>
+        <item name="chipCornerRadius">@dimen/shape_corner_full</item>
+        <item name="chipIconTint">?attr/colorOnPrimaryContainer</item>
+        <item name="chipIconSize">18dp</item>
+        <item name="chipMinHeight">@dimen/feature_chip_height</item>
+        <item name="chipStartPadding">10dp</item>
+        <item name="chipEndPadding">12dp</item>
+        <item name="iconStartPadding">2dp</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
     <!-- Регистрация (архетип "c") -->
     <style name="TextAppearance.Barkfluff.Register.Headline" parent="TextAppearance.Material3.DisplaySmall">
         <item name="android:textStyle">bold</item>
