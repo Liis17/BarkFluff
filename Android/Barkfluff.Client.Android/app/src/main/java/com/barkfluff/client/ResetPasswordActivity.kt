@@ -44,7 +44,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         private const val TAG = "ResetPasswordActivity"
         private const val RESEND_COOLDOWN_MS = 60_000L
         private const val CONTENT_TOP_PADDING_DP = 16
-        private const val CONTENT_BOTTOM_PADDING_DP = 18
+        private const val FOOTER_BOTTOM_PADDING_DP = 18
     }
 
     private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
@@ -74,11 +74,20 @@ class ResetPasswordActivity : AppCompatActivity() {
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
         ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
+            v.updatePadding(
+                top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
+                    + CONTENT_TOP_PADDING_DP.dpToPx()
+            )
+            insets
+        }
+
+        // Нижние инсеты — на подвале с CTA: он прижат к низу и первым упирается
+        // в жестовый бар и клавиатуру.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.footer) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.updatePadding(
-                top = systemBars.top + CONTENT_TOP_PADDING_DP.dpToPx(),
-                bottom = maxOf(systemBars.bottom, ime.bottom) + CONTENT_BOTTOM_PADDING_DP.dpToPx()
+                bottom = maxOf(systemBars.bottom, ime.bottom) + FOOTER_BOTTOM_PADDING_DP.dpToPx()
             )
             insets
         }
@@ -446,36 +455,30 @@ class ResetPasswordActivity : AppCompatActivity() {
     private fun goToStep(step: Int) {
         currentStep = step
 
+        binding.step1Card.visibility = if (step == 1) View.VISIBLE else View.GONE
+        binding.step2Card.visibility = if (step == 2) View.VISIBLE else View.GONE
+        binding.step3Card.visibility = if (step == 3) View.VISIBLE else View.GONE
+        binding.successContainer.visibility = if (step == 4) View.VISIBLE else View.GONE
+
+        binding.footerStep1.visibility = if (step == 1) View.VISIBLE else View.GONE
+        binding.footerStep2.visibility = if (step == 2) View.VISIBLE else View.GONE
+        binding.savePasswordButton.visibility = if (step == 3) View.VISIBLE else View.GONE
+        binding.backToLoginButton.visibility = if (step == 4) View.VISIBLE else View.GONE
+
         when (step) {
             1 -> {
-                binding.step1Card.visibility = View.VISIBLE
-                binding.step2Card.visibility = View.GONE
-                binding.step3Card.visibility = View.GONE
-                binding.successContainer.visibility = View.GONE
                 binding.subtitleText.text = getString(R.string.reset_password_subtitle)
             }
             2 -> {
-                binding.step1Card.visibility = View.GONE
-                binding.step2Card.visibility = View.VISIBLE
-                binding.step3Card.visibility = View.GONE
-                binding.successContainer.visibility = View.GONE
                 updateCodeSentSubtitle()
                 startResendCooldown()
                 otpBoxes[0].requestFocus()
             }
             3 -> {
-                binding.step1Card.visibility = View.GONE
-                binding.step2Card.visibility = View.GONE
-                binding.step3Card.visibility = View.VISIBLE
-                binding.successContainer.visibility = View.GONE
                 binding.subtitleText.visibility = View.GONE
             }
             4 -> {
                 resendTimer?.cancel()
-                binding.step1Card.visibility = View.GONE
-                binding.step2Card.visibility = View.GONE
-                binding.step3Card.visibility = View.GONE
-                binding.successContainer.visibility = View.VISIBLE
                 binding.headerIconCard.visibility = View.GONE
                 binding.progressContainer.visibility = View.GONE
                 binding.segmentBarRow.visibility = View.GONE
