@@ -24,6 +24,15 @@
     <string name="menu_privacy">隐私</string>
     <string name="menu_help">帮助</string>
 
+    <!-- 法律文件（选择节点前的同意面板） -->
+    <string name="legal_sheet_title">使用条款</string>
+    <string name="legal_tab_terms">协议</string>
+    <string name="legal_tab_privacy">隐私</string>
+    <string name="legal_accept_checkbox">我已阅读并接受</string>
+    <string name="legal_accept_button">接受</string>
+    <string name="legal_load_error">无法加载文件</string>
+    <string name="btn_close">关闭</string>
+
     <!-- Login Screen -->
     <string name="login_welcome">欢迎</string>
     <string name="login_subtitle">登录你的账户</string>

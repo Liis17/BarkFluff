@@ -24,6 +24,15 @@
     <string name="menu_privacy">Datenschutz</string>
     <string name="menu_help">Hilfe</string>
 
+    <!-- Rechtliche Dokumente (Zustimmungs-Sheet vor der Node-Auswahl) -->
+    <string name="legal_sheet_title">Nutzungsbedingungen</string>
+    <string name="legal_tab_terms">Bedingungen</string>
+    <string name="legal_tab_privacy">Datenschutz</string>
+    <string name="legal_accept_checkbox">Ich habe gelesen und akzeptiere</string>
+    <string name="legal_accept_button">Akzeptieren</string>
+    <string name="legal_load_error">Dokumente konnten nicht geladen werden</string>
+    <string name="btn_close">Schließen</string>
+
     <!-- Login Screen -->
     <string name="login_welcome">Willkommen</string>
     <string name="login_subtitle">Melde dich bei deinem Konto an</string>

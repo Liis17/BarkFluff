@@ -24,6 +24,15 @@
     <string name="menu_privacy">Privacidad</string>
     <string name="menu_help">Ayuda</string>
 
+    <!-- Documentos legales (hoja de consentimiento antes de elegir el nodo) -->
+    <string name="legal_sheet_title">Condiciones de uso</string>
+    <string name="legal_tab_terms">Condiciones</string>
+    <string name="legal_tab_privacy">Privacidad</string>
+    <string name="legal_accept_checkbox">He leído y acepto</string>
+    <string name="legal_accept_button">Aceptar</string>
+    <string name="legal_load_error">No se han podido cargar los documentos</string>
+    <string name="btn_close">Cerrar</string>
+
     <!-- Login Screen -->
     <string name="login_welcome">Bienvenido</string>
     <string name="login_subtitle">Inicia sesión en tu cuenta</string>

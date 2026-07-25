@@ -18,6 +18,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityWelcomeBinding
+import com.barkfluff.client.utils.LegalDocsRepository
 import com.google.android.material.color.DynamicColors
 
 class WelcomeActivity : AppCompatActivity() {
@@ -67,9 +68,33 @@ class WelcomeActivity : AppCompatActivity() {
         setupClickListeners()
     }
 
+    /**
+     * Согласие требуется, если оно ещё не давалось или соглашение обновилось с прошлого раза.
+     * Редакцию берём из самого документа, а не из версии приложения.
+     */
+    private fun legalConsentRequired(): Boolean {
+        val current = runCatching { LegalDocsRepository.revision(this) }.getOrDefault("")
+        return current.isNotEmpty() && current != GlobalParam(this).acceptedLegalRevision
+    }
+
+    private fun requestLegalConsent() {
+        supportFragmentManager.setFragmentResultListener(
+            LegalConsentBottomSheet.RESULT_KEY,
+            this
+        ) { _, result ->
+            if (result.getBoolean(LegalConsentBottomSheet.RESULT_ACCEPTED)) {
+                GlobalParam(this).acceptedLegalRevision =
+                    runCatching { LegalDocsRepository.revision(this) }.getOrDefault("")
+                navigateToSelectServer()
+            }
+        }
+        LegalConsentBottomSheet.forConsent()
+            .show(supportFragmentManager, LegalConsentBottomSheet.TAG)
+    }
+
     private fun setupClickListeners() {
         binding.startButton.setOnClickListener {
-            navigateToSelectServer()
+            if (legalConsentRequired()) requestLegalConsent() else navigateToSelectServer()
         }
 
         binding.learnMoreButton.setOnClickListener {
