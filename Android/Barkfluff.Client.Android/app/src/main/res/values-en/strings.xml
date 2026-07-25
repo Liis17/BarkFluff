@@ -27,6 +27,15 @@
     <string name="welcome_chip_private">Private</string>
     <string name="welcome_chip_own_pack">Your own pack</string>
 
+    <!-- Legal documents (consent sheet before node selection) -->
+    <string name="legal_sheet_title">Terms of use</string>
+    <string name="legal_tab_terms">Terms</string>
+    <string name="legal_tab_privacy">Privacy</string>
+    <string name="legal_accept_checkbox">I have read and accept</string>
+    <string name="legal_accept_button">Accept</string>
+    <string name="legal_load_error">Could not load the documents</string>
+    <string name="btn_close">Close</string>
+
     <!-- Login Screen -->
     <string name="login_welcome">"Good\nto see you!"</string>
     <string name="login_subtitle">Sign in to your account</string>
