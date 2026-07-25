@@ -154,11 +154,7 @@
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnPrimary"
                 app:backgroundTint="?attr/colorPrimary"
-                app:cornerRadius="@dimen/shape_corner_full"
-                app:icon="@drawable/ic_arrow_forward"
-                app:iconGravity="textEnd"
-                app:iconPadding="12dp"
-                app:iconTint="?attr/colorOnPrimary" />
+                app:cornerRadius="@dimen/shape_corner_full" />
 
             <!-- Единственная оставшаяся ссылка: открывает legal-лист в режиме чтения -->
             <com.google.android.material.button.MaterialButton
