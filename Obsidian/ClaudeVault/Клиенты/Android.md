@@ -135,15 +135,24 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 ## Разлогин (LogoutHelper)
 
 `utils/LogoutHelper.kt` — централизованный хелпер полного выхода из аккаунта:
-1. Серверный `Logout` gRPC (удаляет refresh-токен в Identity)
-2. `FirebaseMessaging.deleteToken()` — деактивирует push на устройстве
-3. `globalParam.clearUserData()` + очистка `firebaseToken`
-4. Очистка кешей: `AvatarLoader.clearAllCaches()`, `StickerCache.clear()`, `media_files/`
-5. Переход на `LoginActivity` с `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK`
+1. `realtimeService.shutdown()` + `callEventsService.shutdown()` — иначе стримы после сброса токенов уходят в бесконечный retry с 401
+2. Серверный `Logout` gRPC (удаляет refresh-токен в Identity)
+3. `FirebaseMessaging.deleteToken()` — деактивирует push на устройстве
+4. `globalParam.clearUserData()` + очистка `firebaseToken`
+5. Очистка кешей: `AvatarLoader.clearAllCaches()`, `StickerCache.clear()`, `media_files/`
+6. Переход на `LoginActivity` с `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK`
 
 Вызывается из:
 - `ProfileFragment` → кнопка "Выйти"
 - `DevicesActivity` → завершение сессии **текущего** устройства (если `deviceId == globalParam.deviceId`)
+
+`AccountSettingsActivity` → кнопка "Выйти" использует **упрощённый** путь (только `clearUserData()` + переход на `LoginActivity`), мимо `LogoutHelper` — без серверного логаута, удаления FCM-токена и остановки стримов.
+
+## Старт realtime-стримов и авторизация
+
+`RealtimeService.resume()` и `CallEventsService.resume()` выходят сразу, если `globalParam.refreshToken` пуст — до входа сервер отвечает 401 на каждый из 19 стримов, а retry-петля (`streamWithReconnect`) на каждой итерации дёргает `recreateAllClients`, засоряя лог и подтекая gRPC-каналами.
+
+`BarkFluffApplication` вызывает `resume()` из `ProcessLifecycleOwner.onStart` — на экране логина это происходит до появления токенов и второй раз уже не срабатывает. Поэтому `MainActivity.onCreate` → `startRealtimeAfterLogin()` поднимает оба сервиса явно; вызовы идемпотентны (проверяют активный scope), так что при холодном старте залогиненного пользователя ничего не дублируется.
 
 
 ## Звонки (V1)
