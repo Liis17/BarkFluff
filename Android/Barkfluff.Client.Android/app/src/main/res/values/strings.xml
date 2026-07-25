@@ -27,6 +27,15 @@
     <string name="welcome_chip_private">Приватно</string>
     <string name="welcome_chip_own_pack">Своя стая</string>
 
+    <!-- Юридические документы (модалка согласия перед выбором ноды) -->
+    <string name="legal_sheet_title">Условия использования</string>
+    <string name="legal_tab_terms">Соглашение</string>
+    <string name="legal_tab_privacy">Конфиденциальность</string>
+    <string name="legal_accept_checkbox">Я прочитал и принимаю</string>
+    <string name="legal_accept_button">Принять</string>
+    <string name="legal_load_error">Не удалось загрузить документы</string>
+    <string name="btn_close">Закрыть</string>
+
     <!-- Login Screen -->
     <string name="login_welcome">"Рады\nвидеть!"</string>
     <string name="login_subtitle">Войдите в свой аккаунт</string>

@@ -275,6 +275,15 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_APP_LANGUAGE, LANGUAGE_SYSTEM) ?: LANGUAGE_SYSTEM
         set(value) = sharedPreferences.edit().putString(KEY_APP_LANGUAGE, value).apply()
 
+    /**
+     * Редакция юридических документов, принятая пользователем (дата из markdown-заголовка
+     * «Последнее обновление»). Пустая строка — согласие ещё не давалось. Хранится именно
+     * редакция, а не флаг: при обновлении соглашения согласие нужно запросить заново.
+     */
+    var acceptedLegalRevision: String
+        get() = sharedPreferences.getString(KEY_ACCEPTED_LEGAL_REVISION, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_ACCEPTED_LEGAL_REVISION, value).apply()
+
     // --- Тестирование (dev/QA-флаги) ---
 
     /** Показывать UserId/ChatId в карточке профиля собеседника. */
@@ -425,6 +434,9 @@ class GlobalParam(private val context: Context) {
         // Отложенная очистка APK обновления
         private const val KEY_PENDING_UPDATE_APK_PATH = "pending_update_apk_path"
         private const val KEY_PENDING_UPDATE_DOWNLOAD_ID = "pending_update_download_id"
+
+        // Согласие с юридическими документами
+        private const val KEY_ACCEPTED_LEGAL_REVISION = "accepted_legal_revision"
 
         // Язык приложения
         private const val KEY_APP_LANGUAGE = "app_language"
