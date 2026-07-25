@@ -76,7 +76,7 @@ class ServerAdapter(
             }
 
             if (server.publicName.isNotBlank()) {
-                handle.text = "@${server.publicName}"
+                handle.text = itemView.context.getString(R.string.server_item_handle, server.publicName)
                 handle.visibility = View.VISIBLE
             } else {
                 handle.visibility = View.GONE
