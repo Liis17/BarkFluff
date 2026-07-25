@@ -14,11 +14,12 @@ import kotlinx.coroutines.withContext
 
 /**
  * Хелпер для полного разлогина:
- * 1. Серверный разлогин через Identity (удаляет refresh-токен на сервере)
- * 2. Удаление FCM-токена Firebase на устройстве
- * 3. Очистка данных аккаунта в SharedPreferences
- * 4. Очистка кешей (медиафайлы, аватары, стикеры)
- * 5. Переход на LoginActivity
+ * 1. Остановка realtime-стримов (иначе они продолжат ретраиться с 401 после очистки токенов)
+ * 2. Серверный разлогин через Identity (удаляет refresh-токен на сервере)
+ * 3. Удаление FCM-токена Firebase на устройстве
+ * 4. Очистка данных аккаунта в SharedPreferences
+ * 5. Очистка кешей (медиафайлы, аватары, стикеры)
+ * 6. Переход на LoginActivity
  */
 object LogoutHelper {
 
@@ -30,7 +31,15 @@ object LogoutHelper {
      * @param grpcManager экземпляр GrpcManager
      */
     suspend fun performFullLogout(context: Context, grpcManager: GrpcManager) {
-        // 1. Очистка кешей приложения — до очистки настроек, пока контекст ещё валиден
+        // 1. Остановка realtime-стримов — первым делом, чтобы они не писали в кеши
+        //    во время очистки и не ушли в бесконечный retry после сброса токенов
+        (context.applicationContext as? BarkFluffApplication)?.let { app ->
+            app.realtimeService.shutdown()
+            app.callEventsService.shutdown()
+            Log.i(TAG, "Realtime-стримы остановлены")
+        }
+
+        // 2. Очистка кешей приложения — до очистки настроек, пока контекст ещё валиден
         try {
             AvatarLoader.clearAllCaches(context)
             Log.i(TAG, "Кеш аватаров очищен")
@@ -63,7 +72,7 @@ object LogoutHelper {
         }
 
 
-        // 2. Удаление FCM-токена Firebase
+        // 3. Удаление FCM-токена Firebase
         try {
             withContext(Dispatchers.IO) {
                 FirebaseMessaging.getInstance().deleteToken().await()
@@ -73,14 +82,14 @@ object LogoutHelper {
             Log.e(TAG, "Ошибка удаления Firebase токена", e)
         }
 
-        // 3. Очистка всех настроек аккаунта (оставляем только адреса сервера)
+        // 4. Очистка всех настроек аккаунта (оставляем только адреса сервера)
         //    device_id удаляется — при следующем входе будет создан новый
         val globalParam = GlobalParam(context)
         (context.applicationContext as? BarkFluffApplication)?.privateChatRepository?.forgetAll()
         globalParam.clearUserData()
         Log.i(TAG, "Настройки аккаунта очищены (device_id сброшен)")
 
-        // 4. Серверный разлогин — выполняется последним, т.к. требует токен из памяти grpcManager
+        // 5. Серверный разлогин — выполняется последним, т.к. требует токен из памяти grpcManager
         //    (токен уже недоступен из GlobalParam после шага 3, но grpcManager держит его в канале)
         try {
             val result = grpcManager.logout()
@@ -93,7 +102,7 @@ object LogoutHelper {
             Log.e(TAG, "Исключение при серверном разлогине", e)
         }
 
-        // 5. Переход на экран входа
+        // 6. Переход на экран входа
         val intent = Intent(context, LoginActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }

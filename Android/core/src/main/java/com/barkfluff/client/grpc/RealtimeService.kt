@@ -127,6 +127,12 @@ class RealtimeService(
             return
         }
 
+        // Пользователь не вошёл — стримы бессмысленны, сервер вернёт 401 на каждый
+        if (globalParam.refreshToken.isNullOrBlank()) {
+            Log.i(TAG, "resume: пропущено — пользователь не авторизован")
+            return
+        }
+
         Log.i(TAG, "Resuming realtime streams")
 
         // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
