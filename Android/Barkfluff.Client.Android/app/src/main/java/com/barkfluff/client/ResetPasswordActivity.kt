@@ -13,6 +13,9 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
@@ -40,7 +43,11 @@ class ResetPasswordActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "ResetPasswordActivity"
         private const val RESEND_COOLDOWN_MS = 60_000L
+        private const val CONTENT_TOP_PADDING_DP = 16
+        private const val CONTENT_BOTTOM_PADDING_DP = 18
     }
+
+    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
     private data class StrengthTier(
         val labelRes: Int,
@@ -63,6 +70,18 @@ class ResetPasswordActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         grpcManager = app.grpcManager
+
+        // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
+        // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.updatePadding(
+                top = systemBars.top + CONTENT_TOP_PADDING_DP.dpToPx(),
+                bottom = maxOf(systemBars.bottom, ime.bottom) + CONTENT_BOTTOM_PADDING_DP.dpToPx()
+            )
+            insets
+        }
 
         setupClickListeners()
         setupOtpBoxes()
@@ -220,6 +239,9 @@ class ResetPasswordActivity : AppCompatActivity() {
         binding.confirmPasswordEditText.doAfterTextChanged {
             updateConfirmPasswordMatchUi()
         }
+        // Custom endIcon у TextInputLayout виден по умолчанию, а XML-атрибута видимости нет —
+        // гасим галочку «пароли совпали» до первого ввода.
+        updateConfirmPasswordMatchUi()
     }
 
     /**
