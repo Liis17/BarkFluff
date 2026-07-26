@@ -11,7 +11,7 @@ Background Worker для push-уведомлений через Firebase Cloud M
 
 ```bash
 dotnet build Backend/Barkfluff.CloudMessaging/Barkfluff.CloudMessaging.csproj
-docker-compose -f Backend/docker-compose-dev.yml up -d cloudmessaging
+docker-compose -f docker/backend/docker-compose-dev-backend.yml up -d cloudmessaging
 ```
 
 ## Архитектура
@@ -167,3 +167,6 @@ Messages (CreatePrivateChat) → PrivateChatInviteEvent → RabbitMQ (fanout: Up
 ## Зависимости
 
 - `FirebaseAdmin 3.2.0`
+# Метрики
+
+Через [[Backend/GrpcServer]] экспортируются `push_jobs_received`, число целевых устройств и FCM success/failure. Значение success означает принятие FCM, а не доставку на устройство.

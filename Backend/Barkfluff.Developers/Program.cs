@@ -33,6 +33,7 @@ public class Program
         });
 
         builder.Services.AddBarkFluffGrpc();
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Developers");
         builder.Services.AddGrpcReflection();
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
         builder.Services.AddXAuth(builder.Configuration);

@@ -17,7 +17,7 @@ FastAuth реализует QR-авторизацию: анонимное уст
 
 ### S1. ~~Нет rate limiting на анонимных эндпоинтах: неограниченное создание сессий в памяти и генерация QR~~ — ~~High~~ **Исправлено (2026-06-23)**
 
-**Файл:** `Backend/BarkFluff.FastAuth/Host/FastAuthApiService.cs:22-44` (`[AllowAnonymous]` на `GenerateFastAuthToken` и `SubscribeFastAuthResult`); `Backend/BarkFluff.FastAuth/Infrastructure/FastAuthSessionsManager.cs:14-34`; `Backend/nginx/fast-auth.conf:15-24` (location без `limit_req`/`limit_conn`)
+**Файл:** `Backend/BarkFluff.FastAuth/Host/FastAuthApiService.cs:22-44` (`[AllowAnonymous]` на `GenerateFastAuthToken` и `SubscribeFastAuthResult`); `Backend/BarkFluff.FastAuth/Infrastructure/FastAuthSessionsManager.cs:14-34`; `docker/nginx/fast-auth.conf:15-24` (location без `limit_req`/`limit_conn`)
 **Проблема:** `GenerateFastAuthToken` доступен без аутентификации и без какого-либо ограничения частоты — ни в nginx, ни в сервисе. Каждый вызов создаёт объект `FastAuthSession` с unbounded `Channel` в `ConcurrentDictionary` (живёт 5 минут до экспирации + 30 секунд retention) и синхронно генерирует PNG QR-кода (`QrCodeGenerator.cs:15`, `GetGraphic(20)` — ~740x740 px) с base64-кодированием. `SubscribeFastAuthResult` так же анонимно открывает server-stream до 5 минут на сессию.
 **Почему это проблема:** Дешёвый флуд с одного или нескольких IP за 5-минутное окно накапливает миллионы сессий в памяти процесса (TTL-очистка есть, но нет верхней границы количества) и загружает CPU генерацией PNG — классический memory/CPU exhaustion на публичном неаутентифицированном эндпоинте авторизационного сервиса. Падение FastAuth ломает QR-вход для всех клиентов.
 **Рекомендация:** Добавить в `fast-auth.conf` `limit_req_zone`/`limit_req` (QR-генерация — редкая операция, 1-2 r/s с burst на IP достаточно) и `limit_conn` для стримов. В сервисе — жёсткий cap на количество одновременных pending-сессий (например, 10 000) с отказом `ResourceExhausted` при превышении и метрикой.
@@ -101,7 +101,7 @@ FastAuth реализует QR-авторизацию: анонимное уст
 
 ### D2. ~~В nginx-конфиге нет rate limiting для анонимных эндпоинтов~~ — ~~Low~~ **Исправлено (2026-06-23)**
 
-**Файл:** `Backend/nginx/fast-auth.conf:15-24`
+**Файл:** `docker/nginx/fast-auth.conf:15-24`
 **Проблема:** Единственный `location /` проксирует весь gRPC-трафик без `limit_req`/`limit_conn`; `grpc_read_timeout 300s` корректно согласован с TTL сессии (5 минут), но число одновременных стримов с одного IP не ограничено.
 **Почему это проблема:** Реализационная часть S1: nginx — первая и самая дешёвая линия защиты публичного анонимного эндпоинта от флуда.
 **Рекомендация:** `limit_req_zone $binary_remote_addr` + `limit_req` на location и `limit_conn` для ограничения одновременных стримов с одного адреса.

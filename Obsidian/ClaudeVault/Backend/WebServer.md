@@ -109,3 +109,6 @@ Android-клиент забирает `.md` на этапе сборки gradle-
 ## Зависимости
 
 - `Telegram.Bot 22.10.0.1`
+# Метрики
+
+WebServer отправляет в [[Backend/GrpcServer]] HTTP-запросы и необработанные HTTP-ошибки, а также успешные скачивания installer. Эти показатели доступны в [[Backend/AdminPanel]].

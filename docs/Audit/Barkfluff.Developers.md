@@ -56,19 +56,19 @@ Barkfluff.Developers — gRPC-Web backend (порт 7020) для портала 
 ## Docker / nginx
 
 ### D1. Несоответствие проброшенного порта и порта прослушивания — Medium
-**Файл:** `Backend/docker-compose-dev.yml:169-170`
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:169-170`
 **Проблема:** Сервис публикует `"4425:4425"`, но Kestrel слушает порт 7020 (`Program.cs:26-29`, дефолт 7020; внутренний трафик идёт через nginx на `developers:7020`). На порту 4425 ничего не слушает.
 **Почему это проблема:** Либо мёртвый маппинг (порт открыт на хосте впустую), либо опечатка. Если намерение было пробросить 7020 — это открыло бы незашифрованный gRPC-порт (h2c) напрямую на хост в обход TLS-терминации nginx.
 **Рекомендация:** Убрать секцию `ports` (сервис доступен внутри Docker-сети для nginx), либо привести к реальному порту, осознавая последствия прямого проброса.
 
 ### D2. Возможное несоответствие протоколов nginx↔Kestrel для gRPC-Web — Medium
-**Файл:** `Backend/Barkfluff.Developers/Program.cs:29-32`, `Backend/nginx/developers.conf:15-24`
+**Файл:** `Backend/Barkfluff.Developers/Program.cs:29-32`, `docker/nginx/developers.conf:15-24`
 **Проблема:** Kestrel сконфигурирован только на HTTP/2 (`listenOptions.Protocols = HttpProtocols.Http2`), тогда как nginx делает `proxy_pass http://developers:7020` обычным `proxy_pass` (HTTP/1.1 к upstream, без `grpc_pass` и без `proxy_http_version 2`). gRPC-Web из браузера приходит по HTTP/1.1. Для сравнения, `BarkFluff.Web` намеренно слушает `Http1AndHttp2`.
 **Почему это проблема:** HTTP/1.1-запрос от nginx к HTTP/2-only Kestrel не согласуется по протоколу — gRPC-Web через nginx, скорее всего, не работает (доступность). Замечание дано с оговоркой: подтвердить можно только запуском.
 **Рекомендация:** Поставить `HttpProtocols.Http1AndHttp2` (как в Web), либо настроить nginx на `grpc_pass`/HTTP/2 к upstream.
 
 ### D3. Сервис `developers` опубликован напрямую на хост в dev-compose — Low
-**Файл:** `Backend/docker-compose-dev.yml:169-170`
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:169-170`
 **Проблема:** Единственный микросервис с секцией `ports` в dev-compose (остальные доступны только внутри сети). См. также D1.
 **Рекомендация:** Убрать проброс, если прямой доступ к сервису с хоста не требуется.
 

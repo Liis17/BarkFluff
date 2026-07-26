@@ -45,7 +45,7 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 - `RegisterServerAsync()` — upsert. Ключ идентичности: `ServerName`, если задан; иначе легаси `Name+BeaconHost+BeaconPort`
 - `GetByServerNameAsync()` — lowercase-сравнение, `found=false` если протухло (тот же TTL, что у `GetServers`)
 
-**Деплой**: Navigator живёт в СВОИХ compose-файлах (`Backend/BarkFluff.Navigator/docker-compose-dev.yml` и `docker-compose-master.yml`, отдельные от основного стека ноды). SQLite-файл лежит в bind-mount `./db:/app/db` (папка `db/` рядом с самим compose-файлом на хосте), `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в bind-каталог (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет. `NAVIGATOR_PORT` задаёт gRPC-порт, `NAVIGATOR_HTTP_PORT` — внутренний HTTP-порт админки; наружу к нему обращается только [[Backend/Nginx]].
+**Деплой**: Navigator живёт в отдельном compose-файле `docker/navigator/docker-compose-dev.yml`, отдельно от основного стека ноды. SQLite-файл лежит в bind-mount `./db:/app/db` (папка `db/` рядом с compose-файлом на хосте), `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в bind-каталог (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет. `NAVIGATOR_PORT` задаёт gRPC-порт, `NAVIGATOR_HTTP_PORT` — внутренний HTTP-порт админки; наружу к нему обращается только [[Backend/Nginx]].
 
 ## Валидация федеративной регистрации (этап 1.5)
 
@@ -95,3 +95,6 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 2. Добавить поле в `navigator_api.proto`
 3. Обновить маппинг в `NavigatorApiService.cs` (request → domain)
 4. Обновить маппинг в `ListServersQueryHandler.cs`/`GetServerByNameQueryHandler.cs` (domain → response) — учти правило «не менять контракт `ListServers`» для существующих полей
+# Метрики
+
+Navigator экспортирует в Seq через [[Backend/GrpcServer]] число успешных регистраций и запросов списка/поиска серверов. Поскольку сервис не использует [[Backend/Configuration]], адрес Seq берётся из локальной конфигурации или стандартного `http://seq:5341`.

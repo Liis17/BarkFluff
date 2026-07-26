@@ -14,7 +14,7 @@ REST API на ASP.NET Core 10.0, файлы в S3/Minio, метаданные в
 
 ```bash
 dotnet build BarkFluff.ClientStorage.csproj
-docker-compose -f Backend/BarkFluff.ClientStorage/docker-compose-dev.yml up -d
+docker-compose -f docker/msk/docker-compose-msk.yml up -d clientstorage-dev
 dotnet ef migrations add <Name> --project BarkFluff.ClientStorage.csproj
 ```
 
@@ -104,4 +104,4 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 
 ## Логи
 
-Serilog → только Console (`Application = "BarkFluff.ClientStorage"`). Seq sink и метрики (`MetricsCollector`/`MetricsReporterService`) удалены — сервис изолирован от наблюдаемости основной инфраструктуры.
+Serilog → Seq + Console (`Application = "BarkFluff.ClientStorage"`), метрики через [[Backend/GrpcServer]]: публикации и скачивания релизов, входящий/исходящий байтовый трафик, cache hit/miss и ошибки S3.

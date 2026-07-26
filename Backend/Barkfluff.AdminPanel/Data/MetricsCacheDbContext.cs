@@ -78,5 +78,7 @@ public class HourlyServiceMetrics
     public ObjectId Id { get; set; } = ObjectId.NewObjectId();
     public DateTime HourUtc { get; set; }
     public string ServiceName { get; set; } = string.Empty;
-    public Dictionary<string, long> Metrics { get; set; } = new();
+    public Dictionary<string, long> Counters { get; set; } = new();
+    public Dictionary<string, long> Gauges { get; set; } = new();
+    public int SchemaVersion { get; set; } = 2;
 }

@@ -1,5 +1,6 @@
 using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
 using System.Text.Json;
@@ -284,238 +285,83 @@ public static class SeqEndpoints
         .WithName("GetDashboardTraffic")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/metrics", async (
-            SeqService seqService,
-            HttpContext context,
-            int hours = 1) =>
+        group.MapGet("/dashboard/metric-groups", (HttpContext context) =>
         {
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
-
-            try
-            {
-                var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
-
-                var filter = "@Message like 'ServiceMetrics%'";
-                var eventsResult = await seqService.GetEventsAsync(filter, 200, fromDateUtc);
-
-                if (eventsResult == null)
-                    return Results.StatusCode(502);
-
-                var services = ExtractServiceMetricsFromEvents(eventsResult.Value);
-
-                return Results.Ok(new
-                {
-                    periodHours = hours,
-                    services
-                });
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem(
-                    detail: ex.Message,
-                    statusCode: 500,
-                    title: "Failed to extract metrics");
-            }
-        })
-        .WithName("GetDashboardMetrics")
-        .WithOpenApi();
-
-        group.MapGet("/dashboard/service-metrics", async (
-            MetricsCacheDbContext cache,
-            SeqService seqService,
-            HttpContext context,
-            int hours = 12) =>
-        {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
-            var currentHour = TruncateToHour(DateTime.UtcNow);
-            var cutoff = currentHour.AddHours(-hours);
-
-            var entries = cache.HourlyServiceMetrics
-                .Find(x => x.HourUtc >= cutoff)
-                .OrderBy(x => x.HourUtc)
-                .ToList();
-
-            // Fallback: if cache is empty, query Seq directly for ServiceMetrics events
-            if (entries.Count == 0)
-            {
-                var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
-                var filter = "@Message like 'ServiceMetrics%'";
-                var events = await seqService.GetAllEventsListAsync(filter, fromDateUtc, 5000);
-
-                if (events == null || events.Count == 0)
-                    return Results.Ok(new { periodHours = hours, services = new List<object>() });
-
-                // Group by service + hour
-                var grouped = new Dictionary<(string svc, DateTime hour), Dictionary<string, long>>();
-
-                foreach (var evt in events)
-                {
-                    var svcName = GetEventApplication(evt);
-                    var ts = GetEventTimestamp(evt);
-                    if (string.IsNullOrEmpty(svcName) || !ts.HasValue) continue;
-
-                    var hour = TruncateToHour(ts.Value);
-                    var key = (svcName, hour);
-
-                    var metrics = ExtractMetricValuesLong(evt);
-                    if (metrics.Count > 0)
-                        grouped[key] = metrics; // last write wins (latest per hour)
-                }
-
-                var fbGroups = grouped
-                    .GroupBy(kv => kv.Key.svc, StringComparer.OrdinalIgnoreCase)
-                    .Select(g => new
-                    {
-                        name = g.Key,
-                        timeSeries = g.OrderBy(kv => kv.Key.hour).Select(kv => new
-                        {
-                            hour = kv.Key.hour.ToString("o"),
-                            metrics = kv.Value
-                        }).ToList()
-                    })
-                    .OrderBy(x => x.name)
-                    .ToList();
-
-                return Results.Ok(new { periodHours = hours, services = fbGroups });
-            }
-
-            // Group by service name from cache
-            var serviceGroups = entries
-                .GroupBy(x => x.ServiceName, StringComparer.OrdinalIgnoreCase)
-                .Select(g => new
-                {
-                    name = g.Key,
-                    timeSeries = g.Select(e => new
-                    {
-                        hour = e.HourUtc.ToString("o"),
-                        metrics = e.Metrics
-                    }).ToList()
-                })
-                .OrderBy(x => x.name)
-                .ToList();
 
             return Results.Ok(new
             {
-                periodHours = hours,
-                services = serviceGroups
+                groups = MetricsCatalog.Services.Select(service => new
+                {
+                    serviceName = service.Name,
+                    title = service.Title,
+                    expandedByDefault = service.ExpandedByDefault,
+                    metrics = service.Metrics.Select(metric => new
+                    {
+                        id = metric.Id,
+                        title = metric.Title,
+                        unit = metric.Unit,
+                        kind = metric.Kind
+                    })
+                })
             });
         })
-        .WithName("GetDashboardServiceMetrics")
+        .WithName("GetDashboardMetricGroups")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/service-metrics/{serviceName}", async (
+        group.MapGet("/dashboard/metric-groups/{serviceName}", (
             MetricsCacheDbContext cache,
-            SeqService seqService,
             HttpContext context,
             string serviceName,
-            int hours = 12) =>
+            int hours = 24 * 30) =>
         {
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            var now = DateTime.UtcNow;
-            var currentHour = TruncateToHour(now);
-            var cutoff = currentHour.AddHours(-hours);
+            var service = MetricsCatalog.Find(serviceName);
+            if (service is null) return Results.NotFound();
 
-            // Determine which hours we need
-            var neededHours = new List<DateTime>();
-            var cachedData = new Dictionary<DateTime, Dictionary<string, long>>();
+            hours = Math.Clamp(hours, 1, 24 * 30);
+            var cutoff = TruncateToHour(DateTime.UtcNow).AddHours(-hours);
+            var rows = cache.HourlyServiceMetrics
+                .Find(x => x.ServiceName == service.Name && x.HourUtc >= cutoff && x.SchemaVersion == 2)
+                .OrderBy(x => x.HourUtc)
+                .ToList();
+            var rowsByHour = rows.ToDictionary(x => x.HourUtc);
+            var hoursInRange = Enumerable.Range(0, hours + 1)
+                .Select(offset => cutoff.AddHours(offset));
 
-            for (var h = cutoff; h <= currentHour; h = h.AddHours(1))
+            return Results.Ok(new
             {
-                if (h == currentHour)
+                serviceName = service.Name,
+                title = service.Title,
+                periodHours = hours,
+                metrics = service.Metrics.Select(metric => new
                 {
-                    // Current (incomplete) hour — always re-fetch
-                    neededHours.Add(h);
-                    continue;
-                }
-
-                var cached = cache.HourlyServiceMetrics
-                    .FindOne(x => x.HourUtc == h && x.ServiceName == serviceName);
-
-                if (cached != null)
-                {
-                    cachedData[h] = cached.Metrics;
-                }
-                else
-                {
-                    neededHours.Add(h);
-                }
-            }
-
-            // Fetch missing hours from Seq
-            if (neededHours.Count > 0)
-            {
-                var fetchFrom = neededHours.Min();
-                var fetchTo = neededHours.Max().AddHours(1);
-
-                var filter = $"Application = '{serviceName.Replace("'", "''")}' and @Message like 'ServiceMetrics%'";
-                var events = await seqService.GetAllEventsListAsync(filter, fetchFrom, 5000);
-
-                if (events != null)
-                {
-                    // Group fetched events by hour
-                    var grouped = new Dictionary<DateTime, Dictionary<string, long>>();
-                    foreach (var evt in events)
+                    id = metric.Id,
+                    title = metric.Title,
+                    unit = metric.Unit,
+                    kind = metric.Kind,
+                    points = hoursInRange.Select(hour =>
                     {
-                        var ts = GetEventTimestamp(evt);
-                        if (!ts.HasValue) continue;
-
-                        var hour = TruncateToHour(ts.Value);
-                        if (!neededHours.Contains(hour)) continue;
-
-                        var metrics = ExtractMetricValuesLong(evt);
-                        if (metrics.Count > 0)
-                            grouped[hour] = metrics; // last write wins
-                    }
-
-                    // Save completed hours to cache, merge into result
-                    foreach (var h in neededHours)
-                    {
-                        if (grouped.TryGetValue(h, out var metrics))
-                        {
-                            cachedData[h] = metrics;
-
-                            // Only cache completed hours (not the current one)
-                            if (h != currentHour)
-                            {
-                                // Remove old entry if exists, then insert
-                                cache.HourlyServiceMetrics.DeleteMany(x =>
-                                    x.HourUtc == h && x.ServiceName == serviceName);
-                                cache.HourlyServiceMetrics.Insert(new HourlyServiceMetrics
-                                {
-                                    HourUtc = h,
-                                    ServiceName = serviceName,
-                                    Metrics = metrics
-                                });
-                            }
-                        }
-                        // If no data for this hour, leave it empty (no cache entry)
-                    }
-                }
-            }
-
-            // Build time series response
-            var timeSeries = new List<object>();
-            for (var h = cutoff; h <= currentHour; h = h.AddHours(1))
-            {
-                if (cachedData.TryGetValue(h, out var m))
-                {
-                    timeSeries.Add(new { hour = h.ToString("o"), metrics = m });
-                }
-            }
-
-            return Results.Ok(new { serviceName, periodHours = hours, timeSeries });
+                        if (!rowsByHour.TryGetValue(hour, out var row))
+                            return new { hour = hour.ToString("o"), value = (long?)null };
+                        var values = metric.Kind == "gauge" ? row.Gauges : row.Counters;
+                        return values.TryGetValue(metric.Id, out var value)
+                            ? new { hour = row.HourUtc.ToString("o"), value = (long?)value }
+                            : new { hour = row.HourUtc.ToString("o"), value = (long?)null };
+                    })
+                })
+            });
         })
-        .WithName("GetDashboardServiceMetricsPerService")
+        .WithName("GetDashboardMetricGroup")
         .WithOpenApi();
 
         group.MapGet("/services/status", async (
             SeqService seqService,
             DockerService dockerService,
+            DockerRegistryService dockerRegistryService,
             HttpContext context,
             int hours = 24) =>
         {
@@ -551,15 +397,15 @@ public static class SeqEndpoints
             }
 
             // Получаем статусы контейнеров Docker
-            Dictionary<string, string>? containerStates = null;
+            Dictionary<string, ContainerStatusDto>? containersByName = null;
             try
             {
                 var containers = await dockerService.GetContainersAsync();
-                containerStates = containers
+                containersByName = containers
                     .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State))
                     .ToDictionary(
                         c => c.Name.TrimStart('/'),
-                        c => c.State!,
+                        c => c,
                         StringComparer.OrdinalIgnoreCase);
             }
             catch
@@ -569,12 +415,18 @@ public static class SeqEndpoints
 
             var now = DateTime.UtcNow;
 
-            object BuildEntry(string name, string? dockerState)
+            async Task<object> BuildEntryAsync(string name, ContainerStatusDto? container)
             {
                 serviceData.TryGetValue(name, out var data);
+                var dockerState = container?.State;
                 bool isActive = dockerState != null
                     ? dockerState == "running"
                     : data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5;
+
+                var versionStatus = container is null
+                    ? new ImageVersionStatusDto()
+                    : await dockerRegistryService.GetVersionStatusAsync(container.Image);
+
                 return new
                 {
                     name,
@@ -582,12 +434,15 @@ public static class SeqEndpoints
                     dockerState,
                     lastSeen = data.lastSeen?.ToString("o"),
                     errorCount = data.errorCount,
-                    eventCount = data.eventCount
+                    eventCount = data.eventCount,
+                    currentVersion = versionStatus.CurrentVersion,
+                    latestVersion = versionStatus.LatestVersion,
+                    updateAvailable = versionStatus.UpdateAvailable
                 };
             }
 
             List<object> result;
-            if (containerStates != null)
+            if (containersByName != null)
             {
                 // Динамически: показываем только реально присутствующие контейнеры известных сервисов.
                 // Так на проде не светятся сервисы, которых нет в развёрнутом compose (например Minio,
@@ -595,17 +450,19 @@ public static class SeqEndpoints
                 var containerToService = ServiceToContainerMap
                     .ToDictionary(kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
 
-                result = containerStates
+                result = (await Task.WhenAll(containersByName
                     .Where(cs => containerToService.ContainsKey(cs.Key))
                     .OrderBy(cs => containerToService[cs.Key], StringComparer.Ordinal)
-                    .Select(cs => BuildEntry(containerToService[cs.Key], cs.Value))
+                    .Select(cs => BuildEntryAsync(containerToService[cs.Key], cs.Value))))
+                    .Cast<object>()
                     .ToList();
             }
             else
             {
                 // Docker недоступен — fallback на данные Seq.
-                result = KnownServices.Concat(serviceData.Keys).Distinct()
-                    .Select(name => BuildEntry(name, null))
+                result = (await Task.WhenAll(KnownServices.Concat(serviceData.Keys).Distinct()
+                    .Select(name => BuildEntryAsync(name, null))))
+                    .Cast<object>()
                     .ToList();
             }
 

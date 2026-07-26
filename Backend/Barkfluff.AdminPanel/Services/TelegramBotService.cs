@@ -19,6 +19,7 @@ public class TelegramBotService : IHostedService
     private readonly IOptions<TelegramSettings> _settings;
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
+    private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger<TelegramBotService> _logger;
     private readonly CancellationTokenSource _cts = new();
 
@@ -26,11 +27,13 @@ public class TelegramBotService : IHostedService
         IOptions<TelegramSettings> settings,
         PendingAuthService pendingAuthService,
         TokenService tokenService,
+        IOptions<AuthSettings> authSettings,
         ILogger<TelegramBotService> logger)
     {
         _settings = settings;
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
+        _authSettings = authSettings;
         _logger = logger;
 
         if (string.IsNullOrWhiteSpace(settings.Value.BotToken))
@@ -107,6 +110,7 @@ public class TelegramBotService : IHostedService
             _settings,
             _pendingAuthService,
             _tokenService,
+            _authSettings,
             _logger);
 
         var receiverOptions = new ReceiverOptions
@@ -204,6 +208,60 @@ public class TelegramBotService : IHostedService
         }
     }
 
+    public async Task<byte[]?> GetProfilePhotoAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var photos = await _botClient.GetUserProfilePhotos(telegramUserId, limit: 1, cancellationToken: cancellationToken);
+            var photo = photos.Photos.FirstOrDefault()?.OrderByDescending(item => item.FileSize).FirstOrDefault();
+            if (photo == null)
+                return null;
+
+            var file = await _botClient.GetFile(photo.FileId, cancellationToken);
+            await using var stream = new MemoryStream();
+            await _botClient.DownloadFile(file, stream, cancellationToken);
+            return stream.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not get Telegram profile photo for admin {TelegramUserId}", telegramUserId);
+            return null;
+        }
+    }
+
+    public async Task SendSessionSecurityAlertAsync(
+        AuthToken token,
+        string currentIpAddress,
+        string currentUserAgent,
+        CancellationToken cancellationToken)
+    {
+        if (!token.ApprovedByTelegramUserId.HasValue)
+            return;
+
+        var message = $"⚠️ <b>Необычная активность сессии</b>\n\n" +
+                      $"<b>Сессия:</b> {WebUtility.HtmlEncode(token.Name)}\n\n" +
+                      $"<b>При входе</b>\n" +
+                      $"IP: {WebUtility.HtmlEncode(token.IpAddress ?? "неизвестен")}\n" +
+                      $"Браузер: {WebUtility.HtmlEncode(token.UserAgent ?? "неизвестен")}\n\n" +
+                      $"<b>Сейчас</b>\n" +
+                      $"IP: {WebUtility.HtmlEncode(currentIpAddress)}\n" +
+                      $"Браузер: {WebUtility.HtmlEncode(currentUserAgent)}\n\n" +
+                      "Если это не вы, завершите сессию через «Мои сессии».";
+
+        try
+        {
+            await _botClient.SendMessage(
+                token.ApprovedByTelegramUserId.Value,
+                message,
+                parseMode: ParseMode.Html,
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not send session security alert to admin {TelegramUserId}", token.ApprovedByTelegramUserId.Value);
+        }
+    }
+
     public async Task SendAuthRequestAsync(PendingAuthRequest request)
     {
         if (request.TargetTelegramUserId.HasValue)
@@ -224,16 +282,18 @@ public class TelegramBotService : IHostedService
     private async Task SendAuthRequestToAdmin(PendingAuthRequest request, long targetUserId)
     {
         var targetAdmin = _settings.Value.GetAdminByTelegramId(targetUserId);
-        var nickname = request.Nickname ?? "Unknown";
-        var browser = request.Browser ?? "Unknown";
-        var os = request.Os ?? "Unknown";
+        var nickname = WebUtility.HtmlEncode(request.Nickname ?? "Unknown");
+        var browser = WebUtility.HtmlEncode(request.Browser ?? "Unknown");
+        var os = WebUtility.HtmlEncode(request.Os ?? "Unknown");
         var time = request.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+        var ipAddress = WebUtility.HtmlEncode(request.IpAddress ?? "Unknown");
 
         // Using HTML format instead of Markdown to avoid parsing issues with emojis
         var message = $"🔐 <b>Запрос на вход в панель</b>\n" +
                       $"\n" +
                       $"👤 Администратор: {nickname}\n" +
                       $"🖥 Устройство: {browser} на {os}\n" +
+                      $"🌐 IP: {ipAddress}\n" +
                       $"🕐 Время: {time} UTC\n" +
                       $"\n" +
                       $"Подтвердите или отклоните вход.";
@@ -272,6 +332,7 @@ public class UpdateHandler : IUpdateHandler
     private readonly IOptions<TelegramSettings> _settings;
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
+    private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger _logger;
 
     public UpdateHandler(
@@ -279,12 +340,14 @@ public class UpdateHandler : IUpdateHandler
         IOptions<TelegramSettings> settings,
         PendingAuthService pendingAuthService,
         TokenService tokenService,
+        IOptions<AuthSettings> authSettings,
         ILogger logger)
     {
         _botClient = botClient;
         _settings = settings;
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
+        _authSettings = authSettings;
         _logger = logger;
     }
 
@@ -414,6 +477,23 @@ public class UpdateHandler : IUpdateHandler
                     "Вход отклонён.",
                     cancellationToken: cancellationToken);
             }
+
+            return;
+        }
+
+        if (parts.Length == 3 && parts[0] == "session")
+        {
+            await HandleSessionCallbackAsync(botClient, callbackQuery, userId, parts[1], parts[2], cancellationToken);
+        }
+        else if (data == "menu:sessions")
+        {
+            await SendSessionsAsync(botClient, callbackQuery.Message!.Chat.Id, userId, 0, cancellationToken, callbackQuery.Message.MessageId);
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
+        }
+        else if (data == "menu:home")
+        {
+            await SendMainMenuAsync(botClient, callbackQuery.Message!.Chat.Id, cancellationToken, callbackQuery.Message.MessageId);
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
         }
     }
 
@@ -435,51 +515,12 @@ public class UpdateHandler : IUpdateHandler
         switch (args[0])
         {
             case "/start":
-                await botClient.SendMessage(
-                    message.Chat.Id,
-                    "*BarkFluff Admin Panel Bot*\n\n" +
-                    "Commands:\n" +
-                    "/tokens - List your active tokens\n" +
-                    "/kill `<guid>` - Revoke a token\n" +
-                    "/rename `<guid>` `<name>` - Rename a token\n" +
-                    "/pending - Show your pending auth requests",
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: cancellationToken);
+                await SendMainMenuAsync(botClient, message.Chat.Id, cancellationToken);
                 break;
 
             case "/tokens":
-                var tokens = _tokenService.GetTokensByAdmin(userId);
-                var sb = new StringBuilder();
-                sb.AppendLine("*Your Active Tokens:*\n");
-
-                if (tokens.Count == 0)
-                {
-                    sb.AppendLine("No active tokens.");
-                }
-                else
-                {
-                    foreach (var token in tokens.Take(20))
-                    {
-                        var isExpired = token.IsExpired(3);
-                        sb.AppendLine($"`{token.Id}` {(isExpired ? "\u26a0\ufe0f " : "")}");
-                        sb.AppendLine($"  Name: {token.Name}");
-                        sb.AppendLine($"  Created: {token.CreatedAt:yyyy-MM-dd HH:mm}");
-                        sb.AppendLine($"  Last Activity: {token.LastActivity:yyyy-MM-dd HH:mm}");
-                        sb.AppendLine($"  IP: {token.IpAddress ?? "Unknown"}");
-                        sb.AppendLine();
-                    }
-
-                    if (tokens.Count > 20)
-                    {
-                        sb.AppendLine($"... and {tokens.Count - 20} more.");
-                    }
-                }
-
-                await botClient.SendMessage(
-                    message.Chat.Id,
-                    sb.ToString(),
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: cancellationToken);
+            case "/sessions":
+                await SendSessionsAsync(botClient, message.Chat.Id, userId, 0, cancellationToken);
                 break;
 
             case "/kill":
@@ -592,6 +633,155 @@ public class UpdateHandler : IUpdateHandler
                 break;
         }
     }
+
+    private async Task HandleSessionCallbackAsync(
+        ITelegramBotClient botClient,
+        CallbackQuery callbackQuery,
+        long userId,
+        string action,
+        string value,
+        CancellationToken cancellationToken)
+    {
+        var chatId = callbackQuery.Message!.Chat.Id;
+
+        if (action == "list" && int.TryParse(value, out var page))
+        {
+            await SendSessionsAsync(botClient, chatId, userId, Math.Max(page, 0), cancellationToken, callbackQuery.Message.MessageId);
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (!Guid.TryParse(value, out var tokenId))
+        {
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, "Некорректная сессия.", showAlert: true, cancellationToken: cancellationToken);
+            return;
+        }
+
+        var token = _tokenService.GetToken(tokenId);
+        if (token?.ApprovedByTelegramUserId != userId)
+        {
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, "Сессия не найдена или вам не принадлежит.", showAlert: true, cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (action == "view")
+        {
+            await ShowSessionAsync(botClient, chatId, token, cancellationToken, callbackQuery.Message.MessageId);
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (action == "confirm")
+        {
+            var text = $"⚠️ <b>Завершить сессию?</b>\n\n" +
+                       $"🖥 {WebUtility.HtmlEncode(token.Name)}\n" +
+                       $"🌐 {WebUtility.HtmlEncode(token.IpAddress ?? "IP неизвестен")}\n\n" +
+                       "Браузер с этой сессией сразу потеряет доступ к панели.";
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("🛑 Да, завершить", $"session:revoke:{token.Id}"),
+                    InlineKeyboardButton.WithCallbackData("Назад", $"session:view:{token.Id}")
+                }
+            });
+            await botClient.EditMessageText(chatId, callbackQuery.Message.MessageId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (action == "revoke")
+        {
+            _tokenService.DeleteTokenByAdmin(tokenId, userId);
+            var text = $"✅ <b>Сессия завершена</b>\n\n" +
+                       $"🖥 {WebUtility.HtmlEncode(token.Name)}\n" +
+                       "Доступ из этого браузера отозван.";
+            var keyboard = new InlineKeyboardMarkup(
+                InlineKeyboardButton.WithCallbackData("← К списку сессий", "session:list:0"));
+            await botClient.EditMessageText(chatId, callbackQuery.Message.MessageId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+            await botClient.AnswerCallbackQuery(callbackQuery.Id, "Сессия завершена.", cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task SendMainMenuAsync(ITelegramBotClient botClient, ChatId chatId, CancellationToken cancellationToken, int? messageId = null)
+    {
+        const string text = "🛡 <b>BarkFluff Admin Panel</b>\n\n" +
+                            "Через бота можно подтверждать вход и управлять своими активными сессиями.";
+        var keyboard = new InlineKeyboardMarkup(
+            InlineKeyboardButton.WithCallbackData("🖥 Мои сессии", "menu:sessions"));
+
+        if (messageId.HasValue)
+        {
+            await botClient.EditMessageText(chatId, messageId.Value, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+        }
+        else
+        {
+            await botClient.SendMessage(chatId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task SendSessionsAsync(ITelegramBotClient botClient, ChatId chatId, long userId, int page, CancellationToken cancellationToken, int? messageId = null)
+    {
+        const int pageSize = 8;
+        var tokens = _tokenService.GetActiveTokensByAdmin(userId);
+        var pageCount = Math.Max(1, (int)Math.Ceiling(tokens.Count / (double)pageSize));
+        page = Math.Min(page, pageCount - 1);
+        var pageTokens = tokens.Skip(page * pageSize).Take(pageSize).ToList();
+
+        var rows = pageTokens
+            .Select(token => new[]
+            {
+                InlineKeyboardButton.WithCallbackData(
+                    $"🖥 {Truncate(token.Name, 28)} · {FormatDate(token.LastActivity)}",
+                    $"session:view:{token.Id}")
+            })
+            .ToList();
+
+        var navigation = new List<InlineKeyboardButton>();
+        if (page > 0)
+            navigation.Add(InlineKeyboardButton.WithCallbackData("←", $"session:list:{page - 1}"));
+        navigation.Add(InlineKeyboardButton.WithCallbackData("🔄 Обновить", $"session:list:{page}"));
+        if (page < pageCount - 1)
+            navigation.Add(InlineKeyboardButton.WithCallbackData("→", $"session:list:{page + 1}"));
+        rows.Add(navigation.ToArray());
+        rows.Add(new[] { InlineKeyboardButton.WithCallbackData("🏠 Меню", "menu:home") });
+
+        var text = tokens.Count == 0
+            ? "🖥 <b>Мои сессии</b>\n\nАктивных сессий нет."
+            : $"🖥 <b>Мои сессии</b>\n\nАктивно: {tokens.Count}. Выберите сессию, чтобы посмотреть детали или завершить её.\nСтраница {page + 1} из {pageCount}.";
+        var keyboard = new InlineKeyboardMarkup(rows);
+
+        if (messageId.HasValue)
+        {
+            await botClient.EditMessageText(chatId, messageId.Value, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+        }
+        else
+        {
+            await botClient.SendMessage(chatId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task ShowSessionAsync(ITelegramBotClient botClient, ChatId chatId, AuthToken token, CancellationToken cancellationToken, int messageId)
+    {
+        var expiresAt = token.LastActivity.AddDays(_authSettings.Value.TokenExpirationDays);
+        var text = $"🖥 <b>Сессия</b>\n\n" +
+                   $"<b>Название:</b> {WebUtility.HtmlEncode(token.Name)}\n" +
+                   $"<b>IP:</b> {WebUtility.HtmlEncode(token.IpAddress ?? "Неизвестен")}\n" +
+                   $"<b>Создана:</b> {FormatDate(token.CreatedAt)} UTC\n" +
+                   $"<b>Активность:</b> {FormatDate(token.LastActivity)} UTC\n" +
+                   $"<b>Истечёт:</b> {FormatDate(expiresAt)} UTC";
+        var keyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[] { InlineKeyboardButton.WithCallbackData("🛑 Завершить сессию", $"session:confirm:{token.Id}") },
+            new[] { InlineKeyboardButton.WithCallbackData("← К списку", "session:list:0") }
+        });
+        await botClient.EditMessageText(chatId, messageId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+    }
+
+    private static string FormatDate(DateTime value) => value.ToString("dd.MM.yyyy HH:mm");
+
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..(maxLength - 1)] + "…";
 
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {

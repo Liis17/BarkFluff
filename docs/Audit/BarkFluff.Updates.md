@@ -100,19 +100,19 @@ BarkFluff.Updates — сервис real-time доставки событий ч�
 ## Docker / nginx
 
 ### D1. nginx обрывает «тихие» стримы каждые 300 секунд, heartbeat отсутствует — Medium
-**Файл:** `Backend/nginx/updates.conf:22-23`
+**Файл:** `docker/nginx/updates.conf:22-23`
 **Проблема:** `grpc_read_timeout 300s` / `grpc_send_timeout 300s` — таймаут между чтениями от upstream. Сервис не шлёт никаких keepalive/heartbeat-событий в стримы (стрим молчит, пока нет реальных событий), поэтому любой стрим без событий 5 минут (норма для большинства подписок: pinned/unpinned, инвайты, секретные чаты) принудительно разрывается nginx.
 **Почему это проблема:** Постоянный reconnect-чурн всех клиентов каждые ≤5 минут (15 стримов на клиента!), а в окно между разрывом и переподпиской события теряются — Updates не имеет replay для обычных событий. Это также усиливает гонку P4 (каждый reconnect — параллельные Remove+Register).
 **Рекомендация:** Поднять `grpc_read_timeout` для этого location (например, до часов) и/или добавить серверный heartbeat-event раз в 1–2 минуты в каждый стрим (заодно позволит обнаруживать мёртвые соединения со стороны сервиса и решает «вечные» стримы из S1).
 
 ### D2. master-compose публикует plaintext gRPC-порт Updates прямо на хост — Medium
 **Файл:** `Backend/docker-compose-master.yml:109`
-**Проблема:** `ports: ["${UPDATES_PORT}:${UPDATES_PORT}"]` выставляет порт 7015 на все интерфейсы хоста. Kestrel слушает h2c без TLS (TLS-терминация — задача nginx, `RunSettings:Tls` для Updates не задан), т.е. снаружи доступен нешифрованный gRPC в обход nginx: JWT в `x-auth-token` и содержимое сообщений ходят открытым текстом, плюс анонимный reflection (S3). В dev-compose (`Backend/docker-compose-dev.yml:105-114`) порт корректно не публикуется.
+**Проблема:** `ports: ["${UPDATES_PORT}:${UPDATES_PORT}"]` выставляет порт 7015 на все интерфейсы хоста. Kestrel слушает h2c без TLS (TLS-терминация — задача nginx, `RunSettings:Tls` для Updates не задан), т.е. снаружи доступен нешифрованный gRPC в обход nginx: JWT в `x-auth-token` и содержимое сообщений ходят открытым текстом, плюс анонимный reflection (S3). В dev-compose (`docker/backend/docker-compose-dev-backend.yml:105-114`) порт корректно не публикуется.
 **Почему это проблема:** Перехват токенов/трафика в сети до хоста, обход настроенных на nginx таймаутов/ограничений; внутренние сервисы и так достучатся через `barkfluff-network` без публикации порта.
 **Рекомендация:** Убрать `ports` у updates (nginx ходит на `updates:7015` по внутренней docker-сети) либо биндить на `127.0.0.1:`.
 
 ### D3. Нет healthcheck и лимитов ресурсов для контейнера updates — Low
-**Файл:** `Backend/docker-compose-master.yml:106-115`, `Backend/docker-compose-dev.yml:105-114`
+**Файл:** `Backend/docker-compose-master.yml:106-115`, `docker/backend/docker-compose-dev-backend.yml:105-114`
 **Проблема:** У сервиса только `restart: always`: нет `healthcheck` (зависший процесс с живым портом не перезапустится), нет `mem_limit`/`cpus`.
 **Почему это проблема:** В сочетании с S2/P5 (неограниченные подписки и фоновые таски) утечка памяти Updates заберёт ресурсы всего хоста, а зависание consume-конвейера (P1) останется незамеченным оркестратором.
 **Рекомендация:** Добавить gRPC health probe (стандартный `grpc.health.v1.Health` + healthcheck в compose) и лимиты памяти/CPU.

@@ -20,7 +20,7 @@ Barkfluff.WebServer — REST/HTTP-сервис (порт 64641): отдаёт л
 **Рекомендация:** HTML-экранировать `path` перед подстановкой (`System.Net.WebUtility.HtmlEncode`), а для JS-контекста (строка 381) — отдельно JS-экранировать или передавать значение через `data-`атрибут/`textContent`. Дополнительно валидировать username по строгому шаблону (`^[a-zA-Z0-9_]{3,32}$`, как принято в проекте) и отдавать 404 при несоответствии.
 
 ### S2. Отсутствие security-заголовков и CSP на отдаваемых HTML-страницах — Medium
-**Файл:** `Backend/Barkfluff.WebServer/Program.cs:56-65` (нет middleware заголовков), `Backend/nginx/barkfluff.single-server.conf:87-100` (location `/` на gateway без `add_header`)
+**Файл:** `Backend/Barkfluff.WebServer/Program.cs:56-65` (нет middleware заголовков), `docker/nginx/barkfluff.single-server.conf:87-100` (location `/` на gateway без `add_header`)
 **Проблема:** Сервис отдаёт HTML (`HomeController`, `FallbackController` — профили, legal, selfhosted) без заголовков `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`. nginx-апстрим этого сервиса (`barkfluff_gateway`, порт 64641) в `barkfluff.single-server.conf` тоже не добавляет заголовки безопасности.
 **Почему это проблема:** Нет CSP — нет защиты в глубину против XSS из S1; нет `X-Frame-Options` — возможен clickjacking; нет `nosniff`.
 **Рекомендация:** Добавить middleware с базовыми заголовками (минимум `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`) — как сделано в `BarkFluff.Web/Program.cs`. Либо выставлять их в nginx для gateway.
@@ -64,12 +64,12 @@ Barkfluff.WebServer — REST/HTTP-сервис (порт 64641): отдаёт л
 ## Docker / nginx
 
 ### D1. Нет security-заголовков на nginx-gateway для WebServer — Low
-**Файл:** `Backend/nginx/barkfluff.single-server.conf:87-100`
+**Файл:** `docker/nginx/barkfluff.single-server.conf:87-100`
 **Проблема:** WebServer (порт 64641) проксируется через `barkfluff_gateway`; в этом `location /` нет `add_header` для CSP/X-Frame-Options/nosniff (см. S2).
 **Рекомендация:** Добавить заголовки на уровне nginx либо в приложении.
 
 ### D2. Host network открывает plaintext WebServer в обход nginx/TLS — Medium
-**Файлы:** `Backend/Barkfluff.WebServer/docker-compose-master.yml:6,9`; `Backend/Barkfluff.WebServer/docker-compose-dev.yml:6,9`.
+**Файл:** `docker/msk/docker-compose-msk.yml:2,5`.
 **Проблема:** Оба compose-файла используют `network_mode: host`, а Kestrel настроен как `ASPNETCORE_URLS=http://+:${WEBSERVER_PORT}`. Поэтому процесс слушает plaintext HTTP на всех интерфейсах хоста без явного Docker port-binding.
 **Почему это проблема:** Если порт 64641 не закрыт внешним firewall, клиент может обратиться к Kestrel напрямую, обойти TLS и любые ограничения/заголовки nginx; трафик можно перехватить или подменить в сети. Общий Docker S3 перечисляет опубликованные gRPC-порты основного compose, но отдельный host-network compose WebServer там не покрыт.
 **Рекомендация:** Убрать host network и подключить сервис к bridge-сети nginx. Если nginx работает на хосте и host network необходим, слушать только loopback (`http://127.0.0.1:${WEBSERVER_PORT}`).

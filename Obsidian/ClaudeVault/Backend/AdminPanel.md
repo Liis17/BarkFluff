@@ -27,6 +27,16 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 `Telegram:Admins` — строка формата `"userId1:username1,userId2:username2"`.
 
+### Telegram-бот: сессии админ-панели
+
+`/start` открывает меню с inline-кнопкой **«Мои сессии»**. Экран показывает только неистёкшие сессии текущего Telegram-админа, поддерживает пагинацию и обновление. Из карточки сессии можно увидеть имя, IP, время создания/последней активности/истечения и завершить её после отдельного подтверждения — GUID вручную вводить не требуется. Команды `/tokens`, `/kill` и `/rename` сохранены для обратной совместимости; `/sessions` — текстовый алиас интерактивного списка.
+
+Запрос на вход в Telegram дополнительно показывает исходный IP, чтобы администратор мог осознанно подтвердить либо отклонить сессию.
+
+Боковая панель MD3 берёт Telegram username и аватар из `/api/auth/me` и `/api/auth/me/avatar`; вторичной строкой отображается браузер/ОС сессии, а не дата её создания. Аватар проксируется через авторизованный endpoint, поэтому токен Telegram-бота не попадает в браузер.
+
+Перед аутентификацией применяется `ForwardedHeadersMiddleware` для подсети docker bridge `172.16.0.0/12`: nginx передаёт `X-Forwarded-For` и `X-Forwarded-Proto`, а сервис использует `RemoteIpAddress` как исходный IP. Если действующий токен используется с иного IP или User-Agent, бот отправляет владельцу Telegram-уведомление с исходным и новым окружением. Для одинакового нового окружения повторное уведомление ограничено одним в сутки.
+
 ### Data Layer (LiteDB, не EF Core)
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
@@ -53,10 +63,11 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 ### Services
 
 - `DockerService` — управление Docker-контейнерами
+- `DockerRegistryService` — без авторизации читает semver-теги из публичного `docker.barkfluff.com:5000/v2/{repository}/tags/list` и сравнивает их с тегом запущенного BarkFluff-образа. `barkfluff-*-dev` проверяется только в одноимённом dev-репозитории; `latest`, hash и прочие не-semver-теги не участвуют в сравнении.
 - `SeqService` — проксирование логов из Seq (HttpClient), удаление по фильтру (`Seq.Api`), запись событий в CLEF-формате
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
-- `MetricsCollectorService` — фоновый сбор метрик (IHostedService)
-- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
+- `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. История витрины — 30 дней.
+- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет, что все исходные service-hour уже сохранены в витрине; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
@@ -98,7 +109,11 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 `Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
+На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Если последний тег выше текущего, строка подсвечивается и помечается «Доступно обновление». Для инфраструктурных, legacy `latest`/hash-образов и недоступного registry версии отображаются как `—`; это не блокирует статус сервисов.
+
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
+
+Карточки и сетка стикерпаков используют полный файл стикера, а не его 64×64 preview. Бейджи выводят сохранённый постоянный URL исходного изображения.
 
 #### Тема и акцент
 
@@ -125,9 +140,9 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | Token expiration | 3 дня |
 | Pending timeout | 10 минут |
 | Max gRPC file size | 20 МБ |
-| Metrics interval | 1 час |
+| Metrics interval | 5 минут (пересчёт текущего и предыдущего часа) |
 | HourlyStats retention | 24 часа |
-| HourlyServiceMetrics retention | 12 часов |
+| HourlyServiceMetrics retention | 30 дней |
 | Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |
 | Sticker bucket | `message-documents` |
 

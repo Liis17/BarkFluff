@@ -87,3 +87,6 @@ CI собирает сервис из `Dockerfile.slim`, как и [[Backend/Use
 - [[Shared/Proto]] — `developers_api.proto`
 - [[Shared/Exceptions]] — коды ошибок через reflection
 - [[Shared/Identity]] — `ServiceId.Developers = 12`
+# Метрики
+
+Сервис подключён к [[Backend/GrpcServer]] metrics reporter. В [[Backend/AdminPanel]] доступны агрегированные gRPC-запросы и ошибки портала; детализация отдельных document/proto RPC намеренно не выводится.

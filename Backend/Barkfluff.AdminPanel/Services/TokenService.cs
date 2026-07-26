@@ -72,6 +72,28 @@ public class TokenService
         }
     }
 
+    /// <summary>
+    /// Registers an alert for a new client environment at most once per day.
+    /// </summary>
+    public bool TryRegisterSecurityAlert(Guid tokenId, string fingerprint)
+    {
+        var token = _db.Tokens.FindById(tokenId);
+        if (token == null)
+            return false;
+
+        var wasRecentlyAlertedForSameEnvironment =
+            token.LastSecurityAlertFingerprint == fingerprint &&
+            token.LastSecurityAlertAt >= DateTime.UtcNow.AddDays(-1);
+
+        if (wasRecentlyAlertedForSameEnvironment)
+            return false;
+
+        token.LastSecurityAlertFingerprint = fingerprint;
+        token.LastSecurityAlertAt = DateTime.UtcNow;
+        _db.Tokens.Update(token);
+        return true;
+    }
+
     public bool DeleteToken(Guid tokenId)
     {
         return _db.Tokens.Delete(tokenId);
@@ -130,6 +152,27 @@ public class TokenService
         return _db.Tokens.Query()
             .Where(x => x.ApprovedByTelegramUserId == telegramUserId)
             .OrderByDescending(x => x.LastActivity)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets non-expired sessions for an administrator and removes stale records.
+    /// </summary>
+    public List<AuthToken> GetActiveTokensByAdmin(long telegramUserId)
+    {
+        var tokens = GetTokensByAdmin(telegramUserId);
+        var expiredTokenIds = tokens
+            .Where(token => token.IsExpired(_settings.Value.TokenExpirationDays))
+            .Select(token => token.Id)
+            .ToList();
+
+        foreach (var tokenId in expiredTokenIds)
+        {
+            _db.Tokens.Delete(tokenId);
+        }
+
+        return tokens
+            .Where(token => !expiredTokenIds.Contains(token.Id))
             .ToList();
     }
 

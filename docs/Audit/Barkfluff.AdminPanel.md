@@ -25,7 +25,7 @@ AdminPanel — самая чувствительная поверхность п
 **Статус:** `BotToken`/`Admins` заменены на пустые строки в `appsettings.json`, `appsettings.Development.json` и `Properties/launchSettings.json` — значения приходят только из `.env` через `docker-compose-dev.yml` (`Telegram__BotToken`, `Telegram__Admins`). Токен отозван через @BotFather, выпущен новый, обновлён на сервере. Git-история не чищена (старый токен уже невалиден, поэтому не критично).
 
 ### S2. Контейнер работает под root со смонтированным docker.sock (root на хосте) — Critical
-**Файл:** `Backend/docker-compose-dev.yml:184` и `:228` (`user: root` + `- /var/run/docker.sock:/var/run/docker.sock`); аналогично `Backend/docker-compose-master.yml:146` и `:178`. Контр-пример: `Backend/Barkfluff.AdminPanel/Dockerfile:23` (`USER $APP_UID`).
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:184` и `:228` (`user: root` + `- /var/run/docker.sock:/var/run/docker.sock`); аналогично `Backend/docker-compose-master.yml:146` и `:178`. Контр-пример: `Backend/Barkfluff.AdminPanel/Dockerfile:23` (`USER $APP_UID`).
 **Проблема:** Compose принудительно запускает контейнер как `user: root` и монтирует `docker.sock`. Доступ к `docker.sock` эквивалентен root на хосте (можно запустить контейнер с `-v /:/host`). Панель при этом опубликована наружу через nginx (`panel.barkfluff.com`).
 **Почему это проблема:** Любая уязвимость (обход аутентификации, RCE, SSRF, передача чужого имени контейнера) превращается в полную компрометацию хоста. Dockerfile аккуратно создаёт непривилегированного пользователя `app`, добавляет его в группу `docker` и сбрасывает привилегии (`USER $APP_UID`) — но `user: root` в compose это полностью нивелирует, и hardening Dockerfile становится «мёртвым».
 **Рекомендация:** Убрать `user: root`, оставить privilege-drop из Dockerfile. Рассмотреть docker-socket-proxy (tecnativa/docker-socket-proxy) с whitelisting только нужных API (containers list/start/stop/restart) вместо прямого монтирования `docker.sock`. Минимизировать поверхность: не давать `image prune`, `compose up` напрямую.
@@ -122,13 +122,13 @@ AdminPanel — самая чувствительная поверхность п
 Дублирует S2; в инфраструктурном разрезе: `docker-compose-dev.yml:184,228`, `docker-compose-master.yml:146,178`. Главный системный риск сервиса.
 
 ### D2. Полное отсутствие заголовков безопасности на nginx — High
-**Файл:** `Backend/nginx/admin-panel.conf:8-25` (в `server`-блоке нет `add_header`), `Backend/nginx/01-ssl-params.conf` (есть только `ssl_protocols TLSv1.2 TLSv1.3`, никаких security-заголовков).
+**Файл:** `docker/nginx/admin-panel.conf:8-25` (в `server`-блоке нет `add_header`), `docker/nginx/01-ssl-params.conf` (есть только `ssl_protocols TLSv1.2 TLSv1.3`, никаких security-заголовков).
 **Проблема:** Для `panel.barkfluff.com` не выставлены `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options`/`frame-ancestors`, `X-Content-Type-Options`, `Referrer-Policy`.
 **Почему это проблема:** Нет HSTS — риск SSL-strip. Нет `X-Frame-Options`/CSP `frame-ancestors` — панель можно встроить в iframe (clickjacking; особенно опасно для UX-одобрений и кнопок «перезапустить всё»). Нет CSP — слабее защита от XSS (а cookie не `HttpOnly`, см. S5). Нет `X-Content-Type-Options: nosniff`.
 **Рекомендация:** Добавить в `admin-panel.conf` (или общий include): `add_header Strict-Transport-Security "max-age=31536000" always;`, `add_header X-Frame-Options "DENY" always;`, `add_header X-Content-Type-Options "nosniff" always;`, `add_header Referrer-Policy "no-referrer" always;` и строгую CSP.
 
 ### D3. Все секреты проекта (`.env`) и `docker-compose.yml` смонтированы внутрь контейнера панели — Medium
-**Файл:** `Backend/docker-compose-dev.yml:230-231` и `docker-compose-master.yml:180-181` (`- ./docker-compose.yml:/docker-compose.yml:ro`, `- ./.env:/.env:ro`).
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:230-231` и `docker-compose-master.yml:180-181` (`- ./docker-compose.yml:/docker-compose.yml:ro`, `- ./.env:/.env:ro`).
 **Почему это проблема:** `.env` содержит токены всех сервисов, пароли RabbitMQ/SSH/почты, S3-ключи. Любое чтение файла/RCE/path-traversal в панели (работающей под root) раскрывает ВСЕ секреты платформы сразу. Монтирование нужно лишь для self-update через helper-контейнер (`DockerService.UpdateAdminPanelAsync`), но цена — концентрация секретов.
 **Рекомендация:** Не монтировать полный `.env` в долгоживущий контейнер. Передавать helper-контейнеру только то, что нужно для `compose pull/up admin-panel`, через отдельный минимальный env-файл; либо генерировать его на лету в момент обновления и удалять.
 
