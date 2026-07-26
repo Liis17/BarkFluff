@@ -175,3 +175,22 @@ GET /download/{tempId}                                     ← без auth, capa
 ### Метрики
 
 `fed_avatars_served`, `fed_avatar_rejected`, `fed_avatar_errors`.
+
+## Карта ошибок fed-скачивания (этап 3.5, docs/rearch/phase-3/step-3.5-origin-down-ux.md)
+
+Едина для обеих fed-веток — вложений (3.3) и аватаров (3.4).
+
+| gRPC от Federation | HTTP | Смысл |
+|---|---|---|
+| `Unavailable` (origin лежит / circuit open / замолчал) | **503** + `Retry-After` (`Files:FedRetryAfterSeconds`, дефолт 30) | временно, ретрай уместен |
+| `PermissionDenied` (нет общего чата, приватный аватар) | **404** | окончательно |
+| `NotFound` (файла нет на origin) | **404** | окончательно |
+| обрыв mid-stream | тело обрывается | клиент ретраит с `Range` (докачка) |
+
+`403` и `404` намеренно сливаются: capability-модель не светит причину отказа.
+
+**Заголовки пишутся только после первого чанка.** Пока ответ не начат, ошибку ещё можно отдать честным кодом; после — остаётся только оборвать соединение. Поэтому `WriteHeaders` вызывается из цикла чтения, а не до него.
+
+Логи: отказ origin и недоступность — `warning` с `server_name`/`file_id`, без содержимого. Частоту при лежащей ноде ограничивает сам circuit breaker.
+
+Метрики: `fed_download_total.{ok|origin_unavailable|denied|aborted}`.

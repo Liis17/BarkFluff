@@ -23,15 +23,20 @@ public class FederatedDownloadService
     private readonly FederationInternalApi.FederationInternalApiClient _federationClient;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<FederatedDownloadService> _logger;
+    private readonly int _retryAfterSeconds;
 
     public FederatedDownloadService(
         FederationInternalApi.FederationInternalApiClient federationClient,
+        IConfiguration configuration,
         MetricsCollector metrics,
         ILogger<FederatedDownloadService> logger)
     {
         _federationClient = federationClient;
         _metrics = metrics;
         _logger = logger;
+
+        var raw = configuration["Files:FedRetryAfterSeconds"];
+        _retryAfterSeconds = int.TryParse(raw, out var parsed) && parsed > 0 ? parsed : 30;
     }
 
     /// <summary>
@@ -92,17 +97,21 @@ public class FederatedDownloadService
         var headersSent = false;
         long written = 0;
 
-        // Сколько байт мы вообще готовы принять: снапшот из Messages — более строгая граница,
-        // чем заявленный origin'ом total_size (Federation режет по нему, этап 3.2).
-        // У аватара снапшота нет, вместо него — глобальный кап (этап 3.4).
-        var limit = isPartial ? range.Length : totalSize;
-        if (hardLimitBytes is > 0 && (limit <= 0 || hardLimitBytes < limit))
+        // Заголовки пишем только после первого чанка: пока ответ не начат, ошибку ещё можно
+        // отдать честным кодом (503/404), а не оборванным телом (этап 3.5).
+        try
         {
-            limit = hardLimitBytes.Value;
-        }
+            // Сколько байт мы вообще готовы принять: снапшот из Messages — более строгая граница,
+            // чем заявленный origin'ом total_size (Federation режет по нему, этап 3.2).
+            // У аватара снапшота нет, вместо него — глобальный кап (этап 3.4).
+            var limit = isPartial ? range.Length : totalSize;
+            if (hardLimitBytes is > 0 && (limit <= 0 || hardLimitBytes < limit))
+            {
+                limit = hardLimitBytes.Value;
+            }
 
-        await foreach (var chunk in call.ResponseStream.ReadAllAsync(httpContext.RequestAborted))
-        {
+            await foreach (var chunk in call.ResponseStream.ReadAllAsync(httpContext.RequestAborted))
+            {
             if (!headersSent)
             {
                 WriteHeaders(response, tempFile, chunk.ContentType, isPartial, range, totalSize);
@@ -134,13 +143,58 @@ public class FederatedDownloadService
             await response.Body.FlushAsync(httpContext.RequestAborted);
         }
 
-        if (!headersSent)
+            if (!headersSent)
+            {
+                WriteHeaders(response, tempFile, contentType: null, isPartial, range, totalSize);
+            }
+
+            _metrics.Increment("fed_download_total.ok");
+            _metrics.Increment("fed_downloads");
+            _metrics.Add("fed_download_bytes_total", written);
+        }
+        catch (RpcException ex) when (!headersSent)
         {
-            WriteHeaders(response, tempFile, contentType: null, isPartial, range, totalSize);
+            WriteErrorStatus(response, ex, tempFile);
+        }
+        catch (RpcException)
+        {
+            // Ответ уже начат — корректного кода не осталось. Клиент увидит truncated body
+            // и ретраит с Range (докачка).
+            _metrics.Increment("fed_download_total.aborted");
+            httpContext.Abort();
+        }
+    }
+
+    /// <summary>
+    /// Карта gRPC-ошибок Federation в HTTP (этап 3.5). Едина для обеих fed-веток —
+    /// вложений (3.3) и аватаров (3.4).
+    /// </summary>
+    /// <remarks>
+    /// <c>PermissionDenied</c> и <c>NotFound</c> намеренно сливаются в 404: capability-модель
+    /// не должна светить причину отказа. <c>Unavailable</c> — единственный «временный» код,
+    /// и только он получает <c>Retry-After</c>.
+    /// </remarks>
+    private void WriteErrorStatus(HttpResponse response, RpcException ex, TempFile tempFile)
+    {
+        if (ex.StatusCode == StatusCode.Unavailable)
+        {
+            response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            response.Headers.RetryAfter = _retryAfterSeconds.ToString();
+
+            _metrics.Increment("fed_download_total.origin_unavailable");
+            _logger.LogWarning(
+                "Origin {Origin} недоступен при скачивании {FileId}: {Detail}",
+                tempFile.OriginServer, tempFile.OriginalFileId, ex.Status.Detail);
+            return;
         }
 
-        _metrics.Increment("fed_downloads");
-        _metrics.Add("fed_download_bytes_total", written);
+        // Отказ живой ноды (нет общего чата, приватный аватар) либо файла нет — окончательно.
+        response.StatusCode = StatusCodes.Status404NotFound;
+
+        _metrics.Increment("fed_download_total.denied");
+        _logger.LogWarning(
+            "Origin {Origin} отказал в файле {FileId}: {Code}",
+            tempFile.OriginServer, tempFile.OriginalFileId, ex.StatusCode);
     }
 
     private static void WriteHeaders(

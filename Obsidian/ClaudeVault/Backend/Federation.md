@@ -413,3 +413,15 @@ Files(B) ──FetchRemoteFile──▶ Federation(B) ──S2S FetchFile──�
 ### Метрики
 
 `fetchfile_requests.{ok|denied|rate_limited}`, `fetchfile_bytes_out`, `remote_file_fetches.{ok|denied|error|idle_timeout|not_resolved}`, `remote_file_bytes_in`, `remote_file_size_mismatch`.
+
+## Circuit breaker скачивания (этап 3.5, docs/rearch/phase-3/step-3.5-origin-down-ux.md)
+
+Лежащая нода не должна съедать connect-timeout на каждом обращении: после `Federation:RemoteFileCircuitFailures` (дефолт 3) подряд идущих **транспортных** неудач `FetchRemoteFile` к этой ноде отвечает `Unavailable` (`origin_circuit_open`) сразу, не заходя в сеть, на `Federation:RemoteFileCircuitOpenSeconds` (дефолт 60).
+
+**Что считается сбоем.** Только транспорт: сеть, TLS, резолв, connect-timeout, idle-таймаут. Отказ **живой** ноды (`PermissionDenied`, `NotFound`) сбоем **не** является — приватный аватар или чужой файл не значат, что нода недоступна, и не должны блокировать скачивание остальных файлов оттуда же.
+
+**Half-open без отдельного состояния:** по истечении окна `TryEnter` снова пропускает запрос — он и есть пробный. Успех закрывает circuit, неудача открывает его на новое окно.
+
+In-memory, per-instance, без БД: состояние живёт секунды-минуты, рестарт с чистым circuit'ом стоит максимум одного лишнего похода в сеть.
+
+Метрики: `remote_file_circuit_open.{server}`, `remote_file_fetches.circuit_open`.
