@@ -337,8 +337,8 @@
         const grid = document.getElementById('stickersGrid');
         const stickersHtml = (p.stickers || []).map(s => `
             <div class="sticker" data-sid="${s.id}">
-                ${(s.previewUrl || s.fileUrl)
-                    ? `<img src="${s.previewUrl || s.fileUrl}">`
+                ${(s.fileUrl || s.previewUrl)
+                    ? `<img src="${s.fileUrl || s.previewUrl}">`
                     : `<span class="emoji">${escapeHtml(s.emoji || '🐱')}</span>`}
                 <button class="delete-btn" onclick="deleteSticker('${s.id}')"><span class="msr">close</span></button>
             </div>
