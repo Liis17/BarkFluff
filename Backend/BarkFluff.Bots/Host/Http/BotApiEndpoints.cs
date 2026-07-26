@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using BarkFluff.Bots.Features.GetBotFile;
 using BarkFluff.Bots.Features.GetBotUpdates;
 using BarkFluff.Bots.Features.GetBotUserInfo;
 using BarkFluff.Bots.Features.GetMe;
@@ -41,6 +42,7 @@ public static class BotApiEndpoints
             => SendFile(ctx, caller, mediator, UploadFileType.MessageAttachmentDocument));
         group.MapGet("/getUpdates", GetUpdates);
         group.MapGet("/getUserInfo", GetUserInfo);
+        group.MapGet("/getFile", GetFile);
     }
 
     private static async Task<IResult> GetMe(BotCallerContext callerContext, IMediator mediator)
@@ -153,6 +155,15 @@ public static class BotApiEndpoints
         return await ExecuteAsync(async () =>
         {
             var response = await mediator.Send(new GetBotUserInfoQuery { UserId = user_id, Username = username });
+            return BotApiResponse.Ok(response.ToHttpResult());
+        });
+    }
+
+    private static async Task<IResult> GetFile(IMediator mediator, string? file_id = null)
+    {
+        return await ExecuteAsync(async () =>
+        {
+            var response = await mediator.Send(new GetBotFileQuery { FileId = file_id ?? string.Empty });
             return BotApiResponse.Ok(response.ToHttpResult());
         });
     }

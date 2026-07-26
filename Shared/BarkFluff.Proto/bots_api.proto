@@ -76,6 +76,9 @@ service BotsExternalApi {
   // Публичная информация о пользователе
   rpc GetUserInfo(GetUserInfoRequest) returns(GetUserInfoResponse);
 
+  // Ссылка на скачивание оригинала файла по file_id из вложения update'а
+  rpc GetFile(GetFileRequest) returns(GetFileResponse);
+
   // Подписка на входящие: backlog начиная с offset + live-стрим.
   // Одновременно допускается один активный стрим/поток getUpdates на бота.
   rpc SubscribeUpdates(SubscribeUpdatesRequest) returns(stream BotUpdate);
@@ -120,6 +123,17 @@ message GetUserInfoResponse {
   string bio = 5;          // био
   string avatar_url = 6;   // ссылка на аватарку
   bool is_bot = 7;         // является ли ботом
+}
+
+message GetFileRequest {
+  string file_id = 1; // идентификатор файла (из вложения входящего сообщения)
+}
+
+message GetFileResponse {
+  string file_id = 1;   // идентификатор файла
+  string file_name = 2; // исходное имя файла
+  int64 file_size = 3;  // размер файла в байтах
+  string file_url = 4;  // временная ссылка на скачивание оригинала
 }
 
 message SubscribeUpdatesRequest {

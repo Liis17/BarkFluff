@@ -22,6 +22,15 @@ public static class BotMapping
         username = response.Username,
     };
 
+    /// <summary>getFile для HTTP Bot API.</summary>
+    public static object ToHttpResult(this GetFileResponse response) => new
+    {
+        file_id = response.FileId,
+        file_name = response.FileName,
+        file_size = response.FileSize,
+        file_url = response.FileUrl,
+    };
+
     /// <summary>getUserInfo для HTTP Bot API.</summary>
     public static object ToHttpResult(this GetUserInfoResponse response) => new
     {
