@@ -400,6 +400,14 @@ public class ConfigurationDefaultsPopulator
             }
         }
 
+        // --- Files: кап размера аватара remote-пользователя (этап 3.4) ---
+        // У аватара нет снапшота размера (он не вложение сообщения), поэтому объём
+        // ограничивает глобальный кап, а не запись в БД.
+        if (config.Section == "Files" && config.Key == "FedAvatarMaxBytes")
+        {
+            return "20971520"; // 20 МБ
+        }
+
         // --- OnlinerService (inter-service, для Federation: presence/typing-мост) ---
         if (config.Section == "OnlinerService")
         {

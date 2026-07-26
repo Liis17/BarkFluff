@@ -150,3 +150,28 @@ GET /download/{tempId}                                     ← без auth, capa
 ### Метрики
 
 `fed_downloads`, `fed_download_bytes_total`, `fed_download_size_exceeded`.
+
+## Аватары remote-пользователей (этап 3.4, docs/rearch/phase-3/step-3.4-remote-avatars.md)
+
+У аватара **своя ветка доступа** — по приватности владельца, а не по членству в чате: аватар не является вложением сообщения, поэтому проверка «есть общий fed-чат» (3.2) к нему неприменима.
+
+### `CheckFedAvatarAccess(file_id)` — origin
+
+Файл существует, `Type == UserAvatar`, загружен → владелец (`Uploaders.First()`) → `Users.IsAvatarVisibleToFederation`. «Не аватар» и «нет файла» снаружи неразличимы. Сбой Users → отказ (fail-closed): лучше не показать аватар, чем показать вопреки настройке.
+
+### `/download/fed/{server}/{fileId}` — принимающая сторона
+
+Публичный маршрут **без auth** — как и локальный `/download` для аватаров: они и локально публичны по оригинальному Guid. Это единственный прямой fed-маршрут; вложения чатов идут temp-моделью (3.3).
+
+1. `server` == своё `Federation:ServerName` → 404 (свои аватары качаются обычным `/download`).
+2. `Users.CheckRemoteAvatarRef` → пара (нода, file_id) должна быть в `RemoteUsers`, иначе 404.
+3. `Federation.FetchRemoteFile` → стрим клиенту (тот же путь, что у fed-вложений).
+4. **Кап вместо снапшота**: у аватара нет записи размера, объём ограничивает `Files:FedAvatarMaxBytes` (дефолт 20 МБ). Второй уровень — обрыв по заявленному `total_size` в Federation (3.2).
+
+Любая неудача — **404**: существование файлов и нод не светим. Классификация ошибок недоступного origin — этап 3.5.
+
+**Ограничение MVP:** превью аватара remote-пользователя не федерируется — `CheckRemoteAvatarRef` сверяет только `AvatarFileId`, а `preview_file_id` в `RemoteUsers` не хранится. Клиент тянет полный аватар.
+
+### Метрики
+
+`fed_avatars_served`, `fed_avatar_rejected`, `fed_avatar_errors`.
