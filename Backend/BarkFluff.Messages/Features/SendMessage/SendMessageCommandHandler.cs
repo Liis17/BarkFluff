@@ -392,7 +392,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                     Type = a.Type,
                     FileId = a.FileId ?? string.Empty,
                     PreviewUrl = a.PreviewUrl,
-                    FileSize = a.FileSize
+                    FileSize = a.FileSize,
+                    // Форвард fed-вложения сохраняет origin: иначе проверка доступа (3.3)
+                    // не сможет точно сопоставить файл с нодой-владельцем.
+                    OriginServer = a.OriginServer
                 })
                 .ToList();
 

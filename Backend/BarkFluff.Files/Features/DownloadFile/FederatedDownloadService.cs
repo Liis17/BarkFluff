@@ -1,0 +1,177 @@
+using BarkFluff.Files.Domain;
+using BarkFluff.Files.Extensions;
+using BarkFluff.Files.Helpers;
+using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Proto.FederationInternal;
+
+using Grpc.Core;
+
+using Microsoft.AspNetCore.Http;
+
+namespace BarkFluff.Files.Features.DownloadFile;
+
+/// <summary>
+/// Скачивание federated-вложения через свою ноду (этап 3.3): байты идут с origin
+/// потоком и сразу уходят клиенту — ни на диск, ни в память целиком они не попадают.
+/// </summary>
+/// <remarks>
+/// Кеша содержимого и превью нет — решение владельца (см. docs/rearch/phase-3/README.md).
+/// Каждое обращение тянет байты с origin заново.
+/// </remarks>
+public class FederatedDownloadService
+{
+    private readonly FederationInternalApi.FederationInternalApiClient _federationClient;
+    private readonly MetricsCollector _metrics;
+    private readonly ILogger<FederatedDownloadService> _logger;
+
+    public FederatedDownloadService(
+        FederationInternalApi.FederationInternalApiClient federationClient,
+        MetricsCollector metrics,
+        ILogger<FederatedDownloadService> logger)
+    {
+        _federationClient = federationClient;
+        _metrics = metrics;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Записать содержимое (или запрошенный диапазон) прямо в ответ. Заголовки выставляются
+    /// здесь же: хелпер <c>File()</c> не подходит — поток не seekable.
+    /// </summary>
+    public async Task WriteToResponseAsync(TempFile tempFile, HttpContext httpContext)
+    {
+        var response = httpContext.Response;
+        var totalSize = tempFile.SizeBytes ?? 0;
+
+        var rangeStatus = ByteRangeHeader.TryParse(
+            httpContext.Request.Headers.Range, totalSize, out var range);
+
+        if (rangeStatus == ByteRangeHeader.Status.Unsatisfiable)
+        {
+            response.StatusCode = StatusCodes.Status416RangeNotSatisfiable;
+            response.Headers.ContentRange = $"bytes */{totalSize}";
+            return;
+        }
+
+        var isPartial = rangeStatus == ByteRangeHeader.Status.Satisfiable;
+
+        // Верхняя граница нашего контракта exclusive; 0/0 = весь файл.
+        var request = new FetchRemoteFileRequest
+        {
+            ServerName = tempFile.OriginServer!,
+            FileId = tempFile.OriginalFileId.ToString(),
+            RangeFrom = isPartial ? range.From : 0,
+            RangeTo = isPartial ? range.To : 0,
+        };
+
+        using var call = _federationClient.FetchRemoteFile(
+            request, cancellationToken: httpContext.RequestAborted);
+
+        var headersSent = false;
+        long written = 0;
+
+        // Сколько байт мы вообще готовы принять: снапшот из Messages — более строгая граница,
+        // чем заявленный origin'ом total_size (Federation режет по нему, этап 3.2).
+        var limit = isPartial ? range.Length : totalSize;
+
+        await foreach (var chunk in call.ResponseStream.ReadAllAsync(httpContext.RequestAborted))
+        {
+            if (!headersSent)
+            {
+                WriteHeaders(response, tempFile, chunk.ContentType, isPartial, range, totalSize);
+                headersSent = true;
+            }
+
+            if (chunk.Data.IsEmpty)
+            {
+                continue;
+            }
+
+            written += chunk.Data.Length;
+
+            // Отсечение по снапшоту (риск №44, второй уровень): origin не может прислать
+            // больше, чем мы записали у себя при импорте сообщения.
+            if (limit > 0 && written > limit)
+            {
+                _metrics.Increment("fed_download_size_exceeded");
+                _logger.LogWarning(
+                    "Origin {Origin} прислал больше байт ({Written}), чем допускает снапшот ({Limit}) для {FileId}",
+                    tempFile.OriginServer, written, limit, tempFile.OriginalFileId);
+
+                // Заголовки уже ушли — корректного кода ошибки не осталось, рвём соединение.
+                httpContext.Abort();
+                return;
+            }
+
+            chunk.Data.WriteTo(response.Body);
+            await response.Body.FlushAsync(httpContext.RequestAborted);
+        }
+
+        if (!headersSent)
+        {
+            WriteHeaders(response, tempFile, contentType: null, isPartial, range, totalSize);
+        }
+
+        _metrics.Increment("fed_downloads");
+        _metrics.Add("fed_download_bytes_total", written);
+    }
+
+    private static void WriteHeaders(
+        HttpResponse response,
+        TempFile tempFile,
+        string? contentType,
+        bool isPartial,
+        ByteRangeHeader.Result range,
+        long totalSize)
+    {
+        response.StatusCode = isPartial
+            ? StatusCodes.Status206PartialContent
+            : StatusCodes.Status200OK;
+
+        // Content-Type: с origin (он знает реальный тип из S3), иначе — по имени из снапшота.
+        response.ContentType = !string.IsNullOrEmpty(contentType)
+            ? contentType
+            : (tempFile.FileName ?? string.Empty).GetContentType();
+
+        response.Headers.AcceptRanges = "bytes";
+
+        if (isPartial)
+        {
+            response.Headers.ContentRange = $"bytes {range.From}-{range.To - 1}/{totalSize}";
+            response.ContentLength = range.Length;
+        }
+        else if (totalSize > 0)
+        {
+            response.ContentLength = totalSize;
+        }
+
+        var fileName = SanitizeFileName(tempFile.FileName);
+        if (fileName.Length > 0)
+        {
+            // Имя пришло с чужой ноды — в заголовок оно попадает только после санитизации.
+            response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\"";
+        }
+    }
+
+    /// <summary>
+    /// Имя файла приходит с чужой ноды: убираем путь (traversal) и всё, что может разорвать
+    /// заголовок (CR/LF, кавычки, управляющие символы).
+    /// </summary>
+    private static string SanitizeFileName(string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return string.Empty;
+        }
+
+        var baseName = Path.GetFileName(fileName.Replace('\\', '/'));
+
+        var sanitized = new string(baseName
+            .Where(c => !char.IsControl(c) && c != '"' && c != '\r' && c != '\n')
+            .ToArray())
+            .Trim();
+
+        // "." и ".." после GetFileName — не имена, а остатки traversal-попытки.
+        return sanitized is "." or ".." ? string.Empty : sanitized;
+    }
+}

@@ -460,6 +460,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                             b3.Property<long>("MessageAttachmentId")
                                                 .HasColumnType("bigint");
 
+                                            b3.Property<string>("OriginServer")
+                                                .HasColumnType("text");
+
                                             b3.Property<string>("PreviewUrl")
                                                 .HasColumnType("text");
 

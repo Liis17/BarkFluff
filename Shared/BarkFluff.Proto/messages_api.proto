@@ -556,6 +556,10 @@ service MessagesServerApi {
   // Проверить, что у ноды-подписчика есть основание видеть presence наших пользователей
   // (этап 4.1): требуется активный федеративный чат с этой нодой.
   rpc CheckFederatedPresenceAccess(CheckFederatedPresenceAccessRequest) returns(CheckFederatedPresenceAccessResponse);
+
+  // Проверить, что ПОЛЬЗОВАТЕЛЬ вправе скачать federated-вложение (этап 3.3), и вернуть
+  // снапшот его метаданных. Второй, независимый от origin, уровень проверки доступа.
+  rpc CheckFedFileUserAccess(CheckFedFileUserAccessRequest) returns(CheckFedFileUserAccessResponse);
 }
 
 message SendMessageServerRequest {
@@ -811,4 +815,17 @@ message CheckFederatedPresenceAccessRequest {
 
 message CheckFederatedPresenceAccessResponse {
   repeated string allowed_user_uuids = 1; // подмножество, по которым отдавать статус можно
+}
+
+message CheckFedFileUserAccessRequest {
+  int64 user_id = 1;
+  string origin_server = 2;
+  string file_id = 3;
+}
+
+message CheckFedFileUserAccessResponse {
+  bool allowed = 1;
+  string file_name = 2;      // снапшот 3.1 — чтобы скачивание не ходило в Messages второй раз
+  int64 size_bytes = 3;
+  int32 attachment_type = 4; // значения barkfluff.shared.MessageAttachmentType
 }

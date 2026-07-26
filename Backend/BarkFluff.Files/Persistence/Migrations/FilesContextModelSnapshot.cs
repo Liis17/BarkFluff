@@ -137,8 +137,20 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("AttachmentType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("OriginalFileId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("OriginServer")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 

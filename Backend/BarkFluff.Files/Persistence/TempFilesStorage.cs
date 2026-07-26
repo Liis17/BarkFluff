@@ -52,6 +52,29 @@ public class TempFilesStorage
         return tempFiles;
     }
 
+    /// <summary>
+    /// Пакетное создание capability-ссылок на federated-вложения (этап 3.3). Отдельный метод,
+    /// а не флаг у существующего: снапшот метаданных нужен только этой ветке.
+    /// </summary>
+    public async Task<List<TempFile>> CreateFederatedTempFilesBatchAsync(
+        IEnumerable<TempFile> tempFiles,
+        CancellationToken cancellationToken = default)
+    {
+        var expiresAt = GetExpiresAt();
+
+        var prepared = tempFiles.ToList();
+        if (prepared.Count == 0)
+            return prepared;
+
+        foreach (var tempFile in prepared)
+            tempFile.ExpiresAt = expiresAt;
+
+        await _context.TempFiles.AddRangeAsync(prepared, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return prepared;
+    }
+
     public async Task<TempFile?> GetTempFile(Guid tempFileId)
     {
         return await _context.TempFiles
