@@ -3,6 +3,8 @@ using FirebaseAdmin.Messaging;
 
 using Google.Apis.Auth.OAuth2;
 
+using BarkFluff.GrpcServer.Metrics;
+
 using System.Text.Json;
 
 namespace Barkfluff.CloudMessaging.Services;
@@ -15,19 +17,27 @@ public class FirebaseService
     private readonly ILogger<FirebaseService> _logger;
     private readonly FirebaseMessaging? _messaging;
     private readonly IDismissPushSender? _dismissPushSender;
+    private readonly MetricsCollector? _metrics;
 
     public FirebaseService(ILogger<FirebaseService> logger, IConfiguration configuration)
-        : this(logger, configuration, null)
+        : this(logger, configuration, null, null)
+    {
+    }
+
+    public FirebaseService(ILogger<FirebaseService> logger, IConfiguration configuration, MetricsCollector metrics)
+        : this(logger, configuration, null, metrics)
     {
     }
 
     public FirebaseService(
         ILogger<FirebaseService> logger,
         IConfiguration configuration,
-        IDismissPushSender? dismissPushSender)
+        IDismissPushSender? dismissPushSender,
+        MetricsCollector? metrics = null)
     {
         _logger = logger;
         _dismissPushSender = dismissPushSender;
+        _metrics = metrics;
 
         if (_dismissPushSender != null)
             return;
@@ -108,6 +118,9 @@ public class FirebaseService
         if (fcmTokens.Count == 0)
             return;
 
+        _metrics?.Increment("push_jobs_received");
+        _metrics?.Add("push_target_devices", fcmTokens.Count);
+
         // Data-only сообщение: без блока Notification, чтобы onMessageReceived
         // всегда вызывался (и в foreground, и в background).
         var multicastMessage = new MulticastMessage
@@ -138,6 +151,8 @@ public class FirebaseService
         try
         {
             var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+            _metrics?.Add("fcm_pushes_sent", response.SuccessCount);
+            _metrics?.Add("fcm_pushes_failed", response.FailureCount);
 
             _logger.LogInformation(
                 "Push-уведомления отправлены батчем. Success: {Success}, Failure: {Failure}, Total: {Total}",
@@ -181,6 +196,7 @@ public class FirebaseService
         }
         catch (Exception ex)
         {
+            _metrics?.Add("fcm_pushes_failed", fcmTokens.Count);
             _logger.LogError(ex, "Неожиданная ошибка при батч-отправке push-уведомлений");
         }
     }

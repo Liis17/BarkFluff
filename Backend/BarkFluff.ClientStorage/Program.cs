@@ -3,13 +3,13 @@ using BarkFluff.ClientStorage.Infrastructure;
 using BarkFluff.ClientStorage.Middleware;
 using BarkFluff.ClientStorage.Persistence;
 using BarkFluff.ClientStorage.Services;
+using BarkFluff.GrpcServer;
 
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 using Serilog;
-using Serilog.Events;
 
 namespace BarkFluff.ClientStorage;
 
@@ -22,22 +22,8 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Host.UseSerilog((context, loggerConfig) =>
-        {
-            loggerConfig
-                .MinimumLevel.Information()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
-                .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
-                .Enrich.FromLogContext()
-                .Enrich.WithMachineName()
-                .Enrich.WithEnvironmentName()
-                .Enrich.WithThreadId()
-                .Enrich.WithProperty("Application", ServiceName)
-                .WriteTo.Console(
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
-        });
+        builder.AddBarkFluffSerilog(ServiceName);
+        builder.Services.AddBarkFluffMetrics(ServiceName);
 
         builder.Services.AddControllers();
 

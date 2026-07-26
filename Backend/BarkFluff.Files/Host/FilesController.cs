@@ -45,11 +45,18 @@ public class FilesController : Controller
             var resultFileId = await _mediator.Send(command);
             _metrics.Increment("files_uploaded");
             _metrics.Add("upload_bytes_total", file.Length);
+            _metrics.Add("file_traffic_bytes_total", file.Length);
             return Ok(new { fileId = resultFileId });
         }
         catch (FileAlreadyUploadedException ex)
         {
+            _metrics.Increment("files_upload_errors");
             return BadRequest(ex.Message);
+        }
+        catch
+        {
+            _metrics.Increment("files_upload_errors");
+            throw;
         }
     }
 
@@ -64,15 +71,23 @@ public class FilesController : Controller
             };
 
             var result = await _mediator.Send(command);
+            _metrics.Increment("files_downloaded");
+            if (result.FileStream.CanSeek)
+            {
+                _metrics.Add("download_bytes_total", result.FileStream.Length);
+                _metrics.Add("file_traffic_bytes_total", result.FileStream.Length);
+            }
 
             return File(result.FileStream, result.ContentType, result.FileName);
         }
         catch (FileNotUploadedException ex)
         {
+            _metrics.Increment("files_download_errors");
             return NotFound(ex.Message);
         }
         catch (Exception ex)
         {
+            _metrics.Increment("files_download_errors");
             _logger.LogError(ex, "Ошибка при скачивании файла {FileId}", fileId);
             return NotFound("Файл недоступен");
         }

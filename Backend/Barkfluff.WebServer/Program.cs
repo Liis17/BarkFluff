@@ -1,6 +1,8 @@
 using Barkfluff.WebServer.Services;
 
 using BarkFluff.Proto.Users;
+using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 
 using Grpc.Net.Client;
 
@@ -11,6 +13,8 @@ namespace Barkfluff.WebServer
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.AddBarkFluffSerilog("BarkFluff.WebServer");
+            builder.Services.AddBarkFluffMetrics("BarkFluff.WebServer");
 
             builder.WebHost.ConfigureKestrel(serverOptions =>
             {
@@ -55,6 +59,17 @@ namespace Barkfluff.WebServer
 
             var app = builder.Build();
 
+            app.Use(async (context, next) =>
+            {
+                var metrics = context.RequestServices.GetRequiredService<MetricsCollector>();
+                metrics.Increment("http_requests_total");
+                try { await next(); }
+                catch
+                {
+                    metrics.Increment("http_requests_errors");
+                    throw;
+                }
+            });
             app.UseRouting();
 
             app.MapControllers();
