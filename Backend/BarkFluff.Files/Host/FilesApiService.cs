@@ -5,6 +5,7 @@ using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfo;
 using BarkFluff.Files.Features.ListStickerPacks;
 using BarkFluff.Proto.Files;
+using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
@@ -21,10 +22,12 @@ namespace BarkFluff.Files.Host;
 public class FilesApiService : FilesApi.FilesApiBase
 {
     private readonly IMediator _mediator;
+    private readonly UserContext _userContext;
 
-    public FilesApiService(IMediator mediator)
+    public FilesApiService(IMediator mediator, UserContext userContext)
     {
         _mediator = mediator;
+        _userContext = userContext;
     }
 
     public override Task<GetUploadUrlResponse> GetUploadUrl(GetUploadUrlRequest request, ServerCallContext context)
@@ -44,7 +47,12 @@ public class FilesApiService : FilesApi.FilesApiBase
 
         var command = new GetTempDownloadUrlCommand()
         {
-            FileIds = guids
+            FileIds = guids,
+            // Federated-вложения (этап 3.3): доступ проверяется по членству запрашивающего в чате.
+            FedFiles = request.FedFiles
+                .Select(f => new FederatedFileRequest(f.OriginServer, f.FileId))
+                .ToList(),
+            RequesterUserId = _userContext.UserId,
         };
 
         return await _mediator.Send(command);

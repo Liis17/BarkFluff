@@ -3,6 +3,7 @@ using BarkFluff.Messages.Features.ApplyFederatedEdit;
 using BarkFluff.Messages.Features.ApplyFederatedRead;
 using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.CheckFederatedPresenceAccess;
+using BarkFluff.Messages.Features.CheckFedFileUserAccess;
 using BarkFluff.Messages.Features.CheckFileFederationAccess;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.EditMessage;
@@ -127,6 +128,20 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         {
             FileId = request.FileId,
             RequestingServer = request.RequestingServer
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<CheckFedFileUserAccessResponse> CheckFedFileUserAccess(
+        CheckFedFileUserAccessRequest request,
+        ServerCallContext context)
+    {
+        var query = new CheckFedFileUserAccessQuery
+        {
+            UserId = request.UserId,
+            OriginServer = request.OriginServer,
+            FileId = request.FileId
         };
 
         return _mediator.Send(query, context.CancellationToken);

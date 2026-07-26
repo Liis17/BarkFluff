@@ -60,6 +60,24 @@ public class Program
 
         // Стриминг файла ноде-партнёру (этап 3.2) — не через MediatR: результат поток, не сообщение.
         builder.Services.AddScoped<Features.FetchFileStream.FetchFileStreamQueryHandler>();
+
+        // Скачивание federated-вложения через свою ноду (этап 3.3).
+        builder.Services.AddScoped<Features.DownloadFile.FederatedDownloadService>();
+
+        // gRPC-клиент к Federation: FetchRemoteFile — проксирование байтов с origin (этап 3.3).
+        builder.Services.AddGrpcClient<BarkFluff.Proto.FederationInternal.FederationInternalApi.FederationInternalApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FederationService:Host"]!);
+            }).AddInterceptor(() => new BarkFluff.Shared.Auth.JwtClientInterceptor(builder.Configuration["FederationService:Token"] ?? string.Empty))
+            .AddInterceptor(() => new BarkFluff.Shared.Exceptions.Interceptors.ExceptionClientInterceptor());
+
+        // gRPC-клиент к Messages: CheckFedFileUserAccess — проверка права пользователя на
+        // federated-вложение при выдаче capability-ссылки (этап 3.3).
+        builder.Services.AddGrpcClient<BarkFluff.Proto.Messages.MessagesServerApi.MessagesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["MessagesService:Host"]!);
+            }).AddInterceptor(() => new BarkFluff.Shared.Auth.JwtClientInterceptor(builder.Configuration["MessagesService:Token"] ?? string.Empty))
+            .AddInterceptor(() => new BarkFluff.Shared.Exceptions.Interceptors.ExceptionClientInterceptor());
         builder.Services.AddSingleton<ImageCompressor>();
         builder.Services.AddSingleton<VideoThumbnailExtractor>();
         builder.Services.AddHostedService<TempFileCleanupService>();

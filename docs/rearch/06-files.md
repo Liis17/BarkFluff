@@ -27,19 +27,27 @@ message FederatedFileRef {
 
 У клиента ноды B нет и не должно быть способа авторизоваться на ноде A. Скачивание — через свою ноду:
 
+> **Актуализировано этапом 3.3.** Ниже был описан прямой маршрут `/download/fed/{server}/{file_id}` для всех файлов. Фактически вложения идут **temp-capability моделью, в паритет локальным**: существующий `/download` не имеет auth вовсе, локальные вложения качаются по временным ссылкам. Прямой публичный маршрут остаётся только для **аватаров** (этап 3.4) — они и локально публичны по Guid.
+
 ```
-Клиент B: GET https://{nodeB}/download/fed/{origin_server}/{file_id}   (существующий REST Files + новый маршрут)
-  → Files(B): проверяет право (файл фигурирует во вложении чата, где пользователь — участник)
-  → FederationInternalApi.FetchRemoteFile(origin_server, file_ref)
+Клиент B: FilesApi.GetTempDownloadUrl(fed_files=[{origin_server, file_id}])   (user-токен)
+  → Files(B) → Messages(B).CheckFedFileUserAccess(user, origin_server, file_id)
+      → «пользователь — участник чата с этим вложением» + снапшот метаданных (3.1)
+  → TempFile со ссылкой на remote-файл → обычная ссылка /download/{tempId}
+
+Клиент B: GET https://{nodeB}/download/{tempId}                              (без auth, capability)
+  → Files(B): temp-запись федеративная → fed-ветка
+  → FederationInternalApi.FetchRemoteFile(origin_server, file_id, range)
   → Federation(B) → S2S FetchFile → Federation(A)
-      → проверка подписи + проверка привязки: file_id действительно вложение
-        федеративного чата, в котором участвует нода B
-      → Files(A) → S3 → stream chunks обратно
-  → стрим прокидывается клиенту B (без буферизации на диск, chunked)
+      → проверка подписи + rate limit + Messages(A).CheckFileFederationAccess:
+        file_id действительно вложение fed-чата, в котором участвует нода B
+      → Files(A) → S3 (с Range) → stream chunks обратно
+  → стрим прокидывается клиенту B (без буферизации на диск, chunked, с поддержкой Range)
 ```
 
-- Превью — тот же путь с `preview_file_id` (маленькие, быстрые).
-- Принимающая нода сверяет фактический объём стрима со снапшотом `size_bytes` и **обрывает стрим при превышении** — защита от ресурсного злоупотребления со стороны origin.
+- Превью — тот же путь с `preview_file_id` (маленькие, быстрые). **Кеша превью нет** — решение владельца (закрывает открытый вопрос №19): превью тянутся с origin при каждом обращении, как полные файлы; при недоступном origin — placeholder (этап 3.5).
+- Принимающая нода сверяет фактический объём стрима со снапшотом `size_bytes` и **обрывает стрим при превышении** — защита от ресурсного злоупотребления со стороны origin. Защита двухуровневая: Federation(B) режет по заявленному origin'ом `total_size`, Files(B) — строже, по снапшоту из temp-записи.
+- **Range поддержан** (перемотка видео): один диапазон, `206 Partial Content` + `Content-Range`; неудовлетворимый → `416`. Множественные диапазоны (`multipart/byteranges`) не поддерживаются.
 - Загрузка (upload) не меняется вообще: автор всегда загружает на **свою** ноду через существующий `GetUploadUrl` + `POST /upload/{uploadId}`; в федеративное событие уходит готовый `FederatedFileRef`.
 
 ## Права доступа на стороне origin

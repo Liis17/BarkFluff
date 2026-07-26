@@ -16,6 +16,7 @@ public class GetTempDownloadUrlCommandHandlerTests : IAsyncLifetime
         _handler = new GetTempDownloadUrlCommandHandler(
             _helper.UploadedFilesStorage,
             _helper.TempFilesStorage,
+            Mock.Of<BarkFluff.Proto.Messages.MessagesServerApi.MessagesServerApiClient>(),
             new RunSettings { Http1Port = 7005 },
             config.Object,
             TestHelper.CreateLogger<GetTempDownloadUrlCommandHandler>());

@@ -108,3 +108,45 @@ Server-streaming RPC в `FilesServerApi`. Зовёт только [[Backend/Fede
 - Контракт: `rangeFrom` inclusive, `rangeTo` **exclusive**; `AWS SDK ByteRange` inclusive с обеих сторон, конверсия внутри.
 - Полный размер объекта берётся из заголовка `Content-Range` (`bytes a-b/TOTAL`): при range-запросе `ContentLength` — это длина куска, а не файла. Без range — `ContentLength`.
 - Возвращает `S3ObjectRange(Content, TotalSize, ContentType)`; поток по-прежнему владеет `GetObjectResponse` (возврат HTTP-соединения в пул).
+
+## Скачивание federated-вложений через свою ноду (этап 3.3, docs/rearch/phase-3/step-3.3-fed-download.md)
+
+Клиент ноды B качает вложение с ноды A **через свою ноду** — прямого доступа к чужой ноде у него нет и не должно быть.
+
+### Модель — temp-capability, в паритет локальным вложениям
+
+Изначальный план фазы предполагал прямой маршрут `/download/fed/{server}/{fileId}`. Фактически существующий `/download` **не имеет auth вообще**: локальные вложения качаются по временным capability-ссылкам. Fed-вложения идут тем же путём, иначе в системе появились бы две разные модели доступа к одному и тому же типу данных.
+
+```
+GetTempDownloadUrl(fed_files=[{origin_server, file_id}])   ← user-токен
+  → Messages.CheckFedFileUserAccess: пользователь — участник чата с этим вложением?
+  → TempFile { OriginServer, FileName, SizeBytes, AttachmentType }   ← снапшот 3.1
+  → обычная ссылка /download/{tempId}
+
+GET /download/{tempId}                                     ← без auth, capability
+  → temp-запись федеративная → fed-ветка
+  → Federation.FetchRemoteFile → origin → S3
+```
+
+Прямой публичный маршрут остаётся только для **аватаров** (этап 3.4) — они и локально публичны по Guid.
+
+**Недоступное вложение просто не попадает в ответ** `GetTempDownloadUrl` — ровно та же семантика, что у ненайденного локального `file_id`. Отдельной ошибки нет намеренно: иначе перебором `(origin, file_id)` можно было бы выяснять, что существует на чужих нодах.
+
+### Fed-ветка скачивания (`FederatedDownloadService`)
+
+Хелпер `File(...)` не подходит: поток приходит чанками с чужой ноды и **не seekable**, а Range нужен (перемотка видео). Поэтому заголовки и тело пишутся в `Response` вручную.
+
+- **Range** (`ByteRangeHeader`): один диапазон — `bytes=a-b`, `bytes=a-`, `bytes=-N`. Корректный → `206` + `Content-Range` + `Accept-Ranges`; вне файла → `416`; **некорректный синтаксис → отдаём целиком** (RFC 9110 разрешает игнорировать битый Range — это лучше, чем 416 на каждую опечатку). Множественные диапазоны не поддерживаются.
+- **Отсечение по объёму (риск №44, второй уровень):** считаем отданные байты и рвём соединение при превышении снапшота. Federation уже режет по заявленному origin'ом `total_size` (3.2) — здесь строже, по тому, что мы сами записали при импорте сообщения. Заголовки к этому моменту уже ушли, корректного кода ошибки не осталось — поэтому именно `Abort()`.
+- **`Content-Type`** — из первого чанка (origin знает реальный тип из S3), fallback по имени из снапшота.
+- **`Content-Disposition`** — имя пришло с чужой ноды, поэтому санитизируется: убирается путь (traversal) и всё, что может разорвать заголовок (CR/LF, кавычки, управляющие символы); `.`/`..` после `GetFileName` отбрасываются.
+- **Без буферизации**: чанк пришёл — сразу ушёл в `Response.Body` с flush; `HttpContext.RequestAborted` пробрасывается в gRPC-вызов.
+- **Кеша содержимого и превью нет** — решение владельца: каждое обращение тянет байты с origin заново.
+
+### Конфигурация Files
+
+`MessagesService:Host/Token` (проверка доступа) и `FederationService:Host/Token` (проксирование байтов) — бакет `ServiceId.Files = 5`, миграция `20260728050000_AddFilesFederationConfiguration`.
+
+### Метрики
+
+`fed_downloads`, `fed_download_bytes_total`, `fed_download_size_exceeded`.

@@ -60,7 +60,15 @@ service FilesServerApi {
 }
 
 message GetTempDownloadUrlRequest {
-  repeated string file_ids = 1; // Идентификаторы файлов
+  repeated string file_ids = 1; // Идентификаторы локальных файлов
+  repeated FedFileRef fed_files = 2; // federated-вложения (этап 3.3); байты живут на origin
+}
+
+// Ссылка на federated-вложение: пара (нода-владелец, файл). file_id уникален только
+// в пределах своей ноды, поэтому без origin_server он не адресует ничего.
+message FedFileRef {
+  string origin_server = 1;
+  string file_id = 2;
 }
 
 message GetTempDownloadUrlResponse {

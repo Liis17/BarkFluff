@@ -43,6 +43,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` **либо** `user_uuid` + `chat_ids[]` → подмножество, где состоит) + федеративный контекст чатов и `requester_uuid` (этап 4.1). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMembershipContext`. Потребители — [[Backend/Onliner]] (typing) и [[Backend/Federation]] (валидация входящего typing) |
 | `CheckFederatedPresenceAccess` | Service-only: подмножество наших `user_uuids`, чей presence разрешено отдавать ноде `requesting_server` (этап 4.1). Зовёт только [[Backend/Federation]] своей ноды |
 | `CheckFileFederationAccess` | Service-only: разрешено ли отдать файл ноде `requesting_server` (этап 3.2) — file_id должен быть во вложении активного fed-чата с этой нодой. Только НАШИ файлы (`OriginServer == null`). Зовёт только [[Backend/Federation]] своей ноды |
+| `CheckFedFileUserAccess` | Service-only: вправе ли ПОЛЬЗОВАТЕЛЬ скачать federated-вложение (этап 3.3) + снапшот метаданных. Ищет и в forwarded-вложениях. Зовёт [[Backend/Files]] при выдаче capability-ссылки |
 | `GetChatMemberIds` | Service-only: все `UserId` участников чата по `ChatId`. Невалидный Guid → пустой список. Потребитель — [[Backend/Calls]] (ринг группового звонка) |
 | `PostCallSystemMessage` | Service-only: пишет системное сообщение об итоге звонка (`CallSystemResult`: Ended/Missed/Rejected) в существующий чат — групповой по `ChatId` или личный по паре Caller/Callee (чат не создаётся, если его нет). Публикует `NewMessageEvent`. Потребитель — [[Backend/Calls]] |
 | `PinMessage` | Закрепление сообщения в чате. Любой участник чата. Лимит: 100 закрепов на чат. Системное сообщение + `MessagePinnedEvent`. Idempotent при повторе |
@@ -368,3 +369,18 @@ Forwarded-вложения в снапшот не попадают: forward-ст
 - Аватары этим RPC **не обслуживаются**: `UserAvatar` не является вложением сообщения, у него своя ветка по `AvatarVisibility` (этап 3.4).
 
 Это первый из двух независимых уровней доступа; второй — проверка пользователя на принимающей ноде (этап 3.3). Ни один не доверяет другому.
+
+### `CheckFedFileUserAccess` — авторизация файла на уровне пользователя (этап 3.3)
+
+Второй, независимый от origin уровень: origin решает «этой ноде можно» (`CheckFileFederationAccess`, 3.2), мы — «этому пользователю можно». Ни один не доверяет другому.
+
+Право даёт участие в чате, где лежит вложение. Ищем в двух местах:
+
+1. обычные вложения — по паре `(OriginServer, FileId)`; совпадение `file_id` с локальным файлом доступа **не** даёт;
+2. **форварднутые** — форварднувший пользователь легитимно видел файл, значит получатель форварда должен уметь его открыть.
+
+Вместе с ответом отдаётся снапшот (3.1): имя для `Content-Disposition`, размер для отсечения по объёму — чтобы скачивание не ходило в Messages второй раз. У форварднутой копии имени нет (снапшот имени хранится только у оригинала).
+
+Удалённые сообщения исключены.
+
+> **Отклонения от плана 3.3.** (1) План предполагал, что forwarded-вложения лежат в jsonb и их придётся искать seq scan'ом — фактически это обычная таблица `ForwardedMessageAttachment` с FK, запрос обычный. (2) Форварднутая копия не несла `OriginServer` (3.1 форварды намеренно не трогал), из-за чего точное сопоставление forwarded fed-вложения с его origin было невозможно — колонка добавлена в 3.3 (`20260728030000_AddForwardedAttachmentOriginServer`) и заполняется при форварде.
