@@ -21,6 +21,11 @@ public class ContainerStatusDto
     public string Image { get; set; } = string.Empty;
 
     /// <summary>
+    /// Digest образа в Docker Registry
+    /// </summary>
+    public string? ImageDigest { get; set; }
+
+    /// <summary>
     /// Статус контейнера (running, stopped, restarting, paused, exited, dead)
     /// </summary>
     public string State { get; set; } = string.Empty;

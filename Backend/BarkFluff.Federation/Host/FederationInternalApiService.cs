@@ -37,6 +37,8 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
     private readonly TypingCoalescer _typingCoalescer;
     private readonly PeerCapabilityCache _peerCapabilities;
     private readonly MetricsCollector _metrics;
+    private readonly FederatedFileOptions _fileOptions;
+    private readonly ILogger<FederationInternalApiService> _logger;
 
     public FederationInternalApiService(
         FederationContext context,
@@ -52,8 +54,12 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         FederationSwitch federationSwitch,
         TypingCoalescer typingCoalescer,
         PeerCapabilityCache peerCapabilities,
-        MetricsCollector metrics)
+        MetricsCollector metrics,
+        FederatedFileOptions fileOptions,
+        ILogger<FederationInternalApiService> logger)
     {
+        _fileOptions = fileOptions;
+        _logger = logger;
         _presenceInterest = presenceInterest;
         _presenceOptions = presenceOptions;
         _federationSwitch = federationSwitch;
@@ -100,6 +106,95 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         _presenceInterest.Set(request.InstanceId, uuids);
 
         return Task.FromResult(new SetPresenceInterestResponse { AcceptedCount = uuids.Count });
+    }
+
+    // Принимающая сторона скачивания (этап 3.2): Files своей ноды → сюда → S2S на origin.
+    // Deadline на весь вызов НЕ ставим — стрим большого файла законно долгий; вместо этого
+    // idle-надзор: молчание origin дольше RemoteFileIdleTimeout обрывает стрим.
+    public override async Task FetchRemoteFile(
+        FetchRemoteFileRequest request,
+        IServerStreamWriter<FetchFileChunk> responseStream,
+        ServerCallContext context)
+    {
+        if (!_federationSwitch.IsActive)
+        {
+            throw new FederationNotConfiguredException();
+        }
+
+        var server = await _serverResolver.ResolveAsync(request.ServerName, context.CancellationToken);
+        if (server is null)
+        {
+            _metrics.Increment("remote_file_fetches.not_resolved");
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "нода неизвестна или заблокирована"));
+        }
+
+        using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        idleCts.CancelAfter(_fileOptions.RemoteFileIdleTimeout);
+
+        long totalSize = 0;
+        long received = 0;
+
+        try
+        {
+            var invoker = await _s2sChannelFactory.GetInvokerAsync(request.ServerName, idleCts.Token);
+            var client = new FederationS2SApi.FederationS2SApiClient(invoker);
+
+            using var call = client.FetchFile(
+                new FetchFileRequest
+                {
+                    FileId = request.FileId,
+                    RangeFrom = request.RangeFrom,
+                    RangeTo = request.RangeTo,
+                },
+                cancellationToken: idleCts.Token);
+
+            await foreach (var chunk in call.ResponseStream.ReadAllAsync(idleCts.Token))
+            {
+                // Перезаряжаем idle-таймер на каждом чанке: медленный, но живой origin допустим,
+                // молчащий — нет.
+                idleCts.CancelAfter(_fileOptions.RemoteFileIdleTimeout);
+
+                if (chunk.TotalSize > 0)
+                {
+                    totalSize = chunk.TotalSize;
+                }
+
+                received += chunk.Data.Length;
+
+                // Защита №44 (первый уровень): origin не может прислать больше, чем сам заявил.
+                if (totalSize > 0 && received > totalSize)
+                {
+                    _metrics.Increment("remote_file_size_mismatch");
+                    throw new RpcException(new Status(
+                        StatusCode.Aborted, "origin прислал больше байт, чем заявил"));
+                }
+
+                await responseStream.WriteAsync(chunk, context.CancellationToken);
+            }
+
+            _metrics.Increment("remote_file_fetches.ok");
+            _metrics.Add("remote_file_bytes_in", received);
+        }
+        catch (RpcException ex) when (ex.StatusCode is StatusCode.PermissionDenied or StatusCode.NotFound)
+        {
+            // Решение origin пробрасываем как есть — вызывающий отличает «нельзя» от «нет файла».
+            _metrics.Increment("remote_file_fetches.denied");
+            throw;
+        }
+        catch (OperationCanceledException) when (!context.CancellationToken.IsCancellationRequested)
+        {
+            // Сработал idle-надзор, а не отмена вызывающим.
+            _metrics.Increment("remote_file_fetches.idle_timeout");
+            throw new RpcException(new Status(StatusCode.Unavailable, "origin замолчал"));
+        }
+        catch (Exception ex) when (ex is not RpcException)
+        {
+            // Сеть/TLS/резолв — временная недоступность; HTTP-код подберёт этап 3.5.
+            _metrics.Increment("remote_file_fetches.error");
+            _logger.LogWarning(ex, "Не удалось скачать файл {FileId} с ноды {Server}",
+                request.FileId, request.ServerName);
+            throw new RpcException(new Status(StatusCode.Unavailable, "origin недоступен"));
+        }
     }
 
     // Исходящий typing (этап 4.4). Fire-and-forget: ни ретраев, ни outbox, ни персиста —

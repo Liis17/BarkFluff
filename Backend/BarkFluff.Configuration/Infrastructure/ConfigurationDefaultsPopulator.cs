@@ -384,6 +384,13 @@ public class ConfigurationDefaultsPopulator
                 "TypingRateLimitPerOriginPerMinute" => "600",
                 // Heartbeat идёт каждые 4–5с — без кеша каждый стоил бы двух gRPC-вызовов.
                 "TypingValidationCacheSeconds" => "30",
+                // --- скачивание federated-файлов (этап 3.2) ---
+                // Каждый запрос — чтение из S3 и исходящий трафик, поэтому бакет строгий.
+                "FetchFileRateLimitPerOrigin" => "30",
+                // Установление соединения — быстро; сам стрим большого файла законно долгий.
+                "S2SConnectTimeout" => "10",
+                // Молчание origin внутри стрима; перезаряжается на каждом чанке.
+                "RemoteFileIdleTimeout" => "60",
                 _ => null
             };
 

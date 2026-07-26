@@ -109,6 +109,11 @@ public sealed class FederationTestHost : IAsyncDisposable
                     services.AddSingleton<PresenceOptions>();
                     services.AddSingleton<IncomingPresenceRegistry>();
 
+                    // Скачивание federated-файлов (этап 3.2) — те же рассуждения: FetchFile
+                    // в этих тестах не зовётся, но активация сервиса требует регистрации.
+                    services.AddSingleton<IFetchFileRateLimiter>(new FakeFetchFileRateLimiter());
+                    services.AddSingleton(Mock.Of<BarkFluff.Proto.Files.FilesServerApi.FilesServerApiClient>());
+
                     // Typing-мост (этап 4.4) — лимитер без Redis, кеш валидации in-memory.
                     services.AddSingleton<ITypingRateLimiter>(new FakeTypingRateLimiter());
                     services.AddSingleton<TypingValidationCache>();

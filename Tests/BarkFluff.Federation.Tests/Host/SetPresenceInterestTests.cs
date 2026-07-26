@@ -55,7 +55,9 @@ public class SetPresenceInterestTests
                 configuration,
                 new MetricsCollector(),
                 NullLogger<PeerCapabilityCache>.Instance),
-            new MetricsCollector());
+            new MetricsCollector(),
+            new FederatedFileOptions(configuration),
+            NullLogger<FederationInternalApiService>.Instance);
 
         return new Harness(service, registry);
     }

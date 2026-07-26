@@ -5,6 +5,7 @@ using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
@@ -35,6 +36,8 @@ public class DeliverEventsTests
             TestHelpers.CreateFederationSwitch(),
             new IncomingPresenceRegistry(),
             TestHelpers.CreatePresenceOptions(),
+            new FakeFetchFileRateLimiter(),
+            Mock.Of<FilesServerApi.FilesServerApiClient>(),
             new FakeTypingRateLimiter(),
             new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
@@ -58,6 +61,8 @@ public class DeliverEventsTests
             TestHelpers.CreateFederationSwitch(),
             new IncomingPresenceRegistry(),
             TestHelpers.CreatePresenceOptions(),
+            new FakeFetchFileRateLimiter(),
+            Mock.Of<FilesServerApi.FilesServerApiClient>(),
             new FakeTypingRateLimiter(),
             new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),

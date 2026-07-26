@@ -7,6 +7,7 @@ using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Navigator;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Onliner;
@@ -105,6 +106,10 @@ public class Program
         builder.Services.AddHostedService<PresenceStreamManager>();
 
         // Typing-мост (этап 4.4): coalescing на исходящем пути, лимит и кеш валидации — на входящем.
+        // Скачивание federated-файлов (этап 3.2).
+        builder.Services.AddSingleton<FederatedFileOptions>();
+        builder.Services.AddSingleton<IFetchFileRateLimiter, FetchFileRateLimiter>();
+
         builder.Services.AddSingleton<TypingCoalescer>();
         builder.Services.AddSingleton<TypingValidationCache>();
         builder.Services.AddSingleton<ITypingRateLimiter, TypingRateLimiter>();
@@ -126,6 +131,13 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["MessagesService:Host"]!);
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"] ?? string.Empty))
+          .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        // gRPC-клиент к Files: FetchFileStream — отдача содержимого файла ноде-партнёру (этап 3.2).
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["FilesService:Host"]!);
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"] ?? string.Empty))
           .AddInterceptor(() => new ExceptionClientInterceptor());
 
         // gRPC-клиент к Onliner: GetLocalPresence (отдача статусов партнёру) и

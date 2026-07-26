@@ -3,6 +3,7 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
@@ -32,6 +33,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly FederationSwitch _federationSwitch;
     private readonly IncomingPresenceRegistry _incomingPresence;
     private readonly PresenceOptions _presenceOptions;
+    private readonly IFetchFileRateLimiter _fetchFileRateLimiter;
+    private readonly FilesServerApi.FilesServerApiClient _filesClient;
     private readonly ITypingRateLimiter _typingRateLimiter;
     private readonly TypingValidationCache _typingValidationCache;
     private readonly MetricsCollector _metrics;
@@ -48,6 +51,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         FederationSwitch federationSwitch,
         IncomingPresenceRegistry incomingPresence,
         PresenceOptions presenceOptions,
+        IFetchFileRateLimiter fetchFileRateLimiter,
+        FilesServerApi.FilesServerApiClient filesClient,
         ITypingRateLimiter typingRateLimiter,
         TypingValidationCache typingValidationCache,
         MetricsCollector metrics,
@@ -63,6 +68,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         _federationSwitch = federationSwitch;
         _incomingPresence = incomingPresence;
         _presenceOptions = presenceOptions;
+        _fetchFileRateLimiter = fetchFileRateLimiter;
+        _filesClient = filesClient;
         _typingRateLimiter = typingRateLimiter;
         _typingValidationCache = typingValidationCache;
         _metrics = metrics;
@@ -147,6 +154,77 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             _incomingPresence.Remove(subscription.Id);
             _metrics.Increment("presence_streams_closed");
         }
+    }
+
+    // Origin-сторона скачивания файла (этап 3.2). XFed уже проверил подпись запроса.
+    // Порядок проверок — от дешёвых к дорогим: блоклист и rate limit отсекают флуд до того,
+    // как он оплачивается нашими Messages и S3.
+    public override async Task FetchFile(
+        FetchFileRequest request,
+        IServerStreamWriter<FetchFileChunk> responseStream,
+        ServerCallContext context)
+    {
+        if (!_federationSwitch.IsActive)
+        {
+            throw new FederationNotConfiguredException();
+        }
+
+        var origin = context.UserState.TryGetValue("xfed-origin", out var originObj) ? originObj as string : null;
+        if (string.IsNullOrEmpty(origin))
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "origin не определён"));
+        }
+
+        if (await IsBlockedAsync(origin, context.CancellationToken))
+        {
+            _metrics.Increment("fetchfile_requests.denied");
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "нода заблокирована"));
+        }
+
+        if (!await _fetchFileRateLimiter.TryConsumeAsync(origin))
+        {
+            // Каждый запрос — чтение из S3 и исходящий трафик: флуд здесь дороже всего (№20/21).
+            _metrics.Increment("fetchfile_requests.rate_limited");
+            throw new RpcException(new Status(StatusCode.ResourceExhausted, "лимит запросов файлов исчерпан"));
+        }
+
+        // Авторизация на уровне НОДЫ: знание file_id прав не даёт (этап 3.2).
+        // Проверяем ДО начала стрима — отказ должен быть статусом, а не оборванным потоком.
+        var access = await _messagesClient.CheckFileFederationAccessAsync(
+            new CheckFileFederationAccessRequest { FileId = request.FileId, RequestingServer = origin },
+            cancellationToken: context.CancellationToken);
+
+        if (!access.Allowed)
+        {
+            _metrics.Increment("fetchfile_requests.denied");
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "файл недоступен"));
+        }
+
+        using var call = _filesClient.FetchFileStream(
+            new FetchFileStreamRequest
+            {
+                FileId = request.FileId,
+                RangeFrom = request.RangeFrom,
+                RangeTo = request.RangeTo,
+            },
+            cancellationToken: context.CancellationToken);
+
+        long bytesOut = 0;
+
+        await foreach (var chunk in call.ResponseStream.ReadAllAsync(context.CancellationToken))
+        {
+            await responseStream.WriteAsync(new FetchFileChunk
+            {
+                Data = chunk.Data,
+                TotalSize = chunk.TotalSize,
+                ContentType = chunk.ContentType,
+            }, context.CancellationToken);
+
+            bytesOut += chunk.Data.Length;
+        }
+
+        _metrics.Increment("fetchfile_requests.ok");
+        _metrics.Add("fetchfile_bytes_out", bytesOut);
     }
 
     // Приём typing от ноды-партнёра (этап 4.4). XFed уже проверил подпись запроса.

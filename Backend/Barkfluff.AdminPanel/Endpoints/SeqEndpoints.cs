@@ -425,7 +425,7 @@ public static class SeqEndpoints
 
                 var versionStatus = container is null
                     ? new ImageVersionStatusDto()
-                    : await dockerRegistryService.GetVersionStatusAsync(container.Image);
+                    : await dockerRegistryService.GetVersionStatusAsync(container.Image, container.ImageDigest);
 
                 return new
                 {

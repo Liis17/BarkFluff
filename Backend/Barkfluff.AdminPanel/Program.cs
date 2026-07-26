@@ -68,6 +68,7 @@ public class Program
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
+        builder.Services.AddMemoryCache();
 
         builder.Services.AddHttpClient<DockerRegistryService>(client =>
         {

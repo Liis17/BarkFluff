@@ -45,6 +45,8 @@
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Client" />
         <!-- Этап 4.3: OnlinerServerApi — GetLocalPresence/UpsertRemoteStatus (+ InjectRemoteTyping в 4.4). -->
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\onliner_api.proto" GrpcServices="Client" />
+        <!-- Этап 3.2: FilesServerApi.FetchFileStream — отдача содержимого файла ноде-партнёру. -->
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Client" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
     </ItemGroup>
 
