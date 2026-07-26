@@ -72,6 +72,28 @@ public class TokenService
         }
     }
 
+    /// <summary>
+    /// Registers an alert for a new client environment at most once per day.
+    /// </summary>
+    public bool TryRegisterSecurityAlert(Guid tokenId, string fingerprint)
+    {
+        var token = _db.Tokens.FindById(tokenId);
+        if (token == null)
+            return false;
+
+        var wasRecentlyAlertedForSameEnvironment =
+            token.LastSecurityAlertFingerprint == fingerprint &&
+            token.LastSecurityAlertAt >= DateTime.UtcNow.AddDays(-1);
+
+        if (wasRecentlyAlertedForSameEnvironment)
+            return false;
+
+        token.LastSecurityAlertFingerprint = fingerprint;
+        token.LastSecurityAlertAt = DateTime.UtcNow;
+        _db.Tokens.Update(token);
+        return true;
+    }
+
     public bool DeleteToken(Guid tokenId)
     {
         return _db.Tokens.Delete(tokenId);

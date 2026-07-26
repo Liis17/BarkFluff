@@ -67,11 +67,29 @@ public static class AuthEndpoints
                 id = token.Id,
                 name = token.Name,
                 adminUsername = token.AdminUsername,
+                hasTelegramAvatar = token.ApprovedByTelegramUserId.HasValue,
                 createdAt = token.CreatedAt,
                 lastActivity = token.LastActivity
             });
         })
         .WithName("GetCurrentToken")
+        .WithOpenApi();
+
+        group.MapGet("/me/avatar", async (
+            HttpContext context,
+            TelegramBotService telegramBotService,
+            CancellationToken cancellationToken) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken token || !token.ApprovedByTelegramUserId.HasValue)
+                return Results.NotFound();
+
+            var photo = await telegramBotService.GetProfilePhotoAsync(token.ApprovedByTelegramUserId.Value, cancellationToken);
+            if (photo == null)
+                return Results.NotFound();
+
+            return Results.File(photo, "image/jpeg");
+        })
+        .WithName("GetCurrentAdminTelegramAvatar")
         .WithOpenApi();
 
         group.MapPost("/logout", (HttpContext context) =>
@@ -203,16 +221,6 @@ public static class AuthEndpoints
 
     private static string? GetIpAddress(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-        {
-            return forwardedFor.FirstOrDefault()?.Split(',').FirstOrDefault()?.Trim();
-        }
-
-        if (context.Request.Headers.TryGetValue("X-Real-IP", out var realIp))
-        {
-            return realIp.FirstOrDefault();
-        }
-
         return context.Connection.RemoteIpAddress?.ToString();
     }
 }
