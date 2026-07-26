@@ -3,6 +3,8 @@ using BarkFluff.Bots.Features.EditBotMessage;
 using BarkFluff.Bots.Features.GetBotFile;
 using BarkFluff.Bots.Features.GetBotUserInfo;
 using BarkFluff.Bots.Features.GetMe;
+using BarkFluff.Bots.Features.GetMyCommands;
+using BarkFluff.Bots.Features.SetMyCommands;
 using BarkFluff.Bots.Features.SendBotMessage;
 using BarkFluff.Bots.Mapping;
 using BarkFluff.Bots.Persistence.Services;
@@ -81,6 +83,16 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
             UserId = request.UserCase == GetUserInfoRequest.UserOneofCase.UserId ? request.UserId : null,
             Username = request.UserCase == GetUserInfoRequest.UserOneofCase.Username ? request.Username : null,
         }, context.CancellationToken);
+
+    public override Task<SetMyCommandsResponse> SetMyCommands(SetMyCommandsRequest request, ServerCallContext context)
+        => _mediator.Send(new SetMyCommandsCommand
+        {
+            BotId = _callerContext.Bot.Id,
+            Commands = request.Commands.Select(c => c.ToDomain()).ToList(),
+        }, context.CancellationToken);
+
+    public override Task<GetMyCommandsResponse> GetMyCommands(GetMyCommandsRequest request, ServerCallContext context)
+        => _mediator.Send(new GetMyCommandsQuery { BotId = _callerContext.Bot.Id }, context.CancellationToken);
 
     public override async Task<EditMessageResponse> EditMessage(EditMessageRequest request, ServerCallContext context)
     {

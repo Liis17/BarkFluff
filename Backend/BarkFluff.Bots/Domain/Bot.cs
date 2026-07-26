@@ -21,5 +21,8 @@ public class Bot
     /// <summary>Последний подтверждённый update_id (getUpdates offset)</summary>
     public long LastConfirmedUpdateId { get; set; }
 
+    /// <summary>Команды бота (setMyCommands) — jsonb-массив <see cref="BotCommand"/>; NULL = команд нет</summary>
+    public string? Commands { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

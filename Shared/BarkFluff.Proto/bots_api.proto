@@ -85,6 +85,12 @@ service BotsExternalApi {
   // Удалить своё сообщение (бот обязан быть автором)
   rpc DeleteMessage(DeleteMessageRequest) returns(DeleteMessageResponse);
 
+  // Заменить список команд бота
+  rpc SetMyCommands(SetMyCommandsRequest) returns(SetMyCommandsResponse);
+
+  // Текущий список команд бота
+  rpc GetMyCommands(GetMyCommandsRequest) returns(GetMyCommandsResponse);
+
   // Подписка на входящие: backlog начиная с offset + live-стрим.
   // Одновременно допускается один активный стрим/поток getUpdates на бота.
   rpc SubscribeUpdates(SubscribeUpdatesRequest) returns(stream BotUpdate);
@@ -129,6 +135,23 @@ message GetUserInfoResponse {
   string bio = 5;          // био
   string avatar_url = 6;   // ссылка на аватарку
   bool is_bot = 7;         // является ли ботом
+}
+
+message BotCommand {
+  string command = 1;     // имя без слэша: a-z, 0-9, _ (1–32 символа)
+  string description = 2; // описание команды (1–256 символов)
+}
+
+message SetMyCommandsRequest {
+  repeated BotCommand commands = 1; // новый список — заменяет текущий целиком; пустой очищает, не более 100
+}
+
+message SetMyCommandsResponse { }
+
+message GetMyCommandsRequest { }
+
+message GetMyCommandsResponse {
+  repeated BotCommand commands = 1; // текущие команды бота
 }
 
 message EditMessageRequest {
