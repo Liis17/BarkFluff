@@ -63,7 +63,7 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 ### Services
 
 - `DockerService` — управление Docker-контейнерами
-- `DockerRegistryService` — без авторизации читает semver-теги из публичного `docker.barkfluff.com:5000/v2/{repository}/tags/list` и сравнивает их с тегом запущенного BarkFluff-образа. `barkfluff-*-dev` проверяется только в одноимённом dev-репозитории; `latest`, hash и прочие не-semver-теги не участвуют в сравнении.
+- `DockerRegistryService` — без авторизации читает semver-теги из публичного `docker.barkfluff.com:5000/v2/{repository}/tags/list` и сравнивает их с образом запущенного BarkFluff-контейнера. Для `:latest` `DockerService` получает локальный `RepoDigest`, а сервис сопоставляет его с `Docker-Content-Digest` semver-manifest’ов registry. `barkfluff-*-dev` проверяется только в одноимённом dev-репозитории; hash и прочие не-semver-теги не участвуют в сравнении.
 - `SeqService` — проксирование логов из Seq (HttpClient), удаление по фильтру (`Seq.Api`), запись событий в CLEF-формате
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
 - `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. История витрины — 30 дней.
@@ -109,7 +109,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 `Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
-На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Если последний тег выше текущего, строка подсвечивается и помечается «Доступно обновление». Для инфраструктурных, legacy `latest`/hash-образов и недоступного registry версии отображаются как `—`; это не блокирует статус сервисов.
+На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Если последний тег выше текущего, рядом с сервисом показывается warning-бейдж «Обновление» с иконкой. Для `:latest` версия определяется по `RepoDigest`; инфраструктурные, hash-образы без сопоставимого digest и недоступный registry показываются как `—`, не блокируя статус сервисов.
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 

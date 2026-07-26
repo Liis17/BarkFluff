@@ -47,4 +47,10 @@ public class NewMessageEvent
     /// <summary>FID отправителя (@username:servername) — для ChatCreated и подписи remote-отправителя.</summary>
     // SenderDisplayName (отображаемое имя для пушей) заводится в 2.8 — вместе с потреблением.
     public string? SenderFid { get; set; }
+
+    /// <summary>
+    /// Снапшот метаданных вложений (этап 3.1). Заполняется только для fed-чатов; null/пусто —
+    /// вложений нет. Байты не реплицируются, только метаданные.
+    /// </summary>
+    public List<FederatedFileRefInfo>? FederatedAttachments { get; set; }
 }

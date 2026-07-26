@@ -384,6 +384,13 @@ public class ConfigurationDefaultsPopulator
                 "TypingRateLimitPerOriginPerMinute" => "600",
                 // Heartbeat идёт каждые 4–5с — без кеша каждый стоил бы двух gRPC-вызовов.
                 "TypingValidationCacheSeconds" => "30",
+                // --- скачивание federated-файлов (этап 3.2) ---
+                // Каждый запрос — чтение из S3 и исходящий трафик, поэтому бакет строгий.
+                "FetchFileRateLimitPerOrigin" => "30",
+                // Установление соединения — быстро; сам стрим большого файла законно долгий.
+                "S2SConnectTimeout" => "10",
+                // Молчание origin внутри стрима; перезаряжается на каждом чанке.
+                "RemoteFileIdleTimeout" => "60",
                 _ => null
             };
 
@@ -391,6 +398,31 @@ public class ConfigurationDefaultsPopulator
             {
                 return presenceDefault;
             }
+        }
+
+        // --- Files: кап размера аватара remote-пользователя (этап 3.4) ---
+        // У аватара нет снапшота размера (он не вложение сообщения), поэтому объём
+        // ограничивает глобальный кап, а не запись в БД.
+        if (config.Section == "Files" && config.Key == "FedAvatarMaxBytes")
+        {
+            return "20971520"; // 20 МБ
+        }
+
+        // --- Files: Retry-After при недоступном origin (этап 3.5) ---
+        if (config.Section == "Files" && config.Key == "FedRetryAfterSeconds")
+        {
+            return "30";
+        }
+
+        // --- Federation: circuit breaker скачивания per-origin (этап 3.5) ---
+        if (config.Section == "Federation" && config.Key == "RemoteFileCircuitFailures")
+        {
+            return "3";
+        }
+
+        if (config.Section == "Federation" && config.Key == "RemoteFileCircuitOpenSeconds")
+        {
+            return "60";
         }
 
         // --- OnlinerService (inter-service, для Federation: presence/typing-мост) ---

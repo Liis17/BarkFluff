@@ -26,6 +26,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly UserContext _userContext;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<EditMessageCommandHandler> _logger;
 
@@ -43,7 +44,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
 
     public EditMessageCommandHandler(MessagesStorage messagesStorage, ChatsStorage chatsStorage,
         FilesServerApi.FilesServerApiClient filesServerApiClient, UserContext userContext,
-        MessageQueueSender messageQueueSender, MetricsCollector metrics,
+        MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
         ILogger<EditMessageCommandHandler> logger)
     {
         _messagesStorage = messagesStorage;
@@ -51,6 +52,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         _filesServerApiClient = filesServerApiClient;
         _userContext = userContext;
         _messageQueueSender = messageQueueSender;
+        _configuration = configuration;
         _metrics = metrics;
         _logger = logger;
     }
@@ -241,7 +243,12 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
                 federatedId: message.FederatedId,
                 senderUuid: message.SenderUuid,
                 remoteParticipants: remoteParticipants,
-                lastChangeAt: message.LastChangeAt);
+                lastChangeAt: message.LastChangeAt,
+                // Список вложений при правке пересоздаётся целиком (docs/rearch/05).
+                federatedAttachments: Features.Federation.FederatedAttachmentMapper.Build(
+                    message.Content?.Attachments,
+                    filesInfoMap,
+                    _configuration["Federation:ServerName"] ?? string.Empty));
         }
         else
         {

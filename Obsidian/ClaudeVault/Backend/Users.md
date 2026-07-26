@@ -301,3 +301,21 @@ FRIENDS трактуется как NONE до появления сервиса 
 - [[Backend/Files]] — валидация аватара
 - [[Backend/AdminPanel]] — SearchUsersServer, UpdateStorageLimit, SetProfilePictureServer, бадж-управление
 - [[Backend/CloudMessaging]] — GetDevicesWithFirebaseTokens для push-уведомлений
+
+## Аватары в федерации (этап 3.4, docs/rearch/phase-3/step-3.4-remote-avatars.md)
+
+Два новых server-RPC в `UsersServerApi`, по одному на каждую сторону.
+
+### `IsAvatarVisibleToFederation(user_id)` — origin
+
+Правило намеренно совпадает с тем, которым `GetFederatedProfile` (2.1) решает, показывать ли `avatar_file_id`: **профиль виден на сайте И `AvatarVisibility == All`**. `Friends` трактуется как `None`, пока нет сервиса отношений.
+
+Инвариант: если профиль наружу аватар отдал — `FetchFile` его отдаст; если скрыл — откажет **даже по утёкшей ссылке**. Именно поэтому проверяется и `ProfileVisibleOnSite`: при скрытом профиле `GetFederatedProfile` возвращает `found = false`, и файл обязан вести себя так же.
+
+Зовёт [[Backend/Files]] (`CheckFedAvatarAccess`).
+
+### `CheckRemoteAvatarRef(server_name, file_id)` — принимающая сторона
+
+Anti-open-proxy для публичного маршрута `/download/fed/{server}/{fileId}`: пара (нода, файл) обязана фигурировать в `RemoteUsers`. Без этой проверки маршрут проксировал бы **произвольный** файл с любой известной ноды по случайному Guid.
+
+Смена аватара на origin обновляет `RemoteUsers.AvatarFileId` (событие профиля 2.9) — старая ссылка перестаёт проходить проверку. Кешей нет, поэтому поведение согласованное.

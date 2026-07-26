@@ -40,6 +40,7 @@ public class SendMessageCommandHandlerTests
             _chatCache,
             _h.MessagesStorage,
             _queueSender,
+            TestHelper.CreateConfiguration(),
             _h.Metrics,
             TestHelper.CreateLogger<SendMessageCommandHandler>());
     }
@@ -321,6 +322,7 @@ public class SendMessageCommandHandlerTests
             _chatCache,
             _h.MessagesStorage,
             _queueSender,
+            TestHelper.CreateConfiguration(),
             _h.Metrics,
             TestHelper.CreateLogger<SendMessageCommandHandler>());
 

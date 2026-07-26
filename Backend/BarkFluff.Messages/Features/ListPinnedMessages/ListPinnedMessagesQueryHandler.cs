@@ -69,6 +69,12 @@ public class ListPinnedMessagesQueryHandler : IRequestHandler<ListPinnedMessages
 
             foreach (var attachment in message.Content.Attachments)
             {
+                // Federated-вложения рендерятся из снапшота (этап 3.1) — Files не дёргаем.
+                if (attachment.OriginServer is not null)
+                {
+                    continue;
+                }
+
                 if (!string.IsNullOrEmpty(attachment.FileId))
                 {
                     fileIds.Add(attachment.FileId);

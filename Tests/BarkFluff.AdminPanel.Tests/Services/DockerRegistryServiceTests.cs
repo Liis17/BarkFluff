@@ -1,6 +1,7 @@
 using Barkfluff.AdminPanel.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Caching.Memory;
 
 using System.Net;
 using System.Net.Http;
@@ -32,6 +33,27 @@ public class DockerRegistryServiceTests
         await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users-dev:1.0.9");
 
         Assert.Equal("/v2/barkfluff-users-dev/tags/list", requestedPath);
+    }
+
+    [Fact]
+    public async Task GetVersionStatusAsync_DerivesInstalledVersionFromLatestImageDigest()
+    {
+        const string installedDigest = "docker.barkfluff.com:5000/barkfluff-users-dev@sha256:installed";
+        var service = CreateService(request => request.RequestUri?.AbsolutePath switch
+        {
+            "/v2/barkfluff-users-dev/tags/list" => CreateResponse("{\"tags\":[\"1.0.9\",\"1.0.10\",\"latest\"]}"),
+            "/v2/barkfluff-users-dev/manifests/1.0.9" => CreateManifestResponse("sha256:installed"),
+            "/v2/barkfluff-users-dev/manifests/1.0.10" => CreateManifestResponse("sha256:latest"),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        var result = await service.GetVersionStatusAsync(
+            "docker.barkfluff.com:5000/barkfluff-users-dev:latest",
+            installedDigest);
+
+        Assert.Equal("1.0.9", result.CurrentVersion);
+        Assert.Equal("1.0.10", result.LatestVersion);
+        Assert.True(result.UpdateAvailable);
     }
 
     [Theory]
@@ -75,6 +97,23 @@ public class DockerRegistryServiceTests
     }
 
     [Fact]
+    public async Task GetVersionStatusAsync_DoesNotQueryRegistryForLatestWithoutImageDigest()
+    {
+        var requestCount = 0;
+        var service = CreateService(_ =>
+        {
+            requestCount++;
+            return CreateResponse("{\"tags\":[\"1.0.10\"]}");
+        });
+
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users:latest");
+
+        Assert.Equal(0, requestCount);
+        Assert.Null(result.CurrentVersion);
+        Assert.Null(result.LatestVersion);
+    }
+
+    [Fact]
     public async Task GetVersionStatusAsync_ReturnsUnavailableStatusWhenRegistryHasNoSemverTags()
     {
         var service = CreateService("{\"tags\":[\"latest\",\"3331878f5f4f\"]}");
@@ -115,7 +154,29 @@ public class DockerRegistryServiceTests
             BaseAddress = new Uri("https://docker.barkfluff.com:5000")
         };
 
-        return new DockerRegistryService(client, NullLogger<DockerRegistryService>.Instance);
+        return new DockerRegistryService(client, new MemoryCache(new MemoryCacheOptions()), NullLogger<DockerRegistryService>.Instance);
+    }
+
+    private static DockerRegistryService CreateService(Func<HttpRequestMessage, HttpResponseMessage> handler)
+    {
+        var client = new HttpClient(new StubHttpMessageHandler(handler))
+        {
+            BaseAddress = new Uri("https://docker.barkfluff.com:5000")
+        };
+
+        return new DockerRegistryService(client, new MemoryCache(new MemoryCacheOptions()), NullLogger<DockerRegistryService>.Instance);
+    }
+
+    private static HttpResponseMessage CreateResponse(string body) => new()
+    {
+        Content = new StringContent(body)
+    };
+
+    private static HttpResponseMessage CreateManifestResponse(string digest)
+    {
+        var response = CreateResponse("{}");
+        response.Headers.Add("Docker-Content-Digest", digest);
+        return response;
     }
 
     private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler

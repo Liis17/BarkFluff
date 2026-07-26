@@ -3,6 +3,8 @@ using BarkFluff.Messages.Features.ApplyFederatedEdit;
 using BarkFluff.Messages.Features.ApplyFederatedRead;
 using BarkFluff.Messages.Features.CheckChatMembership;
 using BarkFluff.Messages.Features.CheckFederatedPresenceAccess;
+using BarkFluff.Messages.Features.CheckFedFileUserAccess;
+using BarkFluff.Messages.Features.CheckFileFederationAccess;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.EditMessage;
 using BarkFluff.Messages.Features.ExportData;
@@ -113,6 +115,33 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
             UserId = userUuid is null ? request.UserId : null,
             UserUuid = userUuid,
             ChatIds = request.ChatIds
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<CheckFileFederationAccessResponse> CheckFileFederationAccess(
+        CheckFileFederationAccessRequest request,
+        ServerCallContext context)
+    {
+        var query = new CheckFileFederationAccessQuery
+        {
+            FileId = request.FileId,
+            RequestingServer = request.RequestingServer
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<CheckFedFileUserAccessResponse> CheckFedFileUserAccess(
+        CheckFedFileUserAccessRequest request,
+        ServerCallContext context)
+    {
+        var query = new CheckFedFileUserAccessQuery
+        {
+            UserId = request.UserId,
+            OriginServer = request.OriginServer,
+            FileId = request.FileId
         };
 
         return _mediator.Send(query, context.CancellationToken);

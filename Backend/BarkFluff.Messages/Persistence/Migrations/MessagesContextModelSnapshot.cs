@@ -395,6 +395,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                     b2.Property<string>("FileId")
                                         .HasColumnType("text");
 
+                                    b2.Property<string>("FileName")
+                                        .HasColumnType("text");
+
                                     b2.Property<long>("FileSize")
                                         .HasColumnType("bigint");
 
@@ -407,8 +410,20 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                     b2.Property<string>("ForwardedText")
                                         .HasColumnType("text");
 
+                                    b2.Property<int?>("ImageHeight")
+                                        .HasColumnType("integer");
+
+                                    b2.Property<int?>("ImageWidth")
+                                        .HasColumnType("integer");
+
                                     b2.Property<long>("MessageId")
                                         .HasColumnType("bigint");
+
+                                    b2.Property<string>("OriginServer")
+                                        .HasColumnType("text");
+
+                                    b2.Property<string>("PreviewFileId")
+                                        .HasColumnType("text");
 
                                     b2.Property<string>("PreviewUrl")
                                         .HasColumnType("text");
@@ -417,6 +432,8 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                         .HasColumnType("integer");
 
                                     b2.HasKey("Id");
+
+                                    b2.HasIndex("FileId");
 
                                     b2.HasIndex("MessageId");
 
@@ -442,6 +459,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                                             b3.Property<long>("MessageAttachmentId")
                                                 .HasColumnType("bigint");
+
+                                            b3.Property<string>("OriginServer")
+                                                .HasColumnType("text");
 
                                             b3.Property<string>("PreviewUrl")
                                                 .HasColumnType("text");

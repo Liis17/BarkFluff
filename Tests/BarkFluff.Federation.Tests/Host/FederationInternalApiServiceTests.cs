@@ -66,7 +66,10 @@ public class FederationInternalApiServiceTests
                 TestHelpers.CreateFederationSwitch(configuration), new TypingCoalescer(),
                 new PeerCapabilityCache(channelFactory, configuration, new MetricsCollector(),
                     NullLogger<PeerCapabilityCache>.Instance),
-                new MetricsCollector());
+                new MetricsCollector(),
+                new FederatedFileOptions(configuration),
+                new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
+                NullLogger<FederationInternalApiService>.Instance);
         }
 
         public void Dispose()

@@ -151,6 +151,11 @@ FederationOutbox
 | `Federation:TypingDeadlineMs` | deadline S2S-вызова typing, дефолт 2000 |
 | `Federation:TypingRateLimitPerOriginPerMinute` | лимит входящих typing per-origin, дефолт 600 |
 | `Federation:TypingValidationCacheSeconds` | TTL кеша валидации typing, дефолт 30 (отрицательный результат — вдвое короче) |
+| `Federation:FetchFileRateLimitPerOrigin` | лимит запросов файлов с одной ноды в минуту, дефолт 30 (этап 3.2) |
+| `Federation:S2SConnectTimeout` | таймаут установления S2S-соединения, секунд, дефолт 10 |
+| `Federation:RemoteFileIdleTimeout` | максимальное молчание origin внутри файлового стрима, секунд, дефолт 60 |
+| `Federation:RemoteFileCircuitFailures` | порог подряд идущих транспортных неудач до открытия circuit, дефолт 3 (этап 3.5) |
+| `Federation:RemoteFileCircuitOpenSeconds` | сколько circuit держится открытым, дефолт 60 |
 
 ## Метрики (MetricsCollector, как у всех)
 

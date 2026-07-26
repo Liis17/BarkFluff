@@ -3,6 +3,7 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
@@ -32,6 +33,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly FederationSwitch _federationSwitch;
     private readonly IncomingPresenceRegistry _incomingPresence;
     private readonly PresenceOptions _presenceOptions;
+    private readonly IFetchFileRateLimiter _fetchFileRateLimiter;
+    private readonly FilesServerApi.FilesServerApiClient _filesClient;
     private readonly ITypingRateLimiter _typingRateLimiter;
     private readonly TypingValidationCache _typingValidationCache;
     private readonly MetricsCollector _metrics;
@@ -48,6 +51,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         FederationSwitch federationSwitch,
         IncomingPresenceRegistry incomingPresence,
         PresenceOptions presenceOptions,
+        IFetchFileRateLimiter fetchFileRateLimiter,
+        FilesServerApi.FilesServerApiClient filesClient,
         ITypingRateLimiter typingRateLimiter,
         TypingValidationCache typingValidationCache,
         MetricsCollector metrics,
@@ -63,6 +68,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         _federationSwitch = federationSwitch;
         _incomingPresence = incomingPresence;
         _presenceOptions = presenceOptions;
+        _fetchFileRateLimiter = fetchFileRateLimiter;
+        _filesClient = filesClient;
         _typingRateLimiter = typingRateLimiter;
         _typingValidationCache = typingValidationCache;
         _metrics = metrics;
@@ -147,6 +154,107 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             _incomingPresence.Remove(subscription.Id);
             _metrics.Increment("presence_streams_closed");
         }
+    }
+
+    // Origin-сторона скачивания файла (этап 3.2). XFed уже проверил подпись запроса.
+    // Порядок проверок — от дешёвых к дорогим: блоклист и rate limit отсекают флуд до того,
+    // как он оплачивается нашими Messages и S3.
+    public override async Task FetchFile(
+        FetchFileRequest request,
+        IServerStreamWriter<FetchFileChunk> responseStream,
+        ServerCallContext context)
+    {
+        if (!_federationSwitch.IsActive)
+        {
+            throw new FederationNotConfiguredException();
+        }
+
+        var origin = context.UserState.TryGetValue("xfed-origin", out var originObj) ? originObj as string : null;
+        if (string.IsNullOrEmpty(origin))
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "origin не определён"));
+        }
+
+        if (await IsBlockedAsync(origin, context.CancellationToken))
+        {
+            _metrics.Increment("fetchfile_requests.denied");
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "нода заблокирована"));
+        }
+
+        if (!await _fetchFileRateLimiter.TryConsumeAsync(origin))
+        {
+            // Каждый запрос — чтение из S3 и исходящий трафик: флуд здесь дороже всего (№20/21).
+            _metrics.Increment("fetchfile_requests.rate_limited");
+            throw new RpcException(new Status(StatusCode.ResourceExhausted, "лимит запросов файлов исчерпан"));
+        }
+
+        // Авторизация на уровне НОДЫ (этап 3.2/3.4): знание file_id прав не даёт.
+        // Проверяем ДО начала стрима — отказ должен быть статусом, а не оборванным потоком.
+        if (!await IsFileAllowedAsync(request.FileId, origin, context.CancellationToken))
+        {
+            _metrics.Increment("fetchfile_requests.denied");
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "файл недоступен"));
+        }
+
+        using var call = _filesClient.FetchFileStream(
+            new FetchFileStreamRequest
+            {
+                FileId = request.FileId,
+                RangeFrom = request.RangeFrom,
+                RangeTo = request.RangeTo,
+            },
+            cancellationToken: context.CancellationToken);
+
+        long bytesOut = 0;
+
+        await foreach (var chunk in call.ResponseStream.ReadAllAsync(context.CancellationToken))
+        {
+            await responseStream.WriteAsync(new FetchFileChunk
+            {
+                Data = chunk.Data,
+                TotalSize = chunk.TotalSize,
+                ContentType = chunk.ContentType,
+            }, context.CancellationToken);
+
+            bytesOut += chunk.Data.Length;
+        }
+
+        _metrics.Increment("fetchfile_requests.ok");
+        _metrics.Add("fetchfile_bytes_out", bytesOut);
+    }
+
+    /// <summary>
+    /// Две разные ветки доступа к файлу: у аватара она по приватности владельца (этап 3.4),
+    /// у вложения — по общему федеративному чату (этап 3.2). Аватар вообще не является
+    /// вложением сообщения, поэтому chat-проверка к нему неприменима.
+    /// </summary>
+    private async Task<bool> IsFileAllowedAsync(string fileId, string origin, CancellationToken ct)
+    {
+        // Один вызов на старт стрима — кеш намеренно не вводим: приватность должна
+        // действовать немедленно, а не через TTL.
+        try
+        {
+            var fileData = await _filesClient.GetFileDataAsync(
+                new GetFileDataRequest { FileId = fileId }, cancellationToken: ct);
+
+            if (fileData.FileInfo?.Type == UploadFileType.UserAvatar)
+            {
+                var avatarAccess = await _filesClient.CheckFedAvatarAccessAsync(
+                    new CheckFedAvatarAccessRequest { FileId = fileId }, cancellationToken: ct);
+
+                return avatarAccess.Allowed;
+            }
+        }
+        catch (RpcException)
+        {
+            // Файла нет либо Files недоступен — дальше решает обычная ветка (она откажет).
+        }
+
+        var access = await _messagesClient.CheckFileFederationAccessAsync(
+            new CheckFileFederationAccessRequest { FileId = fileId, RequestingServer = origin },
+            cancellationToken: ct);
+
+        return access.Allowed;
     }
 
     // Приём typing от ноды-партнёра (этап 4.4). XFed уже проверил подпись запроса.
@@ -606,6 +714,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             OriginTsMs = sentAtMs,
                             EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                            // Снапшот вложений (этап 3.1) — Messages сохранит его в MessageAttachments.
+                            Attachments = { ToFlat(p.Attachments) },
                         }, cancellationToken: ct);
                         return (EventStatus.Ok, null);
                     }
@@ -621,6 +731,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             OriginServer = origin,
                             EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                            // Список вложений при правке пересоздаётся целиком (docs/rearch/05).
+                            Attachments = { ToFlat(p.Attachments) },
                         }, cancellationToken: ct);
                         return (EventStatus.Ok, null);
                     }
@@ -695,6 +807,21 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         var code = ex.Trailers.GetValue("x-error-code");
         return code ?? ex.StatusCode.ToString();
     }
+
+    // FederatedFileRef (S2S-контракт) → FederatedFileRefFlat (внутренний контракт Messages).
+    // Поля один в один; отдельный тип нужен, чтобы Messages не зависел от federation_api.proto.
+    private static IEnumerable<FederatedFileRefFlat> ToFlat(IEnumerable<FederatedFileRef> refs)
+        => refs.Select(r => new FederatedFileRefFlat
+        {
+            OriginServer = r.OriginServer,
+            FileId = r.FileId,
+            Filename = r.Filename,
+            SizeBytes = r.SizeBytes,
+            AttachmentType = r.AttachmentType,
+            PreviewFileId = r.PreviewFileId,
+            ImageWidth = r.ImageWidth,
+            ImageHeight = r.ImageHeight,
+        });
 
     private static bool PayloadAuthorBelongsToOrigin(FederationEvent evt, string origin)
     {

@@ -359,3 +359,69 @@ Federation(B): свитч → блоклист → rate limit → валидац
 ### Метрики
 
 `typing_out.{ok|error|coalesced|not_resolved|not_configured}`, `typing_in.ok`, `typing_rate_limited.{origin}`, `typing_rejected.{author_not_origin|not_member}`, `typing_peer_unsupported`.
+
+## Скачивание federated-файлов: транспорт и авторизация ноды (этап 3.2, docs/rearch/phase-3/step-3.2-fetchfile-access.md)
+
+Файлы не реплицируются: байты живут только на origin, принимающая нода **проксирует** их по запросу. Клиентского пути здесь ещё нет (3.3) — этап строит транспорт и авторизацию уровня ноды.
+
+```
+Files(B) ──FetchRemoteFile──▶ Federation(B) ──S2S FetchFile──▶ Federation(A)
+                                                                  │
+                              свитч → блоклист → rate limit ──────┤
+                              Messages(A).CheckFileFederationAccess│  ← авторизация НОДЫ
+                                                                  ▼
+                                                   Files(A).FetchFileStream (Range в S3)
+```
+
+### Два независимых уровня доступа
+
+- **Origin авторизует НОДУ**: file_id должен фигурировать во вложении активного fed-чата, участником которого является запрашивающая нода (`CheckFileFederationAccess`, [[Backend/Messages]]).
+- **Принимающая нода авторизует ПОЛЬЗОВАТЕЛЯ** при выдаче ссылки (этап 3.3).
+
+Ни один уровень не доверяет другому.
+
+### Origin-сторона (`FetchFile`)
+
+Порядок проверок — от дешёвых к дорогим, иначе флуд оплачивался бы нашими Messages и S3:
+
+1. `FederationSwitch.IsActive` → `FailedPrecondition`.
+2. Origin в блоклисте → `PermissionDenied`.
+3. **Rate limit per-origin** (`FetchFileRateLimiter`, Redis, минутное окно, `Federation:FetchFileRateLimitPerOrigin`, дефолт 30). Бакет отдельный и строже прочих: каждый запрос — это чтение из S3 и исходящий трафик (риски №20/21).
+4. `CheckFileFederationAccess` → отказ **до начала стрима**: он должен быть статусом, а не оборванным потоком.
+5. `Files.FetchFileStream` → перекладывание чанков в S2S-стрим.
+
+**Ветка аватара (этап 3.4).** Перед chat-проверкой `FetchFile` спрашивает `Files.GetFileData` о типе: `UserAvatar` → `Files.CheckFedAvatarAccess` (приватность владельца), остальное → `Messages.CheckFileFederationAccess` (общий чат). Один вызов на старт стрима; кеш намеренно не вводится — приватность должна действовать немедленно, а не через TTL.
+
+### Принимающая сторона (`FetchRemoteFile`)
+
+- `ServerResolver`: нода неизвестна/заблокирована → `PermissionDenied`.
+- **Deadline на весь вызов не ставится** — стрим большого файла законно долгий. Вместо него: connect-timeout канала (`Federation:S2SConnectTimeout`, дефолт 10с) и **idle-надзор** (`Federation:RemoteFileIdleTimeout`, дефолт 60с), перезаряжаемый на каждом полученном чанке. Медленный, но живой origin допустим; замолчавший — нет.
+- **Защита №44 (первый уровень):** первый чанк несёт `total_size`; как только сумма полученных байт его превысила — стрим рвётся `Aborted` + метрика `remote_file_size_mismatch`. Точная сверка со снапшотом — в 3.3.
+- Маппинг ошибок: `PermissionDenied`/`NotFound` от origin пробрасываются как есть (вызывающий отличает «нельзя» от «нет файла»); сеть/таймаут → `Unavailable` (HTTP-код подберёт 3.5).
+
+### Конфигурация (бакет `ServiceId.Federation = 15`)
+
+| Ключ | Дефолт | Смысл |
+|------|--------|-------|
+| `FilesService:Host` / `Token` | populator | клиент Files (`FetchFileStream`) |
+| `Federation:FetchFileRateLimitPerOrigin` | 30 | запросов файлов с одной ноды в минуту |
+| `Federation:S2SConnectTimeout` | 10 | таймаут установления S2S-соединения |
+| `Federation:RemoteFileIdleTimeout` | 60 | максимальное молчание origin внутри стрима |
+
+Миграция — `20260728020000_AddFederationFileConfiguration`.
+
+### Метрики
+
+`fetchfile_requests.{ok|denied|rate_limited}`, `fetchfile_bytes_out`, `remote_file_fetches.{ok|denied|error|idle_timeout|not_resolved}`, `remote_file_bytes_in`, `remote_file_size_mismatch`.
+
+## Circuit breaker скачивания (этап 3.5, docs/rearch/phase-3/step-3.5-origin-down-ux.md)
+
+Лежащая нода не должна съедать connect-timeout на каждом обращении: после `Federation:RemoteFileCircuitFailures` (дефолт 3) подряд идущих **транспортных** неудач `FetchRemoteFile` к этой ноде отвечает `Unavailable` (`origin_circuit_open`) сразу, не заходя в сеть, на `Federation:RemoteFileCircuitOpenSeconds` (дефолт 60).
+
+**Что считается сбоем.** Только транспорт: сеть, TLS, резолв, connect-timeout, idle-таймаут. Отказ **живой** ноды (`PermissionDenied`, `NotFound`) сбоем **не** является — приватный аватар или чужой файл не значат, что нода недоступна, и не должны блокировать скачивание остальных файлов оттуда же.
+
+**Half-open без отдельного состояния:** по истечении окна `TryEnter` снова пропускает запрос — он и есть пробный. Успех закрывает circuit, неудача открывает его на новое окно.
+
+In-memory, per-instance, без БД: состояние живёт секунды-минуты, рестарт с чистым circuit'ом стоит максимум одного лишнего похода в сеть.
+
+Метрики: `remote_file_circuit_open.{server}`, `remote_file_fetches.circuit_open`.

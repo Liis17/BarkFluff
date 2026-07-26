@@ -5,6 +5,8 @@ using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetStickers;
+using BarkFluff.Files.Features.CheckFedAvatarAccess;
+using BarkFluff.Files.Features.FetchFileStream;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfoServer;
 using BarkFluff.Files.Features.ListStickerPacks;
@@ -31,10 +33,44 @@ namespace BarkFluff.Files.Host;
 public class FilesServerApiService : FilesServerApi.FilesServerApiBase
 {
     private readonly IMediator _mediator;
+    private readonly FetchFileStreamQueryHandler _fetchFileStreamHandler;
 
-    public FilesServerApiService(IMediator mediator)
+    public FilesServerApiService(IMediator mediator, FetchFileStreamQueryHandler fetchFileStreamHandler)
     {
         _mediator = mediator;
+        _fetchFileStreamHandler = fetchFileStreamHandler;
+    }
+
+    // Разрешено ли отдать аватар в федерацию (этап 3.4): своя ветка доступа, по приватности
+    // владельца, а не по членству в чате — аватар не является вложением сообщения.
+    public override Task<CheckFedAvatarAccessResponse> CheckFedAvatarAccess(
+        CheckFedAvatarAccessRequest request,
+        ServerCallContext context)
+    {
+        var command = new CheckFedAvatarAccessCommand { FileId = request.FileId };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    // Стриминг содержимого файла ноде-партнёру (этап 3.2). Не через MediatR: результат — поток.
+    public override Task FetchFileStream(
+        FetchFileStreamRequest request,
+        IServerStreamWriter<FileStreamChunk> responseStream,
+        ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.FileId, out var fileId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "file_id не является UUID"));
+        }
+
+        var query = new FetchFileStreamQuery
+        {
+            FileId = fileId,
+            RangeFrom = request.RangeFrom,
+            RangeTo = request.RangeTo,
+        };
+
+        return _fetchFileStreamHandler.HandleAsync(query, responseStream, context.CancellationToken);
     }
 
     public override Task<GetFileDataResponse> GetFileData(GetFileDataRequest request, ServerCallContext context)

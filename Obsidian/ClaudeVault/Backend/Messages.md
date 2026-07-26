@@ -42,6 +42,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `GetUserAllMessages` | Service-only: экспорт данных пользователя (GDPR) |
 | `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` **либо** `user_uuid` + `chat_ids[]` → подмножество, где состоит) + федеративный контекст чатов и `requester_uuid` (этап 4.1). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMembershipContext`. Потребители — [[Backend/Onliner]] (typing) и [[Backend/Federation]] (валидация входящего typing) |
 | `CheckFederatedPresenceAccess` | Service-only: подмножество наших `user_uuids`, чей presence разрешено отдавать ноде `requesting_server` (этап 4.1). Зовёт только [[Backend/Federation]] своей ноды |
+| `CheckFileFederationAccess` | Service-only: разрешено ли отдать файл ноде `requesting_server` (этап 3.2) — file_id должен быть во вложении активного fed-чата с этой нодой. Только НАШИ файлы (`OriginServer == null`). Зовёт только [[Backend/Federation]] своей ноды |
+| `CheckFedFileUserAccess` | Service-only: вправе ли ПОЛЬЗОВАТЕЛЬ скачать federated-вложение (этап 3.3) + снапшот метаданных. Ищет и в forwarded-вложениях. Зовёт [[Backend/Files]] при выдаче capability-ссылки |
 | `GetChatMemberIds` | Service-only: все `UserId` участников чата по `ChatId`. Невалидный Guid → пустой список. Потребитель — [[Backend/Calls]] (ринг группового звонка) |
 | `PostCallSystemMessage` | Service-only: пишет системное сообщение об итоге звонка (`CallSystemResult`: Ended/Missed/Rejected) в существующий чат — групповой по `ChatId` или личный по паре Caller/Callee (чат не создаётся, если его нет). Публикует `NewMessageEvent`. Потребитель — [[Backend/Calls]] |
 | `PinMessage` | Закрепление сообщения в чате. Любой участник чата. Лимит: 100 закрепов на чат. Системное сообщение + `MessagePinnedEvent`. Idempotent при повторе |
@@ -317,3 +319,68 @@ FederatedChatPeer    { string user_uuid; string server_name; }
 - `requesting_server` канонизируется (`Trim().ToLowerInvariant()`) — `ChatMember.ServerName` хранится уже в канонической форме (2.3).
 
 Это **не** privacy-фильтр: privacy (`OnlineVisibility`) применяет владелец данных — [[Backend/Onliner]], этап 4.2.
+
+## Снапшот метаданных federated-вложений (этап 3.1, docs/rearch/phase-3/step-3.1-file-ref-snapshot.md)
+
+**Файлы между нодами не реплицируются** — байты живут только на origin-ноде. Реплицируется снапшот метаданных, чтобы принимающая нода отрисовала сообщение (имя, размер, тип, превью, размеры картинки) **без единого сетевого похода** на чужую ноду. Сами байты тянутся отдельно и только когда пользователь реально открывает вложение (этапы 3.2/3.3).
+
+### Колонки `MessageAttachments`
+
+| Колонка | Смысл |
+|---------|-------|
+| `OriginServer` | NULL = локальный файл (прежнее поведение), NOT NULL = байты на origin |
+| `FileName` | снапшот имени; у локальных filename по-прежнему из Files при рендере |
+| `PreviewFileId`, `ImageWidth`, `ImageHeight` | остальной снапшот |
+
+Плюс индекс `IX_MessageAttachments_FileId` — проверки доступа к fed-файлу (3.2/3.3) ищут вложение по `FileId`, без него это seq scan по всем вложениям ноды на каждое скачивание. Миграция — `20260728010000_AddFederatedAttachmentSnapshot`, backfill не нужен (существующие строки локальные, новые колонки NULL).
+
+### Исходящий путь
+
+`SendMessageCommandHandler` / `EditMessageCommandHandler` для fed-чата собирают `FederatedFileRefInfo[]` через `Features.Federation.FederatedAttachmentMapper` — **переиспользуя уже полученный ответ `GetFilesData`**, второго вызова ради федерации не делается. Список едет в `NewMessageEvent.FederatedAttachments` / `MessageEditedEvent.FederatedAttachments`, оттуда консюмеры [[Backend/Federation]] маппят его в `FederatedFileRef` S2S-события. Локальные `MessageAttachments` при отправке не меняются: снапшот-колонки заполняются только на приёме.
+
+Forwarded-вложения в снапшот не попадают: forward-структура федерируется внутри самого сообщения и отдельным файловым ref'ом не является.
+
+### Импорт
+
+`FederatedAttachmentImporter` валидирует снапшот и превращает его в строки `MessageAttachments`. Снапшот приходит с чужой ноды, поэтому доверять ему нельзя — всё, что не проходит проверку, отклоняется **permanent** (`FederatedAttachmentInvalidException` → REJECTED), а не RETRY: повторная доставка того же битого события ничего не исправит и только зациклит outbox отправителя.
+
+Проверяется: количество ≤ 10, `origin_server` непустой, `file_id`/`preview_file_id` парсятся как Guid (пустой preview допустим), `0 ≤ size_bytes ≤ 512 МБ`, `attachment_type` — известное значение enum, `filename` ≤ 255 символов.
+
+`ApplyFederatedEdit` **пересоздаёт список целиком** (как локальная правка): старые строки очищаются in-place, новые вставляются. Валидация снапшота идёт до LWW-разрешения — битый снапшот отклоняется независимо от того, выиграет ли эта правка.
+
+### Выдача
+
+`MessageContentMapping`: вложение с `OriginServer != null` собирается **из снапшота**, `filesInfoMap` для него игнорируется даже если там случайно нашёлся тот же `file_id`. `preview_url` не заполняется — превью тянется с origin по требованию, контракт ссылки появится в 3.3.
+
+Батч `GetFilesData` во **всех** путях выдачи фильтрует remote-вложения (`OriginServer == null`): `ListMessages`, `ListChats`, `ListChatAttachments`, `ListPinnedMessages`, `PinMessage`. Files о federated-файлах не спрашивают вообще — их там нет.
+
+`shared.proto`: `MessageAttachment.origin_server = 11` (пусто = локальный) — нужен клиентам (Фаза 5) и temp-выдаче (3.3).
+
+> Побочное наблюдение (не чинилось в этом этапе): при рендере **локальных** вложений `ImageWidth`/`ImageHeight` из `UploadFileInfo` теряются в маппинге. Дефект несвязанный и существовал до федерации.
+
+### `CheckFileFederationAccess` — авторизация файла на уровне ноды (этап 3.2)
+
+Знание `file_id` само по себе прав не даёт. Файл отдаётся ноде-партнёру, только если он вложен в чат с `IsFederated && FederatedStatus == Active`, среди участников которого есть `ChatMember.ServerName == requesting_server`.
+
+- **Только наши файлы** (`OriginServer == null`): файл, пришедший с чужой ноды, мы не реэкспортируем — за ним следует идти на его origin.
+- **Удалённые сообщения исключены**: после репликации delete (2.4) партнёр за таким файлом и не придёт.
+- «Файла нет», «файл только в локальном чате» и «чат с другой нодой» снаружи **неразличимы** — иначе перебором file_id можно было бы выяснять, что у нас есть.
+- `requesting_server` канонизируется (`Trim().ToLowerInvariant()`), запрос — `ChatsStorage.IsFileSharedWithServerAsync`, опирается на индекс `IX_MessageAttachments_FileId` из 3.1.
+- Аватары этим RPC **не обслуживаются**: `UserAvatar` не является вложением сообщения, у него своя ветка по `AvatarVisibility` (этап 3.4).
+
+Это первый из двух независимых уровней доступа; второй — проверка пользователя на принимающей ноде (этап 3.3). Ни один не доверяет другому.
+
+### `CheckFedFileUserAccess` — авторизация файла на уровне пользователя (этап 3.3)
+
+Второй, независимый от origin уровень: origin решает «этой ноде можно» (`CheckFileFederationAccess`, 3.2), мы — «этому пользователю можно». Ни один не доверяет другому.
+
+Право даёт участие в чате, где лежит вложение. Ищем в двух местах:
+
+1. обычные вложения — по паре `(OriginServer, FileId)`; совпадение `file_id` с локальным файлом доступа **не** даёт;
+2. **форварднутые** — форварднувший пользователь легитимно видел файл, значит получатель форварда должен уметь его открыть.
+
+Вместе с ответом отдаётся снапшот (3.1): имя для `Content-Disposition`, размер для отсечения по объёму — чтобы скачивание не ходило в Messages второй раз. У форварднутой копии имени нет (снапшот имени хранится только у оригинала).
+
+Удалённые сообщения исключены.
+
+> **Отклонения от плана 3.3.** (1) План предполагал, что forwarded-вложения лежат в jsonb и их придётся искать seq scan'ом — фактически это обычная таблица `ForwardedMessageAttachment` с FK, запрос обычный. (2) Форварднутая копия не несла `OriginServer` (3.1 форварды намеренно не трогал), из-за чего точное сопоставление forwarded fed-вложения с его origin было невозможно — колонка добавлена в 3.3 (`20260728030000_AddForwardedAttachmentOriginServer`) и заполняется при форварде.
