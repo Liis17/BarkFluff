@@ -84,7 +84,7 @@ ENTRYPOINT ["dotnet", "BarkFluff.Federation.dll"]
 
 ## Изменение 7 — docker-compose-dev.yml
 
-`Backend/docker-compose-dev.yml` (это основной деплой-файл проекта) — добавить сервис по образцу `onliner`:
+`docker/backend/docker-compose-dev-backend.yml` (это основной деплой-файл проекта) — добавить сервис по образцу `onliner`:
 
 ```yaml
 federation:

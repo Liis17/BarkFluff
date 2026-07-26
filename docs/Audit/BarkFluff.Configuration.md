@@ -34,7 +34,7 @@ BarkFluff.Configuration — централизованное хранилище 
 
 ### S4. ~~Сервис доступен напрямую с хоста в master без auth и без TLS~~ — ~~Critical~~ **Неактуально**
 **Файл:** `Backend/docker-compose-master.yml:21-35` (строка 24: `ports: ["${CONFIGURATION_PORT}:${CONFIGURATION_PORT}"]`)
-**Проблема:** В прод-compose порт Configuration публикуется на хост. nginx-конфига для Configuration нет (сервис задуман как внутренний — в `Backend/nginx/` отсутствует `configuration.conf`), то есть публикуется «голый» h2c gRPC без TLS и без прокси. В dev-compose (`docker-compose-dev.yml:22-36`) порт корректно не публикуется — сервис только в `barkfluff-network`.
+**Проблема:** В прод-compose порт Configuration публикуется на хост. nginx-конфига для Configuration нет (сервис задуман как внутренний — в `docker/nginx/` отсутствует `configuration.conf`), то есть публикуется «голый» h2c gRPC без TLS и без прокси. В dev-compose (`docker-compose-dev.yml:22-36`) порт корректно не публикуется — сервис только в `barkfluff-network`.
 **Почему это проблема:** В сочетании с S1/S3 любой, кто достанет до опубликованного порта хоста (мисконфигурация фаервола, доступ из соседней сети), получает анонимный доступ на чтение и запись всего хранилища секретов по незашифрованному каналу.
 **Рекомендация:** Убрать публикацию порта Configuration на хост в master-compose; оставить сервис только во внутренней docker-сети, как в dev. Если внешний доступ нужен для админки — заводить через nginx с TLS и обязательной аутентификацией.
 
@@ -81,7 +81,7 @@ BarkFluff.Configuration — централизованное хранилище 
 **Рекомендация:** Привести к единой кодировке (`UTF8`) в `GenerateServiceToken`.
 
 ### S12. ~~Автозаполнение использует публичные LiveKit API-учётные данные~~ — ~~High~~ **Неактуально**
-**Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:355-364`, `Backend/BarkFluff.Configuration/Persistence/Migrations/20260622000000_AddCallsConfiguration.cs:34-37`, `Backend/livekit/livekit.yaml:1-17`, `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`, `Backend/BarkFluff.Calls/Program.cs:52-56`
+**Файл:** `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:355-364`, `Backend/BarkFluff.Configuration/Persistence/Migrations/20260622000000_AddCallsConfiguration.cs:34-37`, `docker/livekit/livekit.yaml:1-17`, `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`, `Backend/BarkFluff.Calls/Program.cs:52-56`
 **Проблема:** Миграция Calls создаёт пустые записи `LiveKit:Url`/`ApiKey`/`ApiSecret`, после чего `ConfigurationDefaultsPopulator` без проверки окружения записывает `ApiKey = "devkey"` и публично известный `ApiSecret = "devsecret_change_me_in_production_0123456789"`. Эта же пара закоммичена в `livekit.yaml`; ограничений, запрещающих такое автозаполнение в Production, нет.
 **Почему это проблема:** Любой, кто знает репозиторий, получает секрет подписи LiveKit. `LiveKitTokenService` использует его для выпуска токенов с правом входа в комнату, публикации и подписки на медиа; атакующий может самостоятельно подписывать LiveKit JWT с произвольными identity/room/grants. Тем же ключом инициализируется `WebhookReceiver`, поэтому компрометируется и доверие к webhook-событиям LiveKit. При пустой или ошибочно очищенной production-конфигурации это становится рабочей компрометацией звонков.
 **Рекомендация:** Не задавать LiveKit API-secret дефолтным значением вне Development. Требовать production-пару из secret-manager/переменных окружения и аварийно завершать старт при её отсутствии; удалить/ротировать опубликованную пару ключей.
@@ -109,7 +109,7 @@ BarkFluff.Configuration — централизованное хранилище 
 Дублируется как ключевая инфраструктурная находка: внутренний сервис-хранилище секретов не должен публиковаться на хост. В dev (`docker-compose-dev.yml:22-36`) сделано правильно — без `ports`.
 
 ### D2. ~~`env_file: .env` пробрасывает широкий набор кредов в контейнер Configuration~~ — ~~Low~~ **Неактуально**
-**Файл:** `Backend/docker-compose-dev.yml:26-27`, `Backend/docker-compose-master.yml:25-26`
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:26-27`, `Backend/docker-compose-master.yml:25-26`
 **Проблема:** В контейнер Configuration целиком загружается `.env` (нужно для проброса `RABBITMQ_DEFAULT_USER/PASS` в Populator).
 **Почему это проблема:** В окружении процесса оказывается больше секретов, чем требуется сервису; расширяется поверхность утечки (через дамп env, логи краша).
 **Рекомендация:** Пробрасывать только реально нужные переменные явным списком `environment`, а не весь `.env`.

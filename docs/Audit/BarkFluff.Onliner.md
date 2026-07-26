@@ -124,13 +124,13 @@
 **Рекомендация:** Убрать публикацию порта (внутри `barkfluff-network` nginx достучится до `onliner:7009` без `ports:`) либо привязать к loopback: `127.0.0.1:${ONLINER_PORT}:${ONLINER_PORT}`.
 
 ### D2. nginx grpc_read_timeout 300s обрывает простаивающие подписочные стримы — Medium
-**Файл:** `Backend/nginx/onliner.conf:22-23`
+**Файл:** `docker/nginx/onliner.conf:22-23`
 **Проблема:** `grpc_read_timeout 300s` — если в стриме `SubscribeToOnlineStatus`/`SubscribeToTyping` нет ни одного события 5 минут (вполне обычно: никто из отслеживаемых не менял статус), nginx разрывает соединение. HTTP/2 keepalive-пинги это таймаут не сбрасывают — нужны именно данные.
 **Почему это проблема:** Все клиенты вынуждены пере-подписываться каждые ≤5 минут простоя: лишние reconnect-штормы (а каждая переподписка — это ещё и N gRPC-вызовов проверки приватности, см. P3) и пропуски событий в окне переподключения.
 **Рекомендация:** Поднять `grpc_read_timeout`/`grpc_send_timeout` для этого сервиса (например, 24h, как принято для streaming-локаций) либо слать серверные keepalive-сообщения в стрим раз в 1-2 минуты.
 
 ### D3. Нет лимитов памяти/healthcheck для контейнера со state в памяти — Low
-**Файл:** `Backend/docker-compose-master.yml:117-126`, `Backend/docker-compose-dev.yml:116-125`
+**Файл:** `Backend/docker-compose-master.yml:117-126`, `docker/backend/docker-compose-dev-backend.yml:116-125`
 **Проблема:** Для onliner не заданы `mem_limit`/`deploy.resources` и `healthcheck`; при этом весь state сервиса — неограниченные in-memory структуры (S1, P7).
 **Почему это проблема:** При раздувании памяти (атака из S1 или органический рост из P7) контейнер без лимита давит память хоста и соседние сервисы; OOM-killer убьёт произвольный процесс. Без healthcheck завязший процесс (например, остановившийся offline-цикл из P1) останется «работающим» для оркестратора.
 **Рекомендация:** Задать memory-limit контейнеру и добавить gRPC healthcheck (grpc_health_probe или TCP-проверка порта).

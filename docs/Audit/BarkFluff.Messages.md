@@ -127,7 +127,7 @@
 ## Docker / nginx
 
 ### D1. nginx: gRPC-эндпоинт messages без ограничения размера тела запроса — Medium
-**Файл:** `Backend/nginx/messages.conf:15-24`
+**Файл:** `docker/nginx/messages.conf:15-24`
 **Проблема:** В `location /` не задан `client_max_body_size`/`grpc_buffer_size`, а сам сервис ограничивает размеры только на уровне приложения (текст 4096, вложений ≤10, ciphertext 64 KiB, envelope 16 KiB). gRPC `SendMessageRequest`/`SendPrivateMessage` не ограничены по суммарному размеру на уровне прокси и Kestrel (в `Program.cs:37-40` `AddGrpc` без `MaxReceiveMessageSize`).
 **Почему это проблема:** Дефолтный лимит gRPC в .NET — 4 МБ на сообщение, но прикладные проверки `MaxCiphertextLength`/`MaxEnvelopeLength` выполняются уже после полной десериализации тела. Большие тела (в пределах 4 МБ × частота) — вектор ресурсной нагрузки. `AssociatedData`/`Ciphertext` валидируются после `ToByteArray()`.
 **Рекомендация:** Явно задать разумный `MaxReceiveMessageSize` в `AddGrpc` (с запасом над максимальным валидным сообщением, напр. 256 KiB–1 МБ) и/или `client_max_body_size` в nginx, чтобы переполненные тела отбрасывались до обработки.

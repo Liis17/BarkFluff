@@ -4,7 +4,7 @@
 
 ## Сводка
 
-CloudMessaging — background worker без публичного API: три MassTransit-консьюмера (push о новых сообщениях, dismiss-команды, админ-рассылки) и `FirebaseService` поверх Firebase Admin SDK. Базовая гигиена хорошая: credentials Firebase не закоммичены в репозиторий и не попадают в Docker-образ (в `Backend/sample.env` — только плейсхолдеры, `.dockerignore` исключает `.env`), отправка идёт батчами через `SendEachForMulticastAsync`, в логи ошибок попадает только 10-символьный префикс FCM-токена. Главные проблемы: невалидные (unregistered) токены детектируются, но никогда не удаляются из БД (висящий TODO), батчи новых сообщений и dismiss не чанкуются по лимиту FCM в 500 токенов (при превышении падает вся отправка), а в `docker-compose-master.yml` в контейнер монтируется JSON service-account, который код вообще не читает.
+CloudMessaging — background worker без публичного API: три MassTransit-консьюмера (push о новых сообщениях, dismiss-команды, админ-рассылки) и `FirebaseService` поверх Firebase Admin SDK. Базовая гигиена хорошая: credentials Firebase не закоммичены в репозиторий и не попадают в Docker-образ (в `docker/backend/sample-backend.env` — только плейсхолдеры, `.dockerignore` исключает `.env`), отправка идёт батчами через `SendEachForMulticastAsync`, в логи ошибок попадает только 10-символьный префикс FCM-токена. Главные проблемы: невалидные (unregistered) токены детектируются, но никогда не удаляются из БД (висящий TODO), батчи новых сообщений и dismiss не чанкуются по лимиту FCM в 500 токенов (при превышении падает вся отправка), а в `docker-compose-master.yml` в контейнер монтируется JSON service-account, который код вообще не читает.
 
 | Критичность | Количество |
 | ----------- | ---------- |
@@ -91,12 +91,12 @@ CloudMessaging — background worker без публичного API: три Mas
 
 ### D2. Приватный ключ Firebase передаётся через переменные окружения (dev) — Low
 
-**Файл:** `Backend/docker-compose-dev.yml:133-137`
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:133-137`
 **Проблема:** `Firebase__PrivateKey` и остальные credentials прокидываются в контейнер обычными env-переменными из `.env`.
 **Почему это проблема:** Переменные окружения видны через `docker inspect`, в `/proc/<pid>/environ` и потенциально в диагностических дампах; это слабее, чем Docker secrets или файловый секрет с правами 0400. Для dev-окружения приемлемо, но шаблон легко переезжает в прод.
 **Рекомендация:** Для прод-развёртываний использовать Docker secrets / файл, монтируемый с ограниченными правами, и читать ключ из файла; в dev можно оставить как есть.
 
 ### D3. Nginx-конфиг отсутствует — ожидаемо, не является проблемой
 
-**Файл:** `Backend/nginx/` (конфига для cloud-messaging нет)
+**Файл:** `docker/nginx/` (конфига для cloud-messaging нет)
 CloudMessaging — чистый background worker: в обоих compose-файлах у сервиса нет секции `ports`, наружу он не публикуется, входящего трафика не имеет. Отсутствие nginx-конфига корректно. Dockerfile (`Backend/Barkfluff.CloudMessaging/Dockerfile`) собран по лучшим практикам: chiseled-образ, непривилегированный пользователь (`USER $APP_UID`, строки 21-22), кэш NuGet через BuildKit; `.dockerignore` исключает `.env` и секреты — в образ credentials не попадают.

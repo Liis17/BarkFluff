@@ -52,7 +52,7 @@ Navigator переживает рестарт (PostgreSQL вместо in-memory
 
 ## Изменение 6 — деплой
 
-- Compose-файлы, где живёт Navigator (проверь `Backend/docker-compose-dev.yml` и prod-компоузы, например `Backend/nginx/docker-compose-msk.yml`): добавить env `NAVIGATOR_DB` и `depends_on` postgres там, где Navigator задеплоен рядом с postgres; если Navigator деплоится отдельно — зафиксируй в README сервиса (или Obsidian), что оператору нужен PostgreSQL и переменная `NAVIGATOR_DB`.
+- Compose-файлы, где живёт Navigator (проверь `docker/backend/docker-compose-dev-backend.yml` и `docker/navigator/docker-compose-dev.yml`): добавить env `NAVIGATOR_DB` и `depends_on` postgres там, где Navigator задеплоен рядом с postgres; если Navigator деплоится отдельно — зафиксируй в README сервиса (или Obsidian), что оператору нужен PostgreSQL и переменная `NAVIGATOR_DB`.
 - БД `navigator` создаётся миграцией при старте (connection string указывает на неё; пользователь должен иметь право CREATE — как у остальных сервисов dev-стека).
 
 ## Чего НЕ делать

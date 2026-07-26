@@ -4,7 +4,7 @@
 
 ## Сводка
 
-Navigator — публичный реестр серверов BarkFluff (`navigator.barkfluff.com`): `RegisterServer` принимает саморегистрацию серверов, `ListServers` отдаёт каталог клиентам. Оба RPC доступны анонимно: для `ListServers` это by design, но анонимный `RegisterServer` без какой-либо верификации владения BeaconHost позволяет любому опубликовать вредоносный «сервер» в каталоге, которому доверяют все клиенты, — это прямой фишинговый вектор. Вторая серьёзная проблема — JWT-секрет XAuth захардкожен в `appsettings.json` и закоммичен в репозиторий, при этом именно он действует в проде, потому что Navigator — единственный сервис, который не вызывает `LoadConfiguration`. Троттлинг регистраций обходится сменой одного символа имени, а хранилище `_servers` никогда не очищается — анонимный клиент может неограниченно раздувать память процесса. nginx-конфига для navigator в `Backend/nginx/` нет, а собственный compose сервиса публикует голый h2c-порт наружу.
+Navigator — публичный реестр серверов BarkFluff (`navigator.barkfluff.com`): `RegisterServer` принимает саморегистрацию серверов, `ListServers` отдаёт каталог клиентам. Оба RPC доступны анонимно: для `ListServers` это by design, но анонимный `RegisterServer` без какой-либо верификации владения BeaconHost позволяет любому опубликовать вредоносный «сервер» в каталоге, которому доверяют все клиенты, — это прямой фишинговый вектор. Вторая серьёзная проблема — JWT-секрет XAuth захардкожен в `appsettings.json` и закоммичен в репозиторий, при этом именно он действует в проде, потому что Navigator — единственный сервис, который не вызывает `LoadConfiguration`. Троттлинг регистраций обходится сменой одного символа имени, а хранилище `_servers` никогда не очищается — анонимный клиент может неограниченно раздувать память процесса. nginx-конфига для navigator в `docker/nginx/` нет, а собственный compose сервиса публикует голый h2c-порт наружу.
 
 **SQL-инъекции (доп. проверка 2026-07-22):** не найдены. Единственное хранилище (`Persistence/ServersStorage.cs`) обращается к БД только через EF Core LINQ (`Where`/`FirstOrDefaultAsync`/`Add`); raw-SQL в сервисе отсутствует.
 
@@ -93,14 +93,14 @@ Navigator — публичный реестр серверов BarkFluff (`navig
 
 ### D1. Нет nginx-конфига — наружу опубликован голый h2c-порт без TLS — Medium
 
-**Файл:** `Backend/nginx/` (файл `navigator.conf` отсутствует), `Backend/BarkFluff.Navigator/docker-compose-master.yml:9` и `docker-compose-dev.yml:9` (`ports: [ "${NAVIGATOR_PORT}:${NAVIGATOR_PORT}" ]`), `Backend/BarkFluff.Navigator/Program.cs:15-21`
-**Проблема:** в `Backend/nginx/` есть конфиги для beacon/identity/users и т.д., но не для navigator — TLS-терминация `navigator.barkfluff.com:443` живёт вне репозитория и не воспроизводима из кода. При этом compose сервиса публикует контейнерный порт напрямую на хост, а путь запуска через `NAVIGATOR_PORT` (`Program.cs:15-21`) поддерживает только cleartext HTTP/2 (h2c) — опции TLS в нём нет вообще (в отличие от ветки `SetRunningAddress` с `RunSettings:Tls`).
+**Файл:** `docker/nginx/` (файл `navigator.conf` отсутствует), `docker/navigator/docker-compose-dev.yml:9` (`ports: [ "${NAVIGATOR_PORT}:${NAVIGATOR_PORT}" ]`), `Backend/BarkFluff.Navigator/Program.cs:15-21`
+**Проблема:** в `docker/nginx/` есть конфиги для beacon/identity/users и т.д., но не для navigator — TLS-терминация `navigator.barkfluff.com:443` живёт вне репозитория и не воспроизводима из кода. При этом compose сервиса публикует контейнерный порт напрямую на хост, а путь запуска через `NAVIGATOR_PORT` (`Program.cs:15-21`) поддерживает только cleartext HTTP/2 (h2c) — опции TLS в нём нет вообще (в отличие от ветки `SetRunningAddress` с `RunSettings:Tls`).
 **Почему это проблема:** если nginx на хосте не настроен или порт доступен в обход него (а он опубликован), весь трафик — включая `x-auth-token` аутентифицированных вызовов — идёт открытым текстом; конфигурация прокси не под контролем версий и теряется при переезде хоста.
-**Рекомендация:** добавить `Backend/nginx/navigator.conf` (grpc_pass + TLS) в репозиторий, в compose привязать публикацию порта к loopback (`127.0.0.1:${NAVIGATOR_PORT}:${NAVIGATOR_PORT}`) или убрать её, оставив доступ только через nginx.
+**Рекомендация:** добавить `docker/nginx/navigator.conf` (grpc_pass + TLS) в репозиторий, в compose привязать публикацию порта к loopback (`127.0.0.1:${NAVIGATOR_PORT}:${NAVIGATOR_PORT}`) или убрать её, оставив доступ только через nginx.
 
 ### D2. Захардкоженный внутренний IP Configuration-сервиса в compose — и он не используется — Medium
 
-**Файл:** `Backend/BarkFluff.Navigator/docker-compose-master.yml:2`, `Backend/BarkFluff.Navigator/docker-compose-dev.yml:2`
+**Файл:** `docker/navigator/docker-compose-dev.yml:2`
 **Проблема:** `CONFIGURATION_SERVICE_URL: "http://192.168.1.177:7003"` захардкожен в обоих compose-файлах (в остальных сервисах это `${CONFIGURATION_SERVICE_URL}` из `.env`). При этом Navigator не вызывает `LoadConfiguration`, так что переменная мёртвая — но раскрывает внутренний LAN-адрес Configuration-сервиса в репозитории и вводит в заблуждение, будто конфигурация централизована (на деле действует локальный `appsettings.json` с секретом из S2).
 **Почему это проблема:** утечка внутренней топологии (адрес сервиса, раздающего секреты всей платформы без аутентификации) + рассинхронизация с реальным источником конфигурации.
 **Рекомендация:** убрать хардкод (заменить на `${CONFIGURATION_SERVICE_URL}`), а после подключения `LoadConfiguration` (см. S2) переменная станет рабочей.
