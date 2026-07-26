@@ -522,6 +522,14 @@ service MessagesServerApi {
   // Авторизацию отправителя (членство бота в чате, запрет инициации чата) выполняет вызывающий сервис.
   rpc SendMessageServer(SendMessageServerRequest) returns(SendMessageResponse);
 
+  // Отредактировать сообщение от имени пользователя (вызывает сервис Bots).
+  // Авторство проверяется внутри: редактировать можно только свои сообщения.
+  rpc EditMessageServer(EditMessageServerRequest) returns(EditMessageResponse);
+
+  // Удалить сообщение от имени пользователя (вызывает сервис Bots).
+  // Авторство проверяется внутри: удалять можно только свои сообщения.
+  rpc DeleteMessageServer(DeleteMessageServerRequest) returns(DeleteMessageResponse);
+
   // ---- федерация (реализация — Фаза 2, до неё Unimplemented) ----
 
   // Импортировать федеративный чат, созданный на другой ноде
@@ -557,6 +565,22 @@ message SendMessageServerRequest {
   OutgoingMessage message = 4; // отправляемое сообщение
 
   bool allow_chat_creation = 5; // разрешить авто-создание личного чата (только системные боты: login-notifier); для обычных ботов всегда false
+}
+
+message EditMessageServerRequest {
+  int64 sender_user_id = 1; // от чьего имени правка (бот); должен быть автором сообщения
+
+  int64 message_id = 2; // идентификатор редактируемого сообщения
+
+  string text = 3; // новый текст (≤4096)
+
+  repeated string files_ids = 4; // новый список файлов (без forwarded — он не редактируется)
+}
+
+message DeleteMessageServerRequest {
+  int64 sender_user_id = 1; // от чьего имени удаление (бот); должен быть автором сообщения
+
+  int64 message_id = 2; // идентификатор удаляемого сообщения
 }
 
 message GetUserAllMessagesRequest {

@@ -11,4 +11,11 @@ public class EditMessageCommand : IRequest<EditMessageResponse>
     public string? Text { get; set; }
 
     public List<Guid>? FileIds { get; set; }
+
+    /// <summary>
+    /// Автор правки для серверного пути (EditMessageServer, сервис Bots).
+    /// null = клиентский путь, автор берётся из UserContext.
+    /// Проверка авторства сохраняется: редактировать можно только свои сообщения.
+    /// </summary>
+    public long? SenderId { get; set; }
 }

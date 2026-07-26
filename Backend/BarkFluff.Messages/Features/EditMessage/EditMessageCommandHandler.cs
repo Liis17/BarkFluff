@@ -57,10 +57,13 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
 
     public async Task<EditMessageResponse> Handle(EditMessageCommand request, CancellationToken cancellationToken)
     {
+        // Серверный путь (Bots) передаёт автора явно, клиентский — берёт из токена
+        var senderId = request.SenderId ?? _userContext.UserId;
+
         _logger.LogInformation(
             "Редактирование сообщения {MessageId} пользователем {UserId}",
             request.MessageId,
-            _userContext.UserId
+            senderId
         );
 
         var message = await _messagesStorage.GetMessageById(request.MessageId);
@@ -70,16 +73,16 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
             _logger.LogWarning(
                 "Сообщение {MessageId} не найдено для редактирования пользователем {UserId}",
                 request.MessageId,
-                _userContext.UserId
+                senderId
             );
             throw new MessageNotFoundException();
         }
 
-        if (message.SenderId != _userContext.UserId)
+        if (message.SenderId != senderId)
         {
             _logger.LogWarning(
                 "Пользователь {UserId} попытался отредактировать чужое сообщение {MessageId} (автор {SenderId})",
-                _userContext.UserId,
+                senderId,
                 request.MessageId,
                 message.SenderId
             );
@@ -90,7 +93,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         {
             _logger.LogWarning(
                 "Пользователь {UserId} попытался отредактировать системное сообщение {MessageId}",
-                _userContext.UserId,
+                senderId,
                 request.MessageId
             );
             throw new NoPermissionException();
@@ -220,7 +223,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
         _logger.LogInformation(
             "Сообщение {MessageId} отредактировано пользователем {UserId}",
             request.MessageId,
-            _userContext.UserId
+            senderId
         );
 
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
