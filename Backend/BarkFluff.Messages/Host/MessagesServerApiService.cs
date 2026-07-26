@@ -2,6 +2,7 @@ using BarkFluff.Messages.Features.ApplyFederatedDelete;
 using BarkFluff.Messages.Features.ApplyFederatedEdit;
 using BarkFluff.Messages.Features.ApplyFederatedRead;
 using BarkFluff.Messages.Features.CheckChatMembership;
+using BarkFluff.Messages.Features.CheckFederatedPresenceAccess;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.EditMessage;
 using BarkFluff.Messages.Features.ExportData;
@@ -90,10 +91,53 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         CheckChatMembershipRequest request,
         ServerCallContext context)
     {
+        Guid? userUuid = null;
+
+        if (!string.IsNullOrEmpty(request.UserUuid))
+        {
+            if (!Guid.TryParse(request.UserUuid, out var parsed))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "user_uuid не является UUID"));
+            }
+
+            userUuid = parsed;
+        }
+
+        if (userUuid is null && request.UserId == 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "требуется user_id либо user_uuid"));
+        }
+
         var query = new CheckChatMembershipQuery
         {
-            UserId = request.UserId,
+            UserId = userUuid is null ? request.UserId : null,
+            UserUuid = userUuid,
             ChatIds = request.ChatIds
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<CheckFederatedPresenceAccessResponse> CheckFederatedPresenceAccess(
+        CheckFederatedPresenceAccessRequest request,
+        ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.RequestingServer))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "requesting_server обязателен"));
+        }
+
+        if (request.UserUuids.Count > CheckFederatedPresenceAccessQuery.MaxUserUuids)
+        {
+            throw new RpcException(new Status(
+                StatusCode.InvalidArgument,
+                $"user_uuids: не более {CheckFederatedPresenceAccessQuery.MaxUserUuids} за вызов"));
+        }
+
+        var query = new CheckFederatedPresenceAccessQuery
+        {
+            RequestingServer = request.RequestingServer,
+            UserUuids = request.UserUuids
         };
 
         return _mediator.Send(query, context.CancellationToken);
