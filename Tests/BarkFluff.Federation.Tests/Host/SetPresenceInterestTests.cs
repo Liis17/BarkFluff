@@ -47,7 +47,15 @@ public class SetPresenceInterestTests
             provider.GetRequiredService<S2SChannelFactory>(),
             new OutboxWriter(context, signing, configuration, new MetricsCollector()),
             registry,
-            options);
+            options,
+            new FederationSwitch(configuration),
+            new TypingCoalescer(),
+            new PeerCapabilityCache(
+                provider.GetRequiredService<S2SChannelFactory>(),
+                configuration,
+                new MetricsCollector(),
+                NullLogger<PeerCapabilityCache>.Instance),
+            new MetricsCollector());
 
         return new Harness(service, registry);
     }

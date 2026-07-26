@@ -14,6 +14,13 @@ public class PresenceOptions
         ResubscribeMinInterval = Seconds(configuration, "Federation:PresenceResubscribeMinSeconds", 5);
         CoalesceWindow = Seconds(configuration, "Federation:PresenceCoalesceSeconds", 5);
         ResyncInterval = Seconds(configuration, "Federation:PresenceResyncSeconds", 300);
+
+        TypingCoalesceWindow = Seconds(configuration, "Federation:TypingCoalesceSeconds", 2);
+        TypingDeadline = TimeSpan.FromMilliseconds(
+            Read(configuration, "Federation:TypingDeadlineMs", 2000));
+        TypingRateLimitPerOriginPerMinute = Read(
+            configuration, "Federation:TypingRateLimitPerOriginPerMinute", 600);
+        TypingValidationCacheTtl = Seconds(configuration, "Federation:TypingValidationCacheSeconds", 30);
     }
 
     /// <summary>Максимум uuid в одной S2S-подписке (обе стороны: лимит и защита от разрастания).</summary>
@@ -33,6 +40,18 @@ public class PresenceOptions
 
     /// <summary>Периодический ресинк снимка — страховка от пропущенного fan-out-события.</summary>
     public TimeSpan ResyncInterval { get; }
+
+    /// <summary>Не чаще одной отправки typing в окно на ключ (чат, отправитель, нода).</summary>
+    public TimeSpan TypingCoalesceWindow { get; }
+
+    /// <summary>Короткий deadline S2S-вызова typing: он эфемерен, ждать долго бессмысленно.</summary>
+    public TimeSpan TypingDeadline { get; }
+
+    /// <summary>Лимит входящих typing per-origin в минуту.</summary>
+    public int TypingRateLimitPerOriginPerMinute { get; }
+
+    /// <summary>TTL кеша валидации (автор принадлежит origin + состоит в чате).</summary>
+    public TimeSpan TypingValidationCacheTtl { get; }
 
     private static int Read(IConfiguration configuration, string key, int fallback)
     {

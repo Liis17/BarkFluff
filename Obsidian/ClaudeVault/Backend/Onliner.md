@@ -72,7 +72,7 @@ Client → SetOnlineStatus (gRPC)
 - **Notifier:** `status_notifications_sent`, `status_notification_errors`
 - **Privacy filter:** `visibility_checks`, `visibility_check_errors`
 - **BG-сервисы:** `offline_detection_runs/_errors`, `db_persistence_runs/_errors`, `db_records_saved_total`
-- **Федерация (4.2):** `remote_status_upserts`, `remote_typing_injections`, `remote_snapshot_errors`, `presence_interest_reports`, `presence_interest_errors`, gauge `remote_tracked_uuids`
+- **Федерация (4.2/4.4):** `remote_status_upserts`, `remote_typing_injections`, `remote_snapshot_errors`, `presence_interest_reports`, `presence_interest_errors`, `federated_typing_sent`, `federated_typing_errors`, gauge `remote_tracked_uuids`
 - **Прочее:** `sessions_revoked`, gauge `service_started_unix`
 
 ### MassTransit Consumer
@@ -190,6 +190,17 @@ Onliner начинает работать с remote-пользователями
 - `TypingChangedConsumer` → `TypingEvent` с `user_uuid` и **без** фильтра «кроме отправителя» (`GetAllStreamsTrackingChat`): автор на чужой ноде, среди наших подписчиков его нет.
 
 Событие **без** нового поля (инстанс старой версии — обновляются они не одновременно) идёт прежним путём; это закреплено тестами.
+
+### Исходящий typing в федерацию (этап 4.4)
+
+`SetTypingStatusCommandHandler` **после** существующей публикации `TypingChangedEvent` берёт федеративный контекст из `ChatMembershipResult` (этап 4.1) и, если чат федеративный, зовёт `FederationInternalApi.DeliverTypingOutbound(chat_id, requester_uuid, action, уникальные ноды peers)` — fire-and-forget, deadline 2с.
+
+- Чат локальный или `RequesterUuid` пуст → выход без работы (подавляющее большинство вызовов).
+- `FederatedTypingSender` резолвит клиента Federation через `IServiceProvider.GetService`: на ноде без федерации он не зарегистрирован, и обязательный параметр конструктора уронил бы контейнер.
+- Ошибки — debug-лог + метрика `federated_typing_errors`, **не** warning: heartbeat идёт каждые 4–5с, недоступная федерация иначе засорила бы логи. Ретраев нет.
+- **Локальный typing не изменился вовсе** — проверка членства, fan-out и «кроме отправителя» те же; недоступность федерации не ломает локальный путь (закреплено тестом).
+
+Дальнейшая механика (coalescing, rate limit, валидация на приёме) — [[Backend/Federation]], раздел «Typing-мост».
 
 ### `PresenceInterestReporter` (BackgroundService)
 

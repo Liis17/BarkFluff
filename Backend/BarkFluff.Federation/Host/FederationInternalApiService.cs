@@ -3,6 +3,7 @@ using BarkFluff.Federation.Domain.Enums;
 using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.FederationInternal;
 using BarkFluff.Shared.Exceptions.Federation;
@@ -32,6 +33,10 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
     private readonly OutboxWriter _outboxWriter;
     private readonly PresenceInterestRegistry _presenceInterest;
     private readonly PresenceOptions _presenceOptions;
+    private readonly FederationSwitch _federationSwitch;
+    private readonly TypingCoalescer _typingCoalescer;
+    private readonly PeerCapabilityCache _peerCapabilities;
+    private readonly MetricsCollector _metrics;
 
     public FederationInternalApiService(
         FederationContext context,
@@ -43,10 +48,18 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         S2SChannelFactory s2sChannelFactory,
         OutboxWriter outboxWriter,
         PresenceInterestRegistry presenceInterest,
-        PresenceOptions presenceOptions)
+        PresenceOptions presenceOptions,
+        FederationSwitch federationSwitch,
+        TypingCoalescer typingCoalescer,
+        PeerCapabilityCache peerCapabilities,
+        MetricsCollector metrics)
     {
         _presenceInterest = presenceInterest;
         _presenceOptions = presenceOptions;
+        _federationSwitch = federationSwitch;
+        _typingCoalescer = typingCoalescer;
+        _peerCapabilities = peerCapabilities;
+        _metrics = metrics;
         _context = context;
         _configuration = configuration;
         _signingKeyService = signingKeyService;
@@ -87,6 +100,92 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         _presenceInterest.Set(request.InstanceId, uuids);
 
         return Task.FromResult(new SetPresenceInterestResponse { AcceptedCount = uuids.Count });
+    }
+
+    // Исходящий typing (этап 4.4). Fire-and-forget: ни ретраев, ни outbox, ни персиста —
+    // потеря индикатора набора некритична, а лишний ретрай стоил бы дороже пользы.
+    public override async Task<DeliverTypingOutboundResponse> DeliverTypingOutbound(
+        DeliverTypingOutboundRequest request,
+        ServerCallContext context)
+    {
+        var response = new DeliverTypingOutboundResponse();
+
+        // Для вызывающего выключенная федерация — не ошибка: он просто печатает в чате.
+        if (!_federationSwitch.IsActive)
+        {
+            _metrics.Increment("typing_out.not_configured");
+            return response;
+        }
+
+        if (!Guid.TryParse(request.SenderUuid, out var senderUuid) || string.IsNullOrWhiteSpace(request.ChatId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "chat_id и sender_uuid обязательны"));
+        }
+
+        var ownServerName = _configuration["Federation:ServerName"] ?? string.Empty;
+        var isCancellation = request.Action == (int)BarkFluff.Proto.Onliner.TypingAction.Cancelled;
+
+        foreach (var destination in request.DestinationServers.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            // Свою ноду в списке назначений игнорируем — симметрично OutboxWriter.
+            if (string.Equals(destination, ownServerName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!_typingCoalescer.ShouldSend(
+                    request.ChatId, senderUuid, destination, _presenceOptions.TypingCoalesceWindow, isCancellation))
+            {
+                _metrics.Increment("typing_out.coalesced");
+                continue;
+            }
+
+            await SendTypingAsync(destination, request, context.CancellationToken);
+        }
+
+        return response;
+    }
+
+    private async Task SendTypingAsync(
+        string destination,
+        DeliverTypingOutboundRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (await _serverResolver.ResolveAsync(destination, ct) is null)
+            {
+                _metrics.Increment("typing_out.not_resolved");
+                return;
+            }
+
+            if (!await _peerCapabilities.SupportsAsync(destination, "typing", ct))
+            {
+                // Партнёр всё равно отбросит вызов — не тратим на него round-trip.
+                _metrics.Increment("typing_peer_unsupported");
+                return;
+            }
+
+            var invoker = await _s2sChannelFactory.GetInvokerAsync(destination, ct);
+            var client = new FederationS2SApi.FederationS2SApiClient(invoker);
+
+            await client.DeliverTypingAsync(
+                new DeliverTypingRequest
+                {
+                    ChatId = request.ChatId,
+                    SenderUuid = request.SenderUuid,
+                    Action = request.Action,
+                },
+                deadline: DateTime.UtcNow.Add(_presenceOptions.TypingDeadline),
+                cancellationToken: ct);
+
+            _metrics.Increment("typing_out.ok");
+        }
+        catch (Exception)
+        {
+            // Никаких ретраев: ошибка — это метрика и всё.
+            _metrics.Increment("typing_out.error");
+        }
     }
 
     public override async Task<RotateSigningKeyResponse> RotateSigningKey(RotateSigningKeyRequest request, ServerCallContext context)
