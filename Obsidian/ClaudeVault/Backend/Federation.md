@@ -390,7 +390,7 @@ Files(B) ──FetchRemoteFile──▶ Federation(B) ──S2S FetchFile──�
 4. `CheckFileFederationAccess` → отказ **до начала стрима**: он должен быть статусом, а не оборванным потоком.
 5. `Files.FetchFileStream` → перекладывание чанков в S2S-стрим.
 
-Аватары этим путём не обслуживаются: `UserAvatar` не является вложением сообщения, у него своя ветка по `AvatarVisibility` (этап 3.4).
+**Ветка аватара (этап 3.4).** Перед chat-проверкой `FetchFile` спрашивает `Files.GetFileData` о типе: `UserAvatar` → `Files.CheckFedAvatarAccess` (приватность владельца), остальное → `Messages.CheckFileFederationAccess` (общий чат). Один вызов на старт стрима; кеш намеренно не вводится — приватность должна действовать немедленно, а не через TTL.
 
 ### Принимающая сторона (`FetchRemoteFile`)
 

@@ -2,6 +2,7 @@ using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Features.DownloadFile;
 using BarkFluff.Files.Features.UploadFile;
 using BarkFluff.Files.Persistence;
+using BarkFluff.Proto.Users;
 using BarkFluff.GrpcServer.Metrics;
 
 using MediatR;
@@ -15,6 +16,8 @@ public class FilesController : Controller
     private readonly IMediator _mediator;
     private readonly TempFilesStorage _tempFilesStorage;
     private readonly FederatedDownloadService _federatedDownload;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<FilesController> _logger;
 
@@ -22,12 +25,16 @@ public class FilesController : Controller
         IMediator mediator,
         TempFilesStorage tempFilesStorage,
         FederatedDownloadService federatedDownload,
+        UsersServerApi.UsersServerApiClient usersClient,
+        IConfiguration configuration,
         MetricsCollector metrics,
         ILogger<FilesController> logger)
     {
         _mediator = mediator;
         _tempFilesStorage = tempFilesStorage;
         _federatedDownload = federatedDownload;
+        _usersClient = usersClient;
+        _configuration = configuration;
         _metrics = metrics;
         _logger = logger;
     }
@@ -68,6 +75,64 @@ public class FilesController : Controller
             _metrics.Increment("files_upload_errors");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Публичная ссылка на аватар remote-пользователя (этап 3.4). Прямой маршрут уместен
+    /// именно для аватаров: локально они тоже публичны по оригинальному Guid.
+    /// </summary>
+    /// <remarks>
+    /// Anti-open-proxy: пара (нода, file_id) обязана фигурировать в кеше remote-профилей,
+    /// иначе маршрут проксировал бы произвольный файл с любой известной ноды.
+    /// Неудача любой проверки — 404: существование файлов и нод не светим.
+    /// </remarks>
+    [HttpGet("download/fed/{serverName}/{fileId}")]
+    public async Task<IActionResult> DownloadFederatedAvatar(
+        [FromRoute] string serverName,
+        [FromRoute] Guid fileId)
+    {
+        // Свои аватары качаются обычным /download — здесь их быть не должно.
+        var ownServerName = _configuration["Federation:ServerName"];
+        if (!string.IsNullOrEmpty(ownServerName)
+            && string.Equals(serverName, ownServerName, StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            var reference = await _usersClient.CheckRemoteAvatarRefAsync(new CheckRemoteAvatarRefRequest
+            {
+                ServerName = serverName,
+                FileId = fileId.ToString(),
+            });
+
+            if (!reference.Exists)
+            {
+                _metrics.Increment("fed_avatar_rejected");
+                return NotFound();
+            }
+
+            await _federatedDownload.WriteAvatarToResponseAsync(
+                serverName, fileId, GetFedAvatarMaxBytes(), HttpContext);
+
+            _metrics.Increment("fed_avatars_served");
+            return new EmptyResult();
+        }
+        catch (Exception ex)
+        {
+            // Недоступный/заблокированный origin здесь неотличим от несуществующей ссылки.
+            // Классификация ошибок и placeholder-контракт — этап 3.5.
+            _metrics.Increment("fed_avatar_errors");
+            _logger.LogDebug(ex, "Не удалось отдать аватар {FileId} с ноды {Server}", fileId, serverName);
+            return NotFound();
+        }
+    }
+
+    private long GetFedAvatarMaxBytes()
+    {
+        var raw = _configuration["Files:FedAvatarMaxBytes"];
+        return long.TryParse(raw, out var parsed) && parsed > 0 ? parsed : 20L * 1024 * 1024;
     }
 
     [HttpGet("download/{fileId}")]
