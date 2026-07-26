@@ -5,6 +5,7 @@ using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetStickers;
+using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfoServer;
 using BarkFluff.Files.Features.ListStickerPacks;
 using BarkFluff.Files.Features.RemoveSticker;
@@ -49,6 +50,16 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
     public override Task<GetFilesDataResponse> GetFilesData(GetFilesDataRequest request, ServerCallContext context)
     {
         var command = new GetFilesDataCommand()
+        {
+            FileIds = request.FileIds.Select(Guid.Parse).ToList()
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetTempDownloadUrlResponse> GetTempDownloadUrlServer(GetTempDownloadUrlRequest request, ServerCallContext context)
+    {
+        var command = new GetTempDownloadUrlCommand()
         {
             FileIds = request.FileIds.Select(Guid.Parse).ToList()
         };
