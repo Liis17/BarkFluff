@@ -55,6 +55,57 @@ public class S3Uploader : IS3Uploader
     }
 
     /// <summary>
+    /// Диапазонное скачивание (этап 3.2). Полный размер объекта берётся из
+    /// <c>Content-Range</c> (при range-запросе <c>ContentLength</c> — длина куска, не файла).
+    /// </summary>
+    public async Task<S3ObjectRange> DownloadRangeAsync(string bucket, string key, long rangeFrom, long? rangeTo)
+    {
+        var client = _registry.GetClientForBucket(bucket);
+
+        var request = new GetObjectRequest
+        {
+            BucketName = bucket,
+            Key = key
+        };
+
+        // Наш контракт: rangeTo exclusive; ByteRange в AWS SDK — inclusive с обеих сторон.
+        var isRangeRequest = rangeFrom > 0 || (rangeTo is > 0 && rangeTo.Value > rangeFrom);
+        if (isRangeRequest)
+        {
+            request.ByteRange = rangeTo is > 0
+                ? new ByteRange(rangeFrom, rangeTo.Value - 1)
+                : new ByteRange($"bytes={rangeFrom}-");
+        }
+
+        var response = await client.GetObjectAsync(request);
+
+        return new S3ObjectRange(
+            new S3ObjectStream(response),
+            ResolveTotalSize(response),
+            response.Headers.ContentType);
+    }
+
+    /// <summary>
+    /// Полный размер объекта: для range-ответа — хвост <c>Content-Range: bytes a-b/TOTAL</c>,
+    /// для обычного — <c>ContentLength</c>.
+    /// </summary>
+    private static long ResolveTotalSize(GetObjectResponse response)
+    {
+        var contentRange = response.ContentRange;
+
+        if (!string.IsNullOrEmpty(contentRange))
+        {
+            var slash = contentRange.LastIndexOf('/');
+            if (slash >= 0 && long.TryParse(contentRange.AsSpan(slash + 1), out var total))
+            {
+                return total;
+            }
+        }
+
+        return response.ContentLength;
+    }
+
+    /// <summary>
     /// Обёртка над <see cref="GetObjectResponse.ResponseStream"/>, которая при освобождении
     /// дополнительно диспозит сам ответ AWS SDK. Это нужно потому, что
     /// <see cref="GetObjectResponse"/> владеет HTTP-соединением и метаданными, и закрытие

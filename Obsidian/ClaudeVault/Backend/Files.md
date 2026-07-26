@@ -89,3 +89,22 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 # Метрики
 
 [[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Download считается при фактической HTTP-выдаче файла, а не при создании временной ссылки.
+
+## `FetchFileStream` — отдача файла ноде-партнёру (этап 3.2, docs/rearch/phase-3/step-3.2-fetchfile-access.md)
+
+Server-streaming RPC в `FilesServerApi`. Зовёт только [[Backend/Federation]] своей ноды с service-токеном, **уже выполнив авторизацию на уровне ноды** (`Messages.CheckFileFederationAccess`).
+
+- **Whitelist типов намеренно не применяется.** Публичный `/download/{id}` отдаёт по оригинальному Guid только `UserAvatar`/`ChatPicture`/`UserProfilePoster`; здесь то же ограничение сделало бы отдачу вложений невозможной, а авторизация уже произошена уровнем выше.
+- Первый чанк — метаданные (`total_size`, `content_type`, `file_name`), далее данные по 256 КБ (`FetchFileStreamQueryHandler.ChunkSize`): заметно ниже лимита gRPC-сообщения в 4 МБ с запасом на накладные расходы.
+- `total_size` — размер файла **целиком**, а не длина выданного куска: по нему принимающая нода контролирует объём и рвёт стрим при превышении (риск №44).
+- «Файла нет» и «файл не загружен» наружу неразличимы — оба дают `NotFound`.
+- Стриминг без буферизации файла в памяти; отмена по `CancellationToken` вызова.
+- Не через MediatR: результат — поток, а не сообщение.
+
+### Range в S3 (`IS3Uploader.DownloadRangeAsync`)
+
+Нужен перемотке видео на принимающей ноде — без Range клиент тянул бы файл целиком ради середины.
+
+- Контракт: `rangeFrom` inclusive, `rangeTo` **exclusive**; `AWS SDK ByteRange` inclusive с обеих сторон, конверсия внутри.
+- Полный размер объекта берётся из заголовка `Content-Range` (`bytes a-b/TOTAL`): при range-запросе `ContentLength` — это длина куска, а не файла. Без range — `ContentLength`.
+- Возвращает `S3ObjectRange(Content, TotalSize, ContentType)`; поток по-прежнему владеет `GetObjectResponse` (возврат HTTP-соединения в пул).
