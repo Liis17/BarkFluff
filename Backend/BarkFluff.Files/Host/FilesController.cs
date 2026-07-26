@@ -1,6 +1,7 @@
 using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Features.DownloadFile;
 using BarkFluff.Files.Features.UploadFile;
+using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Metrics;
 
 using MediatR;
@@ -12,12 +13,21 @@ namespace BarkFluff.Files.Host;
 public class FilesController : Controller
 {
     private readonly IMediator _mediator;
+    private readonly TempFilesStorage _tempFilesStorage;
+    private readonly FederatedDownloadService _federatedDownload;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<FilesController> _logger;
 
-    public FilesController(IMediator mediator, MetricsCollector metrics, ILogger<FilesController> logger)
+    public FilesController(
+        IMediator mediator,
+        TempFilesStorage tempFilesStorage,
+        FederatedDownloadService federatedDownload,
+        MetricsCollector metrics,
+        ILogger<FilesController> logger)
     {
         _mediator = mediator;
+        _tempFilesStorage = tempFilesStorage;
+        _federatedDownload = federatedDownload;
         _metrics = metrics;
         _logger = logger;
     }
@@ -65,6 +75,16 @@ public class FilesController : Controller
     {
         try
         {
+            // Federated-вложение (этап 3.3): байты живут на чужой ноде и идут к клиенту
+            // стримом. Хелпер File() тут не подходит — поток не seekable, а Range нужен
+            // (перемотка видео), поэтому пишем в ответ вручную.
+            var tempFile = await _tempFilesStorage.GetTempFile(fileId);
+            if (tempFile?.OriginServer is { Length: > 0 })
+            {
+                await _federatedDownload.WriteToResponseAsync(tempFile, HttpContext);
+                return new EmptyResult();
+            }
+
             var command = new DownloadFileCommand()
             {
                 FileId = fileId

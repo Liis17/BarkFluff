@@ -610,6 +610,52 @@ public class ChatsStorage
     }
 
     /// <summary>
+    /// Снапшот federated-вложения, если пользователь вправе его скачать (этап 3.3), иначе null.
+    /// </summary>
+    /// <remarks>
+    /// Право даёт участие в чате, где это вложение лежит. Ищем в двух местах:
+    /// обычные вложения и <b>форварднутые</b> — форварднувший пользователь легитимно видел файл,
+    /// и получатель форварда должен уметь его открыть.
+    ///
+    /// Отклонение от плана 3.3: план предполагал, что forwarded-вложения лежат в jsonb и их
+    /// придётся искать seq scan'ом. Фактически это обычная таблица <c>ForwardedMessageAttachment</c>
+    /// с FK на вложение — запрос обычный, без сканирования.
+    /// </remarks>
+    public virtual async Task<FederatedAttachmentSnapshot?> GetFederatedAttachmentForUserAsync(
+        long userId,
+        string originServer,
+        string fileId)
+    {
+        var chatIds = _context.ChatMembers
+            .AsNoTracking()
+            .Where(m => m.UserId == userId)
+            .Select(m => m.ChatId);
+
+        var direct = await _context.Messages
+            .AsNoTracking()
+            .Where(m => chatIds.Contains(m.ChatId) && !m.IsDeleted)
+            .SelectMany(m => m.Content!.Attachments!)
+            .Where(a => a.FileId == fileId && a.OriginServer == originServer)
+            .Select(a => new FederatedAttachmentSnapshot(a.FileName, a.FileSize, (int)a.Type))
+            .FirstOrDefaultAsync();
+
+        if (direct is not null)
+        {
+            return direct;
+        }
+
+        return await _context.Messages
+            .AsNoTracking()
+            .Where(m => chatIds.Contains(m.ChatId) && !m.IsDeleted)
+            .SelectMany(m => m.Content!.Attachments!)
+            .SelectMany(a => a.ForwardedAttachments!)
+            .Where(f => f.FileId == fileId && f.OriginServer == originServer)
+            // У форварднутой копии имени нет — снапшот имени хранится только у оригинала.
+            .Select(f => new FederatedAttachmentSnapshot(null, f.FileSize, (int)f.Type))
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
     /// Разрешено ли отдать файл ноде <paramref name="requestingServer"/> (этап 3.2):
     /// file_id должен фигурировать во вложении активного федеративного чата, участником
     /// которого является эта нода.
@@ -667,6 +713,9 @@ public record ChatMembershipContext(
 
 /// <summary>Remote-участник активного федеративного чата: куда маршрутизировать typing/presence.</summary>
 public record FederatedChatPeerRow(Guid ChatId, Guid UserUuid, string ServerName);
+
+/// <summary>Снапшот метаданных federated-вложения, доступного пользователю (этап 3.3).</summary>
+public record FederatedAttachmentSnapshot(string? FileName, long SizeBytes, int AttachmentType);
 
 public class ChatInfoDto
 {
