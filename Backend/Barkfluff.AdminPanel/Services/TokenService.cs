@@ -133,6 +133,27 @@ public class TokenService
             .ToList();
     }
 
+    /// <summary>
+    /// Gets non-expired sessions for an administrator and removes stale records.
+    /// </summary>
+    public List<AuthToken> GetActiveTokensByAdmin(long telegramUserId)
+    {
+        var tokens = GetTokensByAdmin(telegramUserId);
+        var expiredTokenIds = tokens
+            .Where(token => token.IsExpired(_settings.Value.TokenExpirationDays))
+            .Select(token => token.Id)
+            .ToList();
+
+        foreach (var tokenId in expiredTokenIds)
+        {
+            _db.Tokens.Delete(tokenId);
+        }
+
+        return tokens
+            .Where(token => !expiredTokenIds.Contains(token.Id))
+            .ToList();
+    }
+
     public AuthToken? GetToken(Guid tokenId)
     {
         return _db.Tokens.FindById(tokenId);
