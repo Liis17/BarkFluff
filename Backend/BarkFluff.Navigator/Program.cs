@@ -27,7 +27,9 @@ builder.WebHost.ConfigureKestrel(options =>
     options.ListenAnyIP(adminHttpPort, o => o.Protocols = HttpProtocols.Http1);
 });
 
+builder.AddBarkFluffSerilog("BarkFluff.Navigator");
 builder.Services.AddBarkFluffGrpc();
+builder.Services.AddBarkFluffMetrics("BarkFluff.Navigator");
 builder.Services.AddGrpcReflection();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());

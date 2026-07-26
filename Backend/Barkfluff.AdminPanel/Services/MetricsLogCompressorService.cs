@@ -124,6 +124,16 @@ public class MetricsLogCompressorService : BackgroundService
         // 2. Group by service, aggregate metrics
         var perService = AggregateByService(events);
 
+        // The dashboard cache is the only source of hourly history after raw Seq events
+        // are removed. Do not compress away an hour that was not successfully rolled up.
+        if (!HasHourlyRollups(cache, events))
+        {
+            _logger.LogWarning(
+                "MetricsCompressor: hourly dashboard rollups for {Day:yyyy-MM-dd} are incomplete; keeping raw events",
+                dayStart);
+            return null;
+        }
+
         // 3. Write one summary event per service directly into Seq (CLEF ingest)
         var summaryTemplate = $"{settings.SummaryMessagePrefix} {{ServiceName}} {{Date}} {{EventCount}} {{@Aggregated}}";
         var summaryTimestamp = dayEnd.AddSeconds(-1);
@@ -265,6 +275,22 @@ public class MetricsLogCompressorService : BackgroundService
 
     private static string EscapeSeqString(string s) => s.Replace("'", "''");
 
+    private static bool HasHourlyRollups(MetricsCacheDbContext cache, IEnumerable<JsonElement> events)
+    {
+        var required = events
+            .Select(e => (Service: GetEventApplication(e), Timestamp: GetEventTimestamp(e)))
+            .Where(x => !string.IsNullOrWhiteSpace(x.Service) && x.Timestamp.HasValue)
+            .Select(x => (x.Service!, Hour: TruncateToHour(x.Timestamp!.Value)))
+            .Distinct()
+            .ToList();
+
+        return required.All(x => cache.HourlyServiceMetrics.FindOne(row =>
+            row.ServiceName == x.Item1 && row.HourUtc == x.Hour && row.SchemaVersion == 2) is not null);
+    }
+
+    private static DateTime TruncateToHour(DateTime value) =>
+        new(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
+
     #region JsonElement helpers (mirror of MetricsCollectorService)
 
     private static string? GetEventApplication(JsonElement evt)
@@ -325,6 +351,18 @@ public class MetricsLogCompressorService : BackgroundService
             metricsObj = metricsWrapper;
         }
 
+        // Schema v2 exposes the type explicitly. Keep the namespaces separate in the
+        // daily archive so a gauge can never be mistaken for a summed counter.
+        if (metricsObj.TryGetProperty("SchemaVersion", out var schemaVersion)
+            && schemaVersion.ValueKind == JsonValueKind.Number
+            && schemaVersion.TryGetInt32(out var version)
+            && version == 2)
+        {
+            AddTypedValues(metrics, metricsObj, "Counters", "counter.");
+            AddTypedValues(metrics, metricsObj, "Gauges", "gauge.");
+            return metrics;
+        }
+
         foreach (var prop in metricsObj.EnumerateObject())
         {
             if (prop.Name is "ServiceName" or "Timestamp") continue;
@@ -335,6 +373,15 @@ public class MetricsLogCompressorService : BackgroundService
         }
 
         return metrics;
+    }
+
+    private static void AddTypedValues(Dictionary<string, long> target, JsonElement source, string property, string prefix)
+    {
+        if (!source.TryGetProperty(property, out var values) || values.ValueKind != JsonValueKind.Object)
+            return;
+        foreach (var value in values.EnumerateObject())
+            if (value.Value.ValueKind == JsonValueKind.Number && value.Value.TryGetInt64(out var number))
+                target[prefix + value.Name] = number;
     }
 
     #endregion

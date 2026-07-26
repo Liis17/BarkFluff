@@ -87,6 +87,23 @@
       return { service: svc, timeSeries: ts };
     },
 
+    metricGroups() {
+      return { groups: [
+        { serviceName: 'BarkFluff.Messages', title: 'Messages', expandedByDefault: true, metrics: [{id:'messages_sent',title:'Обычные сообщения',unit:'count',kind:'counter'}] },
+        { serviceName: 'BarkFluff.Files', title: 'Files', expandedByDefault: true, metrics: [{id:'files_uploaded',title:'Загруженные файлы',unit:'count',kind:'counter'}, {id:'file_traffic_bytes_total',title:'Файловый трафик',unit:'bytes',kind:'counter'}] },
+        { serviceName: 'BarkFluff.Identity', title: 'Identity', expandedByDefault: true, metrics: [{id:'auth_login_success',title:'Успешные входы',unit:'count',kind:'counter'}] },
+        { serviceName: 'BarkFluff.Updates', title: 'Updates', expandedByDefault: true, metrics: [{id:'new_messages_broadcast',title:'Доставленные realtime-сообщения',unit:'count',kind:'counter'}] },
+        { serviceName: 'BarkFluff.Onliner', title: 'Onliner', expandedByDefault: true, metrics: [{id:'online_users_count',title:'Пользователи онлайн',unit:'count',kind:'gauge'}] }
+      ]};
+    },
+
+    metricGroup(svc) {
+      const group = this.metricGroups().groups.find(g => g.serviceName === svc) || this.metricGroups().groups[0];
+      const points = Array.from({length: 48}, (_, index) => ({ hour: hoursAgo(47 - index), value: index % 11 === 0 ? null : rnd(20, 8000) }));
+      return { serviceName: group.serviceName, title: group.title, periodHours: 720,
+        metrics: group.metrics.map(metric => ({...metric, points})) };
+    },
+
     users(query, offset, size) {
       const total = 247;
       const list = [];
@@ -370,6 +387,9 @@
     // ---- Dashboard ----
     if (match(url, '/api/seq/dashboard/kpis.*'))    return json(fix.kpis());
     if (match(url, '/api/seq/dashboard/traffic.*')) return json(fix.traffic());
+    const metricGroup = match(url, '/api/seq/dashboard/metric-groups/:svc');
+    if (metricGroup) return json(fix.metricGroup(decodeURIComponent(metricGroup[1])));
+    if (match(url, '/api/seq/dashboard/metric-groups.*')) return json(fix.metricGroups());
     const m = match(url, '/api/seq/dashboard/service-metrics/:svc');
     if (m) return json(fix.serviceMetrics(decodeURIComponent(m[1])));
 

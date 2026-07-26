@@ -89,9 +89,20 @@
             color: var(--md-on-surface-variant);
         }
 
+        .metric-service { margin-top: 20px; }
+        .metric-service:first-child { margin-top: 0; }
+        .metric-service-toggle {
+            width: 100%; display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 4px; border: 0; background: transparent; color: var(--md-on-surface);
+            font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left;
+        }
+        .metric-service-toggle .msr { transition: transform var(--md-dur-2) var(--md-easing-standard); }
+        .metric-service.open .metric-service-toggle .msr { transform: rotate(180deg); }
+        .metric-service-content { display: none; padding-top: 4px; }
+        .metric-service.open .metric-service-content { display: block; }
         .service-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 16px;
         }
         .service-card {
@@ -104,41 +115,14 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 12px 16px;
             background: var(--md-surface-container);
-            border-bottom: 1px solid var(--md-outline-variant);
         }
         .service-card-head .name {
             font-size: 14px; font-weight: 600; color: var(--md-on-surface);
         }
-        .metric-tabs {
-            display: none;
-            gap: 4px;
-            padding: 8px 8px 0;
-            border-bottom: 1px solid var(--md-outline-variant);
-        }
-        .metric-tabs.open { display: flex; }
-        .metric-tab {
-            position: relative;
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--md-on-surface-variant);
-            background: transparent;
-            border: none;
-            border-radius: var(--md-shape-sm) var(--md-shape-sm) 0 0;
-            cursor: pointer;
-            transition: color var(--md-dur-2) var(--md-easing-standard);
-        }
-        .metric-tab::after {
-            content: ""; position: absolute; left: 12px; right: 12px; bottom: 0;
-            height: 2px; background: transparent;
-            transition: background var(--md-dur-2) var(--md-easing-standard);
-        }
-        .metric-tab.active { color: var(--md-primary); }
-        .metric-tab.active::after { background: var(--md-primary); }
-        .metric-tab[disabled] { color: var(--md-outline); cursor: not-allowed; }
-
         .service-card-body { padding: 16px; }
         .canvas-wrap { position: relative; height: 220px; }
+        .metric-value { color: var(--md-primary); font-variant-numeric: tabular-nums; font-weight: 650; }
+        .metric-unit { color: var(--md-on-surface-variant); font-size: 11px; margin-left: 4px; }
         .svc-loading-indicator { color: var(--md-primary); }
 
         @media (max-width: 600px) {
@@ -239,14 +223,7 @@
                     <h2>Метрики сервисов</h2>
                     <span class="hint">Последние 12 часов</span>
                 </div>
-                <div id="service-metrics-container">
-                    <div style="text-align:center;">
-                        <button id="show-metrics-btn" class="md-btn md-btn-tonal md-btn-square-press">
-                            <span class="msr size-18">bar_chart</span>
-                            Показать метрики
-                        </button>
-                    </div>
-                </div>
+                <div id="service-metrics-container"></div>
             </div>
         </div>
     </main>
@@ -266,7 +243,8 @@
         if (!iso) return '';
         const d = new Date(iso);
         if (isNaN(d.getTime())) return '';
-        return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' }) + ' ' +
+            d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
     }
     function formatMetricName(n) {
         if (!n) return n;
@@ -372,69 +350,8 @@
         };
     }
 
-    // ---- Service metrics ----
-    let serviceMetricsLoaded = false;
-    const knownServices = [
-        'BarkFluff.Identity','BarkFluff.Users','BarkFluff.Messages','BarkFluff.Files',
-        'BarkFluff.Updates','BarkFluff.Notification','BarkFluff.Beacon','BarkFluff.FastAuth',
-        'BarkFluff.Onliner','BarkFluff.Configuration','BarkFluff.Web','BarkFluff.ClientStorage',
-        'BarkFluff.Bots'
-    ];
-    const METRIC_TABS = [
-        { key:'counters', label:'Counters' },
-        { key:'errors',   label:'Errors' },
-        { key:'gauges',   label:'Gauges' },
-        { key:'latency',  label:'Latency' }
-    ];
-    function classifyMetric(name) {
-        if (!name) return 'counters';
-        const n = name.toLowerCase();
-        if (n.includes('error')||n.includes('_failed')||n.includes('_fail')||n.includes('rejected')) return 'errors';
-        if (n.includes('duration')||n.includes('latency')||n.endsWith('_ms')||n.includes('_ms_')) return 'latency';
-        if (n.endsWith('_unix')||n.includes('uptime')||n.startsWith('active_')||n.endsWith('_active')
-            ||n.endsWith('_healthy')||n.endsWith('_current')||n.includes('_gauge')||n.endsWith('_size')
-            ||n.endsWith('_subscriptions')||n.endsWith('_streams')||n.endsWith('_connections')) return 'gauges';
-        return 'counters';
-    }
-
-    document.getElementById('show-metrics-btn').addEventListener('click', () => {
-        if (serviceMetricsLoaded) return;
-        serviceMetricsLoaded = true;
-        loadServiceMetrics();
-    });
-
-    function renderServiceCards(services) {
-        const container = document.getElementById('service-metrics-container');
-        let html = '<div class="service-grid">';
-        services.forEach(svc => {
-            const safe = svc.replace(/\./g, '-');
-            const tabsHtml = METRIC_TABS.map((t,i) => `
-                <button class="metric-tab${i===0?' active':''}" data-tab="${t.key}">${t.label}</button>
-            `).join('');
-            const canvasesHtml = METRIC_TABS.map((t,i) => `
-                <canvas id="svc-chart-${safe}-${t.key}" class="metric-canvas" data-tab="${t.key}" style="${i===0?'':'display:none;'}"></canvas>
-            `).join('');
-            html += `
-                <div id="svc-card-${safe}" data-svc="${svc}" class="service-card">
-                    <div class="service-card-head">
-                        <span class="name">${getShortServiceName(svc)}</span>
-                        <span class="md-loader-expressive svc-loading-indicator" style="width:18px;height:18px;"></span>
-                    </div>
-                    <div class="metric-tabs">${tabsHtml}</div>
-                    <div class="service-card-body">
-                        <div class="canvas-wrap">
-                            ${canvasesHtml}
-                            <div class="svc-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--md-on-surface-variant);font-size:13px;">Загрузка...</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    }
-
-    function buildChartOptions() {
+    // ---- Product metric catalog ----
+    function buildMetricChartOptions(kind) {
         return {
             responsive: true, maintainAspectRatio: false,
             plugins: {
@@ -446,99 +363,72 @@
             },
             scales: {
                 x: { grid:{display:false}, ticks:{color:'#767680',font:{family:"'Roboto Flex',sans-serif",size:10}} },
-                y: { beginAtZero:true, grid:{color:'#C6C5D0',borderDash:[3,3]}, ticks:{color:'#767680',font:{family:"'Roboto Flex',sans-serif",size:10},precision:0} }
+                y: { beginAtZero:true, grid:{color:'#C6C5D0',borderDash:[3,3]}, ticks:{color:'#767680',font:{family:"'Roboto Flex',sans-serif",size:10},precision:0}, title:{display:true,text:kind === 'counter' ? 'За час' : 'На конец часа'} }
             },
             interaction: { intersect:false, mode:'index' }
         };
     }
-
-    function renderServiceChart(svc, data) {
-        const safe = svc.replace(/\./g, '-');
-        const card = document.getElementById(`svc-card-${safe}`);
-        if (!card) return;
-        const spinner = card.querySelector('.svc-loading-indicator');
-        if (spinner) spinner.remove();
-        const placeholder = card.querySelector('.svc-placeholder');
-        const tabsBar = card.querySelector('.metric-tabs');
-
-        if (!data.timeSeries || data.timeSeries.length === 0) {
-            if (placeholder) placeholder.textContent = 'Нет данных';
-            return;
-        }
-        const metricNames = new Set();
-        data.timeSeries.forEach(ts => Object.keys(ts.metrics).forEach(k => metricNames.add(k)));
-        if (metricNames.size === 0) { if (placeholder) placeholder.textContent = 'Нет данных'; return; }
-
-        const groups = { counters:[], errors:[], gauges:[], latency:[] };
-        metricNames.forEach(name => groups[classifyMetric(name)].push(name));
-
-        const tabBtns = Array.from(tabsBar.querySelectorAll('.metric-tab'));
-        let firstActive = null;
-        tabBtns.forEach(btn => {
-            const empty = !groups[btn.dataset.tab] || groups[btn.dataset.tab].length === 0;
-            if (empty) {
-                btn.disabled = true;
-                btn.classList.remove('active');
-            } else if (firstActive === null) firstActive = btn.dataset.tab;
-        });
-        if (firstActive === null) { if (placeholder) placeholder.textContent = 'Нет данных'; return; }
-
-        if (placeholder) placeholder.remove();
-        tabsBar.classList.add('open');
-
-        tabBtns.forEach(btn => btn.classList.remove('active'));
-        const activeBtn = tabBtns.find(b => b.dataset.tab === firstActive);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        card.querySelectorAll('.metric-canvas').forEach(c => {
-            c.style.display = c.dataset.tab === firstActive ? '' : 'none';
-        });
-
-        const labels = data.timeSeries.map(ts => formatTime(ts.hour));
-        METRIC_TABS.forEach(tab => {
-            const names = groups[tab.key];
-            if (!names || names.length === 0) return;
-            const canvas = document.getElementById(`svc-chart-${safe}-${tab.key}`);
-            if (!canvas) return;
-            const datasets = names.map((mn, i) => {
-                const c = metricColors[i % metricColors.length];
-                return {
-                    label: formatMetricName(mn),
-                    data: data.timeSeries.map(ts => ts.metrics[mn] || 0),
-                    borderColor: c, backgroundColor: c+'1A', borderWidth: 1.5,
-                    fill: false, tension: 0.3, pointRadius: 0, pointHoverRadius: 4
-                };
+    function formatMetricValue(value, unit) {
+        if (value == null) return '—';
+        if (unit !== 'bytes') return formatNumber(value);
+        const units = ['Б','КБ','МБ','ГБ','ТБ']; let index = 0; let sized = value;
+        while (sized >= 1024 && index < units.length - 1) { sized /= 1024; index++; }
+        return `${sized.toLocaleString('ru-RU', {maximumFractionDigits:index ? 1 : 0})} ${units[index]}`;
+    }
+    function renderMetricGroup(group) {
+        const section = document.createElement('section');
+        section.className = 'metric-service' + (group.expandedByDefault ? ' open' : '');
+        section.dataset.service = group.serviceName;
+        section.innerHTML = `<button class="metric-service-toggle" aria-expanded="${group.expandedByDefault}"><span>${group.title}</span><span class="msr">expand_more</span></button><div class="metric-service-content"><div class="service-grid"></div></div>`;
+        section.querySelector('.metric-service-toggle').addEventListener('click', () => toggleMetricGroup(section, group));
+        return section;
+    }
+    async function toggleMetricGroup(section, group) {
+        const isOpen = section.classList.toggle('open');
+        section.querySelector('.metric-service-toggle').setAttribute('aria-expanded', isOpen);
+        if (isOpen && !section.dataset.loaded) await loadMetricGroup(section, group);
+    }
+    async function loadMetricGroup(section, group) {
+        const grid = section.querySelector('.service-grid');
+        grid.innerHTML = '<div style="color:var(--md-on-surface-variant);padding:16px">Загрузка...</div>';
+        try {
+            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=720`);
+            if (!response.ok) throw new Error(response.status);
+            const data = await response.json();
+            grid.innerHTML = '';
+            data.metrics.forEach((metric, index) => {
+                const card = document.createElement('article');
+                const points = metric.points || [];
+                const last = [...points].reverse().find(point => point.value != null)?.value;
+                card.className = 'service-card';
+                card.innerHTML = `<div class="service-card-head"><span class="name">${metric.title}</span><span><span class="metric-value">${formatMetricValue(last, metric.unit)}</span><span class="metric-unit">${metric.kind === 'counter' ? 'за час' : 'сейчас'}</span></span></div><div class="service-card-body"><div class="canvas-wrap"><canvas></canvas></div></div>`;
+                grid.appendChild(card);
+                const color = metricColors[index % metricColors.length];
+                new Chart(card.querySelector('canvas').getContext('2d'), {
+                    type: 'line',
+                    data: { labels: points.map(point => formatTime(point.hour)), datasets: [{ label: metric.title, data: points.map(point => point.value), borderColor: color, backgroundColor: color+'1A', borderWidth: 1.5, fill: false, tension: .3, pointRadius: 0, pointHoverRadius: 4, spanGaps: false }] },
+                    options: buildMetricChartOptions(metric.kind)
+                });
             });
-            new Chart(canvas.getContext('2d'), { type:'line', data:{labels,datasets}, options: buildChartOptions() });
-        });
+            section.dataset.loaded = 'true';
+        } catch {
+            grid.innerHTML = '<div style="color:var(--md-error);padding:16px">Не удалось загрузить метрики</div>';
+        }
     }
-
-    document.getElementById('service-metrics-container').addEventListener('click', (e) => {
-        const btn = e.target.closest('.metric-tab');
-        if (!btn || btn.disabled) return;
-        const card = btn.closest('[data-svc]');
-        if (!card) return;
-        card.querySelectorAll('.metric-tab').forEach(b => b.classList.toggle('active', b === btn));
-        card.querySelectorAll('.metric-canvas').forEach(c => c.style.display = c.dataset.tab === btn.dataset.tab ? '' : 'none');
-    });
-
-    function renderServiceError(svc) {
-        const card = document.getElementById(`svc-card-${svc.replace(/\./g,'-')}`);
-        if (!card) return;
-        const spinner = card.querySelector('.svc-loading-indicator');
-        if (spinner) spinner.remove();
-        const placeholder = card.querySelector('.svc-placeholder');
-        if (placeholder) { placeholder.textContent = 'Ошибка загрузки'; placeholder.style.color = 'var(--md-error)'; }
-    }
-
-    async function loadServiceMetrics() {
-        renderServiceCards(knownServices);
-        for (const svc of knownServices) {
-            try {
-                const res = await fetch(`/api/seq/dashboard/service-metrics/${encodeURIComponent(svc)}?hours=12`);
-                if (!res.ok) throw new Error(res.status);
-                renderServiceChart(svc, await res.json());
-            } catch { renderServiceError(svc); }
+    async function loadMetricCatalog() {
+        const container = document.getElementById('service-metrics-container');
+        try {
+            const response = await fetch('/api/seq/dashboard/metric-groups');
+            if (!response.ok) throw new Error(response.status);
+            const data = await response.json();
+            container.innerHTML = '';
+            data.groups.forEach(group => {
+                const section = renderMetricGroup(group);
+                container.appendChild(section);
+                if (group.expandedByDefault) loadMetricGroup(section, group);
+            });
+        } catch {
+            container.innerHTML = '<div style="color:var(--md-error);text-align:center">Не удалось загрузить каталог метрик</div>';
         }
     }
 
@@ -587,6 +477,7 @@
 
         initUptime();
         await loadDashboardData();
+        loadMetricCatalog();
 
         const overlay = document.getElementById('loading-overlay');
         overlay.classList.add('hidden');

@@ -1,6 +1,7 @@
 namespace BarkFluff.Navigator.Host;
 
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.GrpcServer.Metrics;
 
 using Features.GetServerByName;
 using Features.ListServers;
@@ -15,17 +16,19 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
 {
     private readonly IMediator _mediator;
     private readonly UserContext _userContext;
+    private readonly MetricsCollector _metrics;
 
-    public NavigatorApiService(IMediator mediator, UserContext userContext)
+    public NavigatorApiService(IMediator mediator, UserContext userContext, MetricsCollector metrics)
     {
         _mediator = mediator;
         _userContext = userContext;
+        _metrics = metrics;
     }
 
     public override async Task<ListServersResponse> ListServers(ListServersRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_lookups");
         var command = new ListServersQuery();
-
         return await _mediator.Send(command, context.CancellationToken);
     }
 
@@ -59,11 +62,14 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
                 : null,
         };
         var command = new Features.RegisterServer.RegisterServerCommand { Server = domainServer };
-        return await _mediator.Send(command, context.CancellationToken);
+        var response = await _mediator.Send(command, context.CancellationToken);
+        _metrics.Increment("server_registrations");
+        return response;
     }
 
     public override async Task<GetServerByNameResponse> GetServerByName(GetServerByNameRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_lookups");
         var query = new GetServerByNameQuery { ServerName = request.ServerName };
         return await _mediator.Send(query, context.CancellationToken);
     }

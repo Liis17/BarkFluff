@@ -86,3 +86,6 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 - `files_api.proto` — Server
 - `users_api.proto` — Client (валидация аватара)
+# Метрики
+
+[[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Download считается при фактической HTTP-выдаче файла, а не при создании временной ссылки.

@@ -104,4 +104,4 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 
 ## Логи
 
-Serilog → только Console (`Application = "BarkFluff.ClientStorage"`). Seq sink и метрики (`MetricsCollector`/`MetricsReporterService`) удалены — сервис изолирован от наблюдаемости основной инфраструктуры.
+Serilog → Seq + Console (`Application = "BarkFluff.ClientStorage"`), метрики через [[Backend/GrpcServer]]: публикации и скачивания релизов, входящий/исходящий байтовый трафик, cache hit/miss и ошибки S3.

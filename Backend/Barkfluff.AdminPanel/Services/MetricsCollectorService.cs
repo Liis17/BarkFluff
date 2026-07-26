@@ -4,16 +4,20 @@ using System.Text.Json;
 
 namespace Barkfluff.AdminPanel.Services;
 
+/// <summary>
+/// Builds the dashboard's hourly metric rollups from the versioned ServiceMetrics Seq events.
+/// Counters are summed within an hour while gauges retain their latest value.
+/// </summary>
 public class MetricsCollectorService : BackgroundService
 {
+    private static readonly TimeSpan CollectionInterval = TimeSpan.FromMinutes(5);
+    private const int StatsHoursToKeep = 24;
+    private const int ServiceMetricsHoursToKeep = 24 * 30;
+    private const int MaxEventsPerServiceHour = 100_000;
+
     private readonly IServiceProvider _serviceProvider;
     private readonly MetricsCacheDbContext _cache;
     private readonly ILogger<MetricsCollectorService> _logger;
-
-    private static readonly TimeSpan CollectionInterval = TimeSpan.FromHours(1);
-    private const int StatsHoursToKeep = 24;
-    private const int ServiceMetricsHoursToKeep = 12;
-    private const int MaxEventsPerHour = 10000;
 
     public MetricsCollectorService(
         IServiceProvider serviceProvider,
@@ -27,178 +31,117 @@ public class MetricsCollectorService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Initial collection on startup (small delay to let services initialize)
         await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         await CollectAllAsync(stoppingToken);
 
-        // Then run every hour
         using var timer = new PeriodicTimer(CollectionInterval);
         while (await timer.WaitForNextTickAsync(stoppingToken))
-        {
             await CollectAllAsync(stoppingToken);
-        }
     }
 
     private async Task CollectAllAsync(CancellationToken ct)
     {
         try
         {
-            _logger.LogInformation("MetricsCollector: starting hourly collection");
-
             using var scope = _serviceProvider.CreateScope();
-            var seqService = scope.ServiceProvider.GetRequiredService<SeqService>();
+            var seq = scope.ServiceProvider.GetRequiredService<SeqService>();
 
-            await CollectHourlyStatsAndTrafficAsync(seqService, ct);
-            await CollectServiceMetricsAsync(seqService, ct);
+            await CollectLogTrafficAsync(seq, ct);
+            await CollectServiceMetricsAsync(seq, ct);
             CleanupOldData();
-
-            _logger.LogInformation("MetricsCollector: collection completed");
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Shutting down
-        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "MetricsCollector: error during collection");
+            _logger.LogError(ex, "MetricsCollector: collection failed");
         }
     }
 
-    private async Task CollectHourlyStatsAndTrafficAsync(SeqService seqService, CancellationToken ct)
+    private async Task CollectLogTrafficAsync(SeqService seq, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
-        var currentHour = TruncateToHour(now);
-
-        for (int i = StatsHoursToKeep - 1; i >= 0; i--)
+        var currentHour = TruncateToHour(DateTime.UtcNow);
+        foreach (var hour in new[] { currentHour.AddHours(-1), currentHour })
         {
             ct.ThrowIfCancellationRequested();
+            var events = await seq.GetAllEventsListAsync(
+                fromDateUtc: hour,
+                toDateUtc: hour.AddHours(1),
+                maxEvents: 10_000);
+            if (events is null) continue;
 
-            var hourStart = currentHour.AddHours(-i);
-            var hourEnd = hourStart.AddHours(1);
-            var isCurrentHour = hourStart == currentHour;
-
-            // Skip completed past hours that already exist in cache
-            if (!isCurrentHour)
-            {
-                var existingStats = _cache.HourlyStats.FindById(hourStart);
-                if (existingStats != null)
-                    continue;
-            }
-
-            _logger.LogDebug("MetricsCollector: fetching hour {Hour}", hourStart);
-
-            var events = await seqService.GetAllEventsListAsync(
-                filter: null,
-                fromDateUtc: hourStart,
-                maxEvents: MaxEventsPerHour,
-                toDateUtc: hourEnd);
-
-            if (events == null)
-            {
-                _logger.LogWarning("MetricsCollector: failed to fetch events for hour {Hour}", hourStart);
-                continue;
-            }
-
-            // Aggregate stats
-            long totalEvents = events.Count;
-            long errorCount = 0;
-            long warningCount = 0;
             var perService = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-
+            long errors = 0;
+            long warnings = 0;
             foreach (var evt in events)
             {
                 var level = GetEventLevel(evt);
-                if (level is "Error" or "Fatal") errorCount++;
-                if (level == "Warning") warningCount++;
-
-                var app = GetEventApplication(evt);
-                if (!string.IsNullOrEmpty(app))
-                {
-                    perService[app] = perService.GetValueOrDefault(app) + 1;
-                }
+                if (level is "Error" or "Fatal") errors++;
+                if (level == "Warning") warnings++;
+                var service = GetEventApplication(evt);
+                if (service is not null)
+                    perService[service] = perService.GetValueOrDefault(service) + 1;
             }
 
-            // Upsert hourly stats
-            _cache.HourlyStats.Upsert(new HourlyStats
+            var stats = new HourlyStats
             {
-                HourUtc = hourStart,
-                TotalEvents = totalEvents,
-                ErrorCount = errorCount,
-                WarningCount = warningCount,
+                HourUtc = hour,
+                TotalEvents = events.Count,
+                ErrorCount = errors,
+                WarningCount = warnings,
                 PerService = perService
-            });
-
-            // Upsert hourly traffic
+            };
+            _cache.HourlyStats.Upsert(stats);
             _cache.HourlyTraffic.Upsert(new HourlyTraffic
             {
-                HourUtc = hourStart,
-                AllCount = totalEvents,
-                ErrorCount = errorCount,
-                WarningCount = warningCount
+                HourUtc = hour,
+                AllCount = stats.TotalEvents,
+                ErrorCount = errors,
+                WarningCount = warnings
             });
         }
     }
 
-    private async Task CollectServiceMetricsAsync(SeqService seqService, CancellationToken ct)
+    private async Task CollectServiceMetricsAsync(SeqService seq, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
-        var currentHour = TruncateToHour(now);
-
-        for (int i = ServiceMetricsHoursToKeep - 1; i >= 0; i--)
+        var currentHour = TruncateToHour(DateTime.UtcNow);
+        // Recompute the current and previous hour so late Seq ingestion cannot produce a stale rollup.
+        foreach (var hour in new[] { currentHour.AddHours(-1), currentHour })
         {
-            ct.ThrowIfCancellationRequested();
-
-            var hourStart = currentHour.AddHours(-i);
-            var hourEnd = hourStart.AddHours(1);
-            var isCurrentHour = hourStart == currentHour;
-
-            // Skip completed past hours that already exist in cache
-            if (!isCurrentHour)
+            foreach (var service in MetricsCatalog.Services)
             {
-                var existing = _cache.HourlyServiceMetrics.Find(x => x.HourUtc == hourStart).Any();
-                if (existing)
-                    continue;
-            }
+                ct.ThrowIfCancellationRequested();
+                var filter = $"Application = '{service.Name.Replace("'", "''")}' and @Message like 'ServiceMetrics%'";
+                var events = await seq.GetAllEventsListAsync(
+                    filter, hour, MaxEventsPerServiceHour, hour.AddHours(1));
+                if (events is null) continue;
 
-            var filter = "@Message like 'ServiceMetrics%'";
-            var events = await seqService.GetAllEventsListAsync(
-                filter: filter,
-                fromDateUtc: hourStart,
-                maxEvents: 1000,
-                toDateUtc: hourEnd);
+                var counters = new Dictionary<string, long>(StringComparer.Ordinal);
+                var gauges = new Dictionary<string, (DateTime Timestamp, long Value)>(StringComparer.Ordinal);
+                foreach (var evt in events)
+                {
+                    var snapshot = ExtractSnapshot(evt);
+                    if (snapshot is null) continue;
 
-            if (events == null || events.Count == 0)
-                continue;
+                    foreach (var (name, value) in snapshot.Counters)
+                        counters[name] = counters.GetValueOrDefault(name) + value;
 
-            // Group by service, pick latest metrics per service for this hour
-            var serviceMetrics = new Dictionary<string, Dictionary<string, long>>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var (name, value) in snapshot.Gauges)
+                    {
+                        if (!gauges.TryGetValue(name, out var current) || snapshot.Timestamp >= current.Timestamp)
+                            gauges[name] = (snapshot.Timestamp, value);
+                    }
+                }
 
-            foreach (var evt in events)
-            {
-                var serviceName = GetEventApplication(evt);
-                if (string.IsNullOrEmpty(serviceName)) continue;
+                _cache.HourlyServiceMetrics.DeleteMany(x => x.HourUtc == hour && x.ServiceName == service.Name);
+                if (counters.Count == 0 && gauges.Count == 0) continue;
 
-                var metrics = ExtractMetricValues(evt);
-                if (metrics.Count == 0) continue;
-
-                // Overwrite with latest (events are ordered)
-                serviceMetrics[serviceName] = metrics;
-            }
-
-            // Delete existing entries for this hour (for re-fetch of current hour)
-            if (isCurrentHour)
-            {
-                _cache.HourlyServiceMetrics.DeleteMany(x => x.HourUtc == hourStart);
-            }
-
-            // Insert per-service entries
-            foreach (var (serviceName, metrics) in serviceMetrics)
-            {
                 _cache.HourlyServiceMetrics.Insert(new HourlyServiceMetrics
                 {
-                    HourUtc = hourStart,
-                    ServiceName = serviceName,
-                    Metrics = metrics
+                    HourUtc = hour,
+                    ServiceName = service.Name,
+                    Counters = counters,
+                    Gauges = gauges.ToDictionary(x => x.Key, x => x.Value.Value),
+                    SchemaVersion = 2
                 });
             }
         }
@@ -206,87 +149,73 @@ public class MetricsCollectorService : BackgroundService
 
     private void CleanupOldData()
     {
-        var cutoffStats = TruncateToHour(DateTime.UtcNow).AddHours(-StatsHoursToKeep - 1);
-        var cutoffMetrics = TruncateToHour(DateTime.UtcNow).AddHours(-ServiceMetricsHoursToKeep - 1);
-
-        _cache.HourlyStats.DeleteMany(x => x.HourUtc < cutoffStats);
-        _cache.HourlyTraffic.DeleteMany(x => x.HourUtc < cutoffStats);
-        _cache.HourlyServiceMetrics.DeleteMany(x => x.HourUtc < cutoffMetrics);
+        var now = TruncateToHour(DateTime.UtcNow);
+        _cache.HourlyStats.DeleteMany(x => x.HourUtc < now.AddHours(-StatsHoursToKeep));
+        _cache.HourlyTraffic.DeleteMany(x => x.HourUtc < now.AddHours(-StatsHoursToKeep));
+        _cache.HourlyServiceMetrics.DeleteMany(x => x.HourUtc < now.AddHours(-ServiceMetricsHoursToKeep));
     }
 
-    private static DateTime TruncateToHour(DateTime dt)
+    private static DateTime TruncateToHour(DateTime value) =>
+        new(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
+
+    private static MetricSnapshot? ExtractSnapshot(JsonElement evt)
     {
-        return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, 0, 0, DateTimeKind.Utc);
+        if (!evt.TryGetProperty("Properties", out var props)) return null;
+        var wrapper = GetProperty(props, "Metrics");
+        if (wrapper is null || wrapper.Value.ValueKind != JsonValueKind.Object) return null;
+
+        var metrics = wrapper.Value;
+        if (metrics.TryGetProperty("Metrics", out var nested) && nested.ValueKind == JsonValueKind.Object)
+            metrics = nested;
+        if (!metrics.TryGetProperty("SchemaVersion", out var version) || version.GetInt32() != 2)
+            return null;
+
+        var timestamp = GetEventTimestamp(evt) ?? DateTime.MinValue;
+        return new MetricSnapshot(
+            ExtractValues(metrics, "Counters"),
+            ExtractValues(metrics, "Gauges"),
+            timestamp);
     }
 
-    private static string? GetEventLevel(JsonElement evt)
+    private static Dictionary<string, long> ExtractValues(JsonElement source, string property)
     {
-        if (evt.ValueKind != JsonValueKind.Object) return null;
-        return evt.TryGetProperty("Level", out var level) && level.ValueKind == JsonValueKind.String
-            ? level.GetString()
-            : null;
+        var values = new Dictionary<string, long>(StringComparer.Ordinal);
+        if (!source.TryGetProperty(property, out var objectValue) || objectValue.ValueKind != JsonValueKind.Object)
+            return values;
+        foreach (var item in objectValue.EnumerateObject())
+            if (item.Value.ValueKind == JsonValueKind.Number && item.Value.TryGetInt64(out var value))
+                values[item.Name] = value;
+        return values;
     }
 
-    private static JsonElement? GetPropertyFromSeqProps(JsonElement props, string name)
-    {
-        if (props.ValueKind == JsonValueKind.Object)
-        {
-            return props.TryGetProperty(name, out var val) ? val : null;
-        }
-        if (props.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in props.EnumerateArray())
-            {
-                if (item.TryGetProperty("Name", out var n) && n.GetString() == name
-                    && item.TryGetProperty("Value", out var v))
-                    return v;
-            }
-        }
-        return null;
-    }
+    private static string? GetEventLevel(JsonElement evt) =>
+        evt.TryGetProperty("Level", out var level) && level.ValueKind == JsonValueKind.String ? level.GetString() : null;
+
+    private static DateTime? GetEventTimestamp(JsonElement evt) =>
+        evt.TryGetProperty("Timestamp", out var timestamp) && timestamp.ValueKind == JsonValueKind.String &&
+        DateTime.TryParse(timestamp.GetString(), out var value) ? value.ToUniversalTime() : null;
 
     private static string? GetEventApplication(JsonElement evt)
     {
-        if (evt.ValueKind != JsonValueKind.Object) return null;
         if (!evt.TryGetProperty("Properties", out var props)) return null;
-        var app = GetPropertyFromSeqProps(props, "Application");
+        var app = GetProperty(props, "Application");
         return app?.ValueKind == JsonValueKind.String ? app.Value.GetString() : null;
     }
 
-    private static Dictionary<string, long> ExtractMetricValues(JsonElement evt)
+    private static JsonElement? GetProperty(JsonElement props, string name)
     {
-        var metrics = new Dictionary<string, long>();
-        if (evt.ValueKind != JsonValueKind.Object) return metrics;
-
-        if (!evt.TryGetProperty("Properties", out var props)) return metrics;
-
-        var metricsVal = GetPropertyFromSeqProps(props, "Metrics");
-        if (metricsVal == null || metricsVal.Value.ValueKind != JsonValueKind.Object)
-            return metrics;
-
-        var metricsWrapper = metricsVal.Value;
-
-        // Try nested structure: Metrics.Metrics
-        JsonElement metricsObj;
-        if (metricsWrapper.TryGetProperty("Metrics", out var innerMetrics) && innerMetrics.ValueKind == JsonValueKind.Object)
-        {
-            metricsObj = innerMetrics;
-        }
-        else
-        {
-            metricsObj = metricsWrapper;
-        }
-
-        foreach (var prop in metricsObj.EnumerateObject())
-        {
-            if (prop.Name is "ServiceName" or "Timestamp") continue;
-
-            if (prop.Value.ValueKind == JsonValueKind.Number && prop.Value.TryGetInt64(out var val))
-            {
-                metrics[prop.Name] = val;
-            }
-        }
-
-        return metrics;
+        if (props.ValueKind == JsonValueKind.Object)
+            return props.TryGetProperty(name, out var value) ? value : null;
+        if (props.ValueKind != JsonValueKind.Array) return null;
+        foreach (var property in props.EnumerateArray())
+            if (property.TryGetProperty("Name", out var propertyName) && propertyName.GetString() == name &&
+                property.TryGetProperty("Value", out var value))
+                return value;
+        return null;
     }
+
+    private sealed record MetricSnapshot(
+        Dictionary<string, long> Counters,
+        Dictionary<string, long> Gauges,
+        DateTime Timestamp);
 }

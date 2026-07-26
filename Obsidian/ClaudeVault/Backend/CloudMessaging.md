@@ -167,3 +167,6 @@ Messages (CreatePrivateChat) → PrivateChatInviteEvent → RabbitMQ (fanout: Up
 ## Зависимости
 
 - `FirebaseAdmin 3.2.0`
+# Метрики
+
+Через [[Backend/GrpcServer]] экспортируются `push_jobs_received`, число целевых устройств и FCM success/failure. Значение success означает принятие FCM, а не доставку на устройство.

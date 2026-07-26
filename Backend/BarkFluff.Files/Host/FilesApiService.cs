@@ -4,7 +4,6 @@ using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfo;
 using BarkFluff.Files.Features.ListStickerPacks;
-using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
 
@@ -22,12 +21,10 @@ namespace BarkFluff.Files.Host;
 public class FilesApiService : FilesApi.FilesApiBase
 {
     private readonly IMediator _mediator;
-    private readonly MetricsCollector _metrics;
 
-    public FilesApiService(IMediator mediator, MetricsCollector metrics)
+    public FilesApiService(IMediator mediator)
     {
         _mediator = mediator;
-        _metrics = metrics;
     }
 
     public override Task<GetUploadUrlResponse> GetUploadUrl(GetUploadUrlRequest request, ServerCallContext context)
@@ -43,7 +40,6 @@ public class FilesApiService : FilesApi.FilesApiBase
 
     public override async Task<GetTempDownloadUrlResponse> GetTempDownloadUrl(GetTempDownloadUrlRequest request, ServerCallContext context)
     {
-        _metrics.Increment("files_downloaded");
         var guids = request.FileIds.Select(Guid.Parse).ToList();
 
         var command = new GetTempDownloadUrlCommand()

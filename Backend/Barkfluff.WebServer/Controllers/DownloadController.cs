@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using BarkFluff.GrpcServer.Metrics;
 
 namespace Barkfluff.WebServer.Controllers
 {
@@ -6,6 +7,13 @@ namespace Barkfluff.WebServer.Controllers
     [Route("[controller]")]
     public class DownloadController : ControllerBase
     {
+        private readonly MetricsCollector _metrics;
+
+        public DownloadController(MetricsCollector metrics)
+        {
+            _metrics = metrics;
+        }
+
         [HttpGet("installer")]
         public IActionResult GetInstaller()
         {
@@ -18,6 +26,7 @@ namespace Barkfluff.WebServer.Controllers
             }
 
             var fileBytes = System.IO.File.ReadAllBytes(installerPath);
+            _metrics.Increment("installer_downloads");
             return File(fileBytes, "application/octet-stream", "Barkfluff.Updater.CLI.exe");
         }
     }
