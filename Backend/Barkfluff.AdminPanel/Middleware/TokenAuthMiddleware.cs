@@ -30,6 +30,7 @@ public class TokenAuthMiddleware
             if (token != null)
             {
                 context.Items["AuthToken"] = token;
+                await NotifyAboutUnexpectedClientAsync(context, token);
             }
 
             // Allow unauthenticated access to public auth endpoints
@@ -71,7 +72,33 @@ public class TokenAuthMiddleware
 
         // Valid token - store in context and continue
         context.Items["AuthToken"] = pageToken;
+        await NotifyAboutUnexpectedClientAsync(context, pageToken);
         await _next(context);
+    }
+
+    private async Task NotifyAboutUnexpectedClientAsync(HttpContext context, Barkfluff.AdminPanel.Models.AuthToken token)
+    {
+        if (!token.ApprovedByTelegramUserId.HasValue)
+            return;
+
+        // Old sessions may have been created before the real IP address was available.
+        // Without a baseline, reporting a mismatch would be a false positive.
+        if (string.IsNullOrWhiteSpace(token.IpAddress) || string.IsNullOrWhiteSpace(token.UserAgent))
+            return;
+
+        var currentIpAddress = context.Connection.RemoteIpAddress?.ToString() ?? "неизвестен";
+        var currentUserAgent = context.Request.Headers.UserAgent.ToString();
+        var isDifferentIpAddress = !string.Equals(token.IpAddress, currentIpAddress, StringComparison.Ordinal);
+        var isDifferentUserAgent = !string.Equals(token.UserAgent, currentUserAgent, StringComparison.Ordinal);
+        if (!isDifferentIpAddress && !isDifferentUserAgent)
+            return;
+
+        var fingerprint = $"{currentIpAddress}|{currentUserAgent}";
+        if (!_tokenService.TryRegisterSecurityAlert(token.Id, fingerprint))
+            return;
+
+        var telegramBotService = context.RequestServices.GetRequiredService<TelegramBotService>();
+        await telegramBotService.SendSessionSecurityAlertAsync(token, currentIpAddress, currentUserAgent, context.RequestAborted);
     }
 
     private Barkfluff.AdminPanel.Models.AuthToken? ValidateToken(HttpContext context)
