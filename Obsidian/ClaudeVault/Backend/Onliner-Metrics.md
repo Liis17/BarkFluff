@@ -123,3 +123,10 @@
 - Snapshot gauges: `Backend/BarkFluff.Onliner/BackgroundServices/MetricsSnapshotService.cs`
 - Helper-методы для gauge: `OnlineStatusStorage.GetOnlineCount/GetTotalCount`, `OnlineStatusSubscriptionsManager.GetActiveSubscriptionsCount/GetTrackedUniqueUsersCount`
 - AdminPanel ingest: `Backend/Barkfluff.AdminPanel/Services/MetricsCollectorService.cs`, `SeqService.cs`, `Endpoints/SeqEndpoints.cs`
+
+### Исходящий federated typing (этап 4.4)
+
+| Метрика | Тип | Где | Смысл |
+|---|---|---|---|
+| `federated_typing_sent` | counter | `FederatedTypingSender` | Событий набора отправлено в Federation |
+| `federated_typing_errors` | counter | `FederatedTypingSender` | Сбоев отправки. Ретраев нет by design; на локальный typing не влияет |

@@ -35,6 +35,8 @@ public class DeliverEventsTests
             TestHelpers.CreateFederationSwitch(),
             new IncomingPresenceRegistry(),
             TestHelpers.CreatePresenceOptions(),
+            new FakeTypingRateLimiter(),
+            new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
             quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
             NullLogger<FederationS2SApiService>.Instance);
@@ -56,6 +58,8 @@ public class DeliverEventsTests
             TestHelpers.CreateFederationSwitch(),
             new IncomingPresenceRegistry(),
             TestHelpers.CreatePresenceOptions(),
+            new FakeTypingRateLimiter(),
+            new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
             quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
             NullLogger<FederationS2SApiService>.Instance);

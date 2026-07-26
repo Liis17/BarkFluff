@@ -39,6 +39,10 @@ service FederationInternalApi {
   // свести дельты от нескольких инстансов без общего состояния невозможно. Federation
   // объединяет наборы живых инстансов; протухшие выпадают по TTL. Реализация — этап 4.3.
   rpc SetPresenceInterest(SetPresenceInterestRequest) returns(SetPresenceInterestResponse);
+
+  // Исходящий typing в федеративном чате (этап 4.4). Fire-and-forget: без ретраев,
+  // без outbox, без персиста — потеря индикатора набора некритична by design.
+  rpc DeliverTypingOutbound(DeliverTypingOutboundRequest) returns(DeliverTypingOutboundResponse);
 }
 
 message ResolveRemoteUserRequest {
@@ -140,3 +144,12 @@ message SetPresenceInterestRequest {
 message SetPresenceInterestResponse {
   int32 accepted_count = 1;        // сколько uuid принято (после лимита) — для диагностики
 }
+
+message DeliverTypingOutboundRequest {
+  string chat_id = 1;
+  string sender_uuid = 2;                  // UUID печатающего (наш локальный пользователь)
+  int32 action = 3;                        // значения barkfluff.onliner.TypingAction
+  repeated string destination_servers = 4; // ноды-участники чата (из fed-контекста 4.1)
+}
+
+message DeliverTypingOutboundResponse { }

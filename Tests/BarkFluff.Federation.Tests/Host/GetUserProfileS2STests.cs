@@ -32,6 +32,8 @@ public class GetUserProfileS2STests
             TestHelpers.CreateFederationSwitch(),
             new IncomingPresenceRegistry(),
             TestHelpers.CreatePresenceOptions(),
+            new FakeTypingRateLimiter(),
+            new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
             new FakeChatCreatedQuotaLimiter(),
             NullLogger<FederationS2SApiService>.Instance);

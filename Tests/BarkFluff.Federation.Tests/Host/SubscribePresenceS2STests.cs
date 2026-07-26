@@ -86,6 +86,8 @@ public class SubscribePresenceS2STests
             new FederationSwitch(configuration),
             registry,
             new PresenceOptions(configuration),
+            new FakeTypingRateLimiter(),
+            new TypingValidationCache(new PresenceOptions(configuration)),
             new MetricsCollector(),
             new FakeChatCreatedQuotaLimiter(),
             NullLogger<FederationS2SApiService>.Instance);

@@ -108,6 +108,10 @@ public sealed class FederationTestHost : IAsyncDisposable
                     services.AddSingleton(Mock.Of<OnlinerServerApi.OnlinerServerApiClient>());
                     services.AddSingleton<PresenceOptions>();
                     services.AddSingleton<IncomingPresenceRegistry>();
+
+                    // Typing-мост (этап 4.4) — лимитер без Redis, кеш валидации in-memory.
+                    services.AddSingleton<ITypingRateLimiter>(new FakeTypingRateLimiter());
+                    services.AddSingleton<TypingValidationCache>();
                 });
 
                 webHost.Configure(app =>

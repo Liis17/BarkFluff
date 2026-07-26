@@ -32,6 +32,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly FederationSwitch _federationSwitch;
     private readonly IncomingPresenceRegistry _incomingPresence;
     private readonly PresenceOptions _presenceOptions;
+    private readonly ITypingRateLimiter _typingRateLimiter;
+    private readonly TypingValidationCache _typingValidationCache;
     private readonly MetricsCollector _metrics;
     private readonly IChatCreatedQuotaLimiter _chatCreatedQuotaLimiter;
     private readonly ILogger<FederationS2SApiService> _logger;
@@ -46,6 +48,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         FederationSwitch federationSwitch,
         IncomingPresenceRegistry incomingPresence,
         PresenceOptions presenceOptions,
+        ITypingRateLimiter typingRateLimiter,
+        TypingValidationCache typingValidationCache,
         MetricsCollector metrics,
         IChatCreatedQuotaLimiter chatCreatedQuotaLimiter,
         ILogger<FederationS2SApiService> logger)
@@ -59,6 +63,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         _federationSwitch = federationSwitch;
         _incomingPresence = incomingPresence;
         _presenceOptions = presenceOptions;
+        _typingRateLimiter = typingRateLimiter;
+        _typingValidationCache = typingValidationCache;
         _metrics = metrics;
         _chatCreatedQuotaLimiter = chatCreatedQuotaLimiter;
         _logger = logger;
@@ -79,6 +85,7 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         if (_federationSwitch.IsActive)
         {
             response.Capabilities.Add("presence");
+            response.Capabilities.Add("typing");
         }
 
         return Task.FromResult(response);
@@ -140,6 +147,103 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             _incomingPresence.Remove(subscription.Id);
             _metrics.Increment("presence_streams_closed");
         }
+    }
+
+    // Приём typing от ноды-партнёра (этап 4.4). XFed уже проверил подпись запроса.
+    // Порядок проверок неслучаен: сначала дешёвые (свитч, блоклист, rate limit),
+    // только потом внутренние gRPC-вызовы — иначе спам оплачивался бы нашими Users/Messages.
+    public override async Task<DeliverTypingResponse> DeliverTyping(
+        DeliverTypingRequest request,
+        ServerCallContext context)
+    {
+        if (!_federationSwitch.IsActive)
+        {
+            throw new FederationNotConfiguredException();
+        }
+
+        var origin = context.UserState.TryGetValue("xfed-origin", out var originObj) ? originObj as string : null;
+        if (string.IsNullOrEmpty(origin))
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "origin не определён"));
+        }
+
+        if (await IsBlockedAsync(origin, context.CancellationToken))
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "нода заблокирована"));
+        }
+
+        if (!await _typingRateLimiter.TryConsumeAsync(origin))
+        {
+            // Всплеск — не инцидент: typing дешёвый, алертов эта метрика не требует.
+            _metrics.Increment("typing_rate_limited." + origin);
+            throw new RpcException(new Status(StatusCode.ResourceExhausted, "лимит typing исчерпан"));
+        }
+
+        if (!Guid.TryParse(request.SenderUuid, out var senderUuid) || string.IsNullOrWhiteSpace(request.ChatId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "chat_id и sender_uuid обязательны"));
+        }
+
+        var allowed = _typingValidationCache.TryGet(origin, senderUuid, request.ChatId);
+
+        if (allowed is null)
+        {
+            allowed = await ValidateTypingAsync(origin, senderUuid, request.ChatId, context.CancellationToken);
+            _typingValidationCache.Set(origin, senderUuid, request.ChatId, allowed.Value);
+        }
+
+        if (!allowed.Value)
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "typing отклонён"));
+        }
+
+        await _onlinerClient.InjectRemoteTypingAsync(new InjectRemoteTypingRequest
+        {
+            ChatId = request.ChatId,
+            UserUuid = request.SenderUuid,
+            Action = (BarkFluff.Proto.Onliner.TypingAction)request.Action,
+        }, cancellationToken: context.CancellationToken);
+
+        _metrics.Increment("typing_in.ok");
+
+        return new DeliverTypingResponse();
+    }
+
+    /// <summary>
+    /// Две проверки, обе обязательные: автор принадлежит origin («нода говорит только за своих»)
+    /// и состоит в этом чате (знание chat_id само по себе прав не даёт).
+    /// </summary>
+    private async Task<bool> ValidateTypingAsync(
+        string origin,
+        Guid senderUuid,
+        string chatId,
+        CancellationToken ct)
+    {
+        var usersRequest = new GetUsersByUuidRequest();
+        usersRequest.Uuids.Add(senderUuid.ToString());
+
+        var users = await _usersClient.GetUsersByUuidAsync(usersRequest, cancellationToken: ct);
+        var sender = users.Users.FirstOrDefault();
+
+        if (sender is null || !sender.Found
+            || !string.Equals(sender.ServerName, origin, StringComparison.OrdinalIgnoreCase))
+        {
+            _metrics.Increment("typing_rejected.author_not_origin");
+            return false;
+        }
+
+        var membershipRequest = new CheckChatMembershipRequest { UserUuid = senderUuid.ToString() };
+        membershipRequest.ChatIds.Add(chatId);
+
+        var membership = await _messagesClient.CheckChatMembershipAsync(membershipRequest, cancellationToken: ct);
+
+        if (!membership.MemberChatIds.Contains(chatId))
+        {
+            _metrics.Increment("typing_rejected.not_member");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>

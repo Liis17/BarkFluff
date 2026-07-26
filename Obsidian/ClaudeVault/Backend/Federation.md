@@ -295,3 +295,67 @@ Federation(A), origin-сторона  ──────────────
 ### Метрики
 
 `presence_streams_out` / `presence_streams_opened` / `presence_streams_closed`, `presence_events_out` / `presence_events_in`, `presence_subscribe_rejected.{blocked|limit|not_resolved}`, `presence_access_denied_uuids`, `presence_resubscribes`, `presence_stream_errors`, `presence_peer_unsupported`, `presence_peer_ping_errors`, `presence_subscription_truncated`, `presence_local_changes_observed`, `presence_interest_uuid_unknown`, `presence_interest_resolve_errors`, gauge `presence_interest_uuids`.
+
+## Typing-мост (этап 4.4, docs/rearch/phase-4/step-4.4-typing-bridge.md)
+
+«Печатает…» доходит до собеседника на другой ноде. Транспорт — **unary fire-and-forget**, а не стрим: контракт такой by design, отдельное соединение под индикатор набора не нужно.
+
+```
+Onliner(A).SetTypingStatus  (локальный fan-out отработал ПЕРВЫМ и от федерации не зависит)
+  └─ FederatedTypingSender → FederationInternalApi.DeliverTypingOutbound
+       └─ Federation(A): coalescing → ServerResolver → capability "typing"
+            └─ S2S DeliverTyping ──────────────────────────────┐
+                                                               │
+Federation(B): свитч → блоклист → rate limit → валидация ──────┘
+  └─ OnlinerServerApi.InjectRemoteTyping → fan-out → подписчики чата
+```
+
+### Никаких ретраев, никакого outbox
+
+Потеря индикатора набора некритична: он и так гаснет по клиентскому таймауту. Ошибка отправки → метрика `typing_out.error`, и всё. Ретрай стоил бы дороже пользы, а outbox превратил бы эфемерное событие в персистентное.
+
+### Onliner(A) — исходящая ветка
+
+`SetTypingStatusCommandHandler` **после** локальной публикации `TypingChangedEvent` берёт федеративный контекст из расширенного ответа `ChatMembershipFilter` (этап 4.1):
+
+- контекста нет (чат локальный) → выход без единой аллокации — это подавляющее большинство вызовов;
+- `RequesterUuid` пуст → выход (федерировать нечего);
+- иначе `DeliverTypingOutbound(chat_id, sender_uuid, action, уникальные ноды из peers)` с deadline 2с.
+
+`FederatedTypingSender` резолвит клиента Federation через `IServiceProvider.GetService`, а не параметром конструктора: на ноде без федерации он не зарегистрирован, и обязательный параметр уронил бы построение контейнера. Ошибки — debug-лог, не warning: heartbeat приходит каждые 4–5 секунд, и недоступная федерация иначе засорила бы логи.
+
+**Локальный typing не изменился вовсе**: проверка членства, fan-out, «кроме отправителя» — как были.
+
+### Federation(A) — coalescing
+
+`TypingCoalescer`: не чаще одной отправки в `Federation:TypingCoalesceSeconds` (дефолт 2) на ключ `(chat_id, sender_uuid, destination)`. In-memory с ленивой чисткой — состояние живёт секунды, persistent-хранилище тут избыточность.
+
+**Исключение: `CANCELLED` проходит всегда** — иначе индикатор у собеседника гас бы только по клиентскому таймауту.
+
+Свою ноду в списке назначений игнорируем (симметрично `OutboxWriter`). Партнёр без capability `typing` не опрашивается.
+
+### Federation(B) — приём и защита
+
+Порядок проверок неслучаен — сначала дешёвые, потом дорогие, иначе спам оплачивался бы нашими Users/Messages:
+
+1. `FederationSwitch.IsActive` → `FailedPrecondition`; origin в блоклисте → `PermissionDenied`.
+2. **Rate limit per-origin** (`TypingRateLimiter`, Redis-счётчик, ключ `fed:typing:{origin}:{yyyyMMddHHmm}`), лимит `Federation:TypingRateLimitPerOriginPerMinute` (дефолт 600 — при coalescing 2с это ~20 одновременно печатающих пар). Превышение → `ResourceExhausted` + метрика `typing_rate_limited.{origin}`. **Алертов не требует**: typing дешёвый, всплеск не инцидент.
+3. **Валидация авторства**: `server_name` отправителя (из `Users.GetUsersByUuid`) обязан совпасть с origin — «нода говорит только за своих».
+4. **Валидация членства**: `Messages.CheckChatMembership(user_uuid = sender_uuid, chat_ids = [chat_id])` — uuid-ветка из 4.1. Знание `chat_id` само по себе прав не даёт.
+5. **Кеш проверок 3–4** (`TypingValidationCache`, ключ `(origin, sender_uuid, chat_id)`), TTL `Federation:TypingValidationCacheSeconds` (дефолт 30). Отрицательный результат кешируется тоже, но **вдвое короче** — иначе спамящая нода бесплатно нагружала бы Users/Messages на каждом heartbeat'е.
+6. Успех → `OnlinerServerApi.InjectRemoteTyping`.
+
+### Конфигурация (бакет `ServiceId.Federation = 15`)
+
+| Ключ | Дефолт | Смысл |
+|------|--------|-------|
+| `Federation:TypingCoalesceSeconds` | 2 | окно coalescing на (чат, отправитель, нода) |
+| `Federation:TypingDeadlineMs` | 2000 | deadline S2S-вызова typing |
+| `Federation:TypingRateLimitPerOriginPerMinute` | 600 | лимит входящих typing per-origin |
+| `Federation:TypingValidationCacheSeconds` | 30 | TTL кеша валидации (отрицательный — вдвое короче) |
+
+Миграция — `20260727030000_AddFederationTypingConfiguration`.
+
+### Метрики
+
+`typing_out.{ok|error|coalesced|not_resolved|not_configured}`, `typing_in.ok`, `typing_rate_limited.{origin}`, `typing_rejected.{author_not_origin|not_member}`, `typing_peer_unsupported`.

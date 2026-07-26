@@ -62,7 +62,11 @@ public class FederationInternalApiServiceTests
 
             Service = new FederationInternalApiService(
                 Context, configuration, signing, WellKnown, KeyCache, resolver, channelFactory, writer,
-                PresenceInterest, TestHelpers.CreatePresenceOptions());
+                PresenceInterest, TestHelpers.CreatePresenceOptions(),
+                TestHelpers.CreateFederationSwitch(configuration), new TypingCoalescer(),
+                new PeerCapabilityCache(channelFactory, configuration, new MetricsCollector(),
+                    NullLogger<PeerCapabilityCache>.Instance),
+                new MetricsCollector());
         }
 
         public void Dispose()
