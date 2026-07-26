@@ -95,9 +95,6 @@
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
 
-        .service-update-row td { background: var(--md-warning-container); }
-        .update-available { color: var(--md-on-warning-container); font-size: 12px; font-weight: 600; }
-
         @media (max-width: 600px) {
             .tab-bar { flex-wrap: wrap; }
         }
@@ -345,12 +342,12 @@
                 ? `<span style="font-family:'Roboto Mono',monospace;">${escapeHtml(svc.latestVersion)}</span>`
                 : '<span style="color:var(--md-outline);">—</span>';
             return `
-            <tr class="${svc.updateAvailable ? 'service-update-row' : ''}">
+            <tr>
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
                         <span class="msr size-18" style="color:var(--md-primary);">dns</span>
                         ${escapeHtml(svc.name)}
-                        ${svc.updateAvailable ? '<span class="update-available">Доступно обновление</span>' : ''}
+                        ${svc.updateAvailable ? '<span class="md-status md-status-warn" title="Доступно обновление"><span class="msr size-16">system_update_alt</span>Обновление</span>' : ''}
                     </div>
                 </td>
                 <td>${statusBadgeHtml(svc.dockerState)}</td>
