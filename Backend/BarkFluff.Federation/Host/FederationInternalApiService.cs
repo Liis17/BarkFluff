@@ -30,6 +30,8 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
     private readonly ServerResolver _serverResolver;
     private readonly S2SChannelFactory _s2sChannelFactory;
     private readonly OutboxWriter _outboxWriter;
+    private readonly PresenceInterestRegistry _presenceInterest;
+    private readonly PresenceOptions _presenceOptions;
 
     public FederationInternalApiService(
         FederationContext context,
@@ -39,8 +41,12 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         ActiveSigningKeyCache activeSigningKeyCache,
         ServerResolver serverResolver,
         S2SChannelFactory s2sChannelFactory,
-        OutboxWriter outboxWriter)
+        OutboxWriter outboxWriter,
+        PresenceInterestRegistry presenceInterest,
+        PresenceOptions presenceOptions)
     {
+        _presenceInterest = presenceInterest;
+        _presenceOptions = presenceOptions;
         _context = context;
         _configuration = configuration;
         _signingKeyService = signingKeyService;
@@ -49,6 +55,38 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         _serverResolver = serverResolver;
         _s2sChannelFactory = s2sChannelFactory;
         _outboxWriter = outboxWriter;
+    }
+
+    // Интерес инстанса Onliner к remote-presence (этап 4.2/4.3). Набор ПОЛНЫЙ, не дельта:
+    // инстансы масштабируются горизонтально, и свести дельты без общего состояния нельзя.
+    // Пустой набор — валидное состояние, по нему менеджер стримов закроет S2S-подписку.
+    public override Task<SetPresenceInterestResponse> SetPresenceInterest(
+        SetPresenceInterestRequest request,
+        ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.InstanceId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "instance_id обязателен"));
+        }
+
+        var uuids = new List<Guid>();
+        foreach (var raw in request.UserUuids)
+        {
+            if (Guid.TryParse(raw, out var uuid))
+            {
+                uuids.Add(uuid);
+            }
+        }
+
+        // Лимит — защита от разрастания, а не отказ: лишние uuid просто не попадут в подписку.
+        if (uuids.Count > _presenceOptions.MaxSubscriptionSize)
+        {
+            uuids = uuids.Take(_presenceOptions.MaxSubscriptionSize).ToList();
+        }
+
+        _presenceInterest.Set(request.InstanceId, uuids);
+
+        return Task.FromResult(new SetPresenceInterestResponse { AcceptedCount = uuids.Count });
     }
 
     public override async Task<RotateSigningKeyResponse> RotateSigningKey(RotateSigningKeyRequest request, ServerCallContext context)

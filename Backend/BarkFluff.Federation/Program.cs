@@ -9,6 +9,7 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Navigator;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -94,6 +95,15 @@ public class Program
         builder.Services.AddHostedService<OutboxDispatcher>();
         builder.Services.AddHostedService<OutboxJanitor>();
 
+        // Presence-мост (этап 4.3). Ничего из этого не персистится: presence эфемерен —
+        // состояние восстанавливается heartbeat'ами интереса и реконнектом стримов.
+        builder.Services.AddSingleton<PresenceOptions>();
+        builder.Services.AddSingleton<PresenceInterestRegistry>();
+        builder.Services.AddSingleton<IncomingPresenceRegistry>();
+        builder.Services.AddSingleton<RemoteUserServerCache>();
+        builder.Services.AddSingleton<PeerCapabilityCache>();
+        builder.Services.AddHostedService<PresenceStreamManager>();
+
         builder.Services.AddGrpcClient<NavigatorApi.NavigatorApiClient>(o =>
         {
             o.Address = new Uri(builder.Configuration["NavigatorUrl"]!);
@@ -113,10 +123,20 @@ public class Program
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"] ?? string.Empty))
           .AddInterceptor(() => new ExceptionClientInterceptor());
 
+        // gRPC-клиент к Onliner: GetLocalPresence (отдача статусов партнёру) и
+        // UpsertRemoteStatus (вливание полученных), этап 4.3.
+        builder.Services.AddGrpcClient<OnlinerServerApi.OnlinerServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["OnlinerService:Host"]!);
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["OnlinerService:Token"] ?? string.Empty))
+          .AddInterceptor(() => new ExceptionClientInterceptor());
+
         builder.Services.AddMassTransit(x =>
         {
             // Консюмеры внутренних событий → FederationOutbox (этап 2.2).
             x.AddConsumer<NewMessageFederationConsumer>();
+            // Изменения статусов локальных пользователей → входящие presence-стримы (этап 4.3).
+            x.AddConsumer<PresenceStatusChangedConsumer>();
             x.AddConsumer<MessageEditedFederationConsumer>();
             x.AddConsumer<MessageDeletedFederationConsumer>();
             x.AddConsumer<MessageReadFederationConsumer>();
@@ -139,6 +159,15 @@ public class Program
                     e.AutoDelete = true;
                     e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+
+                // Fan-out: очередь на экземпляр — входящие presence-стримы живут в памяти
+                // конкретного процесса, и события статусов нужны каждому.
+                cfg.ReceiveEndpoint($"presence-status-changed-federation-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<PresenceStatusChangedConsumer>(context);
                 });
             });
         });

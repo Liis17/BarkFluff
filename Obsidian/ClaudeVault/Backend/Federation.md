@@ -229,3 +229,69 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 ## Планы дальнейших этапов
 
 Фаза 1 завершена (1.1–1.7). Этап 2.1 завершён (S2S `GetUserProfile` + внутренний `ResolveRemoteUser`). Следующий шаг — Фаза 2 (outbox, доставка событий, MassTransit/RabbitMQ) по `docs/rearch/10-roadmap.md`, планы по каждому этапу в `docs/rearch/phase-2/`.
+
+## Presence-мост (этап 4.3, docs/rearch/phase-4/step-4.3-federation-presence.md)
+
+Статусы пересекают границу ноды. Транспортный профиль принципиально другой, чем у сообщений: **не через outbox**, а живыми S2S-стримами. Потеря события допустима by design, персистентности нет, ретраев по событиям нет — вместо них реконнект и периодический ресинк.
+
+### Обе стороны одной картинкой
+
+```
+Onliner(B) × N инстансов
+  └─ SetPresenceInterest(instance_id, ПОЛНЫЙ набор uuid)   каждые 20с
+       └─ PresenceInterestRegistry (union живых инстансов, TTL 60с)
+            └─ RemoteUserServerCache: uuid → server_name (через Users.GetUsersByUuid, TTL 1ч)
+                 └─ PresenceStreamManager: ОДИН S2S-стрим на ноду
+                      → SubscribePresence(user_uuids[])  ───────────────┐
+                                                                        │
+                      ← PresenceEvent(uuid, status, last_seen)          │
+                      └─ OnlinerServerApi.UpsertRemoteStatus            │
+                                                                        │
+Federation(A), origin-сторона  ─────────────────────────────────────────┘
+  1. FederationSwitch.IsActive        → иначе FederationNotConfigured
+  2. origin в блоклисте               → PermissionDenied
+  3. |user_uuids| > лимита            → ResourceExhausted
+  4. Messages.CheckFederatedPresenceAccess(origin, uuids)   ← риск №42
+  5. Users.GetUsersByUuid → uuid → локальный user_id (только НАШИ)
+  6. IncomingPresenceRegistry.Add → начальный снимок (MarkAllDirty)
+  7. цикл: RabbitMQ-события помечают «грязных» → Onliner.GetLocalPresence → в стрим
+```
+
+### Ключевые решения
+
+- **Один агрегированный стрим на пару нод**, а не стрим на подписку: подписчиков много, нод — единицы.
+- **Обновление набора = переоткрытие стрима.** Control-сообщений в v1 контракта нет, набор передаётся в самом `SubscribePresenceRequest`. Против флаппинга — дебаунс `Federation:PresenceResubscribeMinSeconds`.
+- **Интерес приходит полным набором, а не дельтами.** Onliner масштабируется горизонтально; свести «+uuid/−uuid» от нескольких инстансов без общего состояния невозможно. Протухшие наборы выпадают по TTL — рестарт инстанса самолечится.
+- **Изменения статусов Federation берёт из RabbitMQ**, а не отдельным стримом из Onliner: `OnlineStatusChangedEvent` уже публикуется fan-out'ом для межинстансной доставки, Federation заводит свою per-instance очередь (`presence-status-changed-federation-{instance}`, autodelete). Долгоживущий внутренний gRPC-стрим не нужен вовсе.
+  - Контракт события переехал в `Shared/BarkFluff.Shared.Queue/Onliner/`, но **namespace остался `BarkFluff.Onliner.Messages`** — MassTransit выводит URN из namespace, и его смена разорвала бы совместимость между инстансами разных версий во время выкатки.
+- **Privacy Federation не дублирует.** Консюмер только помечает пользователя «грязным»; сам статус перечитывается у Onliner (`GetLocalPresence`) в момент отправки, и privacy применяет он — владелец данных (инвариант №27). Побочный эффект приятный: в стрим физически не может уйти состояние из устаревшего события.
+- **Проверка отношений обязательна** (риск №42): без активного федеративного чата с нодой-подписчиком статус не отдаётся. Пустой результат → стрим **открывается и молчит**, а не `PermissionDenied`: иначе подписчик узнал бы, какие uuid у нас существуют.
+- **Обрыв стрима гасит статусы.** Все uuid этой ноды получают `UpsertRemoteStatus(UNKNOWN)` — «залипший онлайн» хуже отсутствия данных. Затем реконнект с экспоненциальным backoff (кап — минута: presence эфемерен).
+- **`UNKNOWN` неоднозначен намеренно.** «Скрыт privacy» и «статуса нет» снаружи неразличимы — иначе privacy утекала бы по каналу метаданных.
+- **Keepalive — транспортный (HTTP/2), не прикладной.** В `PresenceEvent` нет keepalive-типа, и выдумывать его нельзя: это сломало бы сторонние реализации протокола.
+
+### Coalescing
+
+`IncomingPresenceSubscription` держит множество «грязных» пользователей и время последней отправки на каждого. Цикл тикает часто, но отправляет только тех, у кого истекло окно `Federation:PresenceCoalesceSeconds`. N изменений подряд стоят одной отправки, и она несёт последнее состояние — потому что статус перечитывается в момент отправки. Раз в `Federation:PresenceResyncSeconds` помечаются все — страховка от пропущенного fan-out-события.
+
+### Capability `presence`
+
+`Ping` объявляет `"presence"` при активной федерации. `PeerCapabilityCache` кеширует ответ пира (10 мин при успехе, 1 мин при сбое — fail-closed). Партнёр без capability не опрашивается вовсе: метрика `presence_peer_unsupported`. Это ответ на риск «асимметрия ожиданий».
+
+### Конфигурация (бакет `ServiceId.Federation = 15`)
+
+| Ключ | Дефолт | Смысл |
+|------|--------|-------|
+| `OnlinerService:Host` / `Token` | populator | клиент Onliner (`GetLocalPresence`, `UpsertRemoteStatus`) |
+| `Federation:MaxPresenceSubscriptionSize` | 500 | лимит uuid в подписке (обе стороны) |
+| `Federation:PresenceInterestTtlSeconds` | 60 | TTL записи интереса ≈ 3 × интервала репортера Onliner |
+| `Federation:PresenceReconcileSeconds` | 10 | период сверки желаемых подписок с фактическими |
+| `Federation:PresenceResubscribeMinSeconds` | 5 | дебаунс переоткрытия стрима |
+| `Federation:PresenceCoalesceSeconds` | 5 | окно coalescing на пару (пользователь, стрим) |
+| `Federation:PresenceResyncSeconds` | 300 | период полного ресинка снимка |
+
+Миграция — `20260727020000_AddFederationPresenceConfiguration`.
+
+### Метрики
+
+`presence_streams_out` / `presence_streams_opened` / `presence_streams_closed`, `presence_events_out` / `presence_events_in`, `presence_subscribe_rejected.{blocked|limit|not_resolved}`, `presence_access_denied_uuids`, `presence_resubscribes`, `presence_stream_errors`, `presence_peer_unsupported`, `presence_peer_ping_errors`, `presence_subscription_truncated`, `presence_local_changes_observed`, `presence_interest_uuid_unknown`, `presence_interest_resolve_errors`, gauge `presence_interest_uuids`.

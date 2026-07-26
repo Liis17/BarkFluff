@@ -358,6 +358,43 @@ public class ConfigurationDefaultsPopulator
             return "100";
         }
 
+        // --- Federation: presence-мост (этап 4.3) ---
+        if (config.Section == "Federation")
+        {
+            var presenceDefault = config.Key switch
+            {
+                // Лимит uuid в одной S2S-подписке (обе стороны).
+                "MaxPresenceSubscriptionSize" => "500",
+                // TTL записи интереса инстанса Onliner ≈ 3 × его интервала репортинга (20с).
+                "PresenceInterestTtlSeconds" => "60",
+                // Период сверки «желаемых» подписок с фактическими.
+                "PresenceReconcileSeconds" => "10",
+                // Дебаунс переоткрытия стрима — против флаппинга при частой смене набора.
+                "PresenceResubscribeMinSeconds" => "5",
+                // Не чаще одного события на пару (пользователь, стрим) за окно.
+                "PresenceCoalesceSeconds" => "5",
+                // Периодический ресинк снимка — страховка от пропущенного fan-out-события.
+                "PresenceResyncSeconds" => "300",
+                _ => null
+            };
+
+            if (presenceDefault is not null)
+            {
+                return presenceDefault;
+            }
+        }
+
+        // --- OnlinerService (inter-service, для Federation: presence/typing-мост) ---
+        if (config.Section == "OnlinerService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://onliner:{DefaultPorts[ServiceId.Onliner]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "OnlinerServiceClient"),
+                _ => null
+            };
+        }
+
         // --- Onliner: uuid-ветка presence (этап 4.2) ---
         if (config.Section == "Onliner")
         {
