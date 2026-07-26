@@ -1,3 +1,4 @@
+using BarkFluff.Bots.Features.GetBotFile;
 using BarkFluff.Bots.Features.GetBotUserInfo;
 using BarkFluff.Bots.Features.GetMe;
 using BarkFluff.Bots.Features.SendBotMessage;
@@ -78,6 +79,9 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
             UserId = request.UserCase == GetUserInfoRequest.UserOneofCase.UserId ? request.UserId : null,
             Username = request.UserCase == GetUserInfoRequest.UserOneofCase.Username ? request.Username : null,
         }, context.CancellationToken);
+
+    public override Task<GetFileResponse> GetFile(GetFileRequest request, ServerCallContext context)
+        => _mediator.Send(new GetBotFileQuery { FileId = request.FileId }, context.CancellationToken);
 
     public override async Task SubscribeUpdates(
         SubscribeUpdatesRequest request,
