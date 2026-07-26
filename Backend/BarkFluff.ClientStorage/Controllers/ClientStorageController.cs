@@ -1,6 +1,7 @@
 using BarkFluff.ClientStorage.Domain;
 using BarkFluff.ClientStorage.Infrastructure;
 using BarkFluff.ClientStorage.Persistence;
+using BarkFluff.GrpcServer.Metrics;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,17 +17,20 @@ public class ClientStorageController : ControllerBase
     private readonly S3StorageService _s3;
     private readonly LocalFileCache _cache;
     private readonly ILogger<ClientStorageController> _logger;
+    private readonly MetricsCollector _metrics;
 
     public ClientStorageController(
         ClientStorageContext db,
         S3StorageService s3,
         LocalFileCache cache,
-        ILogger<ClientStorageController> logger)
+        ILogger<ClientStorageController> logger,
+        MetricsCollector metrics)
     {
         _db = db;
         _s3 = s3;
         _cache = cache;
         _logger = logger;
+        _metrics = metrics;
     }
 
     [HttpGet("/get/barkfluffwindows")]
@@ -282,10 +286,18 @@ public class ClientStorageController : ControllerBase
         var cachedPath = _cache.GetCachedFilePath(clientType, releaseChannel);
         if (cachedPath != null)
         {
+            _metrics.Increment("client_cache_hits");
             FileStream? fs = null;
             try
             {
                 fs = new FileStream(cachedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                Response.OnCompleted(() =>
+                {
+                    _metrics.Increment("client_releases_downloaded");
+                    if (Response.ContentLength is long contentLength)
+                        _metrics.Add("client_storage_download_bytes", contentLength);
+                    return Task.CompletedTask;
+                });
                 return new FileStreamResult(fs, clientFile.ContentType)
                 {
                     FileDownloadName      = clientFile.OriginalFileName,
@@ -301,6 +313,7 @@ public class ClientStorageController : ControllerBase
         }
 
         // Кеша нет → стримим напрямую из S3
+        _metrics.Increment("client_cache_misses");
         _logger.LogWarning("Кеш отсутствует для {ClientType} {Channel}, стриминг из S3", clientType, releaseChannel);
         S3DownloadResult? result = null;
         try
@@ -309,6 +322,7 @@ public class ClientStorageController : ControllerBase
         }
         catch (Exception ex)
         {
+            _metrics.Increment("client_storage_errors");
             _logger.LogError(ex, "Ошибка получения объекта из S3 для {S3Key}", clientFile.S3Key);
             return StatusCode(500, new { error = "Ошибка при скачивании файла" });
         }
@@ -326,6 +340,8 @@ public class ClientStorageController : ControllerBase
             }
 
             await result.Stream.CopyToAsync(Response.Body);
+            _metrics.Increment("client_releases_downloaded");
+            _metrics.Add("client_storage_download_bytes", result.ContentLength);
             return new EmptyResult();
         }
     }
@@ -378,6 +394,7 @@ public class ClientStorageController : ControllerBase
         }
         catch (Amazon.S3.AmazonS3Exception s3ex)
         {
+            _metrics.Increment("client_storage_errors");
             _logger.LogError(s3ex,
                 "S3 error: Status={Status} Code={Code} RequestId={ReqId} Message={Msg}",
                 s3ex.StatusCode, s3ex.ErrorCode, s3ex.RequestId, s3ex.Message);
@@ -385,6 +402,7 @@ public class ClientStorageController : ControllerBase
         }
         catch (Exception ex)
         {
+            _metrics.Increment("client_storage_errors");
             _logger.LogError(ex, "Ошибка загрузки файла {ClientType} в S3", clientType);
             return StatusCode(500, new { error = "Ошибка при загрузке файла" });
         }
@@ -421,6 +439,8 @@ public class ClientStorageController : ControllerBase
 
         _db.ClientFiles.Add(clientFile);
         await _db.SaveChangesAsync();
+        _metrics.Increment("client_releases_uploaded");
+        _metrics.Add("client_storage_upload_bytes", file.Length);
 
         // Обновляем кеш асинхронно — не задерживаем ответ клиенту
         _ = UpdateCacheInBackgroundAsync(s3Key, clientType, releaseChannel, tempPath);

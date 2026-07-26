@@ -32,7 +32,7 @@ public class MetricsReporterService : BackgroundService
         {
             await Task.Delay(5000, stoppingToken);
 
-            var snapshot = _collector.SnapshotAndReset(out var hadCounterActivity);
+            var snapshot = _collector.SnapshotAndResetDetailed(out var hadCounterActivity);
 
             bool shouldReport;
             if (hadCounterActivity)
@@ -46,15 +46,21 @@ public class MetricsReporterService : BackgroundService
                 // Простой: только статичные gauges. Шлём heartbeat не чаще раза в 5 минут,
                 // чтобы не спамить Seq, но сохранить uptime/db_healthy в AdminPanel.
                 _idleTicks++;
-                shouldReport = snapshot.Count > 0 && _idleTicks >= IdleHeartbeatEveryTicks;
+                shouldReport = snapshot.Gauges.Count > 0 && _idleTicks >= IdleHeartbeatEveryTicks;
                 if (shouldReport)
                     _idleTicks = 0;
             }
 
             if (shouldReport)
             {
-                _logger.LogInformation("ServiceMetrics {@Metrics}",
-                    new { ServiceName = _serviceName, Metrics = snapshot, Timestamp = DateTime.UtcNow });
+                _logger.LogInformation("ServiceMetrics {@Metrics}", new
+                {
+                    SchemaVersion = 2,
+                    ServiceName = _serviceName,
+                    Counters = snapshot.Counters,
+                    Gauges = snapshot.Gauges,
+                    Timestamp = DateTime.UtcNow
+                });
             }
         }
     }

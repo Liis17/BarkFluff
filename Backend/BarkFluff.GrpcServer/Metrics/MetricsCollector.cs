@@ -47,24 +47,36 @@ public class MetricsCollector
     /// </summary>
     public Dictionary<string, long> SnapshotAndReset(out bool hadCounterActivity)
     {
-        var snapshot = new Dictionary<string, long>();
+        var detailed = SnapshotAndResetDetailed(out hadCounterActivity);
+        return detailed.Counters
+            .Concat(detailed.Gauges)
+            .ToDictionary(x => x.Key, x => x.Value);
+    }
+
+    /// <summary>
+    /// Возвращает снимок с явной семантикой значений.
+    /// Counters — дельты с прошлого снимка, gauges — последнее известное состояние.
+    /// Этот формат предназначен для внешнего экспорта метрик.
+    /// </summary>
+    public MetricsSnapshot SnapshotAndResetDetailed(out bool hadCounterActivity)
+    {
+        var counters = new Dictionary<string, long>();
+        var gauges = new Dictionary<string, long>(_gauges);
         hadCounterActivity = false;
 
         foreach (var key in _counters.Keys)
         {
             var value = _counters.TryRemove(key, out var v) ? v : 0;
-            if (value != 0)
-            {
-                snapshot[key] = value;
-                hadCounterActivity = true;
-            }
+            if (value == 0) continue;
+
+            counters[key] = value;
+            hadCounterActivity = true;
         }
 
-        foreach (var kvp in _gauges)
-        {
-            snapshot[kvp.Key] = kvp.Value;
-        }
-
-        return snapshot;
+        return new MetricsSnapshot(counters, gauges);
     }
 }
+
+public sealed record MetricsSnapshot(
+    IReadOnlyDictionary<string, long> Counters,
+    IReadOnlyDictionary<string, long> Gauges);

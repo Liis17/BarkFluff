@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.LoadConfiguration(ServiceId.CloudMessaging);
 builder.AddBarkFluffSerilog("BarkFluff.CloudMessaging");
+builder.Services.AddBarkFluffMetrics("BarkFluff.CloudMessaging");
 builder.SetRunningAddress(builder.Configuration);
 
 // Firebase service
