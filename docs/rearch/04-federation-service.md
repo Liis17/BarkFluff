@@ -141,6 +141,12 @@ FederationOutbox
 | `FederationDb`, `Redis`, `RabbitMQ:*` | стандартно |
 | `MessagesService:Host/Token`, `UsersService:Host/Token`, `FilesService:Host/Token`, `OnlinerService:Host/Token` | внутренние клиенты |
 | `NavigatorUrl` | для discovery-фолбэка и (опц.) регистрации |
+| `Federation:MaxPresenceSubscriptionSize` | лимит uuid в одной S2S-подписке presence, дефолт 500 (этап 4.3) |
+| `Federation:PresenceInterestTtlSeconds` | TTL записи интереса инстанса Onliner, дефолт 60 (≈ 3 × его интервала) |
+| `Federation:PresenceReconcileSeconds` | период сверки желаемых подписок с фактическими, дефолт 10 |
+| `Federation:PresenceResubscribeMinSeconds` | дебаунс переоткрытия стрима при смене набора, дефолт 5 |
+| `Federation:PresenceCoalesceSeconds` | окно coalescing на пару (пользователь, стрим), дефолт 5 |
+| `Federation:PresenceResyncSeconds` | период полного ресинка снимка статусов, дефолт 300 |
 
 ## Метрики (MetricsCollector, как у всех)
 

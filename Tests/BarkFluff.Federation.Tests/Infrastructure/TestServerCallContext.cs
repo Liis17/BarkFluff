@@ -11,10 +11,14 @@ public sealed class TestServerCallContext : ServerCallContext
     private Status _status = Status.DefaultSuccess;
     private WriteOptions? _writeOptions;
 
-    public TestServerCallContext(string? xfedOrigin = null)
+    private readonly CancellationToken _cancellationToken;
+
+    public TestServerCallContext(string? xfedOrigin = null, CancellationToken cancellationToken = default)
     {
         if (xfedOrigin != null)
             _userState["xfed-origin"] = xfedOrigin;
+
+        _cancellationToken = cancellationToken;
     }
 
     protected override string MethodCore => "TestMethod";
@@ -27,7 +31,7 @@ public sealed class TestServerCallContext : ServerCallContext
 
     protected override Metadata RequestHeadersCore { get; } = new();
 
-    protected override CancellationToken CancellationTokenCore => CancellationToken.None;
+    protected override CancellationToken CancellationTokenCore => _cancellationToken;
 
     protected override Metadata ResponseTrailersCore { get; } = new();
 

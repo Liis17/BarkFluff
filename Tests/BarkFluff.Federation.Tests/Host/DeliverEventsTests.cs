@@ -6,6 +6,7 @@ using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
 
 using Grpc.Core;
@@ -29,7 +30,11 @@ public class DeliverEventsTests
             TestHelpers.CreateSigningKeyService(context),
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
             Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
+            Mock.Of<OnlinerServerApi.OnlinerServerApiClient>(),
             context,
+            TestHelpers.CreateFederationSwitch(),
+            new IncomingPresenceRegistry(),
+            TestHelpers.CreatePresenceOptions(),
             new MetricsCollector(),
             quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
             NullLogger<FederationS2SApiService>.Instance);
@@ -46,7 +51,11 @@ public class DeliverEventsTests
             TestHelpers.CreateSigningKeyService(context),
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
             messagesMock.Object,
+            Mock.Of<OnlinerServerApi.OnlinerServerApiClient>(),
             context,
+            TestHelpers.CreateFederationSwitch(),
+            new IncomingPresenceRegistry(),
+            TestHelpers.CreatePresenceOptions(),
             new MetricsCollector(),
             quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
             NullLogger<FederationS2SApiService>.Instance);

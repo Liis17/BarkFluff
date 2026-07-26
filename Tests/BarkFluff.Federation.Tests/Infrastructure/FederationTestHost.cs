@@ -7,6 +7,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
 
 using Grpc.Net.Client;
@@ -101,6 +102,12 @@ public sealed class FederationTestHost : IAsyncDisposable
 
                     // Квота ChatCreated (этап 2.5) — фейк без Redis, всегда пропускает.
                     services.AddSingleton<IChatCreatedQuotaLimiter>(new FakeChatCreatedQuotaLimiter());
+
+                    // Presence-мост (этап 4.3) — те же рассуждения: SubscribePresence в этих
+                    // тестах не зовётся, но активация FederationS2SApiService требует регистрации.
+                    services.AddSingleton(Mock.Of<OnlinerServerApi.OnlinerServerApiClient>());
+                    services.AddSingleton<PresenceOptions>();
+                    services.AddSingleton<IncomingPresenceRegistry>();
                 });
 
                 webHost.Configure(app =>

@@ -4,7 +4,9 @@ using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Federation;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using Google.Protobuf;
@@ -25,7 +27,11 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
     private readonly SigningKeyService _signingKeyService;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
+    private readonly OnlinerServerApi.OnlinerServerApiClient _onlinerClient;
     private readonly FederationContext _context;
+    private readonly FederationSwitch _federationSwitch;
+    private readonly IncomingPresenceRegistry _incomingPresence;
+    private readonly PresenceOptions _presenceOptions;
     private readonly MetricsCollector _metrics;
     private readonly IChatCreatedQuotaLimiter _chatCreatedQuotaLimiter;
     private readonly ILogger<FederationS2SApiService> _logger;
@@ -35,7 +41,11 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         SigningKeyService signingKeyService,
         UsersServerApi.UsersServerApiClient usersClient,
         MessagesServerApi.MessagesServerApiClient messagesClient,
+        OnlinerServerApi.OnlinerServerApiClient onlinerClient,
         FederationContext context,
+        FederationSwitch federationSwitch,
+        IncomingPresenceRegistry incomingPresence,
+        PresenceOptions presenceOptions,
         MetricsCollector metrics,
         IChatCreatedQuotaLimiter chatCreatedQuotaLimiter,
         ILogger<FederationS2SApiService> logger)
@@ -44,7 +54,11 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         _signingKeyService = signingKeyService;
         _usersClient = usersClient;
         _messagesClient = messagesClient;
+        _onlinerClient = onlinerClient;
         _context = context;
+        _federationSwitch = federationSwitch;
+        _incomingPresence = incomingPresence;
+        _presenceOptions = presenceOptions;
         _metrics = metrics;
         _chatCreatedQuotaLimiter = chatCreatedQuotaLimiter;
         _logger = logger;
@@ -59,7 +73,214 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         };
         response.ProtocolVersions.Add(1);
 
+        // Capability объявляются только активной федерацией (этапы 4.3/4.4): партнёр по ним
+        // решает, открывать ли presence-стрим и слать ли typing — вызовы к ноде, которая их
+        // всё равно отбросит, дешевле не делать вовсе.
+        if (_federationSwitch.IsActive)
+        {
+            response.Capabilities.Add("presence");
+        }
+
         return Task.FromResult(response);
+    }
+
+    // Origin-сторона presence-моста (этап 4.3). XFed уже проверил подпись запроса.
+    // Стрим живёт до отмены подписчиком; событий «keepalive» в контракте нет и выдумывать их
+    // нельзя — живость соединения держит HTTP/2 keepalive транспортного уровня.
+    public override async Task SubscribePresence(
+        SubscribePresenceRequest request,
+        IServerStreamWriter<PresenceEvent> responseStream,
+        ServerCallContext context)
+    {
+        if (!_federationSwitch.IsActive)
+        {
+            throw new FederationNotConfiguredException();
+        }
+
+        var origin = context.UserState.TryGetValue("xfed-origin", out var originObj) ? originObj as string : null;
+        if (string.IsNullOrEmpty(origin))
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "origin не определён"));
+        }
+
+        if (await IsBlockedAsync(origin, context.CancellationToken))
+        {
+            _metrics.Increment("presence_subscribe_rejected.blocked");
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "нода заблокирована"));
+        }
+
+        if (request.UserUuids.Count > _presenceOptions.MaxSubscriptionSize)
+        {
+            // Не обрезаем молча: на этой стороне превышение — уже сигнал злоупотребления.
+            _metrics.Increment("presence_subscribe_rejected.limit");
+            throw new RpcException(new Status(
+                StatusCode.ResourceExhausted,
+                $"не более {_presenceOptions.MaxSubscriptionSize} uuid в подписке"));
+        }
+
+        var watched = await ResolveWatchedUsersAsync(request.UserUuids, origin, context.CancellationToken);
+
+        // Пустой набор — стрим открывается и молчит. Не PermissionDenied: иначе подписчик узнал бы,
+        // какие uuid у нас существуют.
+        var subscription = _incomingPresence.Add(origin, watched);
+        _metrics.Increment("presence_streams_opened");
+
+        try
+        {
+            // Начальный снимок: без него подписчик не узнает состояние до первого изменения.
+            subscription.MarkAllDirty();
+            await PumpAsync(subscription, responseStream, context.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Нормальное завершение: подписчик закрыл стрим.
+        }
+        finally
+        {
+            _incomingPresence.Remove(subscription.Id);
+            _metrics.Increment("presence_streams_closed");
+        }
+    }
+
+    /// <summary>
+    /// Проверка отношений (риск №42) + резолв uuid → локальный userId. Наблюдать можно только
+    /// тех наших пользователей, с кем у ноды-подписчика есть активный федеративный чат.
+    /// </summary>
+    private async Task<Dictionary<long, Guid>> ResolveWatchedUsersAsync(
+        IEnumerable<string> requestedUuids,
+        string origin,
+        CancellationToken ct)
+    {
+        var accessRequest = new CheckFederatedPresenceAccessRequest { RequestingServer = origin };
+        accessRequest.UserUuids.AddRange(requestedUuids);
+
+        var access = await _messagesClient.CheckFederatedPresenceAccessAsync(
+            accessRequest, cancellationToken: ct);
+
+        var denied = accessRequest.UserUuids.Count - access.AllowedUserUuids.Count;
+        if (denied > 0)
+        {
+            _metrics.Add("presence_access_denied_uuids", denied);
+        }
+
+        var watched = new Dictionary<long, Guid>();
+
+        if (access.AllowedUserUuids.Count == 0)
+        {
+            return watched;
+        }
+
+        var usersRequest = new GetUsersByUuidRequest();
+        usersRequest.Uuids.AddRange(access.AllowedUserUuids);
+
+        var users = await _usersClient.GetUsersByUuidAsync(usersRequest, cancellationToken: ct);
+
+        foreach (var user in users.Users)
+        {
+            // Только наши локальные пользователи: remote-профиль отдавать в федерацию нельзя.
+            if (user is { Found: true, IsRemote: false, UserId: > 0 } && Guid.TryParse(user.Uuid, out var uuid))
+            {
+                watched[user.UserId] = uuid;
+            }
+        }
+
+        return watched;
+    }
+
+    /// <summary>
+    /// Цикл отправки. Тикает часто, но реально шлёт только тех, у кого истекло окно coalescing;
+    /// раз в <c>PresenceResyncSeconds</c> помечает всех — дешёвая страховка от пропущенного
+    /// fan-out-события.
+    /// </summary>
+    private async Task PumpAsync(
+        IncomingPresenceSubscription subscription,
+        IServerStreamWriter<PresenceEvent> responseStream,
+        CancellationToken ct)
+    {
+        var tick = TimeSpan.FromMilliseconds(Math.Max(250, _presenceOptions.CoalesceWindow.TotalMilliseconds / 4));
+        var nextResync = DateTime.UtcNow + _presenceOptions.ResyncInterval;
+
+        using var timer = new PeriodicTimer(tick);
+
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var now = DateTime.UtcNow;
+
+            if (now >= nextResync)
+            {
+                subscription.MarkAllDirty();
+                nextResync = now + _presenceOptions.ResyncInterval;
+            }
+
+            var due = subscription.TakeDue(now, _presenceOptions.CoalesceWindow);
+            if (due.Count == 0)
+            {
+                continue;
+            }
+
+            await SendStatusesAsync(subscription, due, responseStream, ct);
+        }
+    }
+
+    private async Task SendStatusesAsync(
+        IncomingPresenceSubscription subscription,
+        List<long> userIds,
+        IServerStreamWriter<PresenceEvent> responseStream,
+        CancellationToken ct)
+    {
+        GetLocalPresenceResponse presence;
+
+        try
+        {
+            var request = new GetLocalPresenceRequest();
+            request.UserIds.AddRange(userIds);
+
+            // Privacy применяет Onliner — владелец данных. Скрытый пользователь приходит сюда
+            // уже как UNKNOWN, поэтому его реальный статус физически не может утечь в стрим.
+            presence = await _onlinerClient.GetLocalPresenceAsync(request, cancellationToken: ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Presence эфемерен: пропущенный тик доберёт ресинк, ретраить незачем.
+            _metrics.Increment("presence_stream_errors");
+            _logger.LogDebug(ex, "Не удалось получить локальные статусы для стрима {Origin}", subscription.Origin);
+            return;
+        }
+
+        foreach (var status in presence.Statuses)
+        {
+            if (!subscription.Watched.TryGetValue(status.UserId, out var uuid))
+            {
+                continue;
+            }
+
+            await responseStream.WriteAsync(new PresenceEvent
+            {
+                UserUuid = uuid.ToString(),
+                Status = MapPresenceStatus(status.Status),
+                LastSeen = status.LastSeen,
+            }, ct);
+
+            _metrics.Increment("presence_events_out");
+        }
+    }
+
+    private static PresenceStatus MapPresenceStatus(BarkFluff.Proto.Onliner.StatusTypeId status) => status switch
+    {
+        BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline => PresenceStatus.Online,
+        BarkFluff.Proto.Onliner.StatusTypeId.StatusOffline => PresenceStatus.Offline,
+        // UNKNOWN здесь несёт двойной смысл: «скрыт privacy» и «статуса нет». Различать их
+        // снаружи нельзя — иначе privacy утекала бы по каналу метаданных.
+        _ => PresenceStatus.Unknown,
+    };
+
+    private async Task<bool> IsBlockedAsync(string origin, CancellationToken ct)
+    {
+        var server = await _context.KnownServers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.ServerName == origin, ct);
+
+        return server is { Status: Domain.Enums.KnownServerStatus.Blocked };
     }
 
     public override async Task<GetServerKeysResponse> GetServerKeys(GetServerKeysRequest request, ServerCallContext context)
