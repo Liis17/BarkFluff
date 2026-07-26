@@ -1,5 +1,6 @@
 using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
 using System.Text.Json;
@@ -360,6 +361,7 @@ public static class SeqEndpoints
         group.MapGet("/services/status", async (
             SeqService seqService,
             DockerService dockerService,
+            DockerRegistryService dockerRegistryService,
             HttpContext context,
             int hours = 24) =>
         {
@@ -395,15 +397,15 @@ public static class SeqEndpoints
             }
 
             // Получаем статусы контейнеров Docker
-            Dictionary<string, string>? containerStates = null;
+            Dictionary<string, ContainerStatusDto>? containersByName = null;
             try
             {
                 var containers = await dockerService.GetContainersAsync();
-                containerStates = containers
+                containersByName = containers
                     .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State))
                     .ToDictionary(
                         c => c.Name.TrimStart('/'),
-                        c => c.State!,
+                        c => c,
                         StringComparer.OrdinalIgnoreCase);
             }
             catch
@@ -413,12 +415,18 @@ public static class SeqEndpoints
 
             var now = DateTime.UtcNow;
 
-            object BuildEntry(string name, string? dockerState)
+            async Task<object> BuildEntryAsync(string name, ContainerStatusDto? container)
             {
                 serviceData.TryGetValue(name, out var data);
+                var dockerState = container?.State;
                 bool isActive = dockerState != null
                     ? dockerState == "running"
                     : data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5;
+
+                var versionStatus = container is null
+                    ? new ImageVersionStatusDto()
+                    : await dockerRegistryService.GetVersionStatusAsync(container.Image);
+
                 return new
                 {
                     name,
@@ -426,12 +434,15 @@ public static class SeqEndpoints
                     dockerState,
                     lastSeen = data.lastSeen?.ToString("o"),
                     errorCount = data.errorCount,
-                    eventCount = data.eventCount
+                    eventCount = data.eventCount,
+                    currentVersion = versionStatus.CurrentVersion,
+                    latestVersion = versionStatus.LatestVersion,
+                    updateAvailable = versionStatus.UpdateAvailable
                 };
             }
 
             List<object> result;
-            if (containerStates != null)
+            if (containersByName != null)
             {
                 // Динамически: показываем только реально присутствующие контейнеры известных сервисов.
                 // Так на проде не светятся сервисы, которых нет в развёрнутом compose (например Minio,
@@ -439,17 +450,19 @@ public static class SeqEndpoints
                 var containerToService = ServiceToContainerMap
                     .ToDictionary(kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
 
-                result = containerStates
+                result = (await Task.WhenAll(containersByName
                     .Where(cs => containerToService.ContainsKey(cs.Key))
                     .OrderBy(cs => containerToService[cs.Key], StringComparer.Ordinal)
-                    .Select(cs => BuildEntry(containerToService[cs.Key], cs.Value))
+                    .Select(cs => BuildEntryAsync(containerToService[cs.Key], cs.Value))))
+                    .Cast<object>()
                     .ToList();
             }
             else
             {
                 // Docker недоступен — fallback на данные Seq.
-                result = KnownServices.Concat(serviceData.Keys).Distinct()
-                    .Select(name => BuildEntry(name, null))
+                result = (await Task.WhenAll(KnownServices.Concat(serviceData.Keys).Distinct()
+                    .Select(name => BuildEntryAsync(name, null))))
+                    .Cast<object>()
                     .ToList();
             }
 

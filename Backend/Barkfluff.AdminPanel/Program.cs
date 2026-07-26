@@ -69,6 +69,12 @@ public class Program
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
 
+        builder.Services.AddHttpClient<DockerRegistryService>(client =>
+        {
+            client.BaseAddress = new Uri("https://docker.barkfluff.com:5000");
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
         // Register LogsExportService as Singleton (in-memory job dictionary)
         builder.Services.AddSingleton<LogsExportService>();
 
