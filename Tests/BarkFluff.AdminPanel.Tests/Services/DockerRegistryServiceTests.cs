@@ -42,7 +42,7 @@ public class DockerRegistryServiceTests
         var service = CreateService(request => request.RequestUri?.AbsolutePath switch
         {
             "/v2/barkfluff-users-dev/tags/list" => CreateResponse("{\"tags\":[\"1.0.9\",\"1.0.10\",\"latest\"]}"),
-            "/v2/barkfluff-users-dev/manifests/1.0.9" => CreateManifestResponse(installedDigest),
+            "/v2/barkfluff-users-dev/manifests/1.0.9" => CreateManifestResponse("sha256:installed"),
             "/v2/barkfluff-users-dev/manifests/1.0.10" => CreateManifestResponse("sha256:latest"),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound)
         });
