@@ -29,6 +29,10 @@ public static class DependencyInjection
         // Фильтр членства в чате для typing (использует gRPC-клиент MessagesServerApi)
         services.AddScoped<ChatMembershipFilter>();
 
+        // Исходящий federated typing (этап 4.4). Клиент Federation опционален: на ноде без
+        // федерации его в контейнере нет, и вся ветка просто не активируется.
+        services.AddScoped<FederatedTypingSender>();
+
         // Background Services
         services.AddHostedService<OfflineDetectionService>();
         services.AddHostedService<DatabasePersistenceService>();

@@ -147,6 +147,10 @@ FederationOutbox
 | `Federation:PresenceResubscribeMinSeconds` | дебаунс переоткрытия стрима при смене набора, дефолт 5 |
 | `Federation:PresenceCoalesceSeconds` | окно coalescing на пару (пользователь, стрим), дефолт 5 |
 | `Federation:PresenceResyncSeconds` | период полного ресинка снимка статусов, дефолт 300 |
+| `Federation:TypingCoalesceSeconds` | окно coalescing исходящего typing на (чат, отправитель, нода), дефолт 2 (этап 4.4) |
+| `Federation:TypingDeadlineMs` | deadline S2S-вызова typing, дефолт 2000 |
+| `Federation:TypingRateLimitPerOriginPerMinute` | лимит входящих typing per-origin, дефолт 600 |
+| `Federation:TypingValidationCacheSeconds` | TTL кеша валидации typing, дефолт 30 (отрицательный результат — вдвое короче) |
 
 ## Метрики (MetricsCollector, как у всех)
 

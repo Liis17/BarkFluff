@@ -375,6 +375,15 @@ public class ConfigurationDefaultsPopulator
                 "PresenceCoalesceSeconds" => "5",
                 // Периодический ресинк снимка — страховка от пропущенного fan-out-события.
                 "PresenceResyncSeconds" => "300",
+                // --- typing-мост (этап 4.4) ---
+                // Не чаще одной отправки в окно на ключ (чат, отправитель, нода).
+                "TypingCoalesceSeconds" => "2",
+                // Короткий deadline: typing эфемерен, ждать долго бессмысленно.
+                "TypingDeadlineMs" => "2000",
+                // При coalescing 2с это ~20 одновременно печатающих пар с одной ноды.
+                "TypingRateLimitPerOriginPerMinute" => "600",
+                // Heartbeat идёт каждые 4–5с — без кеша каждый стоил бы двух gRPC-вызовов.
+                "TypingValidationCacheSeconds" => "30",
                 _ => null
             };
 

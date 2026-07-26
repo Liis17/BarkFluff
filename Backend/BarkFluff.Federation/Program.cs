@@ -104,6 +104,11 @@ public class Program
         builder.Services.AddSingleton<PeerCapabilityCache>();
         builder.Services.AddHostedService<PresenceStreamManager>();
 
+        // Typing-мост (этап 4.4): coalescing на исходящем пути, лимит и кеш валидации — на входящем.
+        builder.Services.AddSingleton<TypingCoalescer>();
+        builder.Services.AddSingleton<TypingValidationCache>();
+        builder.Services.AddSingleton<ITypingRateLimiter, TypingRateLimiter>();
+
         builder.Services.AddGrpcClient<NavigatorApi.NavigatorApiClient>(o =>
         {
             o.Address = new Uri(builder.Configuration["NavigatorUrl"]!);
