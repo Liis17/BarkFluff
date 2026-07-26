@@ -544,9 +544,105 @@ public class ChatsStorage
             throw;
         }
     }
+
+    // ---- Presence/typing через федерацию (этап 4.1) -------------------------
+
+    /// <summary>
+    /// Членство пользователя в запрошенных чатах вместе с федеративным контекстом.
+    /// Идентификатор задаётся либо <paramref name="userId"/>, либо <paramref name="userUuid"/>.
+    /// </summary>
+    /// <remarks>
+    /// Метод зовётся на каждом typing-heartbeat, поэтому запросов ровно столько, сколько нужно:
+    /// первый по стоимости равен прежнему <see cref="GetMemberChatIds"/>, второй (remote-участники)
+    /// выполняется только когда среди чатов есть активные федеративные. Локальные и групповые
+    /// чаты второй запрос не оплачивают, N+1 по чатам не возникает.
+    /// </remarks>
+    public virtual async Task<ChatMembershipContext> GetMembershipContext(
+        long? userId,
+        Guid? userUuid,
+        List<Guid> chatIds)
+    {
+        var query = _context.ChatMembers
+            .AsNoTracking()
+            .Where(m => chatIds.Contains(m.ChatId));
+
+        query = userUuid.HasValue
+            ? query.Where(m => m.UserUuid == userUuid.Value)
+            : query.Where(m => m.UserId == userId);
+
+        var rows = await query
+            .Select(m => new
+            {
+                m.ChatId,
+                m.UserUuid,
+                m.Chat.IsFederated,
+                m.Chat.FederatedStatus,
+            })
+            .ToListAsync();
+
+        var memberChatIds = rows.Select(r => r.ChatId).Distinct().ToList();
+
+        // Для uuid-ветки эхо запрошенного uuid; для user_id-ветки — uuid из членства
+        // (у локального участника fed-чата он заполнен с 2.3). В Users не ходим — hot-path.
+        var requesterUuid = userUuid
+            ?? rows.Select(r => r.UserUuid).FirstOrDefault(u => u.HasValue);
+
+        var federatedChatIds = rows
+            .Where(r => r.IsFederated && r.FederatedStatus == Domain.FederatedStatus.Active)
+            .Select(r => r.ChatId)
+            .Distinct()
+            .ToList();
+
+        if (federatedChatIds.Count == 0)
+        {
+            return new ChatMembershipContext(memberChatIds, requesterUuid, []);
+        }
+
+        var peers = await _context.ChatMembers
+            .AsNoTracking()
+            .Where(m => federatedChatIds.Contains(m.ChatId)
+                && m.ServerName != null
+                && m.UserUuid != null)
+            .Select(m => new FederatedChatPeerRow(m.ChatId, m.UserUuid!.Value, m.ServerName!))
+            .ToListAsync();
+
+        return new ChatMembershipContext(memberChatIds, requesterUuid, peers);
+    }
+
+    /// <summary>
+    /// Подмножество <paramref name="userUuids"/> — наших пользователей, у которых есть активный
+    /// федеративный чат с нодой <paramref name="requestingServer"/> (этап 4.1, риск №42).
+    /// Один запрос на весь батч.
+    /// </summary>
+    public virtual Task<List<Guid>> GetUuidsSharingFederatedChatWithServer(
+        string requestingServer,
+        List<Guid> userUuids)
+    {
+        return _context.ChatMembers
+            .AsNoTracking()
+            .Where(m => m.UserUuid != null
+                && userUuids.Contains(m.UserUuid.Value)
+                // Наш пользователь: у локального участника ServerName пуст.
+                && m.ServerName == null
+                && m.Chat.IsFederated
+                && m.Chat.FederatedStatus == Domain.FederatedStatus.Active
+                && m.Chat.Members!.Any(p => p.ServerName == requestingServer))
+            .Select(m => m.UserUuid!.Value)
+            .Distinct()
+            .ToListAsync();
+    }
 }
 
 public record PrivateChatCreationResult(Chat Chat, bool Created);
+
+/// <summary>Членство + федеративный контекст для одного запроса CheckChatMembership (этап 4.1).</summary>
+public record ChatMembershipContext(
+    IReadOnlyList<Guid> MemberChatIds,
+    Guid? RequesterUuid,
+    IReadOnlyList<FederatedChatPeerRow> FederatedPeers);
+
+/// <summary>Remote-участник активного федеративного чата: куда маршрутизировать typing/presence.</summary>
+public record FederatedChatPeerRow(Guid ChatId, Guid UserUuid, string ServerName);
 
 public class ChatInfoDto
 {

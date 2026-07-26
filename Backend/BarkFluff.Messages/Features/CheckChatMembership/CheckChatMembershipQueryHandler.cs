@@ -36,9 +36,30 @@ public class CheckChatMembershipQueryHandler
             return response;
         }
 
-        var memberChatIds = await _chatsStorage.GetMemberChatIds(request.UserId, parsed);
+        var membership = await _chatsStorage.GetMembershipContext(
+            request.UserId, request.UserUuid, parsed);
 
-        response.MemberChatIds.AddRange(memberChatIds.Select(id => id.ToString()));
+        response.MemberChatIds.AddRange(membership.MemberChatIds.Select(id => id.ToString()));
+
+        if (membership.RequesterUuid.HasValue)
+        {
+            response.RequesterUuid = membership.RequesterUuid.Value.ToString();
+        }
+
+        // Нефедеративные чаты в federated_chats не попадают вовсе: пустой список —
+        // рабочий случай подавляющего большинства вызовов.
+        foreach (var chat in membership.FederatedPeers.GroupBy(p => p.ChatId))
+        {
+            var federated = new FederatedChatContext { ChatId = chat.Key.ToString() };
+
+            federated.Peers.AddRange(chat.Select(peer => new FederatedChatPeer
+            {
+                UserUuid = peer.UserUuid.ToString(),
+                ServerName = peer.ServerName,
+            }));
+
+            response.FederatedChats.Add(federated);
+        }
 
         return response;
     }

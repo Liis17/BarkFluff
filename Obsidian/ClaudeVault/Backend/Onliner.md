@@ -44,7 +44,7 @@ Client → SetOnlineStatus (gRPC)
 | `OnlineStatusNotifier` | Рассылает изменения по стримам, отслеживающим пользователя |
 | `TypingSubscriptionsManager` | Реестр typing-стримов по `chatId` (прямой индекс `subscriberId → подписки` + обратный `chatId → стримы`). Аналог `OnlineStatusSubscriptionsManager`, но ключ — чат, а обратный индекс хранит `SubscriberId`, чтобы не слать набор обратно самому печатающему |
 | `TypingNotifier` | Ретранслирует `TypingEvent` подписчикам чата (`Task.WhenAll`), исключая отправителя |
-| `ChatMembershipFilter` (Scoped) | Фильтрует `chat_ids` по членству через gRPC-клиент `MessagesServerApi.CheckChatMembership`. Fail-closed: при ошибке — пустое множество |
+| `ChatMembershipFilter` (Scoped) | Фильтрует `chat_ids` по членству через gRPC-клиент `MessagesServerApi.CheckChatMembership`. Fail-closed: при ошибке — пустое множество. С этапа 4.1 возвращает `ChatMembershipResult` (чаты + `RequesterUuid` + `FederatedChats`), а не голый `HashSet<string>` |
 
 ### Приватность онлайн-статуса
 
@@ -103,6 +103,16 @@ Client → SetOnlineStatus (gRPC)
 - **Отправка** (`SetTypingStatus`): не-участник не может инжектить набор в чужой чат — heartbeat отбрасывается (`typing_heartbeats_rejected_by_membership`).
 
 Стоимость: проверка на приём — раз на открытие чата (дёшево); проверка на отправку — gRPC-вызов на каждый heartbeat (только пока пользователь печатает, индексированный `AnyAsync` по `(ChatId, UserId)`). На typing **не** распространяется `OnlineVisibility` — видимость набора определяется участием в чате, а не настройкой онлайн-приватности.
+
+**Расширенный ответ фильтра (этап 4.1).** `GetMemberChatIdsAsync` возвращает `ChatMembershipResult`:
+
+| Поле | Что несёт |
+|------|-----------|
+| `MemberChatIds` | как раньше — подмножество чатов, где пользователь состоит (вся фильтрация и fail-closed не изменились) |
+| `RequesterUuid` | UUID запрашивающего из `ChatMembers` (пусто, если его нет) — нужен typing-мосту: через границу ноды уходит uuid, а не `long userId` |
+| `FederatedChats` | `chat_id → remote-участники (uuid + server_name)`, только для активных fed-чатов; для локальных пуст |
+
+Федеративный контекст здесь только «протянут»: маршрутизацию по нему делает этап 4.4, поведение локального typing не изменилось. См. [[Backend/Messages]], раздел про `CheckChatMembership`.
 
 ### CQRS
 
