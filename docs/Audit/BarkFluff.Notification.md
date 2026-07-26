@@ -85,13 +85,13 @@ Notification — маленький сервис без публичного API
 ### D1. В master-compose порт сервиса публикуется на хост без необходимости — Low
 
 **Файл:** `Backend/docker-compose-master.yml:75` (`ports: ["${NOTIFICATION_PORT}:${NOTIFICATION_PORT}"]`)
-**Проблема:** Notification не маппит ни одного gRPC/HTTP-эндпоинта (`Program.cs:48-52` — только `UseRouting`, без `MapGrpcService`), он работает исключительно как consumer RabbitMQ, но Kestrel слушает порт 7004 (h2c), и master-compose выставляет его на хост. В dev-compose (`Backend/docker-compose-dev.yml:71-80`) порт корректно не публикуется.
+**Проблема:** Notification не маппит ни одного gRPC/HTTP-эндпоинта (`Program.cs:48-52` — только `UseRouting`, без `MapGrpcService`), он работает исключительно как consumer RabbitMQ, но Kestrel слушает порт 7004 (h2c), и master-compose выставляет его на хост. В dev-compose (`docker/backend/docker-compose-dev-backend.yml:71-80`) порт корректно не публикуется.
 **Почему это проблема:** лишняя поверхность: наружу торчит «пустой» Kestrel — сейчас он отвечает только 404, но любой будущий debug/metrics-эндпоинт автоматически станет публичным; плюс несоответствие dev и prod конфигураций.
 **Рекомендация:** убрать секцию `ports` у notification в `docker-compose-master.yml` (внутрисетевое взаимодействие через `barkfluff-network` сохранится).
 
 ### D2. nginx-конфиг отсутствует — и не требуется (наблюдение)
 
-**Файл:** `Backend/nginx/` (файла `notification.conf` нет)
+**Файл:** `docker/nginx/` (файла `notification.conf` нет)
 У сервиса нет публичного API, проксирование не нужно — отсутствие конфига корректно. Замечание лишь дополняет D1: раз публичного трафика нет, не должно быть и публикации порта.
 
 ### D3. Образ собран корректно (положительное наблюдение)

@@ -11,7 +11,7 @@ Background Worker для push-уведомлений через Firebase Cloud M
 
 ```bash
 dotnet build Backend/Barkfluff.CloudMessaging/Barkfluff.CloudMessaging.csproj
-docker-compose -f Backend/docker-compose-dev.yml up -d cloudmessaging
+docker-compose -f docker/backend/docker-compose-dev-backend.yml up -d cloudmessaging
 ```
 
 ## Архитектура

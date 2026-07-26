@@ -14,7 +14,7 @@ REST API на ASP.NET Core 10.0, файлы в S3/Minio, метаданные в
 
 ```bash
 dotnet build BarkFluff.ClientStorage.csproj
-docker-compose -f Backend/BarkFluff.ClientStorage/docker-compose-dev.yml up -d
+docker-compose -f docker/msk/docker-compose-msk.yml up -d clientstorage-dev
 dotnet ef migrations add <Name> --project BarkFluff.ClientStorage.csproj
 ```
 

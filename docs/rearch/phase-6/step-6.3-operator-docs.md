@@ -8,9 +8,9 @@
 
 Что уже есть в репозитории (использовать, а не переписывать):
 
-- `Backend/DOCKER_SETUP.md` — как поднимается стек сервисов; `Backend/PORTS_CONFIGURATION.md`, `Backend/sample.env` — порты и переменные.
-- `Backend/docker-compose-dev.yml`, `Backend/docker-compose-master.yml` — фактические стеки.
-- `Backend/nginx/*.conf` — референсные конфиги, включая `federation.conf` (субдомен `federation.{domain}`, таймауты 3600s) и `barkfluff.single-server.conf` (там же `location = /.well-known/barkfluff` → `federation:7031`), `00-rate-limits.conf` (зоны `federation_s2s`, `federation_wellknown`).
+- `Backend/DOCKER_SETUP.md` — как поднимается стек сервисов; `Backend/PORTS_CONFIGURATION.md`, `docker/backend/sample-backend.env` — порты и переменные.
+- `docker/backend/docker-compose-dev-backend.yml`, `Backend/docker-compose-master.yml` — фактические стеки.
+- `docker/nginx/*.conf` — референсные конфиги, включая `federation.conf` (субдомен `federation.{domain}`, таймауты 3600s) и `barkfluff.single-server.conf` (там же `location = /.well-known/barkfluff` → `federation:7031`), `00-rate-limits.conf` (зоны `federation_s2s`, `federation_wellknown`).
 - `Backend/dev-federation-testbed/README.md` — рабочий пример двух-нодовой конфигурации, генерация self-signed сертов (`certs/make-certs.sh`, печатает SPKI-отпечаток).
 - Ключи конфигурации Federation — `Obsidian/ClaudeVault/Backend/Federation.md` + [../04-federation-service.md](../04-federation-service.md).
 - Модель доверия, зачем нужен CA-серт на apex и почему self-signed допустим для S2S — [../02-trust-and-certs.md](../02-trust-and-certs.md); discovery — [../03-discovery.md](../03-discovery.md).
@@ -38,7 +38,7 @@
 
 ## Изменение 2 — референсный конфиг ноды
 
-- Проверить, что `Backend/nginx/federation.conf` и `barkfluff.single-server.conf` содержат всё, что описывает документ (субдомен, `/.well-known`, rate-limit зоны, таймауты стримов), и **дополнить конфиги комментариями-плейсхолдерами** (`{domain}`, пути к сертам) там, где оператору нужно подставить своё.
+- Проверить, что `docker/nginx/federation.conf` и `barkfluff.single-server.conf` содержат всё, что описывает документ (субдомен, `/.well-known`, rate-limit зоны, таймауты стримов), и **дополнить конфиги комментариями-плейсхолдерами** (`{domain}`, пути к сертам) там, где оператору нужно подставить своё.
 - Если для полноценной ноды с федерацией в `docker-compose-master.yml` чего-то не хватает (например, сервис `federation` не описан или не пробрасывает `WellKnownPort`) — дописать по образцу соседних сервисов. Новый compose «для операторов» **не** плодить: одна точка правды.
 
 ## Изменение 3 — точки входа
@@ -58,7 +58,7 @@
 1. `docs/operations/federation-node.md` содержит все 11 разделов; каждый упомянутый ключ конфигурации, порт, путь и команда сверены с кодом/конфигами (в отчёте — список того, что сверялось).
 2. Команды в документе (curl к well-known, вычисление SPKI, проверка подписи) синтаксически корректны и кросс-платформенны либо явно помечены платформой.
 3. Ссылки из README и `DOCKER_SETUP.md` проставлены; ни одна ссылка внутри документа не битая.
-4. Правки `Backend/nginx/*.conf` / `docker-compose-master.yml` (если понадобились) минимальны и не ломают существующий стек — проверить, что dev-стек по-прежнему валиден (`docker compose config` **не** запускать, если это требует Docker; достаточно синтаксической сверки с образцами).
+4. Правки `docker/nginx/*.conf` / `docker-compose-master.yml` (если понадобились) минимальны и не ломают существующий стек — проверить, что dev-стек по-прежнему валиден (`docker compose config` **не** запускать, если это требует Docker; достаточно синтаксической сверки с образцами).
 5. **[делает разработчик]** Сквозная проверка: поднять ноду с нуля на чистом окружении строго по документу, отметить каждый шаг, где пришлось догадываться; найденные пробелы — вернуть в документ.
 6. Obsidian: `Backend/Federation.md` — раздел «Эксплуатация ноды» со ссылкой.
 7. Коммит: `docs(rearch-phase6): 6.3 — документация оператора ноды`.

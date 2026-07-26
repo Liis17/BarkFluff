@@ -45,7 +45,7 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 
 ### S5. ~~Единый статический UPLOAD_TOKEN без ротации~~ — ~~Low~~ **Неактуально**
 
-**Файл:** `Backend/BarkFluff.ClientStorage/Middleware/TokenAuthMiddleware.cs:14-16`, `Backend/BarkFluff.ClientStorage/docker-compose-master.yml:15`
+**Файл:** `Backend/BarkFluff.ClientStorage/Middleware/TokenAuthMiddleware.cs:14-16`, `docker/msk/docker-compose-msk.yml:45`
 **Проблема:** Загрузка всех дистрибутивов всех платформ защищена одним долгоживущим shared-secret в переменной окружения. Нет ротации, нет привязки к субъекту, нет аудита «кто загрузил». Токен виден через `docker inspect` и в окружении процесса.
 **Почему это проблема:** Компрометация одного токена = возможность подменить дистрибутивы для всех пользователей всех платформ (supply-chain-вектор). Это самый ценный актив сервиса.
 **Рекомендация:** Минимум — регламент ротации и хранение через docker secrets. Лучше — перевести `/set` на XAuth-JWT с `TokenType.Service` (как в остальных сервисах платформы) и логировать субъект загрузки.
@@ -79,21 +79,21 @@ REST-сервис раздачи дистрибутивов клиентов (SQ
 
 ### D1. ~~Порт контейнера опубликован на всех интерфейсах в обход nginx/TLS~~ — ~~Medium~~ **Исправлено (2026-06-22)**
 
-**Файл:** `Backend/BarkFluff.ClientStorage/docker-compose-master.yml:5`, `Backend/BarkFluff.ClientStorage/docker-compose-dev.yml:6`
-**Проблема:** `ports: [ "${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]` публикует порт на `0.0.0.0`, тогда как nginx (`Backend/nginx/barkfluff.single-server.conf:5-7`) проксирует на `127.0.0.1:7050` и терминирует TLS на `storage.barkfluff.com`.
+**Файл:** `docker/msk/docker-compose-msk.yml:2`, `docker/msk/docker-compose-msk.yml:29`
+**Проблема:** `ports: [ "${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]` публикует порт на `0.0.0.0`, тогда как nginx (`docker/nginx/barkfluff.single-server.conf:5-7`) проксирует на `127.0.0.1:7050` и терминирует TLS на `storage.barkfluff.com`.
 **Почему это проблема:** Если хостовой firewall не закрывает порт, сервис доступен извне по чистому HTTP: UPLOAD_TOKEN при загрузке через этот порт уходит в открытом виде (перехват = компрометация всех дистрибутивов), плюс прямой доступ обходит nginx-ограничения и делает эксплуатируемыми S1/S2.
 **Рекомендация:** Привязать публикацию к loopback: `ports: [ "127.0.0.1:${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]` (nginx ходит на 127.0.0.1, этого достаточно).
 
 ### D2. ~~Кеш-каталог /app/cache не в volume; вероятная проблема прав в chiseled-образе~~ — ~~Medium~~ **Исправлено (2026-06-22)**
 
-**Файл:** `Backend/BarkFluff.ClientStorage/Dockerfile:12-17`, `Backend/BarkFluff.ClientStorage/docker-compose-master.yml:6-7`, `Backend/BarkFluff.ClientStorage/Program.cs:78`
+**Файл:** `Backend/BarkFluff.ClientStorage/Dockerfile:12-17`, `docker/msk/docker-compose-msk.yml:30-31`, `Backend/BarkFluff.ClientStorage/Program.cs:78`
 **Проблема:** В volume вынесен только `/app/data` (SQLite). Каталог кеша `/app/cache` не создаётся в образе (в build-стадии делается только `mkdir /app/publish/data`, строка 12 Dockerfile) и не примонтирован. Контейнер работает под непривилегированным UID 1654 (`USER $APP_UID`) в chiseled-образе, где `/app` принадлежит root — `Directory.CreateDirectory("/app/cache")` на старте (Program.cs:78) с высокой вероятностью упадёт с `UnauthorizedAccessException`, а если каталог всё же создаётся — кеш не переживает пересоздание контейнера.
 **Почему это проблема:** Без работающего кеша каждое скачивание идёт стримингом из S3 (медленнее, дороже, и Range сломан — P1). После каждого деплоя `CacheWarmupService` заново выкачивает из S3 все дистрибутивы (до 8 файлов × 512 МБ).
 **Рекомендация:** Добавить в Dockerfile `RUN mkdir -p /app/publish/cache` (тогда `COPY --chown=1654:1654` даст права) и примонтировать named volume `clientstorage-cache:/app/cache` в обоих compose. Проверить на живом контейнере, что кеш действительно наполняется (`ls /app/cache`).
 
 ### D3. ~~Переменные ClientStorage отсутствуют в sample.env~~ — ~~Low~~ **Неактуально**
 
-**Файл:** `Backend/sample.env` (нет `UPLOAD_TOKEN`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_SERVICE_URL`, `S3_BUCKET_NAME`, `CLIENTSTORAGE_PORT`)
+**Файл:** `docker/backend/sample-backend.env` (нет `UPLOAD_TOKEN`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_SERVICE_URL`, `S3_BUCKET_NAME`, `CLIENTSTORAGE_PORT`)
 **Проблема:** Compose-файлы сервиса требуют шесть переменных окружения, но в образцовом env-файле репозитория их нет.
 **Почему это проблема:** При развёртывании с нуля переменные легко забыть: незаданный `UPLOAD_TOKEN` уронит сервис на старте (это хорошо), но незаданный `CLIENTSTORAGE_PORT` даст некорректную публикацию портов, а отсутствие документированного формата провоцирует хранить секреты ad-hoc.
 **Рекомендация:** Добавить блок-заглушку для ClientStorage в `sample.env` (или отдельный `sample.env` рядом с compose сервиса).

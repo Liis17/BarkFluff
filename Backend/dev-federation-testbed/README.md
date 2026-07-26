@@ -4,7 +4,7 @@
 SPKI-пиннингом (этап 1.6). Discovery (KnownServers наполняется кодом) — этап 1.4; здесь пиры
 сидируются вручную SQL-скриптом (`Source = Manual`).
 
-Нода 1 — обычный dev-стек (`Backend/docker-compose-dev.yml`, сервисы `postgres`/`configuration`/
+Нода 1 — обычный dev-стек (`docker/backend/docker-compose-dev-backend.yml`, сервисы `postgres`/`configuration`/
 `federation`). Нода 2 — `docker-compose.node2.yml` в этой папке (отдельные контейнеры, общая сеть
 `barkfluff-network`). nginx перед каждой нодой — `docker-compose.nginx.yml`.
 

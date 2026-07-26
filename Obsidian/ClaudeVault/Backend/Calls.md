@@ -73,7 +73,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 | `CallsDb` | строка подключения CDR |
 | `MessagesService:Host/Token` | авторизация группы + список участников |
 | `LiveKit:Url` | WSS-адрес (дублируется в [[Backend/Beacon]].`livekit_url`) |
-| `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `Backend/livekit/livekit.yaml`) |
+| `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `docker/livekit/livekit.yaml`) |
 
 ## Внешний доступ ([[Backend/Nginx]])
 
@@ -88,7 +88,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 - **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
 - **[[Backend/Beacon]]** — отдаёт клиенту `livekit_url` из конфига Calls.
-- **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `Backend/livekit/livekit.yaml`.
+- **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `docker/livekit/livekit.yaml`.
 - **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); `ChatMemberKickedConsumer` (очередь `chat-member-kicked-calls`, событие `ChatMemberKickedEvent`: при кике пользователя из чата best-effort удаляет его из активной LiveKit-комнаты через `RoomServiceClient.RemoveParticipant`); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
 
 ## Клиенты

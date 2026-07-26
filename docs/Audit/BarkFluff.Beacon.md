@@ -24,7 +24,7 @@ Beacon — точка входа для клиентов: единственны
 
 ### S2. ~~Отсутствие rate limiting на анонимном эндпоинте с амплификацией во внутреннюю сеть~~ — ~~Medium~~ **Исправлено (2026-06-22)**
 
-**Файл:** `Backend/nginx/beacon.conf:15-24` (location без `limit_req`/`limit_conn`); `Backend/BarkFluff.Beacon/Host/BeaconApiService.cs:22`
+**Файл:** `docker/nginx/beacon.conf:15-24` (location без `limit_req`/`limit_conn`); `Backend/BarkFluff.Beacon/Host/BeaconApiService.cs:22`
 **Проблема:** Публичный анонимный `GetServerInfo` не ограничен ни на nginx (нет `limit_req`/`limit_conn` в `beacon.conf`), ни в самом сервисе. При этом каждый входящий запрос порождает 7 исходящих gRPC-вызовов в Configuration (см. P1).
 **Почему это проблема:** Один неаутентифицированный внешний запрос превращается в 7 внутренних RPC — коэффициент амплификации 7x. Дешёвый флуд на `beacon.barkfluff.com` способен положить Configuration, от которого зависят все остальные сервисы (включая их старт через `LoadConfiguration`).
 **Рекомендация:** Добавить в `beacon.conf` `limit_req_zone`/`limit_req` (например, 5 r/s с burst на IP) — для анонимного эндпоинта это безопасно. В сочетании с кэшированием из P1 амплификация устраняется полностью.
@@ -67,7 +67,7 @@ Beacon — точка входа для клиентов: единственны
 ### D1. ~~master-compose публикует plaintext gRPC-порт Beacon на хост в обход nginx~~ — ~~Medium~~ **Неактуально**
 
 **Файл:** `Backend/docker-compose-master.yml:12` (`ports: ["${BEACON_PORT}:${BEACON_PORT}"]`)
-**Проблема:** В production-компоузе порт Beacon публикуется напрямую на хост. Kestrel слушает h2c (HTTP/2 без TLS — `Program.cs:30-37`), TLS-терминация выполняется только в nginx (`beacon.conf`). В dev-компоузе (`Backend/docker-compose-dev.yml:10-20`) порт, наоборот, не публикуется — корректная схема.
+**Проблема:** В production-компоузе порт Beacon публикуется напрямую на хост. Kestrel слушает h2c (HTTP/2 без TLS — `Program.cs:30-37`), TLS-терминация выполняется только в nginx (`beacon.conf`). В dev-компоузе (`docker/backend/docker-compose-dev-backend.yml:10-20`) порт, наоборот, не публикуется — корректная схема.
 **Почему это проблема:** Незашифрованный gRPC-эндпоинт доступен на хосте напрямую, минуя nginx (TLS, заголовки X-Real-IP, таймауты и будущий rate limiting из S2). Опубликованный порт Docker обходит UFW-правила хоста (Docker сам пишет в iptables), так что «закрыт фаерволом» здесь часто не работает.
 **Рекомендация:** Убрать публикацию порта в master-compose (nginx ходит в контейнер по имени `beacon:7002` внутри docker-сети, как и настроено в `beacon.conf:16`). Если прямой доступ нужен для отладки — биндить на `127.0.0.1:${BEACON_PORT}`.
 
