@@ -36,6 +36,10 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
                 attachmentBuilder.WithOwner().HasForeignKey("MessageId");
                 attachmentBuilder.HasKey(a => a.Id);
 
+                // Проверки доступа к fed-файлу (этапы 3.2/3.3) ищут вложение по FileId —
+                // без индекса это seq scan по всем вложениям ноды на каждое скачивание.
+                attachmentBuilder.HasIndex(a => a.FileId);
+
                 attachmentBuilder.OwnsMany(a => a.ForwardedAttachments, forwardedBuilder =>
                 {
                     forwardedBuilder.WithOwner().HasForeignKey("MessageAttachmentId");
