@@ -30,6 +30,10 @@ public class BotsContext : DbContext
             .IsUnique()
             .HasFilter("\"SystemRole\" <> 0");
 
+        modelBuilder.Entity<Bot>()
+            .Property(b => b.Commands)
+            .HasColumnType("jsonb");
+
         modelBuilder.Entity<BotUpdate>()
             .HasOne(u => u.Bot)
             .WithMany()

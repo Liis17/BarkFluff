@@ -22,6 +22,22 @@ public static class BotMapping
         username = response.Username,
     };
 
+    public static Proto.Bots.BotCommand ToProto(this Domain.BotCommand command) => new()
+    {
+        Command = command.Command,
+        Description = command.Description,
+    };
+
+    public static Domain.BotCommand ToDomain(this Proto.Bots.BotCommand command) => new()
+    {
+        Command = command.Command,
+        Description = command.Description,
+    };
+
+    /// <summary>getMyCommands для HTTP Bot API.</summary>
+    public static object ToHttpResult(this GetMyCommandsResponse response)
+        => response.Commands.Select(c => new { command = c.Command, description = c.Description }).ToList();
+
     /// <summary>getFile для HTTP Bot API.</summary>
     public static object ToHttpResult(this GetFileResponse response) => new
     {
