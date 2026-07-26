@@ -36,6 +36,8 @@ service FilesServerApi {
 
   rpc UploadFileServer(UploadFileServerRequest) returns(UploadFileServerResponse); // Загрузить файл от имени пользователя (для сервиса Bots; полный пайплайн: детекция типа, компрессия, превью)
 
+  rpc GetTempDownloadUrlServer(GetTempDownloadUrlRequest) returns(GetTempDownloadUrlResponse); // Временные ссылки на скачивание файлов (для сервиса Bots; вложения по прямому file_id не отдаются)
+
   // Стикерпаки
   rpc CreateStickerPack(CreateStickerPackRequest) returns(CreateStickerPackResponse);
   rpc UpdateStickerPack(UpdateStickerPackRequest) returns(UpdateStickerPackResponse);
