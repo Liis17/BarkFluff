@@ -22,4 +22,10 @@ public class MessageEditedEvent
     public DateTimeOffset? LastChangeAt { get; set; }
 
     public string? SenderFid { get; set; }
+
+    /// <summary>
+    /// Снапшот метаданных вложений (этап 3.1). При правке список всегда пересоздаётся целиком
+    /// (docs/rearch/05-chat-replication.md) — null/пусто означает «вложений не осталось».
+    /// </summary>
+    public List<FederatedFileRefInfo>? FederatedAttachments { get; set; }
 }

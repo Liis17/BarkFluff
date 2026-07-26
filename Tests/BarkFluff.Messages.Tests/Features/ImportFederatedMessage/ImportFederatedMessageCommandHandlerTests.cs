@@ -4,6 +4,8 @@ using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
 
+using Microsoft.EntityFrameworkCore;
+
 namespace BarkFluff.Messages.Tests.Features.ImportFederatedMessage;
 
 public class ImportFederatedMessageCommandHandlerTests
@@ -98,5 +100,65 @@ public class ImportFederatedMessageCommandHandlerTests
 
         second.MessageId.Should().Be(first.MessageId);
         _h.DbContext.Messages.Count(m => m.ChatId == chat.Id && m.FederatedId == federatedId).Should().Be(1);
+    }
+
+    // ---- Снапшот вложений (этап 3.1) ----
+
+    [Fact]
+    public async Task Handle_WithAttachments_PersistsSnapshot()
+    {
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+        var fileId = Guid.NewGuid().ToString();
+
+        var request = BuildRequest(chat.Id, Guid.NewGuid(), remoteUuid);
+        request.Attachments.Add(new FederatedFileRefFlat
+        {
+            OriginServer = "remote.test",
+            FileId = fileId,
+            Filename = "report.pdf",
+            SizeBytes = 4096,
+            AttachmentType = (int)MessageAttachmentType.Document,
+        });
+
+        await CreateHandler().Handle(new ImportFederatedMessageCommand(request), CancellationToken.None);
+
+        // Attachments — owned-сущность: проецировать её отдельно от владельца EF не даёт,
+        // поэтому забираем сообщения целиком.
+        var stored = _h.DbContext.Messages
+            .AsNoTracking()
+            .AsEnumerable()
+            .SelectMany(m => m.Content?.Attachments ?? [])
+            .ToList();
+
+        var attachment = stored.Should().ContainSingle().Subject;
+        attachment.FileId.Should().Be(fileId);
+        attachment.OriginServer.Should().Be("remote.test");
+        attachment.FileName.Should().Be("report.pdf");
+        attachment.FileSize.Should().Be(4096);
+        attachment.Type.Should().Be(MessageAttachmentType.Document);
+    }
+
+    [Fact]
+    public async Task Handle_MalformedAttachment_IsRejectedPermanently()
+    {
+        // Снапшот с чужой ноды не проходит валидацию → permanent REJECTED, не RETRY:
+        // повторная доставка того же битого события ничего не исправит.
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+
+        var request = BuildRequest(chat.Id, Guid.NewGuid(), remoteUuid);
+        request.Attachments.Add(new FederatedFileRefFlat
+        {
+            OriginServer = "remote.test",
+            FileId = "not-a-guid",
+            SizeBytes = 1,
+            AttachmentType = (int)MessageAttachmentType.Document,
+        });
+
+        var act = async () => await CreateHandler().Handle(
+            new ImportFederatedMessageCommand(request), CancellationToken.None);
+
+        await act.Should().ThrowAsync<FederatedAttachmentInvalidException>();
     }
 }

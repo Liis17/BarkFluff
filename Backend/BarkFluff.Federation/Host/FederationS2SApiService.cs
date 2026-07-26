@@ -606,6 +606,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             OriginTsMs = sentAtMs,
                             EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                            // Снапшот вложений (этап 3.1) — Messages сохранит его в MessageAttachments.
+                            Attachments = { ToFlat(p.Attachments) },
                         }, cancellationToken: ct);
                         return (EventStatus.Ok, null);
                     }
@@ -621,6 +623,8 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
                             OriginServer = origin,
                             EventId = evt.EventId,
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
+                            // Список вложений при правке пересоздаётся целиком (docs/rearch/05).
+                            Attachments = { ToFlat(p.Attachments) },
                         }, cancellationToken: ct);
                         return (EventStatus.Ok, null);
                     }
@@ -695,6 +699,21 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
         var code = ex.Trailers.GetValue("x-error-code");
         return code ?? ex.StatusCode.ToString();
     }
+
+    // FederatedFileRef (S2S-контракт) → FederatedFileRefFlat (внутренний контракт Messages).
+    // Поля один в один; отдельный тип нужен, чтобы Messages не зависел от federation_api.proto.
+    private static IEnumerable<FederatedFileRefFlat> ToFlat(IEnumerable<FederatedFileRef> refs)
+        => refs.Select(r => new FederatedFileRefFlat
+        {
+            OriginServer = r.OriginServer,
+            FileId = r.FileId,
+            Filename = r.Filename,
+            SizeBytes = r.SizeBytes,
+            AttachmentType = r.AttachmentType,
+            PreviewFileId = r.PreviewFileId,
+            ImageWidth = r.ImageWidth,
+            ImageHeight = r.ImageHeight,
+        });
 
     private static bool PayloadAuthorBelongsToOrigin(FederationEvent evt, string origin)
     {

@@ -30,6 +30,7 @@ public class EditMessageCommandHandlerTests
             _filesClient.Object,
             _h.CreateUserContext(userId),
             _queueSender,
+            TestHelper.CreateConfiguration(),
             _h.Metrics,
             TestHelper.CreateLogger<EditMessageCommandHandler>());
     }
