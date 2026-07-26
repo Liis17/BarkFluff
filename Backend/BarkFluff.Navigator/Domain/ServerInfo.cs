@@ -17,4 +17,19 @@ public class ServerInfo
     public string ColorHardHex { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public required string AddedBy { get; set; }
+
+    // Этап 1.5 rearch — персистентность + federation-поля (docs/rearch/03-discovery.md, "Источник 2").
+    public DateTime LastSeenAt { get; set; }
+    public string? ServerName { get; set; }
+    public string? FederationEndpoint { get; set; }
+    public string[]? TlsSpkiSha256 { get; set; }
+    public int[]? FederationProtocolVersions { get; set; }
+    public List<NavigatorSigningKeyInfo>? SigningKeys { get; set; }
+}
+
+public class NavigatorSigningKeyInfo
+{
+    public string KeyId { get; set; } = string.Empty;
+    public string PublicKeyBase64 { get; set; } = string.Empty;
+    public DateTime? ExpiredAt { get; set; }
 }

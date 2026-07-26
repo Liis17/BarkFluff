@@ -41,6 +41,7 @@
             --scrollbar: rgba(0,0,0,0.10);
             --separator-bg: rgba(255,255,255,0.82);
             --profile-bg: #faf8f5;
+            --profile-info-bg: #eee4dd;
             --logo-gradient: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
             /* legacy aliases */
             --bg-dark: var(--bg);
@@ -49,6 +50,7 @@
             --msg-outgoing-bg: var(--msg-out-bg);
             --sidebar-width: 340px;
             --chat-content-width: 800px;
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
         }
         [data-theme="dark"] {
             --bg: #141210;
@@ -80,6 +82,7 @@
             --scrollbar: rgba(255,255,255,0.07);
             --separator-bg: rgba(28,25,20,0.92);
             --profile-bg: #1c1916;
+            --profile-info-bg: rgba(255, 255, 255, 0.045);
             --logo-gradient: linear-gradient(135deg, #f0e8e0 0%, #c0a080 100%);
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
@@ -117,6 +120,7 @@
             --scrollbar: rgba(255,255,255,0.06);
             --separator-bg: rgba(18,21,38,0.92);
             --profile-bg: #12152a;
+            --profile-info-bg: rgba(255, 255, 255, 0.05);
             --logo-gradient: linear-gradient(135deg, #e8e4ff 0%, #a090ff 100%);
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
@@ -374,6 +378,17 @@
             text-overflow: ellipsis;
         }
 
+        .bot-badge {
+            display: inline-flex;
+            width: 16px;
+            height: 16px;
+            margin-left: 4px;
+            color: var(--primary);
+            vertical-align: -3px;
+        }
+        .bot-badge svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .profile-name .bot-badge { width: 19px; height: 19px; vertical-align: -2px; }
+
         .chat-time {
             font-size: 12px;
             color: var(--text-sub);
@@ -512,8 +527,12 @@
         }
 
         .chat-empty-icon {
-            font-size: 48px;
             opacity: 0.4;
+        }
+
+        .chat-empty-icon svg {
+            width: 56px;
+            height: 56px;
         }
 
         .chat-empty-text {
@@ -759,11 +778,19 @@
 
         /* Quality popover */
         .call-quality-panel {
-            display: none; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+            display: block; position: absolute; left: 50%; bottom: 96px;
+            transform: translateX(-50%) translateY(6px) scale(0.98);
+            transform-origin: bottom center;
             background: #232220; border-radius: 14px; padding: 14px 16px; z-index: 4;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 260px;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
-        .call-quality-panel.open { display: block; }
+        .call-quality-panel.open {
+            opacity: 1; visibility: visible; pointer-events: auto;
+            transform: translateX(-50%) translateY(0) scale(1);
+            transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s linear;
+        }
         .call-quality-group + .call-quality-group { margin-top: 12px; }
         .call-quality-title {
             color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase;
@@ -796,11 +823,19 @@
         .call-ctl-caret svg { width: 12px; height: 12px; }
         .call-ctl-caret:hover { background: #4a4744; }
         .call-ctl-menu {
-            display: none; position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%);
+            display: block; position: absolute; left: 50%; bottom: 72px;
+            transform: translateX(-50%) translateY(6px) scale(0.98);
+            transform-origin: bottom center;
             background: #232220; border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 6;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
-        .call-ctl-menu.open { display: block; }
+        .call-ctl-menu.open {
+            opacity: 1; visibility: visible; pointer-events: auto;
+            transform: translateX(-50%) translateY(0) scale(1);
+            transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s linear;
+        }
         .call-ctl-menu-item {
             display: block; width: 100%; text-align: left; border: none; background: transparent;
             color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; cursor: pointer;
@@ -940,6 +975,17 @@
         .msg-bubble.image-only .msg-attachments { margin-bottom: 0; }
         .msg-bubble.image-only .attach-image-grid { border-radius: inherit; }
 
+        /* Видео без подписи занимает всё облачко; зазор под превью нужен только перед текстом */
+        .msg-bubble.has-videos {
+            padding: 0;
+            overflow: hidden;
+        }
+        .msg-bubble.has-videos .msg-attachments { margin-bottom: 0; }
+        .msg-bubble.video-with-text .msg-attachments { margin-bottom: 4px; }
+        .msg-bubble.has-videos .msg-text { padding: 0 10px; }
+        .msg-bubble.has-videos .msg-meta { padding: 0 10px 4px; }
+        .msg-bubble.video-only .attach-video-wrap { border-radius: inherit; }
+
         /* Картинки/документы + текст — сетка сверху без полей, текст и время со своим отступом */
         .msg-bubble.has-images:not(.image-only) .msg-text { padding: 4px 10px 0; }
         .msg-bubble.has-images:not(.image-only) .msg-meta { padding: 0 10px 4px; }
@@ -956,9 +1002,12 @@
             background: rgba(0, 0, 0, 0.45);
             border-radius: 10px;
         }
-        .msg-img-overlay-meta .msg-time,
-        .msg-img-overlay-meta .msg-status,
-        .msg-img-overlay-meta .msg-edited {
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-time,
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-status,
+        .msg-bubble.image-only .msg-img-overlay-meta .msg-edited,
+        .msg-bubble.video-only .msg-img-overlay-meta .msg-time,
+        .msg-bubble.video-only .msg-img-overlay-meta .msg-status,
+        .msg-bubble.video-only .msg-img-overlay-meta .msg-edited {
             color: #fff;
         }
 
@@ -972,6 +1021,46 @@
             line-height: 1.5;
             white-space: pre-wrap;
         }
+
+        /* Markdown-контент (.msg-text.md / .fwd-text.md) — разметку держат блочные теги + <br>. */
+        .msg-text.md, .fwd-text.md { white-space: normal; }
+        .md > * { margin: 0; }
+        .md > * + * { margin-top: 5px; }
+        .md strong { font-weight: 700; }
+        .md em { font-style: italic; }
+        .md del { text-decoration: line-through; }
+        .md a { color: inherit; text-decoration: underline; }
+        .md code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.92em;
+            background: rgba(127, 127, 127, 0.18);
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+        .md pre.md-pre {
+            background: rgba(127, 127, 127, 0.18);
+            border-radius: 8px;
+            padding: 8px 10px;
+            overflow-x: auto;
+        }
+        .md pre.md-pre code {
+            background: none;
+            padding: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .md ul.md-list, .md ol.md-list { padding-left: 20px; }
+        .md li { margin: 2px 0; }
+        .md blockquote.md-quote {
+            padding-left: 10px;
+            border-left: 3px solid rgba(127, 127, 127, 0.45);
+            opacity: 0.92;
+        }
+        .md .md-h { font-weight: 700; line-height: 1.3; }
+        .md h1.md-h { font-size: 1.3em; }
+        .md h2.md-h { font-size: 1.2em; }
+        .md h3.md-h { font-size: 1.1em; }
+        .md h4.md-h, .md h5.md-h, .md h6.md-h { font-size: 1em; }
 
         .msg-attachments {
             display: flex;
@@ -993,6 +1082,28 @@
         .attach-image-grid.grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 280px; }
         .attach-image-grid.grid-3 img:first-child { grid-column: 1 / -1; }
         .attach-image-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 280px; }
+        /* 5 — 2 сверху (половины), 3 снизу (трети) через сетку из 6 колонок */
+        .attach-image-grid.grid-5 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 130px; }
+        .attach-image-grid.grid-5 img:nth-child(1),
+        .attach-image-grid.grid-5 img:nth-child(2) { grid-column: span 3; }
+        .attach-image-grid.grid-5 img:nth-child(3),
+        .attach-image-grid.grid-5 img:nth-child(4),
+        .attach-image-grid.grid-5 img:nth-child(5) { grid-column: span 2; }
+        .attach-image-grid.grid-6 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 130px; }
+        /* 7 — 2 ряда по 3, последний ряд — 1 картинка на всю ширину */
+        .attach-image-grid.grid-7 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
+        .attach-image-grid.grid-7 img:nth-child(-n+6) { grid-column: span 2; }
+        .attach-image-grid.grid-7 img:nth-child(7) { grid-column: span 6; }
+        /* 8 — 2 ряда по 3, последний ряд — 2 картинки пополам */
+        .attach-image-grid.grid-8 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
+        .attach-image-grid.grid-8 img:nth-child(-n+6) { grid-column: span 2; }
+        .attach-image-grid.grid-8 img:nth-child(n+7) { grid-column: span 3; }
+        /* 9 — ровная сетка 3x3 */
+        .attach-image-grid.grid-9 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 110px; }
+        /* 10 — 3 ряда по 3, последний ряд — 1 картинка на всю ширину */
+        .attach-image-grid.grid-10 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
+        .attach-image-grid.grid-10 img:nth-child(-n+9) { grid-column: span 2; }
+        .attach-image-grid.grid-10 img:nth-child(10) { grid-column: span 6; }
         .attach-image-grid img {
             width: 100%;
             height: 100%;
@@ -1005,24 +1116,13 @@
         .attach-image-grid.grid-1 img { max-height: 350px; }
         .attach-image-grid.grid-2 img,
         .attach-image-grid.grid-3 img,
-        .attach-image-grid.grid-4 img { min-height: unset; max-height: unset; }
-        .attach-image-grid .more-overlay {
-            position: relative;
-            cursor: pointer;
-        }
-        .attach-image-grid .more-overlay img { filter: brightness(0.5); }
-        .attach-image-grid .more-count {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: 700;
-            color: white;
-            pointer-events: none;
-        }
-
+        .attach-image-grid.grid-4 img,
+        .attach-image-grid.grid-5 img,
+        .attach-image-grid.grid-6 img,
+        .attach-image-grid.grid-7 img,
+        .attach-image-grid.grid-8 img,
+        .attach-image-grid.grid-9 img,
+        .attach-image-grid.grid-10 img { min-height: unset; max-height: unset; }
         /* Video */
         .attach-video-wrap {
             position: relative;
@@ -1135,11 +1235,27 @@
         .msg-bubble.outgoing .msg-time { color: rgba(0, 0, 0, 0.5); }
 
         .msg-status {
-            font-size: 12px;
             color: rgba(0, 0, 0, 0.4);
+            display: inline-flex;
+            align-items: center;
+            line-height: 0;
         }
 
         .msg-bubble.outgoing .msg-status { color: rgba(0, 0, 0, 0.5); }
+
+        .msg-status-icon {
+            width: 14px;
+            height: 12px;
+            display: block;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            overflow: visible;
+        }
+
+        .msg-status-icon--read { width: 20px; }
 
         .msg-date-separator {
             text-align: center;
@@ -1420,15 +1536,20 @@
         .attach-btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Drop overlay */
-        .drop-overlay { display: none; position: absolute; inset: 0; z-index: 50;
+        .drop-overlay { display: flex; position: absolute; inset: 0; z-index: 50;
             background: rgba(140,53,28,0.15); border: 3px dashed var(--primary);
             border-radius: 12px; align-items: center; justify-content: center;
-            font-size: 18px; font-weight: 600; color: var(--primary); pointer-events: none; }
-        .chat-area.drag-over .drop-overlay { display: flex; }
+            font-size: 18px; font-weight: 600; color: var(--primary); pointer-events: none;
+            opacity: 0; transform: scale(0.985);
+            transition: opacity 100ms var(--ease-out), transform 100ms var(--ease-out); }
+        .chat-area.drag-over .drop-overlay {
+            opacity: 1; transform: scale(1);
+            transition-duration: 120ms;
+        }
 
         /* Image viewer overlay */
         .image-overlay {
-            display: none;
+            display: flex;
             position: fixed;
             inset: 0;
             z-index: 100;
@@ -1436,15 +1557,35 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
         }
 
-        .image-overlay.visible { display: flex; }
+        .image-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: opacity 150ms var(--ease-out), visibility 0s linear;
+        }
 
-        .image-overlay img {
+        .image-overlay img,
+        .image-overlay video {
             max-width: 90vw;
             max-height: 90vh;
             object-fit: contain;
             border-radius: 8px;
+            opacity: 0;
+            transform: scale(0.98);
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+        }
+
+        .image-overlay.visible img,
+        .image-overlay.visible video {
+            opacity: 1;
+            transform: scale(1);
+            transition-duration: 180ms;
         }
 
         .overlay-nav {
@@ -1470,51 +1611,55 @@
         .overlay-nav:hover { background: rgba(0, 0, 0, 0.7); }
         .overlay-nav[hidden] { display: none; }
 
-        /* Profile panel */
+        /* Profile modal (centered) */
         .profile-overlay {
             display: none;
             position: fixed;
             inset: 0;
             z-index: 90;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.45);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
         }
 
-        .profile-overlay.visible { display: block; }
+        .profile-overlay.visible { display: flex; }
 
         .profile-panel {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 380px;
-            height: 100%;
+            position: relative;
+            width: 420px;
+            max-width: 95vw;
+            max-height: 88vh;
             background: var(--profile-bg);
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.18);
+            border-radius: 24px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.28);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            animation: slideInRight 0.25s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+            animation: fadeScaleIn 0.2s ease-out;
         }
 
         .profile-close {
             position: absolute;
             top: 12px;
-            right: 12px;
-            background: none;
+            left: 12px;
+            width: 36px;
+            height: 36px;
+            background: rgba(20, 10, 6, 0.32);
             border: none;
-            font-size: 24px;
-            color: var(--text-sub);
+            font-size: 22px;
+            line-height: 1;
+            color: #fff;
             cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-            z-index: 1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+            backdrop-filter: blur(6px);
         }
 
-        .profile-close:hover { background: rgba(0, 0, 0, 0.05); }
+        .profile-close:hover { background: rgba(20, 10, 6, 0.5); }
 
         .profile-poster {
             width: 100%;
@@ -1612,6 +1757,193 @@
             font-weight: 500;
         }
 
+        .profile-info-copy {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-size: 14px;
+            padding: 0 0 0 8px;
+            line-height: 1;
+        }
+        .profile-info-copy:hover { color: var(--primary); }
+
+        .profile-actions {
+            display: flex;
+            gap: 8px;
+            padding: 16px 24px 4px;
+        }
+
+        .profile-action-btn {
+            flex: 1;
+            height: 44px;
+            border: none;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.15s;
+        }
+        .profile-action-btn:hover { background: rgba(0, 0, 0, 0.09); }
+
+        .profile-action-btn.primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .profile-action-btn.primary:hover { background: var(--primary-hover, var(--primary)); }
+
+        .profile-action-btn.icon-only { flex: 0 0 44px; width: 44px; }
+
+        .profile-action-btn svg,
+        .profile-info-copy svg,
+        .profile-info-icon svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        .user-profile-panel .profile-header {
+            padding: 30px 24px 8px;
+            gap: 6px;
+            border-bottom: none;
+        }
+
+        .user-profile-panel .profile-name {
+            font-size: 22px;
+            line-height: 1.2;
+        }
+
+        .user-profile-panel .profile-username {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .user-profile-panel .profile-status-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .user-profile-panel .profile-status-line.online::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .user-profile-panel .profile-actions {
+            gap: 8px;
+            padding: 12px 30px 16px;
+        }
+
+        .user-profile-panel .profile-action-btn {
+            height: 48px;
+            border-radius: 15px;
+            background: var(--profile-info-bg);
+            color: var(--primary);
+            transition: background 0.15s, color 0.15s, transform 0.15s;
+        }
+
+        .user-profile-panel .profile-action-btn:hover {
+            background: var(--primary-alpha);
+            transform: translateY(-1px);
+        }
+
+        .user-profile-panel .profile-action-btn.primary {
+            flex: 1 1 auto;
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .user-profile-panel .profile-action-btn.primary:hover {
+            background: var(--primary-hover, var(--primary));
+        }
+
+        .user-profile-panel .profile-action-btn.icon-only {
+            flex: 0 0 48px;
+            width: 48px;
+            padding: 0;
+        }
+
+        .profile-details-card {
+            margin: 0 30px 14px;
+            padding: 0 18px;
+            border-bottom: none;
+            border-radius: 18px;
+            background: var(--profile-info-bg);
+        }
+
+        .profile-details-card .profile-info-item {
+            display: grid;
+            grid-template-columns: 24px minmax(0, 1fr) 32px;
+            gap: 12px;
+            align-items: center;
+            min-height: 58px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .profile-details-card .profile-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-details-card .profile-info-icon {
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-details-card .profile-info-text {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-details-card .profile-info-value {
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .profile-details-card .profile-info-label {
+            display: block;
+            margin-top: 2px;
+            font-size: 12px;
+            line-height: 1.15;
+        }
+
+        .profile-details-card .profile-info-copy {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-details-card .profile-info-copy:hover {
+            background: var(--primary-alpha);
+        }
+
+        .profile-details-card .profile-info-item.no-copy .profile-info-text {
+            grid-column: 2 / 4;
+        }
         .profile-badges {
             display: flex;
             gap: 8px;
@@ -1715,6 +2047,31 @@
         }
 
         .profile-file-item:hover { background: rgba(0, 0, 0, 0.06); }
+
+        .profile-audio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+        }
+
+        .profile-audio-item audio {
+            flex: 1;
+            min-width: 0;
+            height: 34px;
+        }
+
+        .profile-audio-name {
+            font-size: 13px;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 120px;
+            flex-shrink: 0;
+        }
 
         /* === GROUP INFO PANEL === */
 
@@ -1922,9 +2279,19 @@
 
         .sd-title {
             flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             font-size: 17px;
             font-weight: 700;
             color: var(--text-main);
+        }
+
+        .sd-title svg {
+            width: 18px;
+            height: 18px;
+            color: var(--primary);
+            flex-shrink: 0;
         }
 
         .sd-close {
@@ -2002,7 +2369,21 @@
         }
 
         .sd-item:hover { background: rgba(0, 0, 0, 0.04); }
-        .sd-item-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+        .sd-item-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .sd-item-icon svg {
+            width: 19px;
+            height: 19px;
+            display: block;
+        }
         .sd-item-label { flex: 1; }
         .sd-item-arrow { color: var(--text-sub); font-size: 14px; }
 
@@ -2928,6 +3309,201 @@
         .btn-confirm-cancel:hover { opacity: 0.8; }
         .btn-confirm-ok:hover { opacity: 0.85; }
 
+        /* === PRIVATE CHATS === */
+
+        .chat-lock { margin-right: 4px; font-size: 12px; }
+
+        .preview-private-invite { color: var(--primary); font-weight: 500; }
+
+        /* В приватных чатах вложения/стикеры не поддерживаются */
+        .input-bar.private-chat .btn-attach,
+        .input-bar.private-chat .btn-sticker { display: none; }
+
+        .private-card {
+            max-width: 360px;
+            margin: 40px auto;
+            padding: 24px 28px;
+            background: var(--dialog-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .private-card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+
+        .private-card-text { font-size: 14px; color: var(--text-sub); line-height: 1.5; margin-bottom: 16px; }
+
+        .private-card-actions { display: flex; gap: 10px; justify-content: center; }
+
+        .private-card-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.07);
+            color: var(--text-main);
+            transition: opacity 0.15s;
+        }
+
+        .private-card-btn.primary { background: var(--primary); color: white; }
+        .private-card-btn:hover { opacity: 0.85; }
+
+        .private-pass-input {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .private-pass-input:focus { outline: none; border-color: var(--input-focus); }
+
+        .private-pass-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .private-pass-error { font-size: 13px; color: var(--error); min-height: 18px; margin-bottom: 10px; }
+
+        .btn-confirm-primary { background: var(--primary); color: white; }
+
+        /* === NEW CHAT (FAB + меню + диалог) === */
+
+        .newchat-fab {
+            position: absolute;
+            right: 14px;
+            bottom: 78px;
+            z-index: 30;
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            transition: transform 0.15s, opacity 0.15s;
+        }
+
+        .newchat-fab svg { width: 22px; height: 22px; }
+        .newchat-fab:hover { transform: scale(1.05); }
+
+        .newchat-menu {
+            display: block;
+            position: absolute;
+            right: 14px;
+            bottom: 138px;
+            z-index: 31;
+            background: var(--dialog-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 6px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            min-width: 210px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(6px) scale(0.98);
+            transform-origin: bottom right;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
+        }
+
+        .newchat-menu.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+            transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s linear;
+        }
+
+        .newchat-menu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .newchat-menu button:hover { background: rgba(0, 0, 0, 0.06); }
+        .newchat-menu button svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+        .newchat-dialog { max-width: 420px; display: flex; flex-direction: column; }
+
+        .newchat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .newchat-header h3 { margin-bottom: 0; }
+
+        .newchat-close {
+            border: none;
+            background: transparent;
+            color: var(--text-sub);
+            font-size: 22px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 2px 6px;
+        }
+
+        .newchat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .newchat-chips:empty { display: none; }
+
+        .newchat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: var(--primary-alpha);
+            color: var(--text-main);
+            font-size: 13px;
+        }
+
+        .newchat-chip-remove {
+            border: none;
+            background: transparent;
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            padding: 0 2px;
+        }
+
+        .newchat-results {
+            max-height: 240px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+        }
+
+        .newchat-results .search-result-item.selected {
+            background: var(--primary-alpha);
+            border-radius: 10px;
+        }
+
+        .newchat-empty { padding: 14px; text-align: center; color: var(--text-sub); font-size: 14px; }
+
         /* === SCROLL-TO-BOTTOM BUTTON === */
 
         .chat-area { position: relative; }
@@ -3131,9 +3707,17 @@
                 justify-content: center;
             }
 
-            /* Adjust profile panel on mobile */
+            /* Profile modal becomes a bottom sheet on mobile */
+            .profile-overlay {
+                align-items: flex-end;
+                padding: 0;
+            }
             .profile-panel {
                 width: 100%;
+                max-width: 100%;
+                max-height: 92vh;
+                border-radius: 20px 20px 0 0;
+                margin-top: auto;
             }
 
             /* Sticker grid: fewer columns on mobile */
@@ -3395,10 +3979,21 @@
             color: var(--error);
         }
         .msg-context-menu .cm-icon {
-            font-size: 16px;
             width: 18px;
-            text-align: center;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
+        }
+        .msg-context-menu .cm-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         /* Forward modal */
@@ -3586,7 +4181,7 @@
             position: fixed;
             left: 50%;
             bottom: 100px;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(8px);
             background: rgba(0, 0, 0, 0.78);
             color: white;
             font-size: 14px;
@@ -3594,10 +4189,14 @@
             border-radius: 22px;
             z-index: 1100;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
             pointer-events: none;
         }
-        .soon-toast.visible { opacity: 1; }
+        .soon-toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            transition-duration: 160ms;
+        }
 
         @media (max-width: 768px) {
             .forward-modal {
@@ -3924,6 +4523,56 @@
             opacity: 0.4;
             cursor: not-allowed;
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            .call-quality-panel,
+            .call-ctl-menu {
+                transform: translateX(-50%);
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
+            .call-quality-panel.open,
+            .call-ctl-menu.open {
+                transform: translateX(-50%);
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+            .drop-overlay,
+            .chat-area.drag-over .drop-overlay,
+            .newchat-menu,
+            .newchat-menu.visible,
+            .image-overlay img,
+            .image-overlay video,
+            .image-overlay.visible img,
+            .image-overlay.visible video {
+                transform: none;
+            }
+            .drop-overlay,
+            .chat-area.drag-over .drop-overlay {
+                transition: opacity 120ms var(--ease-out);
+            }
+            .newchat-menu {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
+            .newchat-menu.visible {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+            .image-overlay {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
+            .image-overlay.visible {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+            .image-overlay img,
+            .image-overlay video,
+            .image-overlay.visible img,
+            .image-overlay.visible video {
+                transition: opacity 120ms var(--ease-out);
+            }
+            .soon-toast,
+            .soon-toast.visible {
+                transform: translateX(-50%);
+                transition: opacity 120ms var(--ease-out);
+            }
+        }
     </style>
     <script>
     /* Theme bootstrap — runs before render to avoid flash */
@@ -3950,6 +4599,18 @@
     </script>
 </head>
 <body>
+    <svg aria-hidden="true" style="display:none">
+        <symbol id="bf-icon-reply" viewBox="0 0 24 24"><path d="m9 17-5-5 5-5"/><path d="M4 12h11a5 5 0 0 1 5 5v2"/></symbol>
+        <symbol id="bf-icon-forward" viewBox="0 0 24 24"><path d="m15 17 5-5-5-5"/><path d="M20 12H9a5 5 0 0 0-5 5v2"/></symbol>
+        <symbol id="bf-icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+        <symbol id="bf-icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
+        <symbol id="bf-icon-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="m8 3 8 0 1 6 3 3v2H4v-2l3-3z"/></symbol>
+        <symbol id="bf-icon-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></symbol>
+        <symbol id="bf-icon-delete" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v5M14 11v5"/></symbol>
+        <symbol id="bf-icon-folder-plus" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></symbol>
+        <symbol id="bf-icon-folder-minus" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></symbol>
+        <symbol id="bf-icon-bot" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M12 2v4M8 12h.01M16 12h.01M8 16h8"/></symbol>
+    </svg>
     <div class="blobs">
         <div class="blob b1"></div>
         <div class="blob b2"></div>
@@ -3967,6 +4628,16 @@
             <div class="search-results" id="searchResults"></div>
             <div class="folder-tabs" id="folderTabs"></div>
             <div class="chat-list" id="chatList"></div>
+
+            <button class="newchat-fab" id="newChatFab" title="Новый чат" aria-label="Новый чат">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg>
+            </button>
+            <div class="newchat-menu" id="newChatMenu">
+                <button data-mode="message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Новое сообщение</button>
+                <button data-mode="group"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Новая группа</button>
+                <button data-mode="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Приватный чат</button>
+            </div>
+
             <div class="sidebar-nav" id="sidebarNav">
                 <button class="nav-btn active" id="navChats">
                     <span class="nav-icon">
@@ -4013,7 +4684,7 @@
             </div>
 
             <div class="chat-empty" id="chatEmpty">
-                <div class="chat-empty-icon">&#128172;</div>
+                <div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
                 <div class="chat-empty-text">Чтобы начать диалог выберите чат из списка слева</div>
             </div>
 
@@ -4077,7 +4748,7 @@
         <div class="settings-dialog" id="settingsDialog">
             <div class="sd-header">
                 <button class="sd-back" id="sdBack">&#8592;</button>
-                <div class="sd-title" id="sdTitle">Настройки</div>
+                <div class="sd-title" id="sdTitle"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span>Настройки</span></div>
                 <button class="sd-close" id="sdClose">&times;</button>
             </div>
             <div class="sd-body" id="sdBody"></div>
@@ -4092,6 +4763,44 @@
             <div class="confirm-actions">
                 <button class="btn-confirm-cancel" id="deleteMsgCancel">Отмена</button>
                 <button class="btn-confirm-ok" id="deleteMsgOk">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Создание чата (ЛС / группа / приватный) -->
+    <div class="confirm-overlay" id="newChatOverlay">
+        <div class="confirm-dialog newchat-dialog">
+            <div class="newchat-header">
+                <h3 id="newChatTitle">Новый чат</h3>
+                <button class="newchat-close" id="newChatClose">&times;</button>
+            </div>
+            <input type="text" class="private-pass-input" id="newChatGroupTitle" placeholder="Название группы" maxlength="128">
+            <div class="newchat-chips" id="newChatChips"></div>
+            <input type="text" class="private-pass-input" id="newChatSearch" placeholder="Поиск пользователей..." autocomplete="off">
+            <div class="newchat-results" id="newChatResults"></div>
+            <div id="newChatPrivateFields">
+                <input type="password" class="private-pass-input" id="newChatPass" placeholder="Пароль чата (мин. 6 символов)" autocomplete="off">
+                <label class="private-pass-remember"><input type="checkbox" id="newChatRemember" checked> Запомнить пароль в этом браузере</label>
+            </div>
+            <div class="private-pass-error" id="newChatError"></div>
+            <div class="confirm-actions" id="newChatFooter">
+                <button class="btn-confirm-cancel" id="newChatCancel">Отмена</button>
+                <button class="btn-confirm-ok btn-confirm-primary" id="newChatCreate">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пароль приватного чата -->
+    <div class="confirm-overlay" id="privatePassOverlay">
+        <div class="confirm-dialog">
+            <h3 id="privatePassTitle">Пароль приватного чата</h3>
+            <p>Пароль используется для расшифровки сообщений и не отправляется на сервер.</p>
+            <input type="password" class="private-pass-input" id="privatePassInput" placeholder="Пароль" autocomplete="off">
+            <label class="private-pass-remember"><input type="checkbox" id="privatePassRemember" checked> Запомнить пароль в этом браузере</label>
+            <div class="private-pass-error" id="privatePassError"></div>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="privatePassCancel">Отмена</button>
+                <button class="btn-confirm-ok btn-confirm-primary" id="privatePassOk">ОК</button>
             </div>
         </div>
     </div>
@@ -4179,7 +4888,7 @@
     </div>
 
     <div class="profile-overlay" id="profileOverlay">
-        <div class="profile-panel">
+        <div class="profile-panel user-profile-panel">
             <button class="profile-close" id="profileClose">&times;</button>
             <div class="profile-poster" id="profilePoster"></div>
             <div class="profile-header">
@@ -4190,16 +4899,85 @@
                 <div class="profile-bio" id="profileBio"></div>
                 <div class="profile-badges" id="profileBadges"></div>
             </div>
-            <div class="profile-info-section">
+            <div class="profile-actions">
+                <button class="profile-action-btn primary" id="profileMsgBtn" aria-label="Написать сообщение">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Сообщение</span>
+                </button>
+                <button class="profile-action-btn icon-only" id="profileCallAudioBtn" title="Аудиозвонок" aria-label="Аудиозвонок">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.78.6 2.62a2 2 0 0 1-.45 2.11L9 10.71a16 16 0 0 0 4.29 4.29l1.26-1.26a2 2 0 0 1 2.11-.45c.84.28 1.72.48 2.62.6A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                </button>
+                <button class="profile-action-btn icon-only" id="profileCallVideoBtn" title="Видеозвонок" aria-label="Видеозвонок">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+                        <path d="m22 8-6 4 6 4V8z"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="profile-info-section profile-details-card">
                 <div class="profile-info-item">
-                    <span class="profile-info-label">Регистрация</span>
-                    <span class="profile-info-value" id="profileRegDate"></span>
+                    <span class="profile-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                            <path d="M7 9h4"></path>
+                            <path d="M7 13h2"></path>
+                            <circle cx="16" cy="11" r="2"></circle>
+                            <path d="M14 15.5c.7-.7 3.3-.7 4 0"></path>
+                        </svg>
+                    </span>
+                    <span class="profile-info-text">
+                        <span class="profile-info-value" id="profileUserId"></span>
+                        <span class="profile-info-label">ID пользователя</span>
+                    </span>
+                    <button class="profile-info-copy" data-copy="profileUserId" title="Копировать" aria-label="Копировать ID пользователя">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </span>
+                    <span class="profile-info-text">
+                        <span class="profile-info-value" id="profileChatId"></span>
+                        <span class="profile-info-label">ID чата</span>
+                    </span>
+                    <button class="profile-info-copy" data-copy="profileChatId" title="Копировать" aria-label="Копировать ID чата">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="profile-info-item no-copy">
+                    <span class="profile-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                            <path d="M16 2v4"></path>
+                            <path d="M8 2v4"></path>
+                            <path d="M3 10h18"></path>
+                        </svg>
+                    </span>
+                    <span class="profile-info-text">
+                        <span class="profile-info-value" id="profileRegDate"></span>
+                        <span class="profile-info-label">Дата регистрации</span>
+                    </span>
                 </div>
             </div>
             <div class="profile-media-section">
                 <div class="profile-media-tabs">
                     <button class="profile-media-tab active" data-type="media">Медиа</button>
                     <button class="profile-media-tab" data-type="files">Файлы</button>
+                    <button class="profile-media-tab" data-type="audio">Аудио</button>
+                    <button class="profile-media-tab" data-type="voice">Голосовые</button>
                 </div>
                 <div id="profileMediaContent">
                     <div class="profile-media-grid" id="profileMediaGrid"></div>
@@ -4223,6 +5001,15 @@
                 </div>
                 <div class="profile-status-line" id="groupCount"></div>
             </div>
+            <div class="profile-info-section">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">ID чата</span>
+                    <span class="profile-info-value">
+                        <span id="groupChatId"></span>
+                        <button class="profile-info-copy" data-copy="groupChatId" title="Копировать">&#128203;</button>
+                    </span>
+                </div>
+            </div>
             <div class="group-section">
                 <div class="group-section-head">
                     <span class="group-section-title">Участники</span>
@@ -4238,6 +5025,8 @@
                 <div class="profile-media-tabs">
                     <button class="profile-media-tab group-media-tab active" data-type="media">Медиа</button>
                     <button class="profile-media-tab group-media-tab" data-type="files">Файлы</button>
+                    <button class="profile-media-tab group-media-tab" data-type="audio">Аудио</button>
+                    <button class="profile-media-tab group-media-tab" data-type="voice">Голосовые</button>
                 </div>
                 <div id="groupMediaContent">
                     <div class="profile-media-grid"></div>
@@ -4249,13 +5038,13 @@
 
     <!-- Message context menu -->
     <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon">&#8617;</span><span class="cm-label">Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon">&#8618;</span><span class="cm-label">Переслать</span></button>
-        <button data-act="copy-text"><span class="cm-icon">&#128203;</span><span class="cm-label">Копировать текст</span></button>
-        <button data-act="copy-image"><span class="cm-icon">&#128247;</span><span class="cm-label">Копировать изображение</span></button>
-        <button data-act="pin"><span class="cm-icon">&#128204;</span><span class="cm-label">Закрепить</span></button>
-        <button data-act="edit"><span class="cm-icon">&#9998;</span><span class="cm-label">Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon">&#128465;</span><span class="cm-label">Удалить</span></button>
+        <button data-act="reply"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-reply"></use></svg></span><span class="cm-label">Ответить</span></button>
+        <button data-act="forward"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-forward"></use></svg></span><span class="cm-label">Переслать</span></button>
+        <button data-act="copy-text"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-copy"></use></svg></span><span class="cm-label">Копировать текст</span></button>
+        <button data-act="copy-image"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-image"></use></svg></span><span class="cm-label">Копировать изображение</span></button>
+        <button data-act="pin"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-pin"></use></svg></span><span class="cm-label">Закрепить</span></button>
+        <button data-act="edit"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-edit"></use></svg></span><span class="cm-label">Изменить</span></button>
+        <button data-act="delete" class="cm-danger"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-delete"></use></svg></span><span class="cm-label">Удалить</span></button>
     </div>
 
     <!-- Chat context menu (PCM на чате в сайдбаре) -->
@@ -4508,16 +5297,20 @@
     <script src="/js/proto/barkfluff.bundle.js?v=folders-pins-1"></script>
     <!-- LiveKit JS SDK (window.LivekitClient) -->
     <script src="/js/vendor/livekit-client.bundle.js?v=calls-1"></script>
+    <script src="/js/vendor/hash-wasm.umd.min.js?v=private-chats-1"></script>
     <!-- App modules -->
     <script src="/js/app/device.js"></script>
     <script src="/js/app/tokens.js"></script>
     <script src="/js/app/metadata.js"></script>
     <script src="/js/app/clients.js"></script>
     <script src="/js/app/utils.js"></script>
-    <script src="/js/app/api.js?v=personalization-2"></script>
+    <script src="/js/app/sound.js"></script>
+    <script src="/js/app/api.js?v=private-chats-1"></script>
+    <script src="/js/app/privatechat.js?v=private-chats-1"></script>
+    <script src="/js/app/newchat.js?v=private-chats-1"></script>
     <script src="/js/app/files.js?v=resilient-media-1"></script>
     <script src="/js/app/messages.js?v=resilient-media-1"></script>
-    <script src="/js/app/realtime.js?v=folders-pins-1"></script>
+    <script src="/js/app/realtime.js?v=private-chats-1"></script>
     <script src="/js/app/calls.js?v=calls-3"></script>
     <script src="/js/app/calls-ui.js?v=calls-6"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
@@ -4526,7 +5319,7 @@
     <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
-    <script src="/js/app/main.js?v=resilient-media-1"></script>
+    <script src="/js/app/main.js?v=private-chats-1"></script>
     <script>
     /* Inject theme picker into settings dialog */
     (function () {

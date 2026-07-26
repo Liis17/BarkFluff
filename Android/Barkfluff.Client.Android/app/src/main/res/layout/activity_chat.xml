@@ -191,7 +191,7 @@
         android:paddingTop="72dp"
         android:paddingBottom="8dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/inputRowBottom"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_message_sent" />
@@ -679,5 +679,70 @@
             android:contentDescription="@string/cd_sticker_preview" />
 
     </FrameLayout>
+
+    <!-- ═══════════════════════════════════════════
+         E2E: баннер статуса инвайта приватного чата (ожидание/отклонён).
+         Всегда gone для обычных чатов — нулевое влияние на обычный поток.
+         ═══════════════════════════════════════════ -->
+    <TextView
+        android:id="@+id/e2eBanner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginHorizontal="8dp"
+        android:background="?attr/colorSecondaryContainer"
+        android:textColor="?attr/colorOnSecondaryContainer"
+        android:gravity="center"
+        android:padding="12dp"
+        android:elevation="6dp"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/chatInfoCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="gone" />
+
+    <!-- ═══════════════════════════════════════════
+         E2E: запрос приглашения приватного чата «принять/отклонить».
+         Всегда gone для обычных чатов.
+         ═══════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/e2eInviteContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:elevation="8dp"
+        android:background="?attr/colorSurfaceContainerHigh"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/inputRowBarrier"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="gone">
+
+        <TextView
+            android:id="@+id/e2eInvitePrompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/e2eInviteAcceptButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/private_chat_invite_accept" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/e2eInviteDeclineButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/private_chat_invite_decline" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

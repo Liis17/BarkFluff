@@ -13,6 +13,9 @@ on:
       - 'Android/gradle.properties'
       - 'Android/gradle/**'
       - 'Android/android-rebuild.trigger'
+      # Legal-markdown едет в APK через таск copyLegalDocs — обновление соглашений
+      # должно пересобирать клиент.
+      - 'Backend/Barkfluff.WebServer/html/legal/**'
   workflow_dispatch:
 
 permissions:
@@ -116,6 +119,11 @@ jobs:
         run: |
           sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' Barkfluff.Client.Android/app/build.gradle.kts
 
+      - name: Восстановление keystore из секрета
+        env:
+          STORE_B64: ${{ secrets.ANDROID_RELEASE_STORE_B64 }}
+        run: echo "$STORE_B64" | base64 -d > Barkfluff.Client.Android/barkfluff-release.jks
+
       - name: Сборка APK
         env:
           RELEASE_STORE_FILE: ${{ secrets.ANDROID_RELEASE_STORE_FILE }}
@@ -164,7 +172,7 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          bash .github/scripts/send-telegram.sh
+          bash "$GITHUB_WORKSPACE/.github/scripts/send-telegram.sh"
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
@@ -180,4 +188,4 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          bash .github/scripts/send-telegram.sh
+          bash "$GITHUB_WORKSPACE/.github/scripts/send-telegram.sh"

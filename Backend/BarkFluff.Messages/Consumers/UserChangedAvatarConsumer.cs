@@ -51,7 +51,11 @@ public class UserChangedAvatarConsumer : IConsumer<UserChangedAvatar>
             {
                 var personDm = chat.Members![0].UserId == userId ? chat.Members[1].UserId : chat.Members[0].UserId;
 
-                await _chatCache.SetChatImage(chat.Id, personDm, profilePictureUrl);
+                // Remote-участник fed-DM (этап 2.3) не имеет локального UserId — см. UserChangedNameConsumer.
+                if (personDm is not { } personDmId)
+                    continue;
+
+                await _chatCache.SetChatImage(chat.Id, personDmId, profilePictureUrl);
             }
 
             _logger.LogInformation(

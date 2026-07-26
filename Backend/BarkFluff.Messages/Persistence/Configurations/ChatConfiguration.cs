@@ -17,6 +17,10 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Ignore(x => x.FirstUnreadMessageId);
 
+        builder.Ignore(x => x.LastActivityAt);
+
+        builder.Ignore(x => x.PrivateInviterUserId);
+
         builder.Property(x => x.Type)
             .HasDefaultValue(ChatType.Regular);
 
@@ -25,6 +29,28 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Property(x => x.PassphraseVerifier)
             .HasColumnType("bytea");
+
+        builder.Property(x => x.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.Property(x => x.PrivateInviteState)
+            .HasDefaultValue(PrivateChatInviteState.Pending);
+
+        builder.HasIndex(x => new { x.Type, x.PrivateUserLowId, x.PrivateUserHighId })
+            .IsUnique()
+            .HasFilter("\"Type\" = 1 AND \"PrivateUserLowId\" IS NOT NULL AND \"PrivateUserHighId\" IS NOT NULL");
+
+        builder.Property(x => x.IsFederated)
+            .HasDefaultValue(false);
+
+        builder.Property(x => x.FederatedStatus)
+            .HasDefaultValue(FederatedStatus.Active);
+
+        // Анти-дубль одновременного создания fed-DM (docs/rearch/05, «Создание чата»):
+        // пара UUID участников уникальна среди Active-чатов.
+        builder.HasIndex(x => new { x.FederatedUuidLow, x.FederatedUuidHigh })
+            .IsUnique()
+            .HasFilter("\"IsFederated\" AND \"FederatedStatus\" = 0 AND \"FederatedUuidLow\" IS NOT NULL AND \"FederatedUuidHigh\" IS NOT NULL");
 
         builder
             .HasMany(x => x.Members)

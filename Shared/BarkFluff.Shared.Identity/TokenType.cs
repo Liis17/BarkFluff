@@ -7,4 +7,6 @@ public enum TokenType
     User = 1,
 
     Service = 2,
+
+    Bot = 3,
 }

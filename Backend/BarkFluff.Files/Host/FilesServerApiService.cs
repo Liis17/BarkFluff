@@ -5,6 +5,7 @@ using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetStickers;
+using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfoServer;
 using BarkFluff.Files.Features.ListStickerPacks;
 using BarkFluff.Files.Features.RemoveSticker;
@@ -12,6 +13,7 @@ using BarkFluff.Files.Features.UpdateSticker;
 using BarkFluff.Files.Features.UpdateStickerPack;
 using BarkFluff.Files.Features.UploadAvatarServer;
 using BarkFluff.Files.Features.UploadBadgeImage;
+using BarkFluff.Files.Features.UploadFileServer;
 using BarkFluff.Files.Features.UploadPosterServer;
 using BarkFluff.Files.Features.UploadStickerImage;
 using BarkFluff.Proto.Files;
@@ -48,6 +50,16 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
     public override Task<GetFilesDataResponse> GetFilesData(GetFilesDataRequest request, ServerCallContext context)
     {
         var command = new GetFilesDataCommand()
+        {
+            FileIds = request.FileIds.Select(Guid.Parse).ToList()
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetTempDownloadUrlResponse> GetTempDownloadUrlServer(GetTempDownloadUrlRequest request, ServerCallContext context)
+    {
+        var command = new GetTempDownloadUrlCommand()
         {
             FileIds = request.FileIds.Select(Guid.Parse).ToList()
         };
@@ -95,6 +107,19 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
             ImageData = request.ImageData.ToByteArray(),
             Filename = request.Filename,
             UserId = request.UserId
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<UploadFileServerResponse> UploadFileServer(UploadFileServerRequest request, ServerCallContext context)
+    {
+        var command = new UploadFileServerCommand
+        {
+            Data = request.Data.ToByteArray(),
+            Filename = request.Filename,
+            FileType = (BarkFluff.Files.Domain.UploadFileType)(int)request.FileType,
+            OwnerUserId = request.OwnerUserId
         };
 
         return _mediator.Send(command);

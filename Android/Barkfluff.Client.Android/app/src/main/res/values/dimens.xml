@@ -73,6 +73,7 @@
     <dimen name="spacing_large">24dp</dimen>
     <dimen name="spacing_extra_large">32dp</dimen>
     <dimen name="spacing_hero">48dp</dimen>
+    <dimen name="settings_split_gap">3dp</dimen>
 
     <!-- Online indicator -->
     <dimen name="online_indicator_size">16dp</dimen>
@@ -105,4 +106,22 @@
     
     <!-- Message input height for RecyclerView padding -->
     <dimen name="message_input_height">80dp</dimen>
+
+    <!-- Registration flow (архетип "c") -->
+    <dimen name="register_cta_height">62dp</dimen>
+    <dimen name="register_field_height">60dp</dimen>
+    <dimen name="register_field_radius">20dp</dimen>
+    <dimen name="register_segment_height">7dp</dimen>
+    <dimen name="register_segment_gap">5dp</dimen>
+
+    <!-- Onboarding redesign (Welcome/SelectServer/Login) -->
+    <dimen name="welcome_decor_circle_large">260dp</dimen>
+    <dimen name="welcome_decor_circle_small">180dp</dimen>
+    <dimen name="feature_chip_height">40dp</dimen>
+    <dimen name="welcome_cta_height">62dp</dimen>
+    <dimen name="server_icon_tile_size">54dp</dimen>
+    <dimen name="server_card_cta_height">52dp</dimen>
+    <dimen name="login_decor_circle_size">220dp</dimen>
+    <dimen name="login_field_height">60dp</dimen>
+    <dimen name="login_cta_height">64dp</dimen>
 </resources>

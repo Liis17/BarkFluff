@@ -140,6 +140,10 @@
         .service-card-body { padding: 16px; }
         .canvas-wrap { position: relative; height: 220px; }
         .svc-loading-indicator { color: var(--md-primary); }
+
+        @media (max-width: 600px) {
+            .service-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -274,7 +278,7 @@
         return parts.length > 1 ? parts[parts.length - 1] : n;
     }
 
-    const metricColors = ['#4F5BD5','#BA1A1A','#146C2E','#815600','#7C4B96','#B4365B','#0C7C9C','#B85228','#1F8A6E','#5B5FCF','#5C772A','#A52545'];
+    const metricColors = ['#8c351c','#BA1A1A','#146C2E','#815600','#7C4B96','#B4365B','#0C7C9C','#B85228','#1F8A6E','#5B5FCF','#5C772A','#A52545'];
 
     // ---- Auth ----
     async function checkAuth() {
@@ -327,7 +331,7 @@
         trafficChart = new Chart(ctx, {
             type: 'line',
             data: { labels, datasets: [
-                mkDataset('Все события', all, '#4F5BD5'),
+                mkDataset('Все события', all, '#8c351c'),
                 mkDataset('Ошибки', errors, '#BA1A1A'),
                 mkDataset('Предупреждения', warnings, '#B17900')
             ]},
@@ -373,7 +377,8 @@
     const knownServices = [
         'BarkFluff.Identity','BarkFluff.Users','BarkFluff.Messages','BarkFluff.Files',
         'BarkFluff.Updates','BarkFluff.Notification','BarkFluff.Beacon','BarkFluff.FastAuth',
-        'BarkFluff.Onliner','BarkFluff.Configuration','BarkFluff.Web','BarkFluff.ClientStorage'
+        'BarkFluff.Onliner','BarkFluff.Configuration','BarkFluff.Web','BarkFluff.ClientStorage',
+        'BarkFluff.Bots'
     ];
     const METRIC_TABS = [
         { key:'counters', label:'Counters' },

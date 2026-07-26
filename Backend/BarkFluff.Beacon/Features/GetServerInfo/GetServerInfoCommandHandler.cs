@@ -60,19 +60,23 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.FastAuth }, cancellationToken: cancellationToken).ResponseAsync;
         var callsTask = _configurationApiClient
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Calls }, cancellationToken: cancellationToken).ResponseAsync;
+        var botsTask = _configurationApiClient
+            .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Bots }, cancellationToken: cancellationToken).ResponseAsync;
+        var federationTask = _configurationApiClient
+            .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.Federation }, cancellationToken: cancellationToken).ResponseAsync;
 
         try
         {
-            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask);
-            _metrics.Add("configuration_fetch_success", 8);
+            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask, botsTask, federationTask);
+            _metrics.Add("configuration_fetch_success", 10);
         }
         catch
         {
             // Считаем сколько задач отвалилось, остальные считаем успешными.
-            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask }
+            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask, callsTask, botsTask, federationTask }
                 .Count(t => t.IsFaulted);
             _metrics.Add("configuration_fetch_errors", failed);
-            _metrics.Add("configuration_fetch_success", 8 - failed);
+            _metrics.Add("configuration_fetch_success", 10 - failed);
             throw;
         }
 
@@ -84,6 +88,8 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         var onlinerSettings = onlinerTask.Result;
         var fastAuthSettings = fastAuthTask.Result;
         var callsSettings = callsTask.Result;
+        var botsSettings = botsTask.Result;
+        var federationSettings = federationTask.Result;
 
         _logger.LogInformation(
             "Информация о сервере '{ServerName}' успешно собрана. Описание: {Description}",
@@ -113,10 +119,17 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Onliner = ParseService(ServiceId.Onliner, onlinerSettings.Configurations),
             FastAuth = ParseService(ServiceId.FastAuth, fastAuthSettings.Configurations),
             Calls = ParseService(ServiceId.Calls, callsSettings.Configurations),
+            Bots = ParseService(ServiceId.Bots, botsSettings.Configurations),
 
-            // WSS-адрес LiveKit для звонков (пусто, если Calls/LiveKit не настроены).
-            LivekitUrl = callsSettings.Configurations
-                .FirstOrDefault(x => x.Section == "LiveKit" && x.Key == "Url")?.Value ?? string.Empty,
+            // Публичный wss://-адрес LiveKit (отдельно от внутреннего LiveKit:Url для Calls -> LiveKit).
+            LivekitUrl = GetPublicLivekitUrl(callsSettings.Configurations),
+
+            // Федерация (Фаза 0 rearch): пустая строка/false, пока Federation:ServerName/Enabled не заполнены оператором.
+            ServerName = federationSettings.Configurations
+                .FirstOrDefault(x => x.Section == "Federation" && x.Key == "ServerName")?.Value ?? string.Empty,
+            FederationEnabled = bool.TryParse(
+                federationSettings.Configurations.FirstOrDefault(x => x.Section == "Federation" && x.Key == "Enabled")?.Value,
+                out var federationEnabled) && federationEnabled,
         };
 
         _cache.Set(CacheKey, response, CacheTtl);
@@ -152,6 +165,23 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Status = ServiceStatus.Healthy,
             TlsEnabled = true
         };
+    }
+
+    private string GetPublicLivekitUrl(IEnumerable<ConfigurationItem> callsSettings)
+    {
+        var publicUrl = callsSettings
+            .FirstOrDefault(x => x.Section == "LiveKit" && x.Key == "PublicUrl")?.Value;
+
+        if (string.IsNullOrWhiteSpace(publicUrl))
+            return string.Empty;
+
+        if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var uri) || uri.Scheme != "wss")
+        {
+            _logger.LogError("LiveKit:PublicUrl должен быть публичным wss://-адресом, задано {Value}", publicUrl);
+            return string.Empty;
+        }
+
+        return publicUrl;
     }
 
     private static string NormalizeHost(string value)

@@ -18,19 +18,27 @@
 
     // --- User cache ---
     var userCache = new Map();
+    var userRequests = new Map();
+    var chatListUserIdsLoaded = new Set();
 
     function getUser(userId) {
         if (userCache.has(userId)) return Promise.resolve(userCache.get(userId));
-        return BF.api.getUser(userId).then(function (d) {
+        if (userRequests.has(userId)) return userRequests.get(userId);
+        var request = BF.api.getUser(userId).then(function (d) {
             if (d && d.user) { userCache.set(userId, d.user); return d.user; }
             return null;
         });
+        userRequests.set(userId, request);
+        request.then(function () { userRequests.delete(userId); }, function () { userRequests.delete(userId); });
+        return request;
     }
 
     // --- State ---
     var chats = [];
     var currentChatId = null;
     var currentChatInfo = null;
+    var currentChatType = 0; // ChatType: 0=REGULAR, 1=PRIVATE
+    var currentChatPeerIsBot = false;
     var messages = [];
     var isLoadingOlder = false;
     var noMoreOlder = false;
@@ -38,6 +46,10 @@
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
     var onlineStatuses = new Map();
+    var typingUsers = new Map();      // userId -> timeout handle
+    var typingSendActive = false;
+    var typingLastInputAt = 0;
+    var typingSendTimer = null;
     var chatListOffset = 0;
     var chatListTotal = 0;
     var chatListLoading = false;
@@ -136,6 +148,24 @@
     var groupAddResults = $('#groupAddResults');
     var groupMediaContent = $('#groupMediaContent');
 
+    function botBadgeMarkup() {
+        return '<span class="bot-badge" role="img" aria-label="Бот" title="Бот"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
+    }
+
+    function setChatCallButtonsVisible(visible) {
+        ['btnCallAudio', 'btnCallVideo'].forEach(function (id) {
+            var button = document.getElementById(id);
+            if (button) button.hidden = !visible;
+        });
+    }
+
+    function setProfileCallButtonsVisible(visible) {
+        ['profileCallAudioBtn', 'profileCallVideoBtn'].forEach(function (id) {
+            var button = document.getElementById(id);
+            if (button) button.hidden = !visible;
+        });
+    }
+
     // ========== CHAT LIST ==========
 
     function loadChats(reset) {
@@ -149,12 +179,44 @@
             if (!data || !data.chats) { chatListLoading = false; return; }
             chatListTotal = data.totalCount;
             chats = reset ? data.chats : chats.concat(data.chats);
-            chats.sort(function (a, b) { return ((b.lastMessage && b.lastMessage.sentAt) || 0) - ((a.lastMessage && a.lastMessage.sentAt) || 0); });
+            chats.sort(function (a, b) {
+                var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
+                var at = (a.lastMessage && a.lastMessage.sentAt) || a.lastActivityAt || 0;
+                return bt - at;
+            });
             chatListOffset = chats.length;
             chatListLoading = false;
             renderChatList();
             collectOnlineUserIds();
+            loadChatListUsers();
         }).catch(function () { chatListLoading = false; });
+    }
+
+    function loadChatListUsers() {
+        var userIds = [];
+        chats.forEach(function (chat) {
+            if (chat.isGroupChat || !chat.members) return;
+            chat.members.forEach(function (member) {
+                if (member.userId !== myUserId && !userCache.has(member.userId) && !chatListUserIdsLoaded.has(member.userId)) {
+                    chatListUserIdsLoaded.add(member.userId);
+                    userIds.push(member.userId);
+                }
+            });
+        });
+        if (userIds.length === 0) return;
+
+        var chain = Promise.resolve();
+        for (var i = 0; i < userIds.length; i += 5) {
+            (function (batch) {
+                chain = chain.then(function () { return Promise.all(batch.map(getUser)); });
+            })(userIds.slice(i, i + 5));
+        }
+        chain.then(function () {
+            renderChatList();
+            collectOnlineUserIds();
+        }).catch(function () {
+            userIds.forEach(function (id) { chatListUserIdsLoaded.delete(id); });
+        });
     }
 
     function renderChatList() {
@@ -170,9 +232,21 @@
                 ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">'
                 : avatarInitial;
 
+            var isPrivate = chat.chatType === 1;
             var lm = chat.lastMessage;
             var previewHtml = '';
-            if (lm) {
+            if (isPrivate) {
+                // Содержимое зашифровано — сервер (и превью) его не знает.
+                if (chat.privateInviteState === 0) {
+                    previewHtml = chat.privateInviterUserId === myUserId
+                        ? 'Ожидание собеседника'
+                        : '<span class="preview-private-invite">Приглашение в приватный чат</span>';
+                } else if (chat.privateInviteState === 2) {
+                    previewHtml = 'Приглашение отклонено';
+                } else {
+                    previewHtml = 'Сообщения зашифрованы';
+                }
+            } else if (lm) {
                 var text = (lm.content && lm.content.text) || '';
                 var ac = (lm.content && lm.content.attachments && lm.content.attachments.length) || 0;
                 if (lm.type === 2 || lm.type === 'SYSTEM') {
@@ -184,7 +258,8 @@
                 }
             }
 
-            var time = (lm && lm.sentAt) ? u.formatTime(lm.sentAt) : '';
+            var timeTs = (lm && lm.sentAt) || (isPrivate ? chat.lastActivityAt : null);
+            var time = timeTs ? u.formatChatListTime(timeTs) : '';
             var unread = chat.countUnread || 0;
             var unreadText = unread > 99 ? '99+' : unread;
 
@@ -193,12 +268,17 @@
                 var peer = chat.members.find(function (m) { return m.userId !== myUserId; });
                 if (peer) peerUserId = peer.userId;
             }
+            var peerUser = peerUserId ? userCache.get(peerUserId) : null;
+            var isBot = !!(peerUser && peerUser.isBot);
+            var onlineDot = peerUser && !isBot
+                ? '<div class="online-dot' + (peerUserId && isUserOnline(peerUserId) ? ' visible' : '') + '" data-online-user="' + (peerUserId || '') + '"></div>'
+                : '';
 
             el.innerHTML =
                 '<div class="chat-avatar">' + avatarHtml +
-                '<div class="online-dot' + (peerUserId && isUserOnline(peerUserId) ? ' visible' : '') + '" data-online-user="' + (peerUserId || '') + '"></div></div>' +
+                onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + u.escapeHtml(chat.title || 'Чат') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="Приватный чат">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || 'Чат') + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -208,18 +288,86 @@
         });
     }
 
+    // Тихое фоновое обновление списка чатов (catch-up после реконнекта/возврата на
+    // вкладку): тянем первую страницу, сравниваем сигнатуру с текущим состоянием и
+    // трогаем DOM только при реальном различии.
+    function chatSignature(c) {
+        var lm = c.lastMessage;
+        return [
+            c.id, c.title, c.picture, c.countUnread || 0, c.privateInviteState,
+            c.lastActivityAt || 0,
+            lm ? (lm.id + '|' + (lm.editedAt || 0) + '|' + ((lm.content && lm.content.text) || '')) : ''
+        ].join('');
+    }
+
+    function refreshChatListQuiet() {
+        if (chatListLoading) return Promise.resolve();
+        chatListLoading = true;
+
+        return BF.api.listChats(0, 50).then(function (data) {
+            chatListLoading = false;
+            if (!data || !data.chats) return;
+            var fetched = data.chats.slice();
+            fetched.sort(function (a, b) {
+                var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
+                var at = (a.lastMessage && a.lastMessage.sentAt) || a.lastActivityAt || 0;
+                return bt - at;
+            });
+
+            var same = data.totalCount === chatListTotal && fetched.length <= chats.length;
+            if (same) {
+                for (var i = 0; i < fetched.length; i++) {
+                    if (chatSignature(fetched[i]) !== chatSignature(chats[i])) { same = false; break; }
+                }
+            }
+            if (same) return; // ничего не изменилось — DOM не трогаем
+
+            chats = fetched;
+            chatListTotal = data.totalCount;
+            chatListOffset = chats.length;
+            renderChatList();
+            collectOnlineUserIds();
+            loadChatListUsers();
+            updateTitleBadge();
+        }).catch(function () { chatListLoading = false; });
+    }
+
     chatListEl.addEventListener('scroll', function () {
         if (chatListEl.scrollTop + chatListEl.clientHeight >= chatListEl.scrollHeight - 100) loadChats();
     });
+
+    // ========== TYPING INDICATOR ==========
+
+    function stopTypingSend(sendCancel) {
+        if (typingSendTimer) { clearInterval(typingSendTimer); typingSendTimer = null; }
+        if (sendCancel && typingSendActive) {
+            BF.api.setTypingStatus(currentChatId, false).catch(function () {});
+        }
+        typingSendActive = false;
+    }
+
+    function clearTypingReceiveState() {
+        typingUsers.forEach(function (timeoutHandle) { clearTimeout(timeoutHandle); });
+        typingUsers.clear();
+    }
 
     // ========== OPEN CHAT ==========
 
     function openChat(chatId) {
         if (chatId === currentChatId) return;
+        stopTypingSend(true);
+        clearTypingReceiveState();
+
+        var chatMeta = chats.find(function (c) { return c.id === chatId; });
+        if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
 
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
+        BF.realtime.subscribeTyping(chatId);
+        currentChatInfo = null;
+        currentChatType = 0;
+        currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
         knownMessageIds = new Set();
@@ -233,7 +381,12 @@
         messagesArea.classList.add('visible');
         messagesInner.innerHTML = '';
         inputBar.classList.add('visible');
+        inputBar.classList.remove('private-chat');
         loadingMessages.classList.add('visible');
+        chatHeaderStatus.hidden = false;
+        chatHeaderStatus.textContent = '';
+        chatHeaderStatus.classList.remove('online');
+        setChatCallButtonsVisible(true);
 
         // Reset unread count for the opened chat
         var openedChat = chats.find(function (c) { return c.id === chatId; });
@@ -255,15 +408,6 @@
             if (!info.isGroupChat && info.membersId && info.membersId.length > 0) {
                 var peerId = info.membersId.find(function (id) { return id !== myUserId; });
                 if (peerId) {
-                    subscribeOnlineForUsers([peerId]);
-                    // Fetch current online status via unary RPC to show immediately
-                    BF.api.getOnlineStatus([peerId]).then(function (data) {
-                        if (data && data.statuses && data.statuses.length > 0) {
-                            var s = data.statuses[0];
-                            handleOnlineStatus(s.userId, s.status, s.lastSeen);
-                        }
-                    }).catch(function () {});
-                    // Заголовок вкладки и favicon — «Чат с @username» + аватар собеседника
                     getUser(peerId).then(function (peer) {
                         if (chatId !== currentChatId || !peer) return;
                         var label = peer.username
@@ -271,11 +415,29 @@
                             : 'Чат с ' + (((peer.firstName || '') + ' ' + (peer.lastName || '')).trim() || 'пользователем');
                         var fav = peer.profilePicturePreview || peer.profilePicture || info.picture || null;
                         setChatTabContext(label, fav);
+
+                        currentChatPeerIsBot = !!peer.isBot;
+                        setChatCallButtonsVisible(!currentChatPeerIsBot);
+                        if (currentChatPeerIsBot) {
+                            chatHeaderStatus.hidden = true;
+                            return;
+                        }
+
+                        subscribeOnlineForUsers([peerId]);
+                        // Fetch current online status via unary RPC to show immediately
+                        BF.api.getOnlineStatus([peerId]).then(function (data) {
+                            if (data && data.statuses && data.statuses.length > 0) {
+                                var s = data.statuses[0];
+                                handleOnlineStatus(s.userId, s.status, s.lastSeen);
+                            }
+                        }).catch(function () {});
                     }).catch(function () {});
                 }
             } else {
                 chatHeaderStatus.textContent = (info.membersId ? info.membersId.length : 0) + ' участников';
                 chatHeaderStatus.classList.remove('online');
+                chatHeaderStatus.hidden = false;
+                setChatCallButtonsVisible(true);
                 // Для группового чата — сбрасываем кастомный контекст вкладки
                 resetChatTabContext();
             }
@@ -286,10 +448,41 @@
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
-                renderMessages().then(scrollToBottom);
+                var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
+                renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
             }
         }).catch(function () { loadingMessages.classList.remove('visible'); });
+    }
+
+    // Скроллит к первому непрочитанному (если есть) либо в самый низ чата,
+    // и повторяет попытку после того как догрузятся картинки сообщений —
+    // без этого reflow от догрузки картинок сбивает позицию скролла.
+    function settleScroll(unreadId) {
+        function anchor() {
+            var el = unreadId && messagesInner.querySelector('[data-msg-id="' + unreadId + '"]');
+            if (el) el.scrollIntoView({ block: 'start' });
+            else scrollToBottom();
+        }
+        anchor();
+        var pending = Array.prototype.filter.call(messagesInner.querySelectorAll('img'), function (im) { return !im.complete; });
+        if (pending.length === 0) return;
+        var settled = false;
+        var remaining = pending.length;
+        function settle() {
+            if (settled) return;
+            settled = true;
+            anchor();
+        }
+        pending.forEach(function (im) {
+            im.addEventListener('load', onOneDone);
+            im.addEventListener('error', onOneDone);
+        });
+        function onOneDone() {
+            remaining--;
+            if (remaining <= 0) settle();
+        }
+        setTimeout(settle, 1500);
     }
 
     // ========== RENDER MESSAGES ==========
@@ -384,8 +577,18 @@
             loadingMessages.classList.add('visible');
             var oldestId = messages[0].id || 0;
             var prevHeight = messagesArea.scrollHeight;
+            var pagedChatId = currentChatId;
 
-            BF.api.listMessages(currentChatId, oldestId, 30, 0).then(function (data) {
+            var older = currentChatType === 1
+                ? BF.api.listPrivateMessages(pagedChatId, oldestId, 30, 0).then(function (d) {
+                    return decryptPrivateBatch(pagedChatId, d && d.messages).then(function (mapped) {
+                        mapped.sort(function (a, b) { return a.id - b.id; });
+                        return { messages: mapped };
+                    });
+                })
+                : BF.api.listMessages(pagedChatId, oldestId, 30, 0);
+
+            older.then(function (data) {
                 if (data && data.messages && data.messages.length > 0) {
                     var newMsgs = data.messages.filter(function (m) { return !messages.some(function (em) { return em.id === m.id; }); });
                     if (newMsgs.length === 0) { noMoreOlder = true; }
@@ -408,6 +611,12 @@
     function sendMessage() {
         var text = messageInput.value.trim();
         if (!currentChatId) return;
+        stopTypingSend(true);
+
+        if (currentChatType === 1) {
+            if (text) sendPrivateMessageFlow(text);
+            return;
+        }
 
         if (pendingEdit) {
             var editId = pendingEdit.messageId;
@@ -445,6 +654,7 @@
 
             if (resp && resp.message) {
                 var msg = resp.message;
+                BF.sound.play('tick');
                 if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
                     messages.push(msg);
                     appendMessageToView(msg).then(scrollToBottom);
@@ -467,6 +677,7 @@
             // вместо правки исходного. Завершите или отмените редактирование.
             return;
         }
+        stopTypingSend(true);
         var text = (caption != null ? caption : messageInput.value).trim();
         var sentChatId = currentChatId;
         sendBtn.disabled = true;
@@ -514,7 +725,7 @@
     }
 
     function openAttachModal(files) {
-        if (!currentChatId) return;
+        if (!currentChatId || currentChatType === 1) return; // в приватных чатах вложения не поддерживаются
         var prefill = messageInput.value;
         BF.attach.open(files, function (outFiles, asDocuments, caption) {
             // Если пользователь ввёл подпись в модалке — забираем её из неё, а исходный
@@ -532,6 +743,25 @@
     messageInput.addEventListener('input', function () {
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+
+        if (!currentChatId || currentChatType !== 0) return;
+        var value = messageInput.value;
+        if (value.trim() === '') {
+            stopTypingSend(true);
+            return;
+        }
+        typingLastInputAt = Date.now();
+        if (!typingSendActive) {
+            typingSendActive = true;
+            BF.api.setTypingStatus(currentChatId, true).catch(function () {});
+            typingSendTimer = setInterval(function () {
+                if (Date.now() - typingLastInputAt >= 5000) {
+                    stopTypingSend(false);
+                } else {
+                    BF.api.setTypingStatus(currentChatId, true).catch(function () {});
+                }
+            }, 4000);
+        }
     });
 
     // ========== FILE UPLOAD ==========
@@ -571,6 +801,7 @@
         var dropOverlay = document.createElement('div');
         dropOverlay.className = 'drop-overlay';
         dropOverlay.textContent = 'Отпустите для отправки';
+        dropOverlay.setAttribute('aria-hidden', 'true');
         chatArea.appendChild(dropOverlay);
 
         var dragCounter = 0;
@@ -578,7 +809,7 @@
             return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
         }
         chatArea.addEventListener('dragenter', function (e) {
-            if (!currentChatId || !isFileDrag(e)) return;
+            if (!currentChatId || currentChatType === 1 || !isFileDrag(e)) return;
             dragCounter++;
             chatArea.classList.add('drag-over');
         });
@@ -596,6 +827,352 @@
             chatArea.classList.remove('drag-over');
             var files = Array.from(e.dataTransfer.files || []);
             if (files.length > 0) openAttachModal(files);
+        });
+    }
+
+    // ========== PRIVATE CHATS (E2E через passphrase, зеркалит Android) ==========
+
+    var privatePassOverlay = $('#privatePassOverlay');
+    var privatePassTitle = $('#privatePassTitle');
+    var privatePassInput = $('#privatePassInput');
+    var privatePassRemember = $('#privatePassRemember');
+    var privatePassError = $('#privatePassError');
+    var privatePassCancel = $('#privatePassCancel');
+    var privatePassOk = $('#privatePassOk');
+    var privatePassActive = null; // { chat, onDone } — текущий запрос пароля
+
+    function closePassphraseModal() {
+        privatePassOverlay.classList.remove('visible');
+        privatePassActive = null;
+    }
+
+    // Запрос passphrase с локальной проверкой verifier'а (Argon2id → HMAC).
+    // onDone(key, remember) вызывается только после успешной проверки.
+    function promptPassphrase(chat, title, onDone) {
+        var ctx = { chat: chat, onDone: onDone };
+        privatePassActive = ctx;
+        privatePassTitle.textContent = title;
+        privatePassInput.value = '';
+        privatePassRemember.checked = true;
+        privatePassError.textContent = '';
+        privatePassOk.disabled = false;
+        privatePassOverlay.classList.add('visible');
+        setTimeout(function () { privatePassInput.focus(); }, 50);
+    }
+
+    function submitPassphrase() {
+        if (!privatePassActive) return;
+        var ctx = privatePassActive;
+        var pass = privatePassInput.value;
+        if (!pass) { privatePassError.textContent = 'Введите пароль'; return; }
+        privatePassOk.disabled = true;
+        privatePassError.textContent = 'Проверка…';
+        BF.privateChat.deriveKey(pass, ctx.chat.kdfSalt).then(function (key) {
+            return BF.privateChat.validateVerifier(key, ctx.chat.passphraseVerifier).then(function (ok) {
+                if (privatePassActive !== ctx) return;
+                if (!ok) {
+                    privatePassOk.disabled = false;
+                    privatePassError.textContent = 'Неверный пароль';
+                    return;
+                }
+                var remember = privatePassRemember.checked;
+                closePassphraseModal();
+                ctx.onDone(key, remember);
+            });
+        }).catch(function (e) {
+            console.error('[privateChat] deriveKey failed', e);
+            if (privatePassActive !== ctx) return;
+            privatePassOk.disabled = false;
+            privatePassError.textContent = 'Ошибка проверки пароля';
+        });
+    }
+
+    if (privatePassOk) privatePassOk.addEventListener('click', submitPassphrase);
+    if (privatePassCancel) privatePassCancel.addEventListener('click', closePassphraseModal);
+    if (privatePassInput) privatePassInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitPassphrase(); }
+    });
+
+    // Карточка-статус в области сообщений (инвайт/ожидание/разблокировка)
+    function showPrivateCard(title, text, buttons) {
+        messagesInner.innerHTML = '';
+        var card = document.createElement('div');
+        card.className = 'private-card';
+        var h = document.createElement('div');
+        h.className = 'private-card-title';
+        h.textContent = title;
+        card.appendChild(h);
+        if (text) {
+            var p = document.createElement('div');
+            p.className = 'private-card-text';
+            p.textContent = text;
+            card.appendChild(p);
+        }
+        if (buttons && buttons.length) {
+            var row = document.createElement('div');
+            row.className = 'private-card-actions';
+            buttons.forEach(function (b) {
+                var btn = document.createElement('button');
+                btn.className = 'private-card-btn' + (b.primary ? ' primary' : '');
+                btn.textContent = b.label;
+                btn.addEventListener('click', b.onClick);
+                row.appendChild(btn);
+            });
+            card.appendChild(row);
+        }
+        messagesInner.appendChild(card);
+    }
+
+    // EncryptedMessage (+расшифрованный текст) → объект сообщения для BF.messages
+    function privateToUiMessage(chatId, enc, text) {
+        return {
+            id: enc.id,
+            senderId: enc.senderId,
+            readBy: [],
+            sentAt: enc.sentAt,
+            type: 1,
+            isEdited: enc.isEdited,
+            editedAt: enc.editedAt,
+            content: {
+                text: (text !== null && text !== undefined) ? text : '\u{1F512} Не удалось расшифровать',
+                attachments: []
+            }
+        };
+    }
+
+    function decryptPrivateBatch(chatId, encMsgs) {
+        var alive = (encMsgs || []).filter(function (m) { return !m.isDeleted; });
+        return Promise.all(alive.map(function (m) {
+            return BF.privateChat.decryptMessage(chatId, m).then(function (t) {
+                return privateToUiMessage(chatId, m, t);
+            });
+        }));
+    }
+
+    function openPrivateChat(chat) {
+        stopTypingSend(true);
+        if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
+
+        currentChatId = chat.id;
+        currentChatInfo = null;
+        currentChatType = 1;
+        currentChatPeerIsBot = false;
+        BF.realtime.unsubscribeTyping();
+        messages = [];
+        noMoreOlder = false;
+        knownMessageIds = new Set();
+        clearPendingReply();
+        clearPendingEdit();
+        closeContextMenu();
+        if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+        chatEmpty.style.display = 'none';
+        chatHeader.classList.add('visible');
+        messagesArea.parentElement.classList.add('visible');
+        messagesArea.classList.add('visible');
+        messagesInner.innerHTML = '';
+        inputBar.classList.remove('visible');
+        inputBar.classList.add('private-chat');
+        loadingMessages.classList.remove('visible');
+        setChatCallButtonsVisible(false);
+        resetChatTabContext();
+
+        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || 'Приватный чат');
+        if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
+        else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
+        chatHeaderStatus.hidden = false;
+        chatHeaderStatus.classList.remove('online');
+        chatHeaderStatus.textContent = 'Приватный чат';
+
+        if (chat.countUnread > 0) { chat.countUnread = 0; updateTitleBadge(); }
+        renderChatList();
+
+        if (chat.privateInviteState === 2) { // REJECTED
+            showPrivateCard('Приглашение отклонено', 'Этот приватный чат недоступен.');
+            return;
+        }
+        if (chat.privateInviteState === 0) { // PENDING
+            if (chat.privateInviterUserId === myUserId || !chat.privateInviterUserId) {
+                showPrivateCard('Ожидание собеседника', 'Собеседник ещё не принял приглашение в приватный чат.');
+            } else {
+                showPrivateInviteCard(chat);
+            }
+            return;
+        }
+        // ACCEPTED
+        if (BF.privateChat.hasKey(chat.id)) {
+            loadPrivateMessages(chat);
+        } else {
+            showPrivateUnlockCard(chat);
+        }
+    }
+
+    function showPrivateInviteCard(chat) {
+        showPrivateCard('Приглашение в приватный чат',
+            'Для входа нужен пароль, о котором вы договорились с собеседником.', [
+            { label: 'Отклонить', onClick: function () { rejectPrivateInvite(chat); } },
+            { label: 'Принять', primary: true, onClick: function () { acceptPrivateInvite(chat); } }
+        ]);
+    }
+
+    function showPrivateUnlockCard(chat) {
+        showPrivateCard('Чат заблокирован',
+            'Введите пароль чата, чтобы расшифровать сообщения на этом устройстве.', [
+            { label: 'Ввести пароль', primary: true, onClick: function () {
+                promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+                    BF.privateChat.saveKey(chat.id, key, remember);
+                    if (currentChatId === chat.id) loadPrivateMessages(chat);
+                });
+            } }
+        ]);
+    }
+
+    function acceptPrivateInvite(chat) {
+        promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+            BF.api.acceptPrivateChat(chat.id).then(function (resp) {
+                BF.privateChat.saveKey(chat.id, key, remember);
+                var idx = chats.findIndex(function (c) { return c.id === chat.id; });
+                var updated = (resp && resp.chat) ? resp.chat : chat;
+                updated.privateInviteState = 1;
+                updated.countUnread = 0;
+                if (idx >= 0) chats[idx] = updated;
+                renderChatList();
+                if (currentChatId === chat.id) loadPrivateMessages(updated);
+            }).catch(function (e) {
+                console.error('[privateChat] acceptPrivateChat failed', e);
+                if (currentChatId === chat.id) showPrivateInviteCard(chat);
+            });
+        });
+    }
+
+    function rejectPrivateInvite(chat) {
+        BF.api.rejectPrivateChat(chat.id).then(function () {
+            var idx = chats.findIndex(function (c) { return c.id === chat.id; });
+            if (idx >= 0) chats.splice(idx, 1);
+            renderChatList();
+            updateTitleBadge();
+            if (currentChatId === chat.id) closePrivateChatView();
+        }).catch(function (e) { console.error('[privateChat] rejectPrivateChat failed', e); });
+    }
+
+    function closePrivateChatView() {
+        currentChatId = null;
+        currentChatType = 0;
+        messages = [];
+        messagesInner.innerHTML = '';
+        chatHeader.classList.remove('visible');
+        messagesArea.classList.remove('visible');
+        messagesArea.parentElement.classList.remove('visible');
+        inputBar.classList.remove('visible');
+        chatEmpty.style.display = '';
+    }
+
+    function loadPrivateMessages(chat) {
+        var chatId = chat.id;
+        messagesInner.innerHTML = '';
+        loadingMessages.classList.add('visible');
+        BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
+            if (chatId !== currentChatId) return;
+            return decryptPrivateBatch(chatId, data && data.messages).then(function (mapped) {
+                if (chatId !== currentChatId) return;
+                mapped.sort(function (a, b) { return a.id - b.id; });
+                messages = mapped;
+                inputBar.classList.add('visible');
+                renderMessages().then(scrollToBottom);
+                var last = mapped.length ? mapped[mapped.length - 1].id : 0;
+                if (last) BF.api.markPrivateMessagesAsRead(chatId, last).catch(function () {});
+            });
+        }).catch(function (e) {
+            console.error('[privateChat] listPrivateMessages failed', e);
+        }).finally(function () {
+            loadingMessages.classList.remove('visible');
+        });
+    }
+
+    // Catch-up открытого приватного чата (реконнект стрима / возврат на вкладку)
+    function reloadCurrentPrivateChat() {
+        if (currentChatType !== 1 || !currentChatId) return;
+        var chat = chats.find(function (c) { return c.id === currentChatId; });
+        if (chat && chat.privateInviteState === 1 && BF.privateChat.hasKey(chat.id)) {
+            loadPrivateMessages(chat);
+        }
+    }
+
+    function sendPrivateMessageFlow(text) {
+        var sentChatId = currentChatId;
+        sendBtn.disabled = true;
+        BF.privateChat.encryptText(sentChatId, text).then(function (encd) {
+            return BF.api.sendPrivateMessage(sentChatId, encd.ciphertext, encd.nonce, encd.associatedData);
+        }).then(function (resp) {
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = false;
+            messageInput.focus();
+            if (resp && resp.message) {
+                var msg = privateToUiMessage(sentChatId, resp.message, text);
+                BF.sound.play('tick');
+                if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
+                    messages.push(msg);
+                    appendMessageToView(msg).then(scrollToBottom);
+                }
+                var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
+                if (chatIdx >= 0) {
+                    var chat = chats[chatIdx];
+                    chat.lastActivityAt = msg.sentAt || Date.now();
+                    chats.splice(chatIdx, 1);
+                    chats.unshift(chat);
+                    renderChatList();
+                }
+            }
+        }).catch(function (e) {
+            console.error('[privateChat] send failed', e);
+            sendBtn.disabled = false;
+        });
+    }
+
+    BF.realtime.on('private_message', function (data) {
+        handlePrivateMessage(data.chatId, data.message);
+    });
+
+    function handlePrivateMessage(chatId, enc) {
+        var chat = chats.find(function (c) { return c.id === chatId; });
+        if (chat) {
+            chat.lastActivityAt = enc.sentAt || Date.now();
+            if (chatId !== currentChatId && enc.senderId !== myUserId) {
+                chat.countUnread = (chat.countUnread || 0) + 1;
+            }
+            var idx = chats.indexOf(chat);
+            chats.splice(idx, 1);
+            chats.unshift(chat);
+            renderChatList();
+        } else {
+            // Неизвестный чат (например, свежий инвайт) — перечитываем список
+            loadChats(true);
+        }
+        updateTitleBadge();
+
+        if (enc.senderId !== myUserId) {
+            BF.sound.play('chime');
+            showNewMessageNotification(chat ? chat.title : 'Приватный чат',
+                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} Новое сообщение' } });
+        }
+
+        if (chatId !== currentChatId) return;
+        if (enc.isDeleted) return;
+        if (!BF.privateChat.hasKey(chatId)) return; // чат ещё не разблокирован
+        if (messages.some(function (m) { return m.id === enc.id; })) return;
+        BF.privateChat.decryptMessage(chatId, enc).then(function (text) {
+            if (chatId !== currentChatId) return;
+            if (messages.some(function (m) { return m.id === enc.id; })) return;
+            var msg = privateToUiMessage(chatId, enc, text);
+            var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+            messages.push(msg);
+            appendMessageToView(msg).then(function () {
+                if (isAtBottom) scrollToBottom();
+                else if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+            });
+            if (enc.senderId !== myUserId) {
+                BF.api.markPrivateMessagesAsRead(chatId, enc.id).catch(function () {});
+            }
         });
     }
 
@@ -697,10 +1274,10 @@
         }
         if (data.connected && _wasConnected === false) {
             // Соединение восстановлено — пропустили события (delete/edit/new),
-            // подтягиваем актуальное состояние с сервера.
+            // тихо сверяем состояние с сервером и применяем только диффы.
             console.log('[main] connection restored — running catch-up');
-            loadChats(true);
-            reloadCurrentChatMessages();
+            refreshChatListQuiet();
+            resyncCurrentChatTail();
         }
         _wasConnected = !!data.connected;
     });
@@ -722,7 +1299,7 @@
             _resyncTimer = null;
             if (!currentChatId) {
                 // Чат не открыт — обновлять нечего в области сообщений; освежаем сайдбар.
-                loadChats(true);
+                refreshChatListQuiet();
                 return;
             }
             // Тихо сверяем хвост открытого чата. Сайдбар трогаем только если что-то
@@ -732,37 +1309,54 @@
         }, 1200);
     });
 
-    // Совпадает ли только что загруженный хвост с тем, что уже показано (по id, тексту,
-    // флагу isEdited, числу прочитавших и наличию удалений в окне) — тогда менять нечего.
-    function tailMatchesCurrent(fetched) {
+    // Дифф свежезагруженного хвоста против показанного окна (по id, editedAt/тексту,
+    // числу прочитавших и удалениям в диапазоне окна). null — различий нет.
+    function diffFetchedTail(fetched) {
         var byId = new Map();
         messages.forEach(function (m) { byId.set(String(m.id), m); });
         var minId = Infinity, maxId = -Infinity;
+        var edits = [], readUpdates = [], news = [];
         for (var i = 0; i < fetched.length; i++) {
             var f = fetched[i];
             var fid = Number(f.id);
             if (fid < minId) minId = fid;
             if (fid > maxId) maxId = fid;
             var cur = byId.get(String(f.id));
-            if (!cur) return false;                                   // новое сообщение
-            if (!!cur.isEdited !== !!f.isEdited) return false;        // правка
+            if (!cur) { news.push(f); continue; }                     // новое сообщение
             var ct = (cur.content && cur.content.text) || '';
             var ft = (f.content && f.content.text) || '';
-            if (ct !== ft) return false;                              // правка текста
-            if ((cur.readBy || []).length !== (f.readBy || []).length) return false; // прочтение
+            if ((cur.editedAt || 0) !== (f.editedAt || 0) || ct !== ft) { edits.push(f); continue; } // правка
+            if ((cur.readBy || []).length !== (f.readBy || []).length) readUpdates.push(f); // прочтение
         }
         // Удаление: есть наше сообщение в диапазоне окна, которого нет в свежей выборке.
         var fetchedIds = new Set(fetched.map(function (m) { return String(m.id); }));
+        var deletes = [];
         for (var j = 0; j < messages.length; j++) {
             var mid = Number(messages[j].id);
-            if (mid >= minId && mid <= maxId && !fetchedIds.has(String(messages[j].id))) return false;
+            if (mid >= minId && mid <= maxId && !fetchedIds.has(String(messages[j].id))) deletes.push(messages[j].id);
         }
-        return true;
+        if (deletes.length === 0 && edits.length === 0 && readUpdates.length === 0 && news.length === 0) return null;
+        news.sort(function (a, b) { return Number(a.id) - Number(b.id); });
+        return { deletes: deletes, edits: edits, readUpdates: readUpdates, news: news };
+    }
+
+    // Точечное обновление галочек прочтения — view-часть handleMessageRead,
+    // без мутации счётчиков непрочитанного и без ререндера списка чатов.
+    function applyReadByUpdate(fetchedMsg) {
+        var msg = messages.find(function (m) { return String(m.id) === String(fetchedMsg.id); });
+        if (!msg) return;
+        msg.readBy = fetchedMsg.readBy || [];
+        var el = messagesArea.querySelector('.msg-status[data-msg-id="' + fetchedMsg.id + '"]');
+        if (el) {
+            var rc = msg.readBy.filter(function (id) { return id !== myUserId; }).length;
+            BF.messages.updateMessageStatus(el, rc > 0);
+        }
     }
 
     function resyncCurrentChatTail() {
         if (!currentChatId) return;
-        if (loadingMessages.classList.contains('visible')) return; // чат ещё открывается
+        if (isLoadingOlder || loadingMessages.classList.contains('visible')) return; // чат открывается/пагинируется
+        if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
         var chatId = currentChatId;
         BF.api.getChatInfo(chatId).then(function (info) {
             if (chatId !== currentChatId || !info || info.error) return null;
@@ -773,44 +1367,67 @@
         }).then(function (res) {
             if (!res || !res.data || !res.data.messages || chatId !== currentChatId) return;
             var fetched = res.data.messages;
-            if (tailMatchesCurrent(fetched)) return; // за окно реконнекта ничего не пропало
+            var diff = diffFetchedTail(fetched);
+            if (!diff) return; // за окно реконнекта ничего не пропало — DOM не трогаем
             currentChatInfo = res.info;
             var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
-            messages = fetched;
-            renderMessages().then(function () {
-                if (wasAtBottom) scrollToBottom();
-            });
-            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
-            // чатах: освежаем превью/счётчики непрочитанного в сайдбаре.
-            loadChats(true);
-        }).catch(function () {});
-    }
 
-    // Catch-up: перезагрузка сообщений текущего чата.
-    // Используется при восстановлении соединения и при возврате на вкладку,
-    // чтобы синхронизировать пропущенные edit/delete/new события.
-    function reloadCurrentChatMessages() {
-        if (!currentChatId) return;
-        var chatId = currentChatId;
-        BF.api.getChatInfo(chatId).then(function (info) {
-            if (chatId !== currentChatId || !info || info.error) return;
-            currentChatInfo = info;
-            var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
-            return BF.api.listMessages(chatId, fromId, 30, 10);
-        }).then(function (data) {
-            if (!data || !data.messages || chatId !== currentChatId) return;
-            var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
-            messages = data.messages;
-            renderMessages().then(function () {
-                if (wasAtBottom) scrollToBottom();
+            // Новые сообщения не в хвосте (окно прыгало через scrollToMessage, или своё
+            // сообщение ушло раньше resync-дебаунса) — точечно не вставить, полный render.
+            var maxCurId = messages.length > 0
+                ? Math.max.apply(null, messages.map(function (m) { return Number(m.id); }))
+                : -Infinity;
+            var tailOnly = messages.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            if (!tailOnly) {
+                messages = fetched;
+                renderMessages().then(function () {
+                    if (wasAtBottom) scrollToBottom();
+                });
+                refreshChatListQuiet();
+                return;
+            }
+
+            // Точечное применение диффа — как live-события, но без звуков/нотификаций.
+            diff.deletes.forEach(function (id) { applyMessageDelete(chatId, id); });
+            diff.edits.forEach(function (m) { applyMessageEdit(chatId, m); });
+            diff.readUpdates.forEach(applyReadByUpdate);
+
+            var chain = Promise.resolve();
+            diff.news.forEach(function (m) {
+                chain = chain.then(function () {
+                    if (chatId !== currentChatId) return;
+                    messages.push(m);
+                    return appendMessageToView(m);
+                });
             });
+            chain.then(function () {
+                if (chatId !== currentChatId || diff.news.length === 0) return;
+                if (wasAtBottom) {
+                    scrollToBottom();
+                    if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+                    var anyIncoming = false;
+                    diff.news.forEach(function (m) {
+                        if (m.senderId !== myUserId) { markReadPending.add(m.id); anyIncoming = true; }
+                    });
+                    if (anyIncoming) {
+                        if (markReadTimer) clearTimeout(markReadTimer);
+                        markReadTimer = setTimeout(flushMarkRead, 500);
+                    }
+                } else {
+                    if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+                }
+            });
+
+            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
+            // чатах: тихо освежаем превью/счётчики непрочитанного в сайдбаре.
+            refreshChatListQuiet();
         }).catch(function () {});
     }
 
     // ========== SCROLL-BASED MARK AS READ ==========
 
     function markVisibleMessagesAsRead() {
-        if (!currentChatId) return;
+        if (!currentChatId || currentChatType === 1) return;
         var changed = false;
         var areaRect = messagesArea.getBoundingClientRect();
 
@@ -851,9 +1468,9 @@
     // ========== TAB VISIBILITY — REFRESH ON RETURN ==========
 
     BF.realtime.on('tab_visible', function () {
-        // Refresh chat list + currentChat messages to catch up missed updates while tab was hidden
-        loadChats(true);
-        reloadCurrentChatMessages();
+        // Тихий catch-up пропущенного за время скрытой вкладки: диффы вместо полного ререндера
+        refreshChatListQuiet();
+        resyncCurrentChatTail();
     });
 
     // ========== REALTIME HANDLERS ==========
@@ -891,6 +1508,25 @@
         if (BF.pinned && BF.pinned.applyAllUnpinnedEvent) BF.pinned.applyAllUnpinnedEvent(data);
     });
 
+    BF.realtime.on('typing', function (data) {
+        if (!currentChatId || String(data.chatId).toLowerCase() !== String(currentChatId).toLowerCase()) return;
+        if (data.userId === myUserId) return;
+        var old = typingUsers.get(data.userId);
+        if (old) clearTimeout(old);
+        if (data.action === 2) {
+            typingUsers.delete(data.userId);
+        } else {
+            typingUsers.set(data.userId, setTimeout(function () {
+                typingUsers.delete(data.userId);
+                renderTypingIndicator();
+            }, 6000));
+            if (currentChatInfo && currentChatInfo.isGroupChat) {
+                getUser(data.userId).then(renderTypingIndicator);
+            }
+        }
+        renderTypingIndicator();
+    });
+
     function handleNewMessage(chatId, msg) {
         if (chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
 
@@ -913,6 +1549,7 @@
 
         // Browser notification for messages from others
         if (msg.senderId !== myUserId) {
+            BF.sound.play('chime');
             showNewMessageNotification(chatTitle, msg);
         }
 
@@ -944,11 +1581,11 @@
             var msg = messages.find(function (m) { return m.id === messageId; });
             if (msg) {
                 msg.readBy = readBy;
-                // Update check-mark indicator (single ✓ = sent, double ✓✓ = read by others)
+                // Update check-mark indicator (single = delivered, double = read by others)
                 var el = messagesArea.querySelector('.msg-status[data-msg-id="' + messageId + '"]');
                 if (el) {
                     var rc = readBy.filter(function (id) { return id !== myUserId; }).length;
-                    el.innerHTML = rc > 0 ? '&#10003;&#10003;' : '&#10003;';
+                    BF.messages.updateMessageStatus(el, rc > 0);
                 }
             }
         }
@@ -980,13 +1617,14 @@
         document.querySelectorAll('.online-dot[data-online-user="' + userId + '"]').forEach(function (dot) {
             dot.classList.toggle('visible', online);
         });
-        if (currentChatInfo && !currentChatInfo.isGroupChat) {
+        if (currentChatInfo && !currentChatInfo.isGroupChat && !currentChatPeerIsBot) {
             var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
             if (peerId === userId) updateChatHeaderOnline(userId);
         }
     }
 
     function updateChatHeaderOnline(userId) {
+        if (typingUsers.size > 0) return;
         var entry = onlineStatuses.get(userId);
         var online = entry ? BF.utils.isStatusOnline(entry.status) : false;
         if (online) {
@@ -997,20 +1635,62 @@
         chatHeaderStatus.classList.toggle('online', online);
     }
 
+    function renderTypingIndicator() {
+        if (!currentChatId || !currentChatInfo) return;
+
+        if (typingUsers.size === 0) {
+            if (currentChatInfo.isGroupChat) {
+                chatHeaderStatus.textContent = (currentChatInfo.membersId ? currentChatInfo.membersId.length : 0) + ' участников';
+                chatHeaderStatus.classList.remove('online');
+            } else {
+                var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
+                if (peerId) updateChatHeaderOnline(peerId);
+            }
+            return;
+        }
+
+        if (currentChatInfo.isGroupChat) {
+            var names = Array.from(typingUsers.keys()).slice(0, 3).map(function (id) {
+                var user = userCache.get(id);
+                if (!user) return 'Кто-то';
+                return (user.firstName || '').split(' ')[0] || user.username || 'Кто-то';
+            });
+            chatHeaderStatus.textContent = names.join(', ') + (typingUsers.size > 1 ? ' печатают…' : ' печатает…');
+        } else {
+            chatHeaderStatus.textContent = 'печатает…';
+        }
+    }
+
     function collectOnlineUserIds() {
         var ids = new Set();
         chats.forEach(function (chat) {
             if (!chat.isGroupChat && chat.members) {
-                chat.members.forEach(function (m) { if (m.userId !== myUserId) ids.add(m.userId); });
+                chat.members.forEach(function (m) {
+                    var user = userCache.get(m.userId);
+                    if (m.userId !== myUserId && !(user && user.isBot)) ids.add(m.userId);
+                });
             }
         });
-        subscribeOnlineForUsers(Array.from(ids));
+        var changed = ids.size !== onlineSubscribedUserIds.size;
+        if (!changed) {
+            ids.forEach(function (id) {
+                if (!onlineSubscribedUserIds.has(id)) changed = true;
+            });
+        }
+        if (changed) {
+            onlineSubscribedUserIds = ids;
+            BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
+        }
     }
 
     function subscribeOnlineForUsers(userIds) {
         var changed = false;
         userIds.forEach(function (id) {
-            if (!onlineSubscribedUserIds.has(id)) { onlineSubscribedUserIds.add(id); changed = true; }
+            var user = userCache.get(id);
+            if (!(user && user.isBot) && !onlineSubscribedUserIds.has(id)) {
+                onlineSubscribedUserIds.add(id);
+                changed = true;
+            }
         });
         if (changed) BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
     }
@@ -1057,6 +1737,8 @@
 
     // ========== MEDIA OVERLAY ==========
     var overlayFileToken = 0;
+    var overlayOpenFrame = null;
+    var overlayCloseTimer = null;
 
     // Выставляет display + src для overlay-элементов; сбрасывает data-флаги resilient,
     // чтобы при новом открытии bindResilientMedia обрабатывал ошибки с чистого старта.
@@ -1078,13 +1760,24 @@
     }
 
     function showMediaOverlay(type, url, fileId) {
+        if (overlayCloseTimer) {
+            clearTimeout(overlayCloseTimer);
+            overlayCloseTimer = null;
+        }
+        if (overlayOpenFrame) cancelAnimationFrame(overlayOpenFrame);
         if (fileId) {
             overlayImage.setAttribute('data-bf-file-id', fileId);
             overlayVideo.setAttribute('data-bf-file-id', fileId);
+        } else {
+            overlayImage.removeAttribute('data-bf-file-id');
+            overlayVideo.removeAttribute('data-bf-file-id');
         }
         var token = ++overlayFileToken;
         applyOverlaySrc(type, url);
-        imageOverlay.classList.add('visible');
+        overlayOpenFrame = requestAnimationFrame(function () {
+            overlayOpenFrame = null;
+            if (token === overlayFileToken) imageOverlay.classList.add('visible');
+        });
         // Presigned-ссылки протухают при долгой сессии. При открытии полноразмерного
         // просмотра перезапрашиваем свежий URL по fileId, чтобы избежать 404.
         if (fileId) {
@@ -1096,6 +1789,34 @@
             });
         }
         viewerInit(fileId);
+    }
+
+    function cleanupMediaOverlay() {
+        overlayCloseTimer = null;
+        if (imageOverlay.classList.contains('visible')) return;
+        overlayImage.removeAttribute('data-bf-file-id');
+        overlayVideo.removeAttribute('data-bf-file-id');
+        overlayImage.removeAttribute('data-bf-refreshed');
+        overlayImage.removeAttribute('data-bf-failed');
+        overlayVideo.removeAttribute('data-bf-refreshed');
+        overlayVideo.removeAttribute('data-bf-failed');
+        overlayImage.src = '';
+        overlayVideo.pause();
+        overlayVideo.src = '';
+        viewerState.index = -1;
+        if (overlayPrev) overlayPrev.hidden = true;
+        if (overlayNext) overlayNext.hidden = true;
+    }
+
+    function closeMediaOverlay() {
+        overlayFileToken++;
+        if (overlayOpenFrame) {
+            cancelAnimationFrame(overlayOpenFrame);
+            overlayOpenFrame = null;
+        }
+        imageOverlay.classList.remove('visible');
+        if (overlayCloseTimer) clearTimeout(overlayCloseTimer);
+        overlayCloseTimer = setTimeout(cleanupMediaOverlay, 120);
     }
 
     // ----- Листаемый просмотрщик: картинки + видео всего чата через ListChatAttachments -----
@@ -1214,20 +1935,7 @@
 
     imageOverlay.addEventListener('click', function (e) {
         if (e.target === overlayVideo) return;
-        overlayFileToken++;
-        imageOverlay.classList.remove('visible');
-        overlayImage.removeAttribute('data-bf-file-id');
-        overlayVideo.removeAttribute('data-bf-file-id');
-        overlayImage.removeAttribute('data-bf-refreshed');
-        overlayImage.removeAttribute('data-bf-failed');
-        overlayVideo.removeAttribute('data-bf-refreshed');
-        overlayVideo.removeAttribute('data-bf-failed');
-        overlayImage.src = '';
-        overlayVideo.pause();
-        overlayVideo.src = '';
-        viewerState.index = -1;
-        if (overlayPrev) overlayPrev.hidden = true;
-        if (overlayNext) overlayNext.hidden = true;
+        closeMediaOverlay();
     });
 
     // ========== PROFILE OVERLAY ==========
@@ -1265,6 +1973,7 @@
                 profileAvatar.textContent = initial;
             }
             profileName.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
+            if (user.isBot) profileName.insertAdjacentHTML('beforeend', botBadgeMarkup());
             profileUsername.textContent = user.username ? '@' + user.username : '';
             profileBio.textContent = user.bio || '';
             profileBio.style.display = user.bio ? 'block' : 'none';
@@ -1273,6 +1982,13 @@
             var entry = onlineStatuses.get(userId);
             profileStatus.textContent = online ? 'в сети' : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
+            profileStatus.hidden = !!user.isBot;
+            setProfileCallButtonsVisible(!user.isBot);
+
+            var _profileUserId = $('#profileUserId');
+            var _profileChatId = $('#profileChatId');
+            if (_profileUserId) _profileUserId.textContent = user.id;
+            if (_profileChatId) _profileChatId.textContent = currentChatId || '\u2014';
 
             if (user.registrationDate) {
                 profileRegDate.textContent = new Date(user.registrationDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -1310,9 +2026,10 @@
         if (type === 'media') {
             Promise.all([
                 BF.api.listChatAttachments(currentChatId, 1, 0, 30),
-                BF.api.listChatAttachments(currentChatId, 2, 0, 30)
+                BF.api.listChatAttachments(currentChatId, 2, 0, 30),
+                BF.api.listChatAttachments(currentChatId, 3, 0, 30)
             ]).then(function (results) {
-                var all = (results[0].attachments || []).concat(results[1].attachments || []);
+                var all = (results[0].attachments || []).concat(results[1].attachments || [], results[2].attachments || []);
                 all.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
                 if (all.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет медиафайлов</div>'; return; }
 
@@ -1338,7 +2055,7 @@
                 });
                 chain.then(function () { profileMediaContent.appendChild(grid); });
             });
-        } else {
+        } else if (type === 'files') {
             BF.api.listChatAttachments(currentChatId, 4, 0, 30).then(function (data) {
                 var files = data.attachments || [];
                 if (files.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет файлов</div>'; return; }
@@ -1361,6 +2078,42 @@
                             icon.textContent = '\u{1F4C4}';
                             el.appendChild(icon);
                             el.appendChild(document.createTextNode(' ' + (att.fileName || 'Файл')));
+                            list.appendChild(el);
+                        });
+                    });
+                });
+                chain.then(function () { profileMediaContent.appendChild(list); });
+            });
+        } else if (type === 'audio' || type === 'voice') {
+            var attType = type === 'audio' ? 5 : 6;
+            var emptyText = type === 'audio' ? 'Нет аудио' : 'Нет голосовых';
+            BF.api.listChatAttachments(currentChatId, attType, 0, 30).then(function (data) {
+                var items = data.attachments || [];
+                if (items.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">' + emptyText + '</div>'; return; }
+                var list = document.createElement('div');
+                list.className = 'profile-file-list';
+
+                var chain = Promise.resolve();
+                items.forEach(function (item) {
+                    chain = chain.then(function () {
+                        var att = item.attachment;
+                        if (!att || !att.fileId) return;
+                        return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+                            var fileUrl = urls[0] ? urls[0].url : '';
+                            if (!fileUrl) return;
+                            var el = document.createElement('div');
+                            el.className = 'profile-audio-item';
+                            if (type === 'audio') {
+                                var nm = document.createElement('div');
+                                nm.className = 'profile-audio-name';
+                                nm.textContent = att.fileName || 'Аудио';
+                                el.appendChild(nm);
+                            }
+                            var audio = document.createElement('audio');
+                            audio.controls = true;
+                            audio.preload = 'none';
+                            audio.src = fileUrl;
+                            el.appendChild(audio);
                             list.appendChild(el);
                         });
                     });
@@ -1408,6 +2161,7 @@
     // --- Call buttons (шапка чата) ---
     function startCall(media) {
         if (!currentChatId || !currentChatInfo) return;
+        if (!currentChatInfo.isGroupChat && currentChatPeerIsBot) return;
         var target;
         if (currentChatInfo.isGroupChat) {
             target = { chatId: currentChatId };
@@ -1425,6 +2179,27 @@
 
     profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
+
+    var _profileMsgBtn = $('#profileMsgBtn');
+    var _profileCallAudioBtn = $('#profileCallAudioBtn');
+    var _profileCallVideoBtn = $('#profileCallVideoBtn');
+    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
+    if (_profileCallAudioBtn) _profileCallAudioBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
+    if (_profileCallVideoBtn) _profileCallVideoBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
+
+    function copyText(text) {
+        if (!text || !navigator.clipboard) return;
+        navigator.clipboard.writeText(String(text)).then(function () {
+            BF.sound.play('success');
+            groupToast('Скопировано');
+        }).catch(function () {});
+    }
+    document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var target = document.getElementById(btn.dataset.copy);
+            if (target) copyText(target.textContent);
+        });
+    });
 
     // ========== GROUP INFO PANEL ==========
 
@@ -1452,6 +2227,8 @@
     function openGroupInfo() {
         if (!currentChatInfo || !currentChatId) return;
         groupName.textContent = currentChatInfo.title || 'Группа';
+        var _groupChatId = $('#groupChatId');
+        if (_groupChatId) _groupChatId.textContent = currentChatId || '—';
         renderGroupAvatar(currentChatInfo.picture, currentChatInfo.title);
         groupAddBox.classList.add('hidden');
         groupAddInput.value = '';
@@ -1753,7 +2530,7 @@
     }
 
     function sendSticker(fileId) {
-        if (!currentChatId || !fileId) return;
+        if (!currentChatId || currentChatType === 1 || !fileId) return;
         stickerPicker.classList.remove('visible');
         stickerBtn.classList.remove('active');
         var sentChatId = currentChatId;
@@ -1929,6 +2706,8 @@
 
     function openContextMenu(x, y, msgEl) {
         if (!msgContextMenu || !msgEl) return;
+        if (currentChatType === 1) return; // edit/delete/reply/pin для приватных сообщений не поддерживаются
+
         if (msgEl.classList.contains('msg-system')) return;
         var msgId = Number(msgEl.dataset.msgId);
         if (!msgId) return;
@@ -1971,8 +2750,8 @@
                 singleImageFileId = imgAtts[0].fileId;
             }
         }
-        contextMenuTarget.imageFileId = singleImageFileId;
-        if (copyImageBtn) copyImageBtn.style.display = singleImageFileId ? '' : 'none';
+        contextMenuTarget.image = singleImageFileId ? msgEl.querySelector('.attach-image-grid img') : null;
+        if (copyImageBtn) copyImageBtn.style.display = contextMenuTarget.image ? '' : 'none';
 
         msgContextMenu.classList.add('visible');
 
@@ -1993,34 +2772,47 @@
         contextMenuTarget = null;
     }
 
-    // Скопировать изображение в буфер тем же превью, что показано в облачке.
-    // Буфер принимает только image/png — при необходимости конвертируем через canvas.
-    function copyImageToClipboard(fileId) {
-        if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return;
-        var fd = BF.files.getCachedFileUrl(fileId);
-        var cached = fd && (fd.previewUrl || fd.url);
-        var urlP = cached
-            ? Promise.resolve(cached)
-            : BF.files.refreshFileUrl(fileId).then(function (f) { return f && (f.previewUrl || f.url); });
-        urlP.then(function (url) {
-            if (!url) throw new Error('no_url');
-            return fetch(url);
-        }).then(function (r) { return r.blob(); })
-            .then(function (blob) {
-                if (blob.type === 'image/png') return blob;
-                return createImageBitmap(blob).then(function (bmp) {
-                    var canvas = document.createElement('canvas');
-                    canvas.width = bmp.width;
-                    canvas.height = bmp.height;
-                    canvas.getContext('2d').drawImage(bmp, 0, 0);
-                    return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
+    function canvasToPngBlob(drawable, width, height) {
+        return new Promise(function (resolve, reject) {
+            try {
+                var canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(drawable, 0, 0);
+                canvas.toBlob(function (blob) {
+                    if (blob) resolve(blob);
+                    else reject(new Error('no_png'));
+                }, 'image/png');
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    // Копируем уже загруженное превью из облачка, а не полную версию файла.
+    function copyImageToClipboard(image) {
+        if (!navigator.clipboard || typeof ClipboardItem === 'undefined' || !image) return;
+        var imageUrl = image.currentSrc || image.src;
+        var previewPng = image.complete && image.naturalWidth && image.naturalHeight
+            ? canvasToPngBlob(image, image.naturalWidth, image.naturalHeight)
+            : Promise.reject(new Error('preview_not_loaded'));
+
+        previewPng.catch(function () {
+            if (!imageUrl) throw new Error('no_preview_url');
+            return fetch(imageUrl).then(function (response) {
+                if (!response.ok) throw new Error('preview_unavailable');
+                return response.blob();
+            }).then(function (blob) {
+                return createImageBitmap(blob).then(function (bitmap) {
+                    return canvasToPngBlob(bitmap, bitmap.width, bitmap.height).then(function (png) {
+                        bitmap.close();
+                        return png;
+                    });
                 });
-            })
-            .then(function (png) {
-                if (!png) throw new Error('no_png');
-                return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-            })
-            .catch(function () {});
+            });
+        }).then(function (png) {
+            return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+        }).catch(function () {});
     }
 
     function chatAvatarMarkup(chat) {
@@ -2190,7 +2982,7 @@
             var act = btn.dataset.act;
             var msgId = contextMenuTarget.messageId;
             var isOutgoing = contextMenuTarget.isOutgoing;
-            var imageFileId = contextMenuTarget.imageFileId;
+            var image = contextMenuTarget.image;
             var msg = messages.find(function (m) { return Number(m.id) === Number(msgId); });
             closeContextMenu();
             if (act === 'reply') {
@@ -2201,7 +2993,7 @@
                 var t = msg && msg.content && msg.content.text;
                 if (t) navigator.clipboard.writeText(t).catch(function () {});
             } else if (act === 'copy-image') {
-                if (imageFileId) copyImageToClipboard(imageFileId);
+                copyImageToClipboard(image);
             } else if (act === 'edit') {
                 if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
                     setPendingEdit(msg);
@@ -2380,6 +3172,10 @@
     var chatCmTargetId = null;
     var chatCmShownAt = 0;
 
+    function contextMenuIcon(name) {
+        return '<span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-' + name + '"></use></svg></span>';
+    }
+
     function buildChatContextMenu(chatId) {
         if (!chatContextMenu) return;
         chatContextMenu.innerHTML = '';
@@ -2399,8 +3195,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'add-folder';
                     btn.dataset.folderId = f.folderId;
-                    var icon = (f.folderIcon || '📁') + ' ';
-                    btn.innerHTML = '<span class="cm-icon">' + u.escapeHtml(icon) + '</span><span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -2416,8 +3211,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'remove-folder';
                     btn.dataset.folderId = f.folderId;
-                    var icon = (f.folderIcon || '📁') + ' ';
-                    btn.innerHTML = '<span class="cm-icon">' + u.escapeHtml(icon) + '</span><span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -2433,7 +3227,7 @@
         createBtn.type = 'button';
         createBtn.className = 'cm-item';
         createBtn.dataset.act = 'create-folder';
-        createBtn.innerHTML = '<span class="cm-icon">&#10133;</span><span class="cm-label">Создать папку</span>';
+        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">Создать папку</span>';
         chatContextMenu.appendChild(createBtn);
     }
 
@@ -2565,6 +3359,20 @@
         }).then(updateTitleBadge).then(maybeOpenChatFromCookie);
     } else {
         loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie);
+    }
+
+    if (BF.newchat && BF.newchat.init) {
+        BF.newchat.init({
+            openChat: openChat,
+            getMyUserId: function () { return myUserId; },
+            upsertChat: function (chat) {
+                var idx = chats.findIndex(function (c) { return c.id === chat.id; });
+                if (idx >= 0) chats[idx] = chat; else chats.unshift(chat);
+                renderChatList();
+                openChat(chat.id);
+                if (window.__mobileShowChat) window.__mobileShowChat();
+            }
+        });
     }
 
     BF.realtime.startAll();

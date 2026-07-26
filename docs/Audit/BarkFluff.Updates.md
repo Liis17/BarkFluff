@@ -9,9 +9,9 @@ BarkFluff.Updates — сервис real-time доставки событий ч�
 |---|---|
 | Critical | 0 |
 | High | 3 |
-| Medium | 6 |
+| Medium | 7 |
 | Low | 6 |
-| **Итого** | **15** |
+| **Итого** | **16** |
 
 Проверено и проблем не найдено: `[Authorize]` присутствует на каждом из 15 gRPC-методов (атрибут на классе `UpdatesApiService`, методов вне класса нет); подписка на чужие обновления невозможна (userId/deviceId только из claims, события маршрутизируются по `ChatMembers`/`RecipientUserId` из серверных событий); хардкод секретов отсутствует (конфигурация загружается из Configuration-сервиса, в `appsettings.json` только порт); БД у сервиса нет (N+1/AsNoTracking неприменимы); `GrpcChannel` на запрос не создаётся; Dockerfile корректен (chiseled-образ, non-root `USER $APP_UID`). Замечание вне области (аудит XAuth делает другой агент): политика `User` принимает и `Service`-токены (`Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:79-80`), при отсутствии claim UserId такой токен подпишется как userId=0.
 
@@ -34,6 +34,12 @@ BarkFluff.Updates — сервис real-time доставки событий ч�
 **Проблема:** `AddGrpcReflection()`/`MapGrpcReflectionService()` регистрируются без условия на окружение. На reflection-эндпоинте нет `[Authorize]`, fallback-политика не настроена — полное описание API доступно анонимно.
 **Почему это проблема:** В проде раскрывается вся поверхность API (имена методов, структура событий, включая секретные чаты), что упрощает разведку. В сочетании с D2 (порт опубликован на хост в master-compose) reflection доступен напрямую извне.
 **Рекомендация:** Включать reflection только в Development (`if (app.Environment.IsDevelopment())`) либо требовать Service-токен.
+
+### S4. Отзыв сессии теряется после перезапуска сервиса — Medium
+**Файл:** `Backend/BarkFluff.Updates/Program.cs:30`, `Backend/BarkFluff.Updates/Consumers/SessionRevokedConsumer.cs:15-26`, `Backend/BarkFluff.GrpcServer/XAuth/TokenRevocationCache.cs:7-19`, `Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:46-70`
+**Проблема:** Единственный источник отзыва — singleton `TokenRevocationCache`: consumer записывает в него пару `(UserId, DeviceId)`, а `OnTokenValidated` сверяет только этот локальный словарь. Кэш не персистится и при старте не восстанавливается из Identity или отдельного хранилища; `Program.cs` лишь подключает `AddXAuth`, после рестарта словарь пуст. Уже обработанное RabbitMQ-событие не будет повторно доставлено, поэтому ранее отозванный, но ещё не истёкший access-token снова проходит аутентификацию и открывает новый стрим.
+**Почему это проблема:** После штатного деплоя, рестарта или OOM-перезапуска (S2/P5/D3) скомпрометированное устройство может вновь подписаться на обычные и device-scoped события до конца TTL access-token (дефолт `JwtSettings:ExpiryMinutes` — 60 минут), обходя совершённый пользователем logout/отзыв сессии.
+**Рекомендация:** Хранить revoked-сессии с TTL в общем durable-хранилище (например, Redis) либо проверять версию/состояние сессии в Identity; при старте восстановить записи до истечения токенов. Локальный кэш можно оставить только как ускоряющий слой.
 
 ## Производительность
 

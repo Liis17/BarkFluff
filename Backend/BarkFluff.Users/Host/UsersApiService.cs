@@ -10,6 +10,8 @@ using BarkFluff.Users.Features.ChatFolders.GetChatFolders;
 using BarkFluff.Users.Features.ChatFolders.RemoveChatFromFolder;
 using BarkFluff.Users.Features.ChatFolders.ReorderChatFolders;
 using BarkFluff.Users.Features.ChatFolders.UpdateChatFolder;
+using BarkFluff.Users.Features.ChatMutes.GetMutedChats;
+using BarkFluff.Users.Features.ChatMutes.SetChatMuted;
 using BarkFluff.Users.Features.ChangeName;
 using BarkFluff.Users.Features.ChangeUsername;
 using BarkFluff.Users.Features.CheckExistEmail;
@@ -31,7 +33,10 @@ using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
 using BarkFluff.Users.Features.Prekeys.RotateSignedPrekey;
 using BarkFluff.Users.Features.Privacy.GetPrivacySettings;
 using BarkFluff.Users.Features.Privacy.UpdatePrivacySettings;
+using BarkFluff.Users.Features.ResolveFederatedUser;
+using BarkFluff.Users.Features.SearchUsers;
 using BarkFluff.Users.Features.SetProfilePicture;
+using BarkFluff.Users.Services;
 
 using Grpc.Core;
 
@@ -147,6 +152,22 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
                 Offset = 0
             };
 
+            // FID-паттерн (@username:servername) → ветка резолва (единичный результат), не trigram-поиск.
+            if (FidParser.LooksLikeFid(request.Query))
+            {
+                var resolved = await _mediator.Send(new ResolveFederatedUserQuery { Fid = request.Query });
+                if (resolved.Found)
+                {
+                    return new SearchUsersResponse
+                    {
+                        Users = { ToUserProto(resolved) },
+                        TotalCount = 1,
+                    };
+                }
+
+                return new SearchUsersResponse();
+            }
+
             var command = new SearchUsersQuery { Query = request.Query, Size = request.Pagination.Size, Skip = request.Pagination.Offset };
 
             var response = await _mediator.Send(command);
@@ -159,6 +180,26 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
             _metrics.Increment("user_search_errors");
             throw;
         }
+    }
+
+    public override Task<ResolveFederatedUserResponse> ResolveFederatedUser(ResolveFederatedUserRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("federated_resolves_requests");
+        return _mediator.Send(new ResolveFederatedUserQuery { Fid = request.Fid ?? string.Empty });
+    }
+
+    private static User ToUserProto(ResolveFederatedUserResponse r)
+    {
+        return new User
+        {
+            Id = 0, // remote-пользователь не имеет локального long-ID
+            Uuid = r.Uuid,
+            Username = r.Username,
+            FirstName = r.FirstName,
+            LastName = r.LastName,
+            Bio = r.Bio,
+            ProfilePicture = r.AvatarUrl,
+        };
     }
 
     public override Task<GetUserBadgesResponse> GetUserBadges(GetUserBadgesRequest request, ServerCallContext context)
@@ -225,6 +266,27 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         await _mediator.Send(command);
 
         return new SetNotificationsEnabledResponse();
+    }
+
+    public override async Task<SetChatMutedResponse> SetChatMuted(SetChatMutedRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_mute_toggles");
+        var command = new SetChatMutedCommand
+        {
+            ChatId = ParseChatGuid(request.ChatId),
+            Muted = request.Muted,
+            MutedUntil = request.MutedUntil?.ToDateTime(),
+        };
+
+        await _mediator.Send(command);
+
+        return new SetChatMutedResponse();
+    }
+
+    public override Task<GetMutedChatsResponse> GetMutedChats(GetMutedChatsRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_mute_lookups");
+        return _mediator.Send(new GetMutedChatsQuery());
     }
 
     public override Task<GetPrivacySettingsResponse> GetPrivacySettings(GetPrivacySettingsRequest request, ServerCallContext context)

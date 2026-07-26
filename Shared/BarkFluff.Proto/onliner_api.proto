@@ -8,10 +8,12 @@ package barkfluff.onliner;
 
 message SubscribeToOnlineStatusRequest {
   repeated int64 user_ids = 1; // Идентификаторы пользователей
+  repeated string user_uuids = 2; // remote-пользователи (UUID); объединяется с user_ids
 }
 
 message GetOnlineStatusRequest {
   repeated int64 user_ids = 1;
+  repeated string user_uuids = 2; // remote-пользователи (UUID); объединяется с user_ids (этап 4.2)
 }
 
 message GetOnlineStatusResponse {
@@ -26,10 +28,12 @@ message UserOnlineStatus {
   int64 user_id = 1; // Идентификатор пользователя
   StatusTypeId status = 2; // Тип состояния
   google.protobuf.Timestamp last_seen = 3; // Дата последнего изменения статуса
+  string user_uuid = 4; // заполнен для remote-пользователя (тогда user_id = 0)
 }
 
 message ChangeUsersInSubscriptionRequest {
   repeated int64 user_ids = 1; // Новый массив идентификаторов пользователей
+  repeated string user_uuids = 2; // remote-пользователи (UUID); объединяется с user_ids
 }
 
 message ChangeUsersInSubscriptionResponse {
@@ -51,6 +55,7 @@ message TypingEvent {
   string chat_id = 1; // Чат (Guid-строка), в котором происходит набор
   int64 user_id = 2; // Кто печатает
   TypingAction action = 3; // Действие
+  string user_uuid = 4; // кто печатает, если remote (тогда user_id = 0)
 }
 
 message ChangeChatsInTypingSubscriptionRequest {
@@ -93,4 +98,44 @@ service OnlinerApi {
 
   // Изменить список чатов, для которых приходят индикаторы набора
   rpc ChangeChatsInTypingSubscription(ChangeChatsInTypingSubscriptionRequest) returns (ChangeChatsInTypingSubscriptionResponse);
+}
+
+// Внутренний API (TokenType.Service): мост федеративного presence/typing.
+// Реализация — Фаза 4.
+service OnlinerServerApi {
+
+  // Federation вливает статус remote-пользователя в кеш remote-статусов (Redis, TTL)
+  rpc UpsertRemoteStatus(UpsertRemoteStatusRequest) returns (UpsertRemoteStatusResponse);
+
+  // Federation вливает typing remote-пользователя для ретрансляции подписчикам чата
+  rpc InjectRemoteTyping(InjectRemoteTypingRequest) returns (InjectRemoteTypingResponse);
+
+  // Статусы НАШИХ пользователей для отдачи ноде-партнёру (этап 4.2). Privacy применяется
+  // здесь, в Onliner — владельцем данных: скрытому пользователю отдаётся
+  // STATUS_TYPE_ID_UNKNOWN, а не его настоящий статус.
+  rpc GetLocalPresence(GetLocalPresenceRequest) returns (GetLocalPresenceResponse);
+}
+
+message UpsertRemoteStatusRequest {
+  string user_uuid = 1;
+  StatusTypeId status = 2;
+  google.protobuf.Timestamp last_seen = 3;
+}
+
+message UpsertRemoteStatusResponse { }
+
+message InjectRemoteTypingRequest {
+  string chat_id = 1;
+  string user_uuid = 2;
+  TypingAction action = 3;
+}
+
+message InjectRemoteTypingResponse { }
+
+message GetLocalPresenceRequest {
+  repeated int64 user_ids = 1; // локальные пользователи, за которыми следит нода-партнёр
+}
+
+message GetLocalPresenceResponse {
+  repeated UserOnlineStatus statuses = 1; // уже отфильтрованы privacy владельца
 }

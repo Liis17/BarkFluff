@@ -19,21 +19,30 @@
     <string name="welcome_title">属于你伙伴的即时通讯</string>
     <string name="welcome_description">与朋友聊天，分享瞬间，与重要的人保持联系</string>
     <string name="btn_start">开始</string>
-    <string name="btn_learn_more">了解更多</string>
-    <string name="menu_about">关于</string>
     <string name="menu_privacy">隐私</string>
-    <string name="menu_help">帮助</string>
+    <string name="welcome_chip_fast">快速</string>
+    <string name="welcome_chip_private">私密</string>
+    <string name="welcome_chip_own_pack">你的伙伴群</string>
+
+    <!-- 法律文件（选择节点前的同意面板） -->
+    <string name="legal_sheet_title">使用条款</string>
+    <string name="legal_tab_terms">协议</string>
+    <string name="legal_tab_privacy">隐私</string>
+    <string name="legal_accept_checkbox">我已阅读并接受</string>
+    <string name="legal_accept_button">接受</string>
+    <string name="legal_load_error">无法加载文件</string>
+    <string name="btn_close">关闭</string>
 
     <!-- Login Screen -->
     <string name="login_welcome">欢迎</string>
-    <string name="login_subtitle">登录你的账户</string>
+    <string name="login_subtitle">登录以回到你的伙伴群。</string>
     <string name="hint_username_or_email">用户名或邮箱</string>
     <string name="hint_password">密码</string>
     <string name="forgot_password">忘记密码？</string>
     <string name="btn_login">登录</string>
-    <string name="btn_change_server">更改服务器连接</string>
-    <string name="btn_create_account">创建新账户</string>
-    <string name="footer_text">2025 BarkFluff。不保留任何权利。</string>
+    <string name="btn_change_server">更改节点</string>
+    <string name="btn_create_account">创建账户</string>
+    <string name="login_first_time_here">第一次来？</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">双重验证</string>
@@ -41,19 +50,22 @@
     <string name="btn_confirm">确认</string>
 
     <!-- Select Server -->
-    <string name="server_title">服务器连接</string>
-    <string name="server_subtitle">选择一个公共服务器</string>
-    <string name="server_public">公共服务器</string>
+    <string name="server_title">"选择\n节点"</string>
+    <string name="server_subtitle">今天连接到哪个伙伴群？</string>
+    <string name="server_custom_row_title">自有节点</string>
+    <string name="server_custom_row_subtitle">手动输入地址</string>
     <string name="server_custom">连接到其他服务器</string>
     <string name="hint_server_address">https://myserver.com:443</string>
+    <string name="node_trust_warning">请只连接你信任的节点。你的数据保存在节点所有者处；应用开发者对此不承担责任。</string>
     <string name="btn_connect">连接</string>
+    <string name="server_status_online">在线</string>
+    <string name="server_ping_ms">%1$d 毫秒</string>
     <string name="self_hosted_title">你自己的服务器</string>
     <string name="self_hosted_description">部署你自己的 BarkFluff 服务器</string>
     <string name="btn_learn_more_server">了解更多</string>
-    <string name="server_help_hint">连接遇到问题？请查看我们的服务器配置指南。</string>
-    <string name="server_item_name_placeholder">服务器名称</string>
-    <string name="server_item_description_placeholder">服务器描述</string>
-    <string name="server_item_location_placeholder">位置 • @publicname</string>
+    <string name="server_help_hint">不知道该选哪个？请查看我们的节点配置指南。</string>
+    <string name="server_item_name_placeholder">节点名称</string>
+    <string name="server_item_description_placeholder">节点描述</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">个人信息</string>
@@ -101,11 +113,11 @@
     <string name="hint_password_confirm_required">确认密码 *</string>
     <string name="register_password_start_typing">开始输入密码</string>
     <string name="register_password_requirements">密码要求：</string>
-    <string name="register_password_req_length">○ 至少 8 个字符</string>
-    <string name="register_password_req_upper">○ 大写字母</string>
-    <string name="register_password_req_lower">○ 小写字母</string>
-    <string name="register_password_req_digit">○ 数字</string>
-    <string name="register_password_req_special">○ 特殊字符</string>
+    <string name="register_password_req_length">至少 8 个字符</string>
+    <string name="register_password_req_upper">大写字母</string>
+    <string name="register_password_req_lower">小写字母</string>
+    <string name="register_password_req_digit">数字</string>
+    <string name="register_password_req_special">特殊字符</string>
     <string name="register_password_case_hint">请混合使用大小写字母</string>
     <string name="register_password_digits_hint">请添加数字和特殊字符</string>
 
@@ -132,22 +144,77 @@
     <string name="register_step9_subtitle">你的账户已成功创建。\n欢迎！</string>
     <string name="register_start_messaging">开始聊天</string>
 
+    <!-- Registration redesign (архетип "c") -->
+    <string name="register_step1_headline">你叫\n什么名字?</string>
+    <string name="register_step1_hint">这将展示给你的伙伴们。</string>
+    <string name="register_step2_headline">创建你的\n@用户名</string>
+    <string name="register_step2_hint">你的专属地址。</string>
+    <string name="register_step3_headline">你的\n邮箱</string>
+    <string name="register_step3_hint">用于找回账号的密钥。</string>
+    <string name="register_step4_headline">输入\n验证码</string>
+    <string name="register_step4_hint">邮件中的6位数字。</string>
+    <string name="register_step5_headline">设置\n密码</string>
+    <string name="register_step6_headline">展示\n你自己</string>
+    <string name="register_step7_headline">简单介绍\n一下自己</string>
+    <string name="register_step8_headline">保护你的\n账号</string>
+    <string name="register_step9_headline">完成!\n欢迎加入。</string>
+    <string name="register_rule_min3">最少3位</string>
+    <string name="register_rule_max40">最多40位</string>
+    <string name="register_rule_any_symbols">任意字符</string>
+    <string name="register_rule_az">a–z</string>
+    <string name="register_rule_09">0–9</string>
+    <string name="register_rule_underscore">_</string>
+    <string name="register_rule_max30">最多30位</string>
+    <string name="register_username_status_free">可用</string>
+    <string name="register_username_status_taken">已被占用</string>
+    <string name="register_otp_chip_inbox">收件箱</string>
+    <string name="register_otp_chip_spam">垃圾邮件</string>
+    <string name="register_password_strength_weak">弱</string>
+    <string name="register_password_strength_medium">中</string>
+    <string name="register_password_strength_good">较强</string>
+    <string name="register_password_strength_strong">强</string>
+    <string name="register_password_optional_chars">＋ !@#</string>
+    <string name="register_step9_status_chip">已完成全部%1$d个步骤</string>
+    <string name="register_step_indicator_total">/ 09</string>
+
+
     <!-- Reset password -->
-    <string name="reset_password_title">重置密码</string>
-    <string name="reset_password_subtitle">按照说明重置你的密码</string>
-    <string name="reset_enter_email_or_login">输入邮箱或用户名</string>
+    <string name="reset_password_title">忘记密码？</string>
+    <string name="reset_password_subtitle">输入邮箱或用户名，我们将发送验证码用于重置密码</string>
+    <string name="reset_enter_email_or_login">邮箱或用户名</string>
     <string name="reset_send_code">发送验证码</string>
     <string name="reset_enter_verify_code">输入验证码</string>
-    <string name="reset_we_sent_code">我们已将 6 位验证码发送到你的邮箱</string>
+    <string name="reset_we_sent_code">6 位验证码已发送至 &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">确认验证码</string>
     <string name="reset_resend_code">重新发送验证码</string>
-    <string name="reset_create_new_password">创建新密码</string>
+    <string name="reset_create_new_password">新密码</string>
     <string name="hint_new_password">新密码</string>
     <string name="hint_confirm_password">确认密码</string>
-    <string name="reset_save_new_password">保存新密码</string>
-    <string name="reset_password_success">密码修改成功！</string>
+    <string name="reset_save_new_password">保存密码</string>
+    <string name="reset_password_success">密码已修改！</string>
     <string name="reset_password_success_subtitle">你现在可以使用新密码登录了</string>
     <string name="reset_back_to_login">返回登录</string>
+    <string name="reset_pill_inbox">收件箱</string>
+    <string name="reset_pill_spam">垃圾邮件</string>
+    <string name="reset_strength_empty">开始输入密码</string>
+    <string name="reset_strength_weak">弱</string>
+    <string name="reset_strength_medium">中等</string>
+    <string name="reset_strength_good">良好</string>
+    <string name="reset_strength_strong">密码强度高</string>
+    <string name="reset_success_chip">访问权限已恢复</string>
+    <string name="reset_error_empty_login">请输入邮箱或用户名</string>
+    <string name="reset_error_otp_incomplete">请输入 6 位验证码</string>
+    <string name="reset_error_password_empty">请输入新密码</string>
+    <string name="reset_error_password_too_short">密码至少需要 8 个字符</string>
+    <string name="reset_error_password_mismatch">两次输入的密码不一致</string>
+    <string name="reset_error_no_reset_id">错误：未获取到 resetId</string>
+    <string name="reset_error_generic">错误：%1$s</string>
+    <string name="reset_error_confirm_failed">验证码确认失败</string>
+    <string name="reset_error_invalid_otp">验证码无效</string>
+    <string name="reset_toast_code_sent">验证码已发送至你的邮箱</string>
+    <string name="reset_toast_code_confirmed">验证码已确认</string>
+    <string name="reset_toast_code_resent">验证码已重新发送</string>
+    <string name="reset_otp_digit_description">第 %1$d 位，共 6 位</string>
 
     <!-- Chat Screen -->
     <string name="chat_search_hint">搜索聊天</string>
@@ -171,6 +238,12 @@
     <string name="cd_attach_file">附加文件</string>
     <string name="cd_stickers">贴纸</string>
     <string name="cd_send">发送</string>
+    <string name="cd_record_voice">录制语音消息</string>
+    <string name="voice_record_permission_granted">已获得权限。按住麦克风录音</string>
+    <string name="voice_record_permission_denied">麦克风访问被拒绝</string>
+    <string name="voice_record_start_failed">无法开始录音</string>
+    <string name="voice_record_cancelled">录音已取消</string>
+    <string name="voice_record_too_short">语音消息太短</string>
     <string name="cd_sticker_preview">贴纸预览</string>
     <string name="cd_close">关闭</string>
     <string name="cd_more">更多</string>
@@ -305,6 +378,9 @@
     <string name="profile_title">个人资料</string>
     <string name="profile_user_placeholder">用户</string>
     <string name="profile_section_account_security">账户与安全</string>
+    <string name="profile_section_account">账户</string>
+    <string name="profile_section_appearance">外观</string>
+    <string name="profile_section_about">关于应用</string>
     <string name="profile_section_personalization">个性化</string>
     <string name="profile_section_application">应用</string>
     <string name="profile_section_other">其他</string>
@@ -367,6 +443,8 @@
     <string name="personalization_folders">文件夹</string>
     <string name="personalization_compact_folders">紧凑文件夹</string>
     <string name="personalization_compact_folders_subtitle">仅显示图标</string>
+    <string name="personalization_folder_tabs_no_outline">移除文件夹描边</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">仅保留图标和当前文件夹高亮</string>
     <string name="personalization_exclude_from_all">从「全部聊天」中隐藏</string>
     <string name="personalization_exclude_from_all_subtitle">如果聊天属于某个文件夹，则不会显示在「全部聊天」选项卡中</string>
     <string name="personalization_chat_background">聊天背景</string>
@@ -380,6 +458,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">聊天文件夹</string>
+    <string name="chat_folders_section_title">你的文件夹</string>
     <string name="chat_folders_empty_title">还没有文件夹</string>
     <string name="chat_folders_empty_subtitle">创建文件夹以在聊天分组之间快速切换</string>
     <string name="chat_folders_new_folder">新建文件夹</string>
@@ -467,6 +546,19 @@
     <string name="media_tab_videos">视频</string>
     <string name="media_tab_files">文件</string>
     <string name="media_no_attachments">没有附件</string>
+    <string name="profile_action_message">消息</string>
+    <string name="profile_action_call">通话</string>
+    <string name="profile_action_notifications">通知</string>
+    <string name="profile_user_id_label">用户 ID</string>
+    <string name="profile_chat_id_label">聊天 ID</string>
+    <string name="profile_registration_label">注册日期</string>
+    <string name="profile_attachments_title">聊天附件</string>
+    <string name="profile_tab_media">媒体</string>
+    <string name="profile_tab_voice">语音</string>
+    <string name="profile_no_voice">没有语音消息</string>
+    <string name="profile_copied">已复制</string>
+    <string name="group_online_count">%1$d 名成员 · %2$d 在线</string>
+    <string name="group_members_count">%1$d 名成员</string>
 
     <!-- Sticker empty -->
     <string name="stickers_empty">没有贴纸</string>
@@ -493,4 +585,54 @@
     <string name="language_option_es">🇪🇸  Español</string>
     <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">「跟随系统」使用设备的语言。所选语言将立即生效。</string>
+    <!-- Per-chat mute -->
+    <string name="chat_menu_mute">关闭通知</string>
+    <string name="chat_menu_unmute">开启通知</string>
+    <string name="chat_muted">已关闭通知</string>
+    <string name="chat_unmuted">已开启通知</string>
+    <string name="chat_mute_error">无法更改设置</string>
+    <string name="chats_sync_updating">正在更新…</string>
+    <string name="chats_sync_offline">无网络连接 / 数据可能不是最新</string>
+    <string name="chats_sync_retry">重试</string>
+    <string name="storage_cache_size_with_chats">图片缓存：%1$.1f MB\\n聊天缓存：%2$d 个聊天 · %3$d 条消息 · %4$s</string>
+    <string name="create_chat_sheet_title">新聊天</string>
+    <string name="create_chat_regular">普通聊天</string>
+    <string name="create_chat_group">群聊</string>
+    <string name="create_chat_private">私密聊天</string>
+    <string name="nav_chats">聊天</string>
+    <string name="nav_calls">通话</string>
+    <string name="nav_profile">个人资料</string>
+    <string name="nav_selected">已选择</string>
+    <string name="cd_chats_with_unread">聊天，%1$d 条未读</string>
+    <string name="cd_profile">个人资料</string>
+    <string name="cd_new_chat">新聊天</string>
+    <string name="create_chat_regular_subtitle">开始私聊</string>
+    <string name="create_chat_group_short">群组</string>
+    <string name="create_chat_private_short">私密</string>
+    <string name="create_chat_secret">秘密聊天</string>
+    <string name="create_chat_secret_short">秘密</string>
+    <string name="storage_used">已用</string>
+    <string name="storage_of_limit">共 %1$s</string>
+    <string name="storage_load_error">加载失败</string>
+    <string name="storage_local_storage">设备存储</string>
+    <string name="storage_image_cache">图片缓存</string>
+    <string name="storage_chat_cache">聊天缓存</string>
+    <string name="storage_cache_summary">%1$d 个聊天 · %2$d 条消息</string>
+    <string name="storage_clear_cache_with_size">清除缓存 · %1$s</string>
+    <string name="storage_category_images">图片</string>
+    <string name="storage_category_videos">视频</string>
+    <string name="storage_category_audio">音频</string>
+    <string name="storage_category_documents">文档</string>
+    <string name="storage_category_stickers">贴纸</string>
+    <string name="storage_category_avatars">头像</string>
+    <string name="security_hero_title">账号受保护</string>
+    <string name="security_hero_subtitle">启用双重验证以获得更强保护</string>
+    <string name="security_section_parameters">设置</string>
+    <string name="testing_experimental_hint">实验功能可能不稳定。</string>
+
+    <!-- Typing indicator -->
+    <string name="typing_indicator">正在输入…</string>
+    <plurals name="typing_indicator_named">
+        <item quantity="other">%1$s 正在输入…</item>
+    </plurals>
 </resources>

@@ -51,6 +51,26 @@ public class UsersStorage
         return users;
     }
 
+    public Task<User?> GetByUuid(Guid uuid)
+    {
+        return _usersContext.Users
+            .AsNoTracking()
+            .Include(u => u.Contact)
+            .FirstOrDefaultAsync(x => x.Uuid == uuid);
+    }
+
+    public async Task<List<User>> GetByUuids(IReadOnlyCollection<Guid> uuids)
+    {
+        if (uuids.Count == 0)
+            return new List<User>();
+
+        return await _usersContext.Users
+            .AsNoTracking()
+            .Include(u => u.Contact)
+            .Where(x => uuids.Contains(x.Uuid))
+            .ToListAsync();
+    }
+
     /// <summary>
     /// Метод для поиска пользователей по имени, фамилии или имени пользователя.
     /// Использует полнотекстовый поиск PostgreSQL для эффективного поиска с учетом нечеткого соответствия.
@@ -73,7 +93,7 @@ public class UsersStorage
         var normalizedSearchTerm = searchTerm.Trim().ToLower();
 
         var sql = @"
-            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
+            SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
@@ -113,7 +133,7 @@ public class UsersStorage
     /// <param name="pageSize">Размер страницы</param>
     /// <param name="similarityThreshold">Порог схожести (от 0 до 1, рекомендуется 0.3)</param>
     /// <returns>Список пользователей и общее количество найденных пользователей</returns>
-    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true)
+    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true, bool excludeBots = false)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -128,13 +148,14 @@ public class UsersStorage
         var privacyFilter = respectSearchVisibility
             ? @" AND (p.""SearchVisible"" IS NULL OR p.""SearchVisible"" = true OR u.""Id"" = @currentUserId)"
             : string.Empty;
+        var botFilter = excludeBots ? @" AND u.""IsBot"" = false" : string.Empty;
 
         // Один запрос: данные + общий счёт через оконную функцию COUNT(*) OVER().
         // Убирает второй тяжёлый trigram-скан и прежний баг, когда ExecuteSqlRawAsync
         // возвращал число затронутых строк (-1 для SELECT) вместо реального COUNT(*).
         var sql = @"
-            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
-                   u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
+            SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
+                   u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""IsBot"", u.""StorageLimitGb"",
                    uc.""Email"", uc.""UserId"",
                    COUNT(*) OVER() AS ""TotalCount""
             FROM ""Users"" u
@@ -143,7 +164,7 @@ public class UsersStorage
             WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
                OR similarity(u.""Username"", @searchTerm) > @threshold)
-            AND u.""IsDraft"" = false" + privacyFilter + @"
+            AND u.""IsDraft"" = false" + privacyFilter + botFilter + @"
             ORDER BY GREATEST(
                 similarity(u.""FirstName"", @searchTerm),
                 similarity(u.""LastName"", @searchTerm),
@@ -166,6 +187,7 @@ public class UsersStorage
         var users = rows.Select(r => new User
         {
             Id = r.Id,
+            Uuid = r.Uuid,
             FirstName = r.FirstName,
             LastName = r.LastName,
             Username = r.Username,
@@ -174,6 +196,7 @@ public class UsersStorage
             ProfilePicturePreviewUrl = r.ProfilePicturePreviewUrl,
             Bio = r.Bio,
             IsDraft = r.IsDraft,
+            IsBot = r.IsBot,
             StorageLimitGb = r.StorageLimitGb,
             Contact = new UserContact { Email = r.Email ?? string.Empty, UserId = r.UserId ?? r.Id }
         }).ToList();
@@ -186,6 +209,7 @@ public class UsersStorage
     private sealed class TrigramSearchRow
     {
         public long Id { get; set; }
+        public Guid Uuid { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
@@ -194,6 +218,7 @@ public class UsersStorage
         public string? ProfilePicturePreviewUrl { get; set; }
         public string? Bio { get; set; }
         public bool IsDraft { get; set; }
+        public bool IsBot { get; set; }
         public int StorageLimitGb { get; set; }
         public string? Email { get; set; }
         public long? UserId { get; set; }
@@ -207,6 +232,7 @@ public class UsersStorage
         var user = new User
         {
             Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Uuid = Guid.NewGuid(),
             Username = username,
             FirstName = firstName,
             LastName = lastName,
@@ -229,6 +255,40 @@ public class UsersStorage
             if (pg.ConstraintName?.Contains("username", StringComparison.OrdinalIgnoreCase) == true)
                 throw new UsernameExistException();
             throw; // прочие нарушения уникальности (например PK по Id) — пробрасываем как есть
+        }
+
+        return user;
+    }
+
+    /// <summary>
+    /// Создаёт бот-пользователя: сразу подтверждён (IsDraft=false), IsBot=true, без UserContact (у ботов нет email).
+    /// </summary>
+    public async Task<User> CreateBotUser(string username, string firstName)
+    {
+        var user = new User
+        {
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Uuid = Guid.NewGuid(),
+            Username = username,
+            FirstName = firstName,
+            LastName = string.Empty,
+            RegistrationDate = DateTime.UtcNow,
+            Contact = null,
+            IsDraft = false,
+            IsBot = true,
+        };
+
+        await _usersContext.Users.AddAsync(user);
+
+        try
+        {
+            await _usersContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" } pg)
+        {
+            if (pg.ConstraintName?.Contains("username", StringComparison.OrdinalIgnoreCase) == true)
+                throw new UsernameExistException();
+            throw;
         }
 
         return user;
@@ -456,7 +516,7 @@ public class UsersStorage
     {
         var query = _usersContext.Users
             .Include(u => u.Contact)
-            .Where(u => !u.IsDraft)
+            .Where(u => !u.IsDraft && !u.IsBot)
             .OrderByDescending(u => u.Id);
 
         var totalCount = await query.CountAsync();

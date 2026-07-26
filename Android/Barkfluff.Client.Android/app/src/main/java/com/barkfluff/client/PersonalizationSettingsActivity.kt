@@ -61,11 +61,13 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
     /** Локальный список fileId фонов (синхронизируется с сервером) */
     private val backgroundFileIds = mutableListOf<String>()
+    private var backgroundsExpanded = false
 
     private var currentPosterFileId: String = ""
 
     companion object {
         private const val TAG = "PersonalizationActivity"
+        private const val MAX_COLLAPSED_BACKGROUNDS = 9
     }
 
     private val pickImageLauncher = registerForActivityResult(
@@ -108,6 +110,9 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         setupBlurToggle()
         setupDimSlider()
         setupFolderSettings()
+        setupMainTabSettings()
+        setupOnlineTimeSettings()
+        setupStickerSizeSlider()
         setupBackgroundsGrid()
         loadPersonalizationFromServer()
     }
@@ -117,10 +122,58 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding.switchCompactFolders.setOnCheckedChangeListener { _, isChecked ->
             globalParam.compactFolders = isChecked
         }
+        binding.switchFolderTabsNoOutline.isChecked = globalParam.folderTabsNoOutline
+        binding.switchFolderTabsNoOutline.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.folderTabsNoOutline = isChecked
+        }
         binding.switchExcludeFromAll.isChecked = globalParam.excludeFolderChatsFromAll
         binding.switchExcludeFromAll.setOnCheckedChangeListener { _, isChecked ->
             globalParam.excludeFolderChatsFromAll = isChecked
         }
+    }
+
+    private fun setupMainTabSettings() {
+        globalParam.mainTabChatsVisible = true
+        globalParam.mainTabProfileVisible = true
+
+        binding.switchMainTabChats.isChecked = true
+        binding.switchMainTabCalls.isChecked = globalParam.mainTabCallsVisible
+        binding.switchMainTabProfile.isChecked = true
+
+        binding.switchMainTabChats.isEnabled = false
+        binding.switchMainTabProfile.isEnabled = false
+
+        binding.switchMainTabCalls.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.mainTabCallsVisible = isChecked
+        }
+    }
+
+    private fun setupOnlineTimeSettings() {
+        binding.switchRelativeOnlineTime.isChecked = globalParam.relativeOnlineTime
+        binding.switchRelativeOnlineTime.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.relativeOnlineTime = isChecked
+        }
+    }
+
+    private fun setupStickerSizeSlider() {
+        val saved = globalParam.chatStickerSizeDp
+        binding.stickerSizeSlider.value = saved.toFloat()
+        updateStickerSizePreview(saved)
+
+        binding.stickerSizeSlider.addOnChangeListener { _, value, fromUser ->
+            val size = value.toInt()
+            updateStickerSizePreview(size)
+            if (fromUser) globalParam.chatStickerSizeDp = size
+        }
+    }
+
+    private fun updateStickerSizePreview(sizeDp: Int) {
+        binding.stickerSizeValue.text = getString(R.string.personalization_sticker_size_value, sizeDp)
+        val sizePx = (sizeDp * resources.displayMetrics.density + 0.5f).toInt()
+        val params = binding.stickerSizePreviewImage.layoutParams
+        params.width = sizePx
+        params.height = sizePx
+        binding.stickerSizePreviewImage.layoutParams = params
     }
 
     private fun setupToolbar() {
@@ -440,6 +493,10 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 pickImageLauncher.launch("image/*")
             }
         }
+        binding.buttonToggleBackgrounds.setOnClickListener {
+            backgroundsExpanded = !backgroundsExpanded
+            refreshBackgroundList()
+        }
 
         // Показываем превью сохранённого фона сразу при открытии
         updatePreviewBackground(globalParam.chatBackgroundFileId)
@@ -464,8 +521,20 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     }
 
     private fun refreshBackgroundList() {
-        val items = listOf(ChatBackgroundItem("")) + backgroundFileIds.map { ChatBackgroundItem(it) }
-        backgroundAdapter.submitList(items)
+        val allItems = listOf(ChatBackgroundItem("")) + backgroundFileIds.map { ChatBackgroundItem(it) }
+        val hasHiddenItems = allItems.size > MAX_COLLAPSED_BACKGROUNDS
+        val visibleItems = if (hasHiddenItems && !backgroundsExpanded) {
+            allItems.take(MAX_COLLAPSED_BACKGROUNDS)
+        } else {
+            allItems
+        }
+
+        backgroundAdapter.submitList(visibleItems)
+        binding.buttonToggleBackgrounds.visibility = if (hasHiddenItems) View.VISIBLE else View.GONE
+        binding.buttonToggleBackgrounds.text = getString(
+            if (backgroundsExpanded) R.string.personalization_collapse_backgrounds
+            else R.string.personalization_expand_backgrounds
+        )
     }
 
     // ─── Удаление фона ────────────────────────────────────────────────────────
@@ -508,6 +577,9 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 if (uploadResult.isSuccess) {
                     val fileId = uploadResult.getOrNull()!!
                     backgroundFileIds.add(fileId)
+                    if (backgroundFileIds.size + 1 > MAX_COLLAPSED_BACKGROUNDS) {
+                        backgroundsExpanded = true
+                    }
                     refreshBackgroundList()
                     syncPersonalizationToServer()
                 } else {

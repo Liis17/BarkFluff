@@ -74,6 +74,11 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
             throw new ChatNotPrivateException();
         }
 
+        if (chat.PrivateInviteState != PrivateChatInviteState.Accepted)
+        {
+            throw new NoAccessToChatException();
+        }
+
         if (chat.Members?.All(m => m.UserId != _userContext.UserId) ?? true)
         {
             throw new NoAccessToChatException();
@@ -87,7 +92,7 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
             request.Nonce,
             request.AssociatedData);
 
-        var memberIds = chat.Members!.Select(m => m.UserId).ToList();
+        var memberIds = chat.Members!.LocalUserIds();
         await _queueSender.SendNew(saved, memberIds);
 
         _metrics.Increment("private_messages_sent");

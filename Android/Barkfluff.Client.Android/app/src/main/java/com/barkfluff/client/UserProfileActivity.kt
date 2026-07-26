@@ -7,13 +7,17 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.adapter.AttachmentPreviewAdapter
+import com.barkfluff.client.calls.CallActivity
+import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityUserProfileBinding
 import com.barkfluff.client.grpc.GrpcManager
@@ -21,13 +25,14 @@ import com.barkfluff.client.repository.ChatRepository
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 /**
  * Экран профиля пользователя / группового чата.
@@ -38,12 +43,16 @@ class UserProfileActivity : AppCompatActivity() {
     private lateinit var binding: ActivityUserProfileBinding
     private lateinit var grpcManager: GrpcManager
     private lateinit var chatRepository: ChatRepository
+    private lateinit var globalParam: GlobalParam
 
     private var chatId: String = ""
     private var otherUserId: Long = 0L
     private var isGroupChat: Boolean = false
     private var chatTitle: String = ""
     private var chatAvatarFileId: String? = null
+    private var isChatMuted: Boolean = false
+
+    private enum class Tab { MEDIA, FILES, VOICE }
 
     companion object {
         private const val TAG = "UserProfileActivity"
@@ -79,6 +88,7 @@ class UserProfileActivity : AppCompatActivity() {
         val app = application as BarkFluffApplication
         grpcManager = app.grpcManager
         chatRepository = ChatRepository(this, grpcManager)
+        globalParam = GlobalParam(this)
 
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
         otherUserId = intent.getLongExtra(EXTRA_OTHER_USER_ID, 0L)
@@ -88,33 +98,142 @@ class UserProfileActivity : AppCompatActivity() {
 
         binding.backButton.setOnClickListener { finish() }
 
-        setupIdsBlock()
+        setupInfoCard()
+        setupActions()
         setupAttachmentsRecycler()
+        setupTabs()
         loadProfileData()
-        loadAttachmentsDefault()
     }
 
-    private fun setupIdsBlock() {
-        val globalParam = GlobalParam(this)
-        if (!globalParam.showIdsInProfile) {
-            binding.profileIdsBlock.visibility = View.GONE
-            return
+    // ── Инфо-карта ────────────────────────────────────────────────────────────
+
+    private fun setupInfoCard() {
+        val showIds = globalParam.showIdsInProfile
+        val showUserId = showIds && !isGroupChat && otherUserId > 0L
+
+        binding.rowChatId.visibility = if (showIds) View.VISIBLE else View.GONE
+        binding.dividerChatId.visibility = if (showIds) View.VISIBLE else View.GONE
+        if (showIds) {
+            binding.profileChatIdValue.text = chatId
+            binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
         }
-        binding.profileIdsBlock.visibility = View.VISIBLE
-        binding.profileUserIdText.text = "UserId: $otherUserId"
-        binding.profileChatIdText.text = "ChatId: $chatId"
-        binding.profileUserIdText.setOnClickListener {
-            copyToClipboard("UserId", otherUserId.toString())
+
+        if (showUserId) {
+            binding.rowUserId.visibility = View.VISIBLE
+            binding.dividerUserId.visibility = View.VISIBLE
+            binding.profileUserIdValue.text = formatId(otherUserId)
+            binding.rowUserId.setOnClickListener { copyToClipboard("UserId", otherUserId.toString()) }
+        } else {
+            binding.rowUserId.visibility = View.GONE
+            binding.dividerUserId.visibility = View.GONE
         }
-        binding.profileChatIdText.setOnClickListener {
-            copyToClipboard("ChatId", chatId)
-        }
+    }
+
+    /** Форматирует число ID с разделением на группы по 3 цифры. */
+    private fun formatId(id: Long): String {
+        return "%,d".format(Locale.getDefault(), id).replace(',', ' ')
     }
 
     private fun copyToClipboard(label: String, text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText(label, text))
-        Toast.makeText(this, "$label скопирован", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.profile_copied), Toast.LENGTH_SHORT).show()
+    }
+
+    // ── Кнопки действий ───────────────────────────────────────────────────────
+
+    private fun setupActions() {
+        if (isGroupChat) {
+            binding.profileActionsRow.visibility = View.GONE
+            return
+        }
+
+        binding.actionMessageButton.setOnClickListener { openChat() }
+        binding.actionCallButton.setOnClickListener { startCall() }
+
+        isChatMuted = chatId in globalParam.mutedChatIds
+        updateNotifyIcon()
+        binding.actionNotifyButton.setOnClickListener { toggleChatMute() }
+    }
+
+    private fun updateNotifyIcon() {
+        binding.actionNotifyIcon.setImageResource(
+            if (isChatMuted) R.drawable.ic_notifications_off else R.drawable.ic_notifications
+        )
+    }
+
+    private fun toggleChatMute() {
+        val newMuted = !isChatMuted
+        lifecycleScope.launch {
+            val result = grpcManager.setChatMuted(chatId, newMuted)
+            if (result.isSuccess) {
+                isChatMuted = newMuted
+                globalParam.setChatMutedLocal(chatId, newMuted)
+                updateNotifyIcon()
+                Toast.makeText(
+                    this@UserProfileActivity,
+                    if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                Toast.makeText(this@UserProfileActivity, getString(R.string.chat_mute_error), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openChat() {
+        startActivity(Intent(this, ChatActivity::class.java).apply {
+            putExtra("chat_id", chatId)
+            putExtra("chat_title", chatTitle)
+            putExtra("chat_avatar_file_id", chatAvatarFileId)
+            putExtra("is_group_chat", isGroupChat)
+            putExtra("other_user_id", otherUserId)
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+        })
+        finish()
+    }
+
+    private fun startCall() {
+        lifecycleScope.launch {
+            if (!ensureCallsClient()) return@launch
+            if (otherUserId <= 0L) {
+                Toast.makeText(this@UserProfileActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val app = application as BarkFluffApplication
+            val result = app.callRepository.initiateDirect(otherUserId, CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO)
+            result.onSuccess { response ->
+                startActivity(Intent(this@UserProfileActivity, CallActivity::class.java).apply {
+                    putExtra(CallExtras.EXTRA_CALL_ID, response.callId)
+                    putExtra(CallExtras.EXTRA_CALLER_NAME, chatTitle)
+                    putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
+                    putExtra(CallExtras.EXTRA_MEDIA_TYPE, "audio")
+                    putExtra(CallExtras.EXTRA_LIVEKIT_URL, response.livekitUrl.ifBlank { globalParam.livekitUrl })
+                    putExtra(CallExtras.EXTRA_ACCESS_TOKEN, response.accessToken)
+                })
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to start call", error)
+                Toast.makeText(this@UserProfileActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun ensureCallsClient(): Boolean {
+        val app = application as BarkFluffApplication
+        if (app.grpcManager.callsClient != null) return true
+
+        val callsAddress = globalParam.socketCalls
+        if (callsAddress.isBlank()) {
+            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
+        if (result.isFailure) {
+            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
+        }
+        return result.isSuccess
     }
 
     // ── Attachments ───────────────────────────────────────────────────────────
@@ -133,10 +252,17 @@ class UserProfileActivity : AppCompatActivity() {
                         if (adapter != null) {
                             val allFileIds = adapter.currentList.map { it.attachment.fileId }
                             val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
+                            val allFileNames = adapter.currentList.map { it.attachment.fileName }
+                            val sourceMessageIds = adapter.currentList.map { it.messageId }
                             val position = adapter.currentList.indexOf(attachmentInfo).coerceAtLeast(0)
                             startActivity(
                                 ImageViewerActivity.createIntent(
-                                    this, allFileIds, allPreviewUrls, position
+                                    this,
+                                    allFileIds,
+                                    allPreviewUrls,
+                                    position,
+                                    fileNames = allFileNames,
+                                    sourceMessageIds = sourceMessageIds
                                 )
                             )
                         }
@@ -181,75 +307,115 @@ class UserProfileActivity : AppCompatActivity() {
                         }
                     }
                 }
-            }
+            },
+            downloadToCache = { fileId ->
+                FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId)
+            },
+            scope = lifecycleScope
         )
         binding.attachmentsRecyclerView.adapter = attachmentAdapter
     }
 
-    private fun loadAttachmentsDefault() {
-        binding.chipPhotos.isChecked = true
-        binding.attachmentsRecyclerView.layoutManager = GridLayoutManager(this, 3)
-        loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
+    // ── Табы вложений ─────────────────────────────────────────────────────────
 
-        binding.chipPhotos.setOnClickListener {
-            if (binding.chipPhotos.isChecked) {
+    private fun setupTabs() {
+        binding.tabMedia.setOnClickListener { selectTab(Tab.MEDIA) }
+        binding.tabFiles.setOnClickListener { selectTab(Tab.FILES) }
+        binding.tabVoice.setOnClickListener { selectTab(Tab.VOICE) }
+        selectTab(Tab.MEDIA)
+    }
+
+    private fun selectTab(tab: Tab) {
+        styleTab(binding.tabMedia, tab == Tab.MEDIA)
+        styleTab(binding.tabFiles, tab == Tab.FILES)
+        styleTab(binding.tabVoice, tab == Tab.VOICE)
+
+        when (tab) {
+            Tab.MEDIA -> {
                 binding.attachmentsRecyclerView.layoutManager = GridLayoutManager(this, 3)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
-            } else {
-                binding.attachmentsContainer.visibility = View.GONE
+                loadMedia()
             }
-        }
-        binding.chipVideos.setOnClickListener {
-            if (binding.chipVideos.isChecked) {
-                binding.attachmentsRecyclerView.layoutManager = GridLayoutManager(this, 3)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.VIDEO)
-            } else {
-                binding.attachmentsContainer.visibility = View.GONE
-            }
-        }
-        binding.chipFiles.setOnClickListener {
-            if (binding.chipFiles.isChecked) {
+            Tab.FILES -> {
                 binding.attachmentsRecyclerView.layoutManager = LinearLayoutManager(this)
                 loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT)
-            } else {
-                binding.attachmentsContainer.visibility = View.GONE
+            }
+            Tab.VOICE -> {
+                binding.attachmentsRecyclerView.layoutManager = LinearLayoutManager(this)
+                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.VOICE)
+            }
+        }
+    }
+
+    private fun styleTab(view: TextView, selected: Boolean) {
+        if (selected) {
+            view.setBackgroundResource(R.drawable.bg_pill_selected)
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnPrimary)
+            )
+        } else {
+            view.background = null
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            )
+        }
+    }
+
+    private fun showLoading() {
+        binding.attachmentsLoading.visibility = View.VISIBLE
+        binding.attachmentsRecyclerView.visibility = View.GONE
+        binding.attachmentsEmpty.visibility = View.GONE
+    }
+
+    private fun showEmpty(text: String) {
+        binding.attachmentsLoading.visibility = View.GONE
+        binding.attachmentsRecyclerView.visibility = View.GONE
+        binding.attachmentsEmpty.visibility = View.VISIBLE
+        binding.attachmentsEmpty.text = text
+    }
+
+    private fun showList(items: List<barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo>) {
+        attachmentAdapter?.submitList(items)
+        binding.attachmentsLoading.visibility = View.GONE
+        binding.attachmentsEmpty.visibility = View.GONE
+        binding.attachmentsRecyclerView.visibility = View.VISIBLE
+    }
+
+    /** Медиа = фото + видео, объединённые и отсортированные по дате отправки. */
+    private fun loadMedia() {
+        showLoading()
+        lifecycleScope.launch {
+            try {
+                val images = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
+                val videos = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
+                val merged = (images + videos).sortedByDescending { it.sentAt.seconds }
+                if (merged.isEmpty()) showEmpty(getString(R.string.media_no_attachments)) else showList(merged)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading media", e)
+                showEmpty(getString(R.string.media_no_attachments))
             }
         }
     }
 
     private fun loadAttachments(type: barkfluff.shared.Shared.MessageAttachmentType) {
-        binding.attachmentsContainer.visibility = View.VISIBLE
-        binding.attachmentsLoading.visibility = View.VISIBLE
-        binding.attachmentsRecyclerView.visibility = View.GONE
-        binding.attachmentsEmpty.visibility = View.GONE
-
+        showLoading()
         lifecycleScope.launch {
             try {
                 val result = chatRepository.getChatAttachments(chatId, type)
-                if (result.isSuccess) {
-                    val attachments = result.getOrNull()!!
-                    if (attachments.isEmpty()) {
-                        binding.attachmentsLoading.visibility = View.GONE
-                        binding.attachmentsEmpty.visibility = View.VISIBLE
-                        binding.attachmentsEmpty.text = when (type) {
-                            barkfluff.shared.Shared.MessageAttachmentType.IMAGE -> "Нет фото"
-                            barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> "Нет видео"
-                            else -> "Нет файлов"
-                        }
-                    } else {
-                        attachmentAdapter?.submitList(attachments)
-                        binding.attachmentsLoading.visibility = View.GONE
-                        binding.attachmentsRecyclerView.visibility = View.VISIBLE
-                    }
+                val attachments = result.getOrNull()
+                if (attachments == null) {
+                    showEmpty(getString(R.string.media_no_attachments))
+                } else if (attachments.isEmpty()) {
+                    showEmpty(
+                        if (type == barkfluff.shared.Shared.MessageAttachmentType.VOICE)
+                            getString(R.string.profile_no_voice)
+                        else getString(R.string.media_no_attachments)
+                    )
                 } else {
-                    binding.attachmentsLoading.visibility = View.GONE
-                    binding.attachmentsEmpty.visibility = View.VISIBLE
-                    binding.attachmentsEmpty.text = "Ошибка загрузки"
+                    showList(attachments)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading attachments", e)
-                binding.attachmentsLoading.visibility = View.GONE
-                binding.attachmentsEmpty.visibility = View.VISIBLE
+                showEmpty(getString(R.string.media_no_attachments))
             }
         }
     }
@@ -267,8 +433,12 @@ class UserProfileActivity : AppCompatActivity() {
     private fun loadGroupProfile() {
         binding.profileNameTextView.text = chatTitle.trim()
         binding.profileUsernameTextView.visibility = View.GONE
-        binding.profileOnlineStatusTextView.visibility = View.GONE
+        binding.profileStatusRow.visibility = View.GONE
         binding.profileBioTextView.visibility = View.GONE
+        binding.rowUserId.visibility = View.GONE
+        binding.dividerUserId.visibility = View.GONE
+        binding.rowRegistration.visibility = View.GONE
+        binding.dividerChatId.visibility = View.GONE
 
         if (!chatAvatarFileId.isNullOrBlank()) {
             AvatarLoader.loadByFileId(
@@ -276,8 +446,7 @@ class UserProfileActivity : AppCompatActivity() {
                 placeholderView = binding.profileAvatarPlaceholder,
                 fileId = chatAvatarFileId!!,
                 displayName = chatTitle,
-                userId = chatId.hashCode().toLong(),
-                size = 240
+                userId = chatId.hashCode().toLong()
             ) {
                 chatRepository.getFileDownloadUrl(chatAvatarFileId!!).getOrNull()
             }
@@ -301,21 +470,28 @@ class UserProfileActivity : AppCompatActivity() {
                     binding.profileUsernameTextView.text = "@${user.username}"
                     binding.profileUsernameTextView.visibility = View.VISIBLE
 
+                    if (user.registrationDate > 0) {
+                        val sdf = SimpleDateFormat("d MMMM yyyy", Locale("ru"))
+                        binding.profileRegistrationValue.text = sdf.format(Date(user.registrationDate))
+                        binding.rowRegistration.visibility = View.VISIBLE
+                    } else {
+                        binding.rowRegistration.visibility = View.GONE
+                        binding.dividerChatId.visibility = View.GONE
+                    }
+
                     if (user.bio.isNotBlank()) {
                         binding.profileBioTextView.text = user.bio
                         binding.profileBioTextView.visibility = View.VISIBLE
                     }
 
-                    // Аватар — через AvatarLoader с кэшированием URL
-                    val avatarFileId = user.profilePictureFileId
+                    val avatarFileId = avatarSourceFor(user)
                     if (!avatarFileId.isNullOrBlank()) {
                         AvatarLoader.loadByFileId(
                             imageView = binding.profileAvatarImageView,
                             placeholderView = binding.profileAvatarPlaceholder,
                             fileId = avatarFileId,
                             displayName = displayName.ifBlank { user.username },
-                            userId = otherUserId,
-                            size = 240
+                            userId = otherUserId
                         ) {
                             chatRepository.getFileDownloadUrl(avatarFileId).getOrNull()
                         }
@@ -328,7 +504,6 @@ class UserProfileActivity : AppCompatActivity() {
                         binding.profileAvatarImageView.visibility = View.GONE
                     }
 
-                    // Постер — кэшируем URL через AvatarLoader.urlCache
                     val posterFileId = user.profilePosterFileId
                     if (posterFileId.isNotBlank()) {
                         loadPosterImage(posterFileId)
@@ -355,18 +530,25 @@ class UserProfileActivity : AppCompatActivity() {
                         if (isOnline) {
                             binding.profileOnlineStatusTextView.text = "в сети"
                             binding.profileOnlineStatusTextView.setTextColor(
-                                ContextCompat.getColor(this@UserProfileActivity, R.color.primary)
+                                ContextCompat.getColor(this@UserProfileActivity, R.color.profile_presence_online)
                             )
+                            binding.statusDot.visibility = View.VISIBLE
                             binding.onlineIndicator.visibility = View.VISIBLE
                         } else {
-                            binding.profileOnlineStatusTextView.text = formatLastSeen(userStatus.lastSeen.seconds * 1000)
+                            binding.profileOnlineStatusTextView.text =
+                                OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeen.seconds * 1000)
                             binding.profileOnlineStatusTextView.setTextColor(
-                                ContextCompat.getColor(this@UserProfileActivity, R.color.on_surface_variant)
+                                MaterialColors.getColor(
+                                    binding.root,
+                                    com.google.android.material.R.attr.colorOnSurfaceVariant
+                                )
                             )
+                            binding.statusDot.visibility = View.GONE
                             binding.onlineIndicator.visibility = View.GONE
                         }
                     } else {
                         binding.profileOnlineStatusTextView.text = "был(а) недавно"
+                        binding.statusDot.visibility = View.GONE
                         binding.onlineIndicator.visibility = View.GONE
                     }
                 }
@@ -378,10 +560,14 @@ class UserProfileActivity : AppCompatActivity() {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Загружает постер профиля с кэшированием URL в AvatarLoader.urlCache.
-     * Благодаря кэшу повторные открытия экрана не делают gRPC-запрос за URL.
-     */
+    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+        return user.profilePicturePreviewUrl
+            .ifBlank { user.profilePictureUrl }
+            .ifBlank { user.profilePicturePreviewFileId }
+            .ifBlank { user.profilePictureFileId }
+            .ifBlank { null }
+    }
+
     private fun loadPosterImage(posterFileId: String) {
         val cachedUrl = AvatarLoader.urlCache[posterFileId]
             ?: AvatarLoader.getUrlFromCache(posterFileId)
@@ -400,7 +586,6 @@ class UserProfileActivity : AppCompatActivity() {
                 val urlResult = chatRepository.getFileDownloadUrl(posterFileId)
                 val url = urlResult.getOrNull()
                 if (!url.isNullOrBlank()) {
-                    // Сохраняем в оба кэша
                     AvatarLoader.urlCache[posterFileId] = url
                     AvatarLoader.putUrlInCache(posterFileId, url)
 
@@ -412,27 +597,6 @@ class UserProfileActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading poster image", e)
-            }
-        }
-    }
-
-    private fun formatLastSeen(lastSeenMs: Long): String {
-        if (lastSeenMs <= 0) return "был(а) давно"
-        val now = System.currentTimeMillis()
-        val diff = now - lastSeenMs
-        return when {
-            diff < TimeUnit.MINUTES.toMillis(1) -> "был(а) только что"
-            diff < TimeUnit.HOURS.toMillis(1) -> {
-                val mins = TimeUnit.MILLISECONDS.toMinutes(diff)
-                "был(а) $mins мин. назад"
-            }
-            diff < TimeUnit.DAYS.toMillis(1) -> {
-                val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-                "был(а) сегодня в ${sdf.format(Date(lastSeenMs))}"
-            }
-            else -> {
-                val sdf = SimpleDateFormat("d MMM", Locale("ru"))
-                "был(а) ${sdf.format(Date(lastSeenMs))}"
             }
         }
     }

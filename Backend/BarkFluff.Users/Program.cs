@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.FederationInternal;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Auth;
@@ -51,7 +52,9 @@ public class Program
         builder.Services.AddTransient<PrivacyStorage>();
         builder.Services.AddTransient<PersonalizationStorage>();
         builder.Services.AddTransient<ChatFolderStorage>();
+        builder.Services.AddTransient<ChatMuteStorage>();
         builder.Services.AddTransient<PrekeyStorage>();
+        builder.Services.AddTransient<RemoteUsersStorage>();
         builder.Services.AddScoped<UserInfoQueueSender>();
         builder.Services.AddSingleton<ReservedUsernamesService>();
 
@@ -70,6 +73,13 @@ public class Program
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
+        // gRPC-клиент к Federation: ResolveRemoteUser (этап 2.1).
+        builder.Services.AddGrpcClient<FederationInternalApi.FederationInternalApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FederationService:Host"] ?? "http://federation:7030");
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FederationService:Token"] ?? string.Empty))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<SessionRevokedConsumer>();
@@ -82,8 +92,10 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-users", e =>
+                cfg.ReceiveEndpoint($"session-revoked-users-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });

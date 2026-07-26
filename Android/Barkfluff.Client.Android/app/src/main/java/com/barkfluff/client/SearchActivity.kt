@@ -7,6 +7,8 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,6 +17,10 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivitySearchBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,9 +38,12 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var userAdapter: UserAdapter
 
     private var searchJob: Job? = null
+    private var isPrivateMode = false
 
     companion object {
         private const val TAG = "SearchActivity"
+        const val EXTRA_MODE = "search_mode"
+        const val MODE_PRIVATE = "private"
         private const val SEARCH_DELAY_MS = 300L
         private const val MIN_SEARCH_LENGTH = 3
     }
@@ -48,6 +57,7 @@ class SearchActivity : AppCompatActivity() {
 
         globalParam = GlobalParam(this)
         grpcManager = (application as BarkFluffApplication).grpcManager
+        isPrivateMode = intent.getStringExtra(EXTRA_MODE) == MODE_PRIVATE
 
         setupToolbar()
         setupSearchField()
@@ -55,6 +65,7 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        if (isPrivateMode) binding.toolbar.title = getString(R.string.create_chat_private)
         binding.toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -95,7 +106,7 @@ class SearchActivity : AppCompatActivity() {
     private fun setupResultsList() {
         userAdapter = UserAdapter(
             onUserClick = { userData ->
-                openChatWithUser(userData)
+                if (isPrivateMode) showPrivateChatPassword(userData) else openChatWithUser(userData)
             },
             getFileUrlCallback = { fileId ->
                 Log.d(TAG, "setupResultsList: Requesting URL for fileId=$fileId")
@@ -183,6 +194,58 @@ class SearchActivity : AppCompatActivity() {
                 ).show()
             }
 
+            showLoading(false)
+        }
+    }
+
+    private fun showPrivateChatPassword(userData: GrpcManager.UserData) {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val margin = (24 * resources.displayMetrics.density).toInt()
+            setPadding(margin, 0, margin, 0)
+        }
+        val passwordLayout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+            hint = getString(R.string.private_chat_password_hint)
+        }
+        val password = TextInputEditText(passwordLayout.context).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        passwordLayout.addView(password)
+        val remember = MaterialCheckBox(this).apply {
+            text = getString(R.string.private_chat_remember_password)
+            isChecked = false
+        }
+        content.addView(passwordLayout)
+        content.addView(remember)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.private_chat_password_title)
+            .setMessage("Общий пароль нужен обоим участникам для расшифровки сообщений.")
+            .setView(content)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Создать") { _, _ ->
+                val passphrase = password.text?.toString().orEmpty()
+                if (passphrase.length < 6) {
+                    Toast.makeText(this, "Пароль должен содержать не менее 6 символов", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                createPrivateChat(userData, passphrase, remember.isChecked)
+            }
+            .show()
+    }
+
+    private fun createPrivateChat(userData: GrpcManager.UserData, passphrase: String, rememberKey: Boolean) {
+        lifecycleScope.launch {
+            showLoading(true)
+            val app = application as BarkFluffApplication
+            val result = app.privateChatRepository.createPrivateChat(userData.userId, passphrase, rememberKey)
+            result.onSuccess { creation ->
+                val title = "${userData.firstName} ${userData.lastName}".trim().ifBlank { userData.username }
+                startActivity(ChatActivity.privateChatIntent(this@SearchActivity, chatId = creation.chat.id, title = title))
+                finish()
+            }.onFailure {
+                Toast.makeText(this@SearchActivity, "Не удалось открыть приватный чат: ${it.message}", Toast.LENGTH_LONG).show()
+            }
             showLoading(false)
         }
     }

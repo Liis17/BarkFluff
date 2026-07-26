@@ -11,12 +11,12 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Program.cs` | Точка запуска сервиса. Регистрирует gRPC, XAuth, MassTransit (16 consumer-ов), Serilog, Metrics. Монтирует `UpdatesApiService`. |
-| `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует **16 `StreamSubscriptionsManager`** (7 базовых + 5 user-scope для приватных + 3 device-scope для секретных) и `PendingPushTracker` как Singleton, подключает MediatR. |
+| `Program.cs` | Точка запуска сервиса. Регистрирует gRPC, XAuth, MassTransit (17 consumer-ов), Serilog, Metrics. Монтирует `UpdatesApiService`. |
+| `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует **16 `StreamSubscriptionsManager`** (7 базовых + 6 user-scope для приватных + 3 device-scope для секретных) и `PendingPushTracker` как Singleton, подключает MediatR. |
 | `appsettings.json` | Базовая конфигурация: порт `7015`, адрес Configuration-сервиса. |
 | `appsettings.Development.json` | Переопределения для разработки. |
 | `Properties/launchSettings.json` | Профили запуска (IDE). |
-| `Dockerfile` / `Dockerfile.slim` | Образы для Docker-деплоя. |
+| `Dockerfile.slim` | Образ для Docker-деплоя, используемый CI. |
 
 ---
 
@@ -24,7 +24,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Host/UpdatesApiService.cs` | gRPC-сервис (`UpdatesApiBase`). 15 методов: 7 user-scope обычных (`SubscribeNewMessages`, `SubscribeMessagesRead`/`Edited`/`Deleted`/`Pinned`/`Unpinned`/`AllUnpinned`), 5 user-scope приватных (`SubscribePrivateMessages`/`MessageEdits`/`MessageDeletes`/`ChatInvites`/`ChatInviteResolutions`), 3 device-scope секретных (`SubscribeSecretChatInvites`/`SecretChatResolutions`/`SecretMessages`). Каждый регистрирует подписку в соответствующем `StreamSubscriptionsManager`, ждёт `CancellationToken`, при отключении удаляет подписку. Device-scope методы дополнительно требуют DeviceId через `RequireDeviceId()` (иначе `Status.Unauthenticated`). Собирает метрики (`*_subscriptions_opened/closed/active`, `subscriptions_active_total`). Защищён `[Authorize(Policy = TokenType.User)]`. |
+| `Host/UpdatesApiService.cs` | gRPC-сервис (`UpdatesApiBase`). 16 методов: 7 user-scope обычных (`SubscribeNewMessages`, `SubscribeMessagesRead`/`Edited`/`Deleted`/`Pinned`/`Unpinned`/`AllUnpinned`), 6 user-scope приватных (`SubscribePrivateMessages`/`MessageEdits`/`MessageDeletes`/`MessagesRead`/`ChatInvites`/`ChatInviteResolutions`), 3 device-scope секретных (`SubscribeSecretChatInvites`/`SecretChatResolutions`/`SecretMessages`). Каждый регистрирует подписку в соответствующем `StreamSubscriptionsManager`, ждёт `CancellationToken`, при отключении удаляет подписку. Device-scope методы дополнительно требуют DeviceId через `RequireDeviceId()` (иначе `Status.Unauthenticated`). Собирает метрики (`*_subscriptions_opened/closed/active`, `subscriptions_active_total`). Защищён `[Authorize(Policy = TokenType.User)]`. |
 
 ---
 
@@ -36,10 +36,14 @@
 | `Consumers/ReadByConsumer.cs` | `read-receipts-updates-handler` | Получает `MessageReadEvent` из RabbitMQ. Публикует `ReadByNotification` через MediatR. |
 | `Consumers/MessageEditedConsumer.cs` | `messages-edited-updates-handler` | Получает `MessageEditedEvent` из RabbitMQ. Парсит бинарный protobuf `Message`, публикует `MessageEditedNotification` через MediatR. |
 | `Consumers/MessageDeletedConsumer.cs` | `messages-deleted-updates-handler` | Получает `MessageDeletedEvent` из RabbitMQ. Публикует `MessageDeletedNotification` (содержит только `MessageId`+`ChatId`+`Members`) через MediatR. |
+| `Consumers/MessagePinnedConsumer.cs` | `messages-pinned-updates-handler` | Получает `MessagePinnedEvent`, публикует `MessagePinnedNotification` через MediatR. |
+| `Consumers/MessageUnpinnedConsumer.cs` | `messages-unpinned-updates-handler` | Получает `MessageUnpinnedEvent`, публикует `MessageUnpinnedNotification`. |
+| `Consumers/AllMessagesUnpinnedConsumer.cs` | `all-messages-unpinned-updates-handler` | Получает `AllMessagesUnpinnedEvent`, публикует `AllMessagesUnpinnedNotification`. |
 | `Consumers/SessionRevokedConsumer.cs` | `session-revoked-updates` | Получает `SessionRevokedEvent` из RabbitMQ. Вызывает `TokenRevocationCache.Revoke()` — принудительно инвалидирует токен сессии для пары `(UserId, DeviceId)`. |
 | `Consumers/NewEncryptedMessageConsumer.cs` | `new-encrypted-messages-updates-handler` | Парсит proto `EncryptedMessage` и публикует `NewEncryptedMessageNotification` (приватные чаты, user-scope). |
 | `Consumers/EncryptedMessageEditedConsumer.cs` | `encrypted-messages-edited-updates-handler` | Парсит proto и публикует `EncryptedMessageEditedNotification`. |
 | `Consumers/EncryptedMessageDeletedConsumer.cs` | `encrypted-messages-deleted-updates-handler` | Публикует `EncryptedMessageDeletedNotification` (только MessageId). |
+| `Consumers/PrivateMessagesReadConsumer.cs` | `private-messages-read-updates-handler` | Получает `PrivateMessagesReadEvent`, публикует `PrivateMessagesReadNotification` (user-scope). |
 | `Consumers/PrivateChatInviteConsumer.cs` | `private-chat-invites-updates-handler` | Публикует `PrivateChatInviteNotification` (приглашённому). |
 | `Consumers/PrivateChatInviteResolutionConsumer.cs` | `private-chat-invite-resolutions-updates-handler` | Публикует `PrivateChatInviteResolutionNotification` (инициатору, accepted/rejected). |
 | `Consumers/SecretChatInviteConsumer.cs` | `secret-chat-invites-updates-handler` | Публикует `SecretChatInviteNotification` (device-scope). |
@@ -104,6 +108,7 @@
 | `Features/SubscribePrivateMessages/` | `UserStreamSubscriptionsBase<NewEncryptedMessageEvent>` | `NewEncryptedMessageNotification(EncryptedMessage, Members, ChatId)` | Рассылает proto-объект всем участникам чата |
 | `Features/SubscribePrivateMessageEdits/` | `UserStreamSubscriptionsBase<EncryptedMessageEditedEvent>` | `EncryptedMessageEditedNotification` | То же для edits |
 | `Features/SubscribePrivateMessageDeletes/` | `UserStreamSubscriptionsBase<EncryptedMessageDeletedEvent>` | `EncryptedMessageDeletedNotification(ChatId, MessageId, Members)` | Рассылает только MessageId |
+| `Features/SubscribePrivateMessagesRead/` | `UserStreamSubscriptionsBase<PrivateMessagesReadEvent>` | `PrivateMessagesReadNotification` | Рассылает отметку прочтения приватных сообщений участникам чата |
 | `Features/SubscribePrivateChatInvites/` | `UserStreamSubscriptionsBase<PrivateChatInviteEvent>` | `PrivateChatInviteNotification` (с KdfSalt+Verifier) | Шлёт **только** на InviteeUserId |
 | `Features/SubscribePrivateChatInviteResolutions/` | `UserStreamSubscriptionsBase<PrivateChatInviteResolutionEvent>` | `PrivateChatInviteResolutionNotification` | Шлёт **только** на InviterUserId |
 | `Features/SubscribeSecretChatInvites/` | `DeviceStreamSubscriptionsBase<SecretChatInviteEvent>` | `SecretChatInviteNotification` | Маршрутизация на `(RecipientUserId, RecipientDeviceId)`. Если устройство оффлайн — `secret_chat_invites_buffered_only` метрика, в стрим не пишет |
@@ -126,7 +131,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Shared/BarkFluff.Proto/updates_api.proto` | gRPC-контракт сервиса. Определяет `UpdatesApi` с четырьмя server-streaming методами: `SubscribeNewMessages` → `stream NewMessageEvent`, `SubscribeMessagesRead` → `stream MessageReadEvent`, `SubscribeMessagesEdited` → `stream MessageEditedEvent`, `SubscribeMessagesDeleted` → `stream MessageDeletedEvent`. |
+| `Shared/BarkFluff.Proto/updates_api.proto` | gRPC-контракт сервиса. Определяет `UpdatesApi` с **16 server-streaming методами**: 7 обычных (`SubscribeNewMessages`/`MessagesRead`/`MessagesEdited`/`MessagesDeleted`/`MessagesPinned`/`MessagesUnpinned`/`AllMessagesUnpinned`), 6 приватных (`SubscribePrivateMessages`/`PrivateMessageEdits`/`PrivateMessageDeletes`/`PrivateMessagesRead`/`PrivateChatInvites`/`PrivateChatInviteResolutions`), 3 секретных (`SubscribeSecretChatInvites`/`SecretChatResolutions`/`SecretMessages`). |
 | `Shared/BarkFluff.Proto/shared.proto` | Общий контракт (используется для типа `Message`). |
 
 ---

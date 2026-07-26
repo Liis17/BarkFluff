@@ -72,6 +72,16 @@ public class UploadedFilesStorage
         }
     }
 
+    /// <summary>
+    /// Bulk-удаление незагруженных слотов с истёкшим TTL. Используется фоновым сервисом очистки.
+    /// </summary>
+    public Task<int> DeleteExpiredPendingAsync(CancellationToken cancellationToken = default)
+    {
+        return _context.UploadedFiles
+            .Where(x => x.UploadedAt == null && x.ExpiresAt < DateTime.UtcNow)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     public async Task<UploadFile?> GetFileByPreviewId(Guid previewId)
     {
         return await _context.UploadedFiles.AsNoTracking().FirstOrDefaultAsync(x => x.PreviewId == previewId);

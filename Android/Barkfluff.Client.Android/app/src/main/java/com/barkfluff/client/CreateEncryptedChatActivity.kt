@@ -1,6 +1,5 @@
 package com.barkfluff.client
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
@@ -31,13 +30,18 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.toolbar.setNavigationOnClickListener { finish() }
-        binding.typePrivateButton.isChecked = true
+        type = when (intent.getStringExtra(EXTRA_INITIAL_TYPE)) {
+            INITIAL_TYPE_SECRET -> Type.SECRET
+            else -> Type.PRIVATE
+        }
         binding.chatTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             type = if (checkedId == binding.typePrivateButton.id) Type.PRIVATE else Type.SECRET
             applyTypeUi()
         }
-        applyTypeUi()
+        binding.chatTypeToggle.check(
+            if (type == Type.PRIVATE) binding.typePrivateButton.id else binding.typeSecretButton.id
+        )
 
         binding.peerIdEditText.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus && type == Type.SECRET) loadPeerDevices()
@@ -115,12 +119,15 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             val result = app.privateChatRepository.createPrivateChat(peerId, passphrase)
             binding.progressBar.visibility = View.GONE
             binding.createButton.isEnabled = true
-            result.onSuccess { chat ->
-                Toast.makeText(this@CreateEncryptedChatActivity, "Приватный чат создан, дождитесь подключения собеседника", Toast.LENGTH_LONG).show()
-                val intent = Intent(this@CreateEncryptedChatActivity, PrivateChatActivity::class.java)
-                    .putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
-                    .putExtra(PrivateChatActivity.EXTRA_TITLE, chat.title.ifBlank { "Приватный чат" })
-                startActivity(intent)
+            result.onSuccess { creation ->
+                val chat = creation.chat
+                val text = if (creation.created) "Приватный чат создан, дождитесь подключения собеседника" else "Открыт существующий приватный чат"
+                Toast.makeText(this@CreateEncryptedChatActivity, text, Toast.LENGTH_LONG).show()
+                startActivity(ChatActivity.privateChatIntent(
+                    this@CreateEncryptedChatActivity,
+                    chatId = chat.id,
+                    title = chat.title.ifBlank { "Приватный чат" }
+                ))
                 finish()
             }.onFailure {
                 Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать чат: ${it.message}", Toast.LENGTH_LONG).show()
@@ -149,14 +156,20 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             binding.createButton.isEnabled = true
             result.onSuccess { chat ->
                 Toast.makeText(this@CreateEncryptedChatActivity, "Секретный чат отправлен, ждём подтверждения", Toast.LENGTH_LONG).show()
-                val intent = Intent(this@CreateEncryptedChatActivity, SecretChatActivity::class.java)
-                    .putExtra(SecretChatActivity.EXTRA_SECRET_CHAT_ID, chat.id)
-                    .putExtra(SecretChatActivity.EXTRA_INITIAL_MESSAGE, initialMessage)
-                startActivity(intent)
+                startActivity(ChatActivity.secretChatIntent(
+                    this@CreateEncryptedChatActivity,
+                    secretChatId = chat.id,
+                    initialMessage = initialMessage
+                ))
                 finish()
             }.onFailure {
                 Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать секретный чат: ${it.message}", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_INITIAL_TYPE = "initial_chat_type"
+        const val INITIAL_TYPE_SECRET = "secret"
     }
 }

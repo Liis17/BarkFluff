@@ -8,113 +8,161 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-    app:cardCornerRadius="@dimen/shape_corner_large"
-    app:cardElevation="0dp"
-    app:strokeColor="?attr/colorOutline"
-    app:strokeWidth="1dp">
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
+    app:cardCornerRadius="@dimen/shape_corner_extra_large"
+    app:cardElevation="2dp"
+    app:rippleColor="?attr/colorPrimary">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp">
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <!-- Цветовой индикатор сервера -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="6dp"
-            android:layout_height="match_parent"
-            android:layout_marginEnd="16dp"
-            app:cardBackgroundColor="?attr/colorPrimary"
-            app:cardCornerRadius="3dp"
-            app:cardElevation="0dp">
-
-            <View
-                android:id="@+id/serverColorIndicator"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="?attr/colorPrimary" />
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Информация о сервере -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <!-- Название сервера с Emphasized типографикой -->
-            <TextView
-                android:id="@+id/serverTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="@string/server_item_name_placeholder"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
-
-            <!-- Описание -->
-            <TextView
-                android:id="@+id/serverDescription"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:text="@string/server_item_description_placeholder"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <!-- Локация и публичное имя с иконками -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+            <!-- Icon-tile ноды -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/serverIconTile"
+                android:layout_width="@dimen/server_icon_tile_size"
+                android:layout_height="@dimen/server_icon_tile_size"
+                android:layout_marginEnd="14dp"
+                app:cardBackgroundColor="?attr/colorPrimary"
+                app:cardCornerRadius="@dimen/shape_corner_large"
+                app:cardElevation="0dp">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_location"
-                    app:tint="?attr/colorOnSurfaceVariant" />
+                    android:id="@+id/serverIconGlyph"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:padding="13dp"
+                    android:src="@drawable/ic_storage"
+                    app:tint="?attr/colorOnPrimary" />
 
-                <TextView
-                    android:id="@+id/serverLocationAndPublicName"
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Информация о ноде -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/serverTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/server_item_name_placeholder"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/serverVerifiedIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="?attr/colorPrimary" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/serverDescription"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:ellipsize="end"
-                    android:maxLines="1"
-                    android:text="@string/server_item_location_placeholder"
-                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:maxLines="2"
+                    android:text="@string/server_item_description_placeholder"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Стрелка вправо с контейнером -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
-            android:layout_marginStart="12dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
+        <!-- Чипы одной строкой: Онлайн / пинг / регион (макет 2c) -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/serverChipsGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:chipSpacingHorizontal="8dp"
+            app:singleLine="false">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:rotation="0"
-                android:src="@android:drawable/ic_media_play"
-                app:tint="?attr/colorOnSurfaceVariant" />
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipOnline"
+                style="@style/Widget.Barkfluff.Server.StatusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/server_status_online"
+                android:textColor="@color/onboarding_success_text"
+                app:chipBackgroundColor="@color/onboarding_success_background"
+                app:chipIcon="@drawable/dot_online_indicator"
+                app:chipIconSize="8dp"
+                app:chipIconTint="@color/profile_presence_online" />
 
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipPing"
+                style="@style/Widget.Barkfluff.Server.StatusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:chipIcon="@drawable/ic_bolt" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipRegion"
+                style="@style/Widget.Barkfluff.Server.StatusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:chipIcon="@drawable/ic_location" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Публичное имя ноды -->
+        <TextView
+            android:id="@+id/serverHandle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+        <!-- CTA «Подключиться» внутри карточки -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/serverConnectCta"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/server_card_cta_height"
+            android:layout_marginTop="16dp"
+            android:text="@string/btn_connect"
+            android:textAllCaps="false"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnPrimary"
+            app:backgroundTint="?attr/colorPrimary"
+            app:cornerRadius="@dimen/shape_corner_full"
+            app:icon="@drawable/ic_arrow_forward"
+            app:iconGravity="textEnd"
+            app:iconPadding="10dp"
+            app:iconTint="?attr/colorOnPrimary" />
 
     </LinearLayout>
 

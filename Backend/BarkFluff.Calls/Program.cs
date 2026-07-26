@@ -1,3 +1,4 @@
+using BarkFluff.Calls.BackgroundServices;
 using BarkFluff.Calls.Consumers;
 using BarkFluff.Calls.Host;
 using BarkFluff.Calls.Persistence;
@@ -48,13 +49,25 @@ public class Program
         builder.Services.AddSingleton<LiveKitTokenService>();
         builder.Services.AddSingleton<CallEventSubscriptionsManager>();
         builder.Services.AddSingleton<CallQualityStore>();
-        builder.Services.AddSingleton<CallTimeoutScheduler>();
+        // Durable-таймаут ринга: опрос БД + атомарный захват (переживает рестарт, ровно-однократно при N инстансах).
+        builder.Services.AddHostedService<CallRingTimeoutSweeper>();
         builder.Services.AddSingleton(sp =>
         {
             var settings = sp.GetRequiredService<LiveKitSettings>();
             return new WebhookReceiver(settings.ApiKey, settings.ApiSecret);
         });
+        builder.Services.AddSingleton(sp =>
+        {
+            // RoomServiceClient — Twirp/HTTP, а LiveKit:Url задан как ws(s):// для клиентского входа в комнату.
+            var settings = sp.GetRequiredService<LiveKitSettings>();
+            var httpUrl = settings.Url
+                .Replace("wss://", "https://", StringComparison.OrdinalIgnoreCase)
+                .Replace("ws://", "http://", StringComparison.OrdinalIgnoreCase);
+            return new RoomServiceClient(httpUrl, settings.ApiKey, settings.ApiSecret);
+        });
         builder.Services.AddScoped<CallsService>();
+        // Доставка событий звонка — через RabbitMQ fan-out (корректно при нескольких инстансах).
+        builder.Services.AddScoped<ICallEventDispatcher, CallEventDispatcher>();
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -67,6 +80,8 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<ChatMemberKickedConsumer>();
+            x.AddConsumer<CallEventDeliveryConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -76,9 +91,25 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-calls", e =>
+                cfg.ReceiveEndpoint($"session-revoked-calls-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("chat-member-kicked-calls", e =>
+                {
+                    e.ConfigureConsumer<ChatMemberKickedConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс получает копию события звонка и доставляет своим
+                // локальным gRPC-подпискам (стрим клиента живёт на одном инстансе).
+                cfg.ReceiveEndpoint($"call-event-delivery-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<CallEventDeliveryConsumer>(context);
                 });
             });
         });

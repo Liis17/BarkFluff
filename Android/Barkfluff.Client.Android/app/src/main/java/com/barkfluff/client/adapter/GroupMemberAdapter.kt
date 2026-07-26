@@ -3,9 +3,11 @@ package com.barkfluff.client.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemGroupMemberBinding
 import com.barkfluff.client.utils.AvatarLoader
 
@@ -14,6 +16,7 @@ import com.barkfluff.client.utils.AvatarLoader
  */
 class GroupMemberAdapter(
     private val getFileUrl: suspend (String) -> String?,
+    private val onMemberClick: (MemberItem) -> Unit,
     private val onRemove: (MemberItem) -> Unit
 ) : ListAdapter<GroupMemberAdapter.MemberItem, GroupMemberAdapter.MemberViewHolder>(DiffCallback()) {
 
@@ -21,7 +24,9 @@ class GroupMemberAdapter(
         val userId: Long,
         val name: String,
         val avatarFileId: String?,
-        val canRemove: Boolean
+        val canRemove: Boolean,
+        val online: Boolean = false,
+        val subtitle: String = ""
     )
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemberViewHolder {
@@ -39,6 +44,10 @@ class GroupMemberAdapter(
 
         fun bind(item: MemberItem) {
             binding.memberName.text = item.name
+            binding.memberSubtitle.text = item.subtitle
+            binding.memberSubtitle.visibility = if (item.subtitle.isBlank()) View.GONE else View.VISIBLE
+            binding.memberPresenceDot.visibility = if (item.online) View.VISIBLE else View.GONE
+            binding.root.setOnClickListener { onMemberClick(item) }
 
             AvatarLoader.loadByFileId(
                 imageView = binding.memberAvatar,
@@ -48,8 +57,18 @@ class GroupMemberAdapter(
                 userId = item.userId
             ) { item.avatarFileId?.let { fid -> getFileUrl(fid) } }
 
-            binding.memberRemoveButton.visibility = if (item.canRemove) View.VISIBLE else View.GONE
-            binding.memberRemoveButton.setOnClickListener { onRemove(item) }
+            binding.memberMenuButton.visibility = if (item.canRemove) View.VISIBLE else View.GONE
+            binding.memberMenuButton.setOnClickListener { anchor ->
+                val popup = PopupMenu(anchor.context, anchor)
+                val removeItem = popup.menu.add(anchor.context.getString(R.string.group_remove_member))
+                popup.setOnMenuItemClickListener { clicked ->
+                    if (clicked === removeItem) {
+                        onRemove(item)
+                        true
+                    } else false
+                }
+                popup.show()
+            }
         }
     }
 

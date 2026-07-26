@@ -3,12 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/profile_settings_background"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface">
+        android:background="@color/profile_settings_background">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -16,8 +17,8 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             app:title="@string/devices_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -32,39 +33,48 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Большая иконка QR-кода -->
-            <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:layout_gravity="center_horizontal"
-                android:importantForAccessibility="no"
-                android:src="@drawable/ic_qr_code"
-                android:alpha="0.7"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="16dp" />
-
-            <!-- Подключение по QR -->
-            <TextView
+            <!-- QR-подключение — отдельная мягкая hero-карточка. -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/devices_hint"
-                android:textAlignment="center"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonConnectDevice"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="12dp"
-                android:text="@string/devices_connect"
-                app:icon="@drawable/ic_qr_code"
-                app:iconGravity="textStart"
-                app:iconPadding="8dp"
-                style="@style/Widget.Material3.Button.OutlinedButton" />
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+                    <ImageView
+                        android:layout_width="112dp"
+                        android:layout_height="112dp"
+                        android:background="@drawable/bg_settings_tonal_square"
+                        android:padding="24dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_qr_code"
+                        app:tint="?attr/colorOnPrimaryContainer" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/devices_hint"
+                        android:textAlignment="center"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonConnectDevice"
+                        style="@style/Widget.Barkfluff.Settings2A.PrimaryButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/devices_connect"
+                        app:icon="@drawable/ic_qr_code"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <android.widget.Space
                 android:layout_width="match_parent"
@@ -87,10 +97,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp"
+                app:strokeWidth="0dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground">
@@ -162,7 +171,11 @@
                 app:icon="@drawable/ic_logout"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/Widget.Barkfluff.Settings2A.ErrorButton"
+                android:textColor="@color/profile_settings_on_error_container"
+                app:backgroundTint="@color/profile_settings_error_container"
+                app:iconTint="@color/profile_settings_on_error_container"
+                app:cornerRadius="28dp"
                 android:enabled="false" />
 
             <android.widget.Space

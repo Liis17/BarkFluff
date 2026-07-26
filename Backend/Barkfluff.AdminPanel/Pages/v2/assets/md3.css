@@ -6,19 +6,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,200..700,0..1,-25..200&display=swap');
 
 :root {
-  /* ---------- Color: light scheme (M3 baseline tonal-spot, indigo seed) ---------- */
-  --md-primary:                      #4F5BD5;
+  /* ---------- Color: light scheme (M3 baseline tonal-spot, terracotta seed #8c351c) ---------- */
+  --md-primary:                      #8c351c;
   --md-on-primary:                   #FFFFFF;
-  --md-primary-container:            #E0E0FF;
-  --md-on-primary-container:         #131A77;
-  --md-secondary:                    #5C5D72;
+  --md-primary-container:            #FFDBCF;
+  --md-on-primary-container:         #380D00;
+  --md-secondary:                    #77574E;
   --md-on-secondary:                 #FFFFFF;
-  --md-secondary-container:          #E1E0F9;
-  --md-on-secondary-container:       #181A2C;
-  --md-tertiary:                     #78536B;
+  --md-secondary-container:          #FFDBCF;
+  --md-on-secondary-container:       #2C160F;
+  --md-tertiary:                     #6C5D2F;
   --md-on-tertiary:                  #FFFFFF;
-  --md-tertiary-container:           #FFD7EE;
-  --md-on-tertiary-container:        #2E1126;
+  --md-tertiary-container:           #F6E1A6;
+  --md-on-tertiary-container:        #221B00;
 
   --md-error:                        #BA1A1A;
   --md-on-error:                     #FFFFFF;
@@ -35,25 +35,25 @@
   --md-success-container:            #B6F1B4;
   --md-on-success-container:         #002106;
 
-  --md-surface:                      #FEF8FF;
-  --md-on-surface:                   #1B1B21;
-  --md-on-surface-variant:           #46464F;
-  --md-surface-dim:                  #DDD9E0;
-  --md-surface-bright:               #FEF8FF;
+  --md-surface:                      #FFF8F6;
+  --md-on-surface:                   #221A17;
+  --md-on-surface-variant:           #53433E;
+  --md-surface-dim:                  #E8D6D0;
+  --md-surface-bright:               #FFF8F6;
   --md-surface-container-lowest:     #FFFFFF;
-  --md-surface-container-low:        #F8F3FA;
-  --md-surface-container:            #F2EDF4;
-  --md-surface-container-high:       #ECE7EE;
-  --md-surface-container-highest:    #E6E1E9;
+  --md-surface-container-low:        #FFF1EC;
+  --md-surface-container:            #FCEAE4;
+  --md-surface-container-high:       #F6E5DE;
+  --md-surface-container-highest:    #F0DFD9;
 
-  --md-outline:                      #767680;
-  --md-outline-variant:              #C6C5D0;
+  --md-outline:                      #85736D;
+  --md-outline-variant:              #D8C2BB;
   --md-scrim:                        #000000;
   --md-shadow:                       #000000;
 
-  --md-inverse-surface:              #303036;
-  --md-inverse-on-surface:           #F2EFF7;
-  --md-inverse-primary:              #BFC2FF;
+  --md-inverse-surface:              #382E2B;
+  --md-inverse-on-surface:           #FFEDE7;
+  --md-inverse-primary:              #FFB59B;
 
   /* ---------- Shape (corner radius) ---------- */
   --md-shape-none:        0px;
@@ -1031,7 +1031,7 @@ html, body {
 /* Loading overlay (page-level) */
 .md-page-loading {
   position: fixed; inset: 0;
-  background: rgba(254, 248, 255, 0.7);
+  background: rgba(255, 248, 246, 0.7);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   z-index: 9999;
@@ -1042,3 +1042,46 @@ html, body {
 }
 .md-page-loading.hidden { opacity: 0; pointer-events: none; }
 .md-page-loading .label { font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
+
+/* ============================================================
+   RESPONSIVE APP SHELL — off-canvas nav drawer (mobile)
+   ============================================================ */
+.md-nav-toggle { display: none; }
+.md-nav-scrim { display: none; }
+
+@media (max-width: 840px) {
+  .md-nav-drawer {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform var(--md-dur-3) var(--md-easing-emphasized);
+    box-shadow: var(--md-elev-3);
+    z-index: 40;
+  }
+  .md-app-shell.nav-open .md-nav-drawer { transform: translateX(0); }
+
+  .md-nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.32);
+    z-index: 25;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--md-dur-3) var(--md-easing-standard);
+  }
+  .md-app-shell.nav-open .md-nav-scrim { opacity: 1; pointer-events: auto; }
+
+  .md-nav-toggle { display: inline-flex; }
+
+  .md-app-bar { padding: 0 12px; }
+  .md-page { padding: 16px 16px 40px; }
+}
+
+@media (max-width: 600px) {
+  .md-app-bar { flex-wrap: wrap; height: auto; min-height: var(--md-app-bar-height); row-gap: 8px; padding-top: 8px; padding-bottom: 8px; }
+  .md-app-bar > div { flex-wrap: wrap; }
+  .md-app-bar h1 { font-size: 18px; }
+}

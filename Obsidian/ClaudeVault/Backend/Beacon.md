@@ -19,7 +19,7 @@ dotnet build Backend/BarkFluff.Beacon/BarkFluff.Beacon.csproj
 
 Сервис **не имеет БД**. Вся логика — две операции:
 
-1. **GetServerInfo** (gRPC endpoint) — запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner, FastAuth из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`, фолбэк на `RunSettings:Host`). В `GetServerInfoResponse` отдаёт `public_name` и `location`.
+1. **GetServerInfo** (gRPC endpoint) — **параллельно** (`Task.WhenAll`) запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner, FastAuth, **Calls**, **Bots**, **Federation** (10 сервисов) из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`; если host не задан — сервис помечается `Offline`, иначе `Healthy` + TLS + порт 443). Ответ кешируется в `IMemoryCache` на 5 минут. В `GetServerInfoResponse` отдаёт `public_name`, `location` и `livekit_url` (публичный wss://-адрес LiveKit SFU из секции `LiveKit`/`PublicUrl` конфигурации `Calls`; отдельно от внутреннего `LiveKit:Url`; пусто, если не задан или не является абсолютным `wss://`). Этап 0.4 rearch: также отдаёт `server_name`/`federation_enabled` (fields 16-17) — читает `Federation:ServerName`/`Federation:Enabled` из Configuration; пустая строка/`false`, пока оператор ноды их не задал.
 2. **ServerRegistrationService** (BackgroundService) — каждые 5 минут отправляет `RegisterServerRequest` в Navigator.
 
 CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler`.

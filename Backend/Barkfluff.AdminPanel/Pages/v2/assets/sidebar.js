@@ -11,8 +11,11 @@
     { id: 'badges',        href: '/badges',        label: 'Бейджи',     icon: 'workspace_premium' },
     { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'mood' },
     { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'group' },
+    { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'smart_toy' },
+    { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'hub' },
     { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications' },
     { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail' },
+    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune' },
     { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'cloud', expandable: true }
   ];
 
@@ -137,12 +140,47 @@
     if (m && meta) m.textContent = meta;
   };
 
+  // -------- Mobile off-canvas drawer --------
+  function initMobileNav() {
+    const shell = document.querySelector('.md-app-shell');
+    const appBar = document.querySelector('.md-app-bar');
+    if (!shell || !appBar) return;
+
+    let toggle = appBar.querySelector('.md-nav-toggle');
+    if (!toggle) {
+      toggle = el('<button class="md-nav-toggle md-icon-btn" aria-label="Меню"><span class="msr">menu</span></button>');
+      appBar.insertBefore(toggle, appBar.firstChild);
+    }
+
+    let scrim = document.querySelector('.md-nav-scrim');
+    if (!scrim) {
+      scrim = el('<div class="md-nav-scrim"></div>');
+      shell.appendChild(scrim);
+    }
+
+    toggle.addEventListener('click', function () {
+      shell.classList.toggle('nav-open');
+    });
+    scrim.addEventListener('click', function () {
+      shell.classList.remove('nav-open');
+    });
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.md-nav-item, .md-nav-subitem')) {
+        shell.classList.remove('nav-open');
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') shell.classList.remove('nav-open');
+    });
+  }
+
   // -------- Boot --------
   function boot() {
     const root = document.getElementById('md-nav-root');
     if (!root) return;
     render(root);
     initS3Persistence();
+    initMobileNav();
   }
 
   if (document.readyState === 'loading') {

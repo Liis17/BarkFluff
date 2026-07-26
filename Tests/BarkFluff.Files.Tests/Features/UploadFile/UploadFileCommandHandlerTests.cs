@@ -26,6 +26,7 @@ public class UploadFileCommandHandlerTests
             _bucketRegistry.Object,
             _helper.ImageCompressor,
             _helper.FileTypeDetector,
+            _helper.VideoThumbnailExtractor,
             TestHelper.CreateLogger<UploadFileCommandHandler>()
         );
     }

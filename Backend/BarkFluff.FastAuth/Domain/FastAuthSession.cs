@@ -75,6 +75,12 @@ public sealed class FastAuthSession
     {
         lock (_gate)
         {
+            if (DateTime.UtcNow >= ExpiresAt)
+            {
+                ExpireLocked();
+                return false;
+            }
+
             if (Status != FastAuthStatus.Scanned) return false;
             if (ConfirmationCode != confirmationCode) return false;
             if (UserId != userId) return false;
@@ -91,6 +97,12 @@ public sealed class FastAuthSession
     {
         lock (_gate)
         {
+            if (DateTime.UtcNow >= ExpiresAt)
+            {
+                ExpireLocked();
+                return false;
+            }
+
             if (Status != FastAuthStatus.Scanned) return false;
             if (ConfirmationCode != confirmationCode) return false;
             if (UserId != userId) return false;
@@ -107,14 +119,19 @@ public sealed class FastAuthSession
     {
         lock (_gate)
         {
-            if (IsFinal) return false;
-
-            Status = FastAuthStatus.Expired;
-            FinalizedAt = DateTime.UtcNow;
-            _events.Writer.TryWrite(new FastAuthResult { Status = FastAuthStatus.Expired });
-            _events.Writer.TryComplete();
-            return true;
+            return ExpireLocked();
         }
+    }
+
+    private bool ExpireLocked()
+    {
+        if (IsFinal) return false;
+
+        Status = FastAuthStatus.Expired;
+        FinalizedAt = DateTime.UtcNow;
+        _events.Writer.TryWrite(new FastAuthResult { Status = FastAuthStatus.Expired });
+        _events.Writer.TryComplete();
+        return true;
     }
 }
 

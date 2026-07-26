@@ -42,6 +42,7 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 | `FilesServerApi` | Файлы, S3 |
 | `IdentityServerApi` | Авторизация |
 | `ConfigurationApi` | Конфигурация |
+| `BotsServerApi` | Боты ([[Backend/Bots]]): создание системных, токены, удаление |
 
 Ключи: `{Service}Service:Host` и `{Service}Service:Token`.
 
@@ -66,9 +67,13 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 Каждый файл в `Endpoints/` — extension method `Map{Name}Endpoints()`. Добавление: создать метод в существующем файле или новый файл + вызов в `Program.cs`.
 
+`BotsEndpoints` зарегистрирован через `app.MapBotsEndpoints()` и проксирует `ListBots`, создание системного бота, перегенерацию токена и удаление в [[Backend/Bots|Bots]]. Сервис `BarkFluff.Bots` также входит в списки статусов контейнеров и метрик Seq на актуальных страницах `Pages/v2/services.html` и `Pages/v2/dashboard.html`.
+
+`UsersEndpoints` и `SearchUsersServer` показывают только обычные аккаунты: боты не входят в `/api/users` и `totalCount`, а запросы к пользовательским операциям по bot ID отвечают 404. Управление ботами остаётся в `/bots` (`Pages/v2/bots.html`).
+
 ## Proto
 
-- `users_api.proto`, `files_api.proto`, `identity_api.proto` — Client
+- `users_api.proto`, `files_api.proto`, `identity_api.proto`, `bots_api.proto` — Client
 - `shared.proto` — None (`GrpcServices="None"`)
 
 ## HTML-страницы (Pages/)
@@ -82,6 +87,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | `badges.html` | CRUD бейджей |
 | `stickers.html` | Управление стикерпаками |
 | `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
+| `v2/bots.html` | Управление ботами: создание системного, токен (показ один раз), перегенерация, удаление |
 | `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
 | `s3-storage.html` | (мёртвый, не роутится) старая плоская страница конфигурации S3 |
 | `s3-browser.html` | (мёртвый, не роутится) старый браузер S3-объектов |
@@ -90,9 +96,19 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ### Актуальная версия — Pages/v2 (MD3)
 
-`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/notifications`, `/mail`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
+
+#### Тема и акцент
+
+Цветовая схема MD3 задаётся CSS-переменными в `assets/md3.css` (`:root`). Тёмной темы нет — только светлая. Акцент — **терракота** (seed `#8c351c`, из веб-версии мессенджера `BarkFluff.Web`): `--md-primary: #8c351c`, primary-container/secondary-container/tertiary и нейтральные поверхности перекрашены в тёплый нейтраль. Семантические цвета (`--md-error`/`--md-warning`/`--md-success`) не трогаются. Меняешь акцент — правишь токены в `:root`, всё остальное наследует через `var()`. Захардкоженный акцент есть только в графиках Chart.js `dashboard.html` (массив `metricColors[0]` и `mkDataset('Все события', …)`).
+
+#### Мобильная адаптация
+
+Вся адаптивная вёрстка — **только внутри `@media (max-width: …)`**; десктоп (≥ 840px) не меняется. Брейкпоинты: `840px` — боковое меню становится off-canvas drawer; `600px` — схлопывание контента (гриды → 1 колонка, широкие таблицы → `overflow-x`/скрытие второстепенных колонок, шапка → `flex-wrap`).
+
+Off-canvas drawer реализован общим `assets/sidebar.js` (`initMobileNav()`): инъектит гамбургер `.md-nav-toggle` в `.md-app-bar` + `.md-nav-scrim` **внутрь `.md-app-shell`** (важно: scrim показывается селектором-потомком `.md-app-shell.nav-open .md-nav-scrim`, вставка в body его ломает). Toggle переключает класс `.nav-open` на shell; закрытие по scrim/пункту меню/Esc. No-op на standalone-страницах без shell/app-bar (Login/restarting/updating). CSS drawer/scrim — в конце `md3.css`.
 
 ### Устаревшие/мёртвые версии (не трогать)
 
@@ -115,6 +131,8 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |
 | Sticker bucket | `message-documents` |
 
+`Pages/v2/s3-storage.html` — редактор параметров бакетов включает поле `Region` (для Cloudflare R2 обычно `auto`, для MinIO/S3 необязательно). Соответствует `S3_REGION`/`AuthenticationRegion` в [[Backend/ClientStorage]] и [[Backend/Files]].
+
 ## Безопасность
 
 Полный аудит в `SECURITY_AUDIT.md` (проект). Критические проблемы:
@@ -132,12 +150,25 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 ## Ключевые зависимости
 
 - `LiteDB 5.0.21` — embedded NoSQL
-- `Telegram.Bot 22.0.2`
+- `Telegram.Bot 22.10.0.1`
 - `AWSSDK.S3`
-- `MassTransit.RabbitMQ 8.5.2` — publisher для админских событий
+- `MassTransit.RabbitMQ 8.5.9` — publisher для админских событий
 - [[Backend/GrpcServer]] — LoadConfiguration
 - [[Shared/Auth]] — JwtClientInterceptor
 - [[Shared/Queue]] — события RabbitMQ (`AdminBroadcastNotificationEvent`)
+
+## Вкладка «Конфигурация» (`/configuration`)
+
+`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису (раскрывающиеся блоки), клиентский поиск, маскировка секретов (ключ/секция содержит `Token|Secret|Password|AccessKey` → ••• с кнопкой «показать»), inline-редактирование **только Value** (Enter — сохранить, Esc — отмена). `EditedAt` ставит сервер, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+
+Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations` (+ `serviceName` из enum `ServiceId`) |
+| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
+| GET | `/api/configuration/s3-configuration` | Конфигурация S3-бакетов |
+| POST | `/api/configuration/s3/update` | Обновление конфигурации S3 |
 
 ## REST API: Notifications
 

@@ -23,12 +23,22 @@ public class FilesContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<UploadFile>()
+            .HasIndex(x => x.Uploaders)
+            .HasMethod("gin");
+
+        modelBuilder.Entity<UploadFile>()
+            .HasIndex(x => x.PreviewId)
+            .HasFilter("\"PreviewId\" IS NOT NULL");
+
         modelBuilder.Entity<TempFile>()
             .HasIndex(x => x.OriginalFileId);
 
-        // Configure FileHashes with index on Hash for fast lookups
+        // Configure FileHashes with unique index on Hash for fast lookups and
+        // deterministic deduplication (уникальность защищает от гонки read-then-write).
         modelBuilder.Entity<FileHash>()
-            .HasIndex(x => x.Hash);
+            .HasIndex(x => x.Hash)
+            .IsUnique();
 
         modelBuilder.Entity<StickerPack>()
             .HasIndex(x => x.CreatorUserId);

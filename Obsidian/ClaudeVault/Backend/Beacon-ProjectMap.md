@@ -14,7 +14,6 @@
 - Регистрирует: MediatR, gRPC reflection, Serilog, метрики (`AddBarkFluffMetrics`)
 - Регистрирует gRPC-клиенты: `NavigatorApiClient` (по ключу `NavigatorUrl`) и `ConfigurationApiClient` (по ключу `ConfigurationServiceAddr`)
 - Запускает `ServerRegistrationService` как `HostedService`
-- ⚠️ **Замечено**: `AddMediatR` вызывается дважды (дублирование, не влияет на работу)
 
 ---
 
@@ -36,13 +35,15 @@ gRPC-сервис (реализует `BeaconApi.BeaconApiBase` из `beacon_api
 ### `Features/GetServerInfo/GetServerInfoCommandHandler.cs`
 Основная бизнес-логика сборки ответа клиенту.
 
-- Последовательно запрашивает конфигурации 7 сервисов через `ConfigurationApiClient`:
-  `Identity`, `Users`, `Files`, `Messages`, `Updates`, `Onliner`, `FastAuth`
+- **Параллельно** (`Task.WhenAll`) запрашивает конфигурации 9 сервисов через `ConfigurationApiClient`:
+  `Identity`, `Users`, `Files`, `Messages`, `Updates`, `Onliner`, `FastAuth`, `Calls`, `Bots`
+- Ответ кешируется в `IMemoryCache` (`CacheKey`, `CacheTtl` = 5 минут); повторные вызовы отдают кеш
 - Для каждого сервиса вызывает `ParseService()`:
   - Ищет ключ `ExternalEndpoint:Host` — внешний адрес через nginx (порт 443, TLS)
-  - Фолбэк на `RunSettings:Host`, затем на `https://{service}.example.com`
-  - Статус всегда `ServiceStatus.Healthy`, `TlsEnabled = true`, порт всегда `443`
-- Собирает `GetServerInfoResponse` с полями: `Name`, `Description`, `Color`, и эндпоинты всех сервисов
+  - Если `ExternalEndpoint:Host` не задан → `ServiceStatus.Offline` (Host пустой, порт 0, `TlsEnabled = false`) + LogError; фолбэков на `RunSettings:Host`/`{service}.example.com` **нет**
+  - Иначе → `ServiceStatus.Healthy`, `TlsEnabled = true`, порт `443`
+- Дополнительно для `Calls` вычитывает публичный `LivekitUrl` из секции `LiveKit`/ключа `PublicUrl`; валидируется как абсолютный `wss://`-URI (иначе пусто + LogError)
+- Собирает `GetServerInfoResponse` с полями: `Name`, `Description`, `Color`, `LivekitUrl`, и эндпоинты всех сервисов
 
 ---
 
@@ -93,8 +94,7 @@ Settings-класс. Свойства сервера: `Name`, `Description`, `Pu
 
 | Файл | Назначение |
 |------|-----------|
-| `Dockerfile` | Продакшен-образ |
-| `Dockerfile.slim` | Облегчённый образ |
+| `Dockerfile.slim` | Образ для CI и production |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса |
 | `BarkFluff.Beacon.http` | HTTP-файл для ручного тестирования gRPC |
 | `appsettings.Development.json` | Dev-конфигурация (переопределения) |
@@ -108,7 +108,7 @@ Settings-класс. Свойства сервера: `Name`, `Description`, `Pu
 Клиент
   └─► BeaconApiService.GetServerInfo()
         └─► MediatR → GetServerInfoCommandHandler
-              └─► ConfigurationApi (x7 сервисов)
+              └─► ConfigurationApi (x9 сервисов, параллельно)
                     └─► собирает GetServerInfoResponse
                           └─► возвращает клиенту
 
@@ -127,8 +127,7 @@ ServerRegistrationService (каждые 5 мин)
 | GetServerInfo через CQRS/MediatR | ✅ Актуально |
 | Регистрация в Navigator каждые 5 мин | ✅ Актуально |
 | Зависимости: Configuration + Navigator | ✅ Актуально |
-| 7 сервисов в GetServerInfoResponse | ✅ Актуально |
-| ExternalEndpoint:Host / RunSettings фолбэк | ✅ Актуально |
+| 9 сервисов в GetServerInfoResponse (включая Calls, Bots) | ✅ Актуально |
+| GetServerInfo: `ExternalEndpoint:Host` без фолбэка (пусто → `Offline`); ответ кешируется 5 мин | ✅ Актуально |
 | MetricsCollector (`server_info_requests`, `navigator_registrations`) | ⚠️ Не упомянуто в Beacon.md |
 | `ConfigurationServiceAddr` ключ конфига | ⚠️ Не упомянуто в Beacon.md |
-| Двойная регистрация MediatR в Program.cs | ⚠️ Незначительный баг |

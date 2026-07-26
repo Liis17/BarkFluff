@@ -17,6 +17,7 @@ import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.regex.Pattern
 
 /**
@@ -38,6 +39,7 @@ class SelectServerActivity : AppCompatActivity() {
     private lateinit var serverAdapter: ServerAdapter
 
     private var isConnecting = false
+    private val pingCache = mutableMapOf<String, Int?>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -61,9 +63,14 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        serverAdapter = ServerAdapter { server ->
-            onServerSelected(server)
-        }
+        serverAdapter = ServerAdapter(
+            coroutineScope = lifecycleScope,
+            measurePing = { ip ->
+                if (pingCache.containsKey(ip)) pingCache[ip]
+                else measureServerPingMs(ip).also { pingCache[ip] = it }
+            },
+            onServerClick = { server -> onServerSelected(server) }
+        )
 
         binding.serverListRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@SelectServerActivity)
@@ -71,7 +78,22 @@ class SelectServerActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
+        val pingManager = GrpcManager()
+        try {
+            if (pingManager.createOnlyBeaconClient(address).isFailure) return@withTimeoutOrNull null
+            val start = System.currentTimeMillis()
+            if (pingManager.getServerInfo().isFailure) return@withTimeoutOrNull null
+            (System.currentTimeMillis() - start).toInt()
+        } finally {
+            pingManager.shutdown()
+        }
+    }
+
     private fun setupClickListeners() {
+        // «Своя нода» разворачивает поле ручного ввода (макет 2c)
+        binding.customServerRow.setOnClickListener { toggleCustomServerPanel() }
+
         // Кнопка подключения
         binding.connectButton.setOnClickListener {
             val address = binding.serverAddressEditText.text.toString().trim()
@@ -81,8 +103,18 @@ class SelectServerActivity : AppCompatActivity() {
         }
     }
 
+    private fun toggleCustomServerPanel() {
+        val expanded = binding.customServerPanel.visibility != View.VISIBLE
+        binding.customServerPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+        binding.customServerChevron.animate()
+            .rotation(if (expanded) 180f else 0f)
+            .setDuration(180L)
+            .start()
+    }
+
     private fun loadServerList() {
         showLoading(true)
+        pingCache.clear()
 
         lifecycleScope.launch {
             try {
@@ -104,7 +136,7 @@ class SelectServerActivity : AppCompatActivity() {
                             ServerDataElement(
                                 ip = "test1.barkfluff.com:64646",
                                 title = "BarkFluff Public Server 1",
-                                description = "Публичный сервер для тестирования",
+                                description = "Публичная нода для тестирования",
                                 userCount = "125",
                                 publicName = "barkfluff-public-1",
                                 location = "Москва, RU",
@@ -113,7 +145,7 @@ class SelectServerActivity : AppCompatActivity() {
                             ServerDataElement(
                                 ip = "test2.barkfluff.com:64646",
                                 title = "BarkFluff Public Server 2",
-                                description = "Второй публичный сервер",
+                                description = "Вторая публичная нода",
                                 userCount = "89",
                                 publicName = "barkfluff-public-2",
                                 location = "Санкт-Петербург, RU",
@@ -126,7 +158,7 @@ class SelectServerActivity : AppCompatActivity() {
                         Log.d(TAG, "Загружено ${servers.size} серверов")
                     }
                 } else {
-                    showError(result.exceptionOrNull()?.message ?: "Не удалось загрузить список серверов")
+                    showError(result.exceptionOrNull()?.message ?: "Не удалось загрузить список нод")
                     Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
                 }
             } catch (e: Exception) {
@@ -160,7 +192,7 @@ class SelectServerActivity : AppCompatActivity() {
                 // Создаем Beacon клиент
                 val createResult = grpcManager.createOnlyBeaconClient(address)
                 if (createResult.isFailure) {
-                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось подключиться к серверу")
+                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось подключиться к ноде")
                     resetConnectionState()
                     return@launch
                 }
@@ -185,11 +217,11 @@ class SelectServerActivity : AppCompatActivity() {
                         // Переход на главный экран
                         openMainActivity()
                     } else {
-                        showError("Не удалось получить информацию о сервере")
+                        showError("Не удалось получить информацию о ноде")
                         resetConnectionState()
                     }
                 } else {
-                    showError(infoResult.exceptionOrNull()?.message ?: "Не удалось получить информацию о сервере")
+                    showError(infoResult.exceptionOrNull()?.message ?: "Не удалось получить информацию о ноде")
                     Log.e(TAG, "Ошибка получения информации о сервере", infoResult.exceptionOrNull())
                     resetConnectionState()
                 }
@@ -211,7 +243,7 @@ class SelectServerActivity : AppCompatActivity() {
         val trimmedInput = input.trim()
 
         if (trimmedInput.isBlank()) {
-            showError("Укажите адрес сервера")
+            showError("Укажите адрес ноды")
             return false
         }
 
@@ -231,7 +263,7 @@ class SelectServerActivity : AppCompatActivity() {
         }
 
         if (!isValidHost(host)) {
-            showError("Некорректный адрес сервера")
+            showError("Некорректный адрес ноды")
             return false
         }
 

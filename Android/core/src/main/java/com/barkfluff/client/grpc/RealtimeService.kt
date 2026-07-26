@@ -37,7 +37,7 @@ class RealtimeService(
         private const val DEDUP_MAX_SIZE = 1000
     }
 
-    enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
+    enum class ConnectionState { IDLE, DISCONNECTED, CONNECTING, CONNECTED }
 
     // Public event flows
     private val _newMessages = MutableSharedFlow<UpdatesApiOuterClass.NewMessageEvent>(extraBufferCapacity = 64)
@@ -48,6 +48,9 @@ class RealtimeService(
 
     private val _onlineStatuses = MutableSharedFlow<OnlinerApiOuterClass.UserOnlineStatus>(extraBufferCapacity = 64)
     val onlineStatuses: SharedFlow<OnlinerApiOuterClass.UserOnlineStatus> = _onlineStatuses
+
+    private val _typingEvents = MutableSharedFlow<OnlinerApiOuterClass.TypingEvent>(extraBufferCapacity = 64)
+    val typingEvents: SharedFlow<OnlinerApiOuterClass.TypingEvent> = _typingEvents
 
     private val _messageEdited = MutableSharedFlow<UpdatesApiOuterClass.MessageEditedEvent>(extraBufferCapacity = 64)
     val messageEdited: SharedFlow<UpdatesApiOuterClass.MessageEditedEvent> = _messageEdited
@@ -74,6 +77,9 @@ class RealtimeService(
     private val _privateMessageDeletes = MutableSharedFlow<UpdatesApiOuterClass.EncryptedMessageDeletedEvent>(extraBufferCapacity = 64)
     val privateMessageDeletes: SharedFlow<UpdatesApiOuterClass.EncryptedMessageDeletedEvent> = _privateMessageDeletes
 
+    private val _privateMessagesRead = MutableSharedFlow<UpdatesApiOuterClass.PrivateMessagesReadEvent>(extraBufferCapacity = 64)
+    val privateMessagesRead: SharedFlow<UpdatesApiOuterClass.PrivateMessagesReadEvent> = _privateMessagesRead
+
     private val _privateChatInvites = MutableSharedFlow<UpdatesApiOuterClass.PrivateChatInviteEvent>(extraBufferCapacity = 32)
     val privateChatInvites: SharedFlow<UpdatesApiOuterClass.PrivateChatInviteEvent> = _privateChatInvites
 
@@ -90,7 +96,7 @@ class RealtimeService(
     private val _secretMessages = MutableSharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent>(extraBufferCapacity = 64)
     val secretMessages: SharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent> = _secretMessages
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    private val _connectionState = MutableStateFlow(ConnectionState.IDLE)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
     // Internal state
@@ -98,9 +104,16 @@ class RealtimeService(
     private var serviceScope: CoroutineScope? = null
     private val seenMessageIds = LinkedHashSet<Long>()
 
+    @Volatile
+    private var hasEstablishedMessagesConnection = false
+
     // Online subscription state
     @Volatile
     private var subscribedUserIds: List<Long> = emptyList()
+
+    // Typing subscription state
+    @Volatile
+    private var subscribedTypingChatIds: List<String> = emptyList()
 
     /**
      * Возобновляет стримы реального времени.
@@ -114,6 +127,12 @@ class RealtimeService(
             return
         }
 
+        // Пользователь не вошёл — стримы бессмысленны, сервер вернёт 401 на каждый
+        if (globalParam.refreshToken.isNullOrBlank()) {
+            Log.i(TAG, "resume: пропущено — пользователь не авторизован")
+            return
+        }
+
         Log.i(TAG, "Resuming realtime streams")
 
         // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
@@ -122,7 +141,7 @@ class RealtimeService(
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
 
-        scope.launch { streamWithReconnect("NewMessages") { collectNewMessages() } }
+        scope.launch { streamWithReconnect("NewMessages", reportsConnectionState = true) { collectNewMessages() } }
         scope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
         scope.launch { streamWithReconnect("MessagesEdited") { collectMessagesEdited() } }
         scope.launch { streamWithReconnect("MessagesDeleted") { collectMessagesDeleted() } }
@@ -130,10 +149,12 @@ class RealtimeService(
         scope.launch { streamWithReconnect("MessagesUnpinned") { collectMessagesUnpinned() } }
         scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
+        scope.launch { streamWithReconnect("Typing") { collectTyping() } }
         // E2E приватные чаты (user-scope)
         scope.launch { streamWithReconnect("PrivateMessages") { collectPrivateMessages() } }
         scope.launch { streamWithReconnect("PrivateMessageEdits") { collectPrivateMessageEdits() } }
         scope.launch { streamWithReconnect("PrivateMessageDeletes") { collectPrivateMessageDeletes() } }
+        scope.launch { streamWithReconnect("PrivateMessagesRead") { collectPrivateMessagesRead() } }
         scope.launch { streamWithReconnect("PrivateChatInvites") { collectPrivateChatInvites() } }
         scope.launch { streamWithReconnect("PrivateChatInviteResolutions") { collectPrivateChatInviteResolutions() } }
         // E2E секретные чаты (device-scope)
@@ -150,7 +171,11 @@ class RealtimeService(
      */
     fun pause() {
         Log.i(TAG, "Pausing realtime streams")
-        _connectionState.value = ConnectionState.DISCONNECTED
+        _connectionState.value = if (hasEstablishedMessagesConnection) {
+            ConnectionState.DISCONNECTED
+        } else {
+            ConnectionState.IDLE
+        }
         serviceScope?.cancel()
         serviceScope = null
     }
@@ -160,7 +185,8 @@ class RealtimeService(
      */
     fun shutdown() {
         Log.i(TAG, "Shutting down realtime streams")
-        _connectionState.value = ConnectionState.DISCONNECTED
+        hasEstablishedMessagesConnection = false
+        _connectionState.value = ConnectionState.IDLE
         serviceScope?.cancel()
         serviceScope = null
     }
@@ -186,6 +212,61 @@ class RealtimeService(
     }
 
     /**
+     * Обновляет список чатов для отслеживания индикатора набора текста.
+     * При ошибке — один retry через 2 сек; если и он упал, только логируем
+     * (при реконнекте стрим Typing откроется с актуальным volatile-списком).
+     */
+    fun changeTypingSubscription(chatIds: List<String>) {
+        subscribedTypingChatIds = chatIds
+        val scope = serviceScope ?: return
+        scope.launch {
+            try {
+                val client = grpcManager.onlinerClient ?: return@launch
+                val request = OnlinerApiOuterClass.ChangeChatsInTypingSubscriptionRequest.newBuilder()
+                    .addAllChatIds(chatIds)
+                    .build()
+                client.changeChatsInTypingSubscription(request)
+                Log.v(TAG, "Typing subscription updated: ${chatIds.size} chats")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to change typing subscription, retrying", e)
+                delay(2000)
+                try {
+                    val client = grpcManager.onlinerClient ?: return@launch
+                    val request = OnlinerApiOuterClass.ChangeChatsInTypingSubscriptionRequest.newBuilder()
+                        .addAllChatIds(chatIds)
+                        .build()
+                    client.changeChatsInTypingSubscription(request)
+                    Log.v(TAG, "Typing subscription updated on retry: ${chatIds.size} chats")
+                } catch (e2: Exception) {
+                    Log.w(TAG, "Failed to change typing subscription after retry", e2)
+                }
+            }
+        }
+    }
+
+    /**
+     * Отправляет статус набора текста (heartbeat), fire-and-forget.
+     */
+    fun sendTypingStatus(chatId: String, typing: Boolean) {
+        val scope = serviceScope ?: return
+        scope.launch {
+            try {
+                val client = grpcManager.onlinerClient ?: return@launch
+                val request = OnlinerApiOuterClass.SetTypingStatusRequest.newBuilder()
+                    .setChatId(chatId)
+                    .setAction(
+                        if (typing) OnlinerApiOuterClass.TypingAction.TYPING_ACTION_TYPING
+                        else OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED
+                    )
+                    .build()
+                client.setTypingStatus(request)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to send typing status: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Отмечает сообщение как прочитанное (вызывается из BroadcastReceiver).
      */
     fun markAsRead(messageId: Long) {
@@ -205,6 +286,7 @@ class RealtimeService(
     private suspend fun collectNewMessages() {
         val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeNewMessagesRequest.getDefaultInstance()
+        hasEstablishedMessagesConnection = true
         _connectionState.value = ConnectionState.CONNECTED
         client.subscribeNewMessages(request).collect { event ->
             val msgId = event.message.id
@@ -320,6 +402,15 @@ class RealtimeService(
         }
     }
 
+    private suspend fun collectPrivateMessagesRead() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribePrivateMessagesReadRequest.getDefaultInstance()
+        client.subscribePrivateMessagesRead(request).collect { event ->
+            Log.v(TAG, "Private messages read: chatId=${event.chatId}, userId=${event.userId}")
+            _privateMessagesRead.emit(event)
+        }
+    }
+
     private suspend fun collectPrivateChatInvites() {
         val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateChatInvitesRequest.getDefaultInstance()
@@ -378,6 +469,17 @@ class RealtimeService(
         }
     }
 
+    private suspend fun collectTyping() {
+        val client = grpcManager.onlinerClient ?: throw IllegalStateException("Onliner client not created")
+        val request = OnlinerApiOuterClass.SubscribeToTypingRequest.newBuilder()
+            .addAllChatIds(subscribedTypingChatIds)
+            .build()
+        client.subscribeToTyping(request).collect { event ->
+            Log.v(TAG, "Typing event: chatId=${event.chatId}, userId=${event.userId}, action=${event.action}")
+            _typingEvents.emit(event)
+        }
+    }
+
     private suspend fun onlinePingLoop() {
         while (coroutineContext.isActive) {
             try {
@@ -412,11 +514,17 @@ class RealtimeService(
 
     // --- Reconnection ---
 
-    private suspend fun streamWithReconnect(name: String, block: suspend () -> Unit) {
+    private suspend fun streamWithReconnect(
+        name: String,
+        reportsConnectionState: Boolean = false,
+        block: suspend () -> Unit
+    ) {
         var attempts = 0
         while (coroutineContext.isActive) {
             try {
-                _connectionState.value = ConnectionState.CONNECTING
+                if (reportsConnectionState && hasEstablishedMessagesConnection) {
+                    _connectionState.value = ConnectionState.CONNECTING
+                }
                 ensureTokenValid()
                 Log.v(TAG, "[$name] Connecting...")
                 block()
@@ -439,7 +547,9 @@ class RealtimeService(
                     MAX_BACKOFF_MS.toDouble()
                 ).toLong()
 
-                _connectionState.value = ConnectionState.DISCONNECTED
+                if (reportsConnectionState && hasEstablishedMessagesConnection) {
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                }
                 Log.v(TAG, "[$name] Waiting ${backoff}ms before reconnect")
                 delay(backoff)
 

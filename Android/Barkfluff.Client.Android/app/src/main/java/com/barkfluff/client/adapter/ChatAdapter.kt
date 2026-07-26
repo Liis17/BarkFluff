@@ -6,10 +6,12 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import barkfluff.shared.Shared
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.MarkdownRenderer
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -99,6 +101,8 @@ class ChatAdapter(
 
             // Название чата
             binding.chatTitle.text = item.displayTitle.trim()
+            val isPrivateChat = chat.chatType == Shared.ChatType.CHAT_TYPE_PRIVATE
+            binding.privateChatLock.visibility = if (isPrivateChat) View.VISIBLE else View.GONE
 
             // Аватар через AvatarLoader с fileId
             AvatarLoader.loadByFileId(
@@ -116,16 +120,38 @@ class ChatAdapter(
 
             // Последнее сообщение
             val lastMessage = chat.lastMessage
-            if (lastMessage != null) {
+            if (isPrivateChat) {
+                if (chat.privateInviteState != Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED) {
+                    // Запрос на приватный чат: вместо скелетона — статус инвайта.
+                    val isInvitee = chat.privateInviterUserId != 0L && chat.privateInviterUserId != currentUserId
+                    binding.privatePreviewSkeleton.visibility = View.GONE
+                    binding.lastMessage.text = binding.root.context.getString(
+                        when {
+                            chat.privateInviteState == Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_REJECTED ->
+                                R.string.private_chat_invite_rejected
+                            isInvitee -> R.string.private_chat_invite_incoming
+                            else -> R.string.private_chat_invite_waiting
+                        }
+                    )
+                    binding.lastMessage.visibility = View.VISIBLE
+                } else {
+                    binding.lastMessage.visibility = View.GONE
+                    binding.privatePreviewSkeleton.visibility = View.VISIBLE
+                }
+                binding.messageTime.text = formatTime(chat.lastActivityAt)
+                binding.messageTime.visibility = if (chat.lastActivityAt > 0) View.VISIBLE else View.GONE
+            } else if (lastMessage != null) {
+                binding.privatePreviewSkeleton.visibility = View.GONE
                 val text = lastMessage.text
                 binding.lastMessage.text = when {
-                    text.isNotBlank() -> text.trim()
+                    text.isNotBlank() -> MarkdownRenderer.strip(text)
                     else -> "Вложение"
                 }
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.text = formatTime(lastMessage.sentAt)
                 binding.messageTime.visibility = View.VISIBLE
             } else {
+                binding.privatePreviewSkeleton.visibility = View.GONE
                 binding.lastMessage.text = "Нет сообщений"
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.visibility = View.GONE
@@ -144,7 +170,7 @@ class ChatAdapter(
 
             // Статус прочтения (галочки)
             val lastMsg = chat.lastMessage
-            if (lastMsg != null && lastMsg.senderId == currentUserId) {
+            if (!isPrivateChat && lastMsg != null && lastMsg.senderId == currentUserId) {
                 val readByOthers = lastMsg.readBy.any { it != currentUserId }
                 if (readByOthers) {
                     binding.readStatus.setImageResource(R.drawable.ic_status_read)

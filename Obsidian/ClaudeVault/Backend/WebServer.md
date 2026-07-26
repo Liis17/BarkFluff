@@ -64,7 +64,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 `UsersServerApiClient` создаётся вручную через `GrpcChannel.ForAddress` в `Program.cs` (не через `AddGrpcClient`). `x-auth-token` передаётся вручную в `Metadata` при каждом вызове.
 
-Адрес Users-сервиса (`https://users.barkfluff.com`) и токены **захардкожены** в `Program.cs`.
+Адрес Users-сервиса и токен читаются из конфигурации (`UsersService:Host` / `UsersService:Token`) в `Program.cs` — без hardcoded-значений.
 
 ## Статика
 
@@ -72,11 +72,34 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 - `html/userpage.html` — шаблон страницы пользователя
 - `html/UniqueUsers/paws.page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
 - `html/selfhosted.html` — self-hosted
-- `html/legal/*.html` — юридические страницы
+- `html/legal/*.html` — юридические страницы **для сайта** (RU+EN в одном файле через `<article data-lang>`, переключатель на клиенте)
+- `html/legal/*.md` — те же документы **для клиентов**, см. ниже
 - `html/new/` — **WIP** редизайн главной страницы (Barkfluff Redesign.html, profile.html, стили)
 - `files/install.ps1`, `files/installbeta.ps1` — скрипты установки Windows
 - `files/install.sh`, `files/installbeta.sh` — скрипты установки Linux
 - `files/Barkfluff.Updater.CLI.exe` — инсталлятор (не в git)
+
+## Юридические документы — два формата
+
+`html/legal/` содержит каждый документ в двух видах, и они обслуживают разных потребителей:
+
+| Формат | Кто использует | Локализация |
+|--------|----------------|-------------|
+| `*.html` (kebab-case: `privacy-policy.html`) | сайт через `LegalPageService` | RU+EN в одном файле, `<article data-lang>` + `localStorage.bf_lang` |
+| `*.md` (`PRIVACY_POLICY.<lang>.md`) | мобильные клиенты, попадают в сборку | отдельный файл на локаль |
+
+Markdown-версии:
+
+- `TERMS_OF_SERVICE.{ru,en,de,es,zh-CN}.md`, `PRIVACY_POLICY.{ru,en,de,es,zh-CN}.md`
+- `ACCOUNT_DELETION.md`, `ENCRYPTION.md` — только RU, в онбординге клиентов не показываются
+- **`.ru.md` — оригинал**, остальные локали переведены с него; во всех не-русских версиях стоит оговорка о преимущественной силе русской версии
+- структура заголовков, нумерация разделов и таблицы совпадают 1:1 между локалями — это нужно, чтобы сверять их при обновлении документа
+- дата «Последнее обновление» в шапке используется клиентами как **версия редакции**: изменилась дата — согласие запрашивается заново
+- в `.csproj` включены маской `html\legal\*.md`, новая локаль не требует правки проекта
+
+⚠️ При правке документа надо обновить **и** `.html` (сайт), **и** соответствующие `.md` (клиенты) — автоматической синхронизации между форматами нет.
+
+Android-клиент забирает `.md` на этапе сборки gradle-таском `copyLegalDocs`, см. [[Клиенты/Android]].
 
 ## Proto
 
@@ -85,4 +108,4 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 ## Зависимости
 
-- `Telegram.Bot 22.8.1`
+- `Telegram.Bot 22.10.0.1`

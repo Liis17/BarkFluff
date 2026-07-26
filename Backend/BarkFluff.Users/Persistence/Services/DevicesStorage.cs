@@ -10,16 +10,44 @@ public class DevicesStorage(UsersContext context)
     public async Task<UserDevice> RegisterOrUpdateDevice(Guid deviceId, long userId, string originalName,
         string? appName, string? operationSystem, string? location)
     {
+        var authorizedAt = DateTime.UtcNow;
+
+        if (context.Database.ProviderName is "Npgsql.EntityFrameworkCore.PostgreSQL"
+            or "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            // DeviceId globally identifies an app installation; re-authentication transfers it to the current user.
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "UserDevices"
+                    ("Id", "UserId", "OriginalName", "AuthorizedAt", "AppName", "OperationSystem", "Location", "NotificationsEnabled")
+                VALUES
+                    ({deviceId}, {userId}, {originalName}, {authorizedAt}, {appName}, {operationSystem}, {location}, {true})
+                ON CONFLICT ("Id") DO UPDATE SET
+                    "UserId" = EXCLUDED."UserId",
+                    "OriginalName" = EXCLUDED."OriginalName",
+                    "AuthorizedAt" = EXCLUDED."AuthorizedAt",
+                    "AppName" = EXCLUDED."AppName",
+                    "OperationSystem" = EXCLUDED."OperationSystem",
+                    "Location" = EXCLUDED."Location"
+                """);
+
+            var tracked = context.UserDevices.Local.FirstOrDefault(d => d.Id == deviceId);
+            if (tracked != null)
+                context.Entry(tracked).State = EntityState.Detached;
+
+            return await context.UserDevices.AsNoTracking().SingleAsync(d => d.Id == deviceId);
+        }
+
         var existing = await context.UserDevices
-            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+            .FirstOrDefaultAsync(d => d.Id == deviceId);
 
         if (existing != null)
         {
+            existing.UserId = userId;
             existing.OriginalName = originalName;
             existing.AppName = appName;
             existing.OperationSystem = operationSystem;
             existing.Location = location;
-            existing.AuthorizedAt = DateTime.UtcNow;
+            existing.AuthorizedAt = authorizedAt;
 
             await context.SaveChangesAsync();
             return existing;
@@ -30,7 +58,7 @@ public class DevicesStorage(UsersContext context)
             Id = deviceId,
             UserId = userId,
             OriginalName = originalName,
-            AuthorizedAt = DateTime.UtcNow,
+            AuthorizedAt = authorizedAt,
             AppName = appName,
             OperationSystem = operationSystem,
             Location = location
@@ -40,6 +68,23 @@ public class DevicesStorage(UsersContext context)
         await context.SaveChangesAsync();
 
         return device;
+    }
+
+    public async Task<bool> UpdateDeviceAppInfoIfChanged(Guid deviceId, long userId, string originalName, string? appName)
+    {
+        var existing = await context.UserDevices
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+
+        if (existing == null)
+            return false; // устройство ещё не зарегистрировано — нечего обновлять
+
+        if (existing.OriginalName == originalName && existing.AppName == appName)
+            return false; // не изменилось — не пишем
+
+        existing.OriginalName = originalName;
+        existing.AppName = appName;
+        await context.SaveChangesAsync();
+        return true;
     }
 
     public async Task<List<UserDevice>> GetDevicesByUserId(long userId)
@@ -92,10 +137,21 @@ public class DevicesStorage(UsersContext context)
         await context.SaveChangesAsync();
     }
 
-    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokens(List<long> userIds)
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokens(List<long> userIds, Guid? mutedChatFilter = null)
     {
-        return await context.UserDevices
-            .Where(d => userIds.Contains(d.UserId) && d.FirebaseDeviceToken != null && d.NotificationsEnabled)
+        var now = DateTime.UtcNow;
+        var query = context.UserDevices
+            .Where(d => userIds.Contains(d.UserId) && d.FirebaseDeviceToken != null && d.NotificationsEnabled);
+
+        // Исключаем пользователей, замьютивших этот чат (активный mute).
+        if (mutedChatFilter is Guid chatId)
+        {
+            query = query.Where(d => !context.ChatMutes.Any(m =>
+                m.UserId == d.UserId && m.ChatId == chatId
+                && (m.MutedUntil == null || m.MutedUntil > now)));
+        }
+
+        return await query
             .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
             .ToListAsync();
     }

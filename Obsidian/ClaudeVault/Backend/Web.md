@@ -17,18 +17,17 @@ docker-compose -f docker-compose-dev.yml up web
 
 Три функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
-2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP.
+2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP. **Base64-фрейминг:** каждый Write кодируется независимым padded base64-чанком и сразу флашится (`=` в середине потока — законный разделитель по спеке gRPC-Web, декодер клиента обрабатывает 4-символьные группы независимо). Раньше остаток 1-2 байта буферизовался до следующего Write — из-за этого server-streaming сообщения приходили с отставанием на одно.
 3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**)
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 
-Браузерный gRPC-Web (connect-es) ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware собирает этот фрейм из трёх источников:
+Браузерный gRPC-Web (connect-es) ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware (`Program.cs:178-248`) собирает этот фрейм из **двух** источников:
 
-1. **promotedTrailers** — `grpc-status`/`grpc-message`/`x-error-code` из *заголовков* ответа (ловятся в `OnStarting`). Это **trailers-only** случай: бизнес-ошибки (`OtpCodeNeedException` и пр.) бэкенд отдаёт через `RpcException` → статус летит в HTTP/2-**заголовках**.
-2. **IHttpResponseTrailersFeature** — почти всегда пуст (см. ниже).
-3. **`ctx.Items["grpc-upstream-response"]`** — `HttpResponseMessage.TrailingHeaders` upstream-ответа. Ссылку кладёт YARP-трансформ `AddResponseTransform` (фаза заголовков), читаем после `await next()`.
+1. **promotedTrailers** — `grpc-status`/`grpc-message`/`grpc-status-details-bin`/`x-error-code`, продвинутые YARP в *заголовки* ответа; ловятся в `OnStarting` и удаляются из заголовков. Покрывает **trailers-only** случай: бизнес-ошибки (`OtpCodeNeedException` и пр.) бэкенд отдаёт через `RpcException` → статус летит в HTTP/2-**заголовках**.
+2. **IHttpResponseTrailersFeature.Trailers** — читаются после `await next()` и мёржатся поверх promotedTrailers (для успешных ответов, где Kestrel отдаёт реальные HTTP-трейлеры).
 
-> ⚠️ **Почему источник №3 обязателен.** У **успешного** unary-ответа `grpc-status: 0` приходит от бэкенда как HTTP/2-**трейлер**. Канал nginx → web идёт по **HTTP/1.1** (`proxy_http_version 1.1`), где Kestrel не отдаёт `IHttpResponseTrailersFeature` (`SupportsTrailers() == false`), поэтому YARP не может перенести трейлеры в downstream-ответ. Без чтения `TrailingHeaders` напрямую middleware писал **пустой** trailer-frame → connect-es падал с `[internal] protocol error: missing status` (вход проходил на бэке, но фронт не мог прочитать ответ).
+Оба словаря объединяются в `trailerHeaders`, сериализуются в `key: value\r\n` и пишутся trailer-frame'ом (флаг `0x80`, для grpc-web-text — base64).
 
 ## YARP Routes
 
@@ -41,6 +40,7 @@ docker-compose -f docker-compose-dev.yml up web
 | `/barkfluff.updates.UpdatesApi/{**catch-all}` | Updates (7015) | gRPC/HTTP2 |
 | `/barkfluff.onliner.OnlinerApi/{**catch-all}` | Onliner (7009) | gRPC/HTTP2 |
 | `/barkfluff.fast.auth.FastAuthApi/{**catch-all}` | FastAuth (7008) | gRPC/HTTP2 (server-streaming) |
+| `/barkfluff.calls.CallsApi/{**catch-all}` | Calls (7025) | gRPC/HTTP2 (server-streaming, входит в `streamingServices`, 24h timeout) |
 | `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 |
 
 ## Frontend JS Modules (`wwwroot/js/app/`)
@@ -62,7 +62,12 @@ docker-compose -f docker-compose-dev.yml up web
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`. **Компоновка вложений** (`buildMessageElement`): флаги `hasImages`/`imageOnly`/`docsOnly` (по типам вложений, независимо от направления) → классы пузыря `has-images`/`image-only`/`docs-only`. `image-only` (только картинки без текста/forward) — медиа на всю площадь пузыря (`padding:0`), время+галочки полупрозрачным бейджем поверх картинки (`.msg-meta.msg-img-overlay-meta`); с текстом — сетка сверху без полей, время снизу. `docs-only` — компактный padding без двойной рамки. CSS — в `messenger.html` рядом с `.msg-bubble`.
-- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status)
+- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, message_pinned, message_unpinned, all_messages_unpinned, online_status, private_messages, typing)
+- `calls.js` / `calls-ui.js` — `BF.calls`: звонки через LiveKit (vendor `livekit-client.bundle.js`)
+- `newchat.js` — `BF.newchat`: создание чатов
+- `privatechat.js` — `BF.privateChat`: приватные E2E-чаты (Argon2id через `hash-wasm.umd.min.js`, ключи в localStorage)
+- `sound.js` — `BF.sound`: звуки уведомлений
+- `imageeditor.js` — `BF.imageEditor`: редактор изображений перед отправкой
 - `folders.js` — `BF.folders`: папки чатов (горизонтальные вкладки `#folderTabs` над списком чатов, drag-and-drop реордер, контекстное меню чата `#chatContextMenu` с «Добавить/Удалить из папки», модалка `#folderEditOverlay` с emoji-сеткой 7×3). `init()` обязательно ДО `loadChats` — гайд требует «сперва папки, потом чаты».
 - `pinned.js` — `BF.pinned`: закреплённые сообщения. Плашка `#pinnedBar` под `.chat-header` Telegram-style (`1/N` слева, превью текущего, клик → переключение по кругу + scroll к оригиналу). Большая модалка `#pinnedListOverlay` со всеми пинами (рендер через `BF.messages.buildMessageElement`) + кнопка «Открепить все» с подтверждением.
 - `attach.js` — диалог прикрепления файлов: сегментированный переключатель images/docs, превью (сетка/список с иконкой расширения и размером), поле подписи (`#attachCaption`, prefill из `#messageInput`, Enter=отправка, Shift+Enter=перенос, Escape=закрыть). Подпись передаётся третьим аргументом callback'а (`outFiles, asDocuments, caption`) и используется как текст сообщения. **Клик по превью-картинке** открывает редактор `BF.imageEditor.open(file, cb)`; callback заменяет `item.file` на отредактированный, отзывает старый `previewUrl` и перерендеривает сетку.
@@ -93,7 +98,9 @@ docker-compose -f docker-compose-dev.yml up web
 | pinnedStream | UpdatesApi | SubscribeMessagesPinned | Закреп сообщения (синхронизация плашки `#pinnedBar`) |
 | unpinnedStream | UpdatesApi | SubscribeMessagesUnpinned | Открепление одного сообщения |
 | allUnpinnedStream | UpdatesApi | SubscribeAllMessagesUnpinned | Открепление всех сообщений в чате |
+| privateStream | UpdatesApi | SubscribePrivateMessages | Новые приватные (E2E) сообщения |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
+| typingStream | OnlinerApi | SubscribeToTyping | Индикатор «печатает…» (только открытый чат) |
 
 ### Устойчивость стримов и catch-up
 
@@ -103,9 +110,24 @@ docker-compose -f docker-compose-dev.yml up web
 - **exponential backoff** (2с → 30с) на error/end каждого стрима;
 - **age-timer** — превентивный реконнект каждые `STREAM_MAX_AGE` (180с);
 - **watchdog** — реконнект «молчащего» стрима после `STREAM_INACTIVITY_THRESHOLD` (90с, проверка раз в 30с): ловит «чёрные дыры», когда прокси/NAT молча дропнул сокет;
-- **page-visibility** — при возврате на вкладку (`tab_visible`) восстанавливаются упавшие стримы.
+- **page-visibility** — при возврате на вкладку (`tab_visible`) восстанавливаются упавшие стримы (`reconnectDeadStreams`);
+- **window `online`** — при возврате сети реконнект упавших стримов сразу, без ожидания backoff.
 
-**Catch-up (важно):** при ЛЮБОМ ПЕРЕоткрытии потоков `new_messages/read/edited/deleted` (не первый запуск) `realtime.js` эмитит событие **`resync`**. `main.js` ловит его с дебаунсом (1200мс) и тихо сверяет хвост открытого чата (`resyncCurrentChatTail` → `tailMatchesCurrent`): ререндер и `loadChats(true)` происходят **только если что-то реально изменилось** (новое/правка/прочтение/удаление в окне), иначе DOM не трогается. Это закрывает баг, когда отвалился один лишь поток новых сообщений, а `connection_status` (OR по 4 стримам) не флипался → старый catch-up не срабатывал и сообщение появлялось только после ручного переоткрытия чата. `connection_status` (полный разрыв всех стримов) и `tab_visible` по-прежнему делают полный `reloadCurrentChatMessages`.
+**Catch-up (важно):** при ЛЮБОМ ПЕРЕоткрытии потоков `new_messages/read/edited/deleted` (не первый запуск) `realtime.js` эмитит событие **`resync`**. Все catch-up-пути (`resync` с дебаунсом 1200мс, `connection_status` restore, `tab_visible`) идут через один тихий дифф-механизм:
+- `resyncCurrentChatTail` → `diffFetchedTail`: сверяет хвост открытого чата и применяет **точечный дифф** теми же аппликаторами, что live-события — новые → `appendMessageToView`, правки → `applyMessageEdit` (сравнение по `editedAt`+тексту), удаления → `applyMessageDelete`, прочтения → `applyReadByUpdate` (только галочки, без мутации счётчиков). Без звуков/нотификаций. Fallback на полный `renderMessages` только если новые сообщения не в хвосте (окно прыгало через `scrollToMessage` или своё сообщение ушло раньше дебаунса) или окно пусто. Различий нет → DOM не трогается.
+- `refreshChatListQuiet`: тянет первую страницу `listChats`, сравнивает сигнатуры чатов (`id|title|picture|countUnread|privateInviteState|lastActivityAt|lastMessage`) — `renderChatList` только при реальном различии.
+- Приватные чаты по-прежнему перезагружаются целиком (`reloadCurrentPrivateChat`) — инкремент требует decrypt-aware диффа. Прежний `reloadCurrentChatMessages` (безусловный полный ререндер) удалён.
+
+## Typing-индикатор («печатает…»)
+
+Клиентская интеграция готового API [[Backend/Onliner]] (relay-модель). Индикатор — только в шапке открытого чата (`#chatHeaderStatus`), список чатов не затронут.
+
+- **Модель подписки:** отдельный стрим на открытый чат — `subscribeTyping(chatId)` открывает `SubscribeToTyping([chatId])`, при смене чата стрим переоткрывается; `ChangeChatsInTypingSubscription` не используется. `unsubscribeTyping()` при уходе в приватный чат.
+- **realtime.js:** `subscribeTyping`/`unsubscribeTyping` — зеркало `subscribeOnline` (backoff, age-timer 180с, watchdog 90с, UNAUTHENTICATED→refresh, `reconnectDeadStreams`, `stopAll`); emit `'typing'` `{chatId, userId, action}`. Известное отклонение: `reconnect()` (проактивный token-refresh) typing не переоткрывает — самолечится собственным backoff/watchdog.
+- **api.js:** `setTypingStatus(chatId, typing)` — unary `SetTypingStatus`, action 1=TYPING / 2=CANCELLED, ошибки глотаются.
+- **main.js — отправка:** listener `input` на `#messageInput` (guard `currentChatType !== 0`): первый непустой ввод → TYPING + interval 4с; idle ≥5с → стоп без CANCELLED; пустое поле → CANCELLED. Программный `value=''` НЕ триггерит `input` → явный `stopTypingSend(true)` в начале `sendMessage()`/`sendMessageWithFiles()`. В `openChat()` `stopTypingSend(true)` вызывается ДО перезаписи `currentChatId` (CANCELLED уходит в старый чат).
+- **main.js — приём:** `BF.realtime.on('typing', ...)`: фильтр по chatId (case-insensitive) и `myUserId`; `typingUsers: Map<userId, timeout>` — гашение 6с. `renderTypingIndicator()`: 1:1 — «печатает…», восстановление через `updateChatHeaderOnline(peerId)` (в ней guard `typingUsers.size > 0`); группа — имена из кэша `getUser` («Иван, Мария печатают…», макс 3), восстановление «N участников». `clearTypingReceiveState()` при смене чата.
+- Приватные чаты: heartbeat не шлётся, стрим не открывается.
 
 ## Редактирование и удаление сообщений (`main.js`)
 
@@ -216,6 +238,6 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 
 ## Зависимости
 
-- `Yarp.ReverseProxy` 2.2.0 — единственный NuGet-пакет
+- `Yarp.ReverseProxy` 2.3.0 + `AWSSDK.Core` 4.0.7.4
 - [[Backend/GrpcServer]] — Serilog, MetricsCollector, LoadConfiguration
 - Кастомный `GrpcWebResponseStream` в `Program.cs` — base64-обёртка для server-streaming через gRPC-Web (без `Grpc.AspNetCore.Web`, который несовместим с YARP)

@@ -5,15 +5,17 @@
 
 Сервис в целом аккуратно стримит загрузки/скачивания из S3 и проверяет JWT-политики на всех gRPC-методах (`FilesApiService` — `TokenType.User`, `FilesServerApiService` — `TokenType.Service`). Однако обнаружены серьёзные проблемы контроля доступа: при инициализации **всем S3-бакетам выставляется политика публичного чтения** (включая приватные документы и вложения сообщений), а выдача временных ссылок (`GetTempDownloadUrl`) и метод `CheckFileHash` **не проверяют владельца файла** — это классический IDOR/oracle на чужой контент. Дополнительно: отсутствует allowlist типов файлов и защита от inline-рендеринга SVG/HTML (stored XSS через прямой S3-URL). По производительности — загрузки до сотен МБ буферизуются целиком в `MemoryStream`, а ключевые запросы скачивания и подсчёта квоты идут по таблице без индексов.
 
+**SQL-инъекции (доп. проверка 2026-07-22):** не найдены. Весь доступ к данным идёт через EF Core LINQ; единственный raw-SQL — `FileHashesStorage.cs:26-32` (`INSERT ... ON CONFLICT` через `ExecuteSqlAsync` с интерполяцией `FormattableString`), где EF Core параметризует все подставляемые значения (`fileHash.FileId`, `fileHash.Hash`) — конкатенации пользовательских строк в текст запроса нет.
+
 | Критичность | Кол-во |
 | ----------- | ------ |
 | Critical    | 1      |
 | High        | 3      |
-| Medium      | 5      |
+| Medium      | 6      |
 | Low         | 6      |
-| **Итого**   | **15** |
+| **Итого**   | **16** |
 
-Распределение по категориям: Безопасность — 8, Производительность — 6, Docker/nginx — 1.
+Распределение по категориям: Безопасность — 9, Производительность — 6, Docker/nginx — 1.
 
 ## Безопасность
 
@@ -79,47 +81,52 @@
 **Рекомендация:** Логировать только `FileId`/`TempFileId`, не полный URL; либо понизить уровень и маскировать токен.
 **Статус: ✅ Исправлено** — добавлен `FileUrlHelper.MaskCapabilityToken(Guid)` (первые 8 hex-символов + `-****`), применён в `GetUploadUrlCommandHandler` (Information) и `GetTempDownloadUrlCommandHandler` (Debug) вместо полного URL/TempFileId.
 
+### S9. ~~Незагруженные upload-слоты не истекают и не очищаются~~ — ~~Medium~~ **Исправлено (2026-07-15)**
+
+**Файлы:** `Domain/UploadFile.cs` (поле `ExpiresAt`); `Features/GetUploadUrl/GetUploadUrlCommandHandler.cs` (TTL 2 часа при создании слота); `Persistence/UploadedFilesStorage.cs` (`DeleteExpiredPendingAsync`); `Services/TempFileCleanupService.cs` (чистит также просроченные pending-слоты, не только `TempFile`); миграция `20260715165101_AddUploadFileExpiresAt`.
+**Решение:** У `UploadFile` появилось поле `ExpiresAt` (для уже существующих строк — дефолт `DateTime.MinValue`, что означает мгновенное истечение старых pending-слотов при накатке миграции). Фоновый `TempFileCleanupService` раз в час дополнительно удаляет `UploadedAt == null && ExpiresAt < now`. Rate-limiting на `GetUploadUrl` не добавлен — не требовался пользователем.
+
 ## Производительность
 
-### P1. Загрузки до сотен МБ буферизуются целиком в MemoryStream — High
-**Файл:** `Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs:115-140`
-**Проблема:** На диск через временный файл уходят только **не-графические** файлы > 100 МБ (`:122`). Всё остальное копируется целиком в `MemoryStream` (`:136-139`). Поскольку `isImageType` включает `MessageAttachmentImage`/`Gif`, изображение размером, например, 400–512 МБ (лимит запроса — 512 МБ) попадает в `MemoryStream` полностью.
-**Почему это проблема:** Для файлового сервиса это главный риск памяти: каждая параллельная крупная загрузка держит десятки–сотни МБ в управляемой куче (LOH), плюс отдельный проход SHA256 и декодирование ImageSharp. Несколько одновременных загрузок легко вызывают давление на GC и OOM (усиление DoS, т.к. эндпоинт анонимный — S7).
-**Рекомендация:** Буферизовать на диск (как для крупных не-графических) с порогом существенно ниже 100 МБ, либо стримить в S3 напрямую/через multipart upload, не материализуя весь файл в памяти.
+### P1. ~~Загрузки до сотен МБ буферизуются целиком в MemoryStream~~ — ~~High~~ **Исправлено (2026-07-15)**
 
-### P3. Многократные полные проходы по содержимому (hash + детекция + повторные декодирования) — Medium
+**Файл:** `Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs`
+**Решение:** Убран особый случай для изображений/GIF в условии буферизации — порог 100 МБ (диск через `FileStream`) теперь применяется единообразно ко всем типам файлов, а не только к не-графическим. Дальнейший код (SHA256, детекция типа, ImageSharp) работает с `Stream` абстрактно и не зависит от того, диск это или память.
+
+### P3. Многократные полные проходы по содержимому (hash + детекция + повторные декодирования) — Medium **→ Отложено** (требует аккуратного объединения хеширования с копированием стрима — вернуться позже с более мощной моделью)
 **Файл:** `Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs:144-149, 158, 190, 259`
 **Проблема:** Для одной загрузки выполняется: отдельный проход SHA256 (`:144-149`, отмечено TODO), затем детекция типа (`:158`), затем для стикеров — `Image.IdentifyAsync` (`:190`), затем `ProcessImageAllInOneAsync` с полным декодированием (`:259`). То есть изображение декодируется минимум дважды, плюс полный проход хеша и чтение для детекции.
 **Почему это проблема:** Лишний CPU/время на горячем пути загрузки; для стикеров — два полных декодирования. `ProcessImageAllInOneAsync` уже объединил часть проходов, но хеш и identify стикеров остались отдельными.
 **Рекомендация:** Считать SHA256 во время первичного копирования стрима (как предлагает TODO); размеры стикера брать из единого `ProcessImageAllInOneAsync`, убрав отдельный `IdentifyAsync`.
 
-### P4. Нет индекса под запросы квоты по массиву Uploaders (seq scan) — Medium
-**Файл:** `Backend/BarkFluff.Files/Persistence/UploadedFilesStorage.cs:83-89, 94-102`; модель — `Persistence/Migrations/FilesContextModelSnapshot.cs:182-184` (`Uploaders` → `bigint[]`, индекса нет)
-**Проблема:** `GetUserStorageUsed`/`GetUserStorageByType` фильтруют `x.Uploaders.Contains(userId)` (PostgreSQL `userId = ANY(uploaders)`) с агрегацией `Sum`. Колонка `Uploaders` — массив `bigint[]` без GIN-индекса; таблица `UploadedFiles` индексирована только по PK `Id`.
-**Почему это проблема:** Подсчёт занятого места выполняется последовательным сканированием всей таблицы файлов на каждый вызов `GetUserStorageInfo` — деградирует линейно с ростом числа файлов.
-**Рекомендация:** Добавить GIN-индекс на `Uploaders` (`CREATE INDEX ... USING gin (\"Uploaders\")`) или денормализовать суммарную квоту пользователя в отдельную таблицу/счётчик.
+### P4. ~~Нет индекса под запросы квоты по массиву Uploaders (seq scan)~~ — ~~Medium~~ **Исправлено (2026-07-15)**
 
-### P5. Нет индекса на PreviewId — seq scan на горячем пути скачивания — Medium
-**Файл:** `Backend/BarkFluff.Files/Persistence/UploadedFilesStorage.cs:75-78` (`GetFileByPreviewId`), вызывается из `Features/DownloadFile/DownloadFileCommandHandler.cs:103`; модель — `FilesContextModelSnapshot.cs:149-189` (индекса на `PreviewId` нет)
-**Проблема:** Скачивание превью идёт через `FirstOrDefaultAsync(x => x.PreviewId == previewId)` по неиндексированной колонке `UploadedFiles.PreviewId`.
-**Почему это проблема:** Каждое скачивание, дошедшее до ветки превью, делает полный скан таблицы файлов — это самый горячий путь сервиса (загрузка картинок/аватаров в ленте).
-**Рекомендация:** Добавить индекс на `PreviewId` (можно частичный, `WHERE PreviewId IS NOT NULL`).
+**Файл:** `Backend/BarkFluff.Files/Persistence/FilesContext.cs` (`HasIndex(x => x.Uploaders).HasMethod("gin")`); миграция `AddUploadersGinIndex`.
+**Решение:** Добавлен GIN-индекс на колонку `Uploaders` — `x.Uploaders.Contains(userId)` (`userId = ANY(uploaders)`) теперь использует индекс вместо последовательного скана таблицы.
 
-### P2. Несколько полных копий в памяти в серверных image-хендлерах — Low
+### P5. ~~Нет индекса на PreviewId — seq scan на горячем пути скачивания~~ — ~~Medium~~ **Исправлено (2026-07-16)**
+
+**Файл:** `Backend/BarkFluff.Files/Persistence/FilesContext.cs` (частичный индекс `HasFilter("\"PreviewId\" IS NOT NULL")`); миграция `AddPreviewIdIndex`.
+**Решение:** Добавлен частичный индекс на `PreviewId` (только для непустых значений — большинство файлов превью не имеют).
+
+### P2. Несколько полных копий в памяти в серверных image-хендлерах — Low **→ Отложено** (та же зона image-pipeline, что и P3 — вернуться позже с более мощной моделью)
 **Файл:** `Backend/BarkFluff.Files/Features/UploadAvatarServer/UploadAvatarServerCommandHandler.cs:54-67` (аналогично `UploadPosterServer/...:52-56`, `UploadStickerImage/...:53-57`)
 **Проблема:** `request.ImageData.ToByteArray()` → `MemoryStream(rawStream)` → `ProcessAvatarAsync` → `processedBytes` → `MemoryStream(mainStream)` → плюс ещё `MemoryStream(processedBytes)` для превью. Несколько полных копий одного изображения в памяти.
 **Почему это проблема:** Лишние аллокации/копирования. Ограничено лимитом gRPC-сообщения 20 МБ, поэтому риск умеренный.
 **Рекомендация:** Переиспользовать буферы/потоки, не создавать новый `MemoryStream` под каждый шаг там, где это не нужно.
 
-### P6. Неуникальный индекс на Hash — гонка дедупликации может вставить дубликаты — Low
+### P6. ~~Неуникальный индекс на Hash — гонка дедупликации может вставить дубликаты~~ — Исправлено (2026-07-16)
 **Файл:** `Backend/BarkFluff.Files/Persistence/FileHashesStorage.cs:19-23` (`AddHash`); `Persistence/FilesContext.cs:30-31` (индекс без `IsUnique`); проверка-перед-вставкой — `Features/UploadFile/UploadFileCommandHandler.cs:200`
 **Проблема:** Дедупликация делает read (`GetFileIdByHash`) затем insert (`AddHash`) без уникального ограничения на `Hash`. Две параллельные загрузки одинакового контента обе пройдут проверку «не найдено» и обе вставят строку с одним хешем.
 **Почему это проблема:** Появляются дубликаты в `FileHashes`, дедупликация теряет детерминизм (какой `FileId` вернётся при следующем `GetFileIdByHash` — недетерминировано), растёт таблица.
 **Рекомендация:** Сделать индекс на `Hash` уникальным и обрабатывать конфликт вставки (upsert / `ON CONFLICT`), либо вести дедуп через единый ключ.
+**Решение (2026-07-16):** Индекс `IX_FileHashes_Hash` сделан уникальным (`FilesContext.HasIndex(x => x.Hash).IsUnique()`). Миграция `20260716120000_MakeFileHashUnique` сначала дедуплицирует существующие строки raw-SQL (оставляет одну на `Hash` с минимальным `ctid`), потом пересоздаёт индекс как `unique` — безопасно на непустой таблице с уже накопленными дублями. `AddHash` переписан на `INSERT ... ON CONFLICT ("Hash") DO NOTHING` — конфликт при гонке проглатывается без исключения, инвариант «одна строка на Hash» сохраняется. Компромисс: проигравшая гонку загрузка оставляет свой отдельный S3-объект (дедупликация для неё пропускается) — редкий исход, без порчи данных.
 
 ## Docker / nginx
 
 ### D1. master-compose публикует порты Files на хост в обход nginx/TLS — Low
+**Статус: ❌ Неактуально** — прод деплоится из `docker-compose-dev.yml` (внутренняя сеть, без публикации портов), `docker-compose-master.yml` не используется.
+
 **Файл:** `Backend/docker-compose-master.yml:40-42`
 **Проблема:** Сервис `files` мапит `"${FILES_PORT}:${FILES_PORT}"` и `"${FILES_HTTP1PORT}:${FILES_HTTP1PORT}"` на хост. В отличие от `docker-compose-dev.yml` (только внутренняя сеть, без публикации портов), здесь gRPC (7005) и анонимный HTTP-эндпоинт скачивания/загрузки (7006) доступны напрямую, минуя nginx (TLS, таймауты, `client_max_body_size`).
 **Почему это проблема:** Прямой доступ к анонимному upload/download без TLS и без ограничений nginx; в связке с S7/P1 — путь для DoS и подмены содержимого слота. Если хост-фаервол не закрывает эти порты — они доступны извне в открытом виде.

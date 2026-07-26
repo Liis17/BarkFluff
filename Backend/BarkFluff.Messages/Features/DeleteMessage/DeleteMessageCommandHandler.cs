@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -35,10 +36,13 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
 
     public async Task<DeleteMessageResponse> Handle(DeleteMessageCommand request, CancellationToken cancellationToken)
     {
+        // Серверный путь (Bots) передаёт автора явно, клиентский — берёт из токена
+        var senderId = request.SenderId ?? _userContext.UserId;
+
         _logger.LogInformation(
             "Удаление сообщения {MessageId} пользователем {UserId}",
             request.MessageId,
-            _userContext.UserId
+            senderId
         );
 
         var message = await _messagesStorage.GetMessageById(request.MessageId);
@@ -48,16 +52,16 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
             _logger.LogWarning(
                 "Сообщение {MessageId} не найдено для удаления пользователем {UserId}",
                 request.MessageId,
-                _userContext.UserId
+                senderId
             );
             throw new MessageNotFoundException();
         }
 
-        if (message.SenderId != _userContext.UserId)
+        if (message.SenderId != senderId)
         {
             _logger.LogWarning(
                 "Пользователь {UserId} попытался удалить чужое сообщение {MessageId} (автор {SenderId})",
-                _userContext.UserId,
+                senderId,
                 request.MessageId,
                 message.SenderId
             );
@@ -68,7 +72,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         {
             _logger.LogWarning(
                 "Пользователь {UserId} попытался удалить системное сообщение {MessageId}",
-                _userContext.UserId,
+                senderId,
                 request.MessageId
             );
             throw new NoPermissionException();
@@ -85,6 +89,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         }
 
         message.IsDeleted = true;
+        message.LastChangeAt = DateTime.UtcNow;
 
         await _messagesStorage.SaveChangesAsync();
 
@@ -95,9 +100,24 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         }
 
         var members = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
-        var memberIds = members.Select(x => x.UserId).ToList();
+        var memberIds = members.LocalUserIds();
 
-        await _messageQueueSender.SendDeleted(message.ChatId, message.Id, memberIds);
+        if (message.FederatedId.HasValue)
+        {
+            // Исходящий fed-путь (этап 2.4) — см. EditMessageCommandHandler.
+            var remoteParticipants = members.RemoteParticipants();
+
+            await _messageQueueSender.SendDeleted(
+                message.ChatId, message.Id, memberIds,
+                isFederated: true,
+                federatedId: message.FederatedId,
+                remoteParticipants: remoteParticipants,
+                lastChangeAt: message.LastChangeAt);
+        }
+        else
+        {
+            await _messageQueueSender.SendDeleted(message.ChatId, message.Id, memberIds);
+        }
 
         if (removedPin is not null)
         {
@@ -109,7 +129,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         _logger.LogInformation(
             "Сообщение {MessageId} удалено пользователем {UserId} в чате {ChatId}",
             request.MessageId,
-            _userContext.UserId,
+            senderId,
             message.ChatId
         );
 

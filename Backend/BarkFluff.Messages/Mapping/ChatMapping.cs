@@ -2,6 +2,7 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.Messages.Mapping;
 
@@ -27,6 +28,11 @@ public static class ChatMapping
             ChatType = (BarkFluff.Proto.Shared.ChatType)chat.Type,
             KdfSalt = chat.KdfSalt is { Length: > 0 } salt ? ByteString.CopyFrom(salt) : ByteString.Empty,
             PassphraseVerifier = chat.PassphraseVerifier is { Length: > 0 } v ? ByteString.CopyFrom(v) : ByteString.Empty,
+            LastActivityAt = chat.LastActivityAt == default
+                ? Timestamp.FromDateTime(DateTime.SpecifyKind(chat.CreatedAt, DateTimeKind.Utc))
+                : Timestamp.FromDateTime(DateTime.SpecifyKind(chat.LastActivityAt, DateTimeKind.Utc)),
+            PrivateInviteState = (BarkFluff.Proto.Shared.PrivateChatInviteState)chat.PrivateInviteState,
+            PrivateInviterUserId = chat.PrivateInviterUserId ?? 0,
         };
     }
 }

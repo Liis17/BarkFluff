@@ -68,6 +68,12 @@ class CallEventsService(
             return
         }
 
+        // Пользователь не вошёл — стрим звонков сразу упадёт с 401
+        if (globalParam.refreshToken.isNullOrBlank()) {
+            Log.v(TAG, "resume skipped: пользователь не авторизован")
+            return
+        }
+
         grpcManager.createCallsClient(callsAddress, context, includeDeviceInfo = true)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope

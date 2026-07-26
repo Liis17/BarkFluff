@@ -3,133 +3,162 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/profile_settings_background"
     android:fitsSystemWindows="true">
 
-    <!-- AppBar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        app:liftOnScroll="true"
+        android:background="@color/profile_settings_background"
+        android:elevation="0dp"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/toolbar_height"
+            android:background="@color/profile_settings_background"
+            app:contentInsetStart="24dp"
             app:title="@string/profile_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface" />
+            app:titleTextAppearance="@style/TextAppearance.Barkfluff.Profile.Title"
+            app:titleTextColor="@color/profile_settings_on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/appBarLayout"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:clipToPadding="false"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appBarLayout">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingTop="8dp"
+            android:paddingBottom="150dp">
 
-            <!-- Шапка: аватар + ФИО + username -->
+            <!-- Идентичность -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:orientation="vertical">
+                android:layout_marginStart="24dp"
+                android:layout_marginEnd="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <FrameLayout
-                    android:layout_width="96dp"
-                    android:layout_height="96dp">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    app:cardBackgroundColor="@color/profile_settings_primary"
+                    app:cardElevation="0dp"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.Avatar"
+                    app:strokeWidth="0dp">
 
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/avatarImage"
-                        android:layout_width="96dp"
-                        android:layout_height="96dp"
-                        android:scaleType="centerCrop"
-                        android:visibility="gone"
-                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.App.CornerSize50Percent" />
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/avatarImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.Avatar" />
+
+                        <TextView
+                            android:id="@+id/avatarPlaceholder"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:textColor="@color/profile_settings_on_primary_container"
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
+
+                        <ImageView
+                            android:id="@+id/avatarPlaceholderIcon"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_person"
+                            app:tint="@color/profile_settings_on_primary_container" />
+
+                    </FrameLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <TextView
-                        android:id="@+id/avatarPlaceholder"
-                        android:layout_width="96dp"
-                        android:layout_height="96dp"
-                        android:gravity="center"
-                        android:textColor="@android:color/white"
-                        android:textSize="36sp"
-                        android:textStyle="bold"
-                        android:visibility="visible" />
+                        android:id="@+id/textFullName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Name"
+                        android:textColor="@color/profile_settings_on_surface" />
 
-                </FrameLayout>
+                    <TextView
+                        android:id="@+id/textUsername"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Username"
+                        android:textColor="@color/profile_settings_on_surface_variant" />
 
-                <TextView
-                    android:id="@+id/textFullName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textAppearance="?attr/textAppearanceHeadlineMedium"
-                    android:textColor="?attr/colorOnSurface" />
-
-                <TextView
-                    android:id="@+id/textUsername"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
 
             </LinearLayout>
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="24dp" />
-
-            <!-- Секция: Аккаунт и безопасность -->
+            <!-- Аккаунт -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
-                android:text="@string/profile_section_account_security"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
+                android:text="@string/profile_section_account"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Section"
+                android:textColor="@color/profile_settings_primary" />
 
-            <!-- Карточка 1: Аккаунт и безопасность -->
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:orientation="vertical">
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemAccount"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Top">
 
-                    <!-- Аккаунт -->
                     <LinearLayout
-                        android:id="@+id/itemAccount"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_account"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -137,38 +166,48 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_account"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Безопасность -->
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemSecurity"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+
                     <LinearLayout
-                        android:id="@+id/itemSecurity"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_security"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            android:translationX="-2dp"
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -176,38 +215,48 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_security"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Приватность -->
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemPrivacy"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+
                     <LinearLayout
-                        android:id="@+id/itemPrivacy"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_key"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            android:translationX="1dp"
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -215,247 +264,48 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_privacy"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-            </com.google.android.material.card.MaterialCardView>
-
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <!-- Секция: Персонализация -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="@string/profile_section_personalization"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <!-- Карточка: Персонализация -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
+                <Space
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_height="3dp" />
 
-                    <LinearLayout
-                        android:id="@+id/itemPersonalization"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_palette"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:text="@string/profile_item_personalization"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
-
-                    <LinearLayout
-                        android:id="@+id/itemWidgets"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_widgets"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:text="@string/widget_settings_title"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
-
-                    <LinearLayout
-                        android:id="@+id/itemChatFolders"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_grid"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:text="@string/profile_item_chat_folders"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <!-- Секция: Приложение -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="@string/profile_section_application"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <!-- Карточка 2: Приложение -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemDevices"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Bottom">
 
-                    <!-- Данные и кеш -->
                     <LinearLayout
-                        android:id="@+id/itemStorage"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_storage"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:text="@string/profile_item_storage"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
-
-                    <!-- Устройства -->
-                    <LinearLayout
-                        android:id="@+id/itemDevices"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_devices"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            android:translationX="2dp"
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -463,38 +313,227 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_devices"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Уведомления -->
+            </LinearLayout>
+
+            <!-- Оформление -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/profile_section_appearance"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Section"
+                android:textColor="@color/profile_settings_primary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:orientation="vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemPersonalization"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Top">
+
                     <LinearLayout
-                        android:id="@+id/itemNotifications"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_palette"
+                            android:translationX="-1dp"
+                            app:tint="@color/profile_settings_icon" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:text="@string/profile_item_personalization"
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemWidgets"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_widgets"
+                            android:translationX="-1dp"
+                            app:tint="@color/profile_settings_icon" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:text="@string/widget_settings_title"
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemChatFolders"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Bottom">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_folder_copy"
+                            android:translationX="-1dp"
+                            app:tint="@color/profile_settings_icon" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:text="@string/profile_item_chat_folders"
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <!-- Приложение -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/profile_section_application"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Section"
+                android:textColor="@color/profile_settings_primary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:orientation="vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemNotifications"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Top">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_notifications"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            android:translationX="-2dp"
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -502,38 +541,47 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_notifications"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Язык -->
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemLanguage"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+
                     <LinearLayout
-                        android:id="@+id/itemLanguage"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_language"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -541,66 +589,104 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/language_settings_title"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
+
+                        <TextView
+                            android:id="@+id/textLanguageValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Value"
+                            android:textColor="@color/profile_settings_on_surface_variant" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-            </com.google.android.material.card.MaterialCardView>
-
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <!-- Секция: Другое -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="@string/profile_section_other"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <!-- Карточка 3: Обновление и О приложении -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
+                <Space
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_height="3dp" />
 
-                    <!-- Обновление -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemStorage"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+
                     <LinearLayout
-                        android:id="@+id/itemUpdate"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_storage"
+                            app:tint="@color/profile_settings_icon" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:text="@string/profile_item_storage"
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemUpdate"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Bottom">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_system_update"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            android:translationX="-3dp"
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -608,8 +694,8 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_update"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <View
                             android:id="@+id/badgeUpdate"
@@ -622,32 +708,57 @@
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <!-- О приложении -->
+            </LinearLayout>
+
+            <!-- О приложении -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/profile_section_about"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Section"
+                android:textColor="@color/profile_settings_primary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:orientation="vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemAbout"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Top">
+
                     <LinearLayout
-                        android:id="@+id/itemAbout"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_about"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -655,38 +766,48 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_about"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                    <com.google.android.material.divider.MaterialDivider
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="56dp" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Тестирование -->
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemTesting"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Bottom">
+
                     <LinearLayout
-                        android:id="@+id/itemTesting"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:importantForAccessibility="no"
+                            android:contentDescription="@null"
                             android:src="@drawable/ic_science"
-                            app:tint="?attr/colorOnSurfaceVariant" />
+                            android:translationX="-2dp"
+                            app:tint="@color/profile_settings_icon" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -694,54 +815,44 @@
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="@string/profile_item_testing"
-                            android:textAppearance="?attr/textAppearanceBodyLarge"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                            android:textColor="@color/profile_settings_on_surface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:importantForAccessibility="no"
-                            android:src="@drawable/ic_chevron_right" />
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
 
-                </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="24dp" />
-
-            <!-- Кнопка выхода -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonLogout"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="58dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginEnd="16dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="@string/profile_btn_logout"
                 android:textAllCaps="false"
-                android:textColor="?attr/colorError"
-                app:backgroundTint="?attr/colorErrorContainer"
+                android:textColor="@color/profile_settings_on_error_container"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/profile_settings_error_container"
                 app:cornerRadius="28dp"
                 app:icon="@drawable/ic_logout"
                 app:iconGravity="textStart"
-                app:iconTint="?attr/colorError" />
-
-            <!-- Версия приложения -->
-            <TextView
-                android:id="@+id/textAppVersion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="16dp"
-                android:textAppearance="?attr/textAppearanceLabelSmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="150dp" />
+                app:iconPadding="16dp"
+                app:iconTint="@color/profile_settings_on_error_container"
+                app:iconSize="24dp" />
 
         </LinearLayout>
 

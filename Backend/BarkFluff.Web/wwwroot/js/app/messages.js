@@ -10,6 +10,26 @@
 
     var u = function () { return BF.utils; };
 
+    function updateMessageStatus(statusEl, isRead) {
+        statusEl.replaceChildren();
+        var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'msg-status-icon' + (isRead ? ' msg-status-icon--read' : ''));
+        icon.setAttribute('viewBox', isRead ? '0 0 20 12' : '0 0 12 12');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('focusable', 'false');
+
+        var paths = isRead
+            ? ['M1 6.2 4.5 9.8 11 2', 'M7 6.2 10.5 9.8 17 2']
+            : ['M1 6.2 4.5 9.8 11 2'];
+        paths.forEach(function (d) {
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            icon.appendChild(path);
+        });
+        statusEl.appendChild(icon);
+        statusEl.setAttribute('aria-label', isRead ? 'Прочитано' : 'Доставлено');
+    }
+
     // --- Audio Player Singleton ---
     var AudioPlayer = {
         current: null,
@@ -98,8 +118,8 @@
 
         if (fwd.text) {
             var txt = document.createElement('div');
-            txt.className = 'fwd-text';
-            txt.textContent = fwd.text;
+            txt.className = 'fwd-text md';
+            txt.innerHTML = u().renderMarkdown(fwd.text);
             box.appendChild(txt);
         }
 
@@ -150,16 +170,21 @@
         }
 
         var grid = document.createElement('div');
-        var visible = Math.min(images.length, 4);
+        var visible = Math.min(images.length, 10);
         grid.className = 'attach-image-grid grid-' + visible;
 
         if (visible === 1) {
             var w = images[0].imageWidth || 0;
             var h = images[0].imageHeight || 0;
             if (w > 0 && h > 0) {
+                grid.style.width = Math.min(w, 400) + 'px';
+                grid.style.maxWidth = '100%';
                 grid.style.aspectRatio = w + ' / ' + h;
                 grid.style.maxHeight = '350px';
             }
+        } else {
+            grid.style.width = '400px';
+            grid.style.maxWidth = '100%';
         }
 
         for (var i = 0; i < visible; i++) {
@@ -168,28 +193,13 @@
             var url = (fd && fd.url) || '';
             var prev = (fd && fd.previewUrl) || a.previewUrl || '';
 
-            if (i === 3 && images.length > 4) {
-                var wrap = document.createElement('div');
-                wrap.className = 'more-overlay';
-                var im = document.createElement('img');
-                im.src = prev || url; im.loading = 'lazy';
-                im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                wrap.appendChild(im);
-                var cnt = document.createElement('div');
-                cnt.className = 'more-count';
-                cnt.textContent = '+' + (images.length - 3);
-                wrap.appendChild(cnt);
-                BF.files.bindResilientMedia(im, a.fileId, true);
-                wrap.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
-                grid.appendChild(wrap);
-            } else {
-                var im = document.createElement('img');
-                im.src = prev || url; im.loading = 'lazy';
-                im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                BF.files.bindResilientMedia(im, a.fileId, true);
-                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
-                grid.appendChild(im);
-            }
+            var im = document.createElement('img');
+            if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
+            im.src = prev || url; im.loading = 'lazy';
+            im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
+            BF.files.bindResilientMedia(im, a.fileId, true);
+            im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
+            grid.appendChild(im);
         }
         container.appendChild(grid);
     }
@@ -413,10 +423,15 @@
             });
             var hasImages = hasImg && !isSticker;
             var imageOnly = hasImages && !hasVideo && !hasAudio && !hasDoc && !text && !fwd;
+            var videoOnly = hasVideo && !hasImg && !hasAudio && !hasDoc && !text && !fwd;
+            var videoWithText = hasVideo && !!text;
             var docsOnly = hasDoc && !hasImg && !hasVideo && !hasAudio && !fwd;
             bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '')
                 + (hasImages ? ' has-images' : '')
                 + (imageOnly ? ' image-only' : '')
+                + (hasVideo ? ' has-videos' : '')
+                + (videoOnly ? ' video-only' : '')
+                + (videoWithText ? ' video-with-text' : '')
                 + (docsOnly ? ' docs-only' : '');
 
             if (fwd) {
@@ -431,14 +446,14 @@
 
             if (text) {
                 var textEl = document.createElement('div');
-                textEl.className = 'msg-text';
-                textEl.textContent = text;
+                textEl.className = 'msg-text md';
+                textEl.innerHTML = u().renderMarkdown(text);
                 bubble.appendChild(textEl);
             }
 
             if (!isSticker) {
                 var meta = document.createElement('div');
-                meta.className = 'msg-meta' + (imageOnly ? ' msg-img-overlay-meta' : '');
+                meta.className = 'msg-meta' + (imageOnly || videoOnly ? ' msg-img-overlay-meta' : '');
                 if (msg.isEdited) {
                     var editedEl = document.createElement('span');
                     editedEl.className = 'msg-edited';
@@ -454,7 +469,7 @@
                     statusEl.className = 'msg-status';
                     statusEl.dataset.msgId = msg.id;
                     var readCount = (msg.readBy || []).filter(function (id) { return id !== myUserId; }).length;
-                    statusEl.innerHTML = readCount > 0 ? '&#10003;&#10003;' : '&#10003;';
+                    updateMessageStatus(statusEl, readCount > 0);
                     meta.appendChild(statusEl);
                 }
                 bubble.appendChild(meta);
@@ -467,6 +482,7 @@
 
     window.BF.messages = {
         buildMessageElement: buildMessageElement,
+        updateMessageStatus: updateMessageStatus,
         renderAttachments: renderAttachments,
         renderForwardedBlock: renderForwardedBlock,
         renderReplyQuote: renderReplyQuote

@@ -18,7 +18,7 @@ namespace BarkFluff.Files.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -63,7 +63,8 @@ namespace BarkFluff.Files.Persistence.Migrations
 
                     b.HasKey("FileId");
 
-                    b.HasIndex("Hash");
+                    b.HasIndex("Hash")
+                        .IsUnique();
 
                     b.ToTable("FileHashes");
                 });
@@ -158,17 +159,20 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.Property<string>("Etag")
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Filename")
                         .HasColumnType("text");
-
-                    b.Property<Guid?>("PreviewId")
-                        .HasColumnType("uuid");
 
                     b.Property<int?>("ImageHeight")
                         .HasColumnType("integer");
 
                     b.Property<int?>("ImageWidth")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("PreviewId")
+                        .HasColumnType("uuid");
 
                     b.Property<long>("Size")
                         .HasColumnType("bigint");
@@ -184,6 +188,13 @@ namespace BarkFluff.Files.Persistence.Migrations
                         .HasColumnType("bigint[]");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PreviewId")
+                        .HasFilter("\"PreviewId\" IS NOT NULL");
+
+                    b.HasIndex("Uploaders");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Uploaders"), "gin");
 
                     b.ToTable("UploadedFiles");
                 });

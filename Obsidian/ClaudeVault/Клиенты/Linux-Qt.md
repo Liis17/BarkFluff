@@ -36,12 +36,16 @@ src/
 ├── Connection/     # gRPC клиенты
 ├── Models/         # Модели данных
 ├── UI/
-│   ├── Pages/      # MainWindow, LoginPage, MessengerPage, ...
-│   └── Widgets/    # Переиспользуемые виджеты
-├── Services/       # SessionManager, FileCacheService
-├── Storage/        # SecureStorage, AppSettings
+│   ├── *.h/.cpp    # Страницы: MainWindow, LoginPage, RegisterPage, ServerSelectPage,
+│   │               #   MessengerPage, ProfilePage, UserProfileView, PinUnlockDialog
+│   ├── Settings/   # SettingsPage + General/Security/Sessions/Storage/AboutWidget
+│   └── Widgets/    # ~13 переиспользуемых виджетов (аватар, эмодзи-пикер, вложения, бейджи, ...)
+├── Services/       # SessionManager (singleton, PIN-защита, автовосстановление сессии), FileCacheService, NotificationService (singleton, D-Bus + tray fallback)
+├── Storage/        # SecureStorage (AES-256 шифрование токенов), AppSettings
 └── Utils/          # ErrorHandler, Validators, MessageGrouper, ...
 ```
+
+**Сохранение сессии** (см. `Linux/SESSION_PERSISTENCE.md`): `SessionManager` — singleton с PIN-блокировкой (`PinUnlockDialog`), шифрует токены через `SecureStorage` (AES-256), при старте пытается восстановить сессию и молча обновить access token через refresh token.
 
 ## gRPC Clients (Connection Layer)
 
@@ -60,7 +64,7 @@ src/
 
 ## Паттерны
 
-- **Singleton**: SessionManager, FileCacheService
+- **Singleton**: SessionManager, FileCacheService, NotificationService (D-Bus `org.freedesktop.Notifications` + `QSystemTrayIcon` fallback; отсюда `Qt6::DBus` в стеке)
 - **Template Method**: GrpcClient → наследники
 - **Observer**: Qt Signals/Slots
 - **Optimistic UI**: `Message::createPending()` с отрицательным ID, `markAsSent/markAsFailed`

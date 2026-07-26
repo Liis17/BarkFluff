@@ -36,7 +36,11 @@ public class Program
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<IdentityContext>(c
-            => c.UseNpgsql(builder.Configuration["IdentityDb"]));
+            => c.UseNpgsql(builder.Configuration["IdentityDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddSettings<JwtSettings>(builder.Configuration, "JwtSettings");
 
@@ -80,8 +84,10 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-identity", e =>
+                cfg.ReceiveEndpoint($"session-revoked-identity-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });

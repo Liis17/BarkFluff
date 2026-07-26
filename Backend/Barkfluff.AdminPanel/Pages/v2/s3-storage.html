@@ -57,6 +57,10 @@
 
         .bucket-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--md-outline-variant); }
         .bucket-foot .meta { font-size: 11px; color: var(--md-on-surface-variant); display: inline-flex; align-items: center; gap: 4px; }
+
+        @media (max-width: 600px) {
+            .buckets-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>

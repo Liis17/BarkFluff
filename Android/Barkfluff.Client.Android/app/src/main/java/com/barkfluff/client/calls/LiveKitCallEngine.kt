@@ -85,6 +85,8 @@ class LiveKitCallEngine(
                         listener.onDisconnected()
                     }
                     is RoomEvent.FailedToConnect -> {
+                        isConnected = false
+                        _participants.value = emptyList()
                         android.util.Log.e("LiveKitCallEngine", "FailedToConnect", event.error)
                         listener.onError("Не удалось подключиться к звонку")
                     }
@@ -113,6 +115,14 @@ class LiveKitCallEngine(
         }
         rebuildParticipants()
         listener.onConnected(cameraOnStart)
+    }.onFailure {
+        isConnected = false
+        _participants.value = emptyList()
+        eventsJob?.cancel()
+        eventsJob = null
+        runCatching { room?.disconnect() }
+        runCatching { room?.release() }
+        room = null
     }
 
     /** Инициализирует renderer общим EGL-контекстом Room (обязательно перед привязкой трека). */

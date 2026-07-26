@@ -13,8 +13,7 @@
 | `Barkfluff.AdminPanel.csproj` | Манифест проекта. `net10.0`, зависимости: LiteDB, Telegram.Bot, AWSSDK.S3, gRPC-клиенты. |
 | `appsettings.json` | Конфигурация по умолчанию: Telegram, Auth, LiteDb, Seq, адреса сервисов. |
 | `appsettings.Development.json` | Переопределения для локальной разработки. |
-| `Dockerfile` | Продакшн-образ: сборка → runtime на `mcr.microsoft.com/dotnet/aspnet`, монтирует `docker.sock`. |
-| `Dockerfile.slim` | Облегчённый вариант образа без лишних слоёв. |
+| `Dockerfile.slim` | Продакшн-образ, используемый CI; устанавливает Docker CLI и монтирует `docker.sock`. |
 | `dotnet-tools.json` | Манифест локальных .NET-инструментов проекта. |
 | `SECURITY_AUDIT.md` | Полный аудит безопасности: критические уязвимости, рекомендации. |
 
@@ -45,10 +44,12 @@
 | `LogsExportEndpoints.cs` | `/api/seq/export` | Запуск, статус и скачивание ZIP-архива экспорта логов. |
 | `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
 | `NotificationsEndpoints.cs` | `/api/notifications` | Публикация push-рассылок (всем устройствам / по списку deviceId) через MassTransit. |
-| `RemoteDockerEndpoints.cs` | `/api/remote-docker` | Управление контейнерами на удалённых хостах по SSH. |
+| `RemoteDockerEndpoints.cs` | `/api/remote` | Управление контейнерами на удалённом хосте (второй сервер платформы), аналог `/api/docker` по сети. |
 | `ConfigurationEndpoints.cs` | `/api/configuration` | Чтение и обновление S3-конфигурации бакетов через gRPC Configuration. |
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
+| `MailEndpoints.cs` | `/api/mail` | Просмотр/отправка писем служебных почтовых ящиков (IMAP/SMTP через MailKit): аккаунты, список писем, письмо, вложения, inline-картинки, пометка прочитанным, отправка. |
+| `BotsEndpoints.cs` | `/api/bots` | Управление ботами через gRPC [[Backend/Bots]]: список, создание системного бота, перегенерация токена, удаление. |
 
 ---
 
@@ -56,7 +57,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `TokenAuthMiddleware.cs` | Проверяет cookie `auth_token` на каждый запрос. Публичные пути: `/login`, `/restarting`, `/updating`, `/favicon.ico`, `/api/auth/request`, `/api/auth/status`. Для `/api/*` → 401, для HTML → redirect `/login`. Обновляет `LastActivity`, удаляет истекшие токены. |
+| `TokenAuthMiddleware.cs` | Проверяет cookie `auth_token` на каждый запрос. Публичные `/api/*`: `/api/auth/request`, `/api/auth/status`; для HTML без токена пропускаются `/`, `/Login.html`, `/assets/*`. Для `/api/*` → 401, для HTML без токена → redirect на `/` (корень отдаёт `Login.html`; отдельного `/login` нет). Обновляет `LastActivity`, удаляет истекшие токены. |
 
 ---
 
@@ -71,6 +72,8 @@
 | `LogsExportJob.cs` | DTO для job'а экспорта логов: `LogsExportScope`, `LogsExportState`, путь к ZIP. |
 | `LogsCompressionSettings.cs` | POCO-конфиг ежедневного сжатия логов-метрик: `Enabled`, `ScheduleUtcHour/Minute`, `MaxEventsPerRun`, `DryRun`, шаблоны Seq. |
 | `MetricsCompressionRun.cs` | Запись о завершённом прогоне сжатия (хранится в `MetricsCacheDbContext.CompressionRuns`): `DayUtc`, `CompletedAtUtc`, `ServiceCount`, `SourceEventCount`, `DeletedCount`, `DryRun`. |
+| `MailSettings.cs` | POCO-конфиг служебной почты: `ImapHost/Port/Security`, `SmtpHost/Port/Security`, `AcceptInvalidCertificates`, `Accounts[]` (address/password/displayName). |
+| `Dtos/MailAccountDto.cs`, `MailMessageDto.cs`, `MailMessageDetailDto.cs`, `MailAttachmentDto.cs`, `SendMailRequest.cs` | DTO почтового модуля: список ящиков, письмо в списке, письмо целиком, вложение, тело запроса на отправку. |
 | `Dtos/AuthRequestDto.cs` | Входное тело `POST /api/auth/request`: nickname, tokenName, userAgent, browser, os, ipAddress. |
 | `Dtos/AuthStatusResponse.cs` | Ответ polling `/api/auth/status/{id}`: статус, причина ошибки. |
 | `Dtos/ContainerDtos.cs` | Docker DTO: `ContainerStatusDto`, `ContainerActionRequestDto`, `ContainerActionResponseDto`, `ImageInfoDto`. |
@@ -92,6 +95,8 @@
 | `MetricsLogCompressorService.cs` | `IHostedService` + Singleton. Ежедневно в 03:00 UTC агрегирует логи-метрики (`@MessageTemplate = 'ServiceMetrics {@Metrics}'`) за вчерашний день: один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count по каждой метрике), затем удаление исходных через точный фильтр шаблона. Идемпотентность через `MetricsCacheDbContext.CompressionRuns`. |
 | `S3BrowserService.cs` | AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из gRPC Configuration. Методы: листинг бакетов/объектов, presigned URL (5 мин). |
 | `MetricsCollectorService.cs` | `IHostedService`. Запускается при старте + каждый час. Собирает события Seq за 24ч, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет устаревшие данные (Stats >24ч, ServiceMetrics >12ч). |
+| `MailService.cs` | `IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных ящиков: по одному `ImapClient`+`SemaphoreSlim` на аккаунт. Список писем, письмо, вложения (включая inline по Content-ID), пометка прочитанным, отправка через SMTP. |
+| `RemoteDockerService.cs` | Управление Docker на удалённом сервере (host/port/credentials из `RemoteServersSettings`): статус контейнеров, start/stop/restart/pull, inspect labels. |
 
 ---
 
@@ -101,7 +106,7 @@
 
 | Файл | Страница | Назначение |
 |------|---------|-----------|
-| `Login.html` | `/login` | Форма входа: поле nickname → polling статуса Telegram-подтверждения |
+| `Login.html` | `/` (без токена) | Форма входа: поле nickname → polling статуса Telegram-подтверждения |
 | `dashboard.html` | `/` | Главная: KPI, трафик, метрики сервисов из Seq-кеша |
 | `services.html` | `/services` | Управление Docker-контейнерами: статус, start/stop/restart/update |
 | `logs.html` | `/logs` | Просмотр логов Seq с фильтрацией по сервису, уровню, тексту |
@@ -110,6 +115,8 @@
 | `users.html` | `/users` | Поиск пользователей, профиль, бейджи, лимиты, 2FA, сессии |
 | `s3-storage.html` | `/s3-storage` | Просмотр и редактирование S3/Minio конфигурации бакетов |
 | `s3-browser.html` | `/s3-browser` | Файловый браузер S3: листинг объектов, presigned URL |
+| `notifications.html` | `/notifications` | Публикация push-рассылок всем устройствам или по списку deviceId |
+| `mail.html` | `/mail` | Просмотр/отправка писем служебных почтовых ящиков (IMAP/SMTP) |
 | `restarting.html` | `/restarting` | Заглушка «сервер перезагружается» |
 | `updating.html` | `/updating` | Заглушка «сервер обновляется» |
 | `favicon.ico` | — | Иконка сайта |

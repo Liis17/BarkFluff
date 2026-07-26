@@ -67,6 +67,27 @@ public class DismissPushConsumerTests
     }
 
     [Fact]
+    public async Task Consume_DuplicateTokens_SendsEachTokenOnce()
+    {
+        var consumer = CreateConsumer();
+        var chatId = Guid.NewGuid();
+        var context = CreateContext(new DismissPushEvent { ChatId = chatId, UserId = 42 });
+
+        SetupGetDevicesWithTokens(
+            new DeviceFirebaseToken { UserId = 42, DeviceId = "device-1", FirebaseToken = "same-token" },
+            new DeviceFirebaseToken { UserId = 42, DeviceId = "device-2", FirebaseToken = "same-token" });
+
+        await consumer.Consume(context.Object);
+
+        _firebaseService.Verify(
+            f => f.SendDismissBatchAsync(
+                It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "same-token" })),
+                chatId.ToString(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task Consume_NoDevices_DoesNotCallFirebase()
     {
         var consumer = CreateConsumer();

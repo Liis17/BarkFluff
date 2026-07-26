@@ -1,5 +1,7 @@
 package com.barkfluff.client
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -9,19 +11,26 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.barkfluff.client.adapter.AttachmentPreviewAdapter
 import com.barkfluff.client.adapter.GroupMemberAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityGroupInfoBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,7 +41,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * Экран управления групповым чатом: аватар, название, участники.
+ * Экран управления групповым чатом: аватар, название, участники, вложения.
  */
 class GroupInfoActivity : AppCompatActivity() {
 
@@ -41,10 +50,13 @@ class GroupInfoActivity : AppCompatActivity() {
     private lateinit var chatRepository: ChatRepository
     private lateinit var globalParam: GlobalParam
     private lateinit var memberAdapter: GroupMemberAdapter
+    private var attachmentAdapter: AttachmentPreviewAdapter? = null
 
     private var chatId: String = ""
     private var chatTitle: String = ""
     private var chatAvatarFileId: String? = null
+
+    private enum class Tab { MEMBERS, MEDIA, FILES }
 
     companion object {
         private const val TAG = "GroupInfoActivity"
@@ -111,14 +123,178 @@ class GroupInfoActivity : AppCompatActivity() {
             addMemberLauncher.launch(AddGroupMemberActivity.createIntent(this, chatId))
         }
 
+        setupInfoCard()
+
         setupMembersList()
+        setupAttachmentsRecycler()
+        setupTabs()
         renderHeader()
         loadMembers()
     }
 
+    private fun setupInfoCard() {
+        val showIds = globalParam.showIdsInProfile
+        val chatIdCard = binding.rowChatId.parent as View
+        chatIdCard.visibility = if (showIds) View.VISIBLE else View.GONE
+        if (showIds) {
+            binding.groupChatIdValue.text = chatId
+            binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
+        }
+    }
+
+    // ── Табы ──────────────────────────────────────────────────────────────────
+
+    private fun setupTabs() {
+        binding.tabMembers.setOnClickListener { selectTab(Tab.MEMBERS) }
+        binding.tabMedia.setOnClickListener { selectTab(Tab.MEDIA) }
+        binding.tabFiles.setOnClickListener { selectTab(Tab.FILES) }
+        selectTab(Tab.MEMBERS)
+    }
+
+    private fun selectTab(tab: Tab) {
+        styleTab(binding.tabMembers, tab == Tab.MEMBERS)
+        styleTab(binding.tabMedia, tab == Tab.MEDIA)
+        styleTab(binding.tabFiles, tab == Tab.FILES)
+
+        val membersMode = tab == Tab.MEMBERS
+        binding.membersRecyclerView.visibility = if (membersMode) View.VISIBLE else View.GONE
+        binding.addMemberButton.visibility = if (membersMode) View.VISIBLE else View.GONE
+        binding.attachmentsContainer.visibility = if (membersMode) View.GONE else View.VISIBLE
+
+        when (tab) {
+            Tab.MEMBERS -> Unit
+            Tab.MEDIA -> {
+                binding.attachmentsRecyclerView.layoutManager = GridLayoutManager(this, 3)
+                loadMedia()
+            }
+            Tab.FILES -> {
+                binding.attachmentsRecyclerView.layoutManager = LinearLayoutManager(this)
+                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT)
+            }
+        }
+    }
+
+    private fun styleTab(view: TextView, selected: Boolean) {
+        if (selected) {
+            view.setBackgroundResource(R.drawable.bg_pill_selected)
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnPrimary)
+            )
+        } else {
+            view.background = null
+            view.setTextColor(
+                MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            )
+        }
+    }
+
+    // ── Вложения ──────────────────────────────────────────────────────────────
+
+    private fun setupAttachmentsRecycler() {
+        attachmentAdapter = AttachmentPreviewAdapter(
+            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            onAttachmentClick = { info -> openAttachment(info) },
+            downloadToCache = { fileId -> FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId) },
+            scope = lifecycleScope
+        )
+        binding.attachmentsRecyclerView.adapter = attachmentAdapter
+    }
+
+    private fun openAttachment(info: barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo) {
+        val att = info.attachment
+        when (att.type) {
+            barkfluff.shared.Shared.MessageAttachmentType.IMAGE,
+            barkfluff.shared.Shared.MessageAttachmentType.GIF -> {
+                val adapter = attachmentAdapter ?: return
+                val allFileIds = adapter.currentList.map { it.attachment.fileId }
+                val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
+                val position = adapter.currentList.indexOf(info).coerceAtLeast(0)
+                startActivity(ImageViewerActivity.createIntent(this, allFileIds, allPreviewUrls, position))
+            }
+            barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> {
+                val cachedPath = FileCache.getFile(att.fileId)?.absolutePath
+                startActivity(
+                    MediaViewerActivity.createIntent(this, att.fileId, att.fileName.ifBlank { "Видео" }, cachedPath)
+                )
+            }
+            else -> {
+                lifecycleScope.launch {
+                    try {
+                        val file = withContext(Dispatchers.IO) {
+                            FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                        }
+                        if (file != null) {
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                this@GroupInfoActivity, "${packageName}.fileprovider", file
+                            )
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "*/*")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(Intent.createChooser(intent, "Открыть с помощью"))
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error opening file", e)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showLoading() {
+        binding.attachmentsLoading.visibility = View.VISIBLE
+        binding.attachmentsRecyclerView.visibility = View.GONE
+        binding.attachmentsEmpty.visibility = View.GONE
+    }
+
+    private fun showEmpty() {
+        binding.attachmentsLoading.visibility = View.GONE
+        binding.attachmentsRecyclerView.visibility = View.GONE
+        binding.attachmentsEmpty.visibility = View.VISIBLE
+        binding.attachmentsEmpty.text = getString(R.string.media_no_attachments)
+    }
+
+    private fun showList(items: List<barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo>) {
+        attachmentAdapter?.submitList(items)
+        binding.attachmentsLoading.visibility = View.GONE
+        binding.attachmentsEmpty.visibility = View.GONE
+        binding.attachmentsRecyclerView.visibility = View.VISIBLE
+    }
+
+    private fun loadMedia() {
+        showLoading()
+        lifecycleScope.launch {
+            try {
+                val images = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
+                val videos = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
+                val merged = (images + videos).sortedByDescending { it.sentAt.seconds }
+                if (merged.isEmpty()) showEmpty() else showList(merged)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading media", e)
+                showEmpty()
+            }
+        }
+    }
+
+    private fun loadAttachments(type: barkfluff.shared.Shared.MessageAttachmentType) {
+        showLoading()
+        lifecycleScope.launch {
+            try {
+                val attachments = chatRepository.getChatAttachments(chatId, type).getOrNull()
+                if (attachments.isNullOrEmpty()) showEmpty() else showList(attachments)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading attachments", e)
+                showEmpty()
+            }
+        }
+    }
+
+    // ── Участники ─────────────────────────────────────────────────────────────
+
     private fun setupMembersList() {
         memberAdapter = GroupMemberAdapter(
             getFileUrl = { fileId -> grpcManager.getFileDownloadUrl(fileId).getOrNull() },
+            onMemberClick = { member -> openMemberProfile(member) },
             onRemove = { member -> confirmRemove(member) }
         )
         binding.membersRecyclerView.apply {
@@ -149,25 +325,87 @@ class GroupInfoActivity : AppCompatActivity() {
             val members = result.getOrNull() ?: emptyList()
             val currentUserId = globalParam.userId
 
-            // Резолвим аватары участников параллельно через getUserData.
+            // Онлайн-статусы участников (batch).
+            val statuses = loadOnlineStatuses(members.map { it.userId })
+
             val items = members.map { member ->
                 async(Dispatchers.IO) {
                     val name = "${member.firstName} ${member.lastName}".trim()
                         .ifBlank { "ID ${member.userId}" }
-                    val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { u ->
-                        u.profilePicturePreviewFileId.ifBlank { u.profilePictureFileId }
-                    }?.ifBlank { null }
+                    val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                        avatarSourceFor(user)
+                    }
+                    val status = statuses[member.userId]
                     GroupMemberAdapter.MemberItem(
                         userId = member.userId,
                         name = name,
                         avatarFileId = avatarFileId,
-                        canRemove = member.userId != currentUserId
+                        canRemove = member.userId != currentUserId,
+                        online = status?.first == true,
+                        subtitle = memberSubtitle(status)
                     )
                 }
             }.awaitAll()
 
             memberAdapter.submitList(items)
+
+            val onlineCount = items.count { it.online }
+            binding.groupSubtitle.text = getString(R.string.group_online_count, items.size, onlineCount)
         }
+    }
+
+    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+        return user.profilePicturePreviewUrl
+            .ifBlank { user.profilePictureUrl }
+            .ifBlank { user.profilePicturePreviewFileId }
+            .ifBlank { user.profilePictureFileId }
+            .ifBlank { null }
+    }
+
+    private fun openMemberProfile(member: GroupMemberAdapter.MemberItem) {
+        lifecycleScope.launch {
+            val personalChatId = if (member.userId != globalParam.userId) {
+                grpcManager.getPersonChatId(member.userId).getOrNull()
+            } else {
+                null
+            }
+
+            startActivity(
+                UserProfileActivity.createIntent(
+                    this@GroupInfoActivity,
+                    chatId = personalChatId ?: chatId,
+                    otherUserId = member.userId,
+                    isGroupChat = false,
+                    chatTitle = member.name,
+                    chatAvatarFileId = member.avatarFileId
+                )
+            )
+        }
+    }
+
+    /** Возвращает карту userId -> (isOnline, lastSeenMs). */
+    private suspend fun loadOnlineStatuses(userIds: List<Long>): Map<Long, Pair<Boolean, Long>> {
+        if (userIds.isEmpty()) return emptyMap()
+        return try {
+            val onlinerClient = grpcManager.onlinerClient ?: return emptyMap()
+            val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
+                .addAllUserIds(userIds)
+                .build()
+            val response = onlinerClient.getOnlineStatus(request)
+            response.usersStatusesList.associate { st ->
+                val online = st.status.getNumber() ==
+                        barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
+                st.userId to (online to st.lastSeen.seconds * 1000)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading online statuses", e)
+            emptyMap()
+        }
+    }
+
+    private fun memberSubtitle(status: Pair<Boolean, Long>?): String {
+        if (status == null) return ""
+        return if (status.first) "в сети" else OnlineTimeFormatter.formatLastSeen(this, status.second)
     }
 
     private fun confirmRemove(member: GroupMemberAdapter.MemberItem) {
@@ -266,5 +504,16 @@ class GroupInfoActivity : AppCompatActivity() {
                 Toast.makeText(this@GroupInfoActivity, "Ошибка обновления аватара", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun copyToClipboard(label: String, text: String) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText(label, text))
+        Toast.makeText(this, getString(R.string.profile_copied), Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        chatRepository.close()
     }
 }

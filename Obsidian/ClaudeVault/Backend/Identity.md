@@ -77,6 +77,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `SetPassword` | `SetPasswordRequest → SetPasswordResponse` | `TokenType.User` | Установить/изменить пароль |
 | `Logout` | `LogoutRequest → LogoutResponse` | `TokenType.User` | Разлогиниться с текущего устройства |
 
+> ⚠️ `identity_api.proto` также определяет `rpc FastAuth(FastAuthRequest) returns(AuthResponse)` в `IdentityApi`, но `IdentityApiService.cs` его не переопределяет — вызов вернёт `Unimplemented`. Похоже на легаси от более раннего дизайна быстрой авторизации, до выделения отдельного сервиса [[Backend/FastAuth]] (который использует `CreateSessionForUserServer`, а не этот RPC).
+
 ### IdentityServerApiService (service-to-service, только `TokenType.Service`)
 
 | Метод | Параметры | Описание |
@@ -87,6 +89,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `RemoveActiveSessionServer` | `UserId`, `DeviceId` | Удалить сессию по userId + deviceId |
 | `CreateSessionForUserServer` | `UserId`, `DeviceId`, `DeviceName`, `OperationSystem`, `AppName`, `IpAddress` | Выпустить пару `access_token`+`refresh_token` для пользователя из другого сервиса (например [[Backend/FastAuth]] после Accept). Регистрирует устройство в Users + отправляет email-уведомление `SuccessfulLogin`. |
 | `ForceSetPasswordServer` | `UserId`, `NewPassword` | Принудительная смена пароля администратором (без OldPassword). Хеширует BCrypt, обновляет `UserPassword`, отправляет уведомление `PasswordChangedByAdmin`. Вызывается из AdminPanel. |
+| `CreateBotTokenServer` | `BotUserId` | Выпустить долгоживущий bot-JWT (`TokenType.Bot`, exp 9999, claims `x-user-id`, `x-token-type=Bot`, `x-bot-token-id`). `token_id` генерирует Identity, возвращает `{token, token_id}`. Вызывается сервисом [[Backend/Bots]]; отзыв — сверка `token_id` на стороне Bots. |
 
 ## Обязательные заголовки (XAuth) для большинства эндпоинтов
 
@@ -119,6 +122,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 1. Поиск `RefreshToken` по значению
 2. Проверка срока действия и наличия `DeviceId`
 3. Генерация нового JWT access token через `JwtService.GenerateUserToken`
+4. Обновление имени устройства + версии приложения в Users через `UpdateDeviceAppInfo` (только если изменились). Поля `DeviceName/AppName/AppVersion` берутся из `RequestContext` и кладутся в `CreateTokenCommand` **только** в `IdentityApiService.CreateToken` — внутренние вызывающие (`Auth`, `ConfirmResetPassword`, `CreateSessionForUserServer`) их не передают, чтобы серверный сценарий не перезаписал устройство целевого юзера метаданными вызывающего. `AuthorizedAt` при refresh не трогается.
 
 ### Сброс пароля (2 шага)
 1. `ResetPassword` → поиск пользователя, создание `ResetPassword`-записи:
@@ -170,7 +174,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 ## Внешние зависимости
 
-- **Users service** — gRPC `UsersServerApi` (service token): `FindByLogin`, `AddDraftUser`, `OverrideDraftUser`, `ConfirmUser`, `GetById`, `GetUserContacts`, `RegisterDevice`, `GetUserDevices`
+- **Users service** — gRPC `UsersServerApi` (service token): `FindByLogin`, `AddDraftUser`, `OverrideDraftUser`, `ConfirmUser`, `GetById`, `GetUserContacts`, `RegisterDevice`, `UpdateDeviceAppInfo`, `GetUserDevices`
 - **Notification service** — RabbitMQ `EmailNotification` (через MassTransit)
 - **ip-api.com** — HTTP геолокация по IP (`LocationClient`), вызывается при каждом входе/регистрации
 
@@ -198,12 +202,16 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - **Сброс пароля**: `password_reset_requests`, `password_reset_user_not_found`, `password_reset_initiated_email`/`_authenticator`, `password_resets_confirmed`, `password_reset_confirmation_failed[_not_found|_already_used|_expired]`
 - **Изменение пароля**: `password_changes`, `password_changes_initial`, `password_change_failed_invalid_old`
 - **Сессии/logout**: `session_removal_attempts`, `sessions_removed`, `session_removal_failed_not_found`, `logouts`, `sessions_created`, `sessions_revoked`, `session_revocations_received`
-- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`, `server_force_password_changes` (ForceSetPasswordServer)
+- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`, `server_force_password_changes` (ForceSetPasswordServer), `server_bot_token_creations` (CreateBotTokenServer)
 - **RabbitMQ**: `rabbitmq_events_consumed` (инкрементируется `SessionRevokedConsumer`)
 - **LocationClient**: `geolocation_requests`, `geolocation_success`, `geolocation_errors`
 - **Gauge**: `service_started_unix` (для uptime)
 
-Полный реестр и где они инкрементируются — см. файл памяти `project_identity_metrics.md`.
+📄 Полный реестр и где они инкрементируются → [[Backend/Identity-Metrics]]
+
+## Боты и email
+
+Боты используют только токены [[Backend/Bots|Bot API]] и не получают пользовательские Identity-сессии, пароли или сброс пароля. `NotificationQueueSender` не публикует `EmailNotification` без адреса получателя; так бот без `UserContact` не попадает ни в SMTP, ни в consumer login-notifier.
 
 ## Связанные файлы
 

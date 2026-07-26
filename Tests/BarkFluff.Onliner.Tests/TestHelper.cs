@@ -4,22 +4,30 @@ using BarkFluff.Onliner.Domain.Entities;
 using BarkFluff.Onliner.Domain.Enums;
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Onliner.Services;
+using BarkFluff.Onliner.Tests.Fakes;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using Grpc.Core;
+using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace BarkFluff.Onliner.Tests;
 
 public class TestHelper
 {
     public OnlineStatusContext DbContext { get; }
-    public OnlineStatusStorage Storage { get; }
+    public InMemoryPresenceStore Presence { get; }
+    public InMemoryRemotePresenceStore RemotePresence { get; }
     public OnlineStatusSubscriptionsManager SubscriptionsManager { get; }
+    public TypingSubscriptionsManager TypingSubscriptionsManager { get; }
     public OnlineStatusNotifier Notifier { get; }
+    public TypingNotifier TypingNotifier { get; }
     public Mock<UsersServerApi.UsersServerApiClient> UsersClientMock { get; }
+    public Mock<IPublishEndpoint> PublishEndpointMock { get; }
     public MetricsCollector Metrics { get; }
 
     public TestHelper()
@@ -29,10 +37,18 @@ public class TestHelper
             .Options;
 
         DbContext = new OnlineStatusContext(options);
-        Storage = new OnlineStatusStorage();
+        Presence = new InMemoryPresenceStore();
+        RemotePresence = new InMemoryRemotePresenceStore();
         SubscriptionsManager = new OnlineStatusSubscriptionsManager();
+        TypingSubscriptionsManager = new TypingSubscriptionsManager();
         Metrics = new MetricsCollector();
         UsersClientMock = new Mock<UsersServerApi.UsersServerApiClient>();
+        PublishEndpointMock = new Mock<IPublishEndpoint>();
+
+        TypingNotifier = new TypingNotifier(
+            TypingSubscriptionsManager,
+            Metrics,
+            CreateLogger<TypingNotifier>());
 
         var subscriptionsManager = SubscriptionsManager;
         Notifier = new OnlineStatusNotifier(
@@ -107,6 +123,29 @@ public class TestHelper
         return new Mock<IServerStreamWriter<Proto.Onliner.UserOnlineStatus>>();
     }
 
+    /// <summary>Стрим typing-подписчика: собирает полученные события в список для проверок.</summary>
+    public static (Mock<IServerStreamWriter<TypingEvent>> Mock, List<TypingEvent> Received) CreateTypingStream()
+    {
+        var received = new List<TypingEvent>();
+        var mock = new Mock<IServerStreamWriter<TypingEvent>>();
+        mock.Setup(s => s.WriteAsync(It.IsAny<TypingEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<TypingEvent, CancellationToken>((e, _) => received.Add(e))
+            .Returns(Task.CompletedTask);
+        return (mock, received);
+    }
+
+    /// <summary>Стрим presence-подписчика: собирает полученные статусы в список для проверок.</summary>
+    public static (Mock<IServerStreamWriter<Proto.Onliner.UserOnlineStatus>> Mock,
+        List<Proto.Onliner.UserOnlineStatus> Received) CreateCollectingStatusStream()
+    {
+        var received = new List<Proto.Onliner.UserOnlineStatus>();
+        var mock = new Mock<IServerStreamWriter<Proto.Onliner.UserOnlineStatus>>();
+        mock.Setup(s => s.WriteAsync(It.IsAny<Proto.Onliner.UserOnlineStatus>(), It.IsAny<CancellationToken>()))
+            .Callback<Proto.Onliner.UserOnlineStatus, CancellationToken>((e, _) => received.Add(e))
+            .Returns(Task.CompletedTask);
+        return (mock, received);
+    }
+
     public async Task SeedDbStatus(long userId, Domain.Enums.StatusTypeId status, DateTime lastSeen)
     {
         var entity = new Domain.Entities.UserOnlineStatus
@@ -117,5 +156,17 @@ public class TestHelper
         };
         DbContext.UsersOnlineStatuses.Add(entity);
         await DbContext.SaveChangesAsync();
+    }
+
+    /// <summary>RedisSingleRunner с mock-мультиплексором: методы захвата лока не вызываются в тестах
+    /// (проверяем приватный проход напрямую), нужен лишь для конструктора фоновых сервисов.</summary>
+    public static RedisSingleRunner CreateSingleRunner() => new(Mock.Of<IConnectionMultiplexer>());
+
+    /// <summary>Scope-factory над тем же in-memory DbContext (фоновые сервисы резолвят контекст в scope).</summary>
+    public IServiceScopeFactory CreateScopeFactory()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(DbContext);
+        return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
     }
 }

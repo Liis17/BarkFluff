@@ -3,14 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/profile_settings_background">
 
     <!-- AppBar с Material 3 дизайном -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="@color/profile_settings_background"
         app:liftOnScroll="true"
         app:liftOnScrollTargetViewId="@id/chatRecyclerView"
         app:layout_constraintTop_toTopOf="parent">
@@ -65,6 +66,18 @@
                 android:maxLines="1"
                 tools:text="Иван Иванов" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolbarRetryButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="52dp"
+                android:contentDescription="@string/chats_sync_retry"
+                android:visibility="gone"
+                app:icon="@drawable/ic_refresh"
+                app:iconTint="?attr/colorPrimary" />
+
             <!-- Кнопка поиска (M3 IconButton) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/searchButton"
@@ -75,19 +88,6 @@
                 android:layout_marginEnd="4dp"
                 android:contentDescription="@string/cd_search"
                 app:icon="@drawable/ic_search"
-                app:iconTint="?attr/colorOnSurfaceVariant" />
-
-            <!-- Кнопка создания E2E чата (M3 IconButton) -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/encryptedChatButton"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="52dp"
-                android:contentDescription="@string/cd_create_hidden_chat"
-                android:visibility="gone"
-                app:icon="@drawable/ic_hood"
                 app:iconTint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.appbar.MaterialToolbar>
@@ -145,7 +145,7 @@
                 android:layout_height="64dp"
                 android:layout_gravity="center"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_chat_bubble"
+                android:src="@drawable/ic_chat_bubble_md3"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.card.MaterialCardView>

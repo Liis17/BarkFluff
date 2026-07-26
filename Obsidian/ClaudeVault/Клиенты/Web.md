@@ -2,7 +2,7 @@
 
 Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** (без фреймворка и бандлера приложения), раздаётся хостом [[Backend/BarkFluff.Web]].
 
-Расположение: `Backend/BarkFluff.Web/wwwroot/` (разметка `messenger.html`, модули `js/app/*.js`).
+Расположение: `Backend/BarkFluff.Web/wwwroot/` (`index.html` — авторизация и регистрация, `messenger.html` — мессенджер, модули `js/app/*.js`).
 
 > ⚠️ Раньше существовало React-переписывание (`Frontend/Web/`), но оно было **намеренно откатано** (коммиты «возвращаемся на старую вебверсию» / «Восстановить веб-версию мессенджера (vanilla, до React)»). Актуальный и развиваемый клиент — этот vanilla-вариант. React-доку считать неактуальной.
 
@@ -28,7 +28,7 @@ bash scripts/generate-proto.sh       # Linux/macOS (нужен protoc-gen-grpc-w
 pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 ```
 
-Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списках в `Dockerfile`/`Dockerfile.slim`.
+Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списке в `Dockerfile.slim`.
 
 ## Архитектура
 
@@ -45,7 +45,19 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
+- Видеосообщение без текстовой подписи выводится без полей облачка: время и статус накладываются на превью. При подписи между превью и текстом остаётся только нижний отступ.
 - ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `main.js` при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
+- `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
+
+### Markdown в облачках
+
+Текст сообщения клиент интерпретирует как markdown (бэкенд хранит сырой текст). Парсер — `BF.utils.renderMarkdown(text)` в `js/app/utils.js` (рядом с `escapeHtml`): возвращает безопасную HTML-строку. Применяется в `messages.js` для основного текста (`.msg-text.md`) и текста пересланного блока (`.fwd-text.md`) через `innerHTML`. Reply-цитата, системные плашки и превью списка чатов остаются plain (`textContent`).
+
+- **Набор:** `**жирный**`, `*` / `_курсив_`, `~~зачёркнутый~~`, `` `код` ``, ` ```блоки``` `, `[текст](url)`, списки (`- ` / `* ` / `1. `), цитаты (`> `), заголовки (`#`..`######`), автоссылки на голый `http(s)://…`.
+- **Безопасность (XSS):** текст экранируется ПЕРВЫМ (`escapeHtml`), затем добавляются только свои теги (сырых `<>&` не остаётся); содержимое кода не парсится; href — allowlist схем (`http`/`https`/`mailto`), `javascript:`/`data:` не становятся ссылками; у `<a>` — `target=_blank rel="noopener noreferrer"`. Разбор сегментный: защищённые куски (код/ссылки) не проходят emphasis.
+- CSS `.md` (`strong/em/del/code/pre/ul/ol/blockquote/h1..h6`) — во встроенном `<style>` `messenger.html` рядом с `.msg-text`; для `.md`-контента `white-space: normal` (разметку держат блоки + `<br>`), внутри `<pre>` — `pre-wrap`.
+- Композер/редактирование не меняются — в `messageInput` попадает сырой markdown (`setPendingEdit`).
+- Приватные E2E-чаты получают markdown автоматически (расшифрованные сообщения рендерятся тем же `buildMessageElement`).
 
 ### Звонки (см. [[Backend/Calls]])
 - `js/app/calls.js` (`BF.calls`) — сигнализация: device-scope стрим `SubscribeCallEvents` (паттерн `realtime.js`), call-control `InitiateCall/Accept/Reject/Join/End` + `SetCallAudioQuality`, машина состояний одного звонка, события `incoming/connect/peer_accepted/peer_rejected/ring_dismiss/ended/member/audio_quality_changed`. Запускается в `main.js` рядом с `BF.realtime.startAll()`.
@@ -53,12 +65,34 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - Кнопки звонка — в шапке чата (`#chatHeader`), обработчики в `main.js` (1-на-1 → `callee_user_id`, группа → `chat_id`).
 - LiveKit-бандл: `wwwroot/js/vendor/livekit-client.bundle.js` (esbuild IIFE, `window.LivekitClient`).
 
+### Приватные чаты (E2E через passphrase, см. [[Backend/Messages]])
+- Портирует Android `PrivateChatCrypto.kt`/`PrivateChatRepository.kt`: Argon2id (t=3, m=64MiB, p=4, salt 32 байта) → ключ 32 байта → AES-256-GCM (nonce 12 байт, tag 128 бит), AAD `barkfluff:private:{chatId}`, verifier `HMAC-SHA256(key, "BARKFLUFF_PRIVATE_CHAT_VERIFIER")`.
+- `js/app/privatechat.js` (`BF.privateChat`) — deriveKey (Argon2id через **hash-wasm**, `js/vendor/hash-wasm.umd.min.js`, глобал `hashwasm`), computeVerifier/validateVerifier + encryptText/decryptMessage (WebCrypto AES-GCM). Ключи (не passphrase): in-memory `Map` + localStorage `bf_private_chat_keys` (base64, если отмечен чекбокс «запомнить»).
+- `js/app/api.js` — `mapChat` расширен (`chatType/kdfSalt/passphraseVerifier/lastActivityAt/privateInviteState/privateInviterUserId`), `mapEncryptedMessage`, методы `acceptPrivateChat/rejectPrivateChat/listPrivateMessages/sendPrivateMessage/markPrivateMessagesAsRead`.
+- `js/app/realtime.js` — стрим `SubscribePrivateMessages` → событие `private_message` (тот же паттерн backoff/watchdog/age-timer/resync).
+- `js/app/main.js`, секция `PRIVATE CHATS`: `openPrivateChat` (обходит `getChatInfo`/`listMessages`, данные чата из ListChats); карточки состояний (`showPrivateCard`) — инвайт «Принять/Отклонить» (PENDING у приглашённого), «Ожидание собеседника» (PENDING у инициатора), «Чат заблокирован» (ACCEPTED без ключа); passphrase-модал `#privatePassOverlay` с проверкой verifier'а до `AcceptPrivateChat`; расшифрованные сообщения маппятся в обычный формат и рендерятся `BF.messages.buildMessageElement`.
+- Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
+
+### Создание чатов
+- `js/app/newchat.js` (`BF.newchat`) — FAB (карандаш) в сайдбаре над навигацией → меню из трёх пунктов → оверлей `#newChatOverlay` с поиском пользователей (`SearchUsers`, исключается сам пользователь):
+  - **Новое сообщение** — клик по пользователю → `GetPersonChatId` → `openChat` (создания RPC нет, ЛС материализуется лениво).
+  - **Новая группа** — название + мультивыбор участников (чипы) → `CreateGroupChat(user_ids, title)`.
+  - **Приватный чат** — один собеседник (боты исключаются) + пароль ≥6 символов + чекбокс «запомнить» → `generateSalt(32)` → Argon2id → verifier → `CreatePrivateChat`; ключ сохраняется только если `created=true` (у существующего чата свой salt/пароль — поведение Android `PrivateChatRepository.createPrivateChat`). Создатель видит «Ожидание собеседника» (PENDING).
+- `main.js` передаёт в `BF.newchat.init` колбэки `openChat`/`upsertChat` (вставка чата в список + открытие) и `getMyUserId`; на мобильном layout вызывается `window.__mobileShowChat`.
+
 ### Хост и маршрутизация
 - [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
 
 ### Темы
 - 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
 - Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и inline-SVG иконками действий.
+
+### Motion UI
+- `index.html` и `messenger.html` используют общий ease-out-токен `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` для коротких UI-переходов.
+- На странице авторизации fast-auth QR плавно заменяет спиннер только после загрузки изображения; QR настройки 2FA при регистрации получает отдельный state-reveal. Скрытые QR исключаются из accessibility tree через `aria-hidden`.
+- В мессенджере анимируются только редкие и пространственно значимые состояния: меню FAB создания чата, popover выбора устройств/качества звонка, file-drop feedback, вход/выход media lightbox и success-toast. Списки чатов/сообщений и клавиатурная навигация lightbox остаются мгновенными.
+- Lightbox инвалидирует `overlayFileToken` сразу при закрытии, но очищает media `src` после 120 мс exit-перехода; быстрое повторное открытие отменяет отложенную очистку.
+- `prefers-reduced-motion: reduce` убирает scale/translate из новых переходов и сохраняет только короткий opacity-feedback.
 
 ### Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер)
 
@@ -76,6 +110,8 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ## Функции
 Логин + 2FA, регистрация, fast-auth (QR), список чатов и сообщения (отправка/редактирование/удаление/закреп/прочитано, вложения, пересылка), папки, настройки (профиль/сессии/2FA/хранилище), персонализация, **звонки (аудио/видео, 1-на-1 и группы)**.
+
+Личные чаты с ботами определяются по `User.is_bot`: в списке и профиле показывается SVG-бейдж с подсказкой «Бот», а статус онлайна и действия аудио-/видеозвонка скрыты.
 
 ### Управление групповыми чатами (паритет с Android)
 Клик по шапке группового чата открывает инфо-панель `#groupOverlay` (`messenger.html`, переиспользует CSS `.profile-*`; логика в `main.js` — `openGroupInfo`). Возможности:

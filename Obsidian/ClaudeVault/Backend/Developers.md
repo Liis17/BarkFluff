@@ -79,7 +79,7 @@ dotnet build Barkfluff.Developers.csproj
 docker build -t barkfluff-developers .
 ```
 
-Dockerfile стандартный, как у [[Backend/Users]].
+CI собирает сервис из `Dockerfile.slim`, как и [[Backend/Users]].
 
 ## Связанные файлы
 

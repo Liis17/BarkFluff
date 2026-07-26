@@ -33,6 +33,8 @@
 | `grpc-files` | `/barkfluff.files.FilesApi/{**catchall}` | files |
 | `grpc-updates` | `/barkfluff.updates.UpdatesApi/{**catchall}` | updates |
 | `grpc-onliner` | `/barkfluff.onliner.OnlinerApi/{**catchall}` | onliner |
+| `grpc-fast-auth` | `/barkfluff.fast.auth.FastAuthApi/{**catchall}` | fast-auth |
+| `grpc-calls` | `/barkfluff.calls.CallsApi/{**catchall}` | calls |
 | `files-http-upload` | `POST /api/files/upload/{uploadId}` | files-http |
 
 **`BuildClusters()`** — YARP кластеры:
@@ -45,12 +47,12 @@
 | files | `FilesService:Host` | http://files:7005 | HTTP/2 | 100 с |
 | updates | `UpdatesService:Host` | http://updates:7015 | HTTP/2 | **24 ч** (streaming) |
 | onliner | `OnlinerService:Host` | http://onliner:7009 | HTTP/2 | **24 ч** (streaming) |
+| fast-auth | `FastAuthService:Host` | http://fast-auth:7008 | HTTP/2 | **24 ч** (streaming) |
+| calls | `CallsService:Host` | http://calls:7025 | HTTP/2 | **24 ч** (streaming) |
 | files-http | `FilesService:HttpHost` | http://files:7006 | HTTP/1.1 | 100 с |
 
 **`GrpcWebResponseStream`** (вложенный класс) — потоковый враппер `Stream`:
-- Кодирует данные в base64 на лету (режим `grpc-web-text`)
-- Буферизует неполные триплеты между вызовами `WriteAsync`
-- `FlushFinalAsync()` — записывает остаток с padding перед trailer-frame
+- Кодирует данные в base64 на лету (режим `grpc-web-text`) — каждый `WriteAsync` кодирует свой чанк независимо (без буферизации неполных триплетов между вызовами)
 - В режиме `grpc-web` (бинарный) данные проходят насквозь
 
 ---
@@ -81,9 +83,6 @@
 
 ### `wwwroot/messenger.html`
 Главный мессенджер. Подключает все JS-модули из `js/app/`.
-
-### `wwwroot/mobile.html`
-Мобильная версия страницы (отдельный HTML-шаблон для мобильных браузеров).
 
 ### `wwwroot/favicon.ico`
 Иконка приложения.
@@ -151,6 +150,12 @@ Server-streaming подписки:
 |--------|--------|-----|------------|
 | updatesStream | UpdatesApi | SubscribeNewMessages | Новые сообщения |
 | readStream | UpdatesApi | SubscribeMessagesRead | Статусы прочтения |
+| editedStream | UpdatesApi | SubscribeMessagesEdited | Редактирование сообщений |
+| deletedStream | UpdatesApi | SubscribeMessagesDeleted | Удаление сообщений |
+| pinnedStream | UpdatesApi | SubscribeMessagesPinned | Закреп сообщения |
+| unpinnedStream | UpdatesApi | SubscribeMessagesUnpinned | Открепление сообщения |
+| allUnpinnedStream | UpdatesApi | SubscribeAllMessagesUnpinned | Открепление всех |
+| privateStream | UpdatesApi | SubscribePrivateMessages | Новые приватные (E2E) сообщения |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
 
 Механизмы надёжности: exponential backoff (2с → 30с), page-visibility reconnection, keep-alive ping каждые 3 с, `stopAll()` при выходе.
@@ -189,8 +194,20 @@ Server-streaming подписки:
 
 Зависит от: `BF.api`, `BF.files`, `BF.tokens`, `BF.realtime`, `BF.device`, `BF.utils`.
 
+### `calls.js` / `calls-ui.js` → `BF.calls`
+Звонки через LiveKit (vendor `wwwroot/js/vendor/livekit-client.bundle.js`): установка соединения, UI звонка.
+
+### `newchat.js` → `BF.newchat`
+Создание новых чатов (поиск пользователя, старт диалога/группы).
+
+### `privatechat.js` → `BF.privateChat`
+Приватные E2E-чаты: инвайт/пароль/расшифровка. Argon2id (t=3, m=64MiB, p=4) через vendor `hash-wasm.umd.min.js`, ключи в localStorage.
+
+### `sound.js` → `BF.sound`
+Звуки уведомлений.
+
 ### `main.js`
-Bootstrap мессенджера: инициализирует все BF-модули, загружает список чатов, запускает real-time подписки.
+Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки.
 
 ---
 
@@ -220,8 +237,8 @@ Node.js зависимости для генерации proto-bundle (esbuild �
 
 ## Docker / nginx
 
-### `Dockerfile`
-Стандартная сборка образа сервиса (multi-stage: build → runtime).
+### `Dockerfile.slim`
+Сборка образа сервиса для CI и production.
 
 ### `Dockerfile.slim`
 Облегчённый образ (меньший base image / без dev-зависимостей).
@@ -238,8 +255,8 @@ nginx-конфиг для production: проксирование к сервис
 
 | Пакет | Назначение |
 |-------|-----------|
-| `Grpc.AspNetCore.Web` | Подключено, но gRPC-Web конвертация реализована вручную в middleware |
-| `Yarp.ReverseProxy` | Проксирование запросов к бэкенд-сервисам |
+| `Yarp.ReverseProxy` (2.3.0) | Проксирование запросов к бэкенд-сервисам |
+| `AWSSDK.Core` (4.0.7.4) | Транзитивная зависимость AWS SDK |
 | [[Backend/GrpcServer]] | `LoadConfiguration`, `AddBarkFluffSerilog`, `AddBarkFluffMetrics` |
 
 ---

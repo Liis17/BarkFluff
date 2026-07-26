@@ -225,6 +225,7 @@ public class DockerService
             { "fast-auth", "fast-auth" },
             { "updates", "updates" },
             { "onliner", "onliner" },
+            { "federation", "federation" },
             { "web", "web" },
             { "seq", "seq" },
             { "minio", "minio" },

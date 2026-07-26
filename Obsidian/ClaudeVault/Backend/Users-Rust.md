@@ -4,8 +4,12 @@
 Расположение: `Backend/BarkFluff.Users.Rust/`. Порт: **7001**. `ServiceId.Users = 2`.
 
 Цель эксперимента — оценить Rust на одном реальном сервисе с полным паритетом по проводу:
-тот же `users_api.proto` (оба сервиса, 62 RPC), JWT XAuth, коды ошибок `x-error-code`,
+тот же `users_api.proto` (оба сервиса, 68 RPC: 34 UsersApi + 34 UsersServerApi), JWT XAuth, коды ошибок `x-error-code`,
 схема PostgreSQL, события RabbitMQ (MassTransit), метрики `ServiceMetrics`.
+
+> ⚠️ **Порт не поддерживается активно.** Последний коммит в Rust-версию — 18 июня 2026 (`d051b962`); после этого в .NET-версию добавлены новые метрики (`prekey_bundle_registrations`, `prekey_bundle_fetches`, `peer_device_listings`, `one_time_prekey_replenishments`, `signed_prekey_rotations`, `device_lookups_by_device_id`, `device_lookups_all`, `profile_poster_lookups` — см. [[Backend/Users-Metrics]]), которых в `metrics.rs` нет. Не считать этот файл источником истины по паритету без сверки с актуальным [[Backend/Users]].
+>
+> ⚠️ **Схема Users получила колонку `Uuid`** (Фаза 0 федерации, миграция `AddUserUuid`) — порт не синхронизирован, `domain.rs`/`FromRow` про неё не знает. Прямые INSERT из Rust продолжат работать благодаря `defaultValueSql: "gen_random_uuid()"` на колонке, но Rust-код не сможет читать/писать `Uuid` осознанно, и `.proto` поле `User.uuid` (13) он не заполняет.
 
 ## Стек
 

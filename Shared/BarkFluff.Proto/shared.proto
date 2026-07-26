@@ -31,6 +31,12 @@ message Message {
   bool is_edited = 7; // Признак того что сообщение было отредактировано
 
   google.protobuf.Timestamp edited_at = 8; // Дата последней правки сообщения
+
+  string federated_id = 9; // Глобальный ID сообщения в федеративном чате (uuid; пусто для локальных)
+
+  string sender_uuid = 10; // UUID автора (пусто до включения федерации)
+
+  repeated string federated_read_by = 11; // UUID remote-участников, прочитавших сообщение (FederatedReadStates; рендер — Фаза 5)
 }
 
 message MessageContent {
@@ -125,6 +131,14 @@ enum ChatType {
   CHAT_TYPE_REGULAR = 0;
   CHAT_TYPE_PRIVATE = 1;
   CHAT_TYPE_SECRET = 2;
+}
+
+// Состояние приглашения в приватный чат. Нужно клиенту, чтобы не предлагать
+// отправку до принятия приглашения второй стороной.
+enum PrivateChatInviteState {
+  PRIVATE_CHAT_INVITE_STATE_PENDING = 0;
+  PRIVATE_CHAT_INVITE_STATE_ACCEPTED = 1;
+  PRIVATE_CHAT_INVITE_STATE_REJECTED = 2;
 }
 
 // Зашифрованное сообщение приватного чата.

@@ -43,6 +43,12 @@ message GetServerInfoResponse {
   string livekit_url = 13; // WSS-адрес LiveKit SFU для звонков (пусто, если звонки не настроены)
 
   Service calls = 14; // Микросервис calls (gRPC-сигнализация звонков)
+
+  Service bots = 15; // Микросервис bots (Bot API)
+
+  string server_name = 16; // DNS-домен этой ноды (пусто, если федерация не настроена)
+
+  bool federation_enabled = 17; // Включена ли федерация на ноде
 }
 
 message ServerColor {

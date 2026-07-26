@@ -61,7 +61,7 @@ public class Program
         builder.Services.AddSingleton<VideoThumbnailExtractor>();
         builder.Services.AddHostedService<TempFileCleanupService>();
 
-        // Путь к бинарям ffmpeg/ffprobe в образе (см. Dockerfile). По умолчанию — /usr/local/bin.
+        // Путь к бинарям ffmpeg/ffprobe в образе (см. Dockerfile.slim). По умолчанию — /usr/local/bin.
         FFMpegCore.GlobalFFOptions.Configure(o =>
             o.BinaryFolder = builder.Configuration["Ffmpeg:BinaryFolder"] ?? "/usr/local/bin");
 
@@ -69,7 +69,11 @@ public class Program
         builder.Services.AddFileTypeDetection();
 
         builder.Services.AddDbContext<FilesContext>(options =>
-            options.UseNpgsql(builder.Configuration["FilesDb"]));
+            options.UseNpgsql(builder.Configuration["FilesDb"], npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
 
         builder.Services.AddMassTransit(x =>
         {
@@ -83,8 +87,10 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
 
-                cfg.ReceiveEndpoint("session-revoked-files", e =>
+                cfg.ReceiveEndpoint($"session-revoked-files-{InstanceId.Current}", e =>
                 {
+                    e.AutoDelete = true;
+                    e.Durable = false;
                     e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });

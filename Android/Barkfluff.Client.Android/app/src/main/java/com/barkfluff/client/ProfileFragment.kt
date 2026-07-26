@@ -1,6 +1,7 @@
 package com.barkfluff.client
 
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -15,7 +16,9 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.LogoutHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class ProfileFragment : Fragment() {
 
@@ -24,6 +27,8 @@ class ProfileFragment : Fragment() {
 
     private lateinit var globalParam: GlobalParam
     private lateinit var grpcManager: GrpcManager
+    private var previousMainBackground: Drawable? = null
+    private var mainBackgroundCaptured = false
 
     companion object {
         private const val TAG = "ProfileFragment"
@@ -48,7 +53,18 @@ class ProfileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        applyProfileSystemBarBackground()
         refreshUserData()
+    }
+
+    override fun onPause() {
+        restoreMainBackground()
+        super.onPause()
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (hidden) restoreMainBackground() else applyProfileSystemBarBackground()
     }
 
     private fun setupClickListeners() {
@@ -109,7 +125,7 @@ class ProfileFragment : Fragment() {
         val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
         binding.textFullName.text = fullName.ifEmpty { getString(R.string.profile_user_placeholder) }
         binding.textUsername.text = if (globalParam.userName.isNotEmpty()) "@${globalParam.userName}" else ""
-        binding.textAppVersion.text = "BarkFluff ${GlobalParam.getAppVersion(requireContext())}"
+        binding.textLanguageValue.text = getLanguageDisplayName()
 
         loadAvatar()
     }
@@ -126,29 +142,70 @@ class ProfileFragment : Fragment() {
 
         // Основной аватар (tab Profile)
         if (urlToUse.isNotBlank()) {
+            binding.avatarPlaceholderIcon.visibility = View.GONE
             AvatarLoader.load(
                 imageView = binding.avatarImage,
                 placeholderView = binding.avatarPlaceholder,
                 avatarUrl = urlToUse,
                 displayName = displayName,
-                userId = globalParam.userId
+                userId = globalParam.userId,
+                circleCrop = false
             )
         } else if (fileId.isNotEmpty()) {
+            binding.avatarPlaceholderIcon.visibility = View.GONE
             AvatarLoader.loadByFileId(
                 binding.avatarImage,
                 binding.avatarPlaceholder,
                 fileId,
                 displayName,
                 globalParam.userId,
-                size = 192
+                size = 192,
+                circleCrop = false
             ) {
                 val result = grpcManager.getFileDownloadUrl(fileId)
                 if (result.isSuccess) result.getOrNull() else null
             }
         } else {
-            AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
+            binding.avatarPlaceholder.visibility = View.GONE
+            binding.avatarPlaceholderIcon.visibility = View.VISIBLE
             binding.avatarImage.visibility = View.GONE
         }
+    }
+
+    private fun getLanguageDisplayName(): String {
+        val locale = when (globalParam.appLanguage) {
+            GlobalParam.LANGUAGE_RU -> Locale("ru")
+            GlobalParam.LANGUAGE_EN -> Locale.ENGLISH
+            GlobalParam.LANGUAGE_DE -> Locale.GERMAN
+            GlobalParam.LANGUAGE_ES -> Locale("es")
+            GlobalParam.LANGUAGE_ZH -> Locale.SIMPLIFIED_CHINESE
+            else -> Locale.getDefault()
+        }
+        val displayName = locale.getDisplayLanguage(locale)
+        return displayName.replaceFirstChar { character ->
+            if (character.isLowerCase()) character.titlecase(locale) else character.toString()
+        }
+    }
+
+    private fun applyProfileSystemBarBackground() {
+        val mainRoot = activity?.findViewById<View>(R.id.mainRoot) ?: return
+        if (!mainBackgroundCaptured) {
+            previousMainBackground = mainRoot.background
+            mainBackgroundCaptured = true
+        }
+        mainRoot.setBackgroundColor(
+            MaterialColors.getColor(
+                mainRoot,
+                com.google.android.material.R.attr.colorSurfaceContainer
+            )
+        )
+    }
+
+    private fun restoreMainBackground() {
+        if (!mainBackgroundCaptured) return
+        activity?.findViewById<View>(R.id.mainRoot)?.background = previousMainBackground
+        previousMainBackground = null
+        mainBackgroundCaptured = false
     }
 
     private fun checkForUpdates() {
@@ -191,6 +248,7 @@ class ProfileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        restoreMainBackground()
         super.onDestroyView()
         _binding = null
     }

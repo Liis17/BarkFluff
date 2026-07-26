@@ -6,6 +6,8 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 
+using Grpc.Core;
+
 using MediatR;
 
 namespace BarkFluff.Identity.Features.ForceSetPasswordServer;
@@ -33,6 +35,28 @@ public class ForceSetPasswordServerCommandHandler : IRequestHandler<ForceSetPass
     {
         _logger.LogInformation("Принудительная смена пароля для пользователя {UserId} (admin)", request.UserId);
 
+        string? username = null;
+        try
+        {
+            var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId });
+            if (userInfo.User.IsBot)
+            {
+                _logger.LogWarning("Попытка установить пароль для бота {UserId}", request.UserId);
+                throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                    "Bot accounts cannot have user passwords"));
+            }
+
+            username = userInfo.User?.Username ?? string.Empty;
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось проверить тип аккаунта пользователя {UserId}", request.UserId);
+        }
+
         var passwordHash = PasswordHasher.HashPassword(request.NewPassword);
         await _passwordsStorage.UpdateUserPasswordHash(request.UserId, passwordHash);
 
@@ -40,7 +64,9 @@ public class ForceSetPasswordServerCommandHandler : IRequestHandler<ForceSetPass
 
         try
         {
-            var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId });
+            if (username is null)
+                return new ForceSetPasswordServerResponse();
+
             var userContacts = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = request.UserId });
 
             if (!string.IsNullOrEmpty(userContacts.Contact?.Email))
@@ -52,7 +78,7 @@ public class ForceSetPasswordServerCommandHandler : IRequestHandler<ForceSetPass
                     CreatedAt = DateTime.UtcNow,
                     Payload = new Dictionary<string, string>
                     {
-                        { "username", userInfo.User?.Username ?? string.Empty },
+                        { "username", username },
                         { "adminusername", "AdminPanel" },
                         { "datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss") }
                     },

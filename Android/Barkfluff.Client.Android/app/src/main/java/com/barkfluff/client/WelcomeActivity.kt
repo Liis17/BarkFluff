@@ -16,8 +16,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityWelcomeBinding
+import com.barkfluff.client.utils.LegalDocsRepository
 import com.google.android.material.color.DynamicColors
 
 class WelcomeActivity : AppCompatActivity() {
@@ -57,40 +59,54 @@ class WelcomeActivity : AppCompatActivity() {
         binding = ActivityWelcomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Enable edge-to-edge
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { v, insets ->
+        // Edge-to-edge: инсеты вешаем на contentPanel, а не на android.R.id.content.
+        // Иначе весь корень уезжает вниз, над ним остаётся полоса windowBackground другого
+        // цвета, а декоративные круги обрезаются по нижней границе статус-бара.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, systemBars.top, v.paddingRight, v.paddingBottom)
+            v.updatePadding(
+                top = systemBars.top + WELCOME_TOP_PADDING_DP.dpToPx(),
+                bottom = systemBars.bottom + WELCOME_BOTTOM_PADDING_DP.dpToPx()
+            )
             insets
         }
 
         setupClickListeners()
     }
 
+    /**
+     * Согласие требуется, если оно ещё не давалось или соглашение обновилось с прошлого раза.
+     * Редакцию берём из самого документа, а не из версии приложения.
+     */
+    private fun legalConsentRequired(): Boolean {
+        val current = runCatching { LegalDocsRepository.revision(this) }.getOrDefault("")
+        return current.isNotEmpty() && current != GlobalParam(this).acceptedLegalRevision
+    }
+
+    private fun requestLegalConsent() {
+        supportFragmentManager.setFragmentResultListener(
+            LegalConsentBottomSheet.RESULT_KEY,
+            this
+        ) { _, result ->
+            if (result.getBoolean(LegalConsentBottomSheet.RESULT_ACCEPTED)) {
+                GlobalParam(this).acceptedLegalRevision =
+                    runCatching { LegalDocsRepository.revision(this) }.getOrDefault("")
+                navigateToSelectServer()
+            }
+        }
+        LegalConsentBottomSheet.forConsent()
+            .show(supportFragmentManager, LegalConsentBottomSheet.TAG)
+    }
+
     private fun setupClickListeners() {
         binding.startButton.setOnClickListener {
-            navigateToSelectServer()
-        }
-
-        binding.learnMoreButton.setOnClickListener {
-            showLearnMore()
-        }
-
-        binding.aboutLink.setOnClickListener {
-            showAboutDialog()
+            if (legalConsentRequired()) requestLegalConsent() else navigateToSelectServer()
         }
 
         binding.privacyLink.setOnClickListener {
-            openPrivacyPolicy()
+            LegalConsentBottomSheet.forReading(LegalConsentBottomSheet.TAB_PRIVACY)
+                .show(supportFragmentManager, LegalConsentBottomSheet.TAG)
         }
-
-        binding.helpLink.setOnClickListener {
-            showHelp()
-        }
-    }
-
-    private fun showLearnMore() {
-        Toast.makeText(this, "Узнать больше - скоро", Toast.LENGTH_SHORT).show()
     }
 
     private fun navigateToSelectServer() {
@@ -184,17 +200,11 @@ class WelcomeActivity : AppCompatActivity() {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 
-    private fun showAboutDialog() {
-        Toast.makeText(this, "Barkfluff\nВерсия: 1.0", Toast.LENGTH_LONG).show()
-    }
+    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
-    private fun openPrivacyPolicy() {
-        // TODO: Open privacy policy URL
-        Toast.makeText(this, "Политика конфиденциальности", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showHelp() {
-        // TODO: Open help
-        Toast.makeText(this, "Справка", Toast.LENGTH_SHORT).show()
+    companion object {
+        /** Отступ hero-блока от статус-бара; складывается с системным инсетом. */
+        private const val WELCOME_TOP_PADDING_DP = 24
+        private const val WELCOME_BOTTOM_PADDING_DP = 24
     }
 }

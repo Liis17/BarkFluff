@@ -8,6 +8,23 @@
 
     <ItemGroup>
       <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
+      <PackageReference Include="Google.Protobuf" Version="3.35.0" />
+      <PackageReference Include="Grpc.AspNetCore.Server" Version="2.80.0" />
+      <PackageReference Include="Grpc.Tools" Version="2.80.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+    <!--
+      Черновые контракты федерации (Фаза 0 rearch): пока не подключены ни в один
+      сервис (Federation-сервис появится в Фазе 1). Компилируются здесь, чтобы
+      codegen валидировал синтаксис/импорты при сборке — иначе эти два файла
+      никем не собираются вообще.
+    -->
+    <ItemGroup>
+      <Protobuf Include="federation_api.proto" GrpcServices="Server" />
+      <Protobuf Include="federation_internal_api.proto" GrpcServices="Server" />
     </ItemGroup>
 
 </Project>

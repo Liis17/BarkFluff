@@ -1,11 +1,21 @@
 package com.barkfluff.client
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.transition.ChangeBounds
+import android.transition.Fade
+import android.transition.TransitionManager
+import android.transition.TransitionSet
 import android.util.Log
+import android.view.MotionEvent
+import android.view.View
+import android.view.animation.PathInterpolator
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +30,10 @@ import com.barkfluff.client.deeplink.DeepLinkHandler
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.shape.ShapeAppearanceModel
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -34,12 +47,18 @@ class MainActivity : AppCompatActivity() {
     // Порядок табов: Чаты (0) | Звонки (1) | Профиль (2)
     private val fragments = mutableMapOf<Int, Fragment>()
     private var currentTabIndex = TAB_CHATS
+    private var chatUnreadCount = 0
+    private var profileUpdateAvailable = false
+    private var fabCornerRadiusDp = FLOATING_FAB_CORNER_RADIUS_DP
 
     companion object {
         private const val TAB_CHATS = 0
         private const val TAB_CALLS = 1
         private const val TAB_PROFILE = 2
         private const val KEY_CURRENT_TAB = "current_tab"
+        private const val BOTTOM_NAV_WIDE_ITEM_WIDTH_DP = 72
+        private const val FLOATING_FAB_CORNER_RADIUS_DP = 22
+        private const val FLOATING_FAB_PRESSED_CORNER_RADIUS_DP = 32
 
         /**
          * Хранит chatId для открытия после cold start (когда приложение убито
@@ -49,6 +68,10 @@ class MainActivity : AppCompatActivity() {
          */
         @Volatile
         var pendingChatId: String? = null
+
+        /** Признак того, что pendingChatId — приватный чат (уведомление private_chat_invite). */
+        @Volatile
+        var pendingChatIsPrivate: Boolean = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,10 +95,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupBottomNavigation()
+        setupCreateChatFab()
+        setupChatUnreadBadge()
         handleChatIntent(intent)
         handlePendingDeepLink()
         checkForUpdates()
         registerPrekeyBundleIfNeeded()
+        startRealtimeAfterLogin()
+    }
+
+    /**
+     * Поднимает realtime-стримы после входа: ProcessLifecycleOwner.onStart уже отработал
+     * (на экране логина, где токенов ещё не было) и повторно не вызовется.
+     * Оба resume() идемпотентны — при холодном старте залогиненного пользователя ничего не делают.
+     */
+    private fun startRealtimeAfterLogin() {
+        val app = applicationContext as BarkFluffApplication
+        app.realtimeService.resume()
+        app.callEventsService.resume()
     }
 
     private fun registerPrekeyBundleIfNeeded() {
@@ -94,6 +131,18 @@ class MainActivity : AppCompatActivity() {
         handleChatIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::binding.isInitialized) {
+            applyBottomNavigationVisibility()
+            if (!isPhoneFloatingNavigation()) {
+                compactifyBottomNav()
+                binding.bottomNavigation.selectedItemId = tabIndexToMenuId(currentTabIndex)
+            }
+            updateCreateChatFabVisibility()
+        }
+    }
+
     private fun handleChatIntent(intent: Intent?) {
         // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload,
         // pendingChatId — сохранённый chatId после cold start через SplashActivity
@@ -102,10 +151,16 @@ class MainActivity : AppCompatActivity() {
             ?: pendingChatId
             ?: return
 
+        val isPrivateChat = intent?.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false)
+            ?.takeIf { intent.hasExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT) }
+            ?: pendingChatIsPrivate
+
         // Очищаем все источники чтобы не обрабатывать повторно
         pendingChatId = null
+        pendingChatIsPrivate = false
         intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
         intent?.removeExtra("chat_id")
+        intent?.removeExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT)
 
         Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
 
@@ -126,10 +181,19 @@ class MainActivity : AppCompatActivity() {
                 // Нужна авторизация через SplashActivity
                 Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
                 pendingChatId = chatId
+                pendingChatIsPrivate = isPrivateChat
                 startActivity(Intent(this, SplashActivity::class.java))
                 finish()
                 return
             }
+        }
+
+        // Приватный чат: ChatActivity сам зарезолвит состояние инвайта через getChat (inviteState=-1)
+        if (isPrivateChat) {
+            startActivity(ChatActivity.privateChatIntent(this, chatId = chatId, title = "").apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+            return
         }
 
         // gRPC готов — открываем ChatActivity
@@ -202,6 +266,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNavigation() {
+        if (isPhoneFloatingNavigation()) {
+            setupFloatingNavigation()
+            return
+        }
+
+        applyBottomNavigationVisibility()
+
         // Убираем внутренние минимальные ширины item'ов, чтобы панель была компактной
         compactifyBottomNav()
 
@@ -214,10 +285,110 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupFloatingNavigation() {
+        findViewById<MaterialButton>(R.id.chatNavButton).setOnClickListener { onFloatingTabClicked(TAB_CHATS) }
+        findViewById<MaterialButton>(R.id.callsNavButton).setOnClickListener { onFloatingTabClicked(TAB_CALLS) }
+        findViewById<MaterialButton>(R.id.profileNavButton).setOnClickListener { onFloatingTabClicked(TAB_PROFILE) }
+        applyBottomNavigationVisibility()
+    }
+
+    private fun onFloatingTabClicked(tabIndex: Int) {
+        if (tabIndex == currentTabIndex) {
+            if (tabIndex == TAB_CHATS) {
+                (fragments[TAB_CHATS] as? ChatsFragment)?.scrollToTop()
+            }
+            return
+        }
+        switchTab(tabIndex)
+    }
+
+    private fun setupCreateChatFab() {
+        supportFragmentManager.setFragmentResultListener(CreateChatBottomSheet.RESULT_KEY, this) { _, result ->
+            when (result.getString(CreateChatBottomSheet.RESULT_TYPE)) {
+                CreateChatBottomSheet.TYPE_REGULAR -> startActivity(Intent(this, SearchActivity::class.java))
+                CreateChatBottomSheet.TYPE_GROUP -> startActivity(Intent(this, CreateGroupChatActivity::class.java))
+                CreateChatBottomSheet.TYPE_PRIVATE -> startActivity(
+                    Intent(this, SearchActivity::class.java)
+                        .putExtra(SearchActivity.EXTRA_MODE, SearchActivity.MODE_PRIVATE)
+                )
+                CreateChatBottomSheet.TYPE_SECRET -> startActivity(
+                    Intent(this, CreateEncryptedChatActivity::class.java)
+                        .putExtra(
+                            CreateEncryptedChatActivity.EXTRA_INITIAL_TYPE,
+                            CreateEncryptedChatActivity.INITIAL_TYPE_SECRET
+                        )
+                )
+            }
+        }
+
+        binding.createChatFab.setOnClickListener {
+            if (supportFragmentManager.findFragmentByTag(CreateChatBottomSheet.TAG) == null) {
+                val globalParam = GlobalParam(this)
+                CreateChatBottomSheet.newInstance(
+                    privateEnabled = globalParam.privateChatsEnabled,
+                    secretEnabled = globalParam.secretChatsEnabled
+                )
+                    .show(supportFragmentManager, CreateChatBottomSheet.TAG)
+            }
+        }
+        binding.createChatFab.setOnTouchListener { _, event ->
+            if (isPhoneFloatingNavigation()) {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> animateFloatingFabCornerRadius(FLOATING_FAB_PRESSED_CORNER_RADIUS_DP)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        animateFloatingFabCornerRadius(FLOATING_FAB_CORNER_RADIUS_DP)
+                }
+            }
+            false
+        }
+        updateCreateChatFabVisibility()
+    }
+
+    private fun setupChatUnreadBadge() {
+        supportFragmentManager.setFragmentResultListener(ChatsFragment.MAIN_UNREAD_RESULT_KEY, this) { _, result ->
+            chatUnreadCount = result.getInt(ChatsFragment.MAIN_UNREAD_COUNT, 0).coerceAtLeast(0)
+            renderFloatingNavigation(animate = false)
+        }
+    }
+
+    private fun updateCreateChatFabVisibility() {
+        binding.createChatFab.visibility = if (currentTabIndex == TAB_CHATS) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    private fun applyBottomNavigationVisibility() {
+        val visibleTabs = visibleTabIndices()
+        if (isPhoneFloatingNavigation()) {
+            findViewById<View>(R.id.callsNavTab).visibility =
+                if (visibleTabs.contains(TAB_CALLS)) View.VISIBLE else View.GONE
+            if (!visibleTabs.contains(currentTabIndex)) {
+                showFragment(visibleTabs.first())
+            }
+            renderFloatingNavigation(animate = false)
+            return
+        }
+
+        binding.bottomNavigation.menu.findItem(R.id.navigation_chats).isVisible = visibleTabs.contains(TAB_CHATS)
+        binding.bottomNavigation.menu.findItem(R.id.navigation_calls).isVisible = visibleTabs.contains(TAB_CALLS)
+        binding.bottomNavigation.menu.findItem(R.id.navigation_profile).isVisible = visibleTabs.contains(TAB_PROFILE)
+
+        if (!visibleTabs.contains(currentTabIndex)) {
+            showFragment(visibleTabs.first())
+        }
+    }
+
+    private fun visibleTabIndices(): List<Int> {
+        val globalParam = GlobalParam(this)
+        val tabs = mutableListOf<Int>()
+        tabs.add(TAB_CHATS)
+        if (globalParam.mainTabCallsVisible) tabs.add(TAB_CALLS)
+        tabs.add(TAB_PROFILE)
+        return tabs
+    }
+
     private fun compactifyBottomNav() {
         val menuView = binding.bottomNavigation.getChildAt(0) as? android.view.ViewGroup ?: return
-        val itemWidthDp = 72
         val density = resources.displayMetrics.density
+        val itemWidthDp = BOTTOM_NAV_WIDE_ITEM_WIDTH_DP
         val itemWidthPx = (itemWidthDp * density).toInt()
         for (i in 0 until menuView.childCount) {
             val item = menuView.getChildAt(i)
@@ -228,14 +399,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchTab(newTabIndex: Int) {
-        val enterAnim = if (newTabIndex < currentTabIndex) {
-            R.anim.slide_in_from_left
-        } else {
-            R.anim.slide_in_from_right
-        }
+        if (!visibleTabIndices().contains(newTabIndex)) return
 
         val transaction = supportFragmentManager.beginTransaction()
-        transaction.setCustomAnimations(enterAnim, R.anim.fade_out)
+        transaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out)
 
         // Скрываем текущий фрагмент
         fragments[currentTabIndex]?.let { transaction.hide(it) }
@@ -257,6 +424,8 @@ class MainActivity : AppCompatActivity() {
 
         transaction.commit()
         currentTabIndex = newTabIndex
+        updateCreateChatFabVisibility()
+        renderFloatingNavigation(animate = true)
     }
 
     private fun showFragment(tabIndex: Int) {
@@ -269,6 +438,10 @@ class MainActivity : AppCompatActivity() {
             .commit()
 
         currentTabIndex = tabIndex
+        if (::binding.isInitialized) {
+            updateCreateChatFabVisibility()
+            renderFloatingNavigation(animate = false)
+        }
     }
 
     private fun createFragment(tabIndex: Int): Fragment {
@@ -303,18 +476,125 @@ class MainActivity : AppCompatActivity() {
             try {
                 val currentVersion = GlobalParam.getAppVersion(this@MainActivity)
                 val hasUpdate = UpdateChecker.hasUpdate(currentVersion)
-                val badge = binding.bottomNavigation.getOrCreateBadge(R.id.navigation_profile)
                 if (hasUpdate) {
-                    badge.isVisible = true
-                    badge.backgroundColor = android.graphics.Color.parseColor("#FF3D00")
+                    profileUpdateAvailable = true
+                    if (isPhoneFloatingNavigation()) {
+                        findViewById<View>(R.id.profileUpdateBadge).visibility = View.VISIBLE
+                    } else {
+                        val badge = binding.bottomNavigation.getOrCreateBadge(R.id.navigation_profile)
+                        badge.isVisible = true
+                        badge.backgroundColor = MaterialColors.getColor(
+                            binding.bottomNavigation,
+                            com.google.android.material.R.attr.colorErrorContainer
+                        )
+                    }
                 } else {
-                    binding.bottomNavigation.removeBadge(R.id.navigation_profile)
+                    profileUpdateAvailable = false
+                    if (isPhoneFloatingNavigation()) {
+                        findViewById<View>(R.id.profileUpdateBadge).visibility = View.GONE
+                    } else {
+                        binding.bottomNavigation.removeBadge(R.id.navigation_profile)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error checking for updates", e)
             }
         }
     }
+
+    private fun isPhoneFloatingNavigation(): Boolean = findViewById<LinearLayout>(R.id.floatingNavContainer) != null
+
+    private fun renderFloatingNavigation(animate: Boolean) {
+        val container = findViewById<LinearLayout>(R.id.floatingNavContainer) ?: return
+        if (animate && ValueAnimator.areAnimatorsEnabled()) {
+            TransitionManager.beginDelayedTransition(container, TransitionSet().apply {
+                ordering = TransitionSet.ORDERING_TOGETHER
+                addTransition(ChangeBounds())
+                addTransition(Fade())
+                duration = 380L
+                interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            })
+        }
+
+        renderFloatingTab(
+            button = findViewById(R.id.chatNavButton),
+            tabIndex = TAB_CHATS,
+            label = getString(R.string.nav_chats),
+            iconRes = if (currentTabIndex == TAB_CHATS) R.drawable.ic_chat_bubble_filled else R.drawable.ic_chat_bubble,
+            selected = currentTabIndex == TAB_CHATS
+        )
+        renderFloatingTab(
+            button = findViewById(R.id.callsNavButton),
+            tabIndex = TAB_CALLS,
+            label = getString(R.string.nav_calls),
+            iconRes = R.drawable.ic_phone,
+            selected = currentTabIndex == TAB_CALLS
+        )
+        renderFloatingTab(
+            button = findViewById(R.id.profileNavButton),
+            tabIndex = TAB_PROFILE,
+            label = getString(R.string.nav_profile),
+            iconRes = R.drawable.ic_account,
+            selected = currentTabIndex == TAB_PROFILE
+        )
+
+        val unreadBadge = findViewById<android.widget.TextView>(R.id.chatUnreadBadge)
+        unreadBadge.visibility = if (chatUnreadCount > 0) View.VISIBLE else View.GONE
+        unreadBadge.text = if (chatUnreadCount > 99) "99+" else chatUnreadCount.toString()
+        findViewById<View>(R.id.profileUpdateBadge).visibility =
+            if (profileUpdateAvailable) View.VISIBLE else View.GONE
+    }
+
+    private fun renderFloatingTab(
+        button: MaterialButton,
+        tabIndex: Int,
+        label: String,
+        iconRes: Int,
+        selected: Boolean
+    ) {
+        val contentColor = MaterialColors.getColor(
+            button,
+            if (selected) com.google.android.material.R.attr.colorOnPrimaryContainer
+            else com.google.android.material.R.attr.colorOnSurfaceVariant
+        )
+        button.text = if (selected) label else ""
+        button.setIconResource(iconRes)
+        button.iconTint = ColorStateList.valueOf(contentColor)
+        button.backgroundTintList = ColorStateList.valueOf(
+            MaterialColors.getColor(
+                button,
+                if (selected) com.google.android.material.R.attr.colorPrimaryContainer
+                else com.google.android.material.R.attr.colorSurfaceContainerHigh
+            )
+        )
+        button.setTextColor(contentColor)
+        button.iconPadding = if (selected) dpToPx(8) else 0
+        button.setPaddingRelative(dpToPx(if (selected) 20 else 15), 0, dpToPx(if (selected) 20 else 15), 0)
+        button.isSelected = selected
+        button.stateDescription = if (selected) getString(R.string.nav_selected) else null
+        button.contentDescription = when (tabIndex) {
+            TAB_CHATS -> getString(R.string.cd_chats_with_unread, chatUnreadCount)
+            TAB_PROFILE -> getString(R.string.cd_profile)
+            else -> label
+        }
+    }
+
+    private fun animateFloatingFabCornerRadius(targetRadiusDp: Int) {
+        if (!ValueAnimator.areAnimatorsEnabled() || fabCornerRadiusDp == targetRadiusDp) return
+        ValueAnimator.ofInt(fabCornerRadiusDp, targetRadiusDp).apply {
+            duration = 120L
+            addUpdateListener { animator ->
+                val radiusDp = animator.animatedValue as Int
+                fabCornerRadiusDp = radiusDp
+                binding.createChatFab.shapeAppearanceModel = ShapeAppearanceModel.builder()
+                    .setAllCornerSizes(dpToPx(radiusDp).toFloat())
+                    .build()
+            }
+            start()
+        }
+    }
+
+    private fun dpToPx(valueDp: Int): Int = (valueDp * resources.displayMetrics.density).toInt()
 
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -13,9 +13,7 @@
 | `Program.cs` | Точка входа. Регистрация сервисов: EF Core, MediatR, XAuth, gRPC, CORS, MassTransit, gRPC-клиент UsersServerApi. Автоматическое применение миграций при старте. |
 | `appsettings.json` | Базовая конфигурация (заглушка, реальные значения приходят от [[Backend/Configuration]]) |
 | `appsettings.Development.json` | Конфигурация для локальной разработки |
-| `Dockerfile` | Docker-образ сервиса |
-| `Dockerfile.slim` | Облегчённый Docker-образ |
-| `SECURITY_AUDIT.md` | Заметки по аудиту безопасности |
+| `Dockerfile.slim` | Docker-образ сервиса, используемый CI и production. |
 
 ---
 
@@ -31,7 +29,7 @@
 | `ConfirmationCodeType.cs` | Enum типа кода: `Unknown=0`, `Registration=1`. |
 | `OtpType.cs` | Enum типа 2FA: `Unknown=0`, `Authenticator=1`, `Email=2`. |
 | `ResetPassword.cs` | Запись на сброс пароля: `Id` (Guid), `UserId`, `CreatedAt`, `OtpType`, `OtpCode`, `IsApproved`. |
-| `UserPassword.cs` | Хэш пароля пользователя (SHA-256). |
+| `UserPassword.cs` | Хэш пароля пользователя. |
 
 ---
 
@@ -60,6 +58,8 @@ CQRS-команды (MediatR). Каждая фича — папка с `*Command
 | `CreateSessionForUserServer/` | `CreateSessionForUserServerCommand` | Выпуск пары access+refresh токенов для пользователя из другого сервиса (используется [[Backend/FastAuth]]). |
 | `DisableOtpVerificationServer/` | `DisableOtpVerificationServerCommand` | Принудительное отключение 2FA по `UserId` (service-to-service). |
 | `ListOtpVerificationServer/` | `ListOtpVerificationServerCommand` | Список методов 2FA по `UserId` (service-to-service). |
+| `ForceSetPasswordServer/` | `ForceSetPasswordServerCommand` | Принудительная смена пароля по `UserId` (admin, service-to-service). Запрещает установку пароля боту, отправляет email-уведомление. |
+| `CreateBotTokenServer/` | `CreateBotTokenServerCommand` | Выпуск bot-JWT по `BotUserId` через `JwtService.GenerateBotToken`, генерирует `tokenId` (Guid). |
 
 ---
 
@@ -70,7 +70,7 @@ gRPC-сервисы — точки входа в сервис.
 | Файл | Назначение |
 |------|-----------|
 | `IdentityApiService.cs` | Публичный gRPC-сервис для клиентов. Включает gRPC-Web. Использует `MetricsCollector` для счётчика `auth_login_attempts`. Делегирует всю логику в MediatR-команды. |
-| `IdentityServerApiService.cs` | Service-to-service gRPC-сервис. Требует `[Authorize(Policy = nameof(TokenType.Service))]`. Методы: `ListOtpVerificationServer`, `DisableOtpVerificationServer`, `GetActiveSessionsServer`, `RemoveActiveSessionServer`, `CreateSessionForUserServer`. |
+| `IdentityServerApiService.cs` | Service-to-service gRPC-сервис. Требует `[Authorize(Policy = nameof(TokenType.Service))]`. Методы: `ListOtpVerificationServer`, `DisableOtpVerificationServer`, `GetActiveSessionsServer`, `RemoveActiveSessionServer`, `CreateSessionForUserServer`, `ForceSetPasswordServer`, `CreateBotTokenServer` (bot-JWT для [[Backend/Bots]]). |
 
 ---
 
@@ -81,6 +81,7 @@ gRPC-сервисы — точки входа в сервис.
 | Файл | Назначение |
 |------|-----------|
 | `LocationClient.cs` | HTTP-клиент к `ip-api.com`. Геолокация по IP (страна, город). Вызывается при каждом входе/регистрации. |
+| `LocationClientExtensions.cs` | Extension-метод `GetLocationString(ipAddress)` — форматирует результат `LocationClient` в строку `"Country, RegionName, City"`. |
 | `IpLocation.cs` | DTO для ответа от ip-api.com. |
 | `NotificationQueueSender.cs` | Обёртка над MassTransit `IPublishEndpoint`. Публикует `EmailNotification`-события в RabbitMQ. |
 
@@ -91,6 +92,7 @@ gRPC-сервисы — точки входа в сервис.
 | Файл | Назначение |
 |------|-----------|
 | `Contexts/IdentityContext.cs` | EF Core DbContext. DbSet-ы: `RefreshTokens`, `ConfirmationCodes`, `AuthUserProperties`, `ResetPasswords`, `UserPasswords`. |
+| `Contexts/IdentityContextFactory.cs` | Design-time factory (`IDesignTimeDbContextFactory`) для `dotnet ef migrations add`, когда сервис конфигурации недоступен. |
 | `Services/RefreshTokensStorage.cs` | CRUD для `RefreshToken`. |
 | `Services/ConfirmationCodesStorage.cs` | CRUD для `ConfirmationCode` (регистрация, TTL 6 ч). |
 | `Services/AuthPropertiesStorage.cs` | CRUD для `AuthUserProperty` (настройки 2FA). |
@@ -108,10 +110,10 @@ gRPC-сервисы — точки входа в сервис.
 
 | Файл | Назначение |
 |------|-----------|
-| `JwtService.cs` | Генерация JWT-токенов: `GenerateUserToken(userId, deviceId)` и `GenerateServiceToken(serviceId)`. Использует `JwtSettings`. |
-| `PasswordHasher.cs` | Хэширование пароля: SHA-256 → Base64. Статический метод `HashPassword(password)`. |
-| `CodeGenerator.cs` | Генерация 6-значного цифрового кода (для email OTP / регистрации). |
-| `RefreshTokenGenerator.cs` | Генерация refresh token — 20-символьная случайная строка. |
+| `JwtService.cs` | Генерация JWT-токенов: `GenerateUserToken(userId, deviceId)`, `GenerateServerToken(ServiceId)`, `GenerateBotToken(botUserId, tokenId)`. Использует `JwtSettings`. |
+| `PasswordHasher.cs` | Хэширование пароля: BCrypt (workFactor=12). Legacy SHA-256 → Base64 поддерживается только при верификации старых хешей. |
+| `CodeGenerator.cs` | `GenerateDigitalCode(length)` — цифровой код произвольной длины (для email OTP / регистрации используется 6 знаков). |
+| `RefreshTokenGenerator.cs` | Генерация refresh token — 32 случайных байта → Base64Url без padding = 43 символа. |
 
 ---
 

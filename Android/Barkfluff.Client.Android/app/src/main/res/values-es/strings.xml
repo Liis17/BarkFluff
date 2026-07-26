@@ -19,21 +19,30 @@
     <string name="welcome_title">Una mensajería para tu manada</string>
     <string name="welcome_description">Chatea con amigos, comparte momentos y mantente en contacto con quienes te importan</string>
     <string name="btn_start">Comenzar</string>
-    <string name="btn_learn_more">Saber más</string>
-    <string name="menu_about">Acerca de</string>
     <string name="menu_privacy">Privacidad</string>
-    <string name="menu_help">Ayuda</string>
+    <string name="welcome_chip_fast">Rápido</string>
+    <string name="welcome_chip_private">Privado</string>
+    <string name="welcome_chip_own_pack">Tu manada</string>
+
+    <!-- Documentos legales (hoja de consentimiento antes de elegir el nodo) -->
+    <string name="legal_sheet_title">Condiciones de uso</string>
+    <string name="legal_tab_terms">Condiciones</string>
+    <string name="legal_tab_privacy">Privacidad</string>
+    <string name="legal_accept_checkbox">He leído y acepto</string>
+    <string name="legal_accept_button">Aceptar</string>
+    <string name="legal_load_error">No se han podido cargar los documentos</string>
+    <string name="btn_close">Cerrar</string>
 
     <!-- Login Screen -->
     <string name="login_welcome">Bienvenido</string>
-    <string name="login_subtitle">Inicia sesión en tu cuenta</string>
+    <string name="login_subtitle">Inicia sesión para volver a tu manada.</string>
     <string name="hint_username_or_email">Usuario o correo</string>
     <string name="hint_password">Contraseña</string>
     <string name="forgot_password">¿Olvidaste tu contraseña?</string>
     <string name="btn_login">Iniciar sesión</string>
-    <string name="btn_change_server">Cambiar conexión al servidor</string>
-    <string name="btn_create_account">Crear cuenta nueva</string>
-    <string name="footer_text">2025 BarkFluff. Ningún derecho reservado.</string>
+    <string name="btn_change_server">Cambiar de nodo</string>
+    <string name="btn_create_account">Crear cuenta</string>
+    <string name="login_first_time_here">¿Primera vez aquí?</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">Autenticación en dos pasos</string>
@@ -41,19 +50,22 @@
     <string name="btn_confirm">Confirmar</string>
 
     <!-- Select Server -->
-    <string name="server_title">Conexión al servidor</string>
-    <string name="server_subtitle">Elige un servidor público</string>
-    <string name="server_public">Servidores públicos</string>
+    <string name="server_title">"Elige\nun nodo"</string>
+    <string name="server_subtitle">¿A qué manada nos conectamos hoy?</string>
+    <string name="server_custom_row_title">Nodo propio</string>
+    <string name="server_custom_row_subtitle">Introducir la dirección manualmente</string>
     <string name="server_custom">Conectar a otro servidor</string>
     <string name="hint_server_address">https://miservidor.com:443</string>
+    <string name="node_trust_warning">Conéctate solo a nodos en los que confíes. Tus datos se almacenan en el nodo de su propietario; el desarrollador de la aplicación no se responsabiliza de ellos.</string>
     <string name="btn_connect">Conectar</string>
+    <string name="server_status_online">En línea</string>
+    <string name="server_ping_ms">%1$d ms</string>
     <string name="self_hosted_title">Tu propio servidor</string>
     <string name="self_hosted_description">Despliega tu propio servidor BarkFluff</string>
     <string name="btn_learn_more_server">Saber más</string>
-    <string name="server_help_hint">¿Problemas para conectar? Consulta nuestra guía de configuración del servidor.</string>
-    <string name="server_item_name_placeholder">Nombre del servidor</string>
-    <string name="server_item_description_placeholder">Descripción del servidor</string>
-    <string name="server_item_location_placeholder">Ubicación • @publicname</string>
+    <string name="server_help_hint">¿No sabes qué elegir? Consulta nuestra guía de configuración de nodos.</string>
+    <string name="server_item_name_placeholder">Nombre del nodo</string>
+    <string name="server_item_description_placeholder">Descripción del nodo</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Información personal</string>
@@ -101,11 +113,11 @@
     <string name="hint_password_confirm_required">Confirmar contraseña *</string>
     <string name="register_password_start_typing">Empieza a escribir tu contraseña</string>
     <string name="register_password_requirements">Requisitos de la contraseña:</string>
-    <string name="register_password_req_length">○ Mínimo 8 caracteres</string>
-    <string name="register_password_req_upper">○ Letras mayúsculas</string>
-    <string name="register_password_req_lower">○ Letras minúsculas</string>
-    <string name="register_password_req_digit">○ Dígitos</string>
-    <string name="register_password_req_special">○ Caracteres especiales</string>
+    <string name="register_password_req_length">Mínimo 8 caracteres</string>
+    <string name="register_password_req_upper">Letras mayúsculas</string>
+    <string name="register_password_req_lower">Letras minúsculas</string>
+    <string name="register_password_req_digit">Dígitos</string>
+    <string name="register_password_req_special">Caracteres especiales</string>
     <string name="register_password_case_hint">Combina mayúsculas y minúsculas</string>
     <string name="register_password_digits_hint">Añade dígitos y caracteres especiales</string>
 
@@ -132,22 +144,77 @@
     <string name="register_step9_subtitle">Tu cuenta se ha creado correctamente.\n¡Bienvenido!</string>
     <string name="register_start_messaging">Empezar a chatear</string>
 
+    <!-- Registration redesign (архетип "c") -->
+    <string name="register_step1_headline">¿Cómo te\nllamas?</string>
+    <string name="register_step1_hint">Esto lo verá tu manada.</string>
+    <string name="register_step2_headline">Elige tu\n@usuario</string>
+    <string name="register_step2_hint">La dirección única de tu manada.</string>
+    <string name="register_step3_headline">Tu\ncorreo</string>
+    <string name="register_step3_hint">Tu clave para recuperar el acceso.</string>
+    <string name="register_step4_headline">Ingresa el\ncódigo</string>
+    <string name="register_step4_hint">6 dígitos del correo.</string>
+    <string name="register_step5_headline">Crea una\ncontraseña</string>
+    <string name="register_step6_headline">Muéstrate\na ti mismo</string>
+    <string name="register_step7_headline">Unas palabras\nsobre ti</string>
+    <string name="register_step8_headline">Protege tu\ncuenta</string>
+    <string name="register_step9_headline">¡Listo!\nYa eres parte de la manada.</string>
+    <string name="register_rule_min3">Mín. 3</string>
+    <string name="register_rule_max40">Máx. 40</string>
+    <string name="register_rule_any_symbols">Cualquier carácter</string>
+    <string name="register_rule_az">a–z</string>
+    <string name="register_rule_09">0–9</string>
+    <string name="register_rule_underscore">_</string>
+    <string name="register_rule_max30">hasta 30</string>
+    <string name="register_username_status_free">Disponible</string>
+    <string name="register_username_status_taken">Ocupado</string>
+    <string name="register_otp_chip_inbox">Recibidos</string>
+    <string name="register_otp_chip_spam">Spam</string>
+    <string name="register_password_strength_weak">Débil</string>
+    <string name="register_password_strength_medium">Media</string>
+    <string name="register_password_strength_good">Buena</string>
+    <string name="register_password_strength_strong">Segura</string>
+    <string name="register_password_optional_chars">＋ !@#</string>
+    <string name="register_step9_status_chip">Los %1$d pasos completados</string>
+    <string name="register_step_indicator_total">/ 09</string>
+
+
     <!-- Reset password -->
-    <string name="reset_password_title">Restablecer contraseña</string>
-    <string name="reset_password_subtitle">Sigue las instrucciones para restablecer tu contraseña</string>
-    <string name="reset_enter_email_or_login">Introduce correo o nombre de usuario</string>
+    <string name="reset_password_title">¿Olvidaste tu contraseña?</string>
+    <string name="reset_password_subtitle">Introduce tu correo o usuario y te enviaremos un código para restablecerla</string>
+    <string name="reset_enter_email_or_login">Correo o nombre de usuario</string>
     <string name="reset_send_code">Enviar código</string>
-    <string name="reset_enter_verify_code">Introduce el código de verificación</string>
-    <string name="reset_we_sent_code">Te enviamos un código de 6 dígitos al correo</string>
+    <string name="reset_enter_verify_code">Introduce el código</string>
+    <string name="reset_we_sent_code">Código de 6 dígitos enviado a &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">Confirmar código</string>
     <string name="reset_resend_code">Reenviar código</string>
-    <string name="reset_create_new_password">Crea una nueva contraseña</string>
+    <string name="reset_create_new_password">Nueva contraseña</string>
     <string name="hint_new_password">Nueva contraseña</string>
     <string name="hint_confirm_password">Confirmar contraseña</string>
-    <string name="reset_save_new_password">Guardar nueva contraseña</string>
-    <string name="reset_password_success">¡Contraseña cambiada con éxito!</string>
+    <string name="reset_save_new_password">Guardar contraseña</string>
+    <string name="reset_password_success">¡Contraseña cambiada!</string>
     <string name="reset_password_success_subtitle">Ya puedes iniciar sesión con tu nueva contraseña</string>
     <string name="reset_back_to_login">Volver al inicio de sesión</string>
+    <string name="reset_pill_inbox">Bandeja de entrada</string>
+    <string name="reset_pill_spam">Spam</string>
+    <string name="reset_strength_empty">Empieza a escribir tu contraseña</string>
+    <string name="reset_strength_weak">Débil</string>
+    <string name="reset_strength_medium">Media</string>
+    <string name="reset_strength_good">Buena</string>
+    <string name="reset_strength_strong">Contraseña segura</string>
+    <string name="reset_success_chip">Acceso restablecido</string>
+    <string name="reset_error_empty_login">Introduce tu correo o nombre de usuario</string>
+    <string name="reset_error_otp_incomplete">Introduce el código de 6 dígitos</string>
+    <string name="reset_error_password_empty">Introduce una nueva contraseña</string>
+    <string name="reset_error_password_too_short">La contraseña debe tener al menos 8 caracteres</string>
+    <string name="reset_error_password_mismatch">Las contraseñas no coinciden</string>
+    <string name="reset_error_no_reset_id">Error: resetId no recibido</string>
+    <string name="reset_error_generic">Error: %1$s</string>
+    <string name="reset_error_confirm_failed">Error al confirmar el código</string>
+    <string name="reset_error_invalid_otp">Código de confirmación no válido</string>
+    <string name="reset_toast_code_sent">Código enviado a tu correo</string>
+    <string name="reset_toast_code_confirmed">Código confirmado</string>
+    <string name="reset_toast_code_resent">Código reenviado</string>
+    <string name="reset_otp_digit_description">Dígito %1$d de 6</string>
 
     <!-- Chat Screen -->
     <string name="chat_search_hint">Buscar chats</string>
@@ -171,6 +238,12 @@
     <string name="cd_attach_file">Adjuntar archivo</string>
     <string name="cd_stickers">Stickers</string>
     <string name="cd_send">Enviar</string>
+    <string name="cd_record_voice">Grabar mensaje de voz</string>
+    <string name="voice_record_permission_granted">Permiso concedido. Mantén pulsado el micrófono para grabar</string>
+    <string name="voice_record_permission_denied">Acceso al micrófono denegado</string>
+    <string name="voice_record_start_failed">No se pudo iniciar la grabación</string>
+    <string name="voice_record_cancelled">Grabación cancelada</string>
+    <string name="voice_record_too_short">El mensaje de voz es demasiado corto</string>
     <string name="cd_sticker_preview">Vista previa del sticker</string>
     <string name="cd_close">Cerrar</string>
     <string name="cd_more">Más</string>
@@ -309,6 +382,9 @@
     <string name="profile_title">Perfil</string>
     <string name="profile_user_placeholder">Usuario</string>
     <string name="profile_section_account_security">Cuenta y seguridad</string>
+    <string name="profile_section_account">Cuenta</string>
+    <string name="profile_section_appearance">Apariencia</string>
+    <string name="profile_section_about">Acerca de la aplicación</string>
     <string name="profile_section_personalization">Personalización</string>
     <string name="profile_section_application">Aplicación</string>
     <string name="profile_section_other">Otros</string>
@@ -371,6 +447,8 @@
     <string name="personalization_folders">Carpetas</string>
     <string name="personalization_compact_folders">Carpetas compactas</string>
     <string name="personalization_compact_folders_subtitle">Mostrar solo el icono</string>
+    <string name="personalization_folder_tabs_no_outline">Quitar bordes de carpetas</string>
+    <string name="personalization_folder_tabs_no_outline_subtitle">Mantener solo iconos y resaltado de la carpeta activa</string>
     <string name="personalization_exclude_from_all">Ocultar chats de «Todos los chats»</string>
     <string name="personalization_exclude_from_all_subtitle">Si un chat está en una carpeta, no se mostrará en la pestaña «Todos los chats»</string>
     <string name="personalization_chat_background">Fondo de los chats</string>
@@ -384,6 +462,7 @@
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Carpetas de chat</string>
+    <string name="chat_folders_section_title">Tus carpetas</string>
     <string name="chat_folders_empty_title">Aún no hay carpetas</string>
     <string name="chat_folders_empty_subtitle">Crea una carpeta para cambiar rápidamente entre grupos de chats</string>
     <string name="chat_folders_new_folder">Nueva carpeta</string>
@@ -471,6 +550,19 @@
     <string name="media_tab_videos">Vídeos</string>
     <string name="media_tab_files">Archivos</string>
     <string name="media_no_attachments">Sin adjuntos</string>
+    <string name="profile_action_message">Mensaje</string>
+    <string name="profile_action_call">Llamada</string>
+    <string name="profile_action_notifications">Notificaciones</string>
+    <string name="profile_user_id_label">ID de usuario</string>
+    <string name="profile_chat_id_label">ID del chat</string>
+    <string name="profile_registration_label">Fecha de registro</string>
+    <string name="profile_attachments_title">Adjuntos del chat</string>
+    <string name="profile_tab_media">Multimedia</string>
+    <string name="profile_tab_voice">Voz</string>
+    <string name="profile_no_voice">Sin mensajes de voz</string>
+    <string name="profile_copied">Copiado</string>
+    <string name="group_online_count">%1$d miembros · %2$d en línea</string>
+    <string name="group_members_count">%1$d miembros</string>
 
     <!-- Sticker empty -->
     <string name="stickers_empty">Sin stickers</string>
@@ -497,4 +589,55 @@
     <string name="language_option_es">🇪🇸  Español</string>
     <string name="language_option_zh">🇨🇳  中文</string>
     <string name="language_settings_hint">«Sistema» usa el idioma del dispositivo. El idioma elegido se aplica de inmediato.</string>
+    <!-- Per-chat mute -->
+    <string name="chat_menu_mute">Silenciar notificaciones</string>
+    <string name="chat_menu_unmute">Activar notificaciones</string>
+    <string name="chat_muted">Notificaciones silenciadas</string>
+    <string name="chat_unmuted">Notificaciones activadas</string>
+    <string name="chat_mute_error">No se pudo cambiar el ajuste</string>
+    <string name="chats_sync_updating">Actualizando…</string>
+    <string name="chats_sync_offline">Sin conexión / los datos pueden no estar actualizados</string>
+    <string name="chats_sync_retry">Reintentar</string>
+    <string name="storage_cache_size_with_chats">Caché de imágenes: %1$.1f MB\\nCaché de chats: %2$d chats · %3$d mensajes · %4$s</string>
+    <string name="create_chat_sheet_title">Nuevo chat</string>
+    <string name="create_chat_regular">Chat normal</string>
+    <string name="create_chat_group">Chat grupal</string>
+    <string name="create_chat_private">Chat privado</string>
+    <string name="nav_chats">Chats</string>
+    <string name="nav_calls">Llamadas</string>
+    <string name="nav_profile">Perfil</string>
+    <string name="nav_selected">seleccionado</string>
+    <string name="cd_chats_with_unread">Chats, %1$d sin leer</string>
+    <string name="cd_profile">Perfil</string>
+    <string name="cd_new_chat">Nuevo chat</string>
+    <string name="create_chat_regular_subtitle">Iniciar una conversación personal</string>
+    <string name="create_chat_group_short">Grupo</string>
+    <string name="create_chat_private_short">Privado</string>
+    <string name="create_chat_secret">Chat secreto</string>
+    <string name="create_chat_secret_short">Secreto</string>
+    <string name="storage_used">Usado</string>
+    <string name="storage_of_limit">de %1$s</string>
+    <string name="storage_load_error">No se pudo cargar</string>
+    <string name="storage_local_storage">Almacenamiento en el dispositivo</string>
+    <string name="storage_image_cache">Caché de imágenes</string>
+    <string name="storage_chat_cache">Caché de chats</string>
+    <string name="storage_cache_summary">%1$d chats · %2$d mensajes</string>
+    <string name="storage_clear_cache_with_size">Borrar caché · %1$s</string>
+    <string name="storage_category_images">Imágenes</string>
+    <string name="storage_category_videos">Vídeos</string>
+    <string name="storage_category_audio">Audio</string>
+    <string name="storage_category_documents">Documentos</string>
+    <string name="storage_category_stickers">Stickers</string>
+    <string name="storage_category_avatars">Avatares</string>
+    <string name="security_hero_title">Cuenta protegida</string>
+    <string name="security_hero_subtitle">Activa 2FA para mayor protección</string>
+    <string name="security_section_parameters">Configuración</string>
+    <string name="testing_experimental_hint">Las funciones experimentales pueden ser inestables.</string>
+
+    <!-- Typing indicator -->
+    <string name="typing_indicator">escribiendo…</string>
+    <plurals name="typing_indicator_named">
+        <item quantity="one">%1$s está escribiendo…</item>
+        <item quantity="other">%1$s están escribiendo…</item>
+    </plurals>
 </resources>

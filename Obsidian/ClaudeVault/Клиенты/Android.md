@@ -11,7 +11,7 @@ Package: `com.barkfluff.client`
 
 ## Версии
 
-- Kotlin 2.0.0, AGP 8.9.1
+- Kotlin 2.2.20, AGP 8.9.1
 - gRPC-OkHttp 1.60.0 (NOT grpc-netty)
 - ViewBinding, без Hilt/MVVM
 
@@ -21,9 +21,62 @@ Package: `com.barkfluff.client`
 - Локальное хранилище: SharedPreferences + EncryptedSharedPreferences для токенов
 - Навигация: Welcome → SelectServer → Login → Chats
 
+## Онбординг (Welcome → SelectServer → Login)
+
+Три экрана свёрстаны по референсу `Barkfluff Onboarding 1c2c3c - Final.dc.html` (спека — `Barkfluff Onboarding - Spec.md`, см. [[Клиенты/DesignDocument]]).
+
+### Цвета — только роли темы
+
+Онбординг **не** использует статичную brand-палитру: все цвета берутся через `?attr/colorPrimary`, `?attr/colorOnSurface`, `?attr/colorPrimaryContainer`, `?attr/colorSurfaceContainerLowest` и т.д., как в `RegisterActivity` и подстраницах настроек 2a. Работает Material You и тёмная тема.
+
+Статичными остались только семантические цвета: `onboarding_success_background` / `onboarding_success_text` (чип «Онлайн») и `profile_presence_online`. Остальные `onboarding_*` удалены из `colors.xml`.
+
+⚠️ **Инсеты.** Ни `activity_welcome.xml`, ни `activity_login.xml` не ставят `fitsSystemWindows` на корень. Инсеты применяются к внутреннему `contentPanel` в коде Activity. Иначе корень уезжает вниз, над ним остаётся полоса `windowBackground` другого цвета, а декоративные круги обрезаются по нижней границе статус-бара. Не возвращать `fitsSystemWindows` на корень этих двух экранов.
+
+### Экран 1 — Welcome (макет 1c)
+
+- Композиция: две распорки `layout_weight=1` отжимают hero-блок от верха и прижимают CTA к низу.
+- Чипы-фичи — стиль `Widget.Barkfluff.Welcome.FeatureChip`; высота через `chipMinHeight`, а не `layout_height` (фиксированная высота сжимает текст с иконкой).
+- Под CTA — только ссылка «Конфиденциальность», открывает legal-лист в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
+- «Начать» → модалка согласия (см. ниже) → `SelectServerActivity`.
+
+### Экран 2 — SelectServer (макет 2c)
+
+- Карточка ноды (`item_server.xml`): чипы «Онлайн» / пинг / регион одной строкой, публичное имя `@handle` отдельной строкой, CTA «Подключиться» 52dp внутри карточки.
+- «Своя нода» — кликабельная dashed-строка, разворачивает поле адреса и свою кнопку подключения; шеврон поворачивается на 180°. Свёрнуто по умолчанию.
+- Внизу — предупреждение `node_trust_warning`: данные хранятся у владельца ноды, разработчик приложения за них не отвечает.
+
+### Экран 3 — Login (макет 3c)
+
+- Left-aligned hero без карточки-обёртки: круг за верхним краем, логотип 72dp, заголовок 40sp/800.
+- Мини-лейблы над полями (`TextAppearance.Barkfluff.Register.FieldLabel`), поля FilledBox с `colorSurfaceContainerHighest`.
+- Внизу «Впервые здесь? Создать аккаунт» + ссылка смены ноды.
+- Блок ошибки (`errorText`) сам несёт фон `bg_login_error`. Раньше он лежал внутри `errorCard` с `visibility=gone`, которую никто не показывал, — ошибки входа не отображались вообще. Не оборачивать его снова в скрытый контейнер.
+
+### Терминология
+
+UI говорит **«нода»**, не «сервер» — проект перешёл на нодовую систему. Ключи ресурсов (`server_title`, `btn_change_server`, …) намеренно оставлены прежними: поменялся только текст. «Сервер авторизации» в `LoginActivity` — внутренний сервис Identity, а не нода, и переименованию не подлежит.
+
+## Юридические документы и модалка согласия
+
+Источник — `Backend/Barkfluff.WebServer/html/legal/*.md`, тот же, что у сайта (см. [[Backend/WebServer]]).
+
+- **Сборка.** Gradle-таск `copyLegalDocs` (`app/build.gradle.kts`) копирует `TERMS_OF_SERVICE.*.md` и `PRIVACY_POLICY.*.md` в `assets/legal/`. Подключён через `androidComponents.onVariants { ... addGeneratedSourceDirectory(...) }`, а не `preBuild.dependsOn` — Gradle 9 строг к неявным зависимостям с merge-assets. Путь вывода назначает AGP (`build/generated/assets/copyLegalDocs/`), задавать `outputDirectory` вручную бессмысленно. Пустой результат копирования **останавливает сборку**: APK без актуальных соглашений выпускать нельзя. CI `build-client-android.yml` триггерится на `Backend/Barkfluff.WebServer/html/legal/**`.
+- **`utils/LegalDocsRepository.kt`** — читает `legal/<DOC>.<lang>.md` по активной локали (маппинг как в `LocaleManager`), fallback — `ru`. Таблицы markdown разворачивает в списки, потому что `MarkdownRenderer` таблицы не поддерживает.
+- **Редакция.** `revision()` берёт дату «Последнее обновление» из шапки и **всегда из русского файла**: значение уходит в `GlobalParam.acceptedLegalRevision`, и локализованная строка превращала бы смену языка приложения в «новую редакцию». Regex не требует ASCII-двоеточия — в zh-CN шапка использует полноширинное `：`.
+- **`LegalConsentBottomSheet`** — два таба (соглашение / конфиденциальность), рендер через `MarkdownRenderer`, чекбокс + «Принять»/«Отмена». В режиме согласия лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` — только чтение и «Закрыть».
+- **Согласие хранится как редакция, а не флаг** (`GlobalParam.acceptedLegalRevision`): обновили соглашение — согласие запрашивается заново.
+
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
 
-- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`), нижняя навигация (`bottomNavCard`) — плавающий элемент поверх, рисуется позже в XML → автоматически выше по z-order.
+- На телефоне `MainActivity` показывает M3 Expressive floating navigation: pill-группа с морфингом активной вкладки (filled icon + label) и отдельный 64dp squircle FAB. Всегда доступны «Чаты» и «Профиль», а «Звонки» добавляются третьей вкладкой при `mainTabCallsVisible`; FAB виден только в чатах. `ChatsFragment` публикует суммарный счётчик непрочитанных через Fragment Result для badge «Чаты» (значения выше 99 отображаются как `99+`). Wide-layout сохраняет прежний navigation rail и medium FAB.
+- `CreateChatBottomSheet` — светлый modal sheet с hero-пунктом обычного чата и равномерной строкой вторичных карточек. «Групповой» есть всегда; «Приватный» и «Секретный» зависят от тестовых `privateChatsEnabled` / `secretChatsEnabled`, поэтому оставшиеся карточки растягиваются на всю строку. Обычный и приватный пути ведут в `SearchActivity`, группа — в `CreateGroupChatActivity`, секретный — в `CreateEncryptedChatActivity` с `EXTRA_INITIAL_TYPE=secret`, чтобы сразу выбрать режим SECRET.
+- Групповой flow: `CreateGroupChatActivity` выбирает нескольких пользователей через поиск, требует название, принимает опциональную обложку и вызывает `CreateGroupChat`.
+- `ChatData` получает `chatType`, `lastActivityAt`, `privateInviteState` и `privateInviterUserId`; `ChatsFragment` подгружает страницы `ListChats` при прокрутке. Приватный чат открывает общий `ChatActivity` (`ChatActivity.privateChatIntent`, `kind=PRIVATE`), имеет lock-бейдж рядом с аватаром и skeleton вместо текста последнего сообщения.
+- Инвайт-флоу приватного чата в списке: при `privateInviteState != ACCEPTED` вместо skeleton показывается статус — «Запрос на приватный чат» (приглашённый), «Ожидает подтверждения» (инициатор), «Запрос отклонён». Роль определяется по `privateInviterUserId` vs свой userId. В общем `ChatActivity` логику ведёт `PrivateChatController`: в pending-режиме у приглашённого — скрытый оверлей `e2eInviteContainer` «Принять/Отклонить» (принять → passphrase → `acceptPrivateChatInvite`), у инициатора — баннер `e2eBanner` с заблокированным вводом (разблокируется по `privateChatInviteResolutions`); вход с push без extras (`inviteState=-1`) — fallback-фетч состояния через `getChat`. FCM `type=private_chat_invite` → `NotificationHelper.showPrivateInviteNotification`, тап открывает приватный чат в `ChatActivity` (`EXTRA_IS_PRIVATE_CHAT` в `MainActivity.handleChatIntent`).
+- Ввод passphrase приватного чата (создание, инвайт, разблокирование) содержит opt-in «Сохранить пароль». В `EncryptedSharedPreferences` сохраняется только производный ключ; при logout ключи очищаются.
+
+- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`). В phone-варианте `floatingNavContainer` центрирует над ним группу вкладок и FAB с отступом 20dp от нижнего inset; старый невидимый `bottomNavigation` оставлен только для общей ViewBinding-совместимости с `layout-w600dp`.
 - `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
 - `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:
   - `VIEW_TYPE_FOOTER` / `FooterViewHolder` — не требует биндинга.
@@ -34,6 +87,23 @@ Package: `com.barkfluff.client`
 
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
+
+## Экран «Профиль» (`ProfileFragment`)
+
+Экран настроек V1 реализует вариант 2a из [[Клиенты/DesignDocument]]: локальные M3-формы (фон `surface container`, плашки `surface`) получают цвет из активной схемы Material 3, включая системный dynamic color на Android 12+.
+
+- `res/layout/fragment_profile.xml` — заголовок «Профиль», горизонтальный блок идентичности с 72dp squircle-аватаром и четыре группы: «Аккаунт», «Оформление», «Приложение», «О приложении». Все 13 прежних пунктов и их `id` сохранены, поэтому переходы в Activity не менялись.
+- Каждая строка — самостоятельная `MaterialCardView` высотой 58dp. Плашки внутри группы разделены фоновым зазором 3dp и используют форму `28/6dp` (верх/середина/низ); ведущие иконки оптически выровнены по общей вертикали, logout остаётся отдельной error-container плашкой с M3 confirmation dialog.
+- Строка «Язык» показывает нативное название активной локали. Изображение профиля теперь маскируется формой squircle: `AvatarLoader` принимает `circleCrop`; для `ProfileFragment` он отключён, а при отсутствии фото виден `person` placeholder.
+- Телефонная floating-навигация закреплена в `MainActivity`, поэтому фрагмент оставляет нижний 150dp spacer для неё; wide-layout продолжает использовать navigation rail. При показе профиля фрагмент временно перекрашивает корневой контейнер `MainActivity`, поэтому его фон продолжается в прозрачный edge-to-edge status bar; при уходе на другую вкладку исходный фон восстанавливается.
+
+### Подстраницы настроек (MD3 2a)
+
+Двенадцать Activity, открываемых из `ProfileFragment` (аккаунт, безопасность, приватность, устройства, персонализация, папки, уведомления, язык, данные и кеш, обновление, о приложении и тестирование), используют локальную тему `Theme.BarkfluffClientAndroid.Settings2A`. Она не меняет остальные экраны: сохраняет M3 primary/tonal/error-роли, soft-card и split-card формы `28/6dp` с зазором 3dp, а сами роли получает из активной темы. На Android 12+ `DynamicColors` уже применяется ко всему приложению; fallback-ресурсы `profile_*`, `profile_settings_*` и `floating_nav_*` также ссылаются на системную динамическую палитру. Поэтому настройки, floating-навигация и пользовательские/групповые профили следуют за системным акцентом, а не за фиксированным коричневым. Зелёный online и error-роль остаются семантическими исключениями.
+
+Все подстраницы приведены к эталону `fragment_profile.xml` (июль 2026): фон экрана и шапки — `profile_settings_background` (без отдельного цвета AppBar), блоки — сегменты top/middle/bottom (`bg_settings_item_top|middle|bottom|single`, цвет `?attr/colorSurfaceContainerLowest`, скругления 28/6dp, зазор `Space` 3dp), строка — высота/minHeight 58dp, paddingH 20dp, плоская иконка 24dp с tint `profile_settings_icon`, текст BodyLarge, значение/шеврон 20dp справа. Тональные кружки 44dp у пунктов приватности/тестирования убраны, `bg_settings_language_selected` заменён на пары `bg_settings_language_top|middle|bottom` (selector: checked → tonal container той же формы). «О приложении» показывает `@mipmap/ic_launcher_round` вместо тонированного `ic_sticker`; `ic_qr_code` перерисован стандартным Material-вектором.
+
+`StorageSettingsActivity` разделяет серверное и локальное хранилища. GIF входит в серверную категорию «Изображения»; локальный блок показывает отдельно Coil/bitmap «Кеш изображений» и SQLCipher Room «Кеш чатов», строит bar пропорционально их фактическим размерам и очищает ровно эти два источника.
 
 ## Сегмент папок над списком чатов
 
@@ -65,15 +135,24 @@ Package: `com.barkfluff.client`
 ## Разлогин (LogoutHelper)
 
 `utils/LogoutHelper.kt` — централизованный хелпер полного выхода из аккаунта:
-1. Серверный `Logout` gRPC (удаляет refresh-токен в Identity)
-2. `FirebaseMessaging.deleteToken()` — деактивирует push на устройстве
-3. `globalParam.clearUserData()` + очистка `firebaseToken`
-4. Очистка кешей: `AvatarLoader.clearAllCaches()`, `StickerCache.clear()`, `media_files/`
-5. Переход на `LoginActivity` с `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK`
+1. `realtimeService.shutdown()` + `callEventsService.shutdown()` — иначе стримы после сброса токенов уходят в бесконечный retry с 401
+2. Серверный `Logout` gRPC (удаляет refresh-токен в Identity)
+3. `FirebaseMessaging.deleteToken()` — деактивирует push на устройстве
+4. `globalParam.clearUserData()` + очистка `firebaseToken`
+5. Очистка кешей: `AvatarLoader.clearAllCaches()`, `StickerCache.clear()`, `media_files/`
+6. Переход на `LoginActivity` с `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK`
 
 Вызывается из:
 - `ProfileFragment` → кнопка "Выйти"
 - `DevicesActivity` → завершение сессии **текущего** устройства (если `deviceId == globalParam.deviceId`)
+
+`AccountSettingsActivity` → кнопка "Выйти" использует **упрощённый** путь (только `clearUserData()` + переход на `LoginActivity`), мимо `LogoutHelper` — без серверного логаута, удаления FCM-токена и остановки стримов.
+
+## Старт realtime-стримов и авторизация
+
+`RealtimeService.resume()` и `CallEventsService.resume()` выходят сразу, если `globalParam.refreshToken` пуст — до входа сервер отвечает 401 на каждый из 19 стримов, а retry-петля (`streamWithReconnect`) на каждой итерации дёргает `recreateAllClients`, засоряя лог и подтекая gRPC-каналами.
+
+`BarkFluffApplication` вызывает `resume()` из `ProcessLifecycleOwner.onStart` — на экране логина это происходит до появления токенов и второй раз уже не срабатывает. Поэтому `MainActivity.onCreate` → `startRealtimeAfterLogin()` поднимает оба сервиса явно; вызовы идемпотентны (проверяют активный scope), так что при холодном старте залогиненного пользователя ничего не дублируется.
 
 
 ## Звонки (V1)
@@ -90,12 +169,13 @@ Package: `com.barkfluff.client`
 - В `BarkFluffApplication` есть foreground bridge для `CallEventsService.events`: incoming открывает `IncomingCallActivity` и показывает call notification, accepted/rejected/ended закрывают входящий экран через package-local broadcast и убирают notification. Background/killed сценарий остаётся за FCM payload `incoming_call`/`dismiss_call`.
 - `CallsFragment` (вкладка `Звонки`) показывает реальную историю из `ListCallHistory` через `CallHistoryAdapter` (`item_call_history.xml`): direction/missed-иконка, имя/чат, относительное время + длительность. Фильтр `Все`/`Пропущенные` перезагружает список; tap по строке открывает чат (личный — через `getPersonChatId`), кнопка action — повторный звонок (audio/video) через `CallActivity`. Имена резолвятся: личные — `getUserData`, групповые — из списка чатов. Пагинация v1: одна страница (limit 50), `has_more` пока не используется. Бэкенд `GetActiveCalls` доступен в репозитории, join-баннер ещё не нарисован.
 - В V1 `ChatActivity` в верхней панели кнопка **только аудиозвонка** (видео-кнопка убрана; видео включается уже внутри `CallActivity`). Запускает сигналинг и открывает `CallActivity` с `livekitUrl/accessToken`.
-- **Групповые чаты V1**: клик по шапке группового чата открывает `GroupInfoActivity` (для ЛС — `UserProfileActivity`). `GroupInfoActivity`: смена названия (`updateGroupChat(title)`), смена аватара (UCrop → `uploadFile(CHAT_PICTURE)` → `updateGroupChat(pictureFileId)`), список участников (`listChatMembers` + `getUserData` для аватарок, `GroupMemberAdapter`), удаление (`kickUser`), добавление через `AddGroupMemberActivity` (переиспользует search-layout + `UserAdapter`, `addUser`). Аватарки/имена чужих сообщений в группе резолвятся через кэш `groupMemberInfoCache` в `ChatActivity` + `senderInfoProvider` в `MessageAdapter`. Сортировка списка чатов: `ChatsFragment.mirrorNewMessageInAllChats`/`applyFolderFilter` пересортировывают `allChats` по `lastMessage.sentAt`. Контекстное меню сообщения (`PopupWindow isFocusable=false`) больше не закрывает клавиатуру.
+- **Групповые чаты V1**: клик по шапке группового чата открывает `GroupInfoActivity` (для ЛС — `UserProfileActivity`). `GroupInfoActivity`: смена названия (`updateGroupChat(title)`), смена аватара (UCrop → `uploadFile(CHAT_PICTURE)` → `updateGroupChat(pictureFileId)`), список участников (`listChatMembers` + `getUserData` для аватарок, `GroupMemberAdapter`; fallback preview/full URL → preview/full fileId), тап по участнику открывает `UserProfileActivity`, удаление (`kickUser`), добавление через `AddGroupMemberActivity` (переиспользует search-layout + `UserAdapter`, `addUser`). Аватарки/имена чужих сообщений в группе резолвятся через кэш `groupMemberInfoCache` с тем же URL-first fallback в `ChatActivity` + `senderInfoProvider` в `MessageAdapter`. Сортировка списка чатов: `ChatsFragment.mirrorNewMessageInAllChats`/`applyFolderFilter` пересортировывают `allChats` по `lastMessage.sentAt`. Контекстное меню сообщения (`PopupWindow isFocusable=false`) больше не закрывает клавиатуру.
 - FCM service обрабатывает `type=incoming_call` и `type=dismiss_call`. `NotificationHelper` создаёт канал `calls` и показывает `NotificationCompat.CallStyle` для входящего звонка.
 - Telecom-интеграция звонков: V1 регистрирует self-managed PhoneAccount через MANAGE_OWN_CALLS и BarkFluffConnectionService, а realtime/FCM incoming_call сначала вызывает TelecomManager.addNewIncomingCall, затем показывает собственный CallStyle/full-screen UI и ringtone. Telecom не проигрывает ringtone сам для self-managed VoIP, но учитывает звонок как системный call для маршрутизации, Bluetooth и конкуренции с другими звонками.
 - Для входящего звонка `NotificationHelper.showIncomingCallNotification` дополнительно запускает системный ringtone через `RingtoneManager.TYPE_RINGTONE` + `AudioAttributes.USAGE_NOTIFICATION_RINGTONE` в loop-режиме. Входящее call-уведомление показывается в отдельном канале `incoming_calls_v2` с `IMPORTANCE_HIGH`, vibration/default vibration и без `setSilent(true)`, чтобы Android мог показать heads-up баннер поверх экрана/lockscreen; ongoing-уведомление активного звонка остаётся в `calls` и `setSilent(true)`, чтобы не было короткого notification-звука поверх ringtone. После accept используется `NotificationHelper.clearIncomingCallAlert`, чтобы остановить ringtone и убрать входящий notification без разрыва активного Telecom `Connection`; полный `NotificationHelper.dismissCall` завершает Telecom connection для realtime/FCM `dismiss_call`, reject/end.
 - Добавлены IncomingCallActivity, CallActivity, CallActionReceiver и permissions для микрофона/camera/screen-share/full-screen intent.
 - `IncomingCallActivity` показывает аватар звонящего с локальными retry-попытками загрузки (3 попытки с короткой паузой; после провала cached URL запрашивается заново через `ChatRepository.getFileDownloadUrl`) и анимированными ring-pulse кольцами вокруг аватара.
+- **TLS для LiveKit-сигнализации:** остальной клиент (gRPC-каналы, HTTP-загрузки) обходит проверку сертификата через trust-all `X509TrustManager` (см. [[Android-ProjectMap]]), но LiveKit SDK поднимает свой отдельный OkHttp со стандартным системным доверием — поэтому нуждается в собственном фиксе. `LiveKitCallEngine.connect()` передаёт `LiveKit.create(ctx, overrides = LiveKitOverrides(okHttpClient = buildTrustAllOkHttpClient()))` — тот же trust-all `SSLSocketFactory` + `hostnameVerifier { _,_ -> true }`, только для сигнального WebSocket. Медиа-плоскость (WebRTC DTLS) системный trust-store не использует. Реальный инцидент: nginx отдавал неполную цепочку сертификата (лист без intermediate, см. [[Backend/Nginx]]) — без этого клиентского фикса звонок падал через ~80 мс после accept с `CertPathValidatorException`.
 - В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`. `LiveKitCallEngine` управляет room lifecycle, mic/camera/screen-share и **отдаёт UI-модель участников** `StateFlow<List<CallParticipant>>` (камера+экран track, mic/camera enabled, speaking, connection quality) вместо хранения renderer'ов. Движок пересобирает список по событиям Room (`ParticipantConnected/Disconnected`, `TrackPublished/Subscribed/Muted`, `ActiveSpeakersChanged`, `ConnectionQualityChanged`), различает `Track.Source.CAMERA` и `SCREEN_SHARE`. Дополнительно: `flipCamera()` (`LocalVideoTrack.switchCamera`), `selectAudioDevice()` через `AudioSwitchHandler` (динамик/наушник/проводная/Bluetooth), `setRemoteVideoQuality()` (`RemoteTrackPublication.setVideoQuality`).
 - **UI-дизайн** (`activity_call.xml` + программная отрисовка плиток). Тёмный иммерсивный экран (`bg_call_root`), edge-to-edge с обработкой `WindowInsets` (верхняя панель не залезает под статус-бар, панель управления — над навигацией). Стиль повторяет веб-референс. Режимы раскладки в `CallActivity.renderTiles`:
   - **single** (1-на-1, нет демонстрации) — `CallTileView.setHero(true)`: крупный аватар (112dp) + имя + waveform по центру, локальный участник — в мини-окне `selfMiniContainer` (100×140, скруглённое) вверху справа;
@@ -107,6 +187,10 @@ Package: `com.barkfluff.client`
 - Контролы — стеклянная «таблетка» (`bg_call_control_pill`) с круглыми кнопками с подписями: `Микро`, `Камера`, большая красная `Завершить` (`bg_call_btn_end`), `Экран`, `Ещё`. Переворот камеры перенесён в лист `Ещё` (виден при включённой камере) вместе с `Маршрут звука` / `Качество голоса` / `Качество видео собеседника`. Бейдж количества участников в шапке для групповых (>2). Состояния кнопок и foreground service синхронизированы с моделью участников; foreground обновляется только при смене camera/screen.
 - Таймер длительности устойчив к reconnect (anchor не сбрасывается). `CallActivity` слушает `CallEventsService.events` по своему `callId`: `ENDED`/`REJECTED` (в т.ч. от собеседника или со второго устройства) закрывают экран, останавливают foreground и гасят notification — работает и для звонящего, где `currentCall` не инициализируется. Завершение идемпотентно (флаг `callEnded`); accept/reject в `IncomingCallActivity` защищены флагом `actionTaken`.
 - `CallForegroundService` держит ongoing notification активного звонка с foreground service types `microphone|camera|mediaProjection`; action уведомления завершает активный звонок через `CallActionReceiver`.
+- Foreground активного звонка стартует до подключения к LiveKit, поэтому аудиозвонок тоже сразу получает ongoing foreground notification. Runtime type включает `microphone|phoneCall`, при включении камеры добавляется `camera`, при демонстрации — `mediaProjection`.
+- `CallActivity` при `RoomEvent.Disconnected` / `FailedToConnect` не завершает звонок сразу: запускает backoff-реконнект (2s, 4s, 8s, 15s, далее 30s, максимум 8 попыток), обновляет LiveKit credentials через `JoinCall(call_id)`, пересоздаёт room и восстанавливает состояние микрофона/камеры. Демонстрация экрана после полного reconnect не восстанавливается автоматически, т.к. `MediaProjection` требует свежего системного consent.
+- Пока локально есть активный звонок (`CallTelecomRegistry.hasActiveCall()`), `BarkFluffApplication.onStop()` не ставит `CallEventsService` на паузу — remote `ENDED`/`REJECTED` продолжает доходить в фоне.
+- `CallBatteryOptimizationHelper` один раз во время успешного звонка просит Android исключить BarkFluff из battery optimization (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), если система ещё не дала исключение. Это дополняет foreground service для агрессивных OEM/Doze-сценариев.
 
 Связанный backend-контекст: [[Backend/Calls]], [[Backend/CloudMessaging]].
 ## Firebase FCM токен
@@ -138,6 +222,10 @@ Package: `com.barkfluff.client`
 Поля `image_width` (field 8) и `image_height` (field 9) добавлены в `MessageAttachment` в `shared.proto`.
 Backend заполняет эти поля при доставке сообщения с вложением-изображением.
 
+### Время на фото и стикерах
+
+Для сообщения, состоящего только из фото/GIF/видео или стикера, `MessageAdapter` показывает время внутри визуального вложения: внизу справа находится компактная тёмная полупрозрачная плашка со светлым временем. У исходящих сообщений рядом применяются существующие векторные иконки статуса доставки. Плашка для медиа добавляется в `attachmentsContainer` из `view_media_time_status.xml`, для стикера она находится в `stickerContainer`; сообщения с текстовой подписью сохраняют обычное размещение времени рядом с текстом.
+
 ## Отправка файлов и pre-upload дедупликация (SHA-256)
 
 Перед заливкой файла на S3 клиент проверяет, не существует ли уже такой файл на сервере по SHA-256-хешу — это экономит мобильный трафик при повторных отправках.
@@ -148,6 +236,7 @@ Backend заполняет эти поля при доставке сообще�
    - Документы — читаются как есть (`AttachmentSpec.Document`).
    - Картинки — сжимаются через `ImageCompressor.compressImage` (JPEG q=90, max 2500px по длинной стороне).
    - Видео — обрезка/перекодировка через `Transformer` в MP4.
+   - Голосовые сообщения — `AttachmentSpec.Voice` читает записанный во внутреннем кеше `.ogg` и отправляет его как `UploadFileType.MESSAGE_ATTACHMENT_VOICE`.
 2. `ChatRepository.uploadFile(jpegImageBytes, fileType, ...)` (`repository/ChatRepository.kt`) ДО получения upload URL:
    - Считает SHA-256 от итоговых байт через приватный extension `ByteArray.sha256Hex()` → lowercase hex, 64 символа.
    - Вызывает `grpcManager.checkFileHash(hash)` → `FilesApi.CheckFileHash` (gRPC, см. [[Backend/Files]] и [[Shared/Proto]]).
@@ -168,9 +257,17 @@ Backend заполняет эти поля при доставке сообще�
 - **Реальная скорость.** `ChatRepository.uploadFile` ставит `connection.setFixedLengthStreamingMode(...)` и флашит каждый чанк — без этого `HttpURLConnection` буферизует тело в память и `onProgress` прыгал бы в 100% ещё до сетевой отправки.
 - **Реконсиляция (защита от дубликата/пустого сообщения).** `ChatActivity.addNewMessage` ищет оптимистичный плейсхолдер ДО проверки дубликата, в обоих порядках прихода: realtime-эхо раньше ответа `sendMessage` (матч по контенту + `uploadProgress != null`/`localPreviewUris`, т.к. вложения плейсхолдера ещё пустые) ИЛИ `SENT` раньше эха (матч по уже проставленному `messageId` + `localId`). Без этого эхо с фото добавлялось бы вторым item'ом, а `clearOptimisticUploadProgress` оставлял первый с пустыми вложениями → два item с одним `messageId` → коллизия `DiffUtil.areItemsTheSame` (сравнение по `messageId`) → пустой bubble до переоткрытия чата.
 
-## Система кеширования
+### Голосовые сообщения
 
-Подробная документация: `Android/Barkfluff.Client.Android/docs/CACHING_SYSTEM.md`
+В `ChatActivity` правая кнопка ввода переключается между `ic_send_filled` и `ic_mic`: микрофон показывается только когда текст пустой, нет pending-вложений, reply и edit-режимов. При первом удержании запрашивается `RECORD_AUDIO`; после выдачи разрешения пользователь удерживает кнопку ещё раз.
+
+- Запись: `MediaRecorder` пишет OGG/Opus (`OutputFormat.OGG`, `AudioEncoder.OPUS`) во временный файл `cacheDir`.
+- Отправка: отпускание кнопки создаёт оптимистичный `MessageItem` с `uploadProgress=0` и ставит `SendJob(AttachmentSpec.Voice)` в `MediaSendService`; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
+- Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, при отпускании запись удаляется и сообщение не отправляется.
+- Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
+- Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
+
+## Система кеширования
 
 Четыре слоя кеша:
 1. **Runtime URL-кэш** — `AvatarLoader.urlCache` (`ConcurrentHashMap<fileId, URL>`, in-memory)
@@ -215,7 +312,7 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
   - **Сохранить изображение / Сохранить изображения** (`actionSaveImages`) — если ≥1 картинка. Текст меняется по количеству. Сохраняет в `Pictures/BarkFluff/` через `FileSaveUtils.saveImageToGallery` (видно в Галерее).
   - **Сохранить в загрузки** (`actionSaveDocs`) — если ≥1 документ (DOCUMENT). Сохраняет в `Downloads/BarkFluff/` через `FileSaveUtils.saveToDownloads`.
 - **Места сохранения файлов** (`utils/FileSaveUtils.kt`): картинки → `Pictures/BarkFluff` (MediaStore.Images), видео и документы → `Downloads/BarkFluff` (MediaStore.Downloads). На API < Q используется `Environment.getExternalStoragePublicDirectory(...)` + `uniqueFile(...)` для дедуплицирования имён.
-- **Вьюверы**: `ImageViewerActivity.saveToGallery` использует `FileSaveUtils.saveBitmapToGallery` (Pictures/BarkFluff). `MediaViewerActivity.saveToGallery` использует `FileSaveUtils.saveToDownloads` (Downloads/BarkFluff).
+- **Вьюверы**: `ImageViewerActivity` содержит нижний M3 Expressive Floating Toolbar: сохранить, копировать и переслать. Сохранение и копирование скачивают/берут оригинальный файл из `FileCache` и сохраняют его формат/качество; сохранение идёт в `Pictures/BarkFluff` через `FileSaveUtils.saveImageToGallery`, копирование кладёт `FileProvider` URI с корректным MIME в системный буфер. Для пересылки `MessageAdapter` и медиагалерея `UserProfileActivity` передают в viewer параллельные `fileNames` и `sourceMessageIds`; текущая фотография пересылается готовым `ForwardChatPickerBottomSheet`. При отсутствии ID сообщения кнопка пересылки недоступна. `MediaViewerActivity` содержит скрываемую по тапу на видео нижнюю M3 Expressive Floating Toolbar: play/pause, таймлайн и скачивание. Таймлайн обновляется одной coroutine раз в 250 мс, не перезаписывается во время drag; скачивание сохраняет исходный файл (включая переданный `cachedPath`) через `FileSaveUtils.saveToDownloads` в `Downloads/BarkFluff`.
 - **Long-press на вложениях**: меню картинок удалено целиком (`menu_image_attachment.xml` удалён) — теперь сохранение картинок только через основное меню. У документов осталось только «Удалить из кеша» (показывается лишь если файл закеширован). У аудио — без изменений.
 - **Свайп влево**: `ReplySwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT)`. При сдвиге `>= 64dp` — haptic + триггер. После отпускания bubble возвращается на место (`onSwiped` пуст, `clearView` сбрасывает `translationX`). Иконка стрелки рисуется справа в `onChildDraw` с alpha по прогрессу.
 - **Reply preview bar**: `replyPreviewBar` в `activity_chat.xml` — `MaterialCardView` над `attachmentPreviewBar`, показывается при `pendingReplyMessageId != 0L`. Содержит автора, превью текста (или "📷 N фото" / "📎 N файлов"), кнопку отмены `clearReplyButton`.
@@ -253,6 +350,32 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
   4. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
 - **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
+
+## Markdown в сообщениях
+
+Бэкенд хранит текст сообщения как обычную строку с символами разметки — интерпретация markdown целиком на клиенте. Только V1. Кастомный рендерер, без сторонних библиотек.
+
+- **`utils/MarkdownRenderer.kt`** (`object`) — line-based парсер `markdown → SpannableStringBuilder`:
+  - Блоки: заголовки `#…######` (`RelativeSizeSpan` + bold), маркированные `-/*/+` (`BulletSpan`) и нумерованные `1.` (`LeadingMarginSpan`) списки, цитаты `>` (`QuoteSpan` + приглушённый цвет), горизонтальные линии `---/***/___`, ограждённые блоки кода ` ``` ` (monospace + фон + отступ).
+  - Inline: `**bold**`/`__bold__`, `*italic*`/`_italic_`, `~~strike~~`, `` `code` `` (monospace + фон), `[текст](url)` (`URLSpan`). Inline-код защищён от повторного разбора.
+  - Автолинковка «голых» URL через `Patterns.WEB_URL` — вручную, чтобы не затирать markdown-ссылки (в отличие от `Linkify.addLinks`, который стирает существующие `URLSpan`).
+  - Цвета code-фона/цитаты — alpha-overlay поверх `textView.currentTextColor` (работает и на sent, и на received пузыре).
+  - `applyTo(textView, source)` — ставит текст, линкует, включает/**сбрасывает** `movementMethod` (сброс критичен для переиспользования ViewHolder). `strip(source)` — убирает всю разметку в чистый однострочный текст для превью.
+- **Рендер (`applyTo`)**: главный пузырь sent/received (`MessageAdapter` ~315/484, покрывает и закреплённые через `PinnedMessagesActivity`). E2E-чаты (приватный/секретный) рендерятся тем же `MessageAdapter` в общем `ChatActivity` (расшифрованный текст мапится в `MessageItem`).
+- **`autoLink="web"` убран** из `item_message_sent.xml` / `item_message_received.xml` — заменён Linkify внутри рендерера. Контекстное меню сообщения висит на `binding.root.setOnClickListener` (не long-press), поэтому `LinkMovementMethod` сосуществует с тап-в-меню как и раньше.
+- **Strip (чистый текст в превью)**: reply-превью (`buildPreviewLine`), тело пересланного сообщения (`forwardTextTextView`), последнее сообщение в списке чатов (`ChatAdapter`), пуш-уведомление (`NotificationHelper`). Иначе в однострочных превью светились бы символы `**`, `~~`, `` ` ``.
+- Вложенные списки, таблицы, HTML — не поддерживаются (вне «базового» набора).
+
+## Typing-индикатор («печатает…»)
+
+Клиентская интеграция готового API [[Backend/Onliner]] (typing = relay-модель, см. там же). Только V1; список чатов не затронут — индикатор живёт в шапке открытого чата.
+
+- **RealtimeService** (`core/grpc/RealtimeService.kt`): `typingEvents: SharedFlow<TypingEvent>` + стрим `streamWithReconnect("Typing") { collectTyping() }` в `resume()`; `@Volatile subscribedTypingChatIds` читается при каждом открытии стрима (переживает pause/resume). `changeTypingSubscription(chatIds)` — fire-and-forget `ChangeChatsInTypingSubscription` с одним retry через 2с (гонка `FailedPrecondition`, пока стрим не открыт). `sendTypingStatus(chatId, typing)` — fire-and-forget unary heartbeat.
+- **ChatActivity — отправка**: TextWatcher → `onTypingInput(s)`: непустой ввод запускает heartbeat-job (TYPING каждые 4с, стоп при idle ≥5с без CANCELLED); пустое поле / отправка сообщения (программный `text?.clear()` триггерит TextWatcher) / `onStop()` → `stopTypingHeartbeat(sendCancel=true)` → CANCELLED. Флаг `suppressTypingInput` подавляет ложный TYPING при программном `setText()` в `setPendingEdit` (edit-режим).
+- **ChatActivity — приём**: collect `typingEvents` в `subscribeToRealtimeEvents()`; фильтр по chatId (case-insensitive) и своему userId; `typingUsers: LinkedHashMap<Long, Job>` — job гашения 6с на каждого печатающего. Подписка: `onCreate()` → `changeTypingSubscription(listOf(chatId))`, `onDestroy()` → пустой список.
+- **UI**: `renderTypingIndicator()` пишет в `onlineStatusTextView`. 1:1 — «печатает…» вместо онлайн-статуса, восстановление через `lastStatusText` (хелпер `applyOnlineStatus` не даёт онлайн-статусу перетереть typing-текст). Группа — `VISIBLE` + имена из `groupMemberInfoCache` (недостающие догружаются асинхронно, дедуп через `pendingTypingNameFetches`), plurals `typing_indicator_named`, макс 3 имени; после гашения — `GONE`.
+- **Строки**: `typing_indicator` + plurals `typing_indicator_named` в values (RU), values-en/de/es/zh-rCN.
+- Private/secret чаты не затронуты (отдельные Activity).
 
 ## FastAuth QR-сканер (DevicesActivity → QrScannerActivity → FastAuthConfirmActivity)
 
@@ -325,11 +448,11 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 ### UI
 
 - `CreateEncryptedChatActivity` (+ `activity_create_encrypted_chat.xml`) — единый экран создания: выбор типа (Private/Secret через MaterialButtonToggleGroup), ввод peer userId, passphrase ИЛИ peer device + initial message. Spinner устройств заполняется через `ListPeerDevices`.
-- `PrivateChatActivity` (+ `activity_private_chat.xml`) — минимальная история приватного чата: загрузка через `listPrivateMessages` (расшифровка inline), отправка `sendText`, реалтайм через `realtimeService.privateMessages`. При отсутствии локального ключа — диалог запроса passphrase + `unlockExistingChat`.
-- `SecretChatActivity` (+ `activity_secret_chat.xml`) — секретный чат, без истории (сервер не хранит). Только runtime-сообщения через `realtimeService.secretMessages` + `decryptIncoming` + `ack`.
-- `EncryptedMessageAdapter` + `item_encrypted_message.xml` — простой list-адаптер для расшифрованных сообщений (sender label / text / time).
+- Приватный и секретный чаты отображаются в **общем `ChatActivity`** (не в отдельных активити): `ChatActivity.onCreate` по `EXTRA_CHAT_KIND` (`KIND_REGULAR`/`KIND_PRIVATE`/`KIND_SECRET`) на E2E-типах уходит в `setupE2eShell()` и делегирует логику контроллеру. Shell переиспользует `activity_chat.xml`/шапку/`MessageAdapter`, но только текст: прячет вложения/стикеры/голос/меню/звонок/закреплённые. Интенты собираются хелперами `ChatActivity.privateChatIntent` / `secretChatIntent`.
+- `PrivateChatController` — приватный чат: загрузка через `listPrivateMessages` (расшифровка inline), отправка `sendText`, реалтайм `realtimeService.privateMessages`, машина состояний инвайта (`e2eInviteContainer`/`e2eBanner`). При отсутствии локального ключа — диалог passphrase + `unlockExistingChat`.
+- `SecretChatController` — секретный чат, без истории с сервера (не хранит). Только локальный кэш + runtime-сообщения через `realtimeService.secretMessages` + `decryptIncoming` + `ack`. Строковый `messageId` мапится в `Long` для `MessageItem` через стабильный in-session маппинг.
 - `ChatsFragment` — кнопка `encryptedChatButton` в toolbar открывает `CreateEncryptedChatActivity`.
-- AndroidManifest — три новых Activity зарегистрированы.
+- AndroidManifest — отдельные `PrivateChatActivity`/`SecretChatActivity` удалены (слиты в `ChatActivity`); `CreateEncryptedChatActivity` остаётся.
 
 ### Storage prefs
 
@@ -346,21 +469,25 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
-| `showIdsInProfile` | `testing_show_ids_in_profile` | Блок `profileIdsBlock` в `UserProfileActivity` (под статусом онлайна). Показывает `UserId: <otherUserId>` и `ChatId: <chatId>`. Тап по строке копирует значение в `ClipboardManager` + Toast. |
+| `showIdsInProfile` | `testing_show_ids_in_profile` | ID-строки в `UserProfileActivity` и ChatId-карточка в `GroupInfoActivity`. В профиле пользователя показывает `UserId: <otherUserId>` и `ChatId: <chatId>`, в профиле группы — `ChatId: <chatId>`. Тап по строке копирует значение в `ClipboardManager` + Toast. |
 | `secretChatsEnabled` | `testing_secret_chats_enabled` | `encryptedChatButton` в шапке `ChatsFragment` (иконка `ic_hood`, открывает `CreateEncryptedChatActivity`). По умолчанию кнопка `View.GONE`; видимость переоценивается в `onViewCreated` и `onResume`, чтобы переключение в TestingSettings подхватывалось при возврате. |
 
 Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.
 
-## Раздел «Персонализация» — папки
+## Раздел «Персонализация» — локальные параметры
 
-`PersonalizationSettingsActivity` (между блоками «Настройки отображения» и «Фон чатов») содержит блок «Папки» с двумя `MaterialSwitch`:
+`PersonalizationSettingsActivity` хранит локальные параметры в `GlobalParam` (`barkfluff_prefs`). Блок «Папки» содержит три `MaterialSwitch`:
 
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
 | `compactFolders` | `folders_compact` | Компактные папки: в сегменте `ChatsFragment.foldersRecyclerView` скрывает текст имени папки, оставляя только иконку + бейдж непрочитанных. |
+| `folderTabsNoOutline` | `folders_no_outline` | Убирает `stroke` у неактивных вкладок папок через `bg_folder_tab_no_outline`; выбранная вкладка сохраняет `bg_folder_tab_selected` с подсветкой. |
 | `excludeFolderChatsFromAll` | `folders_exclude_from_all` | Чаты, входящие хотя бы в одну пользовательскую папку, не показываются во вкладке «Все чаты» и не учитываются в её бейдже. |
+| `mainTabCallsVisible` | `main_tab_calls_visible` | Показывает/скрывает вкладку «Звонки»; по умолчанию `false`, поэтому вкладка звонков скрыта. «Чаты» и «Профиль» обязательны, в настройках показаны серыми и не отключаются. |
+| `relativeOnlineTime` | `relative_online_time` | Форматирует last online через `OnlineTimeFormatter`: `был(а) 15 минут назад` или `был(а) в 6:15`. Применяется в `ChatActivity`, `UserProfileActivity`, `GroupInfoActivity`. |
+| `chatStickerSizeDp` | `chat_sticker_size_dp` | Размер стикеров в чате, диапазон 96..240dp, по умолчанию 160dp. `PersonalizationSettingsActivity` показывает preview, `ChatActivity` передаёт значение в `MessageAdapter`. |
 
-Оба флага по умолчанию `false`. Применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. При возврате на список чатов из персонализации `onResume()` фрагмента ререндерит сегмент.
+Фон чатов в блоке «Фон чатов» остаётся серверной персонализацией, но список в настройках теперь свернут до 3×3 ячеек (включая «Без фона») и раскрывается кнопкой, если элементов больше. Папочные флаги применяются в `ChatsFragment.renderFolderTabs()` / `applyFolderFilter()` / `computeAllChatsUnread()`. Вкладки главного экрана перечитываются в `MainActivity.onResume()`.
 
 ## Настройки → Аккаунт — поле «О себе»
 
@@ -448,6 +575,7 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 
 - Поддержанные языки: **ru**, **en**, **de**, **es**, **zh-CN** + «Системный» (сбрасывает override).
 - Ресурсы: `res/values/strings.xml` (ru, default) + `values-en/`, `values-de/`, `values-es/`, `values-zh-rCN/`.
+- Юридические документы локализованы **не через strings.xml**, а отдельными markdown-файлами в `assets/legal/` — см. раздел про модалку согласия выше.
 - `res/xml/locales_config.xml` перечисляет все 5 локалей; `AndroidManifest.xml` ссылается через `android:localeConfig="@xml/locales_config"`.
 - `utils/LocaleManager.kt` — `apply(language)` маппит `GlobalParam.LANGUAGE_*` константы в `LocaleListCompat`; `"system"` → `getEmptyLocaleList()`.
 - Хранение: `GlobalParam.appLanguage` (обычный `SharedPreferences`, ключ `app_language`, сохраняется при `clearUserData()` — это настройка устройства, не аккаунта).
@@ -458,14 +586,38 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 ## Файловая структура
 
 - `gradle/libs.versions.toml` — все версии зависимостей
-- `app/src/main/proto/` — 11 proto файлов
+- `core/src/main/proto/` — 13 proto файлов
 - `app/src/main/java/com/barkfluff/client/` — все исходники
-- `docs/` — `CACHING_SYSTEM.md`, `MATERIAL3_REPORT.md`, `material_you_3_guide.md`
 - Полная карта проекта — в Obsidian: [[Android-ProjectMap]] + [[Android-FileIndex]] (отдельного `PROJECT_MAP.md` в репозитории нет)
 
+## Per-chat mute (отключение уведомлений чата)
+
+- `ChatActivity` — пункт меню «три точки» (`btnMore` → `showChatMenu`) переключает mute через `GrpcManager.setChatMuted(chatId, muted, until?)`. Состояние читается из `GetChatInfo.muted`.
+- `GrpcManager`: `setChatMuted()`, `getMutedChats()` (Set<chatId>).
+- `ChatRepository.ChatInfo.muted` — маппится из proto `GetChatInfoResponse.muted`.
+- `GlobalParam.mutedChatIds` (StringSet) + `setChatMutedLocal()` — локальный кэш; `BarkFluffFirebaseMessagingService.onMessageReceived` пропускает уведомление, если `chatId` в кэше (guard от гонок кэша токенов; сервер и так подавляет push).
+- Строки: `chat_menu_mute/unmute`, `chat_muted/unmuted`, `chat_mute_error` (все 5 локалей). Серверная часть — [[Backend/Users]] → Per-chat mute.
+
+## Offline-first кеш чатов (V1)
+
+- \`:app-v1\` хранит список чатов, папки, отображаемые данные личных чатов и всю просмотренную историю в зашифрованной Room/SQLCipher БД. Ключ создаётся случайно и хранится в \`EncryptedSharedPreferences\`; scope включает Beacon-сервер и ID пользователя.
+- \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
+- \`ChatActivity\` немедленно показывает последние 30 кешированных сообщений, а затем обновляет серверную страницу только для открытого чата. Страницы пагинации и события realtime (new/read/edit/delete) сохраняются обратно в кеш.
+- Настройки хранилища показывают серверные категории и две локальные величины: Coil/bitmap изображения и encrypted Room-кеш чатов с количеством чатов/сообщений. «Очистить кеш» удаляет оба отображаемых источника, включая БД и её ключ. \`LogoutHelper\` также очищает кеш, поэтому данные другого аккаунта не отображаются.
 ## Сборка
 
 ```bash
 cd Android/Barkfluff.Client.Android
 ./gradlew assembleDebug
+```
+
+### Тестовая сборка на macOS
+
+На macOS клиент V1 собирается из корневого Android Gradle-проекта. Использовать JBR из Android Studio и локальный Android SDK:
+
+```bash
+cd /Users/liis/Projects/BarkFluff/Android
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+ANDROID_HOME="/Users/liis/Library/Android/sdk" \
+sh ./gradlew :app-v1:assembleDebug
 ```

@@ -6,6 +6,8 @@ using Barkfluff.AdminPanel.Services;
 
 
 using BarkFluff.GrpcServer;
+using BarkFluff.Proto.Bots;
+using BarkFluff.Proto.FederationInternal;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -115,8 +117,18 @@ public class Program
 
         builder.Services.AddGrpcClient<BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient>(o =>
         {
-            o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7010");
+            o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7003");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["ConfigurationService:Token"] ?? string.Empty));
+
+        builder.Services.AddGrpcClient<BotsServerApi.BotsServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["BotsService:Host"] ?? "http://bots:7027");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["BotsService:Token"] ?? string.Empty));
+
+        builder.Services.AddGrpcClient<FederationInternalApi.FederationInternalApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["FederationService:Host"] ?? "http://federation:7030");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FederationService:Token"] ?? string.Empty));
 
         // MassTransit RabbitMQ — для публикации админских событий (push-рассылки и т.п.)
         builder.Services.AddMassTransit(x =>
@@ -237,6 +249,12 @@ public class Program
         // Map Users Endpoints
         app.MapUsersEndpoints();
 
+        // Map Bots Endpoints
+        app.MapBotsEndpoints();
+
+        // Map Federation Endpoints
+        app.MapFederationEndpoints();
+
         // Map Configuration Endpoints
         app.MapConfigurationEndpoints();
 
@@ -295,9 +313,12 @@ public class Program
         app.MapGet("/logs", async context => await ServeHtmlFile(context, Path.Combine("v2", "logs.html")));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, Path.Combine("v2", "badges.html")));
         app.MapGet("/stickers", async context => await ServeHtmlFile(context, Path.Combine("v2", "stickers.html")));
+        app.MapGet("/bots", async context => await ServeHtmlFile(context, Path.Combine("v2", "bots.html")));
+        app.MapGet("/federation", async context => await ServeHtmlFile(context, Path.Combine("v2", "federation.html")));
         app.MapGet("/users", async context => await ServeHtmlFile(context, Path.Combine("v2", "users.html")));
         app.MapGet("/notifications", async context => await ServeHtmlFile(context, Path.Combine("v2", "notifications.html")));
         app.MapGet("/mail", async context => await ServeHtmlFile(context, Path.Combine("v2", "mail.html")));
+        app.MapGet("/configuration", async context => await ServeHtmlFile(context, Path.Combine("v2", "configuration.html")));
         app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-storage.html")));
         app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-browser.html")));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, Path.Combine("v2", "restarting.html")));

@@ -16,6 +16,7 @@
             --radius-input: 14px;
             --radius-btn: 14px;
             --transition: 0.22s cubic-bezier(.4,0,.2,1);
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         /* ── LIGHT ── */
@@ -361,10 +362,21 @@
         }
 
         .qr-img {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: contain;
             display: block;
+            opacity: 0;
+            transform: scale(0.98);
+            transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+            pointer-events: none;
+        }
+
+        .qr-img.visible {
+            opacity: 1;
+            transform: scale(1);
         }
 
         .qr-spinner {
@@ -374,6 +386,16 @@
             border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 0.85s linear infinite;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 120ms var(--ease-out), visibility 0s linear;
+        }
+
+        .qr-spinner.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            animation-play-state: paused;
+            transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
         }
 
         .qr-status {
@@ -1108,6 +1130,30 @@
             border-radius: 12px;
             background: #fff;
             padding: 8px;
+            opacity: 0;
+            transform: translateY(6px) scale(0.98);
+            transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+        }
+
+        .reg-2fa-qr.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .qr-img,
+            .reg-2fa-qr {
+                transform: none;
+                transition: opacity 120ms var(--ease-out);
+            }
+
+            .qr-spinner {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear;
+            }
+
+            .qr-spinner.is-hidden {
+                transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms;
+            }
         }
         .reg-2fa-secret-wrap {
             display: flex;
@@ -1270,14 +1316,14 @@
             <p class="qr-subtitle">Отсканируйте код в&nbsp;мобильном BarkFluff</p>
             <div class="qr-box">
                 <div class="qr-spinner" id="fastAuthSpinner" aria-hidden="true"></div>
-                <img class="qr-img" id="fastAuthImg" alt="QR-код для входа" hidden>
+                <img class="qr-img" id="fastAuthImg" alt="QR-код для входа" aria-hidden="true">
             </div>
             <div class="qr-status" id="fastAuthStatus" data-phase="loading">Загрузка кода…</div>
         </aside>
 
         </div><!-- /.login-row -->
 
-        <p class="copyright">© 2026 BarkFluff. Никакие права не защищены.</p>
+        <p class="copyright">2026 BarkFluff. Никакие права не защищены.</p>
     </main>
 
     <!-- ═══════════════ REGISTRATION MODAL ═══════════════ -->
@@ -1418,7 +1464,7 @@
                         </button>
                     </div>
                     <div id="reg2faSetup" hidden>
-                        <img class="reg-2fa-qr" id="reg2faQr" alt="QR-код для 2FA" hidden>
+                        <img class="reg-2fa-qr" id="reg2faQr" alt="QR-код для 2FA" aria-hidden="true" hidden>
                         <p class="reg-2fa-text">Отсканируйте QR или введите ключ вручную:</p>
                         <div class="reg-2fa-secret-wrap">
                             <code class="reg-2fa-secret" id="reg2faSecret"></code>
@@ -1463,6 +1509,7 @@
 
     <!-- Scripts -->
     <script src="/js/proto/barkfluff.bundle.js" onerror="void 0"></script>
+    <script src="/js/app/sound.js"     onerror="void 0"></script>
     <script src="/js/app/device.js"    onerror="void 0"></script>
     <script src="/js/app/tokens.js"    onerror="void 0"></script>
     <script src="/js/app/metadata.js"  onerror="void 0"></script>
@@ -1536,128 +1583,6 @@
         const show = pwInput.type === 'password';
         pwInput.type = show ? 'text' : 'password';
         pwToggle.textContent = show ? '🙈' : '👁';
-    });
-
-    /* ═══════════════════════════════════════════════════
-       SECTION HELPERS
-    ═══════════════════════════════════════════════════ */
-    function showSection(id) {
-        ['loginSection','otpSection','welcomeSection'].forEach(s => {
-            const el = document.getElementById(s);
-            if (s === id) {
-                el.classList.remove('hidden');
-                el.classList.add('section-enter');
-                setTimeout(() => el.classList.remove('section-enter'), 400);
-            } else {
-                el.classList.add('hidden');
-            }
-        });
-    }
-
-    function setLoading(btn, loading) {
-        btn.disabled = loading;
-        btn.classList.toggle('loading', loading);
-    }
-
-    function showError(id, msg) {
-        const el = document.getElementById(id);
-        el.textContent = msg;
-        el.classList.toggle('visible', !!msg);
-    }
-
-    /* ═══════════════════════════════════════════════════
-       LOGIN FORM
-    ═══════════════════════════════════════════════════ */
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const login    = document.getElementById('loginInput').value.trim();
-        const password = document.getElementById('passwordInput').value;
-        showError('loginError',''); showError('passwordError','');
-
-        let ok = true;
-        if (!login)    { showError('loginError','Введите почту или имя пользователя'); document.getElementById('loginInput').classList.add('error'); ok = false; }
-        if (!password) { showError('passwordError','Введите пароль'); document.getElementById('passwordInput').classList.add('error'); ok = false; }
-        if (!ok) return;
-
-        document.getElementById('loginInput').classList.remove('error');
-        document.getElementById('passwordInput').classList.remove('error');
-
-        const btn = document.getElementById('signInBtn');
-        setLoading(btn, true);
-
-        // Call real auth if available
-        if (typeof window.loginUser === 'function') {
-            try {
-                const res = await window.loginUser(login, password);
-                setLoading(btn, false);
-                if (res && res.needsOtp) { showSection('otpSection'); }
-                else if (res && res.ok)  { showSection('welcomeSection'); }
-                else { showError('loginError', res?.message || 'Неверные данные'); }
-            } catch(err) {
-                setLoading(btn, false);
-                showError('loginError', err.message || 'Ошибка соединения');
-            }
-        } else {
-            // Demo: simulate OTP step
-            setTimeout(() => { setLoading(btn, false); showSection('otpSection'); }, 900);
-        }
-    });
-
-    /* ═══════════════════════════════════════════════════
-       OTP INPUTS
-    ═══════════════════════════════════════════════════ */
-    const otpInputs = [...document.querySelectorAll('.otp-input')];
-    otpInputs.forEach((inp, i) => {
-        inp.addEventListener('input', function() {
-            const val = this.value.replace(/\D/g,'');
-            this.value = val;
-            this.classList.toggle('filled', !!val);
-            if (val && i < otpInputs.length - 1) otpInputs[i+1].focus();
-        });
-        inp.addEventListener('keydown', function(e) {
-            if (e.key === 'Backspace' && !this.value && i > 0) {
-                otpInputs[i-1].focus();
-                otpInputs[i-1].value = '';
-                otpInputs[i-1].classList.remove('filled');
-            }
-        });
-        inp.addEventListener('paste', function(e) {
-            e.preventDefault();
-            const data = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
-            data.split('').forEach((ch, j) => {
-                if (otpInputs[j]) { otpInputs[j].value = ch; otpInputs[j].classList.add('filled'); }
-            });
-            if (otpInputs[data.length]) otpInputs[data.length].focus();
-        });
-    });
-
-    document.getElementById('otpBack').addEventListener('click', () => {
-        otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
-        showError('otpError','');
-        showSection('loginSection');
-    });
-
-    document.getElementById('otpSubmitBtn').addEventListener('click', async function() {
-        const code = otpInputs.map(i => i.value).join('');
-        showError('otpError','');
-        if (code.length < 6) { showError('otpError','Введите 6 цифр'); return; }
-
-        const btn = document.getElementById('otpSubmitBtn');
-        setLoading(btn, true);
-
-        if (typeof window.verifyOtp === 'function') {
-            try {
-                const res = await window.verifyOtp(code);
-                setLoading(btn, false);
-                if (res && res.ok) showSection('welcomeSection');
-                else showError('otpError', res?.message || 'Неверный код');
-            } catch(err) {
-                setLoading(btn, false);
-                showError('otpError', err.message || 'Ошибка');
-            }
-        } else {
-            setTimeout(() => { setLoading(btn, false); showSection('welcomeSection'); }, 800);
-        }
     });
 
     /* ═══════════════════════════════════════════════════

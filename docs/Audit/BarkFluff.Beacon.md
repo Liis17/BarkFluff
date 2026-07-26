@@ -11,7 +11,7 @@ Beacon — точка входа для клиентов: единственны
 | Critical    | 0          |
 | High        | 1          |
 | Medium      | 3          |
-| Low         | 3          |
+| Low         | 4          |
 
 ## Безопасность
 
@@ -39,6 +39,12 @@ Beacon — точка входа для клиентов: единственны
 ### S4. ~~Захардкоженные `Status = Healthy` и `TlsEnabled = true` вводят клиентов в заблуждение~~ — ~~Low~~ **Неактуально**
 
 > **Решение (2026-06-22):** Health check в Beacon не нужен — поле статуса клиентами не используется для роутинга. Оставить как есть.
+
+### S5. ~~`livekit_url` раскрывает внутренний Docker-адрес анонимным клиентам~~ — ~~Low~~ **Исправлено (2026-07-15)**
+
+**Файл:** `Backend/BarkFluff.Beacon/Features/GetServerInfo/GetServerInfoCommandHandler.cs:121-123`, `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:355-365`
+**Проблема:** Публичный анонимный `GetServerInfo` возвращал `LivekitUrl` напрямую из `LiveKit:Url`, без проверки, что это внешний TLS-адрес. На свежей конфигурации DefaultsPopulator задаёт `ws://livekit:7880`, поэтому ответ Beacon раскрывал внутреннее DNS-имя и порт контейнера вместо публичного WSS-endpoint.
+**Решение:** Добавлено отдельное конфиг-поле `LiveKit:PublicUrl` (миграция `20260715150000_AddLiveKitPublicUrl`, ServiceId=13/Calls) — публичный `wss://`-адрес, независимый от внутреннего `LiveKit:Url`. Beacon теперь берёт `LivekitUrl` из `PublicUrl` и валидирует схему (`GetPublicLivekitUrl`): если не `wss://` или не задано — возвращает пустую строку вместо внутреннего адреса.
 
 ## Производительность
 

@@ -90,7 +90,6 @@
 | `AppVersion.cs` | Константы версии приложения (`Version`, `VersionType`, `VersionName`, `AppName`) |
 | `AvatarImageHolder.cs` | Кеш/хранилище загруженных аватаров в памяти |
 | `FFPlayHost.cs` | Хост для запуска `ffplay` (воспроизведение аудио/видео через внешний процесс) |
-| `ImageColorAnalyzer.cs` | Анализ доминирующего цвета изображения (для динамической акцентной окраски UI) |
 | `OnlineStatusService.cs` | Singleton. gRPC-стриминг онлайн-статусов (`Onliner.SubscribeToOnlineStatus`). Ping каждые 3 сек. События: `OnlineStatusChanged`, `ConnectionStatusChanged`. Дебаунс 500 мс. |
 | `RealtimeUpdateService.cs` | Singleton. gRPC-стриминг входящих сообщений (`Updates.JustUpdate`). Автопереподключение (exp. backoff 2с→30с). Дедупликация по `MessageId`. События: `NewMessageReceived`, `ReadReceiptReceived`, `ConnectionStatusChanged` |
 | `ThemeRegistryHelper.cs` | Запись выбранной темы в реестр Windows |
@@ -349,9 +348,7 @@ Windows Toast (WinRT) уведомления:
 | Файл | Описание |
 |------|----------|
 | `launchSettings.json` | Профили запуска (VS) |
-| `PublishProfiles/SelfContained.pubxml` | Публикация self-contained x64 |
-| `PublishProfiles/WithoutDependencies.pubxml` | Публикация framework-dependent |
 
 ---
 
-*Последнее обновление: актуально для версии `0.0.0.2056`, .NET 10, target `net10.0-windows10.0.26100.0`*
+*Последнее обновление: актуально для версии `0.0.0.2085`, .NET 10, target `net10.0-windows10.0.26100.0`*

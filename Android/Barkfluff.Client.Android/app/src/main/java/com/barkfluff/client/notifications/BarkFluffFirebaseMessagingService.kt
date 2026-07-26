@@ -61,6 +61,10 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
                 }
                 return
             }
+            "private_chat_invite" -> {
+                handlePrivateChatInvite(data)
+                return
+            }
         }
 
         // Команда dismiss: убираем нотификацию чата (после прочтения на другом устройстве)
@@ -77,6 +81,14 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
+
+        // Guard: чат замьючен пользователем — не показываем локальное уведомление.
+        // Сервер уже подавляет push для замьюченных чатов; это защита от гонок кэша токенов.
+        if (chatId in GlobalParam(applicationContext).mutedChatIds) {
+            Log.d(TAG, "onMessageReceived: чат $chatId замьючен, уведомление пропущено")
+            return
+        }
+
         val senderId = data["sender_id"]?.toLongOrNull() ?: return
         val senderName = data["sender_name"]?.takeIf { it.isNotBlank() } ?: "Unknown"
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
@@ -165,6 +177,29 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
+
+    private fun handlePrivateChatInvite(data: Map<String, String>) {
+        val chatId = data["chat_id"]
+        if (chatId.isNullOrBlank()) {
+            Log.w(TAG, "private_chat_invite без chat_id, пропускаем")
+            return
+        }
+        val inviterName = data["inviter_name"]?.takeIf { it.isNotBlank() } ?: "BarkFluff"
+        val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
+
+        serviceScope.launch {
+            val avatarBitmap = loadBitmapFromUrl(avatarUrl)
+            withContext(Dispatchers.Main) {
+                NotificationHelper.showPrivateInviteNotification(
+                    context = applicationContext,
+                    inviterName = inviterName,
+                    chatId = chatId,
+                    avatarBitmap = avatarBitmap
+                )
+            }
+        }
+        Log.d(TAG, "private_chat_invite: chatId=$chatId, inviter=$inviterName")
+    }
 
     private fun handleIncomingCall(data: Map<String, String>) {
         val callId = data["call_id"]

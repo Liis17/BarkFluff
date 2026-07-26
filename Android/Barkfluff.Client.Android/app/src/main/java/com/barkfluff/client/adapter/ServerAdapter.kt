@@ -11,11 +11,18 @@ import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
 import com.barkfluff.client.data.ServerDataElement
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.chip.Chip
+import com.google.android.material.color.MaterialColors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * Адаптер для списка серверов
  */
 class ServerAdapter(
+    private val coroutineScope: CoroutineScope,
+    private val measurePing: suspend (String) -> Int?,
     private val onServerClick: (ServerDataElement) -> Unit
 ) : ListAdapter<ServerDataElement, ServerAdapter.ServerViewHolder>(ServerDiffCallback()) {
 
@@ -26,7 +33,12 @@ class ServerAdapter(
     }
 
     override fun onBindViewHolder(holder: ServerViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), coroutineScope, measurePing)
+    }
+
+    override fun onViewRecycled(holder: ServerViewHolder) {
+        super.onViewRecycled(holder)
+        holder.cancelPendingPing()
     }
 
     class ServerViewHolder(
@@ -35,53 +47,81 @@ class ServerAdapter(
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val card: MaterialCardView = itemView.findViewById(R.id.serverCard)
-        private val colorIndicator: View = itemView.findViewById(R.id.serverColorIndicator)
+        private val serverIconTile: MaterialCardView = itemView.findViewById(R.id.serverIconTile)
         private val title: TextView = itemView.findViewById(R.id.serverTitle)
         private val description: TextView = itemView.findViewById(R.id.serverDescription)
-        private val locationAndPublicName: TextView = itemView.findViewById(R.id.serverLocationAndPublicName)
+        private val handle: TextView = itemView.findViewById(R.id.serverHandle)
+        private val chipOnline: Chip = itemView.findViewById(R.id.chipOnline)
+        private val chipPing: Chip = itemView.findViewById(R.id.chipPing)
+        private val chipRegion: Chip = itemView.findViewById(R.id.chipRegion)
+        private val connectCta = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.serverConnectCta)
 
-        fun bind(server: ServerDataElement) {
+        private var pingJob: Job? = null
+
+        fun cancelPendingPing() {
+            pingJob?.cancel()
+            pingJob = null
+        }
+
+        fun bind(server: ServerDataElement, coroutineScope: CoroutineScope, measurePing: suspend (String) -> Int?) {
             title.text = server.title
             description.text = server.description
 
-            // Формируем строку локации и публичного имени
-            val locationText = buildString {
-                if (server.location.isNotBlank()) {
-                    append(server.location)
-                }
-                if (server.publicName.isNotBlank()) {
-                    if (isNotEmpty()) {
-                        append(" • ")
-                    }
-                    append("@${server.publicName}")
-                }
-            }
-
-            if (locationText.isNotBlank()) {
-                locationAndPublicName.text = locationText
-                locationAndPublicName.visibility = View.VISIBLE
+            // Макет 2c: регион — чип в общей строке, публичное имя — отдельная строка ниже
+            if (server.location.isNotBlank()) {
+                chipRegion.text = server.location
+                chipRegion.visibility = View.VISIBLE
             } else {
-                locationAndPublicName.visibility = View.GONE
+                chipRegion.visibility = View.GONE
             }
 
-            // Устанавливаем цветовой индикатор
-            val defaultColor = com.google.android.material.color.MaterialColors.getColor(
-                itemView, androidx.appcompat.R.attr.colorPrimary, Color.parseColor("#FF6B35")
+            if (server.publicName.isNotBlank()) {
+                handle.text = itemView.context.getString(R.string.server_item_handle, server.publicName)
+                handle.visibility = View.VISIBLE
+            } else {
+                handle.visibility = View.GONE
+            }
+
+            // Цвет icon-tile: своё значение ноды, иначе — primary активной темы
+            val defaultColor = MaterialColors.getColor(
+                itemView, androidx.appcompat.R.attr.colorPrimary
             )
             try {
                 if (server.hexColor.isNotBlank()) {
                     val color = Color.parseColor(if (server.hexColor.startsWith("#")) server.hexColor else "#${server.hexColor}")
-                    colorIndicator.setBackgroundColor(color)
+                    serverIconTile.setCardBackgroundColor(color)
                 } else {
-                    colorIndicator.setBackgroundColor(defaultColor)
+                    serverIconTile.setCardBackgroundColor(defaultColor)
                 }
             } catch (e: Exception) {
-                colorIndicator.setBackgroundColor(defaultColor)
+                serverIconTile.setCardBackgroundColor(defaultColor)
             }
 
-            // Обработчик клика
+            // Сервер уже гарантированно жив (Navigator не вернул бы мёртвый сервер)
+            chipOnline.visibility = View.VISIBLE
+
+            // Обработчики клика
             card.setOnClickListener {
                 onServerClick(server)
+            }
+            connectCta.setOnClickListener {
+                onServerClick(server)
+            }
+
+            // Пинг: защита от гонки при recycle через itemView.tag sentinel
+            cancelPendingPing()
+            itemView.tag = server.ip
+            chipPing.visibility = View.GONE
+            pingJob = coroutineScope.launch {
+                val ms = measurePing(server.ip)
+                if (itemView.tag == server.ip) {
+                    if (ms != null) {
+                        chipPing.text = itemView.context.getString(R.string.server_ping_ms, ms)
+                        chipPing.visibility = View.VISIBLE
+                    } else {
+                        chipPing.visibility = View.GONE
+                    }
+                }
             }
         }
     }

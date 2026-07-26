@@ -19,16 +19,15 @@ namespace BarkFluff.Calls.Services;
 /// <summary>
 /// Доменная логика жизненного цикла звонка: ringing → active → ended.
 /// Backend делает call-control + выдачу LiveKit-токенов; медиа идёт мимо backend.
-/// Доставка ринга — in-process через <see cref="CallEventSubscriptionsManager"/>
-/// (device-scope, как SubscribeSecretMessages в Updates).
+/// Доставка ринга — через <see cref="ICallEventDispatcher"/> (fan-out по RabbitMQ на все
+/// инстансы; каждый доставляет своим локальным device-scope стримам).
 /// </summary>
 public class CallsService
 {
     private readonly CallsContext _db;
     private readonly LiveKitTokenService _tokens;
-    private readonly CallEventSubscriptionsManager _subscriptions;
+    private readonly ICallEventDispatcher _dispatcher;
     private readonly CallQualityStore _quality;
-    private readonly CallTimeoutScheduler _timeouts;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
     private readonly IPublishEndpoint _publish;
     private readonly UserContext _userContext;
@@ -38,9 +37,8 @@ public class CallsService
     public CallsService(
         CallsContext db,
         LiveKitTokenService tokens,
-        CallEventSubscriptionsManager subscriptions,
+        ICallEventDispatcher dispatcher,
         CallQualityStore quality,
-        CallTimeoutScheduler timeouts,
         MessagesServerApi.MessagesServerApiClient messagesClient,
         IPublishEndpoint publish,
         UserContext userContext,
@@ -49,9 +47,8 @@ public class CallsService
     {
         _db = db;
         _tokens = tokens;
-        _subscriptions = subscriptions;
+        _dispatcher = dispatcher;
         _quality = quality;
-        _timeouts = timeouts;
         _messagesClient = messagesClient;
         _publish = publish;
         _userContext = userContext;
@@ -102,7 +99,7 @@ public class CallsService
         _db.CallSessions.Add(session);
         await _db.SaveChangesAsync(ct);
 
-        _timeouts.Schedule(session.Id);
+        // Таймаут ринга обрабатывает durable-sweeper (CallRingTimeoutSweeper) — переживает перезапуск инстанса.
 
         var incoming = new CallEvent
         {
@@ -167,15 +164,14 @@ public class CallsService
             session.Status = CallStatus.Active;
             session.AnsweredAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
-            _timeouts.Cancel(session.Id);
             _metrics.Increment("calls_answered");
         }
 
         var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
 
         // Уведомляем инициатора и гасим ринг на остальных устройствах ответившего.
-        await _subscriptions.SendToUserAsync(session.CallerUserId, accepted);
-        await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+        await _dispatcher.SendToUserAsync(session.CallerUserId, accepted);
+        await _dispatcher.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
 
         // Гасим push-нотификацию входящего звонка на всех устройствах получателей.
         await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "accepted", ct);
@@ -207,7 +203,7 @@ public class CallsService
 
         // Гасим ринг на остальных устройствах присоединившегося.
         var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
-        await _subscriptions.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
+        await _dispatcher.SendToUserExceptDeviceAsync(userId, deviceId, accepted);
 
         _metrics.Increment("calls_joined");
         _logger.LogInformation("Пользователь {UserId} присоединился к звонку {CallId}", userId, session.Id);
@@ -233,7 +229,7 @@ public class CallsService
         {
             await EnsureParticipantAsync(session, userId, ct);
             // В группе один отказ не завершает звонок — лишь гасим ринг на устройствах отказавшегося.
-            await _subscriptions.SendToUserAsync(userId, rejected);
+            await _dispatcher.SendToUserAsync(userId, rejected);
         }
         else
         {
@@ -246,13 +242,12 @@ public class CallsService
             {
                 Finalize(session, CallEndReasonKind.Rejected, userId);
                 await _db.SaveChangesAsync(ct);
-                _timeouts.Cancel(session.Id);
                 await PostCallSystemMessageAsync(session, ct);
             }
 
             // Инициатору — «отклонён»; всем устройствам получателя — гасим ринг.
-            await _subscriptions.SendToUserAsync(session.CallerUserId, rejected);
-            await _subscriptions.SendToUserAsync(userId, rejected);
+            await _dispatcher.SendToUserAsync(session.CallerUserId, rejected);
+            await _dispatcher.SendToUserAsync(userId, rejected);
             _metrics.Increment("calls_rejected");
         }
 
@@ -277,7 +272,6 @@ public class CallsService
             var reason = session.AnsweredAt.HasValue ? CallEndReasonKind.Hangup : CallEndReasonKind.Missed;
             Finalize(session, reason, userId);
             await _db.SaveChangesAsync(ct);
-            _timeouts.Cancel(session.Id);
             await NotifyEndedAsync(session, ct);
             await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "ended", ct);
             await PostCallSystemMessageAsync(session, ct);
@@ -316,7 +310,7 @@ public class CallsService
         };
 
         // Рассылаем всем участникам, включая инициатора смены — единый источник истины.
-        await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+        await _dispatcher.SendToUsersAsync(await GetParticipantsAsync(session), evt);
 
         _logger.LogInformation("Качество голоса звонка {CallId} → {Quality} (сменил {UserId})",
             session.Id, quality, userId);
@@ -363,6 +357,8 @@ public class CallsService
         return response;
     }
 
+    private const int MaxActiveCallsChatIds = 100;
+
     public async Task<GetActiveCallsResponse> GetActiveCallsAsync(GetActiveCallsRequest request, CancellationToken ct)
     {
         var response = new GetActiveCallsResponse();
@@ -371,6 +367,8 @@ public class CallsService
             .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
             .Where(g => g.HasValue)
             .Select(g => g!.Value)
+            .Distinct()
+            .Take(MaxActiveCallsChatIds)
             .ToList();
 
         if (chatIds.Count == 0)
@@ -378,8 +376,19 @@ public class CallsService
             return response;
         }
 
+        // Отдаём только чаты, в которых состоит вызывающий — иначе IDOR на активные звонки чужих чатов.
+        var membershipRequest = new CheckChatMembershipRequest { UserId = _userContext.UserId };
+        membershipRequest.ChatIds.AddRange(chatIds.Select(id => id.ToString()));
+        var membership = await _messagesClient.CheckChatMembershipAsync(membershipRequest, cancellationToken: ct);
+
+        var memberChatIds = chatIds.Where(id => membership.MemberChatIds.Contains(id.ToString())).ToList();
+        if (memberChatIds.Count == 0)
+        {
+            return response;
+        }
+
         var rows = await _db.CallSessions.AsNoTracking()
-            .Where(c => c.Status == CallStatus.Active && c.ChatId != null && chatIds.Contains(c.ChatId.Value))
+            .Where(c => c.Status == CallStatus.Active && c.ChatId != null && memberChatIds.Contains(c.ChatId.Value))
             .ToListAsync(ct);
 
         foreach (var c in rows)
@@ -431,20 +440,28 @@ public class CallsService
 
     // ── Системные пути (таймаут / webhooks LiveKit) ────────────────────────
 
-    /// <summary>Таймаут ринга — звонок никто не принял.</summary>
-    public async Task TimeoutAsync(Guid callId)
+    /// <summary>Таймаут ринга — звонок никто не принял. Вызывается durable-sweeper'ом на любом инстансе.</summary>
+    public async Task TimeoutAsync(Guid callId, CancellationToken ct = default)
     {
-        var session = await _db.CallSessions.FirstOrDefaultAsync(c => c.Id == callId);
-        if (session is null || session.Status != CallStatus.Ringing)
+        // Атомарный захват: ровно один инстанс переведёт Ringing→Ended (условие Status=Ringing в UPDATE).
+        // Остальные (или повторные проходы) получат 0 строк и выйдут — доставка событий и системного
+        // сообщения происходит ровно один раз даже при параллельных sweeper'ах нескольких инстансов.
+        var claimed = await _db.CallSessions
+            .Where(c => c.Id == callId && c.Status == CallStatus.Ringing)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.Status, CallStatus.Ended)
+                .SetProperty(c => c.EndReason, CallEndReasonKind.Missed)
+                .SetProperty(c => c.EndedAt, DateTime.UtcNow), ct);
+
+        if (claimed == 0)
         {
-            return;
+            return; // уже не Ringing (принят/завершён) или обработан другим инстансом
         }
 
-        Finalize(session, CallEndReasonKind.Missed, endedByUserId: null);
-        await _db.SaveChangesAsync();
-        await NotifyEndedAsync(session, CancellationToken.None);
-        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, CancellationToken.None), "timeout", CancellationToken.None);
-        await PostCallSystemMessageAsync(session, CancellationToken.None);
+        var session = await _db.CallSessions.AsNoTracking().FirstAsync(c => c.Id == callId, ct);
+        await NotifyEndedAsync(session, ct);
+        await PublishDismissAsync(session, await GetRingRecipientsAsync(session, ct), "timeout", ct);
+        await PostCallSystemMessageAsync(session, ct);
         _metrics.Increment("calls_missed");
         _logger.LogInformation("Звонок {CallId} помечен пропущенным (таймаут)", callId);
     }
@@ -461,7 +478,6 @@ public class CallsService
         var reason = session.AnsweredAt.HasValue ? CallEndReasonKind.Hangup : CallEndReasonKind.Missed;
         Finalize(session, reason, endedByUserId: null);
         await _db.SaveChangesAsync();
-        _timeouts.Cancel(session.Id);
         await NotifyEndedAsync(session, CancellationToken.None);
         await PublishDismissAsync(session, await GetRingRecipientsAsync(session, CancellationToken.None), "ended", CancellationToken.None);
         await PostCallSystemMessageAsync(session, CancellationToken.None);
@@ -489,7 +505,7 @@ public class CallsService
         };
 
         var recipients = (await GetParticipantsAsync(session)).Where(id => id != userId);
-        await _subscriptions.SendToUsersAsync(recipients, evt);
+        await _dispatcher.SendToUsersAsync(recipients, evt);
     }
 
     // ── Вспомогательное ────────────────────────────────────────────────────
@@ -507,7 +523,7 @@ public class CallsService
     }
 
     private Task RingAsync(IReadOnlyList<long> recipients, CallEvent incoming)
-        => _subscriptions.SendToUsersAsync(recipients, incoming);
+        => _dispatcher.SendToUsersAsync(recipients, incoming);
 
     /// <summary>Погасить push-нотификацию входящего звонка на устройствах получателей.</summary>
     private async Task PublishDismissAsync(CallSession session, IReadOnlyList<long> recipients, string reason, CancellationToken ct)
@@ -539,7 +555,7 @@ public class CallsService
             }
         };
 
-        await _subscriptions.SendToUsersAsync(await GetParticipantsAsync(session), evt);
+        await _dispatcher.SendToUsersAsync(await GetParticipantsAsync(session), evt);
     }
 
     /// <summary>Системное сообщение об итоге звонка в чат (best-effort, не блокирует call-control).</summary>

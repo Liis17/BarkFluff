@@ -223,6 +223,7 @@
         if (!el) return;
         el.textContent = msg || '';
         el.classList.toggle('visible', !!msg);
+        if (msg) BF.sound.play('droplet');
     }
 
     function clearStepErrors() {
@@ -245,6 +246,7 @@
                 var v = e.target.value.replace(/[^0-9]/g, '');
                 e.target.value = v;
                 input.classList.toggle('filled', !!v);
+                if (v) BF.sound.play('tick');
                 if (v && index < inputs.length - 1) inputs[index + 1].focus();
                 var code = inputs.map(function (i) { return i.value; }).join('');
                 if (code.length === inputs.length) onComplete(code);
@@ -534,6 +536,12 @@
             twoFaMode = 'intro';
             $('reg2faIntro').hidden = false;
             $('reg2faSetup').hidden = true;
+            var qrImg = $('reg2faQr');
+            qrImg.onload = null;
+            qrImg.classList.remove('visible');
+            qrImg.setAttribute('aria-hidden', 'true');
+            qrImg.hidden = true;
+            qrImg.removeAttribute('src');
             otp8.clear();
             configFooter();
         } else if (n === 9) {
@@ -846,8 +854,23 @@
                 $('reg2faSetup').hidden = false;
                 $('reg2faSecret').textContent = res.secret || '';
                 var qrImg = $('reg2faQr');
-                if (res.qr) { qrImg.src = 'data:image/png;base64,' + res.qr; qrImg.hidden = false; }
-                else { qrImg.hidden = true; }
+                qrImg.classList.remove('visible');
+                qrImg.setAttribute('aria-hidden', 'true');
+                if (res.qr) {
+                    var qrSrc = 'data:image/png;base64,' + res.qr;
+                    qrImg.onload = function () {
+                        if (qrImg.getAttribute('src') !== qrSrc) return;
+                        qrImg.onload = null;
+                        qrImg.classList.add('visible');
+                        qrImg.setAttribute('aria-hidden', 'false');
+                    };
+                    qrImg.hidden = false;
+                    qrImg.src = qrSrc;
+                } else {
+                    qrImg.onload = null;
+                    qrImg.hidden = true;
+                    qrImg.removeAttribute('src');
+                }
                 configFooter();
                 otp8.focus();
             }).catch(function () {

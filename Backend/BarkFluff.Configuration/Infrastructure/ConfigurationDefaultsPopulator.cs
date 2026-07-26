@@ -44,6 +44,8 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.CloudMessaging, "cloud-messaging" },
         { ServiceId.Web, "web" },
         { ServiceId.Calls, "calls" },
+        { ServiceId.Bots, "bots" },
+        { ServiceId.Federation, "federation" },
     };
 
     /// <summary>
@@ -63,6 +65,8 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.CloudMessaging, 7011 },
         { ServiceId.Web, 7016 },
         { ServiceId.Calls, 7025 },
+        { ServiceId.Bots, 7027 },
+        { ServiceId.Federation, 7030 },
     };
 
     /// <summary>
@@ -81,6 +85,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, "onliner" },
         { ServiceId.Web, "web" },
         { ServiceId.Calls, "calls" },
+        { ServiceId.Bots, "bots" },
     };
 
     /// <summary>
@@ -94,6 +99,8 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Messages, ("MessagesDb", "messages") },
         { ServiceId.Onliner, ("OnlinerDb", "onliner") },
         { ServiceId.Calls, ("CallsDb", "calls") },
+        { ServiceId.Bots, ("BotsDb", "bots") },
+        { ServiceId.Federation, ("FederationDb", "federation") },
     };
 
     public ConfigurationDefaultsPopulator(
@@ -222,13 +229,15 @@ public class ConfigurationDefaultsPopulator
                 return port.ToString();
         }
 
-        // --- RunSettings:Http1Port (Files, Calls) ---
+        // --- RunSettings:Http1Port (Files, Calls, Bots) ---
         if (config.Section == "RunSettings" && config.Key == "Http1Port")
         {
             if (serviceId == ServiceId.Files)
                 return "7006";
             if (serviceId == ServiceId.Calls)
                 return "7026"; // HTTP/1.1-листенер для приёма LiveKit-webhooks
+            if (serviceId == ServiceId.Bots)
+                return "7028"; // HTTP/1.1-листенер для Bot REST API
         }
 
         // --- JwtSettings ---
@@ -324,6 +333,101 @@ public class ConfigurationDefaultsPopulator
             };
         }
 
+        // --- BotsService (inter-service, для AdminPanel) ---
+        if (config.Section == "BotsService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://bots:{DefaultPorts[ServiceId.Bots]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "BotsServiceClient"),
+                _ => null
+            };
+        }
+
+        // --- Federation:Enabled (федерация выключена по умолчанию до Фазы 1+) ---
+        // Federation:ServerName и Federation:ExternalEndpoint намеренно не обрабатываются здесь:
+        // остаются "" — оператор ноды обязан задать сам.
+        if (config.Section == "Federation" && config.Key == "Enabled")
+        {
+            return "false";
+        }
+
+        // --- Federation:ChatCreatedHourlyLimit (квота per-origin, этап 2.5) ---
+        if (config.Section == "Federation" && config.Key == "ChatCreatedHourlyLimit")
+        {
+            return "100";
+        }
+
+        // --- Federation: presence-мост (этап 4.3) ---
+        if (config.Section == "Federation")
+        {
+            var presenceDefault = config.Key switch
+            {
+                // Лимит uuid в одной S2S-подписке (обе стороны).
+                "MaxPresenceSubscriptionSize" => "500",
+                // TTL записи интереса инстанса Onliner ≈ 3 × его интервала репортинга (20с).
+                "PresenceInterestTtlSeconds" => "60",
+                // Период сверки «желаемых» подписок с фактическими.
+                "PresenceReconcileSeconds" => "10",
+                // Дебаунс переоткрытия стрима — против флаппинга при частой смене набора.
+                "PresenceResubscribeMinSeconds" => "5",
+                // Не чаще одного события на пару (пользователь, стрим) за окно.
+                "PresenceCoalesceSeconds" => "5",
+                // Периодический ресинк снимка — страховка от пропущенного fan-out-события.
+                "PresenceResyncSeconds" => "300",
+                // --- typing-мост (этап 4.4) ---
+                // Не чаще одной отправки в окно на ключ (чат, отправитель, нода).
+                "TypingCoalesceSeconds" => "2",
+                // Короткий deadline: typing эфемерен, ждать долго бессмысленно.
+                "TypingDeadlineMs" => "2000",
+                // При coalescing 2с это ~20 одновременно печатающих пар с одной ноды.
+                "TypingRateLimitPerOriginPerMinute" => "600",
+                // Heartbeat идёт каждые 4–5с — без кеша каждый стоил бы двух gRPC-вызовов.
+                "TypingValidationCacheSeconds" => "30",
+                _ => null
+            };
+
+            if (presenceDefault is not null)
+            {
+                return presenceDefault;
+            }
+        }
+
+        // --- OnlinerService (inter-service, для Federation: presence/typing-мост) ---
+        if (config.Section == "OnlinerService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://onliner:{DefaultPorts[ServiceId.Onliner]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "OnlinerServiceClient"),
+                _ => null
+            };
+        }
+
+        // --- Onliner: uuid-ветка presence (этап 4.2) ---
+        if (config.Section == "Onliner")
+        {
+            return config.Key switch
+            {
+                // TTL кеша remote-статусов: заодно эвикция uuid, за которыми больше не следят.
+                "RemotePresenceTtlSeconds" => "900",
+                // Период heartbeat'а интереса; TTL записи в Federation ≈ 3 × этого значения.
+                "PresenceInterestIntervalSeconds" => "20",
+                _ => null
+            };
+        }
+
+        // --- FederationService (inter-service, для будущих клиентов сервиса Federation) ---
+        if (config.Section == "FederationService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://federation:{DefaultPorts[ServiceId.Federation]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "FederationServiceClient"),
+                _ => null
+            };
+        }
+
         // --- IdentityService (inter-service) ---
         if (config.Section == "IdentityService")
         {
@@ -341,6 +445,7 @@ public class ConfigurationDefaultsPopulator
             return config.Key switch
             {
                 "Url" => "ws://livekit:7880",
+                "PublicUrl" => "wss://calls.example.com",
                 "ApiKey" => "devkey",
                 "ApiSecret" => "devsecret_change_me_in_production_0123456789",
                 _ => null

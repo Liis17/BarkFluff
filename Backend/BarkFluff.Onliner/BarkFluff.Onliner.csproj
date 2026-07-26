@@ -22,6 +22,7 @@
         </PackageReference>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
         <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.8" />
     </ItemGroup>
 
     <ItemGroup>
@@ -40,6 +41,10 @@
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Client" />
+        <!-- Этап 4.2: SetPresenceInterest (интерес к remote-presence) и DeliverTypingOutbound (4.4).
+             federation_api подключён без стабов — он нужен лишь как импорт internal-контракта. -->
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_api.proto" GrpcServices="None" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\federation_internal_api.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>

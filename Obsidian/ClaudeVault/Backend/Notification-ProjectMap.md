@@ -25,7 +25,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Senders/EmailSender.cs` | Отправляет email через `System.Net.Mail.SmtpClient` (SSL). Получает HTML-тело письма через `HtmlEmailTemplateParser`. Намеренно отключает проверку TLS-сертификата через `ServicePointManager.ServerCertificateValidationCallback` для поддержки self-signed сертификатов (см. `SECURITY_AUDIT.md`). |
+| `Senders/EmailSender.cs` | Отправляет email через `System.Net.Mail.SmtpClient` (SSL). Получает HTML-тело письма через `HtmlEmailTemplateParser`. Намеренно отключает проверку TLS-сертификата через `ServicePointManager.ServerCertificateValidationCallback` для поддержки self-signed сертификатов. |
 
 ### Parsers
 
@@ -51,6 +51,7 @@
 | `Templates/successful_registration.html` | `SuccessfulRegistration` — успешная регистрация |
 | `Templates/successful_login.html` | `SuccessfulLogin` — успешный вход |
 | `Templates/password_changed.html` | `PasswordChanged` — смена пароля |
+| `Templates/password_changed_by_admin.html` | `PasswordChangedByAdmin` — принудительная смена пароля администратором (см. `ForceSetPasswordServer` в [[Backend/Identity]]) |
 | `Templates/two_factor_method_changed.html` | `TwoFactorMethodChanged` — смена метода 2FA |
 
 ### Конфигурационные файлы
@@ -65,14 +66,12 @@
 
 | Файл | Описание |
 |------|----------|
-| `Dockerfile` | Стандартный образ для production. |
-| `Dockerfile.slim` | Облегчённый образ (уменьшенный размер). |
+| `Dockerfile.slim` | Образ для CI и production. |
 
 ### Прочее
 
 | Файл | Описание |
 |------|----------|
-| `SECURITY_AUDIT.md` | Аудит безопасности (март 2026). Зафиксированы: 1 критическая (отключена проверка SSL — CWE-295), 2 высоких, 2 средних уязвимости. |
 | `BarkFluff.Notification.csproj` | `net10.0`, зависимости: `MassTransit.RabbitMQ 8.5.2`, `Microsoft.AspNetCore.OpenApi 10.0.1`, проекты `BarkFluff.Shared.Queue`, `BarkFluff.GrpcServer`. |
 
 ---

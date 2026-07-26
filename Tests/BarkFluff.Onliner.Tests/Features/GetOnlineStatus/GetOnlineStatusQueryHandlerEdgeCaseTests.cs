@@ -1,6 +1,4 @@
-using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Features.GetOnlineStatus;
-using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Users;
 
 namespace BarkFluff.Onliner.Tests.Features.GetOnlineStatus;
@@ -12,7 +10,8 @@ public class GetOnlineStatusQueryHandlerEdgeCaseTests
     private GetOnlineStatusQueryHandler CreateHandler(long callerId)
     {
         return new GetOnlineStatusQueryHandler(
-            _h.Storage,
+            _h.Presence,
+            _h.RemotePresence,
             _h.DbContext,
             _h.CreateUserContext(callerId),
             _h.CreateVisibilityFilter(),
@@ -20,9 +19,9 @@ public class GetOnlineStatusQueryHandlerEdgeCaseTests
     }
 
     [Fact]
-    public async Task Handle_UnknownStatusInStorage_ReturnsProtoUnknown()
+    public async Task Handle_OfflineInDb_ReturnsProtoOffline()
     {
-        _h.Storage.SetOffline(1);
+        await _h.SeedDbStatus(1, DomainStatusTypeId.Offline, DateTime.UtcNow);
         _h.SetupUserPrivacy(1, ProfileFieldVisibility.All);
         var handler = CreateHandler(10);
 

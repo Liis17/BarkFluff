@@ -27,7 +27,9 @@
     var pinnedStream = null;
     var unpinnedStream = null;
     var allUnpinnedStream = null;
+    var privateMsgStream = null;
     var onlineStream = null;
+    var typingStream = null;
     var keepAliveTimer = null;
 
     var updatesBackoff = 2000;
@@ -37,7 +39,9 @@
     var pinnedBackoff = 2000;
     var unpinnedBackoff = 2000;
     var allUnpinnedBackoff = 2000;
+    var privateMsgBackoff = 2000;
     var onlineBackoff = 2000;
+    var typingBackoff = 2000;
 
     var INITIAL_BACKOFF = 2000;
     var MAX_BACKOFF = 30000;
@@ -56,7 +60,9 @@
     var pinnedAgeTimer  = null;
     var unpinnedAgeTimer = null;
     var allUnpinnedAgeTimer = null;
+    var privateMsgAgeTimer = null;
     var onlineAgeTimer  = null;
+    var typingAgeTimer  = null;
 
     var updatesOpenedAt = 0;
     var readOpenedAt    = 0;
@@ -65,7 +71,9 @@
     var pinnedOpenedAt  = 0;
     var unpinnedOpenedAt = 0;
     var allUnpinnedOpenedAt = 0;
+    var privateMsgOpenedAt = 0;
     var onlineOpenedAt  = 0;
+    var typingOpenedAt  = 0;
 
     // Время последней активности (data/status) — для watchdog'а.
     var updatesLastActivity = 0;
@@ -75,11 +83,15 @@
     var pinnedLastActivity  = 0;
     var unpinnedLastActivity = 0;
     var allUnpinnedLastActivity = 0;
+    var privateMsgLastActivity = 0;
     var onlineLastActivity  = 0;
+    var typingLastActivity  = 0;
     var watchdogTimer = null;
 
     // Currently subscribed online user IDs (for reconnection)
     var currentOnlineUserIds = [];
+    // Currently subscribed chat ID for typing status (for reconnection)
+    var currentTypingChatId = null;
 
     // Connection status: true when at least one core stream is alive
     var updatesConnected = false;
@@ -98,6 +110,7 @@
     var readEverOpened = false;
     var editedEverOpened = false;
     var deletedEverOpened = false;
+    var privateMsgEverOpened = false;
 
     // Whether startAll() was called (used for visibility-based reconnection)
     var _started = false;
@@ -579,6 +592,63 @@
         }, function () { handleNoToken(); });
     }
 
+    // --- Updates: новые сообщения приватных чатов (шифротекст; расшифровка в UI) ---
+
+    function subscribePrivateMessages(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
+            if (privateMsgEverOpened && _started) emit('resync', { source: 'private_messages' });
+            privateMsgEverOpened = true;
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribePrivateMessagesRequest();
+
+            if (privateMsgStream) { try { privateMsgStream.cancel(); } catch (e) {} }
+            privateMsgStream = BF.clients.updates.subscribePrivateMessages(req, meta);
+            privateMsgOpenedAt = Date.now();
+            if (privateMsgAgeTimer) clearTimeout(privateMsgAgeTimer);
+            privateMsgAgeTimer = setTimeout(function () {
+                if (_started) subscribePrivateMessages(false);
+            }, STREAM_MAX_AGE);
+
+            privateMsgLastActivity = Date.now();
+
+            privateMsgStream.on('data', function (evt) {
+                privateMsgBackoff = INITIAL_BACKOFF;
+                privateMsgLastActivity = Date.now();
+                var msg = evt.getMessage();
+                if (msg) {
+                    emit('private_message', {
+                        chatId: evt.getChatId(),
+                        message: BF.api._mapEncryptedMessage(msg)
+                    });
+                }
+            });
+
+            privateMsgStream.on('status', function (status) {
+                privateMsgLastActivity = Date.now();
+                if (status && status.code === 0) privateMsgBackoff = INITIAL_BACKOFF;
+            });
+
+            privateMsgStream.on('error', function (err) {
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribePrivateMessages(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribePrivateMessages(false); }, privateMsgBackoff);
+                    privateMsgBackoff = Math.min(privateMsgBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            privateMsgStream.on('end', function () {
+                if (Date.now() - privateMsgOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    privateMsgBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) setTimeout(function () { subscribePrivateMessages(false); }, privateMsgBackoff);
+            });
+        }, function () { handleNoToken(); });
+    }
+
     // --- Online status ---
 
     function subscribeOnline(userIds, forceRefresh) {
@@ -665,6 +735,72 @@
         });
     }
 
+    // --- Typing status ---
+    // Один стрим на открытый чат (не список чатов, как у online).
+
+    function subscribeTyping(chatId, forceRefresh) {
+        if (!chatId) return;
+        currentTypingChatId = chatId;
+
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.onliner;
+            var req = new proto.SubscribeToTypingRequest();
+            req.setChatIdsList([chatId]);
+
+            if (typingStream) { try { typingStream.cancel(); } catch (e) {} }
+            typingStream = BF.clients.onliner.subscribeToTyping(req, meta);
+            typingOpenedAt = Date.now();
+            if (typingAgeTimer) clearTimeout(typingAgeTimer);
+            typingAgeTimer = setTimeout(function () {
+                if (_started && currentTypingChatId) subscribeTyping(currentTypingChatId, false);
+            }, STREAM_MAX_AGE);
+
+            typingLastActivity = Date.now();
+
+            typingStream.on('data', function (evt) {
+                typingBackoff = INITIAL_BACKOFF;
+                typingLastActivity = Date.now();
+                emit('typing', {
+                    chatId: evt.getChatId(),
+                    userId: evt.getUserId(),
+                    action: evt.getAction()
+                });
+            });
+
+            typingStream.on('status', function (status) {
+                typingLastActivity = Date.now();
+                if (status && status.code === 0) typingBackoff = INITIAL_BACKOFF;
+            });
+
+            typingStream.on('error', function (err) {
+                if (!_started || !currentTypingChatId) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeTyping(currentTypingChatId, true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
+                    typingBackoff = Math.min(typingBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            typingStream.on('end', function () {
+                if (Date.now() - typingOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    typingBackoff = INITIAL_BACKOFF;
+                }
+                if (_started && currentTypingChatId) {
+                    setTimeout(function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
+                }
+            });
+        }, function () { handleNoToken(); });
+    }
+
+    function unsubscribeTyping() {
+        currentTypingChatId = null;
+        if (typingStream) { try { typingStream.cancel(); } catch (e) {} typingStream = null; }
+        if (typingAgeTimer) { clearTimeout(typingAgeTimer); typingAgeTimer = null; }
+    }
+
     // --- Keep-alive ping ---
 
     function startKeepAlive() {
@@ -713,10 +849,20 @@
             console.warn('[realtime] watchdog: all-messages-unpinned stream silent, reconnecting');
             subscribeAllMessagesUnpinned();
         }
+        if (privateMsgStream && (now - privateMsgLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: private-messages stream silent, reconnecting');
+            subscribePrivateMessages();
+        }
         if (onlineStream && (now - onlineLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
             if (currentOnlineUserIds.length > 0) {
                 console.warn('[realtime] watchdog: online stream silent, reconnecting');
                 subscribeOnline(currentOnlineUserIds);
+            }
+        }
+        if (typingStream && (now - typingLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            if (currentTypingChatId) {
+                console.warn('[realtime] watchdog: typing stream silent, reconnecting');
+                subscribeTyping(currentTypingChatId);
             }
         }
     }
@@ -734,20 +880,27 @@
     // When the user switches tabs the browser may throttle/kill streams.
     // On return we reconnect if streams dropped and refresh the token.
 
+    // Переоткрывает только упавшие стримы (живые не трогаем). Токен обновляется
+    // при необходимости внутри getValidToken.
+    function reconnectDeadStreams() {
+        BF.clients.getValidToken().then(function (token) {
+            if (!token) return;
+            if (!updatesConnected) subscribeNewMessages();
+            if (!readConnected) subscribeMessagesRead();
+            if (!editedConnected) subscribeMessagesEdited();
+            if (!deletedConnected) subscribeMessagesDeleted();
+            if (!pinnedStream) subscribeMessagesPinned();
+            if (!unpinnedStream) subscribeMessagesUnpinned();
+            if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
+            if (!privateMsgStream) subscribePrivateMessages();
+            if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
+            if (currentTypingChatId && !typingStream) subscribeTyping(currentTypingChatId);
+        });
+    }
+
     function handleVisibilityChange() {
         if (document.visibilityState === 'visible' && _started) {
-            // Refresh token in case it expired while tab was hidden
-            BF.clients.getValidToken().then(function (token) {
-                if (!token) return;
-                if (!updatesConnected) subscribeNewMessages();
-                if (!readConnected) subscribeMessagesRead();
-                if (!editedConnected) subscribeMessagesEdited();
-                if (!deletedConnected) subscribeMessagesDeleted();
-                if (!pinnedStream) subscribeMessagesPinned();
-                if (!unpinnedStream) subscribeMessagesUnpinned();
-                if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
-                if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
-            });
+            reconnectDeadStreams();
             // Send keep-alive immediately
             BF.api.setOnlineStatus().catch(function () {});
             emit('tab_visible', {});
@@ -755,6 +908,13 @@
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Сеть вернулась (ОС сообщила) — не ждём до 30с backoff'а, реконнектим сразу.
+    window.addEventListener('online', function () {
+        if (!_started) return;
+        reconnectDeadStreams();
+        BF.api.setOnlineStatus().catch(function () {});
+    });
 
     // --- Start/stop all subscriptions ---
 
@@ -767,6 +927,7 @@
         pinnedBackoff = INITIAL_BACKOFF;
         unpinnedBackoff = INITIAL_BACKOFF;
         allUnpinnedBackoff = INITIAL_BACKOFF;
+        privateMsgBackoff = INITIAL_BACKOFF;
         subscribeNewMessages();
         subscribeMessagesRead();
         subscribeMessagesEdited();
@@ -774,6 +935,7 @@
         subscribeMessagesPinned();
         subscribeMessagesUnpinned();
         subscribeAllMessagesUnpinned();
+        subscribePrivateMessages();
         startKeepAlive();
         startWatchdog();
     }
@@ -787,7 +949,9 @@
         if (pinnedStream) { try { pinnedStream.cancel(); } catch (e) {} pinnedStream = null; }
         if (unpinnedStream) { try { unpinnedStream.cancel(); } catch (e) {} unpinnedStream = null; }
         if (allUnpinnedStream) { try { allUnpinnedStream.cancel(); } catch (e) {} allUnpinnedStream = null; }
+        if (privateMsgStream) { try { privateMsgStream.cancel(); } catch (e) {} privateMsgStream = null; }
         if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} onlineStream = null; }
+        if (typingStream) { try { typingStream.cancel(); } catch (e) {} typingStream = null; }
         if (updatesAgeTimer) { clearTimeout(updatesAgeTimer); updatesAgeTimer = null; }
         if (readAgeTimer)    { clearTimeout(readAgeTimer);    readAgeTimer    = null; }
         if (editedAgeTimer)  { clearTimeout(editedAgeTimer);  editedAgeTimer  = null; }
@@ -795,7 +959,10 @@
         if (pinnedAgeTimer)  { clearTimeout(pinnedAgeTimer);  pinnedAgeTimer  = null; }
         if (unpinnedAgeTimer) { clearTimeout(unpinnedAgeTimer); unpinnedAgeTimer = null; }
         if (allUnpinnedAgeTimer) { clearTimeout(allUnpinnedAgeTimer); allUnpinnedAgeTimer = null; }
+        if (privateMsgAgeTimer) { clearTimeout(privateMsgAgeTimer); privateMsgAgeTimer = null; }
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
+        if (typingAgeTimer)  { clearTimeout(typingAgeTimer);  typingAgeTimer  = null; }
+        currentTypingChatId = null;
         updatesConnected = false;
         readConnected = false;
         editedConnected = false;
@@ -804,6 +971,7 @@
         readEverOpened = false;
         editedEverOpened = false;
         deletedEverOpened = false;
+        privateMsgEverOpened = false;
         _lastEmittedStatus = null;
         currentOnlineUserIds = [];
         stopKeepAlive();
@@ -820,6 +988,7 @@
         pinnedBackoff = INITIAL_BACKOFF;
         unpinnedBackoff = INITIAL_BACKOFF;
         allUnpinnedBackoff = INITIAL_BACKOFF;
+        privateMsgBackoff = INITIAL_BACKOFF;
         onlineBackoff = INITIAL_BACKOFF;
         subscribeNewMessages();
         subscribeMessagesRead();
@@ -828,6 +997,7 @@
         subscribeMessagesPinned();
         subscribeMessagesUnpinned();
         subscribeAllMessagesUnpinned();
+        subscribePrivateMessages();
         if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
     }
 
@@ -843,6 +1013,8 @@
         reconnect: reconnect,
         subscribeOnline: subscribeOnline,
         changeOnlineSubscription: changeOnlineSubscription,
+        subscribeTyping: subscribeTyping,
+        unsubscribeTyping: unsubscribeTyping,
         isConnected: isConnected
     };
 })();

@@ -14,17 +14,25 @@
 - Регистрацию Serilog
 - Регистрацию singleton `FirebaseService`
 - Настройку gRPC-клиентов к `UsersService` и `MessagesService` с интерцепторами `JwtClientInterceptor` + `ExceptionClientInterceptor`
-- Настройку MassTransit + RabbitMQ: очередь `push-notifications-handler` → `PushNotificationConsumer`
+- Настройку MassTransit + RabbitMQ: **6 consumer-ов на 6 очередях**:
+  - `push-notifications-handler` → `PushNotificationConsumer`
+  - `dismiss-push-handler` → `DismissPushConsumer`
+  - `admin-broadcast-handler` → `AdminBroadcastConsumer`
+  - `incoming-call-push-handler` → `IncomingCallPushConsumer`
+  - `call-dismiss-push-handler` → `CallDismissPushConsumer`
+  - `private-chat-invite-push-handler` → `PrivateChatInvitePushConsumer`
 
 ---
 
-### `Consumers/PushNotificationConsumer.cs`
-MassTransit-консьюмер события `PushNotificationEvent` из `BarkFluff.Shared.Queue`. Отвечает за:
+### `Consumers/` (6 консьюмеров)
+MassTransit-консьюмеры событий из `BarkFluff.Shared.Queue`. Основной — `PushNotificationConsumer` (`PushNotificationEvent`):
 - Получение события из RabbitMQ (chatId, messageId, senderId, recipientUserIds, messageText, contentType и др.)
 - Параллельный запрос данных: `Users.GetById` (данные отправителя) и `Messages.GetChatInfo` (тип/название чата)
 - Запрос FCM-токенов устройств получателей через `Users.GetDevicesWithFirebaseTokens`
-- Последовательную отправку push-уведомлений на каждое устройство через `FirebaseService`
+- Отправку push через batch-метод `FirebaseService` (multicast на все токены разом)
 - Логирование всех ключевых шагов и ошибок
+
+Остальные: `DismissPushConsumer` (снятие уведомления), `AdminBroadcastConsumer` (админ-рассылка), `IncomingCallPushConsumer` (входящий звонок), `CallDismissPushConsumer` (отмена звонка), `PrivateChatInvitePushConsumer` (инвайт в приватный чат).
 
 ---
 
@@ -32,7 +40,7 @@ MassTransit-консьюмер события `PushNotificationEvent` из `Bark
 Singleton-сервис-обёртка над **Firebase Admin SDK**. Отвечает за:
 - Инициализацию `FirebaseApp` из конфигурационных ключей (`Firebase:ProjectId`, `PrivateKey`, `ClientEmail` и др.) — строит JSON сервисного аккаунта на лету
 - Graceful degradation: если Firebase не сконфигурирован — логирует предупреждение и продолжает работу без падения
-- Отправку **data-only** FCM-сообщений (без блока `Notification`) с высоким приоритетом (`Priority.High`) через `AndroidConfig`
+- Отправку **data-only** FCM-сообщений (без блока `Notification`) с высоким приоритетом (`Priority.High`) через `AndroidConfig`. Метода `SendNotificationAsync` нет — есть 6 **batch**-методов (один multicast-запрос на все токены разом): `SendNotificationBatchAsync`, `SendDismissBatchAsync`, `SendIncomingCallBatchAsync`, `SendCallDismissBatchAsync`, `SendPrivateChatInviteBatchAsync`, `SendAdminBroadcastBatchAsync`
 - Передачу в data-payload полей: `chat_id`, `sender_id`, `type`, `sender_name`, `avatar_url`, `chat_title`, `chat_avatar_url`, `is_group_chat`, `content_type`, `image_url`, `message_id`, `message_text` (обрезается до 100 символов), `attachment_count`
 - Обработку ошибок FCM: отдельно — `MessagingErrorCode.Unregistered` (невалидный токен), общие ошибки
 
@@ -58,8 +66,8 @@ Singleton-сервис-обёртка над **Firebase Admin SDK**. Отвеч�
 
 ---
 
-### `Dockerfile` / `Dockerfile.slim`
-Docker-образы для деплоя. `Dockerfile.slim` — облегчённый вариант образа.
+### `Dockerfile.slim`
+Docker-образ для CI и деплоя.
 
 ### `Properties/launchSettings.json`
 Настройки запуска для локальной разработки (Visual Studio / dotnet run).
@@ -92,8 +100,8 @@ Messages service
             Users.GetById(senderId)          → имя, аватар отправителя
             Messages.GetChatInfo(chatId)     → тип чата, название, аватар
         → Users.GetDevicesWithFirebaseTokens(recipientUserIds) → FCM-токены
-        → для каждого токена:
-            FirebaseService.SendNotificationAsync() → FCM data-only push
+        → FirebaseService.SendNotificationBatchAsync(tokens) → один multicast FCM data-only push на все токены
 ```
+(Аналогичный поток у остальных 5 consumer-ов со своими событиями/очередями и batch-методами.)
 
 > ⚠️ Задержки отправки **нет** — обработка происходит немедленно после получения события.

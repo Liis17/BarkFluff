@@ -38,7 +38,7 @@ builder.Services.AddMediatR(cfg =>
 
 ### Auto-counters (MediatR pipeline) — сбрасываются каждые 5 секунд
 
-Все 13 операций получают одинаковую четвёрку `{op}_requests / _success / _errors / _duration_ms_total`:
+Все операции (каждая MediatR-команда/запрос) получают одинаковую четвёрку `{op}_requests / _success / _errors / _duration_ms_total`:
 
 | Операция                  | Что делает handler                                                       |
 | ------------------------- | ------------------------------------------------------------------------ |
@@ -48,17 +48,27 @@ builder.Services.AddMediatR(cfg =>
 | `list_chats`              | Список чатов пользователя                                                |
 | `list_messages`           | Список сообщений чата с двунаправленной пагинацией                       |
 | `mark_as_read`            | Отметка набора сообщений прочитанными                                    |
+| `mark_private_messages_as_read` | Отметка приватных (E2E) сообщений прочитанными → `PrivateMessagesReadEvent` |
 | `create_group_chat`       | Создание группового чата + системное сообщение                           |
+| `add_user`                | Добавление участника в групповой чат                                     |
+| `update_group_chat`       | Смена названия/аватара группового чата                                   |
 | `kick_user`               | Исключение участника из группового чата                                  |
 | `get_person_chat_id`      | Получение/создание личного (DM) чата                                     |
 | `get_chat_info`           | Информация о чате (название, аватар, непрочитанные)                      |
 | `list_chat_members`       | Список участников чата                                                   |
 | `list_chat_attachments`   | Список вложений чата (галерея/документы)                                 |
 | `get_user_all_messages`   | GDPR-экспорт всей истории пользователя                                   |
+| `check_chat_membership`   | Service-only батч-проверка членства (для Onliner/typing)                 |
+| `get_chat_member_ids`     | Service-only список участников чата (для ринга группового звонка)        |
+| `post_call_system_message`| Service-only системное сообщение об итоге звонка                        |
 | `pin_message`             | Закрепление сообщения в чате                                             |
 | `unpin_message`           | Открепление сообщения в чате                                             |
 | `list_pinned_messages`    | Список закреплённых сообщений в чате                                     |
 | `unpin_all`               | Открепление всех сообщений в чате                                        |
+| `create_private_chat` / `accept_private_chat` / `reject_private_chat` | Создание/принятие/отклонение приватного (E2E) чата |
+| `send_private_message` / `list_private_messages` / `edit_private_message` / `delete_private_message` | CRUD шифрованных сообщений приватного чата |
+| `send_secret_chat_invite` / `accept_secret_chat_invite` / `reject_secret_chat_invite` | Инвайты секретного чата (Signal Double Ratchet) |
+| `send_secret_message` / `ack_secret_message` | Отправка/подтверждение доставки секретного сообщения |
 
 ### Доменные счётчики — сбрасываются каждые 5 секунд
 
@@ -83,6 +93,21 @@ builder.Services.AddMediatR(cfg =>
 | `messages_unpinned`                    | `Features/UnpinMessage/UnpinMessageCommandHandler.cs` (после публикации)  | Успешные открепления сообщений                                             |
 | `messages_unpin_noop`                  | `UnpinMessageCommandHandler.cs`                                           | Откреп несуществующего закрепа (idempotent)                                |
 | `messages_unpinned_all`                | `Features/UnpinAll/UnpinAllCommandHandler.cs` (после публикации)          | Массовый откреп всех закрепов в чате                                       |
+| `users_added`                          | `Features/AddUser/AddUserCommandHandler.cs` (после публикации)            | Успешные добавления участника в группу                                     |
+| `group_chats_updated`                  | `Features/UpdateGroupChat/UpdateGroupChatCommandHandler.cs`               | Успешные смены названия/аватара группы                                     |
+| `private_chats_created`                | `Features/CreatePrivateChat/CreatePrivateChatCommandHandler.cs`           | Созданные приватные (E2E) чаты                                             |
+| `private_chats_accepted`               | `Features/AcceptPrivateChat/AcceptPrivateChatCommandHandler.cs`           | Принятые инвайты приватного чата                                           |
+| `private_chats_rejected`               | `Features/RejectPrivateChat/RejectPrivateChatCommandHandler.cs`           | Отклонённые инвайты приватного чата                                        |
+| `private_messages_sent`                | `Features/SendPrivateMessage/SendPrivateMessageCommandHandler.cs`         | Отправленные шифрованные сообщения приватного чата                        |
+| `private_messages_ciphertext_bytes`    | `SendPrivateMessageCommandHandler.cs` (`Add(Ciphertext.Length)`)          | Суммарный объём шифротекста за окно                                        |
+| `private_messages_edited`              | `Features/EditPrivateMessage/EditPrivateMessageCommandHandler.cs`         | Правки шифрованных сообщений                                               |
+| `private_messages_deleted`             | `Features/DeletePrivateMessage/DeletePrivateMessageCommandHandler.cs`     | Soft-delete шифрованных сообщений                                          |
+| `secret_chat_invites_sent`             | `Features/SendSecretChatInvite/SendSecretChatInviteCommandHandler.cs`     | Отправленные инвайты секретного чата                                       |
+| `secret_chat_invites_accepted`         | `Features/AcceptSecretChatInvite/AcceptSecretChatInviteCommandHandler.cs` | Принятые инвайты секретного чата                                           |
+| `secret_chat_invites_rejected`         | `Features/RejectSecretChatInvite/RejectSecretChatInviteCommandHandler.cs` | Отклонённые инвайты секретного чата                                        |
+| `secret_messages_sent`                 | `Features/SendSecretMessage/SendSecretMessageCommandHandler.cs`           | Отправленные секретные сообщения (Signal envelope)                        |
+| `secret_messages_envelope_bytes`       | `SendSecretMessageCommandHandler.cs` (`Add(Envelope.Length)`)             | Суммарный объём envelope за окно                                           |
+| `secret_messages_acked`                | `Features/AckSecretMessage/AckSecretMessageCommandHandler.cs`             | Подтверждённые доставки секретных сообщений                               |
 
 ### RabbitMQ-консьюмеры
 

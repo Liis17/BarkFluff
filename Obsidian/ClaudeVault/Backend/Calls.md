@@ -23,12 +23,12 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
                           BarkFluff.Calls (финализация CDR)
 ```
 
-- **Ринг — in-process** через `CallEventSubscriptionsManager` (device-scope, как `SubscribeSecretMessages` в [[Backend/Updates]]): событие рассылается на все устройства получателя; при ответе с одного устройства ринг гасится на остальных (`SendToUserExceptDevice`). Масштабирование на несколько инстансов потребует RabbitMQ-фанаута (пока один инстанс).
+- **Ринг — через RabbitMQ fan-out** (`ICallEventDispatcher` → `DeliverCallEvent`): `CallsService` публикует событие звонка в fan-out exchange, `CallEventDeliveryConsumer` на КАЖДОМ инстансе доставляет его своим локальным `CallEventSubscriptionsManager` (device-scope, как `SubscribeSecretMessages` в [[Backend/Updates]]). Так ринг доходит до подписчика, чей стрим живёт на другом инстансе. Событие рассылается на все устройства получателя; при ответе с одного устройства ринг гасится на остальных (`SendToUserExceptDevice`, фильтрация в локальном менеджере). Корректно при нескольких инстансах (см. `docs/scaling/calls.md`).
 - **Push для background/killed app** — параллельно с in-process рингом `InitiateCall` публикует `IncomingCallPushEvent` в RabbitMQ; [[Backend/CloudMessaging]] шлёт high-priority data-only FCM `type=incoming_call`. При завершении ринга (accept/reject/end/timeout/room_finished) публикуется `CallDismissPushEvent` → FCM `type=dismiss_call`, чтобы погасить нотификацию на остальных устройствах. Получатели push те же, что у ринга (`GetRingRecipientsAsync`). См. раздел «Push-события» ниже.
 - **Токены** — `LiveKitTokenService` (NuGet `Livekit.Server.Sdk.Dotnet`): `AccessToken` с `VideoGrants` на комнату `call:{id}`, HS256-подпись секретом LiveKit.
 - **Webhooks** — отдельный HTTP/1.1-листенер (`RunSettings:Http1Port=7026`), `WebhookReceiver` верифицирует подпись. `room_finished` → финализация CDR; `participant_joined/left` → `ParticipantEvent` в стрим.
 - **CDR** — таблица `CallSessions` (Postgres/EF Core): caller/callee/chat, room, media, status (Ringing→Active→Ended), reason, тайминги, длительность.
-- **Таймаут** — `CallTimeoutScheduler` (45с): не ответили → `CallEndReason.Missed`.
+- **Таймаут** — `CallRingTimeoutSweeper` (`BackgroundService`, опрос БД раз в 5с): звонок в статусе `Ringing` старше 45с → `CallEndReason.Missed` через `CallsService.TimeoutAsync`. Захват атомарный (`ExecuteUpdate WHERE Status=Ringing`) — ровно-однократная обработка при нескольких инстансах; durable (переживает рестарт), не требует плагина delayed-exchange.
 - **Системное сообщение** — при завершении звонок пишет в чат системное сообщение («Звонок · 5:23» / «Пропущенный звонок» / «Звонок отклонён») через `MessagesServerApi.PostCallSystemMessage` (best-effort). Для личного звонка — в существующий личный чат; если чата ещё нет, сообщение не пишется (чат не создаётся).
 
 ## gRPC API (`calls_api.proto`, `CallsApi`)
@@ -49,7 +49,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 > **История (v1):** `ListCallHistory` отдаёт личные звонки, где пользователь — участник, и **групповые, инициированные им** (`CallerUserId == me`). Полная групповая история (звонки всех чатов, где пользователь состоит) требует серверного lookup чатов пользователя в [[Backend/Messages]] — TODO. `GetActiveCalls` возвращает звонки со статусом `Active`; `participant_user_ids` в v1 пуст (клиент делает `JoinCall`).
 
-> ⚠️ **Proto-синхронизация:** новые `ListCallHistory`/`GetActiveCalls`/`CallHistoryItem`/`ActiveCallItem` добавлены в `Shared/BarkFluff.Proto/calls_api.proto` и `Android/core/src/main/proto/calls_api.proto`. `Mac/Barkfluff/Protos/calls_api.proto` **не синхронизирован** (Swift-код уже ссылается на `ListCallHistory` — DTO согласовать при возврате к Mac/iOS).
+> ⚠️ **Proto-синхронизация:** новые `ListCallHistory`/`GetActiveCalls`/`CallHistoryItem`/`ActiveCallItem` добавлены в `Shared/BarkFluff.Proto/calls_api.proto` и `Android/core/src/main/proto/calls_api.proto`. `Mac/Barkfluff/Protos/calls_api.proto` **не синхронизирован** (Swift-клиент эти методы пока **не использует** — `CallsRepositoryProtocol` содержит только `initiateCall`/`joinCall`/`acceptCall`/`rejectCall`/`endCall`/`setAudioQuality`/`subscribeCallEvents`; DTO согласовать при возврате к Mac/iOS).
 
 ### Push-события (RabbitMQ → [[Backend/CloudMessaging]])
 
@@ -89,7 +89,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
 - **[[Backend/Beacon]]** — отдаёт клиенту `livekit_url` из конфига Calls.
 - **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `Backend/livekit/livekit.yaml`.
-- **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
+- **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); `ChatMemberKickedConsumer` (очередь `chat-member-kicked-calls`, событие `ChatMemberKickedEvent`: при кике пользователя из чата best-effort удаляет его из активной LiveKit-комнаты через `RoomServiceClient.RemoveParticipant`); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
 
 ## Клиенты
 

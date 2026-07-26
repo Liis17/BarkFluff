@@ -65,6 +65,32 @@ public class SearchUsersServerQueryHandlerTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Handle_EmptyQuery_ExcludesBotsFromUsersAndTotalCount()
+    {
+        var human = await _h.SeedUser(username: "human");
+        await _h.SeedUser(username: "testbot", isBot: true);
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery { Query = "", Offset = 0, Size = 10 }, CancellationToken.None);
+
+        result.Users.Should().ContainSingle(u => u.Id == human.Id);
+        result.Users.Should().NotContain(u => u.Username == "testbot");
+        result.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_QueryAsBotId_ReturnsEmpty()
+    {
+        var bot = await _h.SeedUser(username: "testbot", isBot: true);
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery { Query = bot.Id.ToString(), Offset = 0, Size = 10 }, CancellationToken.None);
+
+        result.Users.Should().BeEmpty();
+        result.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Handle_WithBadges_IncludesBadgesInResponse()
     {
         var user = await _h.SeedUser(username: "badged");

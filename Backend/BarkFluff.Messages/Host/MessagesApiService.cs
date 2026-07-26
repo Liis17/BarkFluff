@@ -18,6 +18,7 @@ using BarkFluff.Messages.Features.ListMessages;
 using BarkFluff.Messages.Features.ListPinnedMessages;
 using BarkFluff.Messages.Features.ListPrivateMessages;
 using BarkFluff.Messages.Features.MarkAsRead;
+using BarkFluff.Messages.Features.MarkPrivateMessagesAsRead;
 using BarkFluff.Messages.Features.PinMessage;
 using BarkFluff.Messages.Features.RejectPrivateChat;
 using BarkFluff.Messages.Features.RejectSecretChatInvite;
@@ -139,6 +140,11 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             case SendMessageRequest.SourceIdOneofCase.UserId:
                 command.UserId = request.UserId;
                 break;
+            case SendMessageRequest.SourceIdOneofCase.UserUuid when Guid.TryParse(request.UserUuid, out Guid userUuid):
+                command.UserUuid = userUuid;
+                break;
+            case SendMessageRequest.SourceIdOneofCase.UserUuid:
+                throw new ChatIdNotValidException();
         }
 
         return await _mediator.Send(command);
@@ -253,10 +259,16 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
 
     public override async Task<GetPersonChatIdResponse> GetPersonChatId(GetPersonChatIdRequest request, ServerCallContext context)
     {
+        // request.UserId — plain proto3 int64 (не oneof/optional), при незаполненном поле приходит 0,
+        // а не null. Без этой проверки request.UserId == 0 ? null : ... federated-ветка по UserUuid
+        // в GetPersonChatIdCommandHandler (гейт "UserId is null") недостижима.
         var command = new GetPersonChatIdCommand
         {
-            UserId = request.UserId
+            UserId = request.UserId == 0 ? null : request.UserId,
         };
+
+        if (Guid.TryParse(request.UserUuid, out var userUuid))
+            command.UserUuid = userUuid;
 
         return await _mediator.Send(command);
     }
@@ -504,6 +516,24 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         };
 
         return await _mediator.Send(command);
+    }
+
+    public override async Task<MarkPrivateMessagesAsReadResponse> MarkPrivateMessagesAsRead(
+        MarkPrivateMessagesAsReadRequest request,
+        ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        await _mediator.Send(new MarkPrivateMessagesAsReadCommand
+        {
+            ChatId = chatId,
+            LastReadMessageId = request.LastReadMessageId,
+        });
+
+        return new MarkPrivateMessagesAsReadResponse();
     }
 
     // -- Секретные чаты ------------------------------------------------------

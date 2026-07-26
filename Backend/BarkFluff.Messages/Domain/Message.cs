@@ -7,7 +7,8 @@ public class Message
     [Key]
     public long Id { get; set; }
 
-    public long SenderId { get; set; }
+    // NULL для импортированных fed-сообщений (этап 2.3) — автор на другой ноде, см. SenderUuid.
+    public long? SenderId { get; set; }
 
     public List<long> ReadBy { get; set; }
 
@@ -24,4 +25,10 @@ public class Message
     public bool IsEdited { get; set; }
 
     public DateTime? EditedAt { get; set; }
+
+    public DateTime LastChangeAt { get; set; }
+
+    public Guid? FederatedId { get; set; }
+
+    public Guid? SenderUuid { get; set; }
 }

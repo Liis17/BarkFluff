@@ -10,6 +10,21 @@ public class SendMessageCommand : IRequest<SendMessageResponse>
 
     public long? UserId { get; set; }
 
+    /// <summary>
+    /// UUID remote-получателя для fed-DM (этап 2.3). Взаимоисключающе с ChatId/UserId:
+    /// клиент сначала резолвит FID → user_uuid, затем шлёт сообщение.
+    /// </summary>
+    public Guid? UserUuid { get; set; }
+
     public OutgoingMessage? Message { get; set; }
 
+    /// <summary>
+    /// Отправитель для серверного пути (SendMessageServer, сервис Bots).
+    /// null = клиентский путь, отправитель берётся из UserContext.
+    /// В серверном пути авто-создание личного чата запрещено (бот не пишет первым).
+    /// </summary>
+    public long? SenderId { get; set; }
+
+    /// <summary>Разрешить авто-создание личного чата в серверном пути (системные боты, напр. login-notifier)</summary>
+    public bool AllowChatCreation { get; set; }
 }

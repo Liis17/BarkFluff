@@ -674,6 +674,58 @@ class GrpcManager {
     }
 
     /**
+     * Заглушить/включить уведомления для конкретного чата (per-chat mute).
+     * mutedUntilEpochSeconds == null при muted=true => замьютить навсегда.
+     */
+    suspend fun setChatMuted(
+        chatId: String,
+        muted: Boolean,
+        mutedUntilEpochSeconds: Long? = null
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val builder = UsersApiOuterClass.SetChatMutedRequest.newBuilder()
+                .setChatId(chatId)
+                .setMuted(muted)
+
+            if (muted && mutedUntilEpochSeconds != null) {
+                builder.mutedUntil = com.google.protobuf.Timestamp.newBuilder()
+                    .setSeconds(mutedUntilEpochSeconds)
+                    .build()
+            }
+
+            usersClient!!.setChatMuted(builder.build())
+            Log.d(TAG, "Mute чата $chatId обновлён: muted=$muted")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления mute чата", e)
+            Result.failure(Exception("Ошибка обновления mute чата: ${e.message}"))
+        }
+    }
+
+    /**
+     * Возвращает набор идентификаторов замьюченных чатов текущего пользователя.
+     */
+    suspend fun getMutedChats(): Result<Set<String>> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val response = usersClient!!.getMutedChats(
+                UsersApiOuterClass.GetMutedChatsRequest.getDefaultInstance()
+            )
+            Result.success(response.chatsList.map { it.chatId }.toSet())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения списка замьюченных чатов", e)
+            Result.failure(Exception("Ошибка получения списка замьюченных чатов: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает список серверов из навигатора
      * Аналог GetServerList в WebApiServerManager
      */
@@ -1206,7 +1258,11 @@ class GrpcManager {
      * Получает список чатов
      * Аналог GetChats в WebApiMessageManager
      */
-    suspend fun getChats(offset: Int = 0, size: Int = 50): Result<List<ChatData>> = withContext(Dispatchers.IO) {
+    suspend fun getChats(offset: Int = 0, size: Int = 50): Result<List<ChatData>> =
+        getChatsPage(offset, size).map { it.chats }
+
+    /** Страница списка с totalCount для последовательной подгрузки в ChatsFragment. */
+    suspend fun getChatsPage(offset: Int = 0, size: Int = 50): Result<ChatPage> = withContext(Dispatchers.IO) {
         try {
             if (messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
@@ -1223,45 +1279,43 @@ class GrpcManager {
 
             val response = messagesClient!!.listChats(request)
 
-            val chats = response.chatsList.map { chat ->
-                val lastMsg = if (chat.hasLastMessage()) {
-                    val msg = chat.lastMessage
-                    LastMessageData(
-                        id = msg.id,
-                        senderId = msg.senderId,
-                        text = msg.content?.text ?: "",
-                        sentAt = msg.sentAt.seconds * 1000,
-                        readBy = msg.readByList
-                    )
-                } else null
-
-                val memberIds = chat.membersList.map { it.userId }
-
-                ChatData(
-                    id = chat.id,
-                    title = chat.title,
-                    picture = chat.picture,
-                    pictureFileId = extractGuidFromUrl(chat.picture),
-                    picturePreviewFileId = extractGuidFromUrl(chat.picture), // TODO: Добавить picturePreview в proto Chat
-                    isGroupChat = chat.isGroupChat,
-                    lastMessage = lastMsg,
-                    memberIds = memberIds,
-                    countUnread = chat.countUnread,
-                    firstUnreadMessageId = chat.firstUnreadMessageId
-                )
-            }
-
-            // Сортировка чатов по дате последнего сообщения (новые сверху)
-            val sortedChats = chats.sortedByDescending { chat ->
-                chat.lastMessage?.sentAt ?: 0L
-            }
-
-            Log.d(TAG, "Получено ${sortedChats.size} чатов, отсортировано по дате последнего сообщения")
-            Result.success(sortedChats)
+            val chats = response.chatsList.map(::toChatData)
+            Log.d(TAG, "Получено ${chats.size} чатов из ${response.totalCount}")
+            Result.success(ChatPage(chats, response.totalCount))
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения чатов", e)
             Result.failure(Exception("Ошибка получения чатов: ${e.message}"))
         }
+    }
+
+    private fun toChatData(chat: MessagesApiOuterClass.Chat): ChatData {
+        val lastMsg = if (chat.hasLastMessage()) {
+            val msg = chat.lastMessage
+            LastMessageData(
+                id = msg.id,
+                senderId = msg.senderId,
+                text = msg.content?.text ?: "",
+                sentAt = msg.sentAt.seconds * 1000,
+                readBy = msg.readByList
+            )
+        } else null
+
+        return ChatData(
+            id = chat.id,
+            title = chat.title,
+            picture = chat.picture,
+            pictureFileId = extractGuidFromUrl(chat.picture),
+            picturePreviewFileId = extractGuidFromUrl(chat.picture),
+            isGroupChat = chat.isGroupChat,
+            lastMessage = lastMsg,
+            memberIds = chat.membersList.map { it.userId },
+            countUnread = chat.countUnread,
+            firstUnreadMessageId = chat.firstUnreadMessageId,
+            chatType = chat.chatType,
+            lastActivityAt = if (chat.hasLastActivityAt()) chat.lastActivityAt.seconds * 1000 else lastMsg?.sentAt ?: 0L,
+            privateInviteState = chat.privateInviteState,
+            privateInviterUserId = chat.privateInviterUserId
+        )
     }
 
     /**
@@ -1361,36 +1415,25 @@ class GrpcManager {
                 .build()
 
             val response = messagesClient!!.updateGroupChat(request)
-            val chat = response.chat
-
-            val lastMsg = if (chat.hasLastMessage()) {
-                val msg = chat.lastMessage
-                LastMessageData(
-                    id = msg.id,
-                    senderId = msg.senderId,
-                    text = msg.content?.text ?: "",
-                    sentAt = msg.sentAt.seconds * 1000,
-                    readBy = msg.readByList
-                )
-            } else null
-
-            Result.success(
-                ChatData(
-                    id = chat.id,
-                    title = chat.title,
-                    picture = chat.picture,
-                    pictureFileId = extractGuidFromUrl(chat.picture),
-                    picturePreviewFileId = extractGuidFromUrl(chat.picture),
-                    isGroupChat = chat.isGroupChat,
-                    lastMessage = lastMsg,
-                    memberIds = chat.membersList.map { it.userId },
-                    countUnread = chat.countUnread,
-                    firstUnreadMessageId = chat.firstUnreadMessageId
-                )
-            )
+            Result.success(toChatData(response.chat))
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка изменения группового чата $chatId", e)
             Result.failure(Exception("Ошибка изменения чата: ${e.message}"))
+        }
+    }
+
+    suspend fun createGroupChat(userIds: List<Long>, title: String, pictureFileId: String? = null): Result<ChatData> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            val request = MessagesApiOuterClass.CreateGroupChatRequest.newBuilder()
+                .addAllUserIds(userIds)
+                .setTitle(title)
+                .setPictureFileId(pictureFileId.orEmpty())
+                .build()
+            Result.success(toChatData(client.createGroupChat(request).createdChat))
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания группового чата", e)
+            Result.failure(e)
         }
     }
 
@@ -2249,8 +2292,16 @@ class GrpcManager {
         val lastMessage: LastMessageData?,
         val memberIds: List<Long>,
         val countUnread: Long,
-        val firstUnreadMessageId: Long
+        val firstUnreadMessageId: Long,
+        val chatType: Shared.ChatType = Shared.ChatType.CHAT_TYPE_REGULAR,
+        val lastActivityAt: Long = lastMessage?.sentAt ?: 0L,
+        val privateInviteState: Shared.PrivateChatInviteState = Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED,
+        val privateInviterUserId: Long = 0L
     )
+
+    data class ChatPage(val chats: List<ChatData>, val totalCount: Int)
+
+    data class PrivateChatCreateResult(val chat: MessagesApiOuterClass.Chat, val created: Boolean)
 
     data class LastMessageData(
         val id: Long,
@@ -2844,13 +2895,16 @@ class GrpcManager {
     suspend fun getChat(chatId: String): Result<MessagesApiOuterClass.Chat> = withContext(Dispatchers.IO) {
         try {
             val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
-            val request = MessagesApiOuterClass.ListChatsRequest.newBuilder()
-                .setPagination(Shared.PageRequest.newBuilder().setOffset(0).setSize(200).build())
-                .build()
-            val chats = client.listChats(request).chatsList
-            val match = chats.firstOrNull { it.id == chatId }
-                ?: return@withContext Result.failure(NoSuchElementException("Чат $chatId не найден"))
-            Result.success(match)
+            var offset = 0
+            while (true) {
+                val response = client.listChats(MessagesApiOuterClass.ListChatsRequest.newBuilder()
+                    .setPagination(Shared.PageRequest.newBuilder().setOffset(offset).setSize(50).build())
+                    .build())
+                response.chatsList.firstOrNull { it.id == chatId }?.let { return@withContext Result.success(it) }
+                offset += response.chatsCount
+                if (response.chatsCount == 0 || offset >= response.totalCount) break
+            }
+            Result.failure(NoSuchElementException("Чат $chatId не найден"))
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения чата $chatId", e)
             Result.failure(e)
@@ -2863,7 +2917,7 @@ class GrpcManager {
         peerUserId: Long,
         kdfSalt: ByteArray,
         passphraseVerifier: ByteArray
-    ): Result<MessagesApiOuterClass.Chat> = withContext(Dispatchers.IO) {
+    ): Result<PrivateChatCreateResult> = withContext(Dispatchers.IO) {
         try {
             val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
             val request = MessagesApiOuterClass.CreatePrivateChatRequest.newBuilder()
@@ -2871,7 +2925,8 @@ class GrpcManager {
                 .setKdfSalt(com.google.protobuf.ByteString.copyFrom(kdfSalt))
                 .setPassphraseVerifier(com.google.protobuf.ByteString.copyFrom(passphraseVerifier))
                 .build()
-            Result.success(client.createPrivateChat(request).chat)
+            val response = client.createPrivateChat(request)
+            Result.success(PrivateChatCreateResult(response.chat, response.created))
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания приватного чата с $peerUserId", e)
             Result.failure(e)
@@ -2939,6 +2994,20 @@ class GrpcManager {
             Result.success(client.listPrivateMessages(request).messagesList.toList())
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения приватных сообщений чата $chatId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markPrivateMessagesAsRead(chatId: String, lastReadMessageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            client.markPrivateMessagesAsRead(MessagesApiOuterClass.MarkPrivateMessagesAsReadRequest.newBuilder()
+                .setChatId(chatId)
+                .setLastReadMessageId(lastReadMessageId)
+                .build())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отметки приватных сообщений прочитанными", e)
             Result.failure(e)
         }
     }

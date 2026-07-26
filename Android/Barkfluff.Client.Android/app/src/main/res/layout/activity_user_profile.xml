@@ -1,294 +1,530 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Экран профиля пользователя / чата -->
-<androidx.coordinatorlayout.widget.CoordinatorLayout
+<!-- Экран профиля пользователя / чата (терракотовый редизайн) -->
+<androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="@color/profile_surface"
+    android:fillViewport="true">
 
-    <androidx.core.widget.NestedScrollView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clipChildren="false"
+        android:paddingBottom="24dp">
 
-        <LinearLayout
+        <!-- Постер профиля (3:1) с floating-контролами -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:clipChildren="false">
+            android:layout_height="wrap_content">
 
-            <!-- Постер профиля (соотношение 3:1) -->
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <ImageView
+                android:id="@+id/profilePosterImageView"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintDimensionRatio="3:1"
+                tools:visibility="visible"
+                tools:background="#AABBCC" />
+
+            <View
+                android:id="@+id/profilePosterPlaceholder"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@color/profile_elem"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintDimensionRatio="3:1" />
+
+            <View
+                android:id="@+id/profilePosterScrim"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bg_poster_scrim"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/profilePosterPlaceholder"
+                app:layout_constraintBottom_toBottomOf="@id/profilePosterPlaceholder" />
+
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="38dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_circle_surface"
+                android:contentDescription="@string/cd_back"
+                android:src="@drawable/ic_arrow_back"
+                app:tint="@android:color/white"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <ImageButton
+                android:id="@+id/moreButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="38dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_circle_surface"
+                android:contentDescription="@string/profile_action_notifications"
+                android:src="@drawable/ic_more_vert"
+                android:visibility="gone"
+                app:tint="@android:color/white"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Аватар внахлёст -->
+        <FrameLayout
+            android:layout_width="116dp"
+            android:layout_height="116dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="-58dp"
+            android:background="@drawable/bg_avatar_ring"
+            android:padding="4dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/profileAvatarImageView"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
-                <!-- Постер (фон) -->
-                <ImageView
-                    android:id="@+id/profilePosterImageView"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:scaleType="centerCrop"
-                    android:visibility="gone"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintDimensionRatio="3:1"
-                    tools:visibility="visible"
-                    tools:background="#AABBCC" />
-
-                <!-- Плейсхолдер постера -->
-                <View
-                    android:id="@+id/profilePosterPlaceholder"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:background="?attr/colorSurfaceVariant"
-                    android:visibility="visible"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintDimensionRatio="3:1" />
-
-                <!-- Кнопка назад поверх постера -->
-                <ImageButton
-                    android:id="@+id/backButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginTop="38dp"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_circle_surface"
-                    android:contentDescription="@string/cd_back"
-                    android:src="@drawable/ic_arrow_back"
-                    app:tint="?attr/colorOnSurface"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintStart_toStartOf="parent" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <!-- Аватар: перекрывает нижнюю половину постера (marginTop = -60dp) -->
-            <FrameLayout
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="-60dp">
-
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/profileAvatarImageView"
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    android:scaleType="centerCrop"
-                    android:visibility="gone"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
-
-                <TextView
-                    android:id="@+id/profileAvatarPlaceholder"
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    android:background="@drawable/background_color_indicator"
-                    android:gravity="center"
-                    android:textColor="@android:color/white"
-                    android:textSize="48sp"
-                    android:textStyle="bold"
-                    android:visibility="visible"
-                    tools:text="AB" />
-
-                <!-- Индикатор онлайн -->
-                <View
-                    android:id="@+id/onlineIndicator"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="bottom|end"
-                    android:background="@drawable/online_indicator"
-                    android:visibility="gone" />
-
-            </FrameLayout>
-
-            <!-- Небольшой отступ под аватаром -->
-            <android.widget.Space
+            <TextView
+                android:id="@+id/profileAvatarPlaceholder"
                 android:layout_width="match_parent"
-                android:layout_height="8dp" />
+                android:layout_height="match_parent"
+                android:background="@drawable/background_color_indicator"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="44sp"
+                android:textStyle="bold"
+                tools:text="AB" />
 
-            <!-- Имя пользователя -->
+            <View
+                android:id="@+id/onlineIndicator"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="bottom|end"
+                android:background="@drawable/profile_online_indicator"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+        </FrameLayout>
+
+        <!-- Имя + verified -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
             <TextView
                 android:id="@+id/profileNameTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="2dp"
-                android:textAppearance="?attr/textAppearanceTitleLarge"
-                android:textColor="?attr/colorOnSurface"
-                tools:text="Иван Иванов" />
+                android:textColor="@color/profile_text"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                tools:text="Александр Ветров" />
 
-            <!-- Username -->
-            <TextView
-                android:id="@+id/profileUsernameTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="2dp"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="@username" />
+            <ImageView
+                android:id="@+id/verifiedBadge"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginStart="6dp"
+                android:src="@drawable/ic_check_circle"
+                android:visibility="gone"
+                app:tint="@color/profile_accent"
+                tools:visibility="visible" />
 
-            <!-- Статус онлайна -->
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/profileUsernameTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/profile_accent"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="@alexvetrov" />
+
+        <!-- Статус с точкой -->
+        <LinearLayout
+            android:id="@+id/profileStatusRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/member_online_dot"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <TextView
                 android:id="@+id/profileOnlineStatusTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="12dp"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorPrimary"
+                android:textColor="@color/profile_text_dim"
+                android:textSize="13.5sp"
                 tools:text="в сети" />
 
-            <!-- Блок идентификаторов (тестирование) -->
-            <LinearLayout
-                android:id="@+id/profileIdsBlock"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="12dp"
-                android:orientation="vertical"
-                android:visibility="gone"
-                tools:visibility="visible">
+        </LinearLayout>
 
-                <TextView
-                    android:id="@+id/profileUserIdText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:background="?attr/selectableItemBackground"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="4dp"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="monospace"
-                    tools:text="UserId: 12345" />
+        <!-- Био -->
+        <TextView
+            android:id="@+id/profileBioTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:textColor="@color/profile_text_dim"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="Привет! Это мой био"
+            tools:visibility="visible" />
 
-                <TextView
-                    android:id="@+id/profileChatIdText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:background="?attr/selectableItemBackground"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="4dp"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="monospace"
-                    tools:text="ChatId: abc-def-1234" />
+        <!-- Ряд действий -->
+        <LinearLayout
+            android:id="@+id/profileActionsRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            </LinearLayout>
-
-            <!-- Био -->
-            <TextView
-                android:id="@+id/profileBioTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="12dp"
-                android:gravity="center"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:visibility="gone"
-                tools:text="Привет! Это мой био"
-                tools:visibility="visible" />
-
-            <!-- Разделитель -->
-            <com.google.android.material.divider.MaterialDivider
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="8dp" />
-
-            <!-- Медиафайлы чата -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="6dp"
-                android:text="@string/media_files"
-                android:textAppearance="?attr/textAppearanceTitleSmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <!-- Кнопки типов медиа -->
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/mediaTypeChipGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="8dp"
-                app:singleSelection="true"
-                app:selectionRequired="false">
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipPhotos"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/media_tab_photos" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipVideos"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/media_tab_videos" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipFiles"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/media_tab_files" />
-
-            </com.google.android.material.chip.ChipGroup>
-
-            <!-- Контейнер для сетки вложений -->
-            <FrameLayout
-                android:id="@+id/attachmentsContainer"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/actionMessageButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:visibility="gone">
+                android:text="@string/profile_action_message"
+                android:textColor="@color/profile_on_accent"
+                android:textSize="15sp"
+                app:backgroundTint="@color/profile_accent"
+                app:cornerRadius="16dp"
+                app:icon="@drawable/ic_chat_bubble"
+                app:iconGravity="textStart"
+                app:iconTint="@color/profile_on_accent" />
 
-                <!-- Индикатор загрузки -->
-                <ProgressBar
-                    android:id="@+id/attachmentsLoading"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+            <FrameLayout
+                android:id="@+id/actionCallButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_action_square"
+                android:contentDescription="@string/profile_action_call">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:layout_gravity="center"
-                    android:visibility="gone" />
+                    android:src="@drawable/ic_phone"
+                    app:tint="@color/profile_accent" />
+            </FrameLayout>
 
-                <!-- Сетка вложений -->
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/attachmentsRecyclerView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:clipToPadding="false"
-                    android:padding="2dp"
-                    tools:listitem="@layout/item_attachment_preview" />
+            <FrameLayout
+                android:id="@+id/actionNotifyButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_action_square"
+                android:contentDescription="@string/profile_action_notifications">
 
-                <!-- Пустое состояние -->
-                <TextView
-                    android:id="@+id/attachmentsEmpty"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                <ImageView
+                    android:id="@+id/actionNotifyIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:layout_gravity="center"
-                    android:text="@string/media_no_attachments"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:visibility="gone" />
-
+                    android:src="@drawable/ic_notifications"
+                    app:tint="@color/profile_accent" />
             </FrameLayout>
 
         </LinearLayout>
 
-    </androidx.core.widget.NestedScrollView>
+        <!-- Инфо-карта -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/profileInfoCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/profile_elem"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp">
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- ID пользователя -->
+                <LinearLayout
+                    android:id="@+id/rowUserId"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="18dp"
+                    android:paddingVertical="13dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_badge"
+                        app:tint="@color/profile_accent" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/profileUserIdValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/profile_text"
+                            android:textSize="15sp"
+                            tools:text="100 294 857" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profile_user_id_label"
+                            android:textColor="@color/profile_text_dim"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_copy_content"
+                        app:tint="@color/profile_text_dim" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/dividerUserId"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="18dp"
+                    android:background="@color/profile_outline" />
+
+                <!-- ID чата -->
+                <LinearLayout
+                    android:id="@+id/rowChatId"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="18dp"
+                    android:paddingVertical="13dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_forum"
+                        app:tint="@color/profile_accent" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/profileChatIdValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/profile_text"
+                            android:textSize="15sp"
+                            tools:text="−1001 845 302" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profile_chat_id_label"
+                            android:textColor="@color/profile_text_dim"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_copy_content"
+                        app:tint="@color/profile_text_dim" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/dividerChatId"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="18dp"
+                    android:background="@color/profile_outline" />
+
+                <!-- Дата регистрации -->
+                <LinearLayout
+                    android:id="@+id/rowRegistration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="18dp"
+                    android:paddingVertical="13dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_calendar_month"
+                        app:tint="@color/profile_accent" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/profileRegistrationValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/profile_text"
+                            android:textSize="15sp"
+                            tools:text="14 марта 2019" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profile_registration_label"
+                            android:textColor="@color/profile_text_dim"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Заголовок вложений -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="10dp"
+            android:letterSpacing="0.06"
+            android:text="@string/profile_attachments_title"
+            android:textAllCaps="true"
+            android:textColor="@color/profile_text_dim"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!-- Pill-табы -->
+        <LinearLayout
+            android:id="@+id/attachmentTabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:background="@drawable/bg_pill_group"
+            android:orientation="horizontal"
+            android:padding="5dp">
+
+            <TextView
+                android:id="@+id/tabMedia"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/profile_tab_media"
+                android:textColor="@color/profile_chip_text"
+                android:textSize="13.5sp" />
+
+            <TextView
+                android:id="@+id/tabFiles"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/media_tab_files"
+                android:textColor="@color/profile_chip_text"
+                android:textSize="13.5sp" />
+
+            <TextView
+                android:id="@+id/tabVoice"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/profile_tab_voice"
+                android:textColor="@color/profile_chip_text"
+                android:textSize="13.5sp" />
+
+        </LinearLayout>
+
+        <!-- Контент вложений -->
+        <FrameLayout
+            android:id="@+id/attachmentsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="168dp">
+
+            <ProgressBar
+                android:id="@+id/attachmentsLoading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/attachmentsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/item_attachment_preview" />
+
+            <TextView
+                android:id="@+id/attachmentsEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:textColor="@color/profile_text_dim"
+                android:textSize="14sp"
+                android:visibility="gone"
+                tools:text="Нет вложений" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

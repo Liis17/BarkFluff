@@ -82,12 +82,14 @@ public class GetUserByUsernameQueryHandler : IRequestHandler<GetUserByUsernameQu
         return new GetUserByUsernameResponse
         {
             Found = true,
+            Id = user.Id,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Username = user.Username,
             Bio = bio,
             ProfilePicture = avatar,
             ProfilePosterUrl = posterUrl,
+            IsBot = user.IsBot,
         };
     }
 }

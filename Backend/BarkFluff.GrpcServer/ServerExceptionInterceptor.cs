@@ -55,7 +55,38 @@ public class ServerExceptionInterceptor : Interceptor
                 { "x-error-code", ex.ErrorCode }
             };
 
-            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.ErrorMessage), trailers);
+            throw new RpcException(new Status(ex.StatusCode, ex.ErrorMessage), trailers);
+        }
+        catch (RpcException ex) when (IsExpectedClientStatus(ex.StatusCode))
+        {
+            sw.Stop();
+            _metrics?.Add("grpc_request_duration_ms_total", sw.ElapsedMilliseconds);
+            _metrics?.Increment("grpc_requests_failed");
+
+            _logger.LogWarning(
+                "Ожидаемый gRPC-статус при вызове {Method}: {StatusCode} - {Detail}",
+                methodName,
+                ex.StatusCode,
+                ex.Status.Detail
+            );
+
+            throw;
+        }
+        catch (RpcException ex)
+        {
+            sw.Stop();
+            _metrics?.Add("grpc_request_duration_ms_total", sw.ElapsedMilliseconds);
+            _metrics?.Increment("grpc_requests_errors");
+
+            _logger.LogError(
+                ex,
+                "gRPC-ошибка при вызове {Method}: {StatusCode} - {Detail}",
+                methodName,
+                ex.StatusCode,
+                ex.Status.Detail
+            );
+
+            throw;
         }
         catch (Exception ex)
         {
@@ -79,4 +110,14 @@ public class ServerExceptionInterceptor : Interceptor
             throw new RpcException(new Status(StatusCode.Unknown, ex.Message), trailers);
         }
     }
+
+    private static bool IsExpectedClientStatus(StatusCode statusCode) => statusCode is
+        StatusCode.Cancelled or
+        StatusCode.InvalidArgument or
+        StatusCode.NotFound or
+        StatusCode.AlreadyExists or
+        StatusCode.PermissionDenied or
+        StatusCode.Unauthenticated or
+        StatusCode.FailedPrecondition or
+        StatusCode.OutOfRange;
 }

@@ -40,9 +40,11 @@
 
     <!-- Calls -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -137,6 +139,13 @@
             android:launchMode="singleTop" />
 
         <activity
+            android:name=".CreateGroupChatActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".UserProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
@@ -207,7 +216,7 @@
         <activity
             android:name=".AccountSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
@@ -220,19 +229,19 @@
         <activity
             android:name=".SecuritySettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".StorageSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".DevicesActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
@@ -250,43 +259,43 @@
         <activity
             android:name=".NotificationSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".PrivacySettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".PersonalizationSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".LanguageSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".UpdateActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".AboutActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".TestingSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
@@ -303,23 +312,9 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".PrivateChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".SecretChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait" />
-
-        <activity
             android:name=".ChatFoldersSettingsActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
 
         <activity
@@ -429,7 +424,7 @@
         <service
             android:name=".calls.CallForegroundService"
             android:exported="false"
-            android:foregroundServiceType="microphone|camera|mediaProjection" />
+            android:foregroundServiceType="microphone|camera|mediaProjection|phoneCall" />
         <!-- Foreground service for outgoing media (compress/upload/send queue) -->
         <service
             android:name=".send.MediaSendService"

@@ -1,34 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="12dp"
-    android:layout_marginVertical="4dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardBackgroundColor="?attr/colorSurfaceContainer"
-    app:cardCornerRadius="@dimen/shape_corner_medium"
-    app:cardElevation="0dp"
-    app:strokeWidth="0dp">
+    android:foreground="?attr/selectableItemBackground"
+    android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="72dp"
         android:gravity="center_vertical"
-        android:minHeight="64dp"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="10dp">
+        android:paddingHorizontal="16dp">
 
         <TextView
             android:id="@+id/folderIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:gravity="center"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_marginEnd="14dp"
-            android:textSize="24sp"
-            android:background="@drawable/background_color_indicator" />
+            android:background="@drawable/bg_settings_tonal_circle"
+            android:gravity="center"
+            android:textSize="24sp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -49,15 +43,23 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+
         </LinearLayout>
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_chevron_right"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:contentDescription="@null"
+            android:src="@drawable/ic_more_vert"
             app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 
-</com.google.android.material.card.MaterialCardView>
+    <View
+        android:id="@+id/folderDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="78dp"
+        android:background="?attr/colorOutlineVariant" />
+
+</LinearLayout>

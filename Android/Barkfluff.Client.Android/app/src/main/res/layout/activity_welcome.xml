@@ -1,10 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- fitsSystemWindows намеренно НЕ ставим: фон и декоративные круги должны доходить до
+     самого верха экрана. Инсеты применяются к внутреннему контейнеру в WelcomeActivity. -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
-    android:fitsSystemWindows="true">
+    android:background="?android:attr/colorBackground">
+
+    <!-- Декоративные окружности — позади контента, чисто визуальный слой -->
+    <View
+        android:id="@+id/decorCircleTopEnd"
+        android:layout_width="@dimen/welcome_decor_circle_large"
+        android:layout_height="@dimen/welcome_decor_circle_large"
+        android:layout_marginTop="-90dp"
+        android:layout_marginEnd="-70dp"
+        android:background="@drawable/bg_circle_welcome_primary"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/decorCircleBottomStart"
+        android:layout_width="@dimen/welcome_decor_circle_small"
+        android:layout_height="@dimen/welcome_decor_circle_small"
+        android:layout_marginTop="120dp"
+        android:layout_marginStart="-80dp"
+        android:background="@drawable/bg_circle_welcome_secondary"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="0dp"
@@ -15,33 +43,38 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
+        <!-- contentPanel получает системные инсеты как padding (см. WelcomeActivity) -->
         <LinearLayout
+            android:id="@+id/contentPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
+            android:gravity="start"
             android:orientation="vertical"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="80dp"
-            android:paddingBottom="32dp">
+            android:paddingHorizontal="28dp">
 
-            <!-- Logo с увеличенным радиусом — M3 Expressive extra-extra-large (48dp) -->
+            <!-- Распорка: hero-блок отжимается от верха, как flex:1 в макете 1c -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:minHeight="30dp"
+                android:importantForAccessibility="no" />
+
+            <!-- Logo — плоское изображение без рамки/подложки, тень вместо обводки -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/logoCard"
-                android:layout_width="140dp"
-                android:layout_height="140dp"
-                android:layout_marginBottom="32dp"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                app:cardCornerRadius="@dimen/shape_corner_extra_extra_large"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="2dp">
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginBottom="26dp"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:cardCornerRadius="@dimen/shape_corner_extra_large_increased"
+                app:cardElevation="6dp">
 
                 <ImageView
                     android:id="@+id/logoImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@string/app_name"
-                    android:padding="28dp"
                     android:src="@mipmap/ic_launcher" />
 
             </com.google.android.material.card.MaterialCardView>
@@ -52,102 +85,88 @@
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="@string/app_name"
+                android:layout_marginBottom="14dp"
+                android:text="@string/welcome_title"
                 android:textAppearance="@style/TextAppearance.Material3.DisplayMedium.Emphasized"
                 android:textColor="?attr/colorOnSurface" />
 
-            <!-- Подзаголовок — также Emphasized для бренд-консистентности -->
+            <!-- Подзаголовок -->
             <TextView
                 android:id="@+id/subtitleText"
-                android:layout_width="wrap_content"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:text="@string/welcome_title"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall.Emphasized"
-                android:textColor="?attr/colorPrimary" />
-
-            <!-- Описание -->
-            <TextView
-                android:id="@+id/descriptionText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="40dp"
-                android:gravity="center"
+                android:layout_marginBottom="20dp"
+                android:gravity="start"
                 android:text="@string/welcome_description"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Основная кнопка — M3 Expressive pill (64dp) -->
+            <!-- Чипы-фичи. Высота задаётся chipMinHeight, а не layout_height:
+                 фиксированная высота сжимала текст с иконкой. -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/featureChipsGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:chipSpacingHorizontal="8dp"
+                app:singleLine="false">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFast"
+                    style="@style/Widget.Barkfluff.Welcome.FeatureChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/welcome_chip_fast"
+                    app:chipIcon="@drawable/ic_bolt" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipPrivate"
+                    style="@style/Widget.Barkfluff.Welcome.FeatureChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/welcome_chip_private"
+                    app:chipIcon="@drawable/ic_lock" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipOwnPack"
+                    style="@style/Widget.Barkfluff.Welcome.FeatureChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/welcome_chip_own_pack"
+                    app:chipIcon="@drawable/ic_pets" />
+
+            </com.google.android.material.chip.ChipGroup>
+
+            <!-- Вторая распорка: CTA прижимается к низу экрана -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:minHeight="24dp"
+                android:importantForAccessibility="no" />
+
+            <!-- Основная кнопка — M3 Expressive pill -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/startButton"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginBottom="16dp"
+                android:layout_height="@dimen/welcome_cta_height"
                 android:text="@string/btn_start"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
-                app:cornerRadius="@dimen/shape_corner_full"
-                app:icon="@android:drawable/ic_media_play"
-                app:iconGravity="textEnd"
-                app:iconPadding="12dp"
-                app:iconTint="?attr/colorOnPrimary" />
-
-            <!-- Вторичная кнопка — Tonal, 56dp pill -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/learnMoreButton"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/button_height_default"
-                android:layout_marginBottom="48dp"
-                android:text="@string/btn_learn_more"
-                android:textAllCaps="false"
-                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnPrimary"
+                app:backgroundTint="?attr/colorPrimary"
                 app:cornerRadius="@dimen/shape_corner_full" />
 
-            <!-- Футер с ссылками -->
-            <LinearLayout
-                android:id="@+id/footerPanel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/aboutLink"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_about"
-                    android:textAllCaps="false" />
-
-                <View
-                    android:layout_width="4dp"
-                    android:layout_height="4dp"
-                    android:background="?attr/colorOutline" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/privacyLink"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_privacy"
-                    android:textAllCaps="false" />
-
-                <View
-                    android:layout_width="4dp"
-                    android:layout_height="4dp"
-                    android:background="?attr/colorOutline" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/helpLink"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_help"
-                    android:textAllCaps="false" />
-
-            </LinearLayout>
+            <!-- Единственная оставшаяся ссылка: открывает legal-лист в режиме чтения -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/privacyLink"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height_default"
+                android:layout_marginTop="4dp"
+                android:text="@string/menu_privacy"
+                android:textAllCaps="false"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorPrimary" />
 
         </LinearLayout>
 

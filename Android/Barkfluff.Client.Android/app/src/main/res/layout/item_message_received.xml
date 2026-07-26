@@ -101,7 +101,6 @@
                     android:layout_marginHorizontal="14dp"
                     android:layout_marginTop="4dp"
                     android:layout_marginBottom="4dp"
-                    android:autoLink="web"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnSurface"
                     android:visibility="gone"
@@ -115,6 +114,7 @@
 
                 <!-- Время + метка «изменено» -->
                 <LinearLayout
+                    android:id="@+id/timeStatusLayout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
@@ -151,29 +151,45 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Стикер (без облачка) -->
-        <com.google.android.material.imageview.ShapeableImageView
-            android:id="@+id/stickerImageView"
-            android:layout_width="160dp"
-            android:layout_height="160dp"
-            android:layout_gravity="start"
-            android:scaleType="fitCenter"
-            android:visibility="gone"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker"
-            tools:visibility="gone" />
-
-        <!-- Время для стикера (вне облачка) -->
-        <TextView
-            android:id="@+id/stickerTimeTextView"
+        <!-- Стикер (без облачка) с оверлеем времени -->
+        <FrameLayout
+            android:id="@+id/stickerContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="start"
-            android:layout_marginTop="2dp"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:alpha="0.7"
             android:visibility="gone"
-            tools:text="14:30" />
+            tools:visibility="visible">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/stickerImageView"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:scaleType="fitCenter"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker" />
+
+            <LinearLayout
+                android:id="@+id/stickerTimeStatusLayout"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="4dp"
+                android:background="@drawable/bg_media_time_status"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="6dp">
+
+                <TextView
+                    android:id="@+id/stickerTimeTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="@android:color/white"
+                    tools:text="14:30" />
+
+            </LinearLayout>
+
+        </FrameLayout>
 
     </LinearLayout>
 

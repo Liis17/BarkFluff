@@ -68,16 +68,28 @@ public class CreatePrivateChatCommandHandler : IRequestHandler<CreatePrivateChat
         // Проверка существования peer-пользователя — gRPC бросит исключение если не найден
         await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = request.PeerUserId });
 
-        var chat = await _chatsStorage.CreatePrivateChat(
+        var creation = await _chatsStorage.CreatePrivateChat(
             _userContext.UserId,
+            request.PeerUserId,
             request.KdfSalt,
             request.PassphraseVerifier);
 
-        await _inviteStore.SetAsync(chat.Id, request.PeerUserId);
+        if (creation.Chat.PrivateInviteState != Domain.PrivateChatInviteState.Accepted)
+        {
+            creation.Chat.PrivateInviterUserId = creation.Chat.Members?.FirstOrDefault()?.UserId;
+        }
+
+        if (!creation.Created)
+        {
+            _logger.LogInformation(
+                "Возвращён существующий приватный чат {ChatId} для пары {UserId}/{PeerUserId}",
+                creation.Chat.Id, _userContext.UserId, request.PeerUserId);
+            return new CreatePrivateChatResponse { Chat = creation.Chat.ToGrpc(), Created = false };
+        }
 
         var invitedAt = DateTime.UtcNow;
         await _queueSender.SendInvite(
-            chat.Id,
+            creation.Chat.Id,
             _userContext.UserId,
             request.PeerUserId,
             request.KdfSalt,
@@ -87,8 +99,8 @@ public class CreatePrivateChatCommandHandler : IRequestHandler<CreatePrivateChat
         _metrics.Increment("private_chats_created");
         _logger.LogInformation(
             "Приватный чат {ChatId} создан, invite отправлен пользователю {PeerUserId}",
-            chat.Id, request.PeerUserId);
+            creation.Chat.Id, request.PeerUserId);
 
-        return new CreatePrivateChatResponse { Chat = chat.ToGrpc() };
+        return new CreatePrivateChatResponse { Chat = creation.Chat.ToGrpc(), Created = true };
     }
 }

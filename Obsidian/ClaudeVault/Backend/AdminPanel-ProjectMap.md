@@ -13,8 +13,7 @@ Barkfluff.AdminPanel/
 ├── Barkfluff.AdminPanel.csproj
 ├── appsettings.json
 ├── appsettings.Development.json
-├── Dockerfile
-├── Dockerfile.slim                        ← облегчённый образ
+├── Dockerfile.slim                        ← образ для CI и production
 ├── dotnet-tools.json                      ← манифест .NET инструментов
 ├── Data/
 │   ├── TokenDbContext.cs              ← LiteDB: auth-токены
@@ -28,9 +27,14 @@ Barkfluff.AdminPanel/
 │   ├── SeqEndpoints.cs                ← /api/seq/*
 │   ├── LogsExportEndpoints.cs         ← /api/seq/export/*
 │   ├── LogsClearEndpoints.cs          ← /api/seq/clear/*
+│   ├── LogsCompressionEndpoints.cs    ← /api/seq/compress-metrics/*
 │   ├── ConfigurationEndpoints.cs      ← /api/configuration/*
 │   ├── S3BrowserEndpoints.cs          ← /api/s3/*
-│   └── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
+│   ├── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
+│   ├── MailEndpoints.cs               ← /api/mail/*
+│   ├── BotsEndpoints.cs               ← /api/bots/*
+│   ├── FederationEndpoints.cs         ← /api/federation/*
+│   └── RemoteDockerEndpoints.cs       ← /api/remote/*
 ├── Middleware/
 │   └── TokenAuthMiddleware.cs         ← cookie-аутентификация
 ├── Models/
@@ -54,7 +58,9 @@ Barkfluff.AdminPanel/
 │   ├── LogsClearService.cs            ← async job: count → DELETE Seq events, TTL-cleanup
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
-│   └── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
+│   └── RemoteDockerService.cs         ← Docker на удалённых хостах по SSH-туннелю
 ├── Pages/
 │   ├── Login.html                     ← форма входа
 │   ├── dashboard.html                 ← KPI, трафик, метрики
@@ -65,6 +71,7 @@ Barkfluff.AdminPanel/
 │   ├── users.html                     ← управление пользователями
 │   ├── s3-storage.html                ← конфигурация S3
 │   ├── s3-browser.html                ← браузер S3 объектов
+│   ├── federation.html                ← статус/ключи/пиры Federation (rearch phase 1.7)
 │   ├── restarting.html                ← заглушка перезагрузки
 │   ├── updating.html                  ← заглушка обновления
 │   ├── Redesigned/                    ← SPA-редизайн (маршрут /v2/, отдельный эксперимент)
@@ -100,6 +107,9 @@ GET /notifications     → v2/notifications.html
 GET /mail              → v2/mail.html
 GET /s3-storage        → v2/s3-storage.html
 GET /s3-browser        → v2/s3-browser.html
+GET /configuration     → v2/configuration.html
+GET /bots              → v2/bots.html
+GET /federation        → v2/federation.html
 GET /restarting        → v2/restarting.html (публичный)
 GET /updating          → v2/updating.html (публичный)
 GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
@@ -170,9 +180,9 @@ ImageInfoDto             Id, Repository, Tag, Size, CreatedAt
 
 ### TokenAuthMiddleware
 - Читает GUID из cookie `auth_token`
-- Публичные пути: `/login`, `/restarting`, `/updating`, `/api/auth/request`, `/api/auth/status`
+- Публичные `/api/*` пути: `/api/auth/request`, `/api/auth/status`; для HTML без токена пропускаются `/`, `/Login.html`, `/assets/*`
 - Для `/api/*` → 401 если токен невалиден
-- Для HTML → редирект на `/login`
+- Для HTML без валидного токена → редирект на `/` (корень отдаёт `Login.html`); отдельного маршрута `/login` **нет**
 - Обновляет `LastActivity` при каждом валидном запросе
 - Удаляет истекшие токены при проверке
 
@@ -233,6 +243,8 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 | `RestartAllServicesAsync()` | compose restart barkfluff |
 | `UpdateAllServicesAsync()` | pull + compose up -d |
 
+> `RestartAllServicesAsync`/`UpdateAllServicesAsync` (эндпоинты `/restart-all`, `/update-all`) вызываются **только** мёртвой `Pages/Redesigned/`. Активный v2 `services.html` реализует «Перезапустить все»/«Обновить все» на клиенте: перебирает `servicesData` (из `/services/status`), фильтрует по `BarkFluff.*` (`barkfluffContainers()`) и дёргает per-container `restart`/`pull`. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk **не** попадает — только ручной per-row перезапуск. `BarkFluff.Federation` добавлен в `KnownServices` + `ServiceToContainerMap` (`SeqEndpoints.cs`) → виден в фильтре логов, таблице сервисов и bulk-действиях.
+
 ### SeqService
 `HttpClient` → Seq REST API.
 
@@ -290,6 +302,30 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 
 ### MetricsCollectorService (IHostedService)
 Запускается при старте + каждый час. Собирает события Seq за 24 часа, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет данные старше 24ч (HourlyStats) и 12ч (HourlyServiceMetrics).
+
+### MailService
+`IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных почтовых ящиков платформы (support/help/noreply/privacy/security и т.п., см. `MailSettings.Accounts`). Держит по одному `ImapClient` + `SemaphoreSlim` на аккаунт (`AccountState`) для сериализации доступа.
+
+| Метод | Описание |
+|-------|---------|
+| `GetAccounts()` | Список настроенных ящиков |
+| `ListMessagesAsync()` | Список писем в папке |
+| `GetMessageAsync()` | Письмо целиком (заголовки + тело) |
+| `GetAttachmentAsync()` / `GetInlineAttachmentAsync()` | Вложение / inline-картинка по `cid` |
+| `MarkAsReadAsync()` | Пометить письмо прочитанным |
+| `SendAsync()` | Отправить письмо через SMTP |
+
+Конфиг: `Mail:ImapHost/ImapPort/ImapSecurity`, `Mail:SmtpHost/SmtpPort/SmtpSecurity` (`SslOnConnect`/`StartTls`/`StartTlsWhenAvailable`/`None`/`Auto`), `Mail:AcceptInvalidCertificates`, `Mail:Accounts[]`.
+
+### RemoteDockerService
+Управление Docker-контейнерами на удалённых хостах (например, второй сервер платформы) — аналог `DockerService`, но по сети через настройки `RemoteServersSettings` (host/port/credentials на сервер).
+
+| Метод | Описание |
+|-------|---------|
+| `GetContainersStatusAsync(server)` | Статус контейнеров удалённого хоста |
+| `StartAsync` / `StopAsync` / `RestartAsync` / `PullAndRecreateAsync` | Управление контейнером |
+| `InspectContainerLabelsAsync` | Docker labels контейнера |
+| `GetServerInfo(server)` | Host/port/credentials сервера из конфига |
 
 ---
 
@@ -397,6 +433,8 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 | Метод | Путь | Описание |
 |-------|------|---------|
+| GET | `/api/configuration/all` | Все строки конфигурации через rpc `GetAllConfigurations` |
+| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
 | GET | `/api/configuration/s3-configuration` | S3 конфиг всех бакетов |
 | POST | `/api/configuration/s3/update` | Обновить конфиг бакета `{ bucketId, parameters }` |
 
@@ -416,6 +454,39 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | POST | `/api/reserved-names/` | `{ name }` |
 | PUT | `/api/reserved-names/` | `{ oldName, newName }` |
 | DELETE | `/api/reserved-names/{name}` | — |
+
+### /api/mail — MailEndpoints.cs
+
+| Метод | Путь | Описание |
+|-------|------|---------|
+| GET | `/api/mail/accounts` | Список настроенных служебных ящиков |
+| GET | `/api/mail/{address}/messages` | Список писем в ящике |
+| GET | `/api/mail/{address}/messages/{uid}` | Письмо целиком |
+| GET | `/api/mail/{address}/messages/{uid}/attachments/{idx}` | Вложение |
+| GET | `/api/mail/{address}/messages/{uid}/inline/{cid}` | Inline-изображение по Content-ID |
+| POST | `/api/mail/{address}/messages/{uid}/read` | Пометить прочитанным |
+| POST | `/api/mail/{address}/send` | Отправить письмо |
+
+### /api/remote — RemoteDockerEndpoints.cs
+
+Управление Docker на удалённом сервере (не путать с `/api/docker` — тем же интерфейсом для локального хоста).
+
+| Метод | Путь | Описание |
+|-------|------|---------|
+| GET | `/api/remote/{server}/inspect/{containerName}` | Docker labels контейнера |
+| GET | `/api/remote/{server}/config` | Host/port/credentials сервера |
+| GET | `/api/remote/{server}/containers` | Статус контейнеров |
+| POST | `/api/remote/{server}/containers/{name}/start` | Запустить |
+| POST | `/api/remote/{server}/containers/{name}/stop` | Остановить |
+| POST | `/api/remote/{server}/containers/{name}/restart` | Перезапустить |
+| POST | `/api/remote/{server}/containers/{name}/pull` | Обновить образ |
+
+### /api/seq/compress-metrics — LogsCompressionEndpoints.cs
+
+| Метод | Путь | Описание |
+|-------|------|---------|
+| POST | `/api/seq/compress-metrics/run` | Запустить сжатие ServiceMetrics-логов вручную |
+| GET | `/api/seq/compress-metrics/history` | История запусков сжатия |
 
 ---
 
@@ -463,6 +534,20 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | `RenameReservedNameAsync()` | ReservedNamesEndpoints |
 | `DeleteReservedNameAsync()` | ReservedNamesEndpoints |
 
+### BotsServerApiClient
+| gRPC-метод | Вызывается из |
+|-----------|-------------|
+| `ListBots` / создание системного бота / перегенерация токена / удаление | BotsEndpoints |
+
+### FederationInternalApiClient (rearch phase 1.7, [[Backend/Federation]])
+| gRPC-метод | Вызывается из |
+|-----------|-------------|
+| `GetFederationStatusAsync()` | FederationEndpoints — `GET /api/federation/status` |
+| `GetKnownServersAsync()` | FederationEndpoints — `GET /api/federation/peers` |
+| `UpsertManualPeerAsync()` | FederationEndpoints — `POST /api/federation/peers` |
+| `SetServerBlockedAsync()` | FederationEndpoints — `POST /api/federation/peers/{server}/block` |
+| `RotateSigningKeyAsync()` | FederationEndpoints — `POST /api/federation/keys/rotate` |
+
 ---
 
 ## Конфигурация (appsettings.json)
@@ -486,7 +571,8 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
   "UsersService": { "Host": "...", "Token": "..." },
   "FilesService":  { "Host": "...", "Token": "..." },
   "IdentityService": { "Host": "...", "Token": "..." },
-  "ConfigurationService": { "Host": "...", "Token": "..." }
+  "ConfigurationService": { "Host": "...", "Token": "..." },
+  "FederationService": { "Host": "...", "Token": "..." }
 }
 ```
 
@@ -494,7 +580,7 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 ## Docker — особенности
 
-Dockerfile монтирует `/var/run/docker.sock`, устанавливает Docker CLI.
+`Dockerfile.slim` монтирует `/var/run/docker.sock`, устанавливает Docker CLI.
 `DockerService` запускает команды через `Process` с `ArgumentList` (не string — защита от injection).
 
 **Self-управление** (restart-own, update-own): AdminPanel запускает ephemeral helper-контейнер, который рестартует или обновляет саму панель. Это обходит проблему "убить себя".

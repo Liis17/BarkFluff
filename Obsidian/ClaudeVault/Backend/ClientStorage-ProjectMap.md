@@ -11,7 +11,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Program.cs` | Точка входа. Регистрирует DI (`S3StorageService`, `LocalFileCache`, `CacheWarmupService`, EF Core/SQLite), настраивает Kestrel (лимит 512 MB), `ForwardedHeaders`, применяет миграции БД при старте, инициализирует S3-бакет. |
+| `Program.cs` | Точка входа. Регистрирует DI (`S3StorageService`, `LocalFileCache`, `CacheWarmupService`, `OldVersionsCleanupService`, EF Core/SQLite), настраивает Kestrel (лимит 512 MB), `ForwardedHeaders`, применяет миграции БД при старте, инициализирует S3-бакет. |
 | `appsettings.json` | Базовая конфигурация (Logging, AllowedHosts). |
 | `appsettings.Development.json` | Конфигурация для среды разработки. |
 
@@ -51,6 +51,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `Services/CacheWarmupService.cs` | `IHostedService`. При старте контейнера асинхронно (фоново) перебирает все комбинации `ClientType × ReleaseChannel`, проверяет наличие файла в БД и кеше, при отсутствии кеша — скачивает из S3 и сохраняет. Пропускает комбинации без загруженного файла. |
+| `Services/OldVersionsCleanupService.cs` | `IHostedService`. Раз в 7 дней удаляет из S3 и БД все версии кроме самой новой по каждой паре `ClientType × ReleaseChannel` — политика хранения только последнего билда. |
 
 ---
 
@@ -79,8 +80,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Dockerfile` | Стандартный образ на базе `mcr.microsoft.com/dotnet/aspnet`. |
-| `Dockerfile.slim` | Облегчённый образ (оптимизированный размер). |
+| `Dockerfile.slim` | Образ на базе `mcr.microsoft.com/dotnet/aspnet`, используемый CI и production. |
 | `docker-compose-dev.yml` | Локальная среда разработки (сервис + MinIO). |
 | `docker-compose-master.yml` | Production-окружение. |
 | `.env.example` | Пример переменных окружения (`S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_SERVICE_URL`, `S3_BUCKET_NAME`, `UPLOAD_TOKEN`, `CACHE_DIR`, `PUBLIC_BASE_URL`). |
@@ -111,7 +111,7 @@ ClientStorageController                   ▼
        ├─ IncrementalHash (SHA-256)       │
        ├─ S3StorageService.UploadAsync    │
        ├─ ClientFile → SQLite            ◄┘
-       └─ UpdateCacheInBackgroundAsync
+       └─ UpdateCacheInBackgroundAsync (сначала из локального temp-файла загрузки; при неудаче — скачивает из S3)
               │
               └─ S3 → LocalFileCache.UpdateAsync
 ```

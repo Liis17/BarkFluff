@@ -40,7 +40,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         {
             var user = await _usersStorage.GetById(userId);
 
-            if (user is null || user.IsDraft)
+            if (user is null || user.IsDraft || user.IsBot)
                 return new SearchUsersServerResponse { TotalCount = 0 };
 
             users = new List<Domain.User> { user };
@@ -52,7 +52,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
             // здесь сознательно игнорируются.
             var usersResult = await _usersStorage.SearchUsersByTrigram(
                 request.Query, request.Offset, request.Size,
-                respectSearchVisibility: false);
+                respectSearchVisibility: false, excludeBots: true);
             users = usersResult.Users;
             totalCount = Math.Max(usersResult.TotalCount, 0);
         }

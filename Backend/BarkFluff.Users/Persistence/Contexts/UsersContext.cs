@@ -24,9 +24,13 @@ public class UsersContext : DbContext
 
     public DbSet<ChatFolder> ChatFolders { get; set; }
 
+    public DbSet<ChatMute> ChatMutes { get; set; }
+
     public DbSet<DevicePrekeyBundle> DevicePrekeyBundles { get; set; }
 
     public DbSet<OneTimePrekey> OneTimePrekeys { get; set; }
+
+    public DbSet<RemoteUser> RemoteUsers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +39,17 @@ public class UsersContext : DbContext
             .WithOne(p => p.User)
             .HasForeignKey<UserContact>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Уникальный индекс для глобального идентификатора пользователя (федерация, Фаза 0)
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Uuid)
+            .IsUnique();
+
+        // БД-дефолт колонки Uuid (совпадает с миграцией AddUserUuid и snapshot);
+        // без этой строки рантайм-модель расходится со снапшотом → PendingModelChangesWarning при Migrate().
+        modelBuilder.Entity<User>()
+            .Property(u => u.Uuid)
+            .HasDefaultValueSql("gen_random_uuid()");
 
         // Настройка связей для UserBadge
         modelBuilder.Entity<UserBadge>()
@@ -97,6 +112,17 @@ public class UsersContext : DbContext
             .HasIndex(f => f.FolderId)
             .IsUnique();
 
+        // Настройка связей для ChatMute (1:Many с User; уникальный индекс (UserId, ChatId))
+        modelBuilder.Entity<ChatMute>()
+            .HasOne(m => m.User)
+            .WithMany()
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatMute>()
+            .HasIndex(m => new { m.UserId, m.ChatId })
+            .IsUnique();
+
         // DevicePrekeyBundle (1:1 с UserDevice; PK = DeviceId)
         modelBuilder.Entity<DevicePrekeyBundle>()
             .HasOne(b => b.Device)
@@ -117,6 +143,15 @@ public class UsersContext : DbContext
 
         modelBuilder.Entity<OneTimePrekey>()
             .HasIndex(p => p.DeviceId);
+
+        // RemoteUser — кеш профилей пользователей чужих нод (этап 2.1).
+        // PK = Uuid (глобальный идентификатор), UNIQUE (Username, ServerName) — побеждает свежий резолв.
+        modelBuilder.Entity<RemoteUser>()
+            .HasKey(r => r.Uuid);
+
+        modelBuilder.Entity<RemoteUser>()
+            .HasIndex(r => new { r.Username, r.ServerName })
+            .IsUnique();
 
         base.OnModelCreating(modelBuilder);
 

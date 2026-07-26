@@ -124,6 +124,8 @@ public class MessagesStorage
 
     public async Task<Message> AddMessage(Message message)
     {
+        message.LastChangeAt = message.SentAt;
+
         var result = await _context.Messages.AddAsync(message);
         await _context.SaveChangesAsync();
 
@@ -155,6 +157,14 @@ public class MessagesStorage
             .FirstOrDefaultAsync(m => m.Id == id);
     }
 
+    // Поиск fed-сообщения по стабильному межнодовому id (docs/rearch/05, ApplyFederatedEdit/Delete,
+    // этап 2.4). Не фильтрует IsDeleted — удаление терминально, и LWW должен видеть текущее состояние.
+    public async Task<Message?> GetByFederatedIdAsync(Guid chatId, Guid federatedId)
+    {
+        return await _context.Messages
+            .FirstOrDefaultAsync(m => m.ChatId == chatId && m.FederatedId == federatedId);
+    }
+
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();
@@ -162,6 +172,21 @@ public class MessagesStorage
 
     public async Task MarkMessagesAsRead(List<long> messageIds, long userId)
     {
+        if (_context.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            var messages = await _context.Messages
+                .Where(message => messageIds.Contains(message.Id) && !message.IsDeleted)
+                .ToListAsync();
+
+            foreach (var message in messages.Where(message => !message.ReadBy.Contains(userId)))
+            {
+                message.ReadBy.Add(userId);
+            }
+
+            await _context.SaveChangesAsync();
+            return;
+        }
+
         // Use PostgreSQL-specific array operations for optimal performance
         await _context.Database.ExecuteSqlRawAsync(@"
             UPDATE ""Messages""

@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.FederationInternal";
+
+import "google/protobuf/timestamp.proto";
+import "federation_api.proto";
+
+package barkfluff.federation_internal;
+
+// Внутренний API Federation-сервиса. Авторизация — XAuth, TokenType.Service.
+// Реализация — Фаза 1+.
+service FederationInternalApi {
+
+  // Резолв remote-пользователя по FID или UUID (discovery + S2S GetUserProfile)
+  rpc ResolveRemoteUser(ResolveRemoteUserRequest) returns (ResolveRemoteUserResponse);
+
+  // Стриминг файла с origin-ноды (для Files)
+  rpc FetchRemoteFile(FetchRemoteFileRequest) returns (stream barkfluff.federation.FetchFileChunk);
+
+  // Catch-up истории чата с ноды-партнёра (для Messages)
+  rpc FetchRemoteChatHistory(FetchRemoteChatHistoryRequest) returns (barkfluff.federation.FetchChatHistoryResponse);
+
+  // ---- управление пирами (AdminPanel) ----
+  rpc GetKnownServers(GetKnownServersRequest) returns(GetKnownServersResponse);
+  rpc UpsertManualPeer(UpsertManualPeerRequest) returns(UpsertManualPeerResponse);
+  rpc SetServerBlocked(SetServerBlockedRequest) returns(SetServerBlockedResponse);
+  rpc GetFederationStatus(GetFederationStatusRequest) returns(GetFederationStatusResponse);
+
+  // Плановая ротация: создаёт новый ключ, старому проставляет expired_at = now + overlap
+  rpc RotateSigningKey(RotateSigningKeyRequest) returns(RotateSigningKeyResponse);
+
+  // Прямая постановка уже подписанного FederationEvent в outbox (этап 2.2). Для ручных тестов
+  // и профильных событий из других сервисов (2.9). Не используется консюмерами RabbitMQ —
+  // тем достаточно OutboxWriter изнутри Federation.
+  rpc EnqueueOutbound(EnqueueOutboundRequest) returns(EnqueueOutboundResponse);
+
+  // Инстанс Onliner сообщает, за какими remote-uuid следят ЕГО подписчики (этап 4.2).
+  // Передаётся ПОЛНЫЙ текущий набор, а не дельта: инстансы масштабируются горизонтально,
+  // свести дельты от нескольких инстансов без общего состояния невозможно. Federation
+  // объединяет наборы живых инстансов; протухшие выпадают по TTL. Реализация — этап 4.3.
+  rpc SetPresenceInterest(SetPresenceInterestRequest) returns(SetPresenceInterestResponse);
+
+  // Исходящий typing в федеративном чате (этап 4.4). Fire-and-forget: без ретраев,
+  // без outbox, без персиста — потеря индикатора набора некритична by design.
+  rpc DeliverTypingOutbound(DeliverTypingOutboundRequest) returns(DeliverTypingOutboundResponse);
+}
+
+message ResolveRemoteUserRequest {
+  oneof user {
+    string fid = 1;   // "@username:servername" или "username:servername"
+    string uuid = 2;  // известный UUID (+ server_name обязателен)
+  }
+  string server_name = 3; // обязателен при uuid-резолве
+}
+
+message ResolveRemoteUserResponse {
+  bool found = 1;
+  barkfluff.federation.GetUserProfileResponse profile = 2;
+  string server_name = 3;
+}
+
+message FetchRemoteFileRequest {
+  string server_name = 1;
+  string file_id = 2;
+  int64 range_from = 3;
+  int64 range_to = 4;
+}
+
+message FetchRemoteChatHistoryRequest {
+  string server_name = 1;
+  string chat_id = 2;
+  int64 since_ts_ms = 3;
+  int32 limit = 4;
+}
+
+message KnownServerInfo {
+  string server_name = 1;
+  string federation_endpoint = 2;
+  string source = 3;                             // WellKnown | Navigator | Manual
+  string status = 4;                             // Active | Blocked | Unreachable
+  google.protobuf.Timestamp first_seen_at = 5;
+  google.protobuf.Timestamp last_seen_at = 6;
+  repeated barkfluff.federation.SigningKey keys = 7;
+}
+
+message GetKnownServersRequest { }
+
+message GetKnownServersResponse {
+  repeated KnownServerInfo servers = 1;
+}
+
+message UpsertManualPeerRequest {
+  string server_name = 1;
+  string federation_endpoint = 2;
+  repeated barkfluff.federation.SigningKey keys = 3;
+  repeated string tls_spki_sha256 = 4;
+}
+
+message UpsertManualPeerResponse { }
+
+message SetServerBlockedRequest {
+  string server_name = 1;
+  bool blocked = 2;
+}
+
+message SetServerBlockedResponse { }
+
+message GetFederationStatusRequest { }
+
+message GetFederationStatusResponse {
+  string server_name = 1;
+  bool enabled = 2;
+  repeated barkfluff.federation.SigningKey own_keys = 3;
+  int64 outbox_pending = 4;
+  int64 outbox_deadletter = 5;
+  int32 known_servers_active = 6;
+}
+
+message RotateSigningKeyRequest { }
+
+message RotateSigningKeyResponse {
+  string new_key_id = 1;
+  string old_key_id = 2;
+  google.protobuf.Timestamp old_key_expires_at = 3;
+}
+
+// EnqueueOutbound: событие + список нод-адресатов. Federation подписывает активным ключом и
+// кладёт по одной строке outbox на каждую ноду. Для ручных тестов и профильных событий (2.9).
+message EnqueueOutboundRequest {
+  barkfluff.federation.FederationEvent event = 1;
+  repeated string destinations = 2;          // server_name
+}
+
+message EnqueueOutboundResponse {
+  string event_id = 1;
+  int32 enqueued = 2;                         // сколько строк поставлено (минус ownServerName)
+}
+
+message SetPresenceInterestRequest {
+  string instance_id = 1;          // инстанс Onliner (наборы разных инстансов объединяются)
+  repeated string user_uuids = 2;  // ПОЛНЫЙ текущий набор этого инстанса (не дельта)
+}
+
+message SetPresenceInterestResponse {
+  int32 accepted_count = 1;        // сколько uuid принято (после лимита) — для диагностики
+}
+
+message DeliverTypingOutboundRequest {
+  string chat_id = 1;
+  string sender_uuid = 2;                  // UUID печатающего (наш локальный пользователь)
+  int32 action = 3;                        // значения barkfluff.onliner.TypingAction
+  repeated string destination_servers = 4; // ноды-участники чата (из fed-контекста 4.1)
+}
+
+message DeliverTypingOutboundResponse { }

@@ -14,10 +14,8 @@
 | `Program.cs` | Конфигурация DI, gRPC, EF Core, MassTransit, XAuth; запуск миграций при старте |
 | `appsettings.json` | Базовая конфигурация |
 | `appsettings.Development.json` | Конфигурация для локальной разработки |
-| `Dockerfile` | Образ для production |
-| `Dockerfile.slim` | Облегчённый образ |
+| `Dockerfile.slim` | Образ для CI и production |
 | `Properties/launchSettings.json` | Профили запуска VS |
-| `SECURITY_AUDIT.md` | Аудит безопасности сервиса |
 
 ---
 
@@ -36,6 +34,7 @@
 | `Domain/ChatFolder.cs` | Папка чатов (1:Many с User): Id, OwnerUserId, FolderId (Guid), FolderName, FolderIcon, ChatList (bigint[]), SortOrder |
 | `Domain/DevicePrekeyBundle.cs` | X3DH bundle устройства (1:1 с UserDevice, PK=DeviceId): RegistrationId, IdentityPubkey, SignedPrekeyId/Public/Signature, SignedPrekeyRotatedAt, CreatedAt |
 | `Domain/OneTimePrekey.cs` | Разовая prekey (Many:1 с UserDevice, уникальный (DeviceId, PrekeyId)): PrekeyId, PublicKey, CreatedAt — расходуется FetchPrekeyBundle |
+| `Domain/ChatMute.cs` | Per-chat mute (уникальная пара UserId+ChatId): признак заглушённого чата пользователя |
 
 ---
 
@@ -72,6 +71,10 @@
 | `Features/ChangeBio/` | Смена описания профиля + RabbitMQ `UserChangedBio` |
 | `Features/UpdateStorageLimit/` | Обновление лимита хранилища (1–250 ГБ) |
 | `Features/ExportData/` | GDPR-экспорт: profile.json + messages.json (MessagesServerApi) + files.json (FilesServerApi) |
+| `Features/GetUserByUsername/` | Поиск пользователя по username (без учёта регистра) |
+| `Features/UpdateProfileServer/` | Обновление профиля (first_name/last_name/bio/username) от имени другого сервиса |
+| `Features/CreateBotUser/` | Создание бот-юзера для [[Backend/Bots]] (service-to-service, идемпотентно) |
+| `Features/DeleteBotUser/` | Пометка бот-аккаунта удалённым (username → `deleted_{id}`) |
 
 ### Устройства
 
@@ -116,6 +119,8 @@
 | `Features/Personalization/UpdatePersonalization/` | Полная замена ChatBackgroundFileIds |
 | `Features/Personalization/GetProfilePoster/` | Быстрое получение только ProfilePosterFileId |
 | `Features/Personalization/SetProfilePoster/` | Установка/удаление постера профиля (пустой fileId → удаление) |
+| `Features/Personalization/GetProfilePosterServer/` | Получение ProfilePosterFileId (service-to-service) |
+| `Features/Personalization/SetProfilePosterServer/` | Установка/удаление постера профиля (service-to-service) |
 
 ### Папки чатов
 
@@ -128,6 +133,14 @@
 | `Features/ChatFolders/AddChatToFolder/` | Добавить chat_id в ChatList (идемпотентно) |
 | `Features/ChatFolders/RemoveChatFromFolder/` | Удалить chat_id из ChatList (идемпотентно) |
 | `Features/ChatFolders/ReorderChatFolders/` | Массовое изменение SortOrder (чужие FolderId игнорируются) |
+
+### Заглушённые чаты (per-chat mute)
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/ChatMutes/GetMutedChatIds/` | Список ChatId заглушённых чатов текущего пользователя |
+| `Features/ChatMutes/GetMutedChats/` | Полный список заглушённых чатов |
+| `Features/ChatMutes/SetChatMuted/` | Заглушить/снять заглушение чата (upsert/delete) |
 
 ### Prekey-bundle (X3DH)
 
@@ -154,6 +167,7 @@
 | `Persistence/Services/PrivacyStorage.cs` | CRUD настроек приватности |
 | `Persistence/Services/PersonalizationStorage.cs` | CRUD персонализации (GetOrCreate паттерн) |
 | `Persistence/Services/ChatFolderStorage.cs` | CRUD папок чатов с фильтрацией по OwnerUserId; идемпотентные AddChat/RemoveChat; ReorderAsync |
+| `Persistence/Services/ChatMuteStorage.cs` | CRUD per-chat mute: получение списка заглушённых чатов, upsert/delete по паре UserId+ChatId |
 | `Persistence/Services/PrekeyStorage.cs` | CRUD prekey-bundle: RegisterBundleAsync (upsert), FetchBundleAsync (атомарно расходует one-time prekey через PostgreSQL `DELETE...RETURNING ... FOR UPDATE SKIP LOCKED`), ReplenishOneTimePrekeysAsync, RotateSignedPrekeyAsync, ListPeerDevicesAsync |
 | `Persistence/Migrations/` | Миграции EF Core (история изменений схемы БД) |
 | `Migrations/` | Дополнительные миграции (AddPreviewAvatar, AddBadgesTables, AddStorageLimitGb, AddUserDevicesTable, AddChatFolders, AddPrekeyBundles) |
@@ -194,14 +208,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `Services/ReservedUsernamesService.cs` | Singleton. Загружает зарезервированные имена из конфига `ReservedNames:Usernames` (через запятую) и проверяет принадлежность username к списку |
-
----
-
-## Helpers
-
-| Файл | Назначение |
-|------|-----------|
-| `Helpers/PasswordHasher.cs` | SHA-256 хэширование пароля (legacy-утилита, пароли хранятся в Identity) |
+| `Services/UsernameFormatValidator.cs` | Валидация формата username (`^[a-zA-Z0-9_]{3,32}$`) + проверка суффикса `bot` для бот-аккаунтов |
 
 ---
 
@@ -228,6 +235,5 @@ BarkFluff.Users
 
 - ✅ Документация в [[Backend/Users]] соответствует коду
 - ✅ `SessionRevokedConsumer` в Obsidian **не упомянут** — добавлен в этот файл
-- ✅ `PasswordHasher.cs` в Helpers — legacy-утилита (пароль не хранится в Users), в Obsidian не упомянут
 - ✅ `UserInfoQueueSender` зарегистрирован как `Scoped` (не `Transient` как написано в Users.md) — в Program.cs: `AddScoped<UserInfoQueueSender>()`
 - ✅ Структура миграций разделена на два каталога: `Persistence/Migrations/` (старые) и `Migrations/` (новые — AddPreviewAvatar, Badges, StorageLimit, UserDevices, Firebase, NotificationsEnabled, UserPrivacy, UserPersonalization)

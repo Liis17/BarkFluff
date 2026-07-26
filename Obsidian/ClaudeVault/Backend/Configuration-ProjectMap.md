@@ -15,7 +15,7 @@
 | `appsettings.json` | Базовые настройки приложения. |
 | `appsettings.Development.json` | Настройки для локальной разработки. |
 | `Properties/launchSettings.json` | Профили запуска для Visual Studio / dotnet run. |
-| `Dockerfile` / `Dockerfile.slim` | Docker-образы сервиса (полный и slim). |
+| `Dockerfile.slim` | Docker-образ сервиса, используемый CI и production. |
 | `SECURITY_AUDIT.md` | Аудит безопасности сервиса. |
 
 ---
@@ -32,7 +32,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Host/ConfigurationApiService.cs` | gRPC-сервис, реализует `ConfigurationApiBase`. Принимает входящие RPC-вызовы, инкрементирует метрики через `MetricsCollector` и делегирует обработку в MediatR-команды. Методы: `GetConfiguration`, `UpdateConfiguration`, `GetReservedNames`, `AddReservedName`, `UpdateReservedName`, `DeleteReservedName`. |
+| `Host/ConfigurationApiService.cs` | gRPC-сервис, реализует `ConfigurationApiBase`. Принимает входящие RPC-вызовы, инкрементирует метрики через `MetricsCollector` и делегирует обработку в MediatR-команды. Методы: `GetConfiguration`, `GetAllConfigurations`, `UpdateConfiguration`, `GetReservedNames`, `AddReservedName`, `UpdateReservedName`, `DeleteReservedName`. |
 
 ---
 
@@ -42,7 +42,7 @@
 |------|----------|
 | `Infrastructure/ConfigurationContext.cs` | EF Core `DbContext`. Один `DbSet<ConfigurationItem> Configurations`. Минималистичный контекст без флюентной конфигурации. |
 | `Infrastructure/ConfigurationStorage.cs` | Репозиторий для работы с БД. **Конфигурации:** `GetConfiguration(serviceId)` — загружает записи для конкретного ServiceId + Unknown, приоритет отдаётся конкретному сервису на уровне хендлера. `UpdateConfigurationAsync` — upsert по Section+Key+ServiceId. **Reserved Names:** хранит список зарезервированных юзернеймов как одну строку CSV (`Section="ReservedNames"`, `Key="Usernames"`). CRUD: `GetReservedNamesAsync`, `AddReservedNameAsync`, `UpdateReservedNameAsync`, `DeleteReservedNameAsync`. Имена нормализуются в lowercase. |
-| `Infrastructure/ConfigurationDefaultsPopulator.cs` | Авто-заполнение пустых конфигураций при старте. Ищет записи с `Value == ""` и подставляет дефолты. Генерирует `JwtSettings:SecretKey` (64-символьный random). Генерирует JWT-сервисные токены (TTL 10 лет) для межсервисного взаимодействия. Поддерживаемые секции: `RunSettings` (Port, Http1Port), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, базы данных (Identity, Users, Files, Messages, Onliner). Словари: `ContainerNames`, `DefaultPorts`, `SubdomainNames`, `DatabaseNames`. |
+| `Infrastructure/ConfigurationDefaultsPopulator.cs` | Авто-заполнение пустых конфигураций при старте. Ищет записи с `Value == ""` и подставляет дефолты. Генерирует `JwtSettings:SecretKey` (64-символьный random). Генерирует JWT-сервисные токены (TTL 10 лет) для межсервисного взаимодействия. Поддерживаемые секции: `RunSettings` (Port, Http1Port), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls). Словари: `ContainerNames`, `DefaultPorts`, `SubdomainNames`, `DatabaseNames`. |
 
 ---
 
@@ -53,6 +53,12 @@
 |------|----------|
 | `Features/GetConfiguration/GetConfigurationCommand.cs` | Команда с полем `ServiceId`. |
 | `Features/GetConfiguration/GetConfigurationCommandHandler.cs` | Загружает конфигурации через `ConfigurationStorage`, фильтрует дубли по Section+Key (приоритет — конкретный ServiceId над Unknown), возвращает `GetConfigurationResponse`. |
+
+### GetAllConfigurations
+| Файл | Описание |
+|------|----------|
+| `Features/GetAllConfigurations/GetAllConfigurationsCommand.cs` | Пустая команда. |
+| `Features/GetAllConfigurations/GetAllConfigurationsCommandHandler.cs` | Возвращает все строки таблицы через `ConfigurationStorage.GetAllConfigurationsAsync()` без фильтров/дедупликации. Используется вкладкой «Конфигурация» AdminPanel. |
 
 ### UpdateConfiguration
 | Файл | Описание |
@@ -114,6 +120,11 @@
 | `20260313000000_AddReservedUsernamesConfiguration` | Начальная запись Reserved Names. |
 | `20260318000000_AddWebServiceConfiguration` | Конфигурация BarkFluff.Web сервиса. |
 | `20260429000000_AddFastAuthIdentityServiceConfiguration` | Конфигурация FastAuth → Identity. |
+| `20260622000000_AddCallsConfiguration` | Конфигурация сервиса Calls (порт, БД `calls`). |
+| `20260622000001_AddOnlinerInterServiceConfiguration` | Межсервисная конфигурация Onliner. |
+| `20260705140000_AddBotsConfiguration` | Конфигурация сервиса Bots. |
+| `20260715100000_AddBotsIdentityServiceConfiguration` | Конфигурация Bots → Identity. |
+| `20260715150000_AddLiveKitPublicUrl` | Публичный `wss://`-URL LiveKit для Beacon. |
 | `ConfigurationContextModelSnapshot.cs` | EF Core снимок модели. |
 | `fix_migration_history.sql` | SQL-скрипт ручного исправления истории миграций. |
 | `manual_add_location.sql` | SQL-скрипт ручного добавления колонки location. |

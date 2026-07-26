@@ -94,6 +94,10 @@
         .svc-row.completed { opacity: .6; }
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
+
+        @media (max-width: 600px) {
+            .tab-bar { flex-wrap: wrap; }
+        }
     </style>
 </head>
 <body>
@@ -366,8 +370,9 @@
             'BarkFluff.Beacon': 'beacon','BarkFluff.Configuration': 'configuration','BarkFluff.Files': 'files',
             'BarkFluff.Identity': 'identity','BarkFluff.Messages': 'messages','BarkFluff.Notification': 'notification',
             'BarkFluff.Users': 'users','BarkFluff.FastAuth': 'fast-auth','BarkFluff.Updates': 'updates',
-            'BarkFluff.Onliner': 'onliner','BarkFluff.CloudMessaging': 'cloud-messaging','BarkFluff.Web': 'web',
-            'BarkFluff.Developers': 'developers','BarkFluff.Calls': 'calls','Seq':'seq','Minio':'minio','RabbitMQ':'rabbitmq','Redis':'redis','PostgreSQL':'postgres_barkfluff'
+            'BarkFluff.Onliner': 'onliner','BarkFluff.Federation': 'federation','BarkFluff.CloudMessaging': 'cloud-messaging','BarkFluff.Web': 'web',
+            'BarkFluff.Developers': 'developers','BarkFluff.Calls': 'calls','BarkFluff.Bots': 'bots',
+            'Seq':'seq','Minio':'minio','RabbitMQ':'rabbitmq','Redis':'redis','PostgreSQL':'postgres_barkfluff'
         };
         return map[name] || name.toLowerCase().replace('barkfluff.','');
     }
@@ -407,13 +412,20 @@
     }
 
     // ---- Bulk actions ----
+    // Bulk-действия только для микросервисов BarkFluff; инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
+    // перезапускается вручную через per-row кнопки и в "все" не попадает.
+    function barkfluffContainers() {
+        return servicesData
+            .filter(s => s.name.startsWith('BarkFluff.'))
+            .map(s => getContainerNameFromServiceName(s.name));
+    }
     async function restartAllServices() {
         if (!confirm('Перезапустить все сервисы BarkFluff?')) return;
-        showProgressModal('Перезапуск сервисов', servicesData.map(s => getContainerNameFromServiceName(s.name)), 'restart');
+        showProgressModal('Перезапуск сервисов', barkfluffContainers(), 'restart');
     }
     async function updateAllServices() {
         if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
-        showProgressModal('Обновление сервисов', servicesData.map(s => getContainerNameFromServiceName(s.name)), 'pull');
+        showProgressModal('Обновление сервисов', barkfluffContainers(), 'pull');
     }
 
     function showProgressModal(title, containers, action) {

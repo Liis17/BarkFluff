@@ -13,6 +13,21 @@
         return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     }
 
+    function formatChatListTime(ts) {
+        if (!ts) return '';
+        var d = new Date(ts);
+        var today = new Date();
+        if (d.toDateString() === today.toDateString()) {
+            return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) {
+            return 'вчера в ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
     function formatDate(ts) {
         if (!ts) return '';
         var d = new Date(ts);
@@ -40,6 +55,142 @@
         var d = document.createElement('div');
         d.textContent = str;
         return d.innerHTML;
+    }
+
+    // --- Markdown rendering (safe) ---
+    // Модель безопасности: текст экранируется ПЕРВЫМ (escapeHtml), затем добавляются только
+    // наши теги — сырых < > & в строке не остаётся, поэтому innerHTML безопасен.
+    // Ссылки — allowlist схем; javascript:/data: и т.п. не становятся ссылками.
+
+    var URL_SCHEME_ALLOW = /^(?:https?:|mailto:)/i;
+
+    // url приходит УЖЕ экранированным (после escapeHtml). Схема (https:/mailto:) спецсимволов
+    // не содержит, поэтому проверка работает и на экранированной строке.
+    function sanitizeUrl(url) {
+        if (!url) return null;
+        var s = url.trim();
+        return URL_SCHEME_ALLOW.test(s) ? s : null;
+    }
+
+    // Emphasis на «обычном» (уже экранированном) сегменте. bold до italic.
+    function emphasis(s) {
+        s = s.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+        s = s.replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>');
+        // Граница слова Unicode-aware (флаг u), чтобы _ внутри слова любого языка не курсивился.
+        s = s.replace(/(^|[^_\p{L}\p{N}])_([^_\s][^_]*?)_/gu, '$1<em>$2</em>');
+        return s;
+    }
+
+    // Инлайн-разбор одной строки. На входе — сырой текст, на выходе — безопасный HTML.
+    // Сегментный подход: защищённые куски (код/ссылки) не проходят emphasis, обычные — проходят.
+    function inlineMd(raw) {
+        var esc = escapeHtml(raw);
+        // Защищённые: `код`, [текст](url), голый http(s)://…
+        var protectRe = /(`[^`]+`)|(\[[^\]]+\]\([^)\s]+\))|(https?:\/\/[^\s<]+)/g;
+        var out = '';
+        var last = 0;
+        var m;
+        while ((m = protectRe.exec(esc)) !== null) {
+            out += emphasis(esc.slice(last, m.index));
+            if (m[1]) {
+                out += '<code>' + m[1].slice(1, -1) + '</code>';
+            } else if (m[2]) {
+                var lm = m[2].match(/^\[([^\]]+)\]\(([^)\s]+)\)$/);
+                var lsafe = lm && sanitizeUrl(lm[2]);
+                out += lsafe
+                    ? '<a href="' + lsafe + '" target="_blank" rel="noopener noreferrer">' + lm[1] + '</a>'
+                    : m[2];
+            } else {
+                var asafe = sanitizeUrl(m[3]);
+                out += asafe
+                    ? '<a href="' + asafe + '" target="_blank" rel="noopener noreferrer">' + m[3] + '</a>'
+                    : m[3];
+            }
+            last = protectRe.lastIndex;
+        }
+        out += emphasis(esc.slice(last));
+        return out;
+    }
+
+    // Блочный + инлайн разбор. Возвращает безопасную HTML-строку для innerHTML.
+    function renderMarkdown(text) {
+        if (!text) return '';
+        var lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+        var out = [];
+        var i = 0;
+        while (i < lines.length) {
+            var line = lines[i];
+
+            // Блок кода ```…```
+            if (/^```/.test(line)) {
+                var buf = [];
+                i++;
+                while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
+                i++; // закрывающая ``` (или EOF)
+                out.push('<pre class="md-pre"><code>' + escapeHtml(buf.join('\n')) + '</code></pre>');
+                continue;
+            }
+
+            // Пустая строка
+            if (/^\s*$/.test(line)) { i++; continue; }
+
+            // Заголовок # … ######
+            var h = line.match(/^(#{1,6})\s+(.*)$/);
+            if (h) {
+                var lvl = h[1].length;
+                out.push('<h' + lvl + ' class="md-h">' + inlineMd(h[2]) + '</h' + lvl + '>');
+                i++;
+                continue;
+            }
+
+            // Цитата (подряд идущие > …)
+            if (/^>\s?/.test(line)) {
+                var qbuf = [];
+                while (i < lines.length && /^>\s?/.test(lines[i])) {
+                    qbuf.push(inlineMd(lines[i].replace(/^>\s?/, '')));
+                    i++;
+                }
+                out.push('<blockquote class="md-quote">' + qbuf.join('<br>') + '</blockquote>');
+                continue;
+            }
+
+            // Маркированный список (- * +)
+            if (/^[-*+]\s+/.test(line)) {
+                var ubuf = [];
+                while (i < lines.length && /^[-*+]\s+/.test(lines[i])) {
+                    ubuf.push('<li>' + inlineMd(lines[i].replace(/^[-*+]\s+/, '')) + '</li>');
+                    i++;
+                }
+                out.push('<ul class="md-list">' + ubuf.join('') + '</ul>');
+                continue;
+            }
+
+            // Нумерованный список (1. 2. …)
+            if (/^\d+\.\s+/.test(line)) {
+                var obuf = [];
+                while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+                    obuf.push('<li>' + inlineMd(lines[i].replace(/^\d+\.\s+/, '')) + '</li>');
+                    i++;
+                }
+                out.push('<ol class="md-list">' + obuf.join('') + '</ol>');
+                continue;
+            }
+
+            // Абзац: строки подряд до пустой/начала блока, мягкий перенос → <br>
+            var pbuf = [];
+            while (i < lines.length && !/^\s*$/.test(lines[i])
+                && !/^```/.test(lines[i])
+                && !/^#{1,6}\s+/.test(lines[i])
+                && !/^>\s?/.test(lines[i])
+                && !/^[-*+]\s+/.test(lines[i])
+                && !/^\d+\.\s+/.test(lines[i])) {
+                pbuf.push(inlineMd(lines[i]));
+                i++;
+            }
+            out.push('<p class="md-p">' + pbuf.join('<br>') + '</p>');
+        }
+        return out.join('');
     }
 
     function formatDuration(sec) {
@@ -165,10 +316,12 @@
 
     window.BF.utils = {
         formatTime: formatTime,
+        formatChatListTime: formatChatListTime,
         formatDate: formatDate,
         formatFileSize: formatFileSize,
         truncate: truncate,
         escapeHtml: escapeHtml,
+        renderMarkdown: renderMarkdown,
         formatDuration: formatDuration,
         attachmentEmoji: attachmentEmoji,
         attachmentPreviewHtml: attachmentPreviewHtml,

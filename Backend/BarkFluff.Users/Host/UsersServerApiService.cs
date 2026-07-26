@@ -9,7 +9,10 @@ using BarkFluff.Users.Features.Badges.Queries;
 using BarkFluff.Users.Features.Badges.RemoveUserBadge;
 using BarkFluff.Users.Features.Badges.UpdateBadge;
 using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
+using BarkFluff.Users.Features.ChatMutes.GetMutedChatIds;
 using BarkFluff.Users.Features.CheckExistEmail;
+using BarkFluff.Users.Features.CreateBotUser;
+using BarkFluff.Users.Features.DeleteBotUser;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.Devices.DeleteUserDevice;
@@ -18,11 +21,14 @@ using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokens;
 using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokensByDeviceIds;
 using BarkFluff.Users.Features.Devices.GetUserDevices;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
+using BarkFluff.Users.Features.Devices.UpdateDeviceAppInfo;
 using BarkFluff.Users.Features.ExportData;
 using BarkFluff.Users.Features.FindByLogin;
+using BarkFluff.Users.Features.GetFederatedProfile;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserByUsername;
 using BarkFluff.Users.Features.GetUserContacts;
+using BarkFluff.Users.Features.GetUsersByUuid;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using BarkFluff.Users.Features.Privacy.GetUserPrivacyServer;
@@ -32,6 +38,7 @@ using BarkFluff.Users.Features.Personalization.SetProfilePosterServer;
 using BarkFluff.Users.Features.SetProfilePictureServer;
 using BarkFluff.Users.Features.UpdateProfileServer;
 using BarkFluff.Users.Features.UpdateStorageLimit;
+using BarkFluff.Users.Features.UpsertRemoteUsers;
 
 using Grpc.Core;
 
@@ -292,6 +299,18 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         return response;
     }
 
+    public override Task<UpdateDeviceAppInfoResponse> UpdateDeviceAppInfo(UpdateDeviceAppInfoRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("device_app_info_updates");
+        return _mediator.Send(new UpdateDeviceAppInfoCommand
+        {
+            DeviceId = Guid.Parse(request.DeviceId),
+            UserId = request.UserId,
+            OriginalName = request.OriginalName,
+            AppName = request.AppName
+        });
+    }
+
     public override Task<GetUserDevicesResponse> GetUserDevices(GetUserDevicesRequest request, ServerCallContext context)
     {
         _metrics.Increment("device_lookups");
@@ -327,6 +346,16 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     public override Task<GetUserPrivacyResponse> GetUserPrivacy(GetUserPrivacyRequest request, ServerCallContext context)
     {
         return _mediator.Send(new GetUserPrivacyServerQuery { UserId = request.UserId });
+    }
+
+    public override Task<GetMutedChatIdsResponse> GetMutedChatIds(GetMutedChatIdsRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("chat_mute_lookups");
+        return _mediator.Send(new GetMutedChatIdsQuery
+        {
+            UserId = request.UserId,
+            ChatIds = request.ChatIds.ToList(),
+        });
     }
 
     // Поиск пользователей (для админ-панели)
@@ -374,7 +403,8 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         _metrics.Increment("device_lookups");
         var query = new GetDevicesWithFirebaseTokensQuery
         {
-            UserIds = request.UserIds.ToList()
+            UserIds = request.UserIds.ToList(),
+            MutedChatFilter = Guid.TryParse(request.ChatId, out var chatId) ? chatId : null,
         };
 
         return _mediator.Send(query);
@@ -432,5 +462,48 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     {
         _metrics.Increment("profile_poster_lookups");
         return _mediator.Send(new GetProfilePosterServerQuery { UserId = request.UserId });
+    }
+
+    public override Task<CreateBotUserResponse> CreateBotUser(CreateBotUserRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("bot_users_create_requests");
+        return _mediator.Send(new CreateBotUserCommand
+        {
+            Username = request.Username?.Trim(),
+            FirstName = request.FirstName?.Trim(),
+            BypassUsernameRules = request.BypassUsernameRules
+        });
+    }
+
+    public override Task<DeleteBotUserResponse> DeleteBotUser(DeleteBotUserRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("bot_users_delete_requests");
+        return _mediator.Send(new DeleteBotUserCommand { UserId = request.UserId });
+    }
+
+    // -- Федерация (этап 2.1) -------------------------------------------------------
+
+    public override Task<GetFederatedProfileResponse> GetFederatedProfile(GetFederatedProfileRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("federated_profile_requests");
+        Guid? uuid = request.UserCase == GetFederatedProfileRequest.UserOneofCase.Uuid && Guid.TryParse(request.Uuid, out var u)
+            ? u
+            : null;
+        return _mediator.Send(new GetFederatedProfileQuery
+        {
+            Username = request.UserCase == GetFederatedProfileRequest.UserOneofCase.Username ? request.Username : null,
+            Uuid = uuid,
+        });
+    }
+
+    public override Task<UpsertRemoteUsersResponse> UpsertRemoteUsers(UpsertRemoteUsersRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("remote_users_upsert_requests");
+        return _mediator.Send(new UpsertRemoteUsersCommand { Request = request });
+    }
+
+    public override Task<GetUsersByUuidResponse> GetUsersByUuid(GetUsersByUuidRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetUsersByUuidQuery { Request = request });
     }
 }

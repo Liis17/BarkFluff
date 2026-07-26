@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
     id("com.google.gms.google-services")
 }
 
@@ -13,6 +14,52 @@ fun getSigningProp(envKey: String, propKey: String): String? {
             Properties().apply { load(f.inputStream()) }[propKey] as? String
         } else null
     }
+}
+
+/**
+ * Копирует локализованные markdown-версии юридических документов из WebServer в assets/legal.
+ * Источник — единственный: Backend/Barkfluff.WebServer/html/legal, тот же, что отдаёт сайт.
+ * Пустой результат — ошибка сборки: APK без актуальных соглашений выпускать нельзя.
+ */
+abstract class CopyLegalDocsTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFiles: ConfigurableFileCollection
+
+    @get:Input
+    abstract val sourceDescription: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        val docs = sourceFiles.files.filter { it.isFile }
+        if (docs.isEmpty()) {
+            throw GradleException(
+                "Не найдены legal-документы в ${sourceDescription.get()}. " +
+                    "Сборка остановлена: APK не должен уходить без актуальных соглашений."
+            )
+        }
+
+        val target = outputDirectory.get().asFile.resolve("legal")
+        target.deleteRecursively()
+        target.mkdirs()
+        docs.forEach { it.copyTo(target.resolve(it.name), overwrite = true) }
+        logger.lifecycle("legal: скопировано ${docs.size} документов в assets/legal")
+    }
+}
+
+val legalSourceDir = rootProject.layout.projectDirectory.dir("../Backend/Barkfluff.WebServer/html/legal")
+
+val copyLegalDocs = tasks.register<CopyLegalDocsTask>("copyLegalDocs") {
+    description = "Копирует локализованные legal-markdown из WebServer в assets"
+    sourceFiles.from(legalSourceDir.asFileTree.matching {
+        include("TERMS_OF_SERVICE.*.md", "PRIVACY_POLICY.*.md")
+    })
+    sourceDescription.set(legalSourceDir.asFile.path)
+    // outputDirectory назначает сам AGP через addGeneratedSourceDirectory ниже.
 }
 
 android {
@@ -91,6 +138,19 @@ android {
     }
 }
 
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            copyLegalDocs,
+            CopyLegalDocsTask::outputDirectory
+        )
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Общий не-UI слой (gRPC, репозитории, крипто, proto, хранилище). Транзитивно отдаёт
     // gRPC/protobuf/coroutines-core (api), а также libsignal/argon2 native в APK.
@@ -104,6 +164,14 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
 
+
+    // Offline-first chat cache: Room with SQLCipher encryption.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.sqlite)
+    implementation("net.zetetic:sqlcipher-android:4.15.0@aar")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // ProcessLifecycleOwner — foreground/background tracking + RealtimeService resume/pause.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 

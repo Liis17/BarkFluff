@@ -52,21 +52,19 @@ public class RejectPrivateChatCommandHandler : IRequestHandler<RejectPrivateChat
             throw new ChatNotPrivateException();
         }
 
-        var invitee = await _inviteStore.GetInviteeAsync(request.ChatId);
-        if (invitee is null)
-        {
-            throw new PrivateChatInviteNotFoundException();
-        }
-
-        if (invitee.Value != _userContext.UserId)
+        var initiatorId = chat.Members?.FirstOrDefault()?.UserId;
+        var invitee = chat.PrivateUserLowId.HasValue && initiatorId.HasValue
+            ? (chat.PrivateUserLowId == initiatorId ? chat.PrivateUserHighId ?? 0 : chat.PrivateUserLowId.Value)
+            : await _inviteStore.GetInviteeAsync(request.ChatId) ?? 0;
+        if (invitee != _userContext.UserId)
         {
             throw new NoAccessToChatException();
         }
 
-        var inviterId = chat.Members?.FirstOrDefault()?.UserId ?? 0;
+        var inviterId = initiatorId ?? 0;
 
         await _inviteStore.RemoveAsync(request.ChatId);
-        await _chatsStorage.DeleteChat(request.ChatId);
+        await _chatsStorage.RejectPrivateChat(request.ChatId);
 
         await _queueSender.SendInviteResolution(
             request.ChatId,

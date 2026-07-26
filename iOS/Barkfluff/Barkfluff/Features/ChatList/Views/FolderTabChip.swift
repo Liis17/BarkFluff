@@ -9,6 +9,8 @@ import SwiftUI
 import BFCore
 
 struct FolderTabChip: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let icon: String
     let title: String
     let unreadCount: Int
@@ -48,8 +50,12 @@ struct FolderTabChip: View {
                     .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.gray.opacity(0.12))
             )
             .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            .animation(reduceMotion ? nil : Theme.Animation.stateChange, value: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bfPressable)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(unreadCount > 0 ? Text("\(unreadCount)") : Text(""))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

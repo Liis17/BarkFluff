@@ -57,6 +57,40 @@ public class OnlineStatusNotifier
         await Task.WhenAll(tasks);
     }
 
+    /// <summary>
+    /// Уведомить подписчиков об изменении статуса remote-пользователя (этап 4.2).
+    /// У него нет локального long-идентификатора, поэтому адресация — по UUID,
+    /// а <c>user_id</c> в событии остаётся нулевым.
+    /// </summary>
+    public async Task NotifyRemoteStatusChanged(
+        Guid userUuid,
+        Domain.Enums.StatusTypeId status,
+        DateTime lastSeen,
+        CancellationToken cancellationToken = default)
+    {
+        var streams = _subscriptionsManager.GetStreamsTrackingUuid(userUuid);
+
+        if (streams.Count == 0)
+        {
+            _logger.LogTrace("No subscribers for remote user {UserUuid} status change", userUuid);
+            return;
+        }
+
+        var protoStatus = new UserOnlineStatus
+        {
+            UserUuid = userUuid.ToString(),
+            Status = MapStatus(status),
+            LastSeen = Timestamp.FromDateTime(lastSeen.ToUniversalTime())
+        };
+
+        _logger.LogDebug(
+            "Notifying {StreamCount} subscribers about remote user {UserUuid} status change to {Status}",
+            streams.Count, userUuid, status);
+
+        var tasks = streams.Select(stream => SendToStreamAsync(stream, protoStatus, 0, cancellationToken));
+        await Task.WhenAll(tasks);
+    }
+
     private async Task SendToStreamAsync(
         Grpc.Core.IServerStreamWriter<UserOnlineStatus> stream,
         UserOnlineStatus status,

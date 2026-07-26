@@ -1,6 +1,7 @@
 package com.barkfluff.client.adapter
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -26,11 +27,11 @@ class ChatFoldersAdapter(
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), position == itemCount - 1)
     }
 
     inner class VH(private val binding: ItemChatFolderBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(folder: GrpcManager.ChatFolder) {
+        fun bind(folder: GrpcManager.ChatFolder, isLast: Boolean) {
             binding.folderIcon.text = folder.folderIcon.ifBlank { "📁" }
             binding.folderName.text = folder.folderName
             val count = folder.chatIds.size
@@ -40,6 +41,7 @@ class ChatFoldersAdapter(
                 count in 2..4 -> "$count чата"
                 else -> "$count чатов"
             }
+            binding.folderDivider.visibility = if (isLast) View.GONE else View.VISIBLE
             binding.root.setOnClickListener { onClick(folder) }
         }
     }

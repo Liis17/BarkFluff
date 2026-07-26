@@ -1,6 +1,7 @@
 package com.barkfluff.client
 
 import barkfluff.calls.CallsApiOuterClass
+import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.ClipData
@@ -8,10 +9,17 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.ColorStateList
+import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import android.widget.Toast
@@ -32,6 +40,8 @@ import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.grpc.GrpcManager
@@ -50,17 +60,23 @@ import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
+import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.barkfluff.client.utils.applySpringPress
+import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.GridLayoutManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -87,16 +103,28 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var realtimeService: RealtimeService
     private lateinit var chatRepository: ChatRepository
     private lateinit var messageAdapter: MessageAdapter
+    private lateinit var chatCacheRepository: ChatCacheRepository
+    private var cacheScope: CacheScope? = null
 
     private var chatId: String = ""
     private var chatTitle: String = ""
+    private var isChatMuted: Boolean = false
     private var chatAvatarFileId: String? = null
     private var isGroupChat: Boolean = false
     private var otherUserId: Long = 0L
     private var currentUserId: Long = 0L
 
-    // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, fileId аватара)
+    // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
+
+    // Индикатор набора текста ("печатает...")
+    private var typingHeartbeatJob: Job? = null
+    @Volatile private var lastTypingInputAt = 0L
+    private var suppressTypingInput = false
+    private val typingUsers = LinkedHashMap<Long, Job>()
+    private val pendingTypingNameFetches = mutableSetOf<Long>()
+    private var lastStatusText: CharSequence? = null
+    private var lastIndicatorVisible = false
 
     // Пагинация сообщений
     private var isLoadingMessages = false
@@ -108,12 +136,21 @@ class ChatActivity : AppCompatActivity() {
 
     // Непрочитанные сообщения
     private var firstUnreadMessageId: Long = 0L
+    private var lastBottomReadTriggerId: Long = -1L
 
     // Вставленные из буфера обмена изображения
     private val pendingPastedImages = mutableListOf<Uri>()
     private val pendingStickerUris = mutableListOf<Uri>()
     private val pendingDocumentUris = mutableListOf<Uri>()
     private val pendingCropQueue = ArrayDeque<Uri>()
+
+    // Голосовые сообщения
+    private var sendButtonVoiceMode = false
+    private var voiceRecorder: MediaRecorder? = null
+    private var voiceRecordingFile: File? = null
+    private var voiceRecordingStartedAtMs = 0L
+    private var voiceDownRawX = 0f
+    private var voiceCancelPending = false
 
     // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
     // 0 = нет активного ответа.
@@ -153,6 +190,17 @@ class ChatActivity : AppCompatActivity() {
         processNextCropFromQueue()
     }
 
+    private val recordAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val messageRes = if (granted) {
+            R.string.voice_record_permission_granted
+        } else {
+            R.string.voice_record_permission_denied
+        }
+        Toast.makeText(this, messageRes, Toast.LENGTH_SHORT).show()
+    }
+
     companion object {
         private const val TAG = "ChatActivity"
         private const val EXTRA_CHAT_ID = "chat_id"
@@ -160,7 +208,43 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_CHAT_AVATAR_FILE_ID = "chat_avatar_file_id"
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
         private const val EXTRA_OTHER_USER_ID = "other_user_id"
+        private const val EXTRA_CHAT_KIND = "chat_kind"
+        private const val EXTRA_INVITE_STATE = "invite_state"
+        private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
+        private const val EXTRA_INITIAL_MESSAGE = "initial_message"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
+        private const val MIN_VOICE_RECORDING_MS = 500L
+
+        // Тип чата, отображаемого в этом Activity.
+        const val KIND_REGULAR = 0
+        const val KIND_PRIVATE = 1
+        const val KIND_SECRET = 2
+
+        /** Intent для приватного E2E-чата в общем ChatActivity. inviteState<0 = определить из ListChats. */
+        fun privateChatIntent(
+            context: Context,
+            chatId: String,
+            title: String,
+            inviteState: Int = -1,
+            inviterUserId: Long = 0L
+        ): Intent = Intent(context, ChatActivity::class.java).apply {
+            putExtra(EXTRA_CHAT_KIND, KIND_PRIVATE)
+            putExtra(EXTRA_CHAT_ID, chatId)
+            putExtra(EXTRA_CHAT_TITLE, title)
+            putExtra(EXTRA_INVITE_STATE, inviteState)
+            putExtra(EXTRA_INVITER_USER_ID, inviterUserId)
+        }
+
+        /** Intent для секретного E2E-чата в общем ChatActivity. */
+        fun secretChatIntent(
+            context: Context,
+            secretChatId: String,
+            initialMessage: String? = null
+        ): Intent = Intent(context, ChatActivity::class.java).apply {
+            putExtra(EXTRA_CHAT_KIND, KIND_SECRET)
+            putExtra(EXTRA_CHAT_ID, secretChatId)
+            putExtra(EXTRA_INITIAL_MESSAGE, initialMessage)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -183,6 +267,7 @@ class ChatActivity : AppCompatActivity() {
         grpcManager = app.grpcManager
         realtimeService = app.realtimeService
         chatRepository = ChatRepository(this, grpcManager)
+        chatCacheRepository = app.chatCacheRepository
 
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
@@ -194,9 +279,18 @@ class ChatActivity : AppCompatActivity() {
         isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP_CHAT, false)
         otherUserId = intent.getLongExtra(EXTRA_OTHER_USER_ID, 0L)
         currentUserId = globalParam.userId
+        cacheScope = CacheScope.from(globalParam)
+
+        // E2E-чаты (приватный/секретный) рендерятся в облегчённом shell того же Activity.
+        val chatKind = intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR)
+        if (chatKind != KIND_REGULAR) {
+            setupE2eShell(chatKind)
+            return
+        }
 
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
 
+        setupWindowInsets()
         setupToolbar()
         setupMessagesRecyclerView()
         setupMessageInput()
@@ -221,6 +315,118 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.changeOnlineSubscription(listOf(otherUserId))
             loadOnlineStatus(otherUserId)
         }
+
+        // Подписка на индикатор набора текста в этом чате
+        realtimeService.changeTypingSubscription(listOf(chatId))
+    }
+
+    /**
+     * Облегчённый setup для E2E-чатов (приватный/секретный) в общем shell ChatActivity.
+     * Переиспользует layout/шапку/MessageAdapter обычного чата, но только текст: прячет
+     * вложения/стикеры/голос/меню/звонок/закреплённые и не поднимает подписки обычного чата.
+     * Логика загрузки/отправки/realtime делегируется контроллеру по типу чата.
+     */
+    private fun setupE2eShell(chatKind: Int) {
+        setupWindowInsets()
+
+        // Шапка: только «назад» + имя/аватар-плейсхолдер.
+        binding.btnBack.setOnClickListener { finish() }
+        binding.btnMore.visibility = View.GONE
+        binding.btnAudioCall.visibility = View.GONE
+        binding.pinnedMessageBar.visibility = View.GONE
+        binding.onlineStatusTextView.visibility = View.GONE
+        binding.chatInfoCard.isClickable = false
+        binding.chatNameTextView.text = chatTitle
+        binding.chatAvatarPlaceholder.text = chatTitle.trim().firstOrNull()?.uppercase() ?: "?"
+
+        // Ввод: только текст.
+        binding.attachButton.visibility = View.GONE
+        binding.stickerButton.visibility = View.GONE
+        binding.stickerPanelContainer.visibility = View.GONE
+
+        // Адаптер без вложений и меню действий (все callback'и — дефолтные no-op).
+        val e2eAdapter = MessageAdapter(
+            currentUserId = currentUserId,
+            isGroupChat = false,
+            messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
+            stickerSizeDp = globalParam.chatStickerSizeDp
+        )
+        messageAdapter = e2eAdapter
+        binding.messagesRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@ChatActivity).apply { stackFromEnd = true }
+            adapter = e2eAdapter
+            itemAnimator = MessageItemAnimator()
+        }
+
+        val app = application as BarkFluffApplication
+        when (chatKind) {
+            KIND_PRIVATE -> {
+                val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
+                val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
+                PrivateChatController(this, binding, e2eAdapter, app, globalParam, chatId)
+                    .start(inviteState, inviterUserId)
+            }
+            KIND_SECRET -> {
+                val chat = app.secretChatRepository.getChat(chatId)
+                if (chat == null) {
+                    Toast.makeText(this, "Секретный чат не найден", Toast.LENGTH_LONG).show()
+                    finish()
+                    return
+                }
+                binding.chatNameTextView.text = "Секретный чат · ${chat.peerUserId}"
+                binding.chatAvatarPlaceholder.text = "🔒"
+                SecretChatController(this, binding, e2eAdapter, app, globalParam, chat)
+                    .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
+            }
+        }
+
+        OpenChatManager.setOpenChat(chatId)
+        NotificationHelper.dismissForChat(applicationContext, chatId)
+    }
+
+    // targetSdk 35+ форсирует edge-to-edge, fitsSystemWindows="true" в XML больше не работает —
+    // системные бары вручную резервируем через insets, чтобы верхняя/нижняя панели и
+    // recyclerview не оказывались под статус-баром / жестовой навигацией.
+    private fun setupWindowInsets() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val backBaseMargin = (binding.btnBack.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val moreBaseMargin = (binding.btnMore.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val infoCardBaseMargin = (binding.chatInfoCard.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+
+        val attachBaseMargin = (binding.attachButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val stickerBaseMargin = (binding.stickerButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val inputBaseMargin = (binding.messageInputLayout.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
+        val recyclerBasePaddingBottom = binding.messagesRecyclerView.paddingBottom
+        // Высота полосы, зарезервированной под кнопки ввода (inputRowBottom, фикс. 64dp) —
+        // именно на столько лента должна не доходить контентом до нижнего края экрана.
+        val inputRowBandPx = binding.inputRowBottom.layoutParams.height
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val bottomInset = maxOf(bars.bottom, ime.bottom)
+
+            binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
+            binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
+            binding.chatInfoCard.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = infoCardBaseMargin + bars.top }
+            // Recyclerview остаётся edge-to-edge (constraint на true parent bottom, как и сверху) —
+            // фон/обои ленты уходят под панель ввода и жестовую навигацию, а контент просто
+            // не долистывается ниже paddingBottom.
+            binding.messagesRecyclerView.updatePadding(
+                top = recyclerBasePaddingTop + bars.top,
+                bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
+            )
+
+            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bottomInset }
+            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bottomInset }
+            binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
+            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
+
+            insets
+        }
     }
 
     private fun setupToolbar() {
@@ -242,8 +448,8 @@ class ChatActivity : AppCompatActivity() {
             finish()
         }
 
-        // Кнопка меню (три точки) — пока ничего не делает
-        binding.btnMore.setOnClickListener { /* TODO: доп. меню */ }
+        // Кнопка меню (три точки) — контекстное меню чата
+        binding.btnMore.setOnClickListener { showChatMenu(it) }
 
         binding.btnAudioCall.applySpringPress()
         binding.btnAudioCall.setOnClickListener { startCall(video = false) }
@@ -273,61 +479,6 @@ class ChatActivity : AppCompatActivity() {
                 )
             }
         }
-    }
-
-
-    private fun startCall(video: Boolean) {
-        lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
-
-            val app = application as BarkFluffApplication
-            val mediaType = if (video) {
-                CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
-            } else {
-                CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO
-            }
-
-            val result = if (isGroupChat) {
-                app.callRepository.initiateGroup(chatId, mediaType)
-            } else {
-                if (otherUserId <= 0L) {
-                    Toast.makeText(this@ChatActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                app.callRepository.initiateDirect(otherUserId, mediaType)
-            }
-
-            result.onSuccess { response ->
-                startActivity(Intent(this@ChatActivity, CallActivity::class.java).apply {
-                    putExtra(CallExtras.EXTRA_CALL_ID, response.callId)
-                    putExtra(CallExtras.EXTRA_CALLER_NAME, chatTitle)
-                    putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
-                    putExtra(CallExtras.EXTRA_MEDIA_TYPE, if (video) "video" else "audio")
-                    putExtra(CallExtras.EXTRA_LIVEKIT_URL, response.livekitUrl.ifBlank { globalParam.livekitUrl })
-                    putExtra(CallExtras.EXTRA_ACCESS_TOKEN, response.accessToken)
-                })
-            }.onFailure { error ->
-                Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@ChatActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
-
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) {
-            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
-        if (result.isFailure) {
-            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
-        }
-        return result.isSuccess
     }
 
 
@@ -553,6 +704,7 @@ class ChatActivity : AppCompatActivity() {
             },
             scope = scope,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
+            stickerSizeDp = globalParam.chatStickerSizeDp,
             onMessageActionRequested = { anchor, item, rawX, rawY ->
                 showMessageActionMenu(anchor, item, rawX, rawY)
             },
@@ -608,6 +760,14 @@ class ChatActivity : AppCompatActivity() {
 
                     // Показ/скрытие кнопки прокрутки вниз
                     updateScrollToBottomButton()
+
+                    // Safety-net: долистали до самого низа и подгружать больше нечего —
+                    // помечаем прочитанными все загруженные чужие сообщения (страхует от
+                    // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
+                    if (!hasMoreMessagesDown && isRecyclerViewAtBottom() && lastVisibleMessageId != lastBottomReadTriggerId) {
+                        lastBottomReadTriggerId = lastVisibleMessageId
+                        markAllLoadedMessagesAsRead()
+                    }
                 }
             })
         }
@@ -629,14 +789,83 @@ class ChatActivity : AppCompatActivity() {
             for (member in members) {
                 if (member.userId == currentUserId) continue
                 val name = "${member.firstName} ${member.lastName}".trim().ifBlank { "ID ${member.userId}" }
-                val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { u ->
-                    u.profilePicturePreviewFileId.ifBlank { u.profilePictureFileId }
-                }?.ifBlank { null }
-                groupMemberInfoCache[member.userId] = name to avatarFileId
+                val avatarSource = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                    avatarSourceFor(user)
+                }
+                groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
             messageAdapter.notifyDataSetChanged()
         }
+    }
+
+    /**
+     * Перерисовывает индикатор "печатает..." в onlineStatusTextView поверх онлайн-статуса.
+     * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
+     */
+    private fun renderTypingIndicator() {
+        if (typingUsers.isEmpty()) {
+            if (isGroupChat) {
+                binding.onlineStatusTextView.visibility = View.GONE
+            } else {
+                binding.onlineStatusTextView.text = lastStatusText ?: ""
+            }
+            return
+        }
+
+        if (!isGroupChat) {
+            binding.onlineStatusTextView.text = getString(R.string.typing_indicator)
+            return
+        }
+
+        binding.onlineStatusTextView.visibility = View.VISIBLE
+        val names = mutableListOf<String>()
+        for (userId in typingUsers.keys) {
+            val fullName = groupMemberInfoCache[userId]?.first
+            if (fullName != null) {
+                names.add(fullName.substringBefore(' '))
+            } else {
+                loadMissingTypingMemberName(userId)
+            }
+        }
+
+        binding.onlineStatusTextView.text = if (names.isEmpty()) {
+            getString(R.string.typing_indicator)
+        } else {
+            resources.getQuantityString(
+                R.plurals.typing_indicator_named,
+                typingUsers.size,
+                names.take(3).joinToString(", ")
+            )
+        }
+    }
+
+    /**
+     * Асинхронно подгружает имя/аватар участника группы (для индикатора набора текста),
+     * тем же способом, что и loadGroupMemberInfo — через getUserData.
+     */
+    private fun loadMissingTypingMemberName(userId: Long) {
+        if (!pendingTypingNameFetches.add(userId)) return
+        lifecycleScope.launch {
+            try {
+                val user = grpcManager.getUserData(userId).getOrNull()
+                if (user != null) {
+                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank { "ID $userId" }
+                    groupMemberInfoCache[userId] = name to avatarSourceFor(user)
+                }
+            } finally {
+                pendingTypingNameFetches.remove(userId)
+            }
+            renderTypingIndicator()
+        }
+    }
+
+    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+        return user.profilePicturePreviewUrl
+            .ifBlank { user.profilePictureUrl }
+            .ifBlank { user.profilePicturePreviewFileId }
+            .ifBlank { user.profilePictureFileId }
+            .ifBlank { null }
     }
 
     /**
@@ -779,6 +1008,18 @@ class ChatActivity : AppCompatActivity() {
                     sendMessage()
             }
         }
+        binding.sendButton.setOnTouchListener { _, event ->
+            handleVoiceButtonTouch(event)
+        }
+
+        binding.messageEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                updateSendButtonMode()
+                onTypingInput(s)
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
             when {
@@ -821,6 +1062,8 @@ class ChatActivity : AppCompatActivity() {
             clearPendingEdit()
         }
 
+        updateSendButtonMode()
+
         // Обработка вставки изображений из буфера обмена
         ViewCompat.setOnReceiveContentListener(
             binding.messageEditText,
@@ -855,6 +1098,234 @@ class ChatActivity : AppCompatActivity() {
             }
             split.second
         }
+    }
+
+    private fun hasPendingAttachments(): Boolean =
+        pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty()
+
+    private fun shouldShowVoiceButton(): Boolean {
+        val text = binding.messageEditText.text?.toString().orEmpty()
+        return text.isBlank() &&
+            !hasPendingAttachments() &&
+            pendingReplyMessageId == 0L &&
+            pendingEditMessageId == 0L
+    }
+
+    private fun updateSendButtonMode() {
+        if (voiceRecorder != null) return
+
+        sendButtonVoiceMode = shouldShowVoiceButton()
+        binding.sendButton.setImageResource(
+            if (sendButtonVoiceMode) R.drawable.ic_mic else R.drawable.ic_send_filled
+        )
+        binding.sendButton.contentDescription = getString(
+            if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
+        )
+        tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+    }
+
+    private fun tintSendButton(attr: Int) {
+        val color = MaterialColors.getColor(binding.sendButton, attr)
+        binding.sendButton.imageTintList = ColorStateList.valueOf(color)
+    }
+
+    /**
+     * Реагирует на ввод текста — запускает/останавливает heartbeat отправки статуса набора текста.
+     */
+    private fun onTypingInput(s: CharSequence?) {
+        if (suppressTypingInput) return
+        if (s.isNullOrBlank()) {
+            stopTypingHeartbeat(sendCancel = true)
+            return
+        }
+        lastTypingInputAt = System.currentTimeMillis()
+        if (typingHeartbeatJob == null) {
+            typingHeartbeatJob = lifecycleScope.launch {
+                while (isActive) {
+                    realtimeService.sendTypingStatus(chatId, typing = true)
+                    delay(4_000)
+                    if (System.currentTimeMillis() - lastTypingInputAt >= 5_000) break
+                }
+                typingHeartbeatJob = null
+            }
+        }
+    }
+
+    private fun stopTypingHeartbeat(sendCancel: Boolean) {
+        val job = typingHeartbeatJob
+        if (job != null) {
+            job.cancel()
+            typingHeartbeatJob = null
+            if (sendCancel) {
+                realtimeService.sendTypingStatus(chatId, typing = false)
+            }
+        }
+    }
+
+    private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
+        if (!sendButtonVoiceMode && voiceRecorder == null) return false
+
+        return when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (!shouldShowVoiceButton()) {
+                    updateSendButtonMode()
+                    false
+                } else {
+                    if (!hasRecordAudioPermission()) {
+                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        return true
+                    }
+
+                    voiceDownRawX = event.rawX
+                    voiceCancelPending = false
+                    if (startVoiceRecording()) {
+                        binding.sendButton.animate()
+                            .scaleX(0.95f)
+                            .scaleY(0.95f)
+                            .setDuration(80L)
+                            .start()
+                    }
+                    true
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (voiceRecorder == null) return true
+
+                val cancelDistancePx = resources.displayMetrics.widthPixels * 0.5f
+                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f)
+                binding.sendButton.translationX = dx.coerceAtLeast(-cancelDistancePx)
+
+                val cancelNow = -dx >= cancelDistancePx
+                if (cancelNow != voiceCancelPending) {
+                    voiceCancelPending = cancelNow
+                    tintSendButton(
+                        if (cancelNow) androidx.appcompat.R.attr.colorError
+                        else androidx.appcompat.R.attr.colorPrimary
+                    )
+                }
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                finishVoiceRecording(shouldSend = !voiceCancelPending)
+                true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                finishVoiceRecording(shouldSend = false)
+                true
+            }
+            else -> true
+        }
+    }
+
+    private fun hasRecordAudioPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun startVoiceRecording(): Boolean {
+        if (voiceRecorder != null) return true
+
+        val file = File.createTempFile("voice_${System.currentTimeMillis()}_", ".ogg", cacheDir)
+        return try {
+            val recorder = MediaRecorder(this).apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.OGG)
+                setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
+                setAudioChannels(1)
+                setAudioSamplingRate(48_000)
+                setAudioEncodingBitRate(24_000)
+                setOutputFile(file.absolutePath)
+                prepare()
+                start()
+            }
+
+            voiceRecorder = recorder
+            voiceRecordingFile = file
+            voiceRecordingStartedAtMs = System.currentTimeMillis()
+            tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start voice recording", e)
+            runCatching { voiceRecorder?.release() }
+            voiceRecorder = null
+            voiceRecordingFile = null
+            runCatching { file.delete() }
+            resetVoiceButtonDrag()
+            Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
+            false
+        }
+    }
+
+    private fun finishVoiceRecording(shouldSend: Boolean) {
+        val recorder = voiceRecorder ?: return
+        val file = voiceRecordingFile
+        val elapsedMs = System.currentTimeMillis() - voiceRecordingStartedAtMs
+        val wasCancelledByDrag = !shouldSend && voiceCancelPending
+        var send = shouldSend
+
+        try {
+            recorder.stop()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to stop voice recording cleanly", e)
+            send = false
+        } finally {
+            runCatching { recorder.release() }
+            voiceRecorder = null
+            voiceRecordingFile = null
+            voiceRecordingStartedAtMs = 0L
+            resetVoiceButtonDrag()
+        }
+
+        if (!send) {
+            runCatching { file?.delete() }
+            if (wasCancelledByDrag) {
+                Toast.makeText(this, R.string.voice_record_cancelled, Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+
+        if (file == null || elapsedMs < MIN_VOICE_RECORDING_MS || !file.exists() || file.length() == 0L) {
+            runCatching { file?.delete() }
+            Toast.makeText(this, R.string.voice_record_too_short, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        sendVoiceMessage(file)
+    }
+
+    private fun resetVoiceButtonDrag() {
+        binding.sendButton.animate()
+            .translationX(0f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(120L)
+            .start()
+        voiceCancelPending = false
+        updateSendButtonMode()
+    }
+
+    private fun sendVoiceMessage(file: File) {
+        val localId = java.util.UUID.randomUUID().toString()
+        addOptimisticMessage(
+            MessageItem(
+                messageId = -System.nanoTime(),
+                senderId = currentUserId,
+                text = "",
+                timestamp = System.currentTimeMillis(),
+                attachments = emptyList(),
+                readStatus = ReadStatus.SENDING,
+                type = MessageType.MESSAGE,
+                localId = localId,
+                uploadProgress = 0
+            )
+        )
+
+        val job = com.barkfluff.client.send.SendJob(
+            chatId = chatId,
+            chatTitle = chatTitle,
+            text = "",
+            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file)),
+            localIds = listOf(localId)
+        )
+        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
     }
 
     private fun pickImages() {
@@ -1303,6 +1774,7 @@ class ChatActivity : AppCompatActivity() {
                     getString(R.string.attached_photos_count, photosCount)
             }
         }
+        updateSendButtonMode()
     }
 
     private fun sendMessageWithPendingAttachments() {
@@ -1563,11 +2035,13 @@ class ChatActivity : AppCompatActivity() {
         binding.replyPreviewContentText.text = preview
         binding.replyPreviewBar.visibility = View.VISIBLE
         binding.messageEditText.requestFocus()
+        updateSendButtonMode()
     }
 
     private fun clearPendingReply() {
         pendingReplyMessageId = 0L
         binding.replyPreviewBar.visibility = View.GONE
+        updateSendButtonMode()
     }
 
     // ─── Edit / Delete UX ─────────────────────────────────────────────────────
@@ -1590,10 +2064,14 @@ class ChatActivity : AppCompatActivity() {
         binding.editPreviewContentText.text = preview
         binding.editPreviewBar.visibility = View.VISIBLE
 
+        // Программная установка текста не должна запускать typing-heartbeat
+        suppressTypingInput = true
         binding.messageEditText.setText(item.text)
+        suppressTypingInput = false
         binding.messageEditText.setSelection(binding.messageEditText.text?.length ?: 0)
         binding.messageEditText.requestFocus()
         WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
+        updateSendButtonMode()
     }
 
     private fun clearPendingEdit() {
@@ -1601,6 +2079,7 @@ class ChatActivity : AppCompatActivity() {
         pendingEditFileIds = emptyList()
         binding.editPreviewBar.visibility = View.GONE
         binding.messageEditText.text?.clear()
+        updateSendButtonMode()
     }
 
     private fun confirmAndDelete(item: MessageItem) {
@@ -1954,7 +2433,25 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadCachedMessages() {
+        val scope = cacheScope ?: return
+        lifecycleScope.launch {
+            val messages = runCatching {
+                chatCacheRepository.latestMessages(scope, chatId, limit = 30)
+            }.getOrNull().orEmpty()
+            if (messages.isEmpty()) return@launch
+
+            displayMessages(messages)
+            val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+            firstVisibleMessageId = sortedMessages.first().id
+            lastVisibleMessageId = sortedMessages.last().id
+            hasMoreMessagesUp = messages.size >= 30
+            hasMoreMessagesDown = false
+            binding.loadingProgress.visibility = View.GONE
+        }
+    }
     private fun loadChatInfoAndMessages() {
+        loadCachedMessages()
         isLoadingMessages = true
         binding.loadingProgress.visibility = View.VISIBLE
 
@@ -1973,6 +2470,10 @@ class ChatActivity : AppCompatActivity() {
                     }
                     isGroupChat = chatInfo.isGroupChat
                     firstUnreadMessageId = chatInfo.firstUnreadMessageId
+
+                    // Синхронизируем состояние mute (для меню и локального guard уведомлений)
+                    isChatMuted = chatInfo.muted
+                    GlobalParam(this@ChatActivity).setChatMutedLocal(chatId, chatInfo.muted)
 
                     // Определяем otherUserId из участников чата (если не был передан через intent)
                     if (!isGroupChat && otherUserId == 0L && chatInfo.memberIds.isNotEmpty()) {
@@ -1996,8 +2497,52 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /** Контекстное меню чата (кнопка «три точки»): переключение уведомлений. */
+    private fun showChatMenu(anchor: View) {
+        val popup = android.widget.PopupMenu(this, anchor)
+        val muteTitle = if (isChatMuted) getString(R.string.chat_menu_unmute) else getString(R.string.chat_menu_mute)
+        val muteItem = popup.menu.add(muteTitle)
+        popup.setOnMenuItemClickListener { item ->
+            if (item === muteItem) {
+                toggleChatMute()
+                true
+            } else {
+                false
+            }
+        }
+        popup.show()
+    }
+
+    private fun toggleChatMute() {
+        val newMuted = !isChatMuted
+        lifecycleScope.launch {
+            val result = grpcManager.setChatMuted(chatId, newMuted)
+            if (result.isSuccess) {
+                isChatMuted = newMuted
+                GlobalParam(this@ChatActivity).setChatMutedLocal(chatId, newMuted)
+                val msg = if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted)
+                android.widget.Toast.makeText(this@ChatActivity, msg, android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                android.widget.Toast.makeText(this@ChatActivity, getString(R.string.chat_mute_error), android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private var onlineStatusJob: Job? = null
     private var onlineStatusSubscription: Job? = null
+
+    /**
+     * Записывает онлайн-статус, не давая индикатору набора текста быть перезаписанным:
+     * пока хотя бы один собеседник печатает — onlineStatusTextView остаётся отведён под typing-текст.
+     */
+    private fun applyOnlineStatus(text: CharSequence, indicatorVisible: Boolean) {
+        lastStatusText = text
+        lastIndicatorVisible = indicatorVisible
+        binding.onlineIndicator.visibility = if (indicatorVisible) View.VISIBLE else View.GONE
+        if (typingUsers.isEmpty()) {
+            binding.onlineStatusTextView.text = text
+        }
+    }
 
     private fun loadOnlineStatus(userId: Long) {
         // Отменяем предыдущий job если есть
@@ -2026,12 +2571,10 @@ class ChatActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
                         if (isOnline) {
-                            binding.onlineStatusTextView.text = "в сети"
-                            binding.onlineIndicator.visibility = View.VISIBLE
+                            applyOnlineStatus("в сети", true)
                         } else {
-                            val lastSeen = formatLastSeen(status.lastSeen.seconds * 1000)
-                            binding.onlineStatusTextView.text = lastSeen
-                            binding.onlineIndicator.visibility = View.GONE
+                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
+                            applyOnlineStatus(lastSeen, false)
                         }
                     }
                 }
@@ -2052,16 +2595,13 @@ class ChatActivity : AppCompatActivity() {
                     if (userStatus != null) {
                         val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
                         if (isOnline) {
-                            binding.onlineStatusTextView.text = "в сети"
-                            binding.onlineIndicator.visibility = View.VISIBLE
+                            applyOnlineStatus("в сети", true)
                         } else {
-                            val lastSeen = formatLastSeen(userStatus.lastSeen.seconds * 1000)
-                            binding.onlineStatusTextView.text = lastSeen
-                            binding.onlineIndicator.visibility = View.GONE
+                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
+                            applyOnlineStatus(lastSeen, false)
                         }
                     } else {
-                        binding.onlineStatusTextView.text = "был(а) недавно"
-                        binding.onlineIndicator.visibility = View.GONE
+                        applyOnlineStatus("был(а) недавно", false)
                     }
                 }
             }
@@ -2074,20 +2614,6 @@ class ChatActivity : AppCompatActivity() {
         val ext = fileName.substringAfterLast('.', "").lowercase()
         if (ext.isEmpty()) return null
         return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-    }
-
-    private fun formatLastSeen(timestampMillis: Long): String {
-        if (timestampMillis <= 0) return "был(а) недавно"
-
-        val now = System.currentTimeMillis()
-        val diff = now - timestampMillis
-
-        return when {
-            diff < 60_000 -> "был(а) только что"
-            diff < 3600_000 -> "был(а) ${diff / 60_000} мин. назад"
-            diff < 86400_000 -> "был(а) ${diff / 3600_000} ч. назад"
-            else -> "был(а) ${diff / 86400_000} дн. назад"
-        }
     }
 
     private fun loadMessages(isRetry: Boolean = false) {
@@ -2114,6 +2640,10 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
+                    cacheScope?.let { scope ->
+                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
+                            .onFailure { Log.w(TAG, "Не удалось сохранить сообщения в кеш", it) }
+                    }
                     displayMessages(messages)
 
                     if (messages.isNotEmpty()) {
@@ -2176,6 +2706,27 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Помечает прочитанными все чужие сообщения, уже загруженные в адаптер. Вызывается
+     * при достижении самого низа списка — сервер идемпотентен, повторная пометка безопасна.
+     */
+    private fun markAllLoadedMessagesAsRead() {
+        val unreadMessageIds = messageAdapter.currentList
+            .filter { it.type == MessageType.MESSAGE && it.senderId != currentUserId }
+            .map { it.messageId }
+
+        if (unreadMessageIds.isNotEmpty()) {
+            lifecycleScope.launch {
+                try {
+                    chatRepository.markAsRead(unreadMessageIds)
+                    Log.d(TAG, "Marked all ${unreadMessageIds.size} loaded messages as read (reached bottom)")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error marking all messages as read on scroll to bottom", e)
+                }
+            }
+        }
+    }
+
     private fun loadMessagesUp() {
         if (isLoadingMessages || !hasMoreMessagesUp) return
 
@@ -2184,6 +2735,20 @@ class ChatActivity : AppCompatActivity() {
 
         loadMessagesJob = lifecycleScope.launch {
             try {
+                cacheScope?.let { scope ->
+                    val cached = chatCacheRepository.messagesBefore(
+                        scope,
+                        chatId,
+                        firstVisibleMessageId,
+                        limit = 30
+                    )
+                    if (cached.isNotEmpty()) {
+                        prependMessages(cached)
+                        firstVisibleMessageId = cached.minBy { it.sentAt.seconds }.id
+                        hasMoreMessagesUp = cached.size >= 30
+                        return@launch
+                    }
+                }
                 val result = chatRepository.loadMessages(
                     chatId = chatId,
                     fromMessageId = firstVisibleMessageId,
@@ -2193,6 +2758,9 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
+                    cacheScope?.let { scope ->
+                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
+                    }
                     if (messages.isNotEmpty()) {
                         prependMessages(messages)
                         val sortedMessages = messages.sortedBy { it.sentAt.seconds }
@@ -2227,6 +2795,9 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
+                    cacheScope?.let { scope ->
+                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
+                    }
                     if (messages.isNotEmpty()) {
                         appendMessages(messages)
                         val sortedMessages = messages.sortedBy { it.sentAt.seconds }
@@ -2415,6 +2986,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.newMessages.collect { event ->
                 if (event.chatId == chatId) {
                     val msg = event.message
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.saveMessages(scope, chatId, listOf(msg))
+                    }
                     addNewMessage(msg)
                 }
             }
@@ -2452,6 +3026,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.messagesRead.collect { event ->
                 if (event.chatId == chatId) {
                     updateMessageReadStatus(event.messageId, event.newReadByList)
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.updateReadBy(scope, chatId, event.messageId, event.newReadByList)
+                    }
                 }
             }
         }
@@ -2460,6 +3037,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.messageEdited.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     applyEditedMessage(event.message)
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.saveMessages(scope, chatId, listOf(event.message))
+                    }
                 }
             }
         }
@@ -2468,6 +3048,9 @@ class ChatActivity : AppCompatActivity() {
             realtimeService.messageDeleted.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     removeMessageById(event.messageId)
+                    cacheScope?.let { scope ->
+                        chatCacheRepository.deleteMessage(scope, chatId, event.messageId)
+                    }
                 }
             }
         }
@@ -2497,6 +3080,25 @@ class ChatActivity : AppCompatActivity() {
         }
 
         // Подписка на онлайн-статусы обрабатывается в loadOnlineStatus()
+
+        // Индикатор "печатает..."
+        lifecycleScope.launch {
+            realtimeService.typingEvents.collect { event ->
+                if (!event.chatId.equals(chatId, ignoreCase = true)) return@collect
+                if (event.userId == currentUserId) return@collect
+                if (event.action == barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED) {
+                    typingUsers.remove(event.userId)?.cancel()
+                } else {
+                    typingUsers.remove(event.userId)?.cancel()
+                    typingUsers[event.userId] = lifecycleScope.launch {
+                        delay(6_000)
+                        typingUsers.remove(event.userId)
+                        renderTypingIndicator()
+                    }
+                }
+                renderTypingIndicator()
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -2843,8 +3445,16 @@ class ChatActivity : AppCompatActivity() {
         super.onResume()
         // Обновляем список, чтобы отразить изменения кэша (например, после удаления видео из кэша)
         if (::messageAdapter.isInitialized) {
+            messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
+            messageAdapter.stickerSizeDp = globalParam.chatStickerSizeDp
             messageAdapter.notifyDataSetChanged()
         }
+    }
+
+    override fun onStop() {
+        finishVoiceRecording(shouldSend = false)
+        stopTypingHeartbeat(sendCancel = true)
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -2855,5 +3465,7 @@ class ChatActivity : AppCompatActivity() {
         loadMessagesJob?.cancel()
         onlineStatusJob?.cancel()
         onlineStatusSubscription?.cancel()
+        stopTypingHeartbeat(sendCancel = true)
+        realtimeService.changeTypingSubscription(emptyList())
     }
 }

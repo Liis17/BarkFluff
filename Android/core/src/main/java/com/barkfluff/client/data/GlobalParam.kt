@@ -189,6 +189,18 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_FIREBASE_TOKEN, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_FIREBASE_TOKEN, value).apply()
 
+    /** Локальный кэш chatId замьюченных чатов — guard для подавления локальных уведомлений. */
+    var mutedChatIds: Set<String>
+        get() = sharedPreferences.getStringSet(KEY_MUTED_CHAT_IDS, emptySet()) ?: emptySet()
+        set(value) = sharedPreferences.edit().putStringSet(KEY_MUTED_CHAT_IDS, value).apply()
+
+    /** Добавить/убрать один чат из локального кэша mute. */
+    fun setChatMutedLocal(chatId: String, muted: Boolean) {
+        val current = mutedChatIds.toMutableSet()
+        if (muted) current.add(chatId) else current.remove(chatId)
+        mutedChatIds = current
+    }
+
     // --- Персонализация (локальные параметры) ---
 
     /** Закругление пузырей сообщений, 0..30 (dp). По умолчанию 20. */
@@ -221,15 +233,56 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_COMPACT_FOLDERS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_COMPACT_FOLDERS, value).apply()
 
+    /** Убирать обводку у неактивных вкладок папок. По умолчанию false. */
+    var folderTabsNoOutline: Boolean
+        get() = sharedPreferences.getBoolean(KEY_FOLDER_TABS_NO_OUTLINE, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_FOLDER_TABS_NO_OUTLINE, value).apply()
+
     /** Убирать чаты, входящие хотя бы в одну папку, из вкладки «Все чаты». По умолчанию false. */
     var excludeFolderChatsFromAll: Boolean
         get() = sharedPreferences.getBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL, value).apply()
 
+    /** Legacy: вкладка «Чаты» обязательна и всегда показывается. */
+    var mainTabChatsVisible: Boolean
+        get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_CHATS_VISIBLE, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_CHATS_VISIBLE, value).apply()
+
+    /** Показывать вкладку «Звонки» в главной нижней панели. По умолчанию скрыта. */
+    var mainTabCallsVisible: Boolean
+        get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_CALLS_VISIBLE, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_CALLS_VISIBLE, value).apply()
+
+    /** Legacy: вкладка «Профиль» обязательна и всегда показывается. */
+    var mainTabProfileVisible: Boolean
+        get() = sharedPreferences.getBoolean(KEY_MAIN_TAB_PROFILE_VISIBLE, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_MAIN_TAB_PROFILE_VISIBLE, value).apply()
+
+    /** Отображать last seen как относительное время, иначе как абсолютное время. */
+    var relativeOnlineTime: Boolean
+        get() = sharedPreferences.getBoolean(KEY_RELATIVE_ONLINE_TIME, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_RELATIVE_ONLINE_TIME, value).apply()
+
+    /** Размер стикера в чате в dp. */
+    var chatStickerSizeDp: Int
+        get() = sharedPreferences.getInt(KEY_CHAT_STICKER_SIZE_DP, DEFAULT_STICKER_SIZE_DP)
+        set(value) = sharedPreferences.edit()
+            .putInt(KEY_CHAT_STICKER_SIZE_DP, value.coerceIn(MIN_STICKER_SIZE_DP, MAX_STICKER_SIZE_DP))
+            .apply()
+
     /** Язык приложения: "system" (по умолчанию) — использовать локаль устройства, "ru" / "en" / "de" / "es" / "zh-CN" — переопределение. */
     var appLanguage: String
         get() = sharedPreferences.getString(KEY_APP_LANGUAGE, LANGUAGE_SYSTEM) ?: LANGUAGE_SYSTEM
         set(value) = sharedPreferences.edit().putString(KEY_APP_LANGUAGE, value).apply()
+
+    /**
+     * Редакция юридических документов, принятая пользователем (дата из markdown-заголовка
+     * «Последнее обновление»). Пустая строка — согласие ещё не давалось. Хранится именно
+     * редакция, а не флаг: при обновлении соглашения согласие нужно запросить заново.
+     */
+    var acceptedLegalRevision: String
+        get() = sharedPreferences.getString(KEY_ACCEPTED_LEGAL_REVISION, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_ACCEPTED_LEGAL_REVISION, value).apply()
 
     // --- Тестирование (dev/QA-флаги) ---
 
@@ -238,10 +291,15 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_TESTING_SHOW_IDS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SHOW_IDS, value).apply()
 
-    /** Показывать кнопку создания скрытых (приватных/секретных) чатов в шапке списка чатов. */
+    /** Флаг для отложенного secret-chat flow. Пункт UI пока намеренно не показывается. */
     var secretChatsEnabled: Boolean
         get() = sharedPreferences.getBoolean(KEY_TESTING_SECRET_CHATS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SECRET_CHATS, value).apply()
+
+    /** Показывать экспериментальный пункт создания приватного чата. */
+    var privateChatsEnabled: Boolean
+        get() = sharedPreferences.getBoolean(KEY_TESTING_PRIVATE_CHATS, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_PRIVATE_CHATS, value).apply()
 
     // --- Отложенная очистка APK обновления ---
 
@@ -347,6 +405,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_REGISTRATION_DATE = "registration_date"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
         private const val KEY_FIREBASE_TOKEN = "firebase_token"
+        private const val KEY_MUTED_CHAT_IDS = "muted_chat_ids"
 
         // Персонализация
         private const val KEY_CHAT_CORNER_RADIUS = "chat_corner_radius"
@@ -355,15 +414,29 @@ class GlobalParam(private val context: Context) {
         private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
         private const val KEY_CHAT_BACKGROUND_DIM = "chat_background_dim"
         private const val KEY_COMPACT_FOLDERS = "folders_compact"
+        private const val KEY_FOLDER_TABS_NO_OUTLINE = "folders_no_outline"
         private const val KEY_EXCLUDE_FOLDER_CHATS_FROM_ALL = "folders_exclude_from_all"
+        private const val KEY_MAIN_TAB_CHATS_VISIBLE = "main_tab_chats_visible"
+        private const val KEY_MAIN_TAB_CALLS_VISIBLE = "main_tab_calls_visible"
+        private const val KEY_MAIN_TAB_PROFILE_VISIBLE = "main_tab_profile_visible"
+        private const val KEY_RELATIVE_ONLINE_TIME = "relative_online_time"
+        private const val KEY_CHAT_STICKER_SIZE_DP = "chat_sticker_size_dp"
+
+        const val MIN_STICKER_SIZE_DP = 96
+        const val DEFAULT_STICKER_SIZE_DP = 160
+        const val MAX_STICKER_SIZE_DP = 240
 
         // Тестирование
         private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
         private const val KEY_TESTING_SECRET_CHATS = "testing_secret_chats_enabled"
+        private const val KEY_TESTING_PRIVATE_CHATS = "testing_private_chats_enabled"
 
         // Отложенная очистка APK обновления
         private const val KEY_PENDING_UPDATE_APK_PATH = "pending_update_apk_path"
         private const val KEY_PENDING_UPDATE_DOWNLOAD_ID = "pending_update_download_id"
+
+        // Согласие с юридическими документами
+        private const val KEY_ACCEPTED_LEGAL_REVISION = "accepted_legal_revision"
 
         // Язык приложения
         private const val KEY_APP_LANGUAGE = "app_language"

@@ -11,7 +11,7 @@ FastAuth реализует QR-авторизацию: анонимное уст
 | Critical    | 0          |
 | High        | 1          |
 | Medium      | 4          |
-| Low         | 7          |
+| Low         | 8          |
 
 ## Безопасность
 
@@ -64,25 +64,26 @@ FastAuth реализует QR-авторизацию: анонимное уст
 **Почему это проблема:** Сервисный токен любого внутреннего сервиса может «отсканировать» pending-сессию (зная её ID, например из логов — см. S4) и заблокировать легитимный вход (`AlreadyHandled` для настоящего пользователя). Довести до Accept не выйдет (`CreateSessionForUserServer` с UserId=0 не создаст осмысленную сессию), но DoS конкретной сессии и обход семантики «только пользователь» — реальны. Корень в общей политике GrpcServer (зона другого аудита), здесь — затронутость FastAuth.
 **Рекомендация:** В хендлерах Scan/Accept/Reject проверять `userContext.TokenType == TokenType.User` (или `UserId != 0`) до обработки.
 
-### S8. `IdentityService:Token` не валидируется при старте — Low
+### S8. ~~`IdentityService:Token` не валидируется при старте~~ — ~~Low~~ **Исправлено (2026-07-15)**
 
-**Файл:** `Backend/BarkFluff.FastAuth/Program.cs:31-33`
-**Проблема:** `IdentityService:Host` имеет молчаливый фолбэк `http://identity:7000`, а `IdentityService:Token` передаётся в `JwtClientInterceptor` без проверки на null — в отличие от принятого в проекте паттерна fail-fast (`?? throw new InvalidOperationException(...)`, как в CloudMessaging `Program.cs:27-29`).
-**Почему это проблема:** При отсутствующем токене в конфигурации сервис успешно стартует, а ломается только в момент `AcceptFastAuth` — на последнем шаге пользовательского сценария, причём ошибка авторизации к Identity всплывёт как непонятный сбой подтверждения входа.
-**Рекомендация:** Добавить `?? throw new InvalidOperationException("IdentityService:Token not configured")` (и аналогично для Host, если фолбэк не нужен осознанно).
+**Файл:** `Backend/BarkFluff.FastAuth/Program.cs`
+**Решение:** `IdentityService:Token` теперь `?? throw new InvalidOperationException(...)` — fail-fast при старте, как в CloudMessaging. `Host` оставлен с фолбэком на `http://identity:7000` — осознанно, не трогали.
 
 **Положительные стороны (по чек-листу):** session id и confirmation code — `Guid.NewGuid()` (CSPRNG .NET, 122 бита, перебор нереален: `FastAuthSessionsManager.cs:22`, `FastAuthSession.cs:67`); TTL 5 минут (`FastAuthSessionsManager.cs:9`) с фоновой очисткой; одноразовость кода и переходов состояний обеспечена атомарно под локом (`FastAuthSession.cs:74-104`); Accept/Reject привязаны к userId сканировавшего (`FastAuthSession.cs:79-80, 95-96` + дублирующая проверка в хендлерах); сообщения ошибок контролируемые, без утечки деталей (`Shared/BarkFluff.Shared.Exceptions/FastAuth/*`); SQL отсутствует (всё in-memory) — инъекции неприменимы; хардкода секретов в коде и конфигах нет.
 
+### S9. ~~TTL QR-сессии не проверяется при Accept/Reject~~ — ~~Low~~ **Исправлено (2026-07-15)**
+
+**Файлы:** `Backend/BarkFluff.FastAuth/Domain/FastAuthSession.cs`; `Features/AcceptFastAuth/AcceptFastAuthCommandHandler.cs`; `Features/RejectFastAuth/RejectFastAuthCommandHandler.cs`.
+**Решение:** `TryAccept`/`TryReject` теперь внутри лока проверяют `DateTime.UtcNow >= ExpiresAt` и при просрочке атомарно переводят сессию в `Expired` (общий приватный `ExpireLocked()`, переиспользован и в `TryExpire`), возвращая `false` — без ожидания 30-секундного sweep. Дополнительно оба хендлера (`Accept`/`Reject`) проверяют `ExpiresAt` до вызова Identity, чтобы не создавать лишнюю сессию в общем случае просрочки; компенсационный отзыв в Identity при гонке (S5) уже прикрывает оставшийся узкий race-window.
+
 ## Производительность
 
-### P1. Состояние сессий в памяти процесса — нет горизонтального масштабирования, потеря при рестарте — Low
+### P1. Состояние сессий в памяти процесса — нет горизонтального масштабирования, потеря при рестарте — Low **→ Неактуально**
 
 **Файл:** `Backend/BarkFluff.FastAuth/Infrastructure/FastAuthSessionsManager.cs:14`
-**Проблема:** Все сессии живут в `ConcurrentDictionary` единственного экземпляра. Второй контейнер fast-auth невозможен без sticky-маршрутизации (Scan может прийти не на тот инстанс, где открыт стрим Subscribe); деплой/рестарт обнуляет все pending-сессии.
-**Почему это проблема:** Сервис — single point of failure для QR-входа; каждый деплой обрывает активные авторизации (пользователь у экрана видит необъяснимый сбой). Для текущего масштаба приемлемо, но это осознанное ограничение, которое стоит зафиксировать.
-**Рекомендация:** Пока масштаб мал — оставить как есть, задокументировав. При росте — вынести состояние в Redis с pub/sub для событий стрима.
+**Решение:** Осознанное ограничение при текущем масштабе (single instance). Вынос в Redis — не «удобный рефактор», а отдельная фича ради проблемы, которая пока не проявилась. Оставлено как есть.
 
-### P2. Генерация QR PNG с избыточным разрешением на анонимном эндпоинте — Low
+### P2. Генерация QR PNG с избыточным разрешением на анонимном эндпоинте — Low **→ Отложено** (вариант 2 требует параллельного обновления клиентов Android/WPF/Web)
 
 **Файл:** `Backend/BarkFluff.FastAuth/Infrastructure/QrCodeGenerator.cs:15`
 **Проблема:** `GetGraphic(20)` — 20 пикселей на модуль — даёт PNG ~740x740 px для GUID-нагрузки; результат дополнительно раздувается base64 (+33%) и едет в gRPC-ответе. Генерация происходит синхронно на каждый анонимный запрос.
@@ -93,12 +94,10 @@ FastAuth реализует QR-авторизацию: анонимное уст
 
 ## Docker / nginx
 
-### D1. Порт FastAuth публикуется на хост в обход TLS-терминации nginx — Medium
+### D1. Порт FastAuth публикуется на хост в обход TLS-терминации nginx — Medium **→ Неактуально**
 
 **Файл:** `Backend/docker-compose-master.yml:97` (`ports: ["${FASTAUTH_PORT}:${FASTAUTH_PORT}"]`)
-**Проблема:** В прод-конфигурации порт сервиса (7008, plaintext HTTP/2 — `RunSettings.Tls` не задаётся) пробрасывается на все интерфейсы хоста, хотя весь клиентский трафик должен идти через `fast-auth.barkfluff.com` (nginx, TLS — `fast-auth.conf:8-24`). В dev-compose (`docker-compose-dev.yml:93-103`) `ports` у fast-auth отсутствует — расхождение в опасную сторону именно в master.
-**Почему это проблема:** Если хостовый файрвол не закрывает порт, любой может подключиться к авторизационному сервису напрямую без TLS: access/refresh-токены и JWT из `x-auth-token` пойдут открытым текстом; плюс прямой обход любых будущих nginx-ограничений (rate limiting из S1). Nginx ходит в контейнер по имени через docker-сеть — публикация порта для него не нужна.
-**Рекомендация:** Убрать секцию `ports` у fast-auth в master-compose (по примеру dev), либо ограничить привязкой `127.0.0.1:` если порт нужен для локальной отладки на хосте.
+**Решение:** master-compose не используется — реальный деплой идёт из `docker-compose-dev.yml`, где `ports` у fast-auth и так отсутствует (см. `project_compose_dev_is_prod` в памяти проекта).
 
 ### D2. ~~В nginx-конфиге нет rate limiting для анонимных эндпоинтов~~ — ~~Low~~ **Исправлено (2026-06-23)**
 

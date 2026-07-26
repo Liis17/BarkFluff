@@ -29,6 +29,8 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - `UploadBadgeImage` — загрузка PNG бейджей (байты напрямую, без сжатия)
 - `UploadAvatarServer` — аватар от имени пользователя
 - `UploadPosterServer` — постер профиля (UserProfilePoster) от имени пользователя для админ-панели
+- `UploadFileServer(data, filename, file_type, owner_user_id)` — загрузка файла от имени пользователя (для [[Backend/Bots]]); переиспользует полный пайплайн `UploadFileCommand`: детекция типа, компрессия, превью, дедупликация → `{file_id, preview_url, file_size}`
+- `GetTempDownloadUrlServer(file_ids)` — временные ссылки на скачивание (для [[Backend/Bots]], метод `getFile`); обёртка над тем же `GetTempDownloadUrlCommand`, что и клиентский `GetTempDownloadUrl`. Нужен потому, что вложения сообщений по прямому `file_id` через `/download/{fileId}` **не отдаются** — там пропускаются только `UserAvatar`, `ChatPicture`, `UserProfilePoster`
 - `GetUserStorageInfoServer` — хранилище по userId
 - Стикеры (управление): `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
 
@@ -47,7 +49,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 ### S3-инфраструктура
 
 - **S3BucketRegistry** (singleton) — реестр бакетов, маппинг `UploadFileType → bucketId`, S3-клиенты с кешированием
-- **S3BucketInitializer** — автосоздание бакетов при старте с политикой публичного чтения
+- **S3BucketInitializer** — автосоздание бакетов при старте. Публичная политика чтения удалена (security fix, коммит `03a8dd5e`); ошибки S3 при старте логируются и не роняют сервис; 403 Forbidden при проверке/создании бакета трактуется как «бакет уже создан вручную» (нужно для R2-токенов с правами только на объекты)
 - **S3Uploader** — upload/download через `IAmazonS3`
 
 Бакеты: `profile-pictures`, `message-images`, `message-videos`, `message-documents`, `message-audio`, `chat-pictures`, `badge-images`, `barkfluff-uploads` (fallback).
@@ -58,9 +60,9 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 | Сущность | Назначение |
 |----------|-----------|
-| `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация. `PreviewId` — ссылка на превью. `ImageWidth`/`ImageHeight` — размеры изображения в пикселях (nullable int, только для графических типов). |
+| `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация (GIN-индекс). `PreviewId` — ссылка на превью (частичный индекс). `ExpiresAt` — TTL слота незагруженного файла (~2 ч, чистится `TempFileCleanupService`). `ImageWidth`/`ImageHeight` — размеры изображения в пикселях (nullable int, только для графических типов). |
 | `TempFile` | Временные файлы с `ExpiresAt`. Индекс по `OriginalFileId`. |
-| `FileHash` | SHA256-хеши для дедупликации. Индекс по `Hash`. |
+| `FileHash` | SHA256-хеши для дедупликации. **Уникальный** индекс `IX_FileHashes_Hash` (с 2026-07-16). |
 | `BadgeImage` | Отдельная таблица (не `UploadFile`). Бакет `badge-images`. PNG без сжатия. |
 | `StickerPack` | `CreatorUserId`, `CoverStickerId`, связь 1:N со `Sticker`. |
 | `Sticker` | `FileId`, `PreviewFileId`, `Emoji`. Макс. 1024px, макс. 12 МБ. |
@@ -69,7 +71,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 - **ImageCompressor** — SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%. Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%.
 - **FileTypeDetector** — тип по magic bytes (JPEG, PNG, WebP, GIF, MP4, WebM, AVI, MOV, MP3, WAV, FLAC, M4A, OGG). OGG → `Voice`, остальное аудио → `Audio`.
-- **VideoThumbnailExtractor** — FFMpegCore, статический бинарь `ffmpeg`/`ffprobe` (`mwader/static-ffmpeg`, копируется в образ в Dockerfile, путь `/usr/local/bin` через `GlobalFFOptions`/`Ffmpeg:BinaryFolder`). Для `MessageAttachmentVideo`: кадр на 5-й секунде (или середина, если короче) → тот же `ImageCompressor`-пайплайн превью (1024px JPEG). Видео всегда буферизуется на диск при загрузке (FFmpeg читает файл по пути, не по стриму). Длительность видео не извлекается и не хранится (нет поля в proto).
+- **VideoThumbnailExtractor** — FFMpegCore, статический бинарь `ffmpeg`/`ffprobe` (`mwader/static-ffmpeg`, копируется в образ в `Dockerfile.slim`, путь `/usr/local/bin` через `GlobalFFOptions`/`Ffmpeg:BinaryFolder`). Для `MessageAttachmentVideo`: кадр на 5-й секунде (или середина, если короче) → тот же `ImageCompressor`-пайплайн превью (1024px JPEG). Видео всегда буферизуется на диск при загрузке (FFmpeg читает файл по пути, не по стриму). Длительность видео не извлекается и не хранится (нет поля в proto).
 
 ### Метаданные изображений
 

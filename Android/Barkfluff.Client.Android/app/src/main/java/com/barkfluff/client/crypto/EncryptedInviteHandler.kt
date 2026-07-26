@@ -1,18 +1,20 @@
 package com.barkfluff.client.crypto
 
 import android.app.Activity
-import android.content.Intent
 import android.text.InputType
 import android.util.Log
 import android.widget.Toast
+import android.widget.LinearLayout
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.BarkFluffApplication
-import com.barkfluff.client.PrivateChatActivity
-import com.barkfluff.client.SecretChatActivity
+import com.barkfluff.client.ChatActivity
+import com.barkfluff.client.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
 
 /**
@@ -62,18 +64,32 @@ object EncryptedInviteHandler {
     }
 
     private fun showPrivateInviteDialog(activity: Activity, invite: UpdatesApiOuterClass.PrivateChatInviteEvent) {
-        val edit = TextInputEditText(activity).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            hint = "Passphrase"
+        val content = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            val margin = (24 * activity.resources.displayMetrics.density).toInt()
+            setPadding(margin, 0, margin, 0)
         }
+        val passwordLayout = TextInputLayout(activity, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+            hint = activity.getString(R.string.private_chat_password_hint)
+        }
+        val edit = TextInputEditText(passwordLayout.context).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        passwordLayout.addView(edit)
+        val remember = MaterialCheckBox(activity).apply {
+            text = activity.getString(R.string.private_chat_remember_password)
+            isChecked = false
+        }
+        content.addView(passwordLayout)
+        content.addView(remember)
         MaterialAlertDialogBuilder(activity)
             .setTitle("Приглашение в приватный чат")
             .setMessage("Пользователь ${invite.inviterUserId} пригласил вас в приватный чат. Введите общий passphrase для расшифровки.")
-            .setView(edit)
+            .setView(content)
             .setCancelable(false)
             .setPositiveButton("Принять") { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
-                acceptPrivate(activity, invite, passphrase)
+                acceptPrivate(activity, invite, passphrase, remember.isChecked)
             }
             .setNegativeButton("Отклонить") { _, _ ->
                 rejectPrivate(activity, invite.chatId)
@@ -81,7 +97,12 @@ object EncryptedInviteHandler {
             .show()
     }
 
-    private fun acceptPrivate(activity: Activity, invite: UpdatesApiOuterClass.PrivateChatInviteEvent, passphrase: String) {
+    private fun acceptPrivate(
+        activity: Activity,
+        invite: UpdatesApiOuterClass.PrivateChatInviteEvent,
+        passphrase: String,
+        rememberKey: Boolean
+    ) {
         if (passphrase.isEmpty()) return
         val app = activity.applicationContext as BarkFluffApplication
         (activity as? LifecycleOwner)?.lifecycleScope?.launch {
@@ -89,14 +110,16 @@ object EncryptedInviteHandler {
                 chatId = invite.chatId,
                 passphrase = passphrase,
                 kdfSalt = invite.kdfSalt.toByteArray(),
-                passphraseVerifier = invite.passphraseVerifier.toByteArray()
+                passphraseVerifier = invite.passphraseVerifier.toByteArray(),
+                rememberKey = rememberKey
             )
             result.onSuccess { chat ->
                 Toast.makeText(activity, "Приватный чат принят", Toast.LENGTH_SHORT).show()
-                val intent = Intent(activity, PrivateChatActivity::class.java)
-                    .putExtra(PrivateChatActivity.EXTRA_CHAT_ID, chat.id)
-                    .putExtra(PrivateChatActivity.EXTRA_TITLE, chat.title.ifBlank { "Приватный чат" })
-                activity.startActivity(intent)
+                activity.startActivity(ChatActivity.privateChatIntent(
+                    activity,
+                    chatId = chat.id,
+                    title = chat.title.ifBlank { "Приватный чат" }
+                ))
             }.onFailure {
                 Toast.makeText(activity, "Не удалось принять чат: ${it.message}", Toast.LENGTH_LONG).show()
             }
@@ -131,10 +154,11 @@ object EncryptedInviteHandler {
             )
             result.onSuccess { (chat, plaintext) ->
                 Toast.makeText(activity, "Секретный чат начат", Toast.LENGTH_SHORT).show()
-                val intent = Intent(activity, SecretChatActivity::class.java)
-                    .putExtra(SecretChatActivity.EXTRA_SECRET_CHAT_ID, chat.id)
-                    .putExtra(SecretChatActivity.EXTRA_INITIAL_MESSAGE, plaintext)
-                activity.startActivity(intent)
+                activity.startActivity(ChatActivity.secretChatIntent(
+                    activity,
+                    secretChatId = chat.id,
+                    initialMessage = plaintext
+                ))
             }.onFailure {
                 Log.w(TAG, "acceptSecret failed", it)
                 Toast.makeText(activity, "Не удалось принять: ${it.message}", Toast.LENGTH_LONG).show()

@@ -92,6 +92,9 @@ service MessagesApi {
   // Удалить шифрованное сообщение (soft-delete; ciphertext очищается).
   rpc DeletePrivateMessage(DeletePrivateMessageRequest) returns(DeletePrivateMessageResponse);
 
+  // Отметить все зашифрованные сообщения до указанного как прочитанные.
+  rpc MarkPrivateMessagesAsRead(MarkPrivateMessagesAsReadRequest) returns(MarkPrivateMessagesAsReadResponse);
+
   // -- Секретные чаты (Signal Double Ratchet) -----------------------------------
   //
   // Сервер НЕ хранит ни сам чат, ни сообщения. Метаданные чата держит только
@@ -300,6 +303,19 @@ message Chat {
   bytes kdf_salt = 10; // Соль для Argon2id (только для PRIVATE; пусто для REGULAR)
 
   bytes passphrase_verifier = 11; // Верификатор passphrase, HMAC от константы (только для PRIVATE; пусто для REGULAR)
+
+  bool muted = 12; // Уведомления этого чата отключены текущим пользователем
+
+  google.protobuf.Timestamp muted_until = 13; // До какого времени mute (пусто => навсегда, если muted=true)
+
+  // Время последней видимой активности. Для PRIVATE не раскрывает содержимое.
+  google.protobuf.Timestamp last_activity_at = 14;
+
+  barkfluff.shared.PrivateChatInviteState private_invite_state = 15;
+
+  // Инициатор приватного инвайта (только PRIVATE и state != ACCEPTED; иначе 0).
+  // Позволяет клиенту понять роль: получатель показывает «принять/отклонить».
+  int64 private_inviter_user_id = 16;
 }
 
 message ChatMember {
@@ -358,6 +374,8 @@ message GetChatInfoResponse {
   bool is_group_chat = 5; // Является ли групповым чатом
   int64 count_unread = 6; // Количество непрочитанных сообщений
   repeated int64 members_id = 7; // Идентификаторы участников чата
+  bool muted = 8; // Уведомления этого чата отключены текущим пользователем
+  google.protobuf.Timestamp muted_until = 9; // До какого времени mute (пусто => навсегда, если muted=true)
 }
 
 // -- Приватные чаты (E2E через passphrase) ------------------------------------
@@ -370,6 +388,7 @@ message CreatePrivateChatRequest {
 
 message CreatePrivateChatResponse {
   Chat chat = 1; // Созданный чат (с chat_type=PRIVATE; собеседник пока не присоединён)
+  bool created = 2; // false, если вернулся уже существующий чат этой пары
 }
 
 message AcceptPrivateChatRequest {
@@ -424,6 +443,13 @@ message DeletePrivateMessageRequest {
 }
 
 message DeletePrivateMessageResponse { }
+
+message MarkPrivateMessagesAsReadRequest {
+  string chat_id = 1;
+  int64 last_read_message_id = 2;
+}
+
+message MarkPrivateMessagesAsReadResponse { }
 
 // -- Секретные чаты (Signal Double Ratchet) -----------------------------------
 

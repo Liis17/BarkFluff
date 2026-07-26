@@ -23,10 +23,10 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import coil.size.Size
 import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.shape.CornerFamily
@@ -39,8 +39,10 @@ import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
+import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageLoadHelper
+import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
@@ -68,11 +70,13 @@ class MessageAdapter(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
     var messageCornerRadiusDp: Int = 20,
+    /** Размер стикеров в чате в dp. */
+    var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
     /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
     private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
     private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
-    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, fileId аватара). null = брать из самого MessageItem. */
+    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
     private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
@@ -96,6 +100,10 @@ class MessageAdapter(
         private const val VIEW_TYPE_UNREAD_SEPARATOR = 4
         private const val VIEW_TYPE_FOOTER = 5
         private const val VIEW_TYPE_SYSTEM = 6
+        private const val VOICE_AUTO_DOWNLOAD_LIMIT_BYTES = 2L * 1024L * 1024L
+
+        private val voiceAutoDownloads = mutableSetOf<String>()
+        private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
 
         private val FOOTER_ITEM = MessageItem(
             messageId = Long.MIN_VALUE,
@@ -137,28 +145,34 @@ class MessageAdapter(
      * соответствует M3 Expressive feedback (часы → одна галочка → две → две filled primary).
      * FAILED перекрывает текущий tint на colorError.
      */
-    private fun applyDeliveryStatusIcon(view: ImageView, status: ReadStatus) {
+    private fun applyDeliveryStatusIcon(
+        view: ImageView,
+        status: ReadStatus,
+        useLightTint: Boolean = false
+    ) {
         val ctx = view.context
+        val lightTint = if (useLightTint) ColorStateList.valueOf(android.graphics.Color.WHITE) else null
         when (status) {
             ReadStatus.NONE -> view.visibility = View.GONE
             ReadStatus.SENDING -> {
                 view.setImageResource(R.drawable.ic_status_sending)
-                view.imageTintList = null
+                view.imageTintList = lightTint
                 view.visibility = View.VISIBLE
             }
             ReadStatus.SENT -> {
                 view.setImageResource(R.drawable.ic_status_sent)
-                view.imageTintList = null
+                view.imageTintList = lightTint
                 view.visibility = View.VISIBLE
             }
             ReadStatus.DELIVERED -> {
                 view.setImageResource(R.drawable.ic_status_delivered)
-                view.imageTintList = null
+                view.imageTintList = lightTint
                 view.visibility = View.VISIBLE
             }
             ReadStatus.READ -> {
                 view.setImageResource(R.drawable.ic_status_read)
-                view.imageTintList = ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorPrimary))
+                view.imageTintList = lightTint
+                    ?: ColorStateList.valueOf(resolveThemeColor(ctx, androidx.appcompat.R.attr.colorPrimary))
                 view.visibility = View.VISIBLE
             }
             ReadStatus.FAILED -> {
@@ -279,18 +293,19 @@ class MessageAdapter(
             if (isPureSticker) {
                 // Показать стикер без облачка
                 binding.messageCard.visibility = View.GONE
-                binding.stickerImageView.visibility = View.VISIBLE
+                binding.stickerContainer.visibility = View.VISIBLE
                 binding.stickerTimeStatusLayout.visibility = View.VISIBLE
 
                 val attachment = displayedAttachments[0]
+                applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
-                applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus)
+                applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus, useLightTint = true)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
-                binding.stickerImageView.visibility = View.GONE
+                binding.stickerContainer.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
 
                 // Применяем закругление из настроек персонализации
@@ -298,7 +313,7 @@ class MessageAdapter(
                 binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
-                    binding.messageTextView.text = item.text
+                    MarkdownRenderer.applyTo(binding.messageTextView, item.text)
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
                     binding.messageTextView.visibility = View.GONE
@@ -308,6 +323,10 @@ class MessageAdapter(
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
+
+                val showMediaTimeOverlay = item.text.isBlank() &&
+                    (item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
+                binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
 
                 if (item.localPreviewUris.isNotEmpty()) {
                     // Оптимистичное сообщение: вложения ещё не на сервере — рендерим локальные превью.
@@ -319,6 +338,9 @@ class MessageAdapter(
                     binding.attachmentsContainer.addView(
                         buildLocalMediaGrid(binding.root.context, item.localPreviewUris, mediaWidthPx)
                     )
+                    if (showMediaTimeOverlay) {
+                        bindMediaTimeOverlay(binding.attachmentsContainer, item)
+                    }
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -330,7 +352,16 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, isSentByMe = true)
+                    setupAttachmentsContainer(
+                        binding.attachmentsContainer,
+                        displayedAttachments,
+                        mediaWidthPx,
+                        isSentByMe = true,
+                        sourceMessageId = item.messageId
+                    )
+                    if (showMediaTimeOverlay) {
+                        bindMediaTimeOverlay(binding.attachmentsContainer, item)
+                    }
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -402,19 +433,15 @@ class MessageAdapter(
                 binding.senderNameTextView.text = senderName
 
                 if (!senderAvatarFileId.isNullOrBlank()) {
-                    binding.senderAvatarPlaceholder.visibility = View.GONE
-                    binding.senderAvatarImageView.visibility = View.VISIBLE
-                    scope.launch {
-                        val url = getFileUrl(senderAvatarFileId)
-                        if (url != null) {
-                            withContext(Dispatchers.Main) {
-                                binding.senderAvatarImageView.load(url) {
-                                    size(Size(48, 48))
-                                    crossfade(true)
-                                    error(R.drawable.ic_person)
-                                }
-                            }
-                        }
+                    AvatarLoader.loadByFileId(
+                        imageView = binding.senderAvatarImageView,
+                        placeholderView = binding.senderAvatarPlaceholder,
+                        fileId = senderAvatarFileId,
+                        displayName = senderName ?: "",
+                        userId = item.senderId,
+                        size = 48
+                    ) {
+                        getFileUrl(senderAvatarFileId)
                     }
                 } else {
                     binding.senderAvatarImageView.visibility = View.GONE
@@ -436,25 +463,26 @@ class MessageAdapter(
             if (isPureSticker) {
                 // Показать стикер без облачка
                 binding.messageCard.visibility = View.GONE
-                binding.stickerImageView.visibility = View.VISIBLE
-                binding.stickerTimeTextView.visibility = View.VISIBLE
+                binding.stickerContainer.visibility = View.VISIBLE
+                binding.stickerTimeStatusLayout.visibility = View.VISIBLE
 
                 val attachment = displayedAttachments[0]
+                applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
-                binding.stickerImageView.visibility = View.GONE
-                binding.stickerTimeTextView.visibility = View.GONE
+                binding.stickerContainer.visibility = View.GONE
+                binding.stickerTimeStatusLayout.visibility = View.GONE
 
                 // Применяем закругление из настроек персонализации
                 val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
                 binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
-                    binding.messageTextView.text = item.text
+                    MarkdownRenderer.applyTo(binding.messageTextView, item.text)
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
                     binding.messageTextView.visibility = View.GONE
@@ -462,6 +490,9 @@ class MessageAdapter(
 
                 binding.timeTextView.text = formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
+
+                val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
+                binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
 
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -473,7 +504,15 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx)
+                    setupAttachmentsContainer(
+                        binding.attachmentsContainer,
+                        displayedAttachments,
+                        mediaWidthPx,
+                        sourceMessageId = item.messageId
+                    )
+                    if (showMediaTimeOverlay) {
+                        bindMediaTimeOverlay(binding.attachmentsContainer, item)
+                    }
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -573,7 +612,8 @@ class MessageAdapter(
                 quote.forwardAttachmentsContainer,
                 nestedAtts,
                 maxWidthPx,
-                isSentByMe = false
+                isSentByMe = false,
+                sourceMessageId = data.originalMessageId
             )
             quote.forwardAttachmentsContainer.visibility = View.VISIBLE
         } else {
@@ -582,7 +622,7 @@ class MessageAdapter(
         }
 
         if (data.text.isNotBlank()) {
-            quote.forwardTextTextView.text = data.text
+            quote.forwardTextTextView.text = MarkdownRenderer.strip(data.text)
             quote.forwardTextTextView.visibility = View.VISIBLE
         } else {
             quote.forwardTextTextView.visibility = View.GONE
@@ -591,7 +631,7 @@ class MessageAdapter(
 
     /** Формирует короткое превью для reply: 1 строка текста ИЛИ "📷 N фото" / "📎 N файлов" если текста нет. */
     private fun buildPreviewLine(text: String, attachments: List<Shared.MessageAttachment>): String {
-        if (text.isNotBlank()) return text
+        if (text.isNotBlank()) return MarkdownRenderer.strip(text)
         if (attachments.isEmpty()) return ""
         val photos = attachments.count {
             it.type == Shared.MessageAttachmentType.IMAGE ||
@@ -641,6 +681,38 @@ class MessageAdapter(
             fileId = fileId,
             getUrlCallback = getUrl
         )
+    }
+
+    private fun applyStickerSize(imageView: ImageView) {
+        val sizePx = (stickerSizeDp * imageView.context.resources.displayMetrics.density + 0.5f).toInt()
+        val params = imageView.layoutParams
+        if (params.width != sizePx || params.height != sizePx) {
+            params.width = sizePx
+            params.height = sizePx
+            imageView.layoutParams = params
+        }
+    }
+
+    private fun List<Shared.MessageAttachment>.isPureMedia(): Boolean =
+        isNotEmpty() && all {
+            it.type == Shared.MessageAttachmentType.IMAGE ||
+                it.type == Shared.MessageAttachmentType.GIF ||
+                it.type == Shared.MessageAttachmentType.VIDEO
+        }
+
+    private fun bindMediaTimeOverlay(
+        container: android.widget.FrameLayout,
+        item: MessageItem
+    ) {
+        val overlay = LayoutInflater.from(container.context)
+            .inflate(R.layout.view_media_time_status, container, false)
+        overlay.findViewById<android.widget.TextView>(R.id.mediaTimeTextView).text = formatTime(item.timestamp)
+        applyDeliveryStatusIcon(
+            overlay.findViewById(R.id.mediaReadStatusImageView),
+            item.readStatus,
+            useLightTint = item.readStatus != ReadStatus.NONE
+        )
+        container.addView(overlay)
     }
 
     // ─── Color Helpers ─────────────────────────────────────────────────────────
@@ -698,7 +770,8 @@ class MessageAdapter(
         container: ViewGroup,
         attachments: List<Shared.MessageAttachment>,
         mediaWidthPx: Int = 0,
-        isSentByMe: Boolean = false
+        isSentByMe: Boolean = false,
+        sourceMessageId: Long? = null
     ) {
         container.removeAllViews()
 
@@ -709,7 +782,10 @@ class MessageAdapter(
             it.type == Shared.MessageAttachmentType.VIDEO
         }
         val stickers = attachments.filter { it.type == Shared.MessageAttachmentType.STICKER }
-        val audios = attachments.filter { it.type == Shared.MessageAttachmentType.AUDIO }
+        val audios = attachments.filter {
+            it.type == Shared.MessageAttachmentType.AUDIO ||
+            it.type == Shared.MessageAttachmentType.VOICE
+        }
         val docs   = attachments.filter {
             it.type == Shared.MessageAttachmentType.DOCUMENT ||
             it.type == Shared.MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN
@@ -726,14 +802,14 @@ class MessageAdapter(
 
         // Медиа-сетка (IMAGE / GIF / VIDEO) — ряды по алгоритму WPF MultiImageGrid
         if (mediaItems.isNotEmpty() && mediaWidthPx > 0) {
-            val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx)
+            val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx, sourceMessageId)
             wrapper.addView(mediaGrid)
         }
 
         // Стикеры (внутри облачка, когда есть текст или другие вложения)
         for (sticker in stickers) {
             val dm = context.resources.displayMetrics
-            val stickerSizePx = (160 * dm.density + 0.5f).toInt()
+            val stickerSizePx = (stickerSizeDp * dm.density + 0.5f).toInt()
             val cornerRadiusPx = 15 * dm.density
             val stickerView = ShapeableImageView(context).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(stickerSizePx, stickerSizePx).apply {
@@ -773,7 +849,8 @@ class MessageAdapter(
     private fun buildMediaGrid(
         context: android.content.Context,
         mediaItems: List<Shared.MessageAttachment>,
-        maxWidth: Int
+        maxWidth: Int,
+        sourceMessageId: Long?
     ): View {
         val dm = context.resources.displayMetrics
         val spacingPx = (2 * dm.density + 0.5f).toInt()
@@ -788,30 +865,21 @@ class MessageAdapter(
             )
         }
 
-        // Для одиночного изображения применяем соотношение сторон из метаданных, чтобы
-        // облачко заняло правильный размер ещё до загрузки картинки и не скакало.
-        val isSingleImage = capped.size == 1
-
         var itemIndex = 0
         for ((rowIdx, itemsInRow) in layout.withIndex()) {
             val totalSpacing = spacingPx * (itemsInRow - 1)
             val cellWidth = (maxWidth - totalSpacing) / itemsInRow
 
-            // Высота ячейки: для одиночного изображения — по соотношению сторон (если известно),
-            // для мульти-сетки — всегда квадратная ячейка.
-            val cellHeight: Int = if (isSingleImage) {
-                val attachment = capped[0]
-                val imgW = attachment.imageWidth
-                val imgH = attachment.imageHeight
-                if (imgW > 0 && imgH > 0) {
-                    // Ограничиваем высоту: не меньше 1/3 и не больше 2x ширины
-                    (imgH.toLong() * cellWidth / imgW).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
-                } else {
-                    cellWidth
+            // Высота ряда — по усреднённому соотношению сторон картинок этого ряда,
+            // считается от ширины одной ячейки (cellWidth), а не всего ряда.
+            val rowRatios = capped.subList(itemIndex, (itemIndex + itemsInRow).coerceAtMost(capped.size))
+                .mapNotNull { attachment ->
+                    val imgW = attachment.imageWidth
+                    val imgH = attachment.imageHeight
+                    if (imgW > 0 && imgH > 0) imgW.toFloat() / imgH.toFloat() else null
                 }
-            } else {
-                cellWidth
-            }
+            val avgRatio = if (rowRatios.isNotEmpty()) rowRatios.average().toFloat() else 1f
+            val cellHeight = (cellWidth / avgRatio).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
 
             val row = android.widget.LinearLayout(context).apply {
                 orientation = android.widget.LinearLayout.HORIZONTAL
@@ -830,7 +898,7 @@ class MessageAdapter(
                     if (col > 0) marginStart = spacingPx
                 }
 
-                bindMediaCell(cellView, attachment, capped, itemIndex)
+                bindMediaCell(cellView, attachment, capped, itemIndex, sourceMessageId)
                 row.addView(cellView)
                 itemIndex++
             }
@@ -910,7 +978,8 @@ class MessageAdapter(
         cellView: View,
         attachment: Shared.MessageAttachment,
         allMedia: List<Shared.MessageAttachment>,
-        position: Int
+        position: Int,
+        sourceMessageId: Long?
     ) {
         val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
         val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
@@ -964,7 +1033,14 @@ class MessageAdapter(
                 val allFileIds    = imageItems.map { it.fileId }
                 val allPreviewUrls = imageItems.map { it.previewUrl }
                 ctx.startActivity(
-                    ImageViewerActivity.createIntent(ctx, allFileIds, allPreviewUrls, clickedIndex)
+                    ImageViewerActivity.createIntent(
+                        ctx,
+                        allFileIds,
+                        allPreviewUrls,
+                        clickedIndex,
+                        fileNames = imageItems.map { it.fileName },
+                        sourceMessageIds = List(imageItems.size) { sourceMessageId ?: 0L }
+                    )
                 )
             }
 
@@ -979,12 +1055,18 @@ class MessageAdapter(
         )
         val context = container.context
         val fileId = attachment.fileId
-        val fileName = attachment.fileName.ifBlank { "audio" }
+        val isVoice = attachment.type == Shared.MessageAttachmentType.VOICE
+        val fileName = attachment.fileName.ifBlank { if (isVoice) "voice.ogg" else "audio" }
 
+        binding.root.tag = fileId
+        binding.downloadButton.tag = fileId
         binding.fileNameText.text = fileName
+        binding.fileNameText.visibility = if (isVoice) View.GONE else View.VISIBLE
+        binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
+        binding.voiceWaveform.isEnabled = false
+        binding.voiceWaveform.resetAmplitudes()
         binding.durationText.text = "0:00"
 
-        // Перекраска для отправленных сообщений (контраст на primaryContainer)
         if (isSentByMe) {
             val onContainer = resolveOnPrimaryContainerColor(context)
             val onContainerVariant = resolveOnPrimaryContainerVariantColor(context)
@@ -994,8 +1076,8 @@ class MessageAdapter(
 
             binding.fileNameText.setTextColor(onContainer)
             binding.durationText.setTextColor(onContainerVariant)
+            binding.voiceWaveform.setColors(onContainer, onContainerVariant)
 
-            // Play/Pause button: oval background → onPrimaryContainer, icon tint → primaryContainer
             val playBg = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(onContainer)
@@ -1003,7 +1085,6 @@ class MessageAdapter(
             binding.playPauseButton.background = playBg
             binding.playPauseButton.imageTintList = ColorStateList.valueOf(containerColor)
 
-            // Download button: аналогично
             val dlBg = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(onContainer)
@@ -1011,22 +1092,35 @@ class MessageAdapter(
             binding.downloadButton.background = dlBg
             binding.downloadButton.imageTintList = ColorStateList.valueOf(containerColor)
 
-            // SeekBar
             binding.audioSeekBar.thumbTintList = onContainerCsl
             binding.audioSeekBar.progressTintList = onContainerCsl
             binding.audioSeekBar.progressBackgroundTintList = onContainerVariantCsl
-
-            // Download progress
             binding.downloadProgressBar.setIndicatorColor(onContainer)
+        } else {
+            binding.voiceWaveform.setColors(
+                resolveThemeColor(context, androidx.appcompat.R.attr.colorPrimary),
+                resolveThemeColor(context, com.google.android.material.R.attr.colorOutlineVariant)
+            )
         }
 
         fun updateUiForCached(durationMs: Int = 0) {
             binding.downloadButton.visibility = View.GONE
             binding.downloadProgressBar.visibility = View.GONE
-            binding.audioSeekBar.visibility = View.VISIBLE
             binding.playPauseButton.isEnabled = true
             binding.playPauseButton.alpha = 1f
-            binding.audioSeekBar.isEnabled = true
+
+            if (isVoice) {
+                binding.fileNameText.visibility = View.GONE
+                binding.voiceWaveform.visibility = View.VISIBLE
+                binding.voiceWaveform.isEnabled = true
+                binding.audioSeekBar.visibility = View.GONE
+            } else {
+                binding.fileNameText.visibility = View.VISIBLE
+                binding.voiceWaveform.visibility = View.GONE
+                binding.audioSeekBar.visibility = View.VISIBLE
+                binding.audioSeekBar.isEnabled = true
+            }
+
             if (durationMs > 0) {
                 binding.durationText.text = formatAudioTime(durationMs.toLong())
             }
@@ -1034,10 +1128,22 @@ class MessageAdapter(
 
         fun updateUiForNotCached() {
             binding.downloadButton.visibility = View.VISIBLE
+            binding.downloadButton.isEnabled = true
+            binding.downloadButton.alpha = 1f
             binding.downloadProgressBar.visibility = View.GONE
-            binding.audioSeekBar.visibility = View.GONE
             binding.playPauseButton.isEnabled = false
             binding.playPauseButton.alpha = 0.4f
+
+            if (isVoice) {
+                binding.fileNameText.visibility = View.GONE
+                binding.voiceWaveform.visibility = View.VISIBLE
+                binding.voiceWaveform.isEnabled = false
+                binding.audioSeekBar.visibility = View.GONE
+            } else {
+                binding.fileNameText.visibility = View.VISIBLE
+                binding.voiceWaveform.visibility = View.GONE
+                binding.audioSeekBar.visibility = View.GONE
+            }
         }
 
         fun updateUiForDownloading() {
@@ -1045,52 +1151,77 @@ class MessageAdapter(
             binding.downloadButton.isEnabled = false
             binding.downloadButton.alpha = 0.4f
             binding.downloadProgressBar.visibility = View.VISIBLE
+            binding.playPauseButton.isEnabled = false
+            binding.playPauseButton.alpha = 0.4f
             binding.audioSeekBar.visibility = View.GONE
-        }
-
-        // Get duration if cached
-        if (FileCache.hasFile(fileId)) {
-            val cachedFile = FileCache.getFile(fileId)
-            val durationMs = cachedFile?.let { getAudioDuration(it) } ?: 0
-            updateUiForCached(durationMs)
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                updateAudioPlaybackUI(binding, AudioPlayerHelper.isPlaying())
-                if (AudioPlayerHelper.isPlaying()) startAudioProgressPolling(fileId, binding)
+            if (isVoice) {
+                binding.fileNameText.visibility = View.GONE
+                binding.voiceWaveform.visibility = View.VISIBLE
+                binding.voiceWaveform.isEnabled = false
             }
-        } else {
-            updateUiForNotCached()
         }
 
-        // Download button
-        binding.downloadButton.setOnClickListener {
+        fun startDownload(auto: Boolean) {
+            if (auto && !voiceAutoDownloads.add(fileId)) {
+                updateUiForDownloading()
+                return
+            }
+
             updateUiForDownloading()
             binding.downloadProgressBar.progress = 0
-
+            binding.root.tag = fileId
             binding.downloadButton.tag = fileId
+
             scope.launch {
                 val file = downloadToCache(fileId) { progress ->
                     scope.launch(Dispatchers.Main) {
-                        if (binding.downloadButton.tag == fileId) {
+                        if (binding.root.tag == fileId) {
                             binding.downloadProgressBar.progress = progress
                         }
                     }
                 }
                 withContext(Dispatchers.Main) {
+                    if (auto) voiceAutoDownloads.remove(fileId)
+                    if (binding.root.tag != fileId) return@withContext
+
                     if (file != null) {
                         val durationMs = getAudioDuration(file)
                         updateUiForCached(durationMs)
+                        loadVoiceWaveform(fileId, file, binding)
                     } else {
                         updateUiForNotCached()
-                        binding.downloadButton.isEnabled = true
-                        binding.downloadButton.alpha = 1f
                     }
                 }
             }
         }
 
-        // Play/Pause button
+        val cachedFile = FileCache.getFile(fileId)
+        if (cachedFile != null) {
+            val durationMs = getAudioDuration(cachedFile)
+            updateUiForCached(durationMs)
+            loadVoiceWaveform(fileId, cachedFile, binding)
+            if (AudioPlayerHelper.isActiveFile(fileId)) {
+                updateAudioPlaybackUI(binding, AudioPlayerHelper.isPlaying())
+                val duration = AudioPlayerHelper.getDuration()
+                if (duration > 0) {
+                    val progress = AudioPlayerHelper.getCurrentPosition().toFloat() / duration
+                    if (isVoice) binding.voiceWaveform.setProgress(progress) else binding.audioSeekBar.progress = (progress * 1000).toInt()
+                }
+                if (AudioPlayerHelper.isPlaying()) startAudioProgressPolling(fileId, binding)
+            }
+        } else {
+            updateUiForNotCached()
+            if (isVoice && attachment.attachmentSize in 1L..VOICE_AUTO_DOWNLOAD_LIMIT_BYTES) {
+                startDownload(auto = true)
+            }
+        }
+
+        binding.downloadButton.setOnClickListener {
+            startDownload(auto = false)
+        }
+
         binding.playPauseButton.setOnClickListener {
-            val cachedFile = FileCache.getFile(fileId) ?: return@setOnClickListener
+            val file = FileCache.getFile(fileId) ?: return@setOnClickListener
             if (AudioPlayerHelper.isActiveFile(fileId)) {
                 if (AudioPlayerHelper.isPlaying()) {
                     AudioPlayerHelper.pause()
@@ -1101,7 +1232,7 @@ class MessageAdapter(
                     startAudioProgressPolling(fileId, binding)
                 }
             } else {
-                AudioPlayerHelper.play(fileId, cachedFile, object : AudioCallbacks {
+                AudioPlayerHelper.play(fileId, file, object : AudioCallbacks {
                     override fun onStateChanged(isPlaying: Boolean) {
                         updateAudioPlaybackUI(binding, isPlaying)
                         if (isPlaying) startAudioProgressPolling(fileId, binding)
@@ -1110,6 +1241,7 @@ class MessageAdapter(
                     override fun onComplete() {
                         updateAudioPlaybackUI(binding, false)
                         binding.audioSeekBar.progress = 0
+                        binding.voiceWaveform.setProgress(0f)
                         binding.durationText.text = formatAudioTime(
                             AudioPlayerHelper.getDuration().toLong()
                         )
@@ -1121,7 +1253,6 @@ class MessageAdapter(
             }
         }
 
-        // SeekBar drag
         binding.audioSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser && AudioPlayerHelper.isActiveFile(fileId)) {
@@ -1135,21 +1266,29 @@ class MessageAdapter(
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
 
-        // Long press → context menu
+        binding.voiceWaveform.onSeekRequested = { progress ->
+            if (AudioPlayerHelper.isActiveFile(fileId)) {
+                val duration = AudioPlayerHelper.getDuration()
+                if (duration > 0) {
+                    AudioPlayerHelper.seekTo((progress * duration).toInt())
+                }
+            }
+        }
+
         binding.root.setOnLongClickListener { view ->
-            showAudioContextMenu(view, context, fileId, fileName, binding)
+            showAudioContextMenu(view, context, fileId, fileName, binding, isVoice)
             true
         }
 
         return binding.root
     }
-
     private fun showAudioContextMenu(
         anchor: View,
         context: Context,
         fileId: String,
         fileName: String,
-        binding: ItemAttachmentAudioBinding
+        binding: ItemAttachmentAudioBinding,
+        isVoice: Boolean
     ) {
         val popup = PopupMenu(context, anchor)
         val menuInflater = popup.menuInflater
@@ -1176,11 +1315,16 @@ class MessageAdapter(
                         AudioPlayerHelper.stop()
                     }
                     FileCache.deleteFile(fileId)
+                    voiceWaveformCache.remove(fileId)
                     binding.downloadButton.visibility = View.VISIBLE
                     binding.downloadButton.isEnabled = true
                     binding.downloadButton.alpha = 1f
                     binding.downloadProgressBar.visibility = View.GONE
                     binding.audioSeekBar.visibility = View.GONE
+                    binding.voiceWaveform.resetAmplitudes()
+                    binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
+                    binding.voiceWaveform.isEnabled = false
+                    binding.fileNameText.visibility = if (isVoice) View.GONE else View.VISIBLE
                     binding.playPauseButton.isEnabled = false
                     binding.playPauseButton.alpha = 0.4f
                     binding.durationText.text = "0:00"
@@ -1192,7 +1336,6 @@ class MessageAdapter(
         }
         popup.show()
     }
-
     private fun getAudioDuration(file: File): Int {
         return try {
             val retriever = MediaMetadataRetriever()
@@ -1205,6 +1348,32 @@ class MessageAdapter(
         }
     }
 
+    private fun loadVoiceWaveform(
+        fileId: String,
+        file: File,
+        binding: ItemAttachmentAudioBinding
+    ) {
+        if (binding.voiceWaveform.visibility != View.VISIBLE) return
+
+        val cached = voiceWaveformCache[fileId]
+        if (cached != null) {
+            binding.voiceWaveform.setAmplitudes(cached)
+            return
+        }
+
+        binding.voiceWaveform.resetAmplitudes()
+        scope.launch {
+            val waveform = withContext(Dispatchers.IO) {
+                AudioWaveformExtractor.extract(file)
+            }
+            withContext(Dispatchers.Main) {
+                if (binding.root.tag == fileId) {
+                    voiceWaveformCache[fileId] = waveform
+                    binding.voiceWaveform.setAmplitudes(waveform)
+                }
+            }
+        }
+    }
     private fun updateAudioPlaybackUI(
         binding: ItemAttachmentAudioBinding,
         isPlaying: Boolean
@@ -1218,12 +1387,18 @@ class MessageAdapter(
         val handler = Handler(Looper.getMainLooper())
         val runnable = object : Runnable {
             override fun run() {
+                if (binding.root.tag != fileId) return
                 if (!AudioPlayerHelper.isActiveFile(fileId)) return
                 if (!AudioPlayerHelper.isPlaying()) return
                 val pos = AudioPlayerHelper.getCurrentPosition()
                 val dur = AudioPlayerHelper.getDuration()
                 if (dur > 0) {
-                    binding.audioSeekBar.progress = (pos.toLong() * 1000L / dur).toInt()
+                    val progress = (pos.toFloat() / dur).coerceIn(0f, 1f)
+                    if (binding.voiceWaveform.visibility == View.VISIBLE) {
+                        binding.voiceWaveform.setProgress(progress)
+                    } else {
+                        binding.audioSeekBar.progress = (progress * 1000).toInt()
+                    }
                     binding.durationText.text = "${formatAudioTime(pos.toLong())} / ${formatAudioTime(dur.toLong())}"
                 }
                 handler.postDelayed(this, 250)
@@ -1231,7 +1406,6 @@ class MessageAdapter(
         }
         handler.post(runnable)
     }
-
     // ─── Video Row ────────────────────────────────────────────────────────────
 
     private fun inflateVideoRow(container: ViewGroup, attachment: Shared.MessageAttachment): View {
@@ -1436,7 +1610,8 @@ class MessageAdapter(
                     context,
                     listOf(fileId),
                     listOf(previewUrl),
-                    0
+                    0,
+                    fileNames = listOf(fileName)
                 )
                 context.startActivity(intent)
             }

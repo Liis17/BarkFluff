@@ -57,6 +57,40 @@ public class TypingNotifier
         await Task.WhenAll(tasks);
     }
 
+    /// <summary>
+    /// Ретранслировать набор remote-пользователя всем локальным подписчикам чата (этап 4.2).
+    /// Исключение «кроме отправителя» здесь неприменимо: автор живёт на чужой ноде,
+    /// среди наших подписчиков его быть не может.
+    /// </summary>
+    public async Task NotifyRemoteTyping(
+        string chatId,
+        Guid typingUserUuid,
+        TypingAction action,
+        CancellationToken cancellationToken = default)
+    {
+        var streams = _subscriptionsManager.GetAllStreamsTrackingChat(chatId);
+
+        if (streams.Count == 0)
+        {
+            _logger.LogTrace("No subscribers for remote typing in chat {ChatId}", chatId);
+            return;
+        }
+
+        var typingEvent = new TypingEvent
+        {
+            ChatId = chatId,
+            UserUuid = typingUserUuid.ToString(),
+            Action = action
+        };
+
+        _logger.LogTrace(
+            "Relaying remote typing ({Action}) from {UserUuid} in chat {ChatId} to {StreamCount} subscribers",
+            action, typingUserUuid, chatId, streams.Count);
+
+        var tasks = streams.Select(stream => SendToStreamAsync(stream, typingEvent, chatId, cancellationToken));
+        await Task.WhenAll(tasks);
+    }
+
     private async Task SendToStreamAsync(
         IServerStreamWriter<TypingEvent> stream,
         TypingEvent typingEvent,

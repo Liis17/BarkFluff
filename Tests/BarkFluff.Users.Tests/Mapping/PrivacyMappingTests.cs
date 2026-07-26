@@ -20,6 +20,7 @@ public class PrivacyMappingTests
             EmailVisibility = Domain.ProfileFieldVisibility.None,
             SearchVisible = true,
             OnlineVisibility = Domain.ProfileFieldVisibility.All,
+            DenyFederatedDm = true,
         };
 
         var grpc = privacy.ToGrpc();
@@ -30,6 +31,7 @@ public class PrivacyMappingTests
         grpc.EmailVisibility.Should().Be(Proto.Users.ProfileFieldVisibility.None);
         grpc.SearchVisible.Should().BeTrue();
         grpc.OnlineVisibility.Should().Be(Proto.Users.ProfileFieldVisibility.All);
+        grpc.DenyFederatedDm.Should().BeTrue();
     }
 
     [Fact]
@@ -43,6 +45,7 @@ public class PrivacyMappingTests
             EmailVisibility = Domain.ProfileFieldVisibility.Friends,
             SearchVisible = false,
             OnlineVisibility = Domain.ProfileFieldVisibility.Friends,
+            DenyFederatedDm = true,
         };
 
         var grpc = privacy.ToGrpc();
@@ -54,6 +57,7 @@ public class PrivacyMappingTests
         domain.EmailVisibility.Should().Be(Domain.ProfileFieldVisibility.Friends);
         domain.SearchVisible.Should().BeFalse();
         domain.OnlineVisibility.Should().Be(Domain.ProfileFieldVisibility.Friends);
+        domain.DenyFederatedDm.Should().BeTrue();
     }
 
     [Fact]
@@ -67,6 +71,7 @@ public class PrivacyMappingTests
             EmailVisibility = Domain.ProfileFieldVisibility.None,
             SearchVisible = false,
             OnlineVisibility = Domain.ProfileFieldVisibility.Friends,
+            DenyFederatedDm = true,
         };
 
         var roundtrip = original.ToGrpc().ToDomain();
@@ -77,5 +82,6 @@ public class PrivacyMappingTests
         roundtrip.EmailVisibility.Should().Be(original.EmailVisibility);
         roundtrip.SearchVisible.Should().Be(original.SearchVisible);
         roundtrip.OnlineVisibility.Should().Be(original.OnlineVisibility);
+        roundtrip.DenyFederatedDm.Should().Be(original.DenyFederatedDm);
     }
 }

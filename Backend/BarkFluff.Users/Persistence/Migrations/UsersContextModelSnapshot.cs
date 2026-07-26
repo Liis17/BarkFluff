@@ -94,6 +94,31 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("ChatFolders");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.ChatMute", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("MutedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ChatId")
+                        .IsUnique();
+
+                    b.ToTable("ChatMutes");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
                 {
                     b.Property<Guid>("DeviceId")
@@ -173,6 +198,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("BioVisibility")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("DenyFederatedDm")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("EmailVisibility")
                         .HasColumnType("integer");
 
@@ -196,6 +224,45 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("Privacies");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.RemoteUser", b =>
+                {
+                    b.Property<Guid>("Uuid")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AvatarFileId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Bio")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeactivated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ServerName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Uuid");
+
+                    b.HasIndex("Username", "ServerName")
+                        .IsUnique();
+
+                    b.ToTable("RemoteUsers");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.User", b =>
                 {
                     b.Property<long>("Id")
@@ -210,6 +277,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsBot")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDraft")
                         .HasColumnType("boolean");
@@ -230,11 +300,19 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("StorageLimitGb")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("Uuid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Uuid")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
@@ -364,6 +442,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.ChatMute", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

@@ -1,8 +1,19 @@
+using BarkFluff.Messages.Features.ApplyFederatedDelete;
+using BarkFluff.Messages.Features.ApplyFederatedEdit;
+using BarkFluff.Messages.Features.ApplyFederatedRead;
 using BarkFluff.Messages.Features.CheckChatMembership;
+using BarkFluff.Messages.Features.CheckFederatedPresenceAccess;
+using BarkFluff.Messages.Features.DeleteMessage;
+using BarkFluff.Messages.Features.EditMessage;
 using BarkFluff.Messages.Features.ExportData;
 using BarkFluff.Messages.Features.GetChatMemberIds;
+using BarkFluff.Messages.Features.ImportFederatedChat;
+using BarkFluff.Messages.Features.ImportFederatedMessage;
 using BarkFluff.Messages.Features.PostCallSystemMessage;
+using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Shared.Exceptions.Files;
+using BarkFluff.Shared.Exceptions.Messages;
 using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
@@ -10,6 +21,8 @@ using Grpc.Core;
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
+
+using OutgoingMessage = BarkFluff.Messages.Features.SendMessage.OutgoingMessage;
 
 namespace BarkFluff.Messages.Host;
 
@@ -21,6 +34,45 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
     public MessagesServerApiService(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    // ---- Федерация: ImportFederatedChat / ImportFederatedMessage (2.3), ApplyFederatedEdit/Delete/Read
+    // (2.4) ----. Зовёт только Federation своей ноды (TokenType.Service). Применяют валидации и хелперы
+    // Features.Federation (docs/rearch/05-chat-replication.md). ExportChatEvents — этап 2.6, до него Unimplemented.
+
+    public override async Task<ImportFederatedChatResponse> ImportFederatedChat(
+        ImportFederatedChatRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ImportFederatedChatCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ImportFederatedMessageResponse> ImportFederatedMessage(
+        ImportFederatedMessageRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ImportFederatedMessageCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ApplyFederatedEditResponse> ApplyFederatedEdit(
+        ApplyFederatedEditRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ApplyFederatedEditCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ApplyFederatedDeleteResponse> ApplyFederatedDelete(
+        ApplyFederatedDeleteRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ApplyFederatedDeleteCommand(request), context.CancellationToken);
+    }
+
+    public override async Task<ApplyFederatedReadResponse> ApplyFederatedRead(
+        ApplyFederatedReadRequest request,
+        ServerCallContext context)
+    {
+        return await _mediator.Send(new ApplyFederatedReadCommand(request), context.CancellationToken);
     }
 
     public override Task<GetUserAllMessagesResponse> GetUserAllMessages(
@@ -39,10 +91,53 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         CheckChatMembershipRequest request,
         ServerCallContext context)
     {
+        Guid? userUuid = null;
+
+        if (!string.IsNullOrEmpty(request.UserUuid))
+        {
+            if (!Guid.TryParse(request.UserUuid, out var parsed))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "user_uuid не является UUID"));
+            }
+
+            userUuid = parsed;
+        }
+
+        if (userUuid is null && request.UserId == 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "требуется user_id либо user_uuid"));
+        }
+
         var query = new CheckChatMembershipQuery
         {
-            UserId = request.UserId,
+            UserId = userUuid is null ? request.UserId : null,
+            UserUuid = userUuid,
             ChatIds = request.ChatIds
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<CheckFederatedPresenceAccessResponse> CheckFederatedPresenceAccess(
+        CheckFederatedPresenceAccessRequest request,
+        ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.RequestingServer))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "requesting_server обязателен"));
+        }
+
+        if (request.UserUuids.Count > CheckFederatedPresenceAccessQuery.MaxUserUuids)
+        {
+            throw new RpcException(new Status(
+                StatusCode.InvalidArgument,
+                $"user_uuids: не более {CheckFederatedPresenceAccessQuery.MaxUserUuids} за вызов"));
+        }
+
+        var query = new CheckFederatedPresenceAccessQuery
+        {
+            RequestingServer = request.RequestingServer,
+            UserUuids = request.UserUuids
         };
 
         return _mediator.Send(query, context.CancellationToken);
@@ -89,6 +184,103 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
             SenderUserId = request.SenderUserId,
             Result = request.Result,
             DurationSeconds = request.DurationSeconds,
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<SendMessageResponse> SendMessageServer(
+        SendMessageServerRequest request,
+        ServerCallContext context)
+    {
+        // Доверяем сервисному токену вызывающего (Bots); авторизацию отправки (членство бота
+        // в чате, запрет инициации чата) вызывающий выполняет ДО обращения сюда.
+        if (request.SenderUserId <= 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "sender_user_id обязателен"));
+        }
+
+        if (request.Message is null)
+        {
+            throw new MessageNotContainContextException();
+        }
+
+        var command = new SendMessageCommand
+        {
+            SenderId = request.SenderUserId,
+            AllowChatCreation = request.AllowChatCreation,
+            Message = new OutgoingMessage
+            {
+                FileIds = request.Message.FilesIds?.Select(Guid.Parse).ToList(),
+                Text = request.Message.Text,
+                ForwardedMessageId = request.Message.ForwardedMessageId == 0 ? null : request.Message.ForwardedMessageId
+            },
+        };
+
+        switch (request.SourceIdCase)
+        {
+            case SendMessageServerRequest.SourceIdOneofCase.ChatId when Guid.TryParse(request.ChatId, out var chatId):
+                command.ChatId = chatId;
+                break;
+            case SendMessageServerRequest.SourceIdOneofCase.ChatId:
+                throw new ChatIdNotValidException();
+            case SendMessageServerRequest.SourceIdOneofCase.UserId:
+                command.UserId = request.UserId;
+                break;
+        }
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<EditMessageResponse> EditMessageServer(
+        EditMessageServerRequest request,
+        ServerCallContext context)
+    {
+        if (request.SenderUserId <= 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "sender_user_id обязателен"));
+        }
+
+        List<Guid>? fileIds = null;
+
+        if (request.FilesIds is { Count: > 0 })
+        {
+            fileIds = new List<Guid>(request.FilesIds.Count);
+            foreach (var rawId in request.FilesIds)
+            {
+                if (!Guid.TryParse(rawId, out var fileId))
+                {
+                    throw new NotValidFileIdException();
+                }
+
+                fileIds.Add(fileId);
+            }
+        }
+
+        var command = new EditMessageCommand
+        {
+            SenderId = request.SenderUserId,
+            MessageId = request.MessageId,
+            Text = request.Text,
+            FileIds = fileIds
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<DeleteMessageResponse> DeleteMessageServer(
+        DeleteMessageServerRequest request,
+        ServerCallContext context)
+    {
+        if (request.SenderUserId <= 0)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "sender_user_id обязателен"));
+        }
+
+        var command = new DeleteMessageCommand
+        {
+            SenderId = request.SenderUserId,
+            MessageId = request.MessageId
         };
 
         return _mediator.Send(command, context.CancellationToken);

@@ -30,6 +30,7 @@ docker-compose -f docker-compose-dev.yml up -d updates
 | `new-encrypted-messages-updates-handler` | `NewEncryptedMessageConsumer` | `NewEncryptedMessageNotification` | `SubscribePrivateMessages` (user-scope) |
 | `encrypted-messages-edited-updates-handler` | `EncryptedMessageEditedConsumer` | `EncryptedMessageEditedNotification` | `SubscribePrivateMessageEdits` (user-scope) |
 | `encrypted-messages-deleted-updates-handler` | `EncryptedMessageDeletedConsumer` | `EncryptedMessageDeletedNotification` | `SubscribePrivateMessageDeletes` (user-scope) |
+| `private-messages-read-updates-handler` | `PrivateMessagesReadConsumer` | `PrivateMessagesReadNotification` | `SubscribePrivateMessagesRead` (user-scope) |
 | `private-chat-invites-updates-handler` | `PrivateChatInviteConsumer` | `PrivateChatInviteNotification` | `SubscribePrivateChatInvites` (user-scope, маршрутизация только на InviteeUserId) |
 | `private-chat-invite-resolutions-updates-handler` | `PrivateChatInviteResolutionConsumer` | `PrivateChatInviteResolutionNotification` | `SubscribePrivateChatInviteResolutions` (user-scope, на InviterUserId) |
 | `secret-chat-invites-updates-handler` | `SecretChatInviteConsumer` | `SecretChatInviteNotification` | `SubscribeSecretChatInvites` (**device-scope**, на RecipientDeviceId) |
@@ -72,7 +73,7 @@ ConcurrentDictionary<(long userId, Guid deviceId), ConcurrentDictionary<Guid sub
 
 ### Dismiss push после прочтения
 
-`DismissPushPublisher` (`INotificationHandler<ReadByNotification>`) запускается параллельно с `ReadByCancelPushHandler` и для каждого `userId` из `NewReadBy` публикует `DismissPushEvent { ChatId, UserId }` в RabbitMQ. Его потребляет [[Backend/CloudMessaging]] и шлёт data-only FCM `type=dismiss_chat_notifications` — клиент скрывает нотификацию чата на остальных устройствах. Если push в 5-сек окне ещё не ушёл, `ReadByCancelPushHandler` его отменит, а dismiss станет no-op на клиенте.
+`DismissPushPublisher` (`INotificationHandler<ReadByNotification>`) запускается параллельно с `ReadByCancelPushHandler` и использует delta `NewReaders`, не меняя snapshot-контракт `NewReadBy` для realtime-клиентов. `DismissPushDebouncer` (Singleton) объединяет события в trailing-окне 1 секунда по ключу `(UserId, ChatId)`, после чего публикуется один `DismissPushEvent { ChatId, UserId }` в RabbitMQ. Это схлопывает same-chat bulk `MarkAsRead`; межчатовые и межрепличные события остаются best-effort, а `QuotaExceeded` дополнительно обрабатывает [[Backend/CloudMessaging]]. Состояние process-local, как остальная push-логика Updates. Если push в 5-сек окне ещё не ушёл, `ReadByCancelPushHandler` его отменит, а dismiss станет no-op на клиенте.
 
 ### gRPC API
 
@@ -90,6 +91,7 @@ rpc SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) returns (s
 rpc SubscribePrivateMessages(...) returns (stream NewEncryptedMessageEvent)
 rpc SubscribePrivateMessageEdits(...) returns (stream EncryptedMessageEditedEvent)
 rpc SubscribePrivateMessageDeletes(...) returns (stream EncryptedMessageDeletedEvent)
+rpc SubscribePrivateMessagesRead(...) returns (stream PrivateMessagesReadEvent)
 rpc SubscribePrivateChatInvites(...) returns (stream PrivateChatInviteEvent)
 rpc SubscribePrivateChatInviteResolutions(...) returns (stream PrivateChatInviteResolutionEvent)
 

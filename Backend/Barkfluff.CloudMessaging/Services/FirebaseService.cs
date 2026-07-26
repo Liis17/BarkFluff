@@ -14,10 +14,23 @@ public class FirebaseService
 {
     private readonly ILogger<FirebaseService> _logger;
     private readonly FirebaseMessaging? _messaging;
+    private readonly IDismissPushSender? _dismissPushSender;
 
     public FirebaseService(ILogger<FirebaseService> logger, IConfiguration configuration)
+        : this(logger, configuration, null)
+    {
+    }
+
+    public FirebaseService(
+        ILogger<FirebaseService> logger,
+        IConfiguration configuration,
+        IDismissPushSender? dismissPushSender)
     {
         _logger = logger;
+        _dismissPushSender = dismissPushSender;
+
+        if (_dismissPushSender != null)
+            return;
 
         try
         {
@@ -58,6 +71,7 @@ public class FirebaseService
             }
 
             _messaging = FirebaseMessaging.DefaultInstance;
+            _dismissPushSender = new FirebaseDismissPushSender(_messaging);
             _logger.LogInformation("Firebase Admin SDK initialized successfully");
         }
         catch (Exception ex)
@@ -180,7 +194,7 @@ public class FirebaseService
         string chatId,
         CancellationToken cancellationToken = default)
     {
-        if (_messaging == null)
+        if (_dismissPushSender == null)
         {
             _logger.LogWarning("Firebase messaging not initialized, skipping dismiss");
             return;
@@ -189,51 +203,43 @@ public class FirebaseService
         if (fcmTokens.Count == 0)
             return;
 
-        var multicastMessage = new MulticastMessage
-        {
-            Tokens = [.. fcmTokens],
-            Data = new Dictionary<string, string>
-            {
-                ["type"] = "dismiss_chat_notifications",
-                ["chat_id"] = chatId
-            },
-            Android = new AndroidConfig
-            {
-                Priority = Priority.High
-            }
-        };
-
         try
         {
-            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+            var responses = await _dismissPushSender.SendAsync(fcmTokens, chatId, cancellationToken);
+            var successCount = responses.Count(response => response.IsSuccess);
+            var failureCount = responses.Count - successCount;
 
             _logger.LogInformation(
                 "Dismiss push отправлен. ChatId: {ChatId}, Tokens: {Total}, Success: {Success}, Failed: {Failed}",
                 chatId,
                 fcmTokens.Count,
-                response.SuccessCount,
-                response.FailureCount);
+                successCount,
+                failureCount);
 
-            if (response.FailureCount > 0)
+            if (failureCount > 0)
             {
                 var unregisteredTokens = new List<string>();
-                for (var i = 0; i < response.Responses.Count; i++)
+                var quotaExceededCount = 0;
+                for (var i = 0; i < responses.Count; i++)
                 {
-                    var resp = response.Responses[i];
+                    var resp = responses[i];
                     if (resp.IsSuccess)
                         continue;
 
                     var token = fcmTokens[i];
-                    var ex = resp.Exception;
 
-                    if (ex?.MessagingErrorCode == MessagingErrorCode.Unregistered)
+                    if (resp.ErrorCode == MessagingErrorCode.Unregistered)
                     {
                         unregisteredTokens.Add(token);
+                    }
+                    else if (resp.ErrorCode == MessagingErrorCode.QuotaExceeded)
+                    {
+                        quotaExceededCount++;
                     }
                     else
                     {
                         _logger.LogError(
-                            ex,
+                            resp.Exception,
                             "Ошибка отправки dismiss push. Token: {TokenPrefix}...",
                             token[..Math.Min(10, token.Length)]);
                     }
@@ -244,6 +250,14 @@ public class FirebaseService
                     _logger.LogWarning(
                         "Невалидные FCM-токены при dismiss ({Count}): требуется очистка в БД",
                         unregisteredTokens.Count);
+                }
+
+                if (quotaExceededCount > 0)
+                {
+                    _logger.LogWarning(
+                        "Превышена квота FCM для dismiss push. ChatId: {ChatId}, Tokens: {Count}. Немедленный retry не выполняется",
+                        chatId,
+                        quotaExceededCount);
                 }
             }
         }
@@ -309,6 +323,57 @@ public class FirebaseService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Неожиданная ошибка при отправке incoming_call push. CallId: {CallId}", callId);
+        }
+    }
+
+    /// <summary>
+    /// Отправляет data-only уведомление о запросе на приватный чат (type=private_chat_invite).
+    /// Текст локализуется на клиенте, сервер строк не шлёт.
+    /// </summary>
+    public virtual async Task SendPrivateChatInviteBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string chatId,
+        long inviterUserId,
+        string inviterName,
+        string? avatarUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping private_chat_invite");
+            return;
+        }
+
+        if (fcmTokens.Count == 0)
+            return;
+
+        var multicastMessage = new MulticastMessage
+        {
+            Tokens = [.. fcmTokens],
+            Data = new Dictionary<string, string>
+            {
+                ["type"] = "private_chat_invite",
+                ["chat_id"] = chatId,
+                ["inviter_user_id"] = inviterUserId.ToString(),
+                ["inviter_name"] = inviterName,
+                ["avatar_url"] = avatarUrl ?? ""
+            },
+            Android = new AndroidConfig
+            {
+                Priority = Priority.High
+            }
+        };
+
+        try
+        {
+            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+            _logger.LogInformation(
+                "private_chat_invite push отправлен. ChatId: {ChatId}, Tokens: {Total}, Success: {Success}, Failed: {Failed}",
+                chatId, fcmTokens.Count, response.SuccessCount, response.FailureCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Неожиданная ошибка при отправке private_chat_invite push. ChatId: {ChatId}", chatId);
         }
     }
 

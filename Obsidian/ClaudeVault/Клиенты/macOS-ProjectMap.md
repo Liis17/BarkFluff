@@ -147,6 +147,14 @@
 | `Conversation/Helpers/MessageGrouper.swift` | Группировка сообщений по дате и автору |
 | `Conversation/Helpers/ScrollPositionManager.swift` | Управление позицией прокрутки, автоскролл |
 | `Conversation/Models/SelectedAttachment.swift` | Модель выбранного для отправки вложения |
+| `Conversation/ViewModels/StickerPickerViewModel.swift` | Состояние стикер-пикера (паки, недавние) |
+| `Views/Stickers/StickerImageView.swift` | Отрисовка изображения стикера |
+| `Views/Stickers/StickerPickerView.swift` | Экран стикер-пикера |
+| `Views/Stickers/StickersGridView.swift` | Сетка стикеров пака |
+| `Views/Stickers/StickerPackTabsView.swift` | Вкладки паков стикеров |
+| `Views/Stickers/StickerThumbView.swift` | Миниатюра стикера |
+| `Views/Attachments/StickerMessageView.swift` | Рендер стикера в ленте сообщений |
+| `Helpers/RecentStickersStore.swift` | Хранилище недавно использованных стикеров |
 
 ---
 
@@ -176,6 +184,14 @@
 | Файл | Назначение |
 |------|-----------|
 | `Main/Views/AuthSuccessView.swift` | Экран успешной авторизации (splash после входа) |
+
+---
+
+## Features/Call/
+
+| Файл | Назначение |
+|------|-----------|
+| `Views/CallOverlayView.swift` | Плавающий немодальный оверлей звонка поверх чата (клики мимо карточки проходят к чату под ней); сворачивается в компактную плашку, разворачивается в полноэкранный `CallScreenView` из [[macOS-ProjectMap#Пакет BFCalls\|BFCalls]]; перетаскивается |
 
 ---
 
@@ -213,6 +229,12 @@
 | `Settings/Views/CloudStackedBarView.swift` | Stacked-bar диаграмма облачного хранилища |
 | `Settings/Views/AboutAppSettingsView.swift` | Раздел «О приложении» — версия, лицензии |
 | `Settings/Views/AboutServerSettingsView.swift` | Раздел «О сервере» — Beacon-инфо, версии сервиса |
+| `Settings/ViewModels/ChatFoldersListViewModel.swift` | VM списка папок чатов |
+| `Settings/ViewModels/EditChatFolderViewModel.swift` | VM создания/редактирования папки чатов |
+| `Views/ChatFoldersListView.swift` | Экран списка папок чатов |
+| `Views/EditChatFolderView.swift` | Экран создания/редактирования папки |
+| `Views/FolderChatPickerView.swift` | Выбор чатов для добавления в папку |
+| `ChatList/Views/FolderTabChip.swift` | Чип-вкладка папки над списком чатов (`struct ChatFolderTabsBar`) |
 
 ---
 
@@ -258,6 +280,7 @@
 | `Sources/BFProto/Generated/fast_auth_api.*` | Proto-код FastAuth (QR-авторизация) |
 | `Sources/BFProto/Generated/configuration_api.*` | Proto-код Configuration |
 | `Sources/BFProto/Generated/developers_api.*` | Proto-код Developers |
+| `Sources/BFProto/Generated/calls_api.*` | Proto-код Calls (звонки на LiveKit SFU) |
 | `Sources/BFProto/Generated/shared.*` | Общие proto-типы |
 | `Protos/*.proto` | Исходные .proto файлы (копии из `Shared/BarkFluff.Proto`) |
 
@@ -294,8 +317,21 @@
 | `Repositories/BeaconRepository.swift` | gRPC-клиент Beacon: получение информации о сервере |
 | `Repositories/NavigatorRepository.swift` | gRPC-клиент Navigator (TLS): список серверов |
 | `Repositories/FastAuthRepository.swift` | gRPC-клиент FastAuth: `generateFastAuthToken` + server-streaming `subscribeFastAuthResult` (генерация QR на macOS-логине) **+ `scanFastAuth`/`acceptFastAuth(fastAuthID:, confirmationCode:)`/`rejectFastAuth(...)`** для роли сканера (используются iOS-клиентом, на macOS пока не дёргаются) |
+| `Repositories/CallsRepository.swift` | gRPC-клиент Calls: InitiateCall/JoinCall/AcceptCall/RejectCall/EndCall/SetCallAudioQuality, server-streaming `subscribeCallEvents`, ListCallHistory, GetActiveCalls |
 | `Utilities/GRPCErrorMapper.swift` | Маппинг gRPC-статусов в `BFNetworkingError` |
 | `Utilities/RetryPolicy.swift` | Политика повтора запросов |
+
+---
+
+## Пакет BFCalls
+
+Расположение: `Packages/BFCalls/`. Кроссплатформенный (macOS + iOS) слой звонков поверх LiveKit SDK.
+
+| Файл | Назначение |
+|------|-----------|
+| `BFCalls.swift` | Общие типы: `CallPhase`, `ActiveCallInfo`, `CallTile`, `CallParticipantDisplay`, `CallVideoQualityLevel` |
+| `CallController.swift` | `CallController` — state machine звонка поверх LiveKit `Room` (подключение, треки, mute/camera/screen-share, `RoomDelegateAdapter`) |
+| `CallViews.swift` | SwiftUI-компоненты: `IncomingCallView`, `CallScreenView`, `CallMinimizedBar` — используются идентично в macOS и iOS клиентах (см. `Features/Call/Views/CallOverlayView.swift` в каждом) |
 
 ---
 
@@ -335,7 +371,13 @@
 | `Database/Records/CachedChatRecord.swift` | GRDB-запись чата |
 | `Database/Records/CachedMessageRecord.swift` | GRDB-запись сообщения |
 | `Database/Records/CachedFileRecord.swift` | GRDB-запись файла/вложения |
+| `Database/Records/CachedChatFolderRecord.swift` | GRDB-запись папки чатов |
+| `Database/Records/CachedCurrentUserRecord.swift` | GRDB single-row кеш текущего пользователя |
+| `Database/Records/CachedStickerPackRecord.swift` | GRDB-запись пака стикеров |
+| `Database/Records/CachedStickerRecord.swift` | GRDB-запись стикера |
 | `Repositories/Local/LocalChatRepository.swift` | Чтение/запись чатов в персистентный кеш (GRDB) |
+| `Repositories/Local/LocalChatFolderRepository.swift` | Локальный репозиторий папок чатов (GRDB) |
+| `Repositories/Local/LocalCurrentUserRepository.swift` | Локальный репозиторий текущего пользователя (INSERT OR REPLACE single-row) |
 | `Repositories/Local/LocalMessageRepository.swift` | Чтение/запись сообщений в персистентный кеш (GRDB) |
 | `Services/Protocols/AuthServiceProtocol.swift` | Протокол сервиса авторизации |
 | `Services/Protocols/ChatServiceProtocol.swift` | Протокол сервиса чатов |
@@ -357,6 +399,8 @@
 | `Services/Implementations/FastAuthService.swift` | QR-авторизация: `generateToken`/`subscribeToResult` (генератор на новом устройстве) + `scan(fastAuthID:)`/`accept(fastAuthID:, confirmationCode:)`/`reject(...)` (сканер на авторизованном клиенте) |
 | `Services/Implementations/ServerDiscoveryService.swift` | Обнаружение и подключение к BarkFluff-серверу |
 | `Services/Implementations/SharedMediaService.swift` | Загрузка общих медиафайлов диалога |
+| `Services/Implementations/ChatFolderService.swift` | CRUD папок чатов (с локальным кешем GRDB) |
+| `Services/Implementations/StickersService.swift` | Загрузка паков/стикеров (с локальным кешем GRDB) |
 | `Utilities/DateFormatters.swift` | Форматтеры дат для UI |
 | `Utilities/Errors/BFError.swift` | Доменные ошибки приложения |
 | `Utilities/Errors/ErrorLocalizer.swift` | Локализация ошибок для отображения пользователю |

@@ -1,11 +1,13 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
 
@@ -62,9 +64,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
     public async Task<SendMessageResponse> Handle(SendMessageCommand request, CancellationToken cancellationToken)
     {
+        // Серверный путь (SendMessageServer от сервиса Bots) передаёт отправителя явно, клиентский — из токена.
+        var senderId = request.SenderId ?? _userContext.UserId;
+
         _logger.LogInformation(
             "Начало отправки сообщения от пользователя {UserId} в чат {ChatId} или пользователю {TargetUserId}",
-            _userContext.UserId,
+            senderId,
             request.ChatId,
             request.UserId
         );
@@ -76,7 +81,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Попытка отправки пустого сообщения от пользователя {UserId}",
-                _userContext.UserId
+                senderId
             );
             throw new MessageNotContainContextException();
         }
@@ -85,7 +90,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Текст сообщения от пользователя {UserId} превышает лимит {MaxTextLength} символов: {ActualLength}",
-                _userContext.UserId,
+                senderId,
                 MaxTextLength,
                 request.Message.Text.Length
             );
@@ -96,7 +101,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogWarning(
                 "Сообщение от пользователя {UserId} содержит {AttachmentCount} вложений (лимит: {MaxAttachments})",
-                _userContext.UserId,
+                senderId,
                 fileIds.Count,
                 MaxAttachmentsPerMessage
             );
@@ -105,29 +110,121 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         var chatId = request.ChatId;
 
-        if (chatId is null && request.UserId is null)
+        // Федеративный контекст исходящего сообщения (этап 2.3). Заполняется только при отправке в fed-DM.
+        var isFederated = false;
+        var federatedId = Guid.NewGuid();
+        var senderUuid = Guid.Empty;
+        List<FederatedParticipant> remoteParticipants = new();
+        var isFirstMessageInFedChat = false;
+        Guid? fedInitiatorUuid = null;
+        Guid? fedInviteeUuid = null;
+        string? senderFid = null;
+
+        if (chatId is null && request.UserId is null && request.UserUuid is null)
         {
             _logger.LogWarning(
-                "Не указан ни ChatId, ни UserId для отправки сообщения от пользователя {UserId}",
-                _userContext.UserId
+                "Не указан ни ChatId, ни UserId, ни UserUuid для отправки сообщения от пользователя {UserId}",
+                senderId
             );
             throw new SourceForSendMessageNotSetException();
         }
 
+        // fed-ветка: отправка по UUID remote-получателя.
+        if (chatId is null && request.UserUuid is not null)
+        {
+            var targetUuid = request.UserUuid.Value;
+
+            // Резолв: это локальный пользователь → ordinary personal чат; remote → fed-DM.
+            var byUuidResp = await _usersServerApiClient.GetUsersByUuidAsync(
+                new GetUsersByUuidRequest { Uuids = { targetUuid.ToString() } });
+            var target = byUuidResp.Users.FirstOrDefault();
+            if (target is null || !target.Found)
+                throw new RemoteUserNotResolvedException();
+
+            if (!target.IsRemote)
+            {
+                // Локальный получатель с известным numeric id → переиспользуем обычный путь ниже.
+                request.UserId = target.UserId;
+                request.UserUuid = null;
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(target.ServerName))
+                    throw new RemoteUserNotResolvedException();
+
+                // Свой UUID — из Users.GetById (локальный профиль отправителя).
+                var selfResp = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
+                if (!Guid.TryParse(selfResp.User.Uuid, out senderUuid) || senderUuid == Guid.Empty)
+                    throw new RemoteUserNotResolvedException();
+
+                senderFid = $"@{selfResp.User.Username}:{target.ServerName}";
+
+                var (uuidLow, uuidHigh) = Features.Federation.FederatedUuidPair.Normalize(senderUuid, targetUuid);
+
+                var existing = await _chatsStorage.FindActiveFederatedChatByUuidPairAsync(uuidLow, uuidHigh);
+                if (existing is not null)
+                {
+                    chatId = existing.Id;
+                }
+                else
+                {
+                    var newChatId = Guid.NewGuid();
+                    var raceResult = await _chatsStorage.CreateFederatedChatAsync(
+                        newChatId,
+                        senderId,
+                        senderUuid,
+                        targetUuid,
+                        target.ServerName,
+                        uuidLow,
+                        uuidHigh);
+                    chatId = raceResult.Id;
+
+                    if (raceResult.Id == newChatId)
+                    {
+                        isFirstMessageInFedChat = true;
+                        fedInitiatorUuid = senderUuid;
+                        fedInviteeUuid = targetUuid;
+                        _metrics.Increment("chats_created_federated");
+                        _logger.LogInformation("Создан fed-чат {ChatId} между {SenderUuid} и {TargetUuid}",
+                            chatId.Value, senderUuid, targetUuid);
+                    }
+                    // иначе — проиграли гонку одновременного создания: переиспользуем чат победителя,
+                    // он уже отправил ChatCreated.
+                }
+
+                isFederated = true;
+                remoteParticipants = new List<FederatedParticipant>
+                {
+                    new() { Uuid = targetUuid, ServerName = target.ServerName },
+                };
+            }
+        }
+
         if (chatId != null)
         {
-            _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", _userContext.UserId, chatId.Value);
+            _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", senderId, chatId.Value);
 
-            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, _userContext.UserId);
+            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, senderId);
 
             if (!hasAccess)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId}",
-                    _userContext.UserId,
+                    senderId,
                     chatId.Value
                 );
                 throw new NoAccessToChatException();
+            }
+
+            // Fed-чат, отклонённый partner-нодой (privacy DenyFederatedDm, этап 2.5) — понятная
+            // ошибка вместо тихой отправки в чат, который вторая сторона никогда не увидит.
+            var federatedStatus = await _chatsStorage.GetFederatedStatusAsync(chatId.Value);
+            if (federatedStatus == FederatedStatus.Rejected)
+            {
+                _logger.LogWarning(
+                    "Попытка отправки в отклонённый fed-чат {ChatId} пользователем {UserId}",
+                    chatId.Value, senderId);
+                throw new FederatedDmRejectedException();
             }
         }
 
@@ -135,34 +232,45 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogDebug(
                 "Создание или получение личного чата между пользователями {UserId} и {TargetUserId}",
-                _userContext.UserId,
+                senderId,
                 request.UserId
             );
 
             // Получаем пользователя по ID
             var personRepose = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId!.Value });
 
-            var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(personRepose.User.Id, _userContext.UserId);
+            var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(personRepose.User.Id, senderId);
+
+            if (chatIdWithPerson is null && request.SenderId is not null && !request.AllowChatCreation)
+            {
+                // Серверный путь (боты): чат должен уже существовать — бот не пишет первым.
+                _logger.LogWarning(
+                    "Серверная отправка от {SenderId} пользователю {TargetUserId} отклонена: личного чата не существует",
+                    senderId,
+                    request.UserId
+                );
+                throw new NoAccessToChatException();
+            }
 
             if (chatIdWithPerson is null)
             {
                 _logger.LogInformation(
                     "Создание нового личного чата между пользователями {UserId} и {TargetUserId}",
-                    _userContext.UserId,
+                    senderId,
                     personRepose.User.Id
                 );
 
-                var createdChat = await _chatsStorage.CreatePersonChat(_userContext.UserId, personRepose.User.Id);
+                var createdChat = await _chatsStorage.CreatePersonChat(senderId, personRepose.User.Id);
 
                 chatId = createdChat.Id;
 
-                var userResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
+                var userResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
 
                 // Кэшируем аватарочки и имена
-                await _chatCache.SetChatName(chatId.Value, _userContext.UserId, $"{personRepose.User.FirstName} {personRepose.User.LastName}");
+                await _chatCache.SetChatName(chatId.Value, senderId, $"{personRepose.User.FirstName} {personRepose.User.LastName}");
                 await _chatCache.SetChatName(chatId.Value, personRepose.User.Id, $"{userResponse.User.FirstName} {userResponse.User.LastName}");
 
-                await _chatCache.SetChatImage(chatId.Value, _userContext.UserId, personRepose.User.ProfilePicture);
+                await _chatCache.SetChatImage(chatId.Value, senderId, personRepose.User.ProfilePicture);
                 await _chatCache.SetChatImage(chatId.Value, personRepose.User.Id, userResponse.User.ProfilePicture);
 
                 _metrics.Increment("chats_created_person");
@@ -170,7 +278,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 _logger.LogInformation(
                     "Личный чат {ChatId} создан между пользователями {UserId} и {TargetUserId}",
                     chatId.Value,
-                    _userContext.UserId,
+                    senderId,
                     personRepose.User.Id
                 );
             }
@@ -200,7 +308,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             {
                 _logger.LogWarning(
                     "Обнаружены неподдерживаемые типы файлов в сообщении от пользователя {UserId}",
-                    _userContext.UserId
+                    senderId
                 );
                 throw new FileNotSupportedException();
             }
@@ -226,7 +334,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             _logger.LogDebug(
                 "Обработка пересланного сообщения {OriginalMessageId} от пользователя {UserId}",
                 request.Message.ForwardedMessageId.Value,
-                _userContext.UserId
+                senderId
             );
 
             var originalMessages = await _messagesStorage.GetMessagesByIds([request.Message.ForwardedMessageId.Value]);
@@ -241,19 +349,38 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 throw new MessageNotFoundException();
             }
 
-            var hasAccessToOriginal = await _chatsStorage.CheckAccessToChat(originalMessage.ChatId, _userContext.UserId);
+            var hasAccessToOriginal = await _chatsStorage.CheckAccessToChat(originalMessage.ChatId, senderId);
             if (!hasAccessToOriginal)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId} оригинального сообщения",
-                    _userContext.UserId,
+                    senderId,
                     originalMessage.ChatId
                 );
                 throw new NoAccessToChatException();
             }
 
-            var authorResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = originalMessage.SenderId });
-            var authorName = $"{authorResponse.User.FirstName} {authorResponse.User.LastName}";
+            string authorName;
+            if (originalMessage.SenderId is { } originalSenderId)
+            {
+                var authorResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = originalSenderId });
+                authorName = $"{authorResponse.User.FirstName} {authorResponse.User.LastName}";
+            }
+            else if (originalMessage.SenderUuid.HasValue)
+            {
+                // fed-автор (SenderId = NULL) — профиль в RemoteUsers, явное имя для forward'а
+                // в Фазе 5 (рендер). Здесь используем FID как заглушку, чтобы не падать.
+                var remote = await _usersServerApiClient.GetUsersByUuidAsync(
+                    new GetUsersByUuidRequest { Uuids = { originalMessage.SenderUuid.Value.ToString() } });
+                var p = remote.Users.FirstOrDefault();
+                authorName = p is { Found: true }
+                    ? $"{p.FirstName} {p.LastName}".Trim()
+                    : (p?.Username ?? string.Empty);
+            }
+            else
+            {
+                authorName = string.Empty;
+            }
 
             var forwardedAttachments = originalMessage.Content?.Attachments?
                 .Where(a => a.Type != Domain.MessageAttachmentType.ForwardedMessage)
@@ -302,6 +429,31 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             );
         }
 
+        _logger.LogDebug("Получение списка участников чата {ChatId}", chatId.Value);
+
+        var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
+
+        // Отправка последующих сообщений в уже существующий fed-DM через chat_id (docs/rearch/05,
+        // «Отправка последующих сообщений»): признак федеративности берём из состава участников —
+        // remote-участник (UserId=NULL, ServerName задан) есть только у fed-чатов. Ветка выше
+        // (request.UserUuid) покрывает только первое сообщение/явную адресацию по uuid.
+        if (!isFederated)
+        {
+            var remoteMembers = members.RemoteParticipants();
+            if (remoteMembers.Count > 0)
+            {
+                isFederated = true;
+                senderUuid = members.FirstOrDefault(m => m.UserId == senderId)?.UserUuid ?? Guid.Empty;
+                remoteParticipants = remoteMembers;
+
+                // senderFid для этой ветки не резолвится выше (та ветка — только для нового fed-чата
+                // через UserUuid) — без него удалённая нода получает пустой Sender.Username на каждое
+                // сообщение после первого в чате.
+                var selfResp = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
+                senderFid = $"@{selfResp.User.Username}:{remoteParticipants[0].ServerName}";
+            }
+        }
+
         var message = new Message
         {
             ChatId = chatId.Value,
@@ -310,15 +462,18 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 Attachments = attachments,
                 Text = request.Message.Text
             },
-            ReadBy = [_userContext.UserId],
-            SenderId = _userContext.UserId,
+            ReadBy = [senderId],
+            SenderId = senderId,
             SentAt = DateTime.UtcNow,
             Type = MessageContentType.Generic
         };
 
-        _logger.LogDebug("Получение списка участников чата {ChatId}", chatId.Value);
-
-        var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
+        if (isFederated)
+        {
+            // FederatedId / SenderUuid / LastChangeAt для fed-сообщения.
+            message.FederatedId = federatedId;
+            message.SenderUuid = senderUuid;
+        }
 
         _logger.LogDebug(
             "Сохранение сообщения в БД. Чат: {ChatId}, Участников: {MemberCount}",
@@ -335,8 +490,26 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             members.Count
         );
 
-        await _messageQueueSender.SendMessage(message, chatId.Value, members
-            .Select(x => x.UserId).ToList(), filesInfoMap);
+        if (isFederated)
+        {
+            await _messageQueueSender.SendFederatedMessage(
+                message,
+                chatId.Value,
+                members.LocalUserIds(),
+                filesInfoMap,
+                federatedId,
+                senderUuid,
+                remoteParticipants,
+                isFirstMessageInFedChat,
+                fedInitiatorUuid,
+                fedInviteeUuid,
+                senderFid,
+                lastChangeAt: message.LastChangeAt);
+        }
+        else
+        {
+            await _messageQueueSender.SendMessage(message, chatId.Value, members.LocalUserIds(), filesInfoMap);
+        }
 
         _metrics.Increment("messages_sent");
         if (!string.IsNullOrEmpty(request.Message.Text))
@@ -352,7 +525,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             "Сообщение {MessageId} успешно отправлено в чат {ChatId} от пользователя {UserId}",
             message.Id,
             chatId.Value,
-            _userContext.UserId
+            senderId
         );
 
         return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap) };

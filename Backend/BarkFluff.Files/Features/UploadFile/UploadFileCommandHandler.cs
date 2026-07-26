@@ -126,9 +126,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         // также используется для буферизации больших не-графических файлов. null = буфер в памяти.
         string? tempFilePath = null;
 
-        if (isVideoType || (!isImageType && fileSize > 100 * 1024 * 1024))
+        if (isVideoType || fileSize > 100 * 1024 * 1024)
         {
-            // Видео и большие не-графические файлы — буферизация через временный файл на диске
+            // Видео и большие файлы (в т.ч. изображения/GIF) — буферизация через временный файл на диске
             tempFilePath = Path.GetTempFileName();
             _logger.LogInformation("Файл {FileId} ({Size} МБ) буферизуется через диск", request.FileId, fileSize / 1024 / 1024);
             // FileShare.Read — чтобы процесс ffmpeg/ffprobe мог открыть файл параллельно нашему стриму.
@@ -418,7 +418,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             FileId = file.Id,
             Hash = fileHash
         };
-        await _hashesStorage.AddHash(fileHashEntity);
+        await _hashesStorage.AddHash(fileHashEntity, cancellationToken);
 
         _logger.LogInformation("Хеш файла сохранен в базу данных");
 
