@@ -6,6 +6,8 @@ using BarkFluff.Bots.Features.GetBotFile;
 using BarkFluff.Bots.Features.GetBotUpdates;
 using BarkFluff.Bots.Features.GetBotUserInfo;
 using BarkFluff.Bots.Features.GetMe;
+using BarkFluff.Bots.Features.GetMyCommands;
+using BarkFluff.Bots.Features.SetMyCommands;
 using BarkFluff.Bots.Features.SendBotFile;
 using BarkFluff.Bots.Features.SendBotMessage;
 using BarkFluff.Bots.Mapping;
@@ -47,6 +49,8 @@ public static class BotApiEndpoints
         group.MapGet("/getFile", GetFile);
         group.MapPost("/editMessage", EditMessage);
         group.MapPost("/deleteMessage", DeleteMessage);
+        group.MapPost("/setMyCommands", SetMyCommands);
+        group.MapGet("/getMyCommands", GetMyCommands);
     }
 
     private static async Task<IResult> GetMe(BotCallerContext callerContext, IMediator mediator)
@@ -207,6 +211,40 @@ public static class BotApiEndpoints
         });
     }
 
+    private static async Task<IResult> SetMyCommands(
+        BotCallerContext callerContext,
+        SetMyCommandsBody body,
+        IMediator mediator)
+    {
+        var botId = callerContext.Bot.Id;
+
+        return await ExecuteAsync(async () =>
+        {
+            await mediator.Send(new SetMyCommandsCommand
+            {
+                BotId = botId,
+                Commands = (body.Commands ?? []).Select(c => new Domain.BotCommand
+                {
+                    Command = c.Command ?? string.Empty,
+                    Description = c.Description ?? string.Empty,
+                }).ToList(),
+            });
+
+            return BotApiResponse.Ok(true);
+        });
+    }
+
+    private static async Task<IResult> GetMyCommands(BotCallerContext callerContext, IMediator mediator)
+    {
+        var botId = callerContext.Bot.Id;
+
+        return await ExecuteAsync(async () =>
+        {
+            var response = await mediator.Send(new GetMyCommandsQuery { BotId = botId });
+            return BotApiResponse.Ok(response.ToHttpResult());
+        });
+    }
+
     /// <summary>Маппинг ошибок бэкенда в {ok:false,error_code,description}.</summary>
     private static async Task<IResult> ExecuteAsync(Func<Task<IResult>> action)
     {
@@ -272,6 +310,21 @@ public class DeleteMessageBody
 {
     [JsonPropertyName("message_id")]
     public long MessageId { get; set; }
+}
+
+public class SetMyCommandsBody
+{
+    [JsonPropertyName("commands")]
+    public List<BotCommandBody>? Commands { get; set; }
+}
+
+public class BotCommandBody
+{
+    [JsonPropertyName("command")]
+    public string? Command { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 }
 
 public class UpdateResult
