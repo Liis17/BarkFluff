@@ -33,6 +33,12 @@ service FederationInternalApi {
   // и профильных событий из других сервисов (2.9). Не используется консюмерами RabbitMQ —
   // тем достаточно OutboxWriter изнутри Federation.
   rpc EnqueueOutbound(EnqueueOutboundRequest) returns(EnqueueOutboundResponse);
+
+  // Инстанс Onliner сообщает, за какими remote-uuid следят ЕГО подписчики (этап 4.2).
+  // Передаётся ПОЛНЫЙ текущий набор, а не дельта: инстансы масштабируются горизонтально,
+  // свести дельты от нескольких инстансов без общего состояния невозможно. Federation
+  // объединяет наборы живых инстансов; протухшие выпадают по TTL. Реализация — этап 4.3.
+  rpc SetPresenceInterest(SetPresenceInterestRequest) returns(SetPresenceInterestResponse);
 }
 
 message ResolveRemoteUserRequest {
@@ -124,4 +130,13 @@ message EnqueueOutboundRequest {
 message EnqueueOutboundResponse {
   string event_id = 1;
   int32 enqueued = 2;                         // сколько строк поставлено (минус ownServerName)
+}
+
+message SetPresenceInterestRequest {
+  string instance_id = 1;          // инстанс Onliner (наборы разных инстансов объединяются)
+  repeated string user_uuids = 2;  // ПОЛНЫЙ текущий набор этого инстанса (не дельта)
+}
+
+message SetPresenceInterestResponse {
+  int32 accepted_count = 1;        // сколько uuid принято (после лимита) — для диагностики
 }

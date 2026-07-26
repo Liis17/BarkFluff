@@ -13,4 +13,11 @@ public class OnlineStatusChangedEvent
     public int Status { get; set; }
 
     public DateTime LastSeen { get; set; }
+
+    /// <summary>
+    /// Заполнен только для remote-пользователя (этап 4.2): у него нет локального
+    /// <see cref="UserId"/>, адресация подписчикам идёт по UUID. Для локальных — null,
+    /// и весь прежний путь не меняется.
+    /// </summary>
+    public Guid? UserUuid { get; set; }
 }
