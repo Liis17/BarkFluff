@@ -109,6 +109,8 @@ public class Program
         // Скачивание federated-файлов (этап 3.2).
         builder.Services.AddSingleton<FederatedFileOptions>();
         builder.Services.AddSingleton<IFetchFileRateLimiter, FetchFileRateLimiter>();
+        // Circuit breaker скачивания per-origin (этап 3.5) — in-memory, per-instance.
+        builder.Services.AddSingleton<RemoteFileCircuitBreaker>();
 
         builder.Services.AddSingleton<TypingCoalescer>();
         builder.Services.AddSingleton<TypingValidationCache>();

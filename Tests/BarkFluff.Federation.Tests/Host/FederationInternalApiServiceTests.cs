@@ -68,6 +68,7 @@ public class FederationInternalApiServiceTests
                     NullLogger<PeerCapabilityCache>.Instance),
                 new MetricsCollector(),
                 new FederatedFileOptions(configuration),
+                new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
                 NullLogger<FederationInternalApiService>.Instance);
         }
 

@@ -38,6 +38,7 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
     private readonly PeerCapabilityCache _peerCapabilities;
     private readonly MetricsCollector _metrics;
     private readonly FederatedFileOptions _fileOptions;
+    private readonly RemoteFileCircuitBreaker _circuitBreaker;
     private readonly ILogger<FederationInternalApiService> _logger;
 
     public FederationInternalApiService(
@@ -56,9 +57,11 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
         PeerCapabilityCache peerCapabilities,
         MetricsCollector metrics,
         FederatedFileOptions fileOptions,
+        RemoteFileCircuitBreaker circuitBreaker,
         ILogger<FederationInternalApiService> logger)
     {
         _fileOptions = fileOptions;
+        _circuitBreaker = circuitBreaker;
         _logger = logger;
         _presenceInterest = presenceInterest;
         _presenceOptions = presenceOptions;
@@ -128,6 +131,14 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
             throw new RpcException(new Status(StatusCode.PermissionDenied, "нода неизвестна или заблокирована"));
         }
 
+        // Circuit breaker (этап 3.5): лежащая нода не должна съедать connect-timeout на
+        // каждом обращении. Отвечаем сразу, в сеть не идём.
+        if (!_circuitBreaker.TryEnter(request.ServerName))
+        {
+            _metrics.Increment("remote_file_fetches.circuit_open");
+            throw new RpcException(new Status(StatusCode.Unavailable, "origin_circuit_open"));
+        }
+
         using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
         idleCts.CancelAfter(_fileOptions.RemoteFileIdleTimeout);
 
@@ -172,24 +183,28 @@ public class FederationInternalApiService : FederationInternalApi.FederationInte
                 await responseStream.WriteAsync(chunk, context.CancellationToken);
             }
 
+            _circuitBreaker.RecordSuccess(request.ServerName);
             _metrics.Increment("remote_file_fetches.ok");
             _metrics.Add("remote_file_bytes_in", received);
         }
         catch (RpcException ex) when (ex.StatusCode is StatusCode.PermissionDenied or StatusCode.NotFound)
         {
-            // Решение origin пробрасываем как есть — вызывающий отличает «нельзя» от «нет файла».
+            // Решение ЖИВОЙ ноды: сбоем circuit'а не считается — приватный аватар или чужой
+            // файл не значат, что нода недоступна (этап 3.5). Пробрасываем как есть.
             _metrics.Increment("remote_file_fetches.denied");
             throw;
         }
         catch (OperationCanceledException) when (!context.CancellationToken.IsCancellationRequested)
         {
             // Сработал idle-надзор, а не отмена вызывающим.
+            _circuitBreaker.RecordFailure(request.ServerName);
             _metrics.Increment("remote_file_fetches.idle_timeout");
             throw new RpcException(new Status(StatusCode.Unavailable, "origin замолчал"));
         }
         catch (Exception ex) when (ex is not RpcException)
         {
-            // Сеть/TLS/резолв — временная недоступность; HTTP-код подберёт этап 3.5.
+            // Сеть/TLS/резолв — транспортная неудача: считается circuit'ом.
+            _circuitBreaker.RecordFailure(request.ServerName);
             _metrics.Increment("remote_file_fetches.error");
             _logger.LogWarning(ex, "Не удалось скачать файл {FileId} с ноды {Server}",
                 request.FileId, request.ServerName);

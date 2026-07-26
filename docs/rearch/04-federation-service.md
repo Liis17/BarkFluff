@@ -154,6 +154,8 @@ FederationOutbox
 | `Federation:FetchFileRateLimitPerOrigin` | лимит запросов файлов с одной ноды в минуту, дефолт 30 (этап 3.2) |
 | `Federation:S2SConnectTimeout` | таймаут установления S2S-соединения, секунд, дефолт 10 |
 | `Federation:RemoteFileIdleTimeout` | максимальное молчание origin внутри файлового стрима, секунд, дефолт 60 |
+| `Federation:RemoteFileCircuitFailures` | порог подряд идущих транспортных неудач до открытия circuit, дефолт 3 (этап 3.5) |
+| `Federation:RemoteFileCircuitOpenSeconds` | сколько circuit держится открытым, дефолт 60 |
 
 ## Метрики (MetricsCollector, как у всех)
 
