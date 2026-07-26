@@ -17,7 +17,7 @@ permissions:
 jobs:
   request-approval:
     name: "📲 Запрос подтверждения"
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     outputs:
       approved: ${{ steps.result.outputs.approved }}
     steps:
@@ -53,7 +53,7 @@ jobs:
     name: "🐳 Сборка и публикация BarkFluff.Updates"
     needs: request-approval
     if: needs.request-approval.outputs.approved == 'true'
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
