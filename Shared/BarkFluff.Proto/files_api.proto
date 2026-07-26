@@ -53,6 +53,10 @@ service FilesServerApi {
 
   // Загрузка изображения стикера (для админ-панели)
   rpc UploadStickerImage(UploadStickerImageRequest) returns(UploadStickerImageResponse);
+
+  // Стриминг содержимого файла с поддержкой Range (этап 3.2). Зовёт Federation при отдаче
+  // файла ноде-партнёру: авторизацию уже выполнил вызывающий, whitelist типов здесь не применяется.
+  rpc FetchFileStream(FetchFileStreamRequest) returns(stream FileStreamChunk);
 }
 
 message GetTempDownloadUrlRequest {
@@ -319,4 +323,17 @@ message UploadStickerImageRequest {
 message UploadStickerImageResponse {
   string file_id = 1;
   string file_url = 2;
+}
+
+message FetchFileStreamRequest {
+  string file_id = 1;   // оригинальный Guid файла
+  int64 range_from = 2; // смещение первого байта, inclusive
+  int64 range_to = 3;   // граница диапазона, EXCLUSIVE; 0/0 = весь файл
+}
+
+message FileStreamChunk {
+  bytes data = 1;         // пусто в первом (метаданном) чанке
+  int64 total_size = 2;   // размер файла ЦЕЛИКОМ, не длина куска
+  string content_type = 3;
+  string file_name = 4;
 }

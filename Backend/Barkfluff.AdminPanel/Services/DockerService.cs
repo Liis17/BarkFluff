@@ -48,6 +48,7 @@ public class DockerService
         {
             var json = await RunDockerCommandAsync("ps", "--all", "--format", "{{json .}}");
             var containers = ParseDockerPsOutput(json);
+            await PopulateImageDigestsAsync(containers);
             return containers;
         }
         catch (Exception ex)
@@ -398,6 +399,32 @@ public class DockerService
         }
 
         return containers;
+    }
+
+    private async Task PopulateImageDigestsAsync(IEnumerable<ContainerStatusDto> containers)
+    {
+        await Task.WhenAll(containers
+            .Where(container => container.Image.StartsWith("docker.barkfluff.com:5000/barkfluff-", StringComparison.OrdinalIgnoreCase))
+            .Select(PopulateImageDigestAsync));
+    }
+
+    private async Task PopulateImageDigestAsync(ContainerStatusDto container)
+    {
+        try
+        {
+            var imageId = await RunDockerCommandAsync("inspect", "--format", "{{.Image}}", container.Id);
+            var repoDigests = await RunDockerCommandAsync(
+                "image", "inspect", "--format", "{{join .RepoDigests \"\\n\"}}", imageId);
+
+            var imageRepository = container.Image[..container.Image.LastIndexOf(':')];
+            container.ImageDigest = repoDigests
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault(digest => digest.StartsWith($"{imageRepository}@", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Не удалось получить digest образа {Image}", container.Image);
+        }
     }
 
     /// <summary>

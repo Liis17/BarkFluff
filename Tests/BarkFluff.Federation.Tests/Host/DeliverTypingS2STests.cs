@@ -6,6 +6,7 @@ using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
@@ -61,6 +62,8 @@ public class DeliverTypingS2STests
             new FederationSwitch(configuration),
             new IncomingPresenceRegistry(),
             options,
+            new FakeFetchFileRateLimiter(),
+            Mock.Of<FilesServerApi.FilesServerApiClient>(),
             rateLimiter ?? new FakeTypingRateLimiter(),
             new TypingValidationCache(options),
             new MetricsCollector(),

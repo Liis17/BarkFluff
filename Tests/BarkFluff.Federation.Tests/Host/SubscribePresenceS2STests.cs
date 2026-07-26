@@ -6,6 +6,7 @@ using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Federation;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Proto.Users;
@@ -86,6 +87,8 @@ public class SubscribePresenceS2STests
             new FederationSwitch(configuration),
             registry,
             new PresenceOptions(configuration),
+            new FakeFetchFileRateLimiter(),
+            Mock.Of<FilesServerApi.FilesServerApiClient>(),
             new FakeTypingRateLimiter(),
             new TypingValidationCache(new PresenceOptions(configuration)),
             new MetricsCollector(),
