@@ -35,10 +35,32 @@ public class FederatedDownloadService
     }
 
     /// <summary>
+    /// Аватар remote-пользователя (этап 3.4): снапшота размера нет — вместо него глобальный кап.
+    /// </summary>
+    public Task WriteAvatarToResponseAsync(
+        string serverName,
+        Guid fileId,
+        long maxBytes,
+        HttpContext httpContext)
+        => WriteToResponseAsync(
+            new TempFile
+            {
+                OriginalFileId = fileId,
+                OriginServer = serverName,
+                // Размер неизвестен: Range по аватару не нужен, а объём ограничивает кап.
+                SizeBytes = null,
+            },
+            httpContext,
+            hardLimitBytes: maxBytes);
+
+    /// <summary>
     /// Записать содержимое (или запрошенный диапазон) прямо в ответ. Заголовки выставляются
     /// здесь же: хелпер <c>File()</c> не подходит — поток не seekable.
     /// </summary>
-    public async Task WriteToResponseAsync(TempFile tempFile, HttpContext httpContext)
+    public async Task WriteToResponseAsync(
+        TempFile tempFile,
+        HttpContext httpContext,
+        long? hardLimitBytes = null)
     {
         var response = httpContext.Response;
         var totalSize = tempFile.SizeBytes ?? 0;
@@ -72,7 +94,12 @@ public class FederatedDownloadService
 
         // Сколько байт мы вообще готовы принять: снапшот из Messages — более строгая граница,
         // чем заявленный origin'ом total_size (Federation режет по нему, этап 3.2).
+        // У аватара снапшота нет, вместо него — глобальный кап (этап 3.4).
         var limit = isPartial ? range.Length : totalSize;
+        if (hardLimitBytes is > 0 && (limit <= 0 || hardLimitBytes < limit))
+        {
+            limit = hardLimitBytes.Value;
+        }
 
         await foreach (var chunk in call.ResponseStream.ReadAllAsync(httpContext.RequestAborted))
         {

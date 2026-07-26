@@ -5,6 +5,7 @@ using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetStickers;
+using BarkFluff.Files.Features.CheckFedAvatarAccess;
 using BarkFluff.Files.Features.FetchFileStream;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfoServer;
@@ -38,6 +39,17 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
     {
         _mediator = mediator;
         _fetchFileStreamHandler = fetchFileStreamHandler;
+    }
+
+    // Разрешено ли отдать аватар в федерацию (этап 3.4): своя ветка доступа, по приватности
+    // владельца, а не по членству в чате — аватар не является вложением сообщения.
+    public override Task<CheckFedAvatarAccessResponse> CheckFedAvatarAccess(
+        CheckFedAvatarAccessRequest request,
+        ServerCallContext context)
+    {
+        var command = new CheckFedAvatarAccessCommand { FileId = request.FileId };
+
+        return _mediator.Send(command, context.CancellationToken);
     }
 
     // Стриминг содержимого файла ноде-партнёру (этап 3.2). Не через MediatR: результат — поток.

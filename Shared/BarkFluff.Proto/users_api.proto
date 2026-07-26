@@ -242,6 +242,15 @@ service UsersServerApi {
   // Федерация: профиль локального пользователя (privacy-фильтрованный) по username или uuid.
   // Используется S2S GetUserProfile. Этап 2.1.
   rpc GetFederatedProfile(GetFederatedProfileRequest) returns(GetFederatedProfileResponse);
+
+  // Отдавать ли аватар пользователя в федерацию (этап 3.4). Ровно то же правило, которым
+  // GetFederatedProfile решает, показывать ли avatar_file_id: если профиль наружу аватар
+  // отдал — FetchFile его отдаст, если скрыл — откажет даже по утёкшей ссылке.
+  rpc IsAvatarVisibleToFederation(IsAvatarVisibleToFederationRequest) returns(IsAvatarVisibleToFederationResponse);
+
+  // Anti-open-proxy (этап 3.4): существует ли remote-профиль с такой парой (нода, аватар).
+  // Без этой проверки маршрут /download/fed/ проксировал бы произвольный файл с любой ноды.
+  rpc CheckRemoteAvatarRef(CheckRemoteAvatarRefRequest) returns(CheckRemoteAvatarRefResponse);
 }
 
 // Удаление бот-аккаунта (серверный, для сервиса Bots)
@@ -1075,4 +1084,21 @@ message GetFederatedProfileResponse {
   string last_name = 5;
   string bio = 6;
   string avatar_file_id = 7; // FileId на этой ноде (пусто если скрыт/нет)
+}
+
+message IsAvatarVisibleToFederationRequest {
+  int64 user_id = 1;
+}
+
+message IsAvatarVisibleToFederationResponse {
+  bool visible = 1;
+}
+
+message CheckRemoteAvatarRefRequest {
+  string server_name = 1;
+  string file_id = 2;
+}
+
+message CheckRemoteAvatarRefResponse {
+  bool exists = 1;
 }

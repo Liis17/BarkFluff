@@ -1,5 +1,7 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
+using BarkFluff.Users.Features.CheckRemoteAvatarRef;
+using BarkFluff.Users.Features.IsAvatarVisibleToFederation;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.AddDraftUser;
 using BarkFluff.Users.Features.Badges.AssignUserBadge;
@@ -482,6 +484,30 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     }
 
     // -- Федерация (этап 2.1) -------------------------------------------------------
+
+    // ---- Аватары remote-пользователей (этап 3.4) ----
+
+    public override Task<IsAvatarVisibleToFederationResponse> IsAvatarVisibleToFederation(
+        IsAvatarVisibleToFederationRequest request,
+        ServerCallContext context)
+    {
+        var query = new IsAvatarVisibleToFederationQuery { UserId = request.UserId };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<CheckRemoteAvatarRefResponse> CheckRemoteAvatarRef(
+        CheckRemoteAvatarRefRequest request,
+        ServerCallContext context)
+    {
+        var query = new CheckRemoteAvatarRefQuery
+        {
+            ServerName = request.ServerName,
+            FileId = request.FileId
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
 
     public override Task<GetFederatedProfileResponse> GetFederatedProfile(GetFederatedProfileRequest request, ServerCallContext context)
     {

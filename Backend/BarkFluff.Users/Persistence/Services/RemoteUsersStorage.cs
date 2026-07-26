@@ -43,6 +43,17 @@ public class RemoteUsersStorage
     /// <summary>
     /// Батч-чтение remote-профилей по UUID.
     /// </summary>
+    /// <summary>
+    /// Есть ли remote-профиль с такой парой (нода, аватар) — anti-open-proxy для публичного
+    /// маршрута аватаров (этап 3.4).
+    /// </summary>
+    public Task<bool> HasAvatarRefAsync(string serverName, string fileId)
+    {
+        return _context.RemoteUsers
+            .AsNoTracking()
+            .AnyAsync(u => u.ServerName == serverName && u.AvatarFileId == fileId);
+    }
+
     public async Task<List<RemoteUser>> GetByUuidsAsync(IReadOnlyCollection<Guid> uuids)
     {
         if (uuids.Count == 0)

@@ -57,6 +57,10 @@ service FilesServerApi {
   // Стриминг содержимого файла с поддержкой Range (этап 3.2). Зовёт Federation при отдаче
   // файла ноде-партнёру: авторизацию уже выполнил вызывающий, whitelist типов здесь не применяется.
   rpc FetchFileStream(FetchFileStreamRequest) returns(stream FileStreamChunk);
+
+  // Разрешено ли отдать аватар в федерацию (этап 3.4): файл существует, это UserAvatar,
+  // и его владелец не скрыл аватар настройкой приватности.
+  rpc CheckFedAvatarAccess(CheckFedAvatarAccessRequest) returns(CheckFedAvatarAccessResponse);
 }
 
 message GetTempDownloadUrlRequest {
@@ -344,4 +348,12 @@ message FileStreamChunk {
   int64 total_size = 2;   // размер файла ЦЕЛИКОМ, не длина куска
   string content_type = 3;
   string file_name = 4;
+}
+
+message CheckFedAvatarAccessRequest {
+  string file_id = 1;
+}
+
+message CheckFedAvatarAccessResponse {
+  bool allowed = 1;
 }

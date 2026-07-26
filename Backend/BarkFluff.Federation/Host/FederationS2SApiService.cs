@@ -188,13 +188,9 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
             throw new RpcException(new Status(StatusCode.ResourceExhausted, "лимит запросов файлов исчерпан"));
         }
 
-        // Авторизация на уровне НОДЫ: знание file_id прав не даёт (этап 3.2).
+        // Авторизация на уровне НОДЫ (этап 3.2/3.4): знание file_id прав не даёт.
         // Проверяем ДО начала стрима — отказ должен быть статусом, а не оборванным потоком.
-        var access = await _messagesClient.CheckFileFederationAccessAsync(
-            new CheckFileFederationAccessRequest { FileId = request.FileId, RequestingServer = origin },
-            cancellationToken: context.CancellationToken);
-
-        if (!access.Allowed)
+        if (!await IsFileAllowedAsync(request.FileId, origin, context.CancellationToken))
         {
             _metrics.Increment("fetchfile_requests.denied");
             throw new RpcException(new Status(StatusCode.PermissionDenied, "файл недоступен"));
@@ -225,6 +221,40 @@ public class FederationS2SApiService : FederationS2SApi.FederationS2SApiBase
 
         _metrics.Increment("fetchfile_requests.ok");
         _metrics.Add("fetchfile_bytes_out", bytesOut);
+    }
+
+    /// <summary>
+    /// Две разные ветки доступа к файлу: у аватара она по приватности владельца (этап 3.4),
+    /// у вложения — по общему федеративному чату (этап 3.2). Аватар вообще не является
+    /// вложением сообщения, поэтому chat-проверка к нему неприменима.
+    /// </summary>
+    private async Task<bool> IsFileAllowedAsync(string fileId, string origin, CancellationToken ct)
+    {
+        // Один вызов на старт стрима — кеш намеренно не вводим: приватность должна
+        // действовать немедленно, а не через TTL.
+        try
+        {
+            var fileData = await _filesClient.GetFileDataAsync(
+                new GetFileDataRequest { FileId = fileId }, cancellationToken: ct);
+
+            if (fileData.FileInfo?.Type == UploadFileType.UserAvatar)
+            {
+                var avatarAccess = await _filesClient.CheckFedAvatarAccessAsync(
+                    new CheckFedAvatarAccessRequest { FileId = fileId }, cancellationToken: ct);
+
+                return avatarAccess.Allowed;
+            }
+        }
+        catch (RpcException)
+        {
+            // Файла нет либо Files недоступен — дальше решает обычная ветка (она откажет).
+        }
+
+        var access = await _messagesClient.CheckFileFederationAccessAsync(
+            new CheckFileFederationAccessRequest { FileId = fileId, RequestingServer = origin },
+            cancellationToken: ct);
+
+        return access.Allowed;
     }
 
     // Приём typing от ноды-партнёра (этап 4.4). XFed уже проверил подпись запроса.
