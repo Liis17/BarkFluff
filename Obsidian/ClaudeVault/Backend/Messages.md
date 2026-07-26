@@ -40,7 +40,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ListChatMembers` | Пагинированный список с данными из Users API |
 | `ListChatAttachments` | Вложения по типу, фильтрация + сортировка |
 | `GetUserAllMessages` | Service-only: экспорт данных пользователя (GDPR) |
-| `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` + `chat_ids[]` → подмножество, где состоит). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMemberChatIds`. Потребитель — [[Backend/Onliner]] (typing) |
+| `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` **либо** `user_uuid` + `chat_ids[]` → подмножество, где состоит) + федеративный контекст чатов и `requester_uuid` (этап 4.1). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMembershipContext`. Потребители — [[Backend/Onliner]] (typing) и [[Backend/Federation]] (валидация входящего typing) |
+| `CheckFederatedPresenceAccess` | Service-only: подмножество наших `user_uuids`, чей presence разрешено отдавать ноде `requesting_server` (этап 4.1). Зовёт только [[Backend/Federation]] своей ноды |
 | `GetChatMemberIds` | Service-only: все `UserId` участников чата по `ChatId`. Невалидный Guid → пустой список. Потребитель — [[Backend/Calls]] (ринг группового звонка) |
 | `PostCallSystemMessage` | Service-only: пишет системное сообщение об итоге звонка (`CallSystemResult`: Ended/Missed/Rejected) в существующий чат — групповой по `ChatId` или личный по паре Caller/Callee (чат не создаётся, если его нет). Публикует `NewMessageEvent`. Потребитель — [[Backend/Calls]] |
 | `PinMessage` | Закрепление сообщения в чате. Любой участник чата. Лимит: 100 закрепов на чат. Системное сообщение + `MessagePinnedEvent`. Idempotent при повторе |
@@ -274,3 +275,45 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
   `ChatsStorage.GetFederatedStatusAsync` — `Rejected` → `FederatedDmRejectedException` (та же ошибка,
   что и при первичном отказе; повторная отправка в отклонённый чат не уходит в бесконечный RETRY через
   Federation, а падает сразу на этой ноде).
+
+## Федеративный контекст членства и доступ к presence (этап 4.1, docs/rearch/phase-4/step-4.1-membership-federated.md)
+
+Фаза 4 (presence/typing через границу ноды) требует от Messages двух вещей: понять, *куда* маршрутизировать typing, и решить, *кому* можно показывать наши онлайн-статусы. Оба ответа отдаёт `MessagesServerApi` — новых round-trip'ов в hot-path не добавилось.
+
+### `CheckChatMembership` — расширение, а не второй RPC
+
+Вызов и так делается на **каждом** typing-heartbeat, поэтому федеративная маршрутизация приезжает тем же ответом:
+
+```protobuf
+CheckChatMembershipRequest  { int64 user_id; repeated string chat_ids; string user_uuid; }
+CheckChatMembershipResponse { repeated string member_chat_ids;
+                              repeated FederatedChatContext federated_chats;
+                              string requester_uuid; }
+FederatedChatContext { string chat_id; repeated FederatedChatPeer peers; }
+FederatedChatPeer    { string user_uuid; string server_name; }
+```
+
+- **Ветка идентификатора.** Заполнен `user_uuid` → членство ищется по `ChatMembers.UserUuid` (так проверяется remote-участник); иначе — по `UserId`, как раньше. Оба пусты → `InvalidArgument` (ошибка вызывающего, не «пустой ответ»). Валидацию и парсинг делает `MessagesServerApiService`, `CheckChatMembershipQuery` несёт уже `long? UserId` / `Guid? UserUuid`.
+- **`federated_chats` только для активных fed-чатов** (`IsFederated && FederatedStatus == Active`). Нефедеративные в список не попадают вовсе: пустой список = «все чаты локальные» — рабочий случай подавляющего большинства вызовов. `Rejected`/`Merged` чат членство отдаёт (чат существует), но контекста для него нет — маршрутизировать typing туда уже нельзя.
+- **`requester_uuid`** нужен typing-мосту (этап 4.4): Onliner знает только `long userId` печатающего, а через границу ноды уходит uuid. Для `user_id`-ветки берётся из `ChatMembers.UserUuid` найденного членства (у локального участника fed-чата он заполнен с 2.3), для `user_uuid`-ветки — эхо запрошенного. В Users за ним **не ходим** — это hot-path.
+- **Обратная совместимость.** Старый вызов (`user_id` + `chat_ids`, чтение `member_chat_ids`) даёт ровно прежний результат; закреплено тестом `MessagesServerApiServiceTests.CheckChatMembership_OnlyUserId_MapsAsBefore`.
+
+### `ChatsStorage.GetMembershipContext` — стоимость запроса
+
+Заменяет `GetMemberChatIds` в этом пути. Запросов ровно столько, сколько нужно:
+
+1. членство запрашивающего в указанных чатах + флаги `IsFederated`/`FederatedStatus` чата (по стоимости равен прежнему `GetMemberChatIds`);
+2. remote-участники — **только** если среди чатов нашёлся активный федеративный.
+
+Локальные и групповые чаты второй запрос не оплачивают, N+1 по чатам не возникает. Кеша членства нет намеренно: кеш без инвалидации на смене состава чата даёт утечку доступа.
+
+### `CheckFederatedPresenceAccess` — проверка отношений (риск №42)
+
+Без неё любая нода сети массово мониторит presence чужих пользователей, зная только UUID. Правило: uuid попадает в `allowed_user_uuids`, если существует чат с `IsFederated && FederatedStatus == Active`, где есть **наш** участник с этим `UserUuid` (`ServerName == NULL`) **и** участник с `ServerName == requesting_server`.
+
+- Отсутствующий uuid и uuid без общего чата **неразличимы** — существование аккаунтов не светим (молча не включаем, не `PermissionDenied`).
+- Батч: один SQL на весь список (`ChatsStorage.GetUuidsSharingFederatedChatWithServer`), без цикла по uuid.
+- Лимит входа — константа `CheckFederatedPresenceAccessQuery.MaxUserUuids = 500`, превышение → `InvalidArgument`. Это вторая линия: основной лимит подписки живёт в [[Backend/Federation]] (этап 4.3).
+- `requesting_server` канонизируется (`Trim().ToLowerInvariant()`) — `ChatMember.ServerName` хранится уже в канонической форме (2.3).
+
+Это **не** privacy-фильтр: privacy (`OnlineVisibility`) применяет владелец данных — [[Backend/Onliner]], этап 4.2.

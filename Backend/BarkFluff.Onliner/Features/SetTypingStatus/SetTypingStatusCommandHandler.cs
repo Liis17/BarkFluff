@@ -38,10 +38,10 @@ public class SetTypingStatusCommandHandler : IRequestHandler<SetTypingStatusComm
         _metrics.Increment("typing_heartbeats");
 
         // Не-участник не может инжектить набор в чужой чат (fail-closed).
-        var memberChatIds = await _membershipFilter.GetMemberChatIdsAsync(
+        var membership = await _membershipFilter.GetMemberChatIdsAsync(
             userId, [request.ChatId], cancellationToken);
 
-        if (!memberChatIds.Contains(request.ChatId))
+        if (!membership.MemberChatIds.Contains(request.ChatId))
         {
             _metrics.Increment("typing_heartbeats_rejected_by_membership");
             return new SetTypingStatusResponse();

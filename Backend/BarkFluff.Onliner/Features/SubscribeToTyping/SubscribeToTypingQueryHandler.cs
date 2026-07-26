@@ -35,10 +35,10 @@ public class SubscribeToTypingQueryHandler
             userId, request.ChatIds.Count);
 
         // Оставляем только чаты, в которых пользователь действительно состоит (fail-closed).
-        var memberChatIds = await _membershipFilter.GetMemberChatIdsAsync(
+        var membership = await _membershipFilter.GetMemberChatIdsAsync(
             userId, request.ChatIds, request.CancellationToken);
 
-        var filteredChatIds = request.ChatIds.Where(memberChatIds.Contains).ToList();
+        var filteredChatIds = request.ChatIds.Where(membership.MemberChatIds.Contains).ToList();
 
         var hiddenByMembership = request.ChatIds.Distinct().Count() - filteredChatIds.Distinct().Count();
         if (hiddenByMembership > 0)

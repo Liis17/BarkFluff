@@ -40,10 +40,10 @@ public class ChangeChatsInTypingSubscriptionCommandHandler
             userId, request.ChatIds.Count);
 
         // Оставляем только чаты, где пользователь состоит (fail-closed).
-        var memberChatIds = await _membershipFilter.GetMemberChatIdsAsync(
+        var membership = await _membershipFilter.GetMemberChatIdsAsync(
             userId, request.ChatIds, cancellationToken);
 
-        var filteredChatIds = request.ChatIds.Where(memberChatIds.Contains).ToList();
+        var filteredChatIds = request.ChatIds.Where(membership.MemberChatIds.Contains).ToList();
 
         var updatedCount = _subscriptionsManager.UpdateAllSubscriptions(userId, filteredChatIds);
 

@@ -552,6 +552,10 @@ service MessagesServerApi {
 
   // Проверить, что файл вложения разрешено отдавать указанной ноде-партнёру
   rpc CheckFileFederationAccess(CheckFileFederationAccessRequest) returns(CheckFileFederationAccessResponse);
+
+  // Проверить, что у ноды-подписчика есть основание видеть presence наших пользователей
+  // (этап 4.1): требуется активный федеративный чат с этой нодой.
+  rpc CheckFederatedPresenceAccess(CheckFederatedPresenceAccessRequest) returns(CheckFederatedPresenceAccessResponse);
 }
 
 message SendMessageServerRequest {
@@ -621,12 +625,28 @@ message ExportChat {
 }
 
 message CheckChatMembershipRequest {
-  int64 user_id = 1; // проверяемый пользователь
+  int64 user_id = 1; // проверяемый локальный пользователь
   repeated string chat_ids = 2; // идентификаторы чатов (Guid-строки)
+  string user_uuid = 3; // проверяемый участник по UUID (remote или локальный);
+                        // заполнять ЛИБО user_id, ЛИБО user_uuid (этап 4.1)
 }
 
 message CheckChatMembershipResponse {
   repeated string member_chat_ids = 1; // подмножество chat_ids, где пользователь состоит
+  repeated FederatedChatContext federated_chats = 2; // только для чатов из member_chat_ids (этап 4.1)
+  string requester_uuid = 3; // UUID проверяемого пользователя (пусто, если у него его нет)
+}
+
+// Федеративный контекст чата: куда маршрутизировать typing/presence через границу ноды.
+// Присутствует только для активных федеративных чатов (IsFederated && FederatedStatus == Active).
+message FederatedChatContext {
+  string chat_id = 1;
+  repeated FederatedChatPeer peers = 2; // remote-участники чата
+}
+
+message FederatedChatPeer {
+  string user_uuid = 1;
+  string server_name = 2;
 }
 
 message GetChatMemberIdsRequest {
@@ -782,4 +802,13 @@ message CheckFileFederationAccessRequest {
 
 message CheckFileFederationAccessResponse {
   bool allowed = 1;
+}
+
+message CheckFederatedPresenceAccessRequest {
+  string requesting_server = 1;   // нода-подписчик (канонический lowercase/punycode)
+  repeated string user_uuids = 2; // UUID НАШИХ пользователей, за которыми хотят следить
+}
+
+message CheckFederatedPresenceAccessResponse {
+  repeated string allowed_user_uuids = 1; // подмножество, по которым отдавать статус можно
 }
