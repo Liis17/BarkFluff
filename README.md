@@ -1,120 +1,69 @@
+[English](README.md) · [Русский](.readme/lang/ru/README.md)
+
 # BarkFluff
 
-Распределённая платформа обмена сообщениями в реальном времени.
+**A self-hosted, real-time messaging platform built as a distributed system.**
 
-## Tech Stack
+BarkFluff combines native clients with a gRPC-first .NET backend. It is designed around service discovery, streaming updates, and asynchronous messaging—so each part of the platform can evolve independently without losing the feel of one product.
 
-| Слой | Технологии |
-|------|-----------|
-| **Backend** | .NET 10, gRPC (HTTP/2), MassTransit + RabbitMQ, PostgreSQL + EF Core, Redis, Minio (S3), Docker |
-| **macOS / iOS** | Swift, SwiftUI, grpc-swift 2.0 |
-| **Windows** | WPF (.NET 10), Code-behind + Reactive wrappers |
-| **Android** | Kotlin 2.0, gRPC-OkHttp, ViewBinding |
-| **Linux** | C++ Qt 6, CMake, gRPC |
-| **Web** | Vanilla JS, gRPC-Web (esbuild-бандл) |
+## At a glance
 
-## Архитектура
+| | |
+|---|---|
+| **Backend** | .NET 10, gRPC, RabbitMQ, PostgreSQL, Redis, MinIO, Docker |
+| **Clients** | Android, Windows, macOS, iOS, Linux, and web |
+| **Real time** | gRPC streaming through the Updates service |
+| **Authentication** | XAuth: JWT plus device metadata |
 
-Каждый микросервис — отдельный gRPC-сервер. При старте он загружает конфигурацию из сервиса **Configuration**, затем регистрируется в **Navigator**. Клиенты получают адреса всех сервисов через **Beacon** (единая точка входа). Асинхронные события между сервисами — через RabbitMQ (MassTransit).
+## How it fits together
 
-Аутентификация — кастомная система **XAuth**: JWT в заголовке `x-auth-token`, обязательные device-заголовки (`x-device-id`, `x-device-name`, `x-ip`, `x-os` и др.) в Base64.
-
-### Микросервисы
-
-| Сервис | Порт | Описание |
-|--------|------|----------|
-| Configuration | 7003 | Централизованная конфигурация, реестр сервисов |
-| Beacon | 7002 | Точка входа клиентов, отдаёт адреса всех сервисов |
-| Navigator | 7010 | Реестр серверов BarkFluff |
-| Identity | 7000 | Auth, JWT, 2FA, сессии, сброс пароля |
-| Users | 7001 | Профили, контакты, устройства, бейджи |
-| Messages | 7007 | Чаты, сообщения, read receipts |
-| Files | 7005 / 7006 | Файлы и медиа (gRPC + REST/HTTP1.1), Minio S3 |
-| Updates | 7015 | Real-time стриминг событий через gRPC |
-| Onliner | 7009 | Трекинг онлайн-статусов |
-| Notification | 7004 | Email-уведомления (RabbitMQ consumer) |
-| FastAuth | 7008 | QR-авторизация устройств |
-| Calls | 7025 | Аудио/видео звонки на LiveKit SFU |
-| Bots | 7027 / 7028 | Bot API (gRPC + HTTP REST `/bot/{method}`) |
-| Federation | 7030 / 7031 | Межсерверная федерация (S2S), well-known документ |
-| AdminPanel | 51888 | Веб-дашборд администратора |
-| WebServer | 64641 | Публичный HTTP-сервер, раздача статики |
-| Web | 7016 | gRPC-Web прокси + статика |
-| CloudMessaging | — | Push-уведомления Firebase (Background Worker) |
-| ClientStorage | — | Хранилище дистрибутивов клиентов |
-| Developers | 7020 | Портал документации для разработчиков |
-
-### Инфраструктура
-
-| Сервис | Порт |
-|--------|------|
-| PostgreSQL | 5432 |
-| RabbitMQ | 5672 / 15672 (UI) |
-| Redis | 6379 |
-| Minio (S3) | 9000 / 9001 (UI) |
-| Seq (логи) | 8880 (UI) |
-
-## Структура репозитория
-
+```mermaid
+flowchart LR
+    Clients["Native & web clients"] --> Beacon["Beacon\nentry point"]
+    Beacon --> Services["gRPC microservices"]
+    Services --> Configuration["Configuration\nservice registry"]
+    Services <--> Broker["RabbitMQ"]
+    Services --> Data["PostgreSQL · Redis · MinIO"]
 ```
+
+Clients ask **Beacon** for service endpoints, then communicate with individual services over gRPC. Services load their configuration from **Configuration**, publish asynchronous events through RabbitMQ, and use PostgreSQL, Redis, and MinIO where appropriate.
+
+## Start here
+
+| I want to… | Read |
+|---|---|
+| Run or build the backend | [.readme/backend.md](.readme/backend.md) |
+| Build the Android client | [.readme/clients/android.md](.readme/clients/android.md) |
+| Build the Windows client | [.readme/clients/windows.md](.readme/clients/windows.md) |
+| Build the macOS client | [.readme/clients/macos.md](.readme/clients/macos.md) |
+| Build the iOS client | [.readme/clients/ios.md](.readme/clients/ios.md) |
+| Build the Linux client | [.readme/clients/linux.md](.readme/clients/linux.md) |
+| Build the web client | [.readme/clients/web.md](.readme/clients/web.md) |
+| Browse all public guides | [.readme/README.md](.readme/README.md) |
+
+## Repository map
+
+```text
 BarkFluff/
-├── Backend/          # Все микросервисы (в т.ч. BarkFluff.Web — веб-клиент)
-│   ├── BarkFluff.{Service}/
-│   └── BarkFluff.GrpcServer/   # Общая инфраструктура (XAuth, Serilog, Metrics)
-├── Shared/           # Proto, Auth, Exceptions, Identity, Queue
-├── Frontend/Developers/  # React-фронтенд портала документации (сервис Developers)
-├── Android/          # Kotlin-клиент
-├── Windows/          # WPF-клиент + DBEditor
-├── Mac/              # SwiftUI macOS 26
-├── iOS/              # SwiftUI iOS 26
-├── Linux/            # Qt6 / C++20
-└── Obsidian/ClaudeVault/  # База знаний проекта
+├── Backend/       # .NET microservices and the web client host
+├── Shared/        # protobuf contracts and shared .NET libraries
+├── Android/       # Android V1 and experimental V2 clients
+├── Windows/       # WPF client and supporting tools
+├── Mac/           # SwiftUI macOS client and local Swift packages
+├── iOS/           # SwiftUI iOS client
+├── Linux/         # Qt 6 / C++20 client
+├── Frontend/      # developer portal frontend
+└── .readme/       # contributor-facing setup and build guides
 ```
 
-## Быстрый старт
+## Further documentation
 
-### Запуск backend (Docker)
+- [Backend ports and environment variables](Backend/PORTS_CONFIGURATION.md)
+- [Docker setup reference](Backend/DOCKER_SETUP.md)
+- [Metrics catalogue](Backend/METRICS.md)
+- [Project knowledge base](Obsidian/ClaudeVault/Index.md)
+- [MIT License](LICENSE)
 
-```bash
-cd Backend
-docker compose -f docker-compose-dev.yml up -d
-docker compose -f docker-compose-dev.yml ps
-```
+## Status
 
-Порядок зависимостей управляется через `depends_on`. Configuration запускается первым — все остальные сервисы ждут его готовности.
-
-### Сборка отдельного сервиса
-
-```bash
-dotnet build Backend/BarkFluff.{Service}/BarkFluff.{Service}.csproj
-```
-
-Требуется **.NET 10.0 SDK**. Подробности — [`Backend/DOTNET_SDK_REQUIREMENTS.md`](Backend/DOTNET_SDK_REQUIREMENTS.md).
-
-### Android
-
-```bash
-cd Android/Barkfluff.Client.Android
-./gradlew assembleDebug
-```
-
-### Windows (WPF)
-
-```bash
-dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
-```
-
-## Документация
-
-| Файл | Содержимое |
-|------|-----------|
-| [`Backend/PORTS_CONFIGURATION.md`](Backend/PORTS_CONFIGURATION.md) | Порты всех сервисов и переменные окружения |
-| [`Backend/DOCKER_SETUP.md`](Backend/DOCKER_SETUP.md) | Docker Compose, пример `.env`, команды отладки |
-| [`Backend/METRICS.md`](Backend/METRICS.md) | Реестр метрик (Seq / ServiceMetrics) |
-| [`Backend/DOTNET_SDK_REQUIREMENTS.md`](Backend/DOTNET_SDK_REQUIREMENTS.md) | Требования к .NET SDK, установка на Linux |
-| [`Backend/SECURITY_AUDIT_SUMMARY.md`](Backend/SECURITY_AUDIT_SUMMARY.md) | Результаты аудита безопасности (март 2026) |
-| `Obsidian/ClaudeVault/Index.md` | База знаний: архитектура, сервисы, клиенты |
-
-## CI/CD
-
-Каждый микросервис имеет отдельный workflow в `.github/workflows/build-backend-{service}.yml`. Трёхшаговая модель: проверка .NET SDK → Telegram-подтверждение → `dotnet publish` на self-hosted раннере + `docker build` из `Dockerfile.slim` → push в приватный registry.
+BarkFluff is under active development. The Android V1 client is the supported Android implementation; the Compose-based V2 project is experimental and should not be changed without an explicit task.
