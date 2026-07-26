@@ -107,6 +107,7 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 |------|-----------|
 | `RunSettings:Port` = 7027 / `Http1Port` = 7028 | gRPC + Bot REST API |
 | `BotsDb` | строка подключения БД `bots` |
+| `Redis` | общий rate-limit и распределённый polling-guard (без ключа сервис не стартует) |
 | `UsersService:Host/Token` | CreateBotUser/DeleteBotUser, профили, getUserInfo |
 | `MessagesService:Host/Token` | SendMessageServer |
 | `FilesService:Host/Token` | UploadFileServer (вложения), UploadAvatarServer (аватарки) |
