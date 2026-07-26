@@ -79,6 +79,12 @@ service BotsExternalApi {
   // Ссылка на скачивание оригинала файла по file_id из вложения update'а
   rpc GetFile(GetFileRequest) returns(GetFileResponse);
 
+  // Отредактировать своё сообщение (бот обязан быть автором)
+  rpc EditMessage(EditMessageRequest) returns(EditMessageResponse);
+
+  // Удалить своё сообщение (бот обязан быть автором)
+  rpc DeleteMessage(DeleteMessageRequest) returns(DeleteMessageResponse);
+
   // Подписка на входящие: backlog начиная с offset + live-стрим.
   // Одновременно допускается один активный стрим/поток getUpdates на бота.
   rpc SubscribeUpdates(SubscribeUpdatesRequest) returns(stream BotUpdate);
@@ -124,6 +130,28 @@ message GetUserInfoResponse {
   string avatar_url = 6;   // ссылка на аватарку
   bool is_bot = 7;         // является ли ботом
 }
+
+message EditMessageRequest {
+  int64 message_id = 1; // идентификатор редактируемого сообщения
+
+  string text = 2; // новый текст (≤4096)
+
+  // Новый список вложений: заменяет текущие целиком. Не передан = вложения будут сняты,
+  // поэтому при правке подписи к файлу его file_id нужно передать повторно.
+  repeated string file_ids = 3;
+}
+
+message EditMessageResponse {
+  int64 message_id = 1;                        // идентификатор сообщения
+  string text = 2;                             // текст после правки
+  google.protobuf.Timestamp edited_at = 3;     // время правки
+}
+
+message DeleteMessageRequest {
+  int64 message_id = 1; // идентификатор удаляемого сообщения
+}
+
+message DeleteMessageResponse { }
 
 message GetFileRequest {
   string file_id = 1; // идентификатор файла (из вложения входящего сообщения)

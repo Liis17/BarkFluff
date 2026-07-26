@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+using BarkFluff.Bots.Features.DeleteBotMessage;
+using BarkFluff.Bots.Features.EditBotMessage;
 using BarkFluff.Bots.Features.GetBotFile;
 using BarkFluff.Bots.Features.GetBotUpdates;
 using BarkFluff.Bots.Features.GetBotUserInfo;
@@ -43,6 +45,8 @@ public static class BotApiEndpoints
         group.MapGet("/getUpdates", GetUpdates);
         group.MapGet("/getUserInfo", GetUserInfo);
         group.MapGet("/getFile", GetFile);
+        group.MapPost("/editMessage", EditMessage);
+        group.MapPost("/deleteMessage", DeleteMessage);
     }
 
     private static async Task<IResult> GetMe(BotCallerContext callerContext, IMediator mediator)
@@ -159,6 +163,41 @@ public static class BotApiEndpoints
         });
     }
 
+    private static async Task<IResult> EditMessage(
+        BotCallerContext callerContext,
+        EditMessageBody body,
+        IMediator mediator)
+    {
+        var botId = callerContext.Bot.Id;
+
+        return await ExecuteAsync(async () =>
+        {
+            var message = await mediator.Send(new EditBotMessageCommand
+            {
+                BotId = botId,
+                MessageId = body.MessageId,
+                Text = body.Text ?? string.Empty,
+                FileIds = body.FileIds ?? [],
+            });
+
+            return BotApiResponse.Ok(message.ToHttpEditResult());
+        });
+    }
+
+    private static async Task<IResult> DeleteMessage(
+        BotCallerContext callerContext,
+        DeleteMessageBody body,
+        IMediator mediator)
+    {
+        var botId = callerContext.Bot.Id;
+
+        return await ExecuteAsync(async () =>
+        {
+            await mediator.Send(new DeleteBotMessageCommand { BotId = botId, MessageId = body.MessageId });
+            return BotApiResponse.Ok(true);
+        });
+    }
+
     private static async Task<IResult> GetFile(IMediator mediator, string? file_id = null)
     {
         return await ExecuteAsync(async () =>
@@ -214,6 +253,25 @@ public class SendMessageBody
 
     [JsonPropertyName("text")]
     public string? Text { get; set; }
+}
+
+public class EditMessageBody
+{
+    [JsonPropertyName("message_id")]
+    public long MessageId { get; set; }
+
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+
+    /// <summary>Заменяет вложения целиком; не передан — вложения будут сняты.</summary>
+    [JsonPropertyName("file_ids")]
+    public List<string>? FileIds { get; set; }
+}
+
+public class DeleteMessageBody
+{
+    [JsonPropertyName("message_id")]
+    public long MessageId { get; set; }
 }
 
 public class UpdateResult
