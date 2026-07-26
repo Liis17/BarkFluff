@@ -15,6 +15,8 @@ using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Identity;
 
 using MassTransit;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 
 namespace Barkfluff.AdminPanel;
 
@@ -44,6 +46,13 @@ public class Program
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
         builder.Services.Configure<LogsCompressionSettings>(builder.Configuration.GetSection(LogsCompressionSettings.SectionName));
         builder.Services.Configure<MailSettings>(builder.Configuration.GetSection(MailSettings.SectionName));
+        builder.Services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+            options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+        });
 
         // Register LiteDB DbContexts as Singletons
         builder.Services.AddSingleton<TokenDbContext>();
@@ -188,6 +197,7 @@ public class Program
         var app = builder.Build();
 
         // Configure the pipeline
+        app.UseForwardedHeaders();
         app.UseHttpsRedirection();
 
         // Serve favicon.ico before auth middleware (always accessible)

@@ -131,14 +131,37 @@
 
   // -------- Public sync helpers (called from page after auth check) --------
 
-  window.mdNavSetUser = function (name, meta) {
+  function setAvatar(avatar, name, avatarUrl) {
+    if (!avatar) return;
+    const initial = (name || 'A').trim().charAt(0).toUpperCase();
+    avatar.textContent = initial;
+    if (!avatarUrl) return;
+
+    const image = new Image();
+    image.alt = '';
+    image.src = avatarUrl;
+    image.onload = function () {
+      avatar.replaceChildren(image);
+    };
+  }
+
+  window.mdNavSetUser = function (user) {
+    if (!user || typeof user !== 'object') return;
     const a = document.getElementById('md-nav-avatar');
     const n = document.getElementById('md-nav-username');
     const m = document.getElementById('md-nav-usermeta');
-    if (n && name) n.textContent = name;
-    if (a && name) a.textContent = name.trim().charAt(0).toUpperCase();
-    if (m && meta) m.textContent = meta;
+    const username = user.adminUsername ? `@${user.adminUsername}` : 'Admin';
+    if (n) n.textContent = username;
+    if (m) m.textContent = user.name || '';
+    setAvatar(a, username, user.hasTelegramAvatar ? '/api/auth/me/avatar' : '');
   };
+
+  async function loadCurrentUser() {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) window.mdNavSetUser(await response.json());
+    } catch (e) {}
+  }
 
   // -------- Mobile off-canvas drawer --------
   function initMobileNav() {
@@ -181,6 +204,7 @@
     render(root);
     initS3Persistence();
     initMobileNav();
+    loadCurrentUser();
   }
 
   if (document.readyState === 'loading') {

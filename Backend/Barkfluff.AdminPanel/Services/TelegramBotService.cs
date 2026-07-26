@@ -208,6 +208,60 @@ public class TelegramBotService : IHostedService
         }
     }
 
+    public async Task<byte[]?> GetProfilePhotoAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var photos = await _botClient.GetUserProfilePhotos(telegramUserId, limit: 1, cancellationToken: cancellationToken);
+            var photo = photos.Photos.FirstOrDefault()?.OrderByDescending(item => item.FileSize).FirstOrDefault();
+            if (photo == null)
+                return null;
+
+            var file = await _botClient.GetFile(photo.FileId, cancellationToken);
+            await using var stream = new MemoryStream();
+            await _botClient.DownloadFile(file, stream, cancellationToken);
+            return stream.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not get Telegram profile photo for admin {TelegramUserId}", telegramUserId);
+            return null;
+        }
+    }
+
+    public async Task SendSessionSecurityAlertAsync(
+        AuthToken token,
+        string currentIpAddress,
+        string currentUserAgent,
+        CancellationToken cancellationToken)
+    {
+        if (!token.ApprovedByTelegramUserId.HasValue)
+            return;
+
+        var message = $"⚠️ <b>Необычная активность сессии</b>\n\n" +
+                      $"<b>Сессия:</b> {WebUtility.HtmlEncode(token.Name)}\n\n" +
+                      $"<b>При входе</b>\n" +
+                      $"IP: {WebUtility.HtmlEncode(token.IpAddress ?? "неизвестен")}\n" +
+                      $"Браузер: {WebUtility.HtmlEncode(token.UserAgent ?? "неизвестен")}\n\n" +
+                      $"<b>Сейчас</b>\n" +
+                      $"IP: {WebUtility.HtmlEncode(currentIpAddress)}\n" +
+                      $"Браузер: {WebUtility.HtmlEncode(currentUserAgent)}\n\n" +
+                      "Если это не вы, завершите сессию через «Мои сессии».";
+
+        try
+        {
+            await _botClient.SendMessage(
+                token.ApprovedByTelegramUserId.Value,
+                message,
+                parseMode: ParseMode.Html,
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not send session security alert to admin {TelegramUserId}", token.ApprovedByTelegramUserId.Value);
+        }
+    }
+
     public async Task SendAuthRequestAsync(PendingAuthRequest request)
     {
         if (request.TargetTelegramUserId.HasValue)

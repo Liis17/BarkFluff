@@ -28,6 +28,12 @@ public class AuthToken
     [BsonField("approved_by")]
     public long? ApprovedByTelegramUserId { get; set; }
 
+    [BsonField("last_security_alert_fingerprint")]
+    public string? LastSecurityAlertFingerprint { get; set; }
+
+    [BsonField("last_security_alert_at")]
+    public DateTime? LastSecurityAlertAt { get; set; }
+
     public AuthToken()
     {
         Id = Guid.NewGuid();

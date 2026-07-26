@@ -33,6 +33,10 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 Запрос на вход в Telegram дополнительно показывает исходный IP, чтобы администратор мог осознанно подтвердить либо отклонить сессию.
 
+Боковая панель MD3 берёт Telegram username и аватар из `/api/auth/me` и `/api/auth/me/avatar`; вторичной строкой отображается браузер/ОС сессии, а не дата её создания. Аватар проксируется через авторизованный endpoint, поэтому токен Telegram-бота не попадает в браузер.
+
+Перед аутентификацией применяется `ForwardedHeadersMiddleware` для подсети docker bridge `172.16.0.0/12`: nginx передаёт `X-Forwarded-For` и `X-Forwarded-Proto`, а сервис использует `RemoteIpAddress` как исходный IP. Если действующий токен используется с иного IP или User-Agent, бот отправляет владельцу Telegram-уведомление с исходным и новым окружением. Для одинакового нового окружения повторное уведомление ограничено одним в сутки.
+
 ### Data Layer (LiteDB, не EF Core)
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
