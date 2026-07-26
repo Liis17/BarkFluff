@@ -95,6 +95,9 @@
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
 
+        .service-update-row td { background: var(--md-warning-container); }
+        .update-available { color: var(--md-on-warning-container); font-size: 12px; font-weight: 600; }
+
         @media (max-width: 600px) {
             .tab-bar { flex-wrap: wrap; }
         }
@@ -174,6 +177,8 @@
                                 <tr>
                                     <th>Сервис</th>
                                     <th>Статус</th>
+                                    <th>Текущая версия</th>
+                                    <th>Последняя версия</th>
                                     <th>Последний лог</th>
                                     <th>Ошибки</th>
                                     <th>Событий</th>
@@ -181,7 +186,7 @@
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody">
-                                <tr><td colspan="6" class="empty-cell">
+                                <tr><td colspan="8" class="empty-cell">
                                     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
                                         <div class="md-loader-expressive" style="width:24px;height:24px;"></div>
                                         Загрузка сервисов...
@@ -317,14 +322,14 @@
             servicesData = await res.json();
             renderServicesTable();
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
         }
     }
 
     function renderServicesTable() {
         const tbody = document.getElementById('servicesTableBody');
         if (!servicesData.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">Сервисы не найдены</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">Сервисы не найдены</td></tr>`;
             return;
         }
         tbody.innerHTML = servicesData.map(svc => {
@@ -333,15 +338,24 @@
             const errBadge = (svc.errorCount || 0) > 0
                 ? `<span class="md-status md-status-error">${svc.errorCount}</span>`
                 : `<span class="md-status md-status-success">0</span>`;
+            const currentVersion = svc.currentVersion
+                ? `<span style="font-family:'Roboto Mono',monospace;">${escapeHtml(svc.currentVersion)}</span>`
+                : '<span style="color:var(--md-outline);">—</span>';
+            const latestVersion = svc.latestVersion
+                ? `<span style="font-family:'Roboto Mono',monospace;">${escapeHtml(svc.latestVersion)}</span>`
+                : '<span style="color:var(--md-outline);">—</span>';
             return `
-            <tr>
+            <tr class="${svc.updateAvailable ? 'service-update-row' : ''}">
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
                         <span class="msr size-18" style="color:var(--md-primary);">dns</span>
                         ${escapeHtml(svc.name)}
+                        ${svc.updateAvailable ? '<span class="update-available">Доступно обновление</span>' : ''}
                     </div>
                 </td>
                 <td>${statusBadgeHtml(svc.dockerState)}</td>
+                <td>${currentVersion}</td>
+                <td>${latestVersion}</td>
                 <td style="color:var(--md-on-surface-variant);font-size:12px;font-family:'Roboto Mono',monospace;">${svc.lastSeen ? formatRelativeTime(svc.lastSeen) : '<span style="color:var(--md-outline);">Нет данных</span>'}</td>
                 <td>${errBadge}</td>
                 <td><span class="md-status md-status-info">${svc.eventCount || 0}</span></td>
