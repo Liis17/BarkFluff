@@ -32,6 +32,7 @@ public class FederationInternalApiServiceTests
         public WellKnownDocumentService WellKnown { get; }
         public FakeWellKnownClient FakeWellKnown { get; } = new();
         public FakeNavigatorClient FakeNavigator { get; } = new();
+        public PresenceInterestRegistry PresenceInterest { get; } = new(TestHelpers.CreatePresenceOptions());
         public FederationInternalApiService Service { get; }
 
         public Fixture(IDictionary<string, string?>? configOverrides = null)
@@ -60,7 +61,8 @@ public class FederationInternalApiServiceTests
             var writer = new OutboxWriter(Context, signing, configuration, new MetricsCollector());
 
             Service = new FederationInternalApiService(
-                Context, configuration, signing, WellKnown, KeyCache, resolver, channelFactory, writer);
+                Context, configuration, signing, WellKnown, KeyCache, resolver, channelFactory, writer,
+                PresenceInterest, TestHelpers.CreatePresenceOptions());
         }
 
         public void Dispose()

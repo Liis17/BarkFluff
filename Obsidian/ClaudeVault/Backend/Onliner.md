@@ -174,7 +174,7 @@ Onliner начинает работать с remote-пользователями
 
 | RPC | Что делает |
 |-----|-----------|
-| `UpsertRemoteStatus(user_uuid, status, last_seen)` | пишет в кеш → публикует `OnlineStatusChangedEvent` (fan-out) → консюмер каждого инстанса рассылает `UserOnlineStatus` стримам, следящим за uuid |
+| `UpsertRemoteStatus(user_uuid, status, last_seen)` | пишет в кеш → публикует `OnlineStatusChangedEvent` (fan-out) → консюмер каждого инстанса рассылает `UserOnlineStatus` стримам, следящим за uuid. Вливает статусы [[Backend/Federation]] (`PresenceStreamManager`, этап 4.3) |
 | `InjectRemoteTyping(chat_id, user_uuid, action)` | публикует `TypingChangedEvent` (fan-out) → `TypingNotifier` ретранслирует `TypingEvent` подписчикам чата |
 | `GetLocalPresence(user_ids[])` | статусы **наших** пользователей для отдачи ноде-партнёру; **privacy применяется здесь** |
 

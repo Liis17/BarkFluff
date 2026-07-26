@@ -58,6 +58,13 @@ public static class TestHelpers
     public static SigningKeyService CreateSigningKeyService(FederationContext context, IConfiguration? configuration = null)
         => new(context, configuration ?? CreateConfiguration(), NullLogger<SigningKeyService>.Instance);
 
+    public static FederationSwitch CreateFederationSwitch(IConfiguration? configuration = null)
+        => new(configuration ?? CreateConfiguration());
+
+    /// <summary>Опции presence-моста (этап 4.3); по умолчанию — продовые дефолты.</summary>
+    public static PresenceOptions CreatePresenceOptions(IDictionary<string, string?>? overrides = null)
+        => new(CreateConfiguration(overrides));
+
     // Генерирует (или возвращает существующий) активный signing-ключ в InMemory-БД.
     public static async Task<FederationSigningKey> EnsureActiveKeyAsync(FederationContext context)
     {
@@ -105,8 +112,10 @@ public static class TestHelpers
             () => { });
 
     // ServerCallContext с UserState["xfed-origin"] — то, что XFedServerInterceptor кладёт после проверки.
-    public static ServerCallContext CreateCallContext(string? xfedOrigin = null)
-        => new TestServerCallContext(xfedOrigin);
+    public static ServerCallContext CreateCallContext(
+        string? xfedOrigin = null,
+        CancellationToken cancellationToken = default)
+        => new TestServerCallContext(xfedOrigin, cancellationToken);
 
     // Фоновые сервисы (диспетчер/janitor/refresh) выполняют первую итерацию сразу при StartAsync —
     // ждём наблюдаемый эффект в БД вместо фиксированного Sleep.
