@@ -69,7 +69,7 @@ public static class StickersEndpoints
                     StickerIds = { coverStickerIds }
                 });
                 foreach (var s in stickersResponse.Stickers)
-                    coverFileIds[s.Id] = !string.IsNullOrEmpty(s.PreviewFileId) ? s.PreviewFileId : s.FileId;
+                    coverFileIds[s.Id] = s.FileId;
             }
 
             var packs = response.Packs.Select(p =>
@@ -183,7 +183,7 @@ public static class StickersEndpoints
                 var coverSticker = response.Stickers.FirstOrDefault(s => s.Id == pack.CoverStickerId);
                 if (coverSticker != null)
                 {
-                    var coverId = !string.IsNullOrEmpty(coverSticker.PreviewFileId) ? coverSticker.PreviewFileId : coverSticker.FileId;
+                    var coverId = coverSticker.FileId;
                     coverUrl = ProxyUrl(coverId);
                 }
             }
