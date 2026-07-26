@@ -11,6 +11,21 @@ public static class BotMessageMapping
         SentAt = message.SentAt,
     };
 
+    public static EditMessageResponse ToEditMessageResponse(this Proto.Shared.Message message) => new()
+    {
+        MessageId = message.Id,
+        Text = message.Content?.Text ?? string.Empty,
+        EditedAt = message.EditedAt,
+    };
+
+    /// <summary>editMessage для HTTP Bot API.</summary>
+    public static object ToHttpEditResult(this Proto.Shared.Message message) => new
+    {
+        message_id = message.Id,
+        text = message.Content?.Text ?? string.Empty,
+        edited_at = message.EditedAt?.Seconds ?? 0,
+    };
+
     /// <summary>sendMessage/sendPhoto/sendDocument для HTTP Bot API (Telegram-like JSON).</summary>
     public static object ToHttpMessageResult(this Proto.Shared.Message message, string? chatId) => new
     {
