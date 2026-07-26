@@ -13,7 +13,7 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 
 ## Структура проекта (эталон Identity/Users/Files)
 
-- `Features/` — CQRS (MediatR): admin (`CreateSystemBot`, `ListBots`, `DeleteBot`, `RegenerateToken`) + внешний API (`GetMe`, `SendBotMessage`, `SendBotFile`, `GetBotUserInfo`, `GetBotUpdates`)
+- `Features/` — CQRS (MediatR): admin (`CreateSystemBot`, `ListBots`, `DeleteBot`, `RegenerateToken`) + внешний API (`GetMe`, `SendBotMessage`, `SendBotFile`, `EditBotMessage`, `DeleteBotMessage`, `GetBotFile`, `GetBotUserInfo`, `GetBotUpdates`, `SetMyCommands`, `GetMyCommands`)
 - `Host/` — `BotsServerApiService`, `BotsExternalApiService` + `BotAuthInterceptor`; `Http/` — `BotApiEndpoints`, `BotAuthEndpointFilter`, `BotApiResponse`
 - `Services/` — `BotRegistryCache`, `BotAccessValidator`, `BotCallerContext`, `IBotRateLimiter`/`RedisBotRateLimiter`, `IBotPollingGuard`/`RedisBotPollingGuard`, `BotUpdateNotifier`, `UpdateJsonMapper`, `BotFather/`; hosted: `SystemBotsSeeder`, `BotsCleanupService`
 - `Infrastructure/` — только `BotTokenIssuer` (обёртка gRPC-клиента [[Backend/Identity]])
@@ -38,6 +38,9 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 - **Приём входящих**: второй consumer `NewMessageEvent` (очередь `new-messages-bots-handler`, competing — сохраняет update один раз, [[Backend/Updates]] не затронут). Пересечение `ChatMembers` с реестром ботов (исключая отправителя) → `BotUpdates` (jsonb payload, Telegram-like) + публикация fan-out `BotUpdateSignalEvent`; консьюмер на каждом инстансе будит свои локальные waiter'ы `BotUpdateNotifier` (TaskCompletionSource per bot) — сигнал доходит до poller'а на любом инстансе (update шарится через БД).
 - **`getUpdates(offset)`** подтверждает и удаляет строки `< offset`. Ретеншн: `BotsCleanupService` раз в час (BotUpdates >24ч, BotFatherSessions >30 мин).
 - **Лимиты**: `IBotRateLimiter`/`RedisBotRateLimiter` — 30 req/s на бота, общий счётчик на все инстансы через Redis `INCR` (иначе 30×N); `IBotPollingGuard`/`RedisBotPollingGuard` — один активный поток getUpdates/SubscribeUpdates на бота глобально через распределённый лок `SET pollguard:{botId} NX EX` (TTL 90с переживает падение инстанса, долгие стримы продлевают его). Квота хранилища вложений бота — 1 ГБ (проверка перед `UploadFileServer`).
+- **Правка и удаление своих сообщений**: `EditMessage`/`DeleteMessage` идут в [[Backend/Messages]] через `EditMessageServer`/`DeleteMessageServer` (тот же паттерн `sender_user_id`, что у `SendMessageServer`). Авторство проверяет Messages — по чужому `message_id` бот получит `NoPermission`, поэтому `chat_id` в запросе не нужен. Метод назван `editMessage`, а **не** `editMessageText`: Messages заменяет вложения переданным списком, так что правка без `file_ids` их снимает (forwarded-вложения сохраняются).
+- **`getFile`**: вложения не отдаются по прямому `file_id` — `DownloadFile` в [[Backend/Files]] пропускает только аватарки, картинки чата и постеры. Поэтому бот получает временную ссылку через `GetTempDownloadUrlServer` (серверный аналог `GetTempDownloadUrl`, добавлен для Bots), а имя и размер — из `GetFileData`. Проверки «файл приходил именно этому боту» нет — доступ ровно тот же, что у обычного пользователя платформы.
+- **Команды бота**: `SetMyCommands` заменяет список целиком (пустой очищает) и хранит его в jsonb-колонке `Bots.Commands`, `GetMyCommands` читает из `BotRegistryCache`. Запись идёт через `BotRegistryCache.Set` — он же рассылает fan-out инвалидацию, иначе другие инстансы отдавали бы старый список. Валидация Telegram-совместимая: имя `^[a-z0-9_]{1,32}$`, описание 1–256, ≤100 команд, без дублей.
 - **Бот не пишет первым**: чат бот↔пользователь создаётся только когда пользователь напишет боту; авторизацию отправки делает `SendMessageServer` в [[Backend/Messages]] (членство при `chat_id`, запрет авто-DM при `user_id`). Исключение — системные боты (`allow_chat_creation`, login-notifier).
 
 ## Системные боты (in-process, не под rate-limit, без внешнего токена)
@@ -53,7 +56,7 @@ Consumer дополнительно пропускает события, где 
 
 ## Схема БД (`bots`, BotsContext)
 
-- `Bots`: Id (= Users.Id), OwnerUserId (NULL = системный), Username, Name, TokenId (uuid выпуска bot-JWT, для отзыва), SystemRole (unique partial index ≠0), LastConfirmedUpdateId, CreatedAt.
+- `Bots`: Id (= Users.Id), OwnerUserId (NULL = системный), Username, Name, TokenId (uuid выпуска bot-JWT, для отзыва), SystemRole (unique partial index ≠0), LastConfirmedUpdateId, Commands (jsonb-массив `{command, description}`, NULL = команд нет), CreatedAt.
 - `BotUpdates`: Id (IDENTITY = update_id), BotId (FK CASCADE), Payload jsonb, CreatedAt; index (BotId, Id).
 - `BotFatherSessions`: UserId PK, State, ContextBotId, PendingName, UpdatedAt.
 
@@ -74,6 +77,10 @@ Consumer дополнительно пропускает события, где 
 |-----|-----------|
 | `GetMe` | Информация о боте |
 | `SendMessage(oneof chat_id/user_id, text, file_ids)` | Отправка (только в чаты, где бот состоит) |
+| `EditMessage(message_id, text, file_ids)` | Правка своего сообщения (авторство проверяет Messages) |
+| `DeleteMessage(message_id)` | Удаление своего сообщения |
+| `GetFile(file_id)` | Временная ссылка на оригинал вложения + имя и размер |
+| `SetMyCommands(commands)` / `GetMyCommands` | Список команд бота (замена целиком) |
 | `GetUserInfo(oneof user_id/username)` | Публичный профиль + `is_bot` (privacy применяет Users) |
 | `SubscribeUpdates(offset) → stream BotUpdate` | Подтверждение по offset + backlog + live |
 
@@ -86,6 +93,11 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 | `GET /bot/getMe` | — | `{id, is_bot, first_name, username}` |
 | `POST /bot/sendMessage` (JSON) | `chat_id`/`user_id`, `text` ≤4096 | message-объект |
 | `POST /bot/sendPhoto`, `/bot/sendDocument` (multipart) | `file` + `chat_id`/`user_id` + `caption?` | message + вложение |
+| `POST /bot/editMessage` (JSON) | `message_id`, `text`, `file_ids?` | `{message_id, text, edited_at}` |
+| `POST /bot/deleteMessage` (JSON) | `message_id` | `true` |
+| `GET /bot/getFile` | `file_id=` | `{file_id, file_name, file_size, file_url}` |
+| `POST /bot/setMyCommands` (JSON) | `commands: [{command, description}]` | `true` |
+| `GET /bot/getMyCommands` | — | массив `{command, description}` |
 | `GET /bot/getUpdates` | `offset?`, `limit?=100`, `timeout?≤50` (long-poll) | массив update'ов |
 | `GET /bot/getUserInfo` | `user_id=` / `username=` | публичный профиль |
 
@@ -110,8 +122,8 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 ## Зависимости
 
 - **[[Backend/Users]]** — `CreateBotUser` (идемпотентен, IsBot=true, без UserContact), `DeleteBotUser`, `GetById`/`GetUserByUsername`, `UpdateProfileServer`, `SetProfilePictureServer`.
-- **[[Backend/Messages]]** — `SendMessageServer` (sender = бот; авторизация отправки внутри), `NewMessageEvent` (второй consumer).
-- **[[Backend/Files]]** — `UploadFileServer` (полный пайплайн), `UploadAvatarServer`, `GetFileData`, `GetUserStorageInfoServer` (квота 1 ГБ).
+- **[[Backend/Messages]]** — `SendMessageServer` (sender = бот; авторизация отправки внутри), `EditMessageServer`/`DeleteMessageServer` (авторство внутри), `NewMessageEvent` (второй consumer).
+- **[[Backend/Files]]** — `UploadFileServer` (полный пайплайн), `UploadAvatarServer`, `GetFileData`, `GetTempDownloadUrlServer` (getFile), `GetUserStorageInfoServer` (квота 1 ГБ).
 - **[[Backend/Identity]]** — `CreateBotTokenServer` (выпуск bot-JWT); публикует `EmailNotification` (SuccessfulLogin) для login-notifier.
 - **[[Backend/Beacon]]** — отдаёт `Service bots = 15` в `GetServerInfoResponse`.
 
@@ -119,3 +131,5 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 
 - Webhook-доставка входящих (только long-poll + gRPC-стрим).
 - Клиентский бейдж «bot» (поле `is_bot` в proto уже есть — клиентская задача вне плана).
+- Автоподсказка команд в клиентах: `setMyCommands`/`getMyCommands` уже хранят список, но UI его не показывает (клиентская задача).
+- Типы update'ов кроме `message`: нет `chat_member` (бот не узнаёт о добавлении в группу) и `edited_message`.
