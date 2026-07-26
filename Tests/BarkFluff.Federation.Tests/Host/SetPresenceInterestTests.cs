@@ -57,6 +57,7 @@ public class SetPresenceInterestTests
                 NullLogger<PeerCapabilityCache>.Instance),
             new MetricsCollector(),
             new FederatedFileOptions(configuration),
+                new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
             NullLogger<FederationInternalApiService>.Instance);
 
         return new Harness(service, registry);

@@ -408,6 +408,23 @@ public class ConfigurationDefaultsPopulator
             return "20971520"; // 20 МБ
         }
 
+        // --- Files: Retry-After при недоступном origin (этап 3.5) ---
+        if (config.Section == "Files" && config.Key == "FedRetryAfterSeconds")
+        {
+            return "30";
+        }
+
+        // --- Federation: circuit breaker скачивания per-origin (этап 3.5) ---
+        if (config.Section == "Federation" && config.Key == "RemoteFileCircuitFailures")
+        {
+            return "3";
+        }
+
+        if (config.Section == "Federation" && config.Key == "RemoteFileCircuitOpenSeconds")
+        {
+            return "60";
+        }
+
         // --- OnlinerService (inter-service, для Federation: presence/typing-мост) ---
         if (config.Section == "OnlinerService")
         {
