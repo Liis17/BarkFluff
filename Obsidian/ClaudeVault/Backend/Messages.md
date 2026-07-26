@@ -70,6 +70,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 
 `MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, OutgoingMessage, allow_chat_creation)` — отправка от имени пользователя (вызывает [[Backend/Bots]]). `SendMessageCommand.SenderId` параметризует отправителя (null = клиентский путь из UserContext); переиспользуется вся логика (вложения, лимиты, `NewMessageEvent`). В серверном пути **авто-создание личного чата запрещено** (бот не пишет первым), кроме `allow_chat_creation=true` (системные боты, login-notifier). Членство отправителя в чате проверяется как обычно (`CheckAccessToChat` с senderId).
 
+`MessagesServerApi.EditMessageServer(sender_user_id, message_id, text, files_ids)` и `DeleteMessageServer(sender_user_id, message_id)` — правка и удаление от имени пользователя (вызывает [[Backend/Bots]]). Тот же приём, что у `SendMessageServer`: `EditMessageCommand.SenderId`/`DeleteMessageCommand.SenderId` параметризуют автора (null = клиентский путь из UserContext), вся остальная логика переиспользуется. **Проверка авторства не ослабляется** — `message.SenderId != senderId` по-прежнему даёт `NoPermissionException`, поэтому по чужому `message_id` бот ничего не сделает и `chat_id` в запросе не нужен.
+
 ### Исходящие gRPC-клиенты
 
 - **Users** (`UsersServerApiClient`) — `GetByIdAsync`, `ListByIdsAsync` для имён/аватаров (токен `UsersService:Token`)

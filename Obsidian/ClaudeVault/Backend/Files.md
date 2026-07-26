@@ -30,6 +30,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - `UploadAvatarServer` — аватар от имени пользователя
 - `UploadPosterServer` — постер профиля (UserProfilePoster) от имени пользователя для админ-панели
 - `UploadFileServer(data, filename, file_type, owner_user_id)` — загрузка файла от имени пользователя (для [[Backend/Bots]]); переиспользует полный пайплайн `UploadFileCommand`: детекция типа, компрессия, превью, дедупликация → `{file_id, preview_url, file_size}`
+- `GetTempDownloadUrlServer(file_ids)` — временные ссылки на скачивание (для [[Backend/Bots]], метод `getFile`); обёртка над тем же `GetTempDownloadUrlCommand`, что и клиентский `GetTempDownloadUrl`. Нужен потому, что вложения сообщений по прямому `file_id` через `/download/{fileId}` **не отдаются** — там пропускаются только `UserAvatar`, `ChatPicture`, `UserProfilePoster`
 - `GetUserStorageInfoServer` — хранилище по userId
 - Стикеры (управление): `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
 
