@@ -65,6 +65,8 @@ public class ListChatAttachmentsCommandHandler : IRequestHandler<ListChatAttachm
 
         // Collect FileIds for batch request to Files service
         var fileIds = attachments
+            // Federated-вложения рендерятся из снапшота (этап 3.1) — Files не дёргаем.
+            .Where(a => a.OriginServer is null)
             .Select(a => a.FileId)
             .Distinct()
             .ToList();
@@ -107,8 +109,16 @@ public class ListChatAttachmentsCommandHandler : IRequestHandler<ListChatAttachm
                     FileId = attachment.FileId,
                     PreviewUrl = attachment.PreviewUrl ?? string.Empty,
                     AttachmentSize = attachment.FileSize,
-                    PreviewFileId = fileInfo?.PreviewFileId ?? string.Empty,
-                    FileName = fileInfo?.FileName ?? string.Empty
+                    OriginServer = attachment.OriginServer ?? string.Empty,
+                    // Для federated-вложения метаданные из снапшота, для локального — из Files.
+                    PreviewFileId = attachment.OriginServer is null
+                        ? fileInfo?.PreviewFileId ?? string.Empty
+                        : attachment.PreviewFileId ?? string.Empty,
+                    FileName = attachment.OriginServer is null
+                        ? fileInfo?.FileName ?? string.Empty
+                        : attachment.FileName ?? string.Empty,
+                    ImageWidth = attachment.ImageWidth ?? 0,
+                    ImageHeight = attachment.ImageHeight ?? 0,
                 }
             });
         }

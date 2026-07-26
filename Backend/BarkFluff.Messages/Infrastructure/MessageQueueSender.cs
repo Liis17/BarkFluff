@@ -82,7 +82,8 @@ public class MessageQueueSender
         Guid? initiatorUuid,
         Guid? inviteeUuid,
         string? senderFid,
-        DateTimeOffset? lastChangeAt = null)
+        DateTimeOffset? lastChangeAt = null,
+        List<FederatedFileRefInfo>? federatedAttachments = null)
     {
         var newMessageEvent = new NewMessageEvent
         {
@@ -98,6 +99,8 @@ public class MessageQueueSender
             InviteeUuid = inviteeUuid,
             SenderFid = senderFid,
             LastChangeAt = lastChangeAt,
+            // Снапшот метаданных вложений (этап 3.1) — байты остаются у нас.
+            FederatedAttachments = federatedAttachments,
         };
 
         await _publishEndpoint.Publish(newMessageEvent);
@@ -118,7 +121,8 @@ public class MessageQueueSender
         Guid? federatedId = null,
         Guid? senderUuid = null,
         List<FederatedParticipant>? remoteParticipants = null,
-        DateTimeOffset? lastChangeAt = null)
+        DateTimeOffset? lastChangeAt = null,
+        List<FederatedFileRefInfo>? federatedAttachments = null)
     {
         var editedEvent = new MessageEditedEvent()
         {
@@ -130,6 +134,8 @@ public class MessageQueueSender
             SenderUuid = senderUuid,
             RemoteParticipants = remoteParticipants ?? new List<FederatedParticipant>(),
             LastChangeAt = lastChangeAt,
+            // При правке список пересоздаётся целиком (docs/rearch/05-chat-replication.md).
+            FederatedAttachments = federatedAttachments,
         };
 
         await _publishEndpoint.Publish(editedEvent);

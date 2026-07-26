@@ -317,3 +317,41 @@ FederatedChatPeer    { string user_uuid; string server_name; }
 - `requesting_server` канонизируется (`Trim().ToLowerInvariant()`) — `ChatMember.ServerName` хранится уже в канонической форме (2.3).
 
 Это **не** privacy-фильтр: privacy (`OnlineVisibility`) применяет владелец данных — [[Backend/Onliner]], этап 4.2.
+
+## Снапшот метаданных federated-вложений (этап 3.1, docs/rearch/phase-3/step-3.1-file-ref-snapshot.md)
+
+**Файлы между нодами не реплицируются** — байты живут только на origin-ноде. Реплицируется снапшот метаданных, чтобы принимающая нода отрисовала сообщение (имя, размер, тип, превью, размеры картинки) **без единого сетевого похода** на чужую ноду. Сами байты тянутся отдельно и только когда пользователь реально открывает вложение (этапы 3.2/3.3).
+
+### Колонки `MessageAttachments`
+
+| Колонка | Смысл |
+|---------|-------|
+| `OriginServer` | NULL = локальный файл (прежнее поведение), NOT NULL = байты на origin |
+| `FileName` | снапшот имени; у локальных filename по-прежнему из Files при рендере |
+| `PreviewFileId`, `ImageWidth`, `ImageHeight` | остальной снапшот |
+
+Плюс индекс `IX_MessageAttachments_FileId` — проверки доступа к fed-файлу (3.2/3.3) ищут вложение по `FileId`, без него это seq scan по всем вложениям ноды на каждое скачивание. Миграция — `20260728010000_AddFederatedAttachmentSnapshot`, backfill не нужен (существующие строки локальные, новые колонки NULL).
+
+### Исходящий путь
+
+`SendMessageCommandHandler` / `EditMessageCommandHandler` для fed-чата собирают `FederatedFileRefInfo[]` через `Features.Federation.FederatedAttachmentMapper` — **переиспользуя уже полученный ответ `GetFilesData`**, второго вызова ради федерации не делается. Список едет в `NewMessageEvent.FederatedAttachments` / `MessageEditedEvent.FederatedAttachments`, оттуда консюмеры [[Backend/Federation]] маппят его в `FederatedFileRef` S2S-события. Локальные `MessageAttachments` при отправке не меняются: снапшот-колонки заполняются только на приёме.
+
+Forwarded-вложения в снапшот не попадают: forward-структура федерируется внутри самого сообщения и отдельным файловым ref'ом не является.
+
+### Импорт
+
+`FederatedAttachmentImporter` валидирует снапшот и превращает его в строки `MessageAttachments`. Снапшот приходит с чужой ноды, поэтому доверять ему нельзя — всё, что не проходит проверку, отклоняется **permanent** (`FederatedAttachmentInvalidException` → REJECTED), а не RETRY: повторная доставка того же битого события ничего не исправит и только зациклит outbox отправителя.
+
+Проверяется: количество ≤ 10, `origin_server` непустой, `file_id`/`preview_file_id` парсятся как Guid (пустой preview допустим), `0 ≤ size_bytes ≤ 512 МБ`, `attachment_type` — известное значение enum, `filename` ≤ 255 символов.
+
+`ApplyFederatedEdit` **пересоздаёт список целиком** (как локальная правка): старые строки очищаются in-place, новые вставляются. Валидация снапшота идёт до LWW-разрешения — битый снапшот отклоняется независимо от того, выиграет ли эта правка.
+
+### Выдача
+
+`MessageContentMapping`: вложение с `OriginServer != null` собирается **из снапшота**, `filesInfoMap` для него игнорируется даже если там случайно нашёлся тот же `file_id`. `preview_url` не заполняется — превью тянется с origin по требованию, контракт ссылки появится в 3.3.
+
+Батч `GetFilesData` во **всех** путях выдачи фильтрует remote-вложения (`OriginServer == null`): `ListMessages`, `ListChats`, `ListChatAttachments`, `ListPinnedMessages`, `PinMessage`. Files о federated-файлах не спрашивают вообще — их там нет.
+
+`shared.proto`: `MessageAttachment.origin_server = 11` (пусто = локальный) — нужен клиентам (Фаза 5) и temp-выдаче (3.3).
+
+> Побочное наблюдение (не чинилось в этом этапе): при рендере **локальных** вложений `ImageWidth`/`ImageHeight` из `UploadFileInfo` теряются в маппинге. Дефект несвязанный и существовал до федерации.

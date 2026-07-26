@@ -15,6 +15,22 @@ public class MessageAttachment
 
     public long FileSize { get; set; }
 
+    // ---- Снапшот метаданных federated-вложения (этап 3.1, docs/rearch/06-files.md) ----
+    // Файлы не реплицируются: байты живут только на origin-ноде. Реплицируется снапшот
+    // метаданных, чтобы сообщение рендерилось без единого сетевого похода на чужую ноду.
+
+    /// <summary>NULL = локальный файл (существующее поведение); NOT NULL = байты на origin-ноде.</summary>
+    public string? OriginServer { get; set; }
+
+    /// <summary>Снапшот имени. Только для remote — у локальных filename берётся из Files при рендере.</summary>
+    public string? FileName { get; set; }
+
+    public string? PreviewFileId { get; set; }
+
+    public int? ImageWidth { get; set; }
+
+    public int? ImageHeight { get; set; }
+
     public string? ForwardedAuthorName { get; set; }
 
     public long? ForwardedOriginalMessageId { get; set; }
