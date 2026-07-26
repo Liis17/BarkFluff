@@ -1,3 +1,5 @@
+using BarkFluff.Bots.Features.DeleteBotMessage;
+using BarkFluff.Bots.Features.EditBotMessage;
 using BarkFluff.Bots.Features.GetBotFile;
 using BarkFluff.Bots.Features.GetBotUserInfo;
 using BarkFluff.Bots.Features.GetMe;
@@ -78,6 +80,26 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         {
             UserId = request.UserCase == GetUserInfoRequest.UserOneofCase.UserId ? request.UserId : null,
             Username = request.UserCase == GetUserInfoRequest.UserOneofCase.Username ? request.Username : null,
+        }, context.CancellationToken);
+
+    public override async Task<EditMessageResponse> EditMessage(EditMessageRequest request, ServerCallContext context)
+    {
+        var message = await _mediator.Send(new EditBotMessageCommand
+        {
+            BotId = _callerContext.Bot.Id,
+            MessageId = request.MessageId,
+            Text = request.Text ?? string.Empty,
+            FileIds = request.FileIds.ToList(),
+        }, context.CancellationToken);
+
+        return message.ToEditMessageResponse();
+    }
+
+    public override Task<DeleteMessageResponse> DeleteMessage(DeleteMessageRequest request, ServerCallContext context)
+        => _mediator.Send(new DeleteBotMessageCommand
+        {
+            BotId = _callerContext.Bot.Id,
+            MessageId = request.MessageId,
         }, context.CancellationToken);
 
     public override Task<GetFileResponse> GetFile(GetFileRequest request, ServerCallContext context)
