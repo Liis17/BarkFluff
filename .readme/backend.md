@@ -13,7 +13,7 @@
 The tracked backend stack lives in `docker/backend/docker-compose-dev-backend.yml`. It deploys prebuilt images; it is not a source-build compose file.
 
 1. Obtain the environment configuration and credentials for the target environment. They must stay outside Git.
-2. Create `docker/backend/.env` with the required values and provide `docker/backend/livekit/` when Calls are enabled.
+2. Create `docker/backend/.env` with the required values and provide the LiveKit configuration from `docker/livekit/livekit.yaml` when Calls are enabled.
 3. Authenticate to the private registry, validate the resolved configuration, then start the stack:
 
 ```bash

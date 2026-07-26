@@ -1,7 +1,7 @@
 version: '3.8'
 
 # Второй узел для двух-нодового стенда XFed (docs/rearch/phase-1/step-1.3-xfed-signing.md,
-# Изменение 7.2). Нода 1 — обычный dev-стек (Backend/docker-compose-dev.yml, сервисы postgres/
+# Изменение 7.2). Нода 1 — обычный dev-стек (docker/backend/docker-compose-dev-backend.yml, сервисы postgres/
 # configuration/federation). Нода 2 — этот файл, отдельные контейнеры/volume/порты, общая сеть
 # barkfluff-network (объявлена в основном файле — здесь не переопределяется).
 #

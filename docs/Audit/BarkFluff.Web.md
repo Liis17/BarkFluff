@@ -75,8 +75,8 @@ BarkFluff.Web — веб-версия мессенджера (порт 7016): о
 ## Docker / nginx
 
 ### D1. Два расходящихся `web.conf`; развёрнутый — без security-заголовков и без CSP — Low
-**Файл:** `Backend/nginx/web.conf` (монтируется в Docker — заголовков безопасности НЕТ) vs `Backend/BarkFluff.Web/nginx/web.conf:111-114` (есть `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`)
-**Проблема:** В репозитории два конфига для `web.barkfluff.com`. Тот, что реально используется в docker-compose-стеке (`Backend/nginx/web.conf`), не добавляет ни одного security-заголовка; эталонный standalone-конфиг (`Backend/BarkFluff.Web/nginx/web.conf`, upstream 127.0.0.1) их добавляет, но `X-Frame-Options: SAMEORIGIN` конфликтует с `DENY`, который выставляет приложение. CSP отсутствует в обоих.
+**Файл:** `docker/nginx/web.conf` (монтируется в Docker — заголовков безопасности НЕТ) vs `Backend/BarkFluff.Web/nginx/web.conf:111-114` (есть `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`)
+**Проблема:** В репозитории два конфига для `web.barkfluff.com`. Тот, что реально используется в docker-compose-стеке (`docker/nginx/web.conf`), не добавляет ни одного security-заголовка; эталонный standalone-конфиг (`Backend/BarkFluff.Web/nginx/web.conf`, upstream 127.0.0.1) их добавляет, но `X-Frame-Options: SAMEORIGIN` конфликтует с `DENY`, который выставляет приложение. CSP отсутствует в обоих.
 **Почему это проблема:** Расхождение конфигов запутывает; в проде заголовки держатся только на middleware приложения (Program.cs), а nginx-слой их не дублирует/не усиливает. Нет CSP ни там, ни там (см. S3).
 **Рекомендация:** Свести к одному источнику истины; добавить CSP. Решить, где задаются security-заголовки (приложение или nginx), и убрать конфликт по `X-Frame-Options`.
 
@@ -87,7 +87,7 @@ BarkFluff.Web — веб-версия мессенджера (порт 7016): о
 **Рекомендация:** Закрепить и проверять контрольные суммы скачанных бинарников (`echo "<sha256>  file" | sha256sum -c`).
 
 ### Позитив
-- gRPC-Web `location` (`^/barkfluff\.`) корректно отключает `proxy_buffering off` (`Backend/nginx/web.conf:60, 82`) и поднимает таймауты до 24 ч для стримов — согласовано с настройками приложения.
+- gRPC-Web `location` (`^/barkfluff\.`) корректно отключает `proxy_buffering off` (`docker/nginx/web.conf:60, 82`) и поднимает таймауты до 24 ч для стримов — согласовано с настройками приложения.
 - Финальный образ под непривилегированным `$APP_UID`, есть healthcheck (Dockerfile:70-78). Alpine выбран осознанно (нужен `wget` для healthcheck).
 - В `appsettings.json` секретов нет; хосты backend-сервисов берутся из окружения (docker-compose-dev.yml:147-153).
 - Сервис `web` в docker-compose НЕ публикует порты наружу — доступен только через nginx (docker-compose-dev.yml:143-163).

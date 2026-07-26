@@ -80,7 +80,7 @@
 ## Docker
 
 ### D1. Dockerfile для Rust-сервиса отсутствует — Low (информационно)
-**Файл:** директория `Backend/BarkFluff.Users.Rust/` (Dockerfile не найден); в `Backend/docker-compose-dev.yml` и `docker-compose-master.yml` сервис `Users.Rust` не зарегистрирован.
+**Файл:** директория `Backend/BarkFluff.Users.Rust/` (Dockerfile не найден); в `docker/backend/docker-compose-dev-backend.yml` и `docker-compose-master.yml` сервис `Users.Rust` не зарегистрирован.
 **Проблема:** у Rust-порта нет Dockerfile и он не подключён к docker-compose, в отличие от остальных backend-сервисов. Аудит образа (пользователь контейнера, базовый образ, multi-stage) провести не на чем.
 **Почему это проблема:** не уязвимость, но пробел в развёртывании: сервис не контейнеризован наравне с .NET-сервисами; при добавлении Dockerfile стоит сразу заложить непривилегированного пользователя и distroless/chiseled-базу (как `10.0-noble-chiseled` у .NET-сервисов).
 **Рекомендация:** при выводе в прод добавить multi-stage Dockerfile (build на `rust:*`, runtime на distroless/chiseled, non-root USER) и запись в docker-compose.

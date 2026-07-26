@@ -110,7 +110,7 @@
 **Фаза 7 — AdminPanel**: `Endpoints/BotsEndpoints.cs` (GET/POST `/api/bots`, regenerate-token, DELETE), регистрация + gRPC-клиент BotsServerApi (`BotsService:Host/Token`), актуальная MD3-страница `Pages/v2/bots.html` и пункт навигации. `/api/users` и операции раздела «Юзеры» исключают bot-аккаунты; ими управляет только `/bots`.
 Проверка: создать системного бота из админки, увидеть токен один раз, перегенерировать, удалить.
 
-**Фаза 8 — Beacon, nginx, docker, CI**: `beacon_api.proto` `bots=15` + фетч в `GetServerInfoCommandHandler`; `Backend/nginx/bots.conf` (образец `files.conf`: `~ ^/bot/` → http 7028, остальное `/` → grpc 7027, `client_max_body_size 50m`, `proxy_read_timeout 90s` под long-poll; токен в заголовке `X-Bot-Token`, в URL/логи не попадает); docker-compose-master/dev + sample.env; workflow `build-backend-bots.yml` (копия calls).
+**Фаза 8 — Beacon, nginx, docker, CI**: `beacon_api.proto` `bots=15` + фетч в `GetServerInfoCommandHandler`; `docker/nginx/bots.conf` (образец `files.conf`: `~ ^/bot/` → http 7028, остальное `/` → grpc 7027, `client_max_body_size 50m`, `proxy_read_timeout 90s` под long-poll; токен в заголовке `X-Bot-Token`, в URL/логи не попадает); docker-compose-master/dev + sample.env; workflow `build-backend-bots.yml` (копия calls).
 Проверка: docker compose dev поднимается; Beacon отдаёт bots; через nginx `curl -H "X-Bot-Token: …" https://bots.<domain>/bot/getMe`.
 
 **Фаза 9 — Obsidian**: `Obsidian/ClaudeVault/Backend/Bots.md` + ссылка в `Index.md`; обновить `Backend/Users.md` (IsBot, CreateBotUser, суффикс), `Backend/Messages.md` (SendMessageServer), `Backend/Files.md` (UploadFileServer), `Shared/Proto.md`, `Backend/AdminPanel.md`, `Архитектура.md` (порт 7027).

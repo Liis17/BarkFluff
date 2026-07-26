@@ -18,55 +18,55 @@ Docker-инфраструктура в целом построена грамо�
 ## Безопасность
 
 ### S1. Admin-panel: root + /var/run/docker.sock = root-эквивалент хоста — Critical
-**Файл:** `Backend/docker-compose-master.yml:146` (`user: root`), `:178` (docker.sock); `Backend/docker-compose-dev.yml:184`, `:228`
+**Файл:** `Backend/docker-compose-master.yml:146` (`user: root`), `:178` (docker.sock); `docker/backend/docker-compose-dev-backend.yml:184`, `:228`
 **Проблема:** Контейнер admin-panel запускается под root (`user: root` в compose переопределяет `USER $APP_UID` из Dockerfile) и монтирует `/var/run/docker.sock`. Дополнительно в Dockerfile (`Backend/Barkfluff.AdminPanel/Dockerfile:14,17-19`) ставится docker-cli и docker-cli-compose.
 **Почему это проблема:** Доступ к docker.sock эквивалентен root на хосте: любой RCE/инъекция в веб-панель (которая принимает внешний трафик через nginx) позволяет запустить привилегированный контейнер с примонтированным `/` хоста и захватить сервер целиком — включая все БД, секреты и остальные сервисы. `user: root` усугубляет: даже без docker.sock процесс в контейнере имеет uid 0. Группа `docker`, создаваемая в Dockerfile (строки 18-19), бесполезна — её GID внутри контейнера не совпадает с GID владельца сокета на хосте, из-за чего и появился костыль `user: root`.
 **Рекомендация:** Убрать `user: root`; вместо этого передать GID хостовой группы docker через `group_add: ["<gid>"]`. Ещё лучше — не монтировать сокет напрямую, а использовать прокси с фильтрацией API (например, `tecnativa/docker-socket-proxy`), разрешив только нужные эндпоинты (containers list/restart), без `POST /containers/create` и `/exec`.
 
 ### S2. PostgreSQL опубликован на 0.0.0.0 — Critical (master) / High (dev)
-**Файл:** `Backend/docker-compose-master.yml:283-284`; `Backend/docker-compose-dev.yml:334-335`
+**Файл:** `Backend/docker-compose-master.yml:283-284`; `docker/backend/docker-compose-dev-backend.yml:334-335`
 **Проблема:** `ports: "${POSTGRES_PORT}:${POSTGRES_PORT}"` → 5432 публикуется на всех интерфейсах хоста в обоих компоузах.
 **Почему это проблема:** Прод-хост (master) интернет-facing — БД со всеми пользователями, сообщениями и сессиями доступна снаружи напрямую, защищена только паролем (который по sample.env может остаться `password`, см. S6). Docker сам прописывает iptables-правила и **обходит ufw/firewalld** — привычный хостовой firewall не спасёт. БД нужна только контейнерам в `barkfluff-network` (доступ по имени `postgres`) и, возможно, админу с localhost.
 **Рекомендация:** В master убрать публикацию порта совсем (сервисы ходят по внутренней сети) или привязать к loopback: `"127.0.0.1:${POSTGRES_PORT}:5432"`. В dev — как минимум `127.0.0.1:`.
 
 ### S3. Все gRPC-порты сервисов опубликованы на 0.0.0.0 в master — High
 **Файл:** `Backend/docker-compose-master.yml:12` (beacon), `:24` (configuration), `:40-42` (files), `:53` (identity), `:64` (messages), `:75` (notification), `:86` (users), `:97` (fast-auth), `:109` (updates), `:120` (onliner)
-**Проблема:** Все микросервисы публикуют свои plaintext-HTTP/2 (gRPC) порты 7000–7015 на всех интерфейсах. При этом nginx на хосте проксирует на них через loopback (`Backend/nginx/barkfluff.single-server.conf:2,6,10` — upstream'ы `127.0.0.1:*`).
+**Проблема:** Все микросервисы публикуют свои plaintext-HTTP/2 (gRPC) порты 7000–7015 на всех интерфейсах. При этом nginx на хосте проксирует на них через loopback (`docker/nginx/barkfluff.single-server.conf:2,6,10` — upstream'ы `127.0.0.1:*`).
 **Почему это проблема:** Внешний клиент может обойти nginx (TLS-терминацию, rate-limiting, маршрутизацию) и обращаться к сервисам напрямую по нешифрованному каналу. Межсервисные токены и трафик уязвимы; configuration-сервис (раздаёт конфигурацию с секретами другим сервисам) тоже доступен снаружи. Docker-публикация обходит ufw (см. S2).
 **Рекомендация:** Привязать все публикации к loopback: `"127.0.0.1:${PORT}:${PORT}"` — для nginx на том же хосте этого достаточно. Порты, которые нужны только другим контейнерам, не публиковать вообще.
 
 ### S4. MinIO (S3 API + Console) опубликован наружу — High (master) / Medium (dev)
-**Файл:** `Backend/docker-compose-master.yml:208-210`; `Backend/docker-compose-dev.yml:258-260`
+**Файл:** `Backend/docker-compose-master.yml:208-210`; `docker/backend/docker-compose-dev-backend.yml:258-260`
 **Проблема:** Публикуются и S3 API (9000), и веб-консоль администратора (9001) на всех интерфейсах.
 **Почему это проблема:** Консоль MinIO с root-учёткой (по sample.env — `user`/`password`, см. S6) наружу — это полный доступ ко всем бакетам (файлы пользователей, badge-images). Сервисам MinIO нужен только внутри сети (`http://minio:9000`).
 **Рекомендация:** Убрать публикацию обоих портов в master (или `127.0.0.1:`, если консоль нужна админу через SSH-туннель). В проде, по памяти проекта, S3 — это HostKey, так что локальный MinIO наружу не нужен тем более.
 
 ### S5. Seq опубликован наружу + слабый first-run пароль — High (master) / Medium (dev)
-**Файл:** `Backend/docker-compose-master.yml:193-194,197`; `Backend/docker-compose-dev.yml:244-245,248`; `Backend/sample.env:52`
+**Файл:** `Backend/docker-compose-master.yml:193-194,197`; `docker/backend/docker-compose-dev-backend.yml:244-245,248`; `docker/backend/sample-backend.env:52`
 **Проблема:** Веб-интерфейс Seq (8880→80) публикуется на 0.0.0.0; admin-пароль задаётся `SEQ_FIRSTRUN_ADMINPASSWORD` из `.env`, где дефолт в шаблоне — `password`. Переменная действует только при первом запуске — если volume `seq_data` создан до того, как пароль сменили, слабый пароль остаётся навсегда.
 **Почему это проблема:** Seq агрегирует логи всех сервисов — там потенциально содержатся PII, токены, строки подключения и метрики (через ServiceMetrics). Доступ к нему снаружи со слабым паролем = утечка всего, что когда-либо попало в логи.
 **Рекомендация:** Привязать к `127.0.0.1:` (admin-panel ходит в Seq по внутренней сети `http://seq:80`, наружный порт нужен только людям) и убедиться, что admin-пароль реально сменён в работающем инстансе, а не только в `.env`.
 
 ### S6. Слабые дефолтные креденшелы в sample.env — High
-**Файл:** `Backend/sample.env:12-13` (MinIO `user`/`password`), `:16-17` (RabbitMQ `user`/`password`), `:20-21` (Postgres `user`/`password`), `:27-28` (Configuration DB `user`/`password`), `:52` (Seq `password`)
+**Файл:** `docker/backend/sample-backend.env:12-13` (MinIO `user`/`password`), `:16-17` (RabbitMQ `user`/`password`), `:20-21` (Postgres `user`/`password`), `:27-28` (Configuration DB `user`/`password`), `:52` (Seq `password`)
 **Проблема:** Шаблон `.env`, который копируется в прод (master-compose читает те же переменные), содержит тривиальные пары `user`/`password` для всех инфраструктурных сервисов.
 **Почему это проблема:** sample.env — единственный документированный источник переменных; «скопировал, поменял хосты, забыл пароли» — типичный сценарий. В сочетании с публикацией Postgres/MinIO/Seq на 0.0.0.0 (S2, S4, S5) это даёт удалённый вход с первого подбора. Compose не падает при пустых переменных, ничего не заставляет их сменить.
 **Рекомендация:** Заменить дефолты на явные плейсхолдеры вида `CHANGE_ME__GENERATE_WITH_openssl_rand` (как уже сделано для `CHARLIEHOSTNAME`), добавить в шаблон комментарий-предупреждение и/или скрипт проверки на дефолтные значения перед `docker-compose up`.
 
 ### S7. env_file: .env прокачивает ВСЕ секреты в контейнер configuration — High
-**Файл:** `Backend/docker-compose-master.yml:25-26`; `Backend/docker-compose-dev.yml:26-27`
+**Файл:** `Backend/docker-compose-master.yml:25-26`; `docker/backend/docker-compose-dev-backend.yml:26-27`
 **Проблема:** Сервис configuration получает через `env_file: .env` весь файл окружения целиком: токен Telegram-бота, SSH-пароли root от Navigator/MSK-серверов, приватный ключ Firebase, пароли всех почтовых ящиков, пароли MinIO/RabbitMQ/Seq — хотя самому сервису нужны только `CONFIGURATION_*` (которые и так заданы явно в `environment:` строками ниже).
 **Почему это проблема:** Нарушение принципа наименьших привилегий: компрометация одного сервиса (или просто `docker inspect configuration` / чтение `/proc/1/environ` любым, у кого есть доступ к docker) раскрывает секреты всей платформы и **других физических серверов** (SSH root). Блок `environment:` с явным перечислением уже существует — `env_file` избыточен.
 **Рекомендация:** Удалить `env_file: .env` из сервиса configuration в обоих компоузах — явный блок `environment:` покрывает всё необходимое.
 
 ### S8. SSH-доступ root по паролю к другим серверам через env-переменные — High
-**Файл:** `Backend/sample.env:76-85`; `Backend/docker-compose-dev.yml:202-209`
+**Файл:** `docker/backend/sample-backend.env:76-85`; `docker/backend/docker-compose-dev-backend.yml:202-209`
 **Проблема:** Admin-panel получает реквизиты SSH к Navigator- и MSK-серверам: пользователь по умолчанию `root`, аутентификация по паролю, всё хранится в `.env` и в env контейнера.
 **Почему это проблема:** Компрометация admin-panel (см. S1) автоматически даёт root на двух других физических серверах. Парольная SSH-аутентификация под root — наихудшая комбинация: перехватывается, брутфорсится, не отзывается гранулярно.
 **Рекомендация:** Перейти на выделенного непривилегированного пользователя с ключевой аутентификацией (ключ — через секрет/volume, не env) и sudo только на нужные команды; на серверах выключить `PermitRootLogin` и `PasswordAuthentication`.
 
 ### S9. Непиннованные образы `:latest` для инфраструктуры и сервисов — Medium
-**Файл:** `Backend/docker-compose-master.yml:190` (seq), `:221` (rabbitmq), `:234` (redis), `:10,22,38,...` (все barkfluff-образы `:latest`); `Backend/docker-compose-dev.yml:241,271,284` и все сервисы
+**Файл:** `Backend/docker-compose-master.yml:190` (seq), `:221` (rabbitmq), `:234` (redis), `:10,22,38,...` (все barkfluff-образы `:latest`); `docker/backend/docker-compose-dev-backend.yml:241,271,284` и все сервисы
 **Проблема:** `datalust/seq:latest`, `rabbitmq:latest`, `redis:latest` и все сервисные образы `barkfluff-*:latest` без фиксации версии. Пиннованы только `postgres:18` (по мажору) и MinIO (полный релиз — хорошо).
 **Почему это проблема:** `docker-compose pull` в произвольный момент молча обновит RabbitMQ/Redis/Seq на новую мажорную версию — возможны breaking changes и несовместимость данных в volume (особенно RabbitMQ и его mnesia/khepri-хранилище). Для своих сервисов `:latest` лишает воспроизводимости и отката: CI уже тегирует по SHA (`.github/workflows/build-backend-*.yml`), но деплой эти теги не использует.
 **Рекомендация:** Зафиксировать инфраструктуру минимум по мажору (`rabbitmq:4`, `redis:8`, `datalust/seq:2024`), обновлять осознанно. Для сервисов в master деплоить по SHA-тегу (через переменную `TAG` в compose).
@@ -78,13 +78,13 @@ Docker-инфраструктура в целом построена грамо�
 **Рекомендация:** Добавить `package-lock.json` в репозиторий и использовать `npm ci --omit=dev`; для protoc/protoc-gen-grpc-web — проверять SHA256 после скачивания (`echo "<sha>  file" | sha256sum -c`).
 
 ### S11. Секреты как env-переменные и монтирование .env в admin-panel — Medium
-**Файл:** `Backend/docker-compose-master.yml:181` (`./.env:/.env:ro`), `:180` (compose-файл в контейнер); `Backend/docker-compose-dev.yml:230-231`, `:133-137` (Firebase private key через env)
+**Файл:** `Backend/docker-compose-master.yml:181` (`./.env:/.env:ro`), `:180` (compose-файл в контейнер); `docker/backend/docker-compose-dev-backend.yml:230-231`, `:133-137` (Firebase private key через env)
 **Проблема:** Полный `.env` со всеми секретами платформы монтируется в admin-panel; приватный ключ Firebase в dev передаётся через переменную окружения (в master — корректнее, файлом `:135`). Секреты в env видны через `docker inspect`, `/proc/*/environ` и наследуются дочерними процессами.
 **Почему это проблема:** Расширяет поверхность утечки: каждый, кто может читать контейнер admin-panel (а это веб-приложение наружу), читает секреты всех сервисов. На фоне S1 это вторично, но после устранения S1 останется самостоятельной дырой.
 **Рекомендация:** Использовать Docker secrets / отдельные файлы с минимальным набором для каждого сервиса; admin-panel — выдать отдельный токен-набор вместо сырого `.env`. Firebase-ключ в dev передавать файлом, как в master.
 
 ### S12. Единая плоская сеть без сегментации — Low
-**Файл:** `Backend/docker-compose-master.yml:289-291`; `Backend/docker-compose-dev.yml:339-341`
+**Файл:** `Backend/docker-compose-master.yml:289-291`; `docker/backend/docker-compose-dev-backend.yml:339-341`
 **Проблема:** Все контейнеры — от внешних (web, admin-panel) до БД/брокера/кэша — находятся в одной bridge-сети `barkfluff-network`.
 **Почему это проблема:** Любой скомпрометированный сервис имеет L4-доступ к Postgres, Redis (без пароля — `redis-server --appendonly yes`, строка 240 master / 290 dev), RabbitMQ и MinIO. Сегментация (frontend/backend/data-сети) ограничила бы латеральное перемещение.
 **Рекомендация:** Минимум — вынести postgres/redis/rabbitmq/minio в отдельную сеть `data`, подключив к ней только сервисы, которым она нужна. Redis — задать `requirepass`.
@@ -94,19 +94,19 @@ Docker-инфраструктура в целом построена грамо�
 ## Производительность / качество сборки
 
 ### P1. Полное отсутствие healthcheck'ов в compose, depends_on без условий — Medium
-**Файл:** `Backend/docker-compose-master.yml` (все сервисы, напр. `:18-19,47-48`); `Backend/docker-compose-dev.yml` (аналогично); единственный HEALTHCHECK — `Backend/BarkFluff.Web/Dockerfile:76-77`
+**Файл:** `Backend/docker-compose-master.yml` (все сервисы, напр. `:18-19,47-48`); `docker/backend/docker-compose-dev-backend.yml` (аналогично); единственный HEALTHCHECK — `Backend/BarkFluff.Web/Dockerfile:76-77`
 **Проблема:** Ни один сервис в обоих компоузах не имеет `healthcheck:`; все `depends_on` — короткая форма (только порядок старта). HEALTHCHECK есть только в Dockerfile веб-клиента.
 **Почему это проблема:** `restart: always` перезапускает только упавший процесс — зависший контейнер (deadlock, отвал gRPC) будет числиться `Up` бесконечно. `depends_on` без `condition: service_healthy` означает, что сервисы стартуют до готовности configuration/postgres и полагаются на внутренние ретраи. Это удлиняет холодный старт и порождает шум ошибок в Seq.
 **Рекомендация:** Добавить healthcheck'и хотя бы инфраструктуре (`pg_isready`, `rabbitmq-diagnostics ping`, `redis-cli ping`, `mc ready local` / curl для MinIO) и перевести `depends_on` на `condition: service_healthy`. Для chiseled-образов сервисов (нет shell) — либо gRPC health probe снаружи, либо встроенный dotnet-healthcheck-исполняемый файл.
 
 ### P2. Нет лимитов ресурсов ни у одного контейнера — Medium
-**Файл:** `Backend/docker-compose-master.yml` (весь файл), `Backend/docker-compose-dev.yml` (весь файл)
+**Файл:** `Backend/docker-compose-master.yml` (весь файл), `docker/backend/docker-compose-dev-backend.yml` (весь файл)
 **Проблема:** Ни `mem_limit`/`cpus`, ни `deploy.resources` не заданы. При этом Postgres явно затюнен «под 2 ядра / 8 ГБ, БД делит машину с остальными сервисами» (`docker-compose-master.yml:247-248`) — то есть на одном слабом хосте живут ~15 контейнеров.
 **Почему это проблема:** Один протёкший .NET-сервис (или всплеск нагрузки на messages/updates) съест всю память — OOM-киллер хоста начнёт убивать произвольные процессы, включая Postgres (риск восстановления WAL, простой всей платформы). Без `cpus` один контейнер может затормозить все остальные.
 **Рекомендация:** Задать каждому сервису `mem_limit` (например, 256–512m для .NET-сервисов, 1.5–2g для postgres с учётом shared_buffers=768MB) и suммарно вписаться в 8 ГБ с запасом под ядро/кэш. Учесть, что .NET в контейнере с лимитом сам корректно подстраивает GC.
 
 ### P3. Логи Docker без ротации — Medium
-**Файл:** `Backend/docker-compose-master.yml` (нет ключа `logging:` ни у одного сервиса), `Backend/docker-compose-dev.yml` (аналогично)
+**Файл:** `Backend/docker-compose-master.yml` (нет ключа `logging:` ни у одного сервиса), `docker/backend/docker-compose-dev-backend.yml` (аналогично)
 **Проблема:** Драйвер логирования не настроен — используется дефолтный `json-file` без `max-size`/`max-file` (если не переопределён в daemon.json хоста, чего в репозитории не видно).
 **Почему это проблема:** ~15 болтливых сервисов (gRPC + Serilog в stdout) на хосте с одним диском — `/var/lib/docker/containers/*-json.log` растут неограниченно до заполнения диска. Заполненный диск уронит Postgres и Seq.
 **Рекомендация:** Добавить общий якорь в compose: `logging: { driver: json-file, options: { max-size: "20m", max-file: "3" } }` или задать `log-opts` глобально в `/etc/docker/daemon.json` на хостах. Учитывая, что логи и так идут в Seq, локальные json-логи можно резать агрессивно.
@@ -124,7 +124,7 @@ Docker-инфраструктура в целом построена грамо�
 **Рекомендация:** Либо ограничиться расширением `.dockerignore` (P4), либо заменить `COPY . .` на адресные `COPY Backend/<Svc> ...`, `COPY Backend/BarkFluff.GrpcServer ...`, `COPY Shared/ Shared/`.
 
 ### P6. Устаревший атрибут `version: '3.8'` в compose — Low
-**Файл:** `Backend/docker-compose-dev.yml:1`; `Backend/docker-compose-master.yml:1`
+**Файл:** `docker/backend/docker-compose-dev-backend.yml:1`; `Backend/docker-compose-master.yml:1`
 **Проблема:** Поле `version` устарело в Compose Specification — современный `docker compose` его игнорирует и печатает предупреждение `the attribute 'version' is obsolete`.
 **Почему это проблема:** Не вредит, но шумит в выводе каждого запуска и вводит в заблуждение относительно используемого формата.
 **Рекомендация:** Удалить первую строку из обоих файлов.

@@ -40,7 +40,7 @@
 4. **Кап размера** вместо снапшота: конфиг `Files:FedAvatarMaxBytes` (дефолт 20 МБ) — обрыв при превышении (плюс обрыв по declared `total_size` в Federation, 3.2).
 5. Кеш-заголовки: сверь с локальным `/download` для аватаров и повтори (смена аватара = новый file_id → URL иммутабелен, кеширование уместно — подтверди по коду `SetProfilePicture`, что аватар всегда новый Guid).
 
-Клиентский контракт (задокументировать в [../06](../06-files.md), реализация — Фаза 5): у remote-профиля есть `server_name` + `avatar_file_id` → клиент строит `https://{своя нода}/web/download/fed/{server}/{fileId}` (префикс `/web` — существующий nginx-rewrite, `Backend/nginx/files.conf`). Старые клиенты строят `/download/{fileId}` → 404 → дефолт-аватар (читаемая деградация).
+Клиентский контракт (задокументировать в [../06](../06-files.md), реализация — Фаза 5): у remote-профиля есть `server_name` + `avatar_file_id` → клиент строит `https://{своя нода}/web/download/fed/{server}/{fileId}` (префикс `/web` — существующий nginx-rewrite, `docker/nginx/files.conf`). Старые клиенты строят `/download/{fileId}` → 404 → дефолт-аватар (читаемая деградация).
 
 ## Изменение 5 — пуш-аватар (долг 2.8)
 
