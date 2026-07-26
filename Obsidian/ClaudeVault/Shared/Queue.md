@@ -7,6 +7,7 @@
 ## Namespace: `BarkFluff.Shared.Queue.Federation`
 
 - `FederatedParticipant` — `{ Guid Uuid, string ServerName }` (этап 2.2). Используется расширенными полями message-events (см. ниже) для построения FederationOutbox-строк.
+- `FederatedFileRefInfo` — снапшот метаданных вложения fed-сообщения (этап 3.1): `{ OriginServer, FileId, FileName?, SizeBytes, AttachmentType, PreviewFileId?, ImageWidth?, ImageHeight? }`. **Байты не реплицируются** — уезжают только метаданные, чтобы принимающая нода отрисовала сообщение без похода на origin. Заполняет [[Backend/Messages]] только для fed-чатов; консюмеры [[Backend/Federation]] маппят это в `FederatedFileRef` S2S-события.
 - `FederatedChatRejectedEvent` — `{ Guid ChatId, string Reason }` (этап 2.5). Publisher — [[Backend/Federation]] (`OutboxDispatcher`, DeadLetter с `ErrorCode="FederatedDmRejected"`); consumer — [[Backend/Messages]] (`FederatedChatRejectedConsumer`, очередь `federated-chat-rejected-messages`) → `Chat.FederatedStatus = Rejected`.
 
 ## Расширенные федеративные поля message-событий (этап 2.2)
@@ -22,6 +23,7 @@
 | `LastChangeAt` | `DateTimeOffset?` | база для LWW (SentAt/EditedAt) |
 | `IsFirstMessageInChat`, `InitiatorUuid`, `InviteeUuid` | — | только `NewMessageEvent`: построение `ChatCreated` без похода в Messages |
 | `SenderFid` | `string?` | `NewMessageEvent`/`MessageEditedEvent`: FID отправителя (для `ChatCreated` и пушей [[Backend/CloudMessaging]]). `SenderDisplayName` (имя) заводится в 2.8 при потреблении |
+| `FederatedAttachments` | `List<FederatedFileRefInfo>?` | `NewMessageEvent`/`MessageEditedEvent` (этап 3.1): снапшот метаданных вложений. Для правки список **всегда пересоздаётся целиком**; null/пусто = вложений нет |
 | `ReaderUuid`, `UpToFederatedMessageId` | `Guid?` | только `MessageReadEvent` |
 
 ## Namespace: `BarkFluff.Shared.Queue.Messages`

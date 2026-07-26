@@ -64,6 +64,10 @@ public class ApplyFederatedEditCommandHandler : IRequestHandler<ApplyFederatedEd
         Guid.TryParse(r.EventId, out var incomingEventId);
         FederationImportValidator.ValidateText(r.NewText);
 
+        // Снапшот вложений (этап 3.1) валидируем ДО поиска сообщения и LWW-разрешения:
+        // битый снапшот — permanent-отказ независимо от того, выиграет ли эта правка.
+        var attachments = FederatedAttachmentImporter.Import(r.Attachments);
+
         var chat = await _chatsStorage.GetFederatedChatAsync(chatId);
         if (chat is null)
         {
@@ -121,6 +125,16 @@ public class ApplyFederatedEditCommandHandler : IRequestHandler<ApplyFederatedEd
 
         message.Content ??= new MessageContent();
         message.Content.Text = r.NewText;
+
+        // Список вложений пересоздаётся целиком (docs/rearch/05-chat-replication.md, «Правка»):
+        // очистка in-place — EF сделает delete+insert, как на локальном пути правки.
+        message.Content.Attachments ??= new List<Domain.MessageAttachment>();
+        message.Content.Attachments.Clear();
+        foreach (var attachment in attachments)
+        {
+            message.Content.Attachments.Add(attachment);
+        }
+
         message.IsEdited = true;
         message.EditedAt = originTs;
         message.LastChangeAt = originTs;

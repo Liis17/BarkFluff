@@ -121,6 +121,8 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
         var fileIds = chats
             .Where(c => c.LastMessage?.Content?.Attachments != null)
             .SelectMany(c => c.LastMessage!.Content!.Attachments!)
+            // Federated-вложения рендерятся из снапшота (этап 3.1) — Files не дёргаем.
+            .Where(a => a.OriginServer is null)
             .Where(a => !string.IsNullOrEmpty(a.FileId))
             .Select(a => a.FileId!)
             .Distinct()

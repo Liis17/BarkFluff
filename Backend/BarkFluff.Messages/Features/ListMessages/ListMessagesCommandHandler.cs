@@ -98,6 +98,9 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
             var fileIds = messages
                 .Where(m => m.Content?.Attachments != null)
                 .SelectMany(m => m.Content!.Attachments!)
+                // Federated-вложения рендерятся из снапшота (этап 3.1) — файла у нас нет,
+                // и спрашивать о нём Files бессмысленно.
+                .Where(a => a.OriginServer is null)
                 .SelectMany(a =>
                 {
                     var ids = new List<string>();

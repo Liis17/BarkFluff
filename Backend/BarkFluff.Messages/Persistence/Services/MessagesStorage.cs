@@ -247,7 +247,12 @@ public class MessagesStorage
                 a.""Type"" AS ""AttachmentType"",
                 a.""FileId"" AS ""FileId"",
                 a.""PreviewUrl"" AS ""PreviewUrl"",
-                a.""FileSize"" AS ""FileSize""
+                a.""FileSize"" AS ""FileSize"",
+                a.""OriginServer"" AS ""OriginServer"",
+                a.""FileName"" AS ""FileName"",
+                a.""PreviewFileId"" AS ""PreviewFileId"",
+                a.""ImageWidth"" AS ""ImageWidth"",
+                a.""ImageHeight"" AS ""ImageHeight""
             FROM ""Messages"" m
             INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
             WHERE m.""ChatId"" = @chatId

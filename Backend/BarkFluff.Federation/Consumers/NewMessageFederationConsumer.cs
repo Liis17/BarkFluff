@@ -104,6 +104,9 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
                 Text = wireMessage?.Content?.Text ?? string.Empty,
                 SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(
                     msg.LastChangeAt ?? DateTimeOffset.UtcNow),
+                // Снапшот метаданных вложений (этап 3.1): байты остаются на origin,
+                // принимающая нода рендерит сообщение без похода к нам.
+                Attachments = { FederatedFileRefMapper.ToProto(msg.FederatedAttachments) },
             });
         await _writer.EnqueueSignedAsync(newMessage, msg.ChatId, destinations, ct);
 

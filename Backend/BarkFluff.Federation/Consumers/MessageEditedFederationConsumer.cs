@@ -60,6 +60,8 @@ public class MessageEditedFederationConsumer : IConsumer<MessageEditedEvent>
             ChatId = msg.ChatId.ToString(),
             FederatedMessageId = (msg.FederatedId ?? Guid.NewGuid()).ToString(),
             NewText = newText,
+            // При правке список вложений пересоздаётся целиком (docs/rearch/05).
+            Attachments = { FederatedFileRefMapper.ToProto(msg.FederatedAttachments) },
         };
 
         await _writer.EnqueueSignedAsync(evt, msg.ChatId, destinations, context.CancellationToken);

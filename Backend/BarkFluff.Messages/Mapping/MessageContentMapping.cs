@@ -63,6 +63,17 @@ public static class MessageContentMapping
 
                 protoAttachment.ForwardedMessage = forwarded;
             }
+            else if (attachment.OriginServer is { Length: > 0 })
+            {
+                // Federated-вложение (этап 3.1): всё берётся из снапшота в БД — Files не дёргаем
+                // вообще, файла у нас нет. preview_url не заполняется: превью тянется с origin
+                // по требованию, контракт ссылки — этап 3.3.
+                protoAttachment.OriginServer = attachment.OriginServer;
+                protoAttachment.FileName = attachment.FileName ?? string.Empty;
+                protoAttachment.PreviewFileId = attachment.PreviewFileId ?? string.Empty;
+                protoAttachment.ImageWidth = attachment.ImageWidth ?? 0;
+                protoAttachment.ImageHeight = attachment.ImageHeight ?? 0;
+            }
             else
             {
                 var fileInfo = filesInfoMap?.GetValueOrDefault(attachment.FileId ?? string.Empty);

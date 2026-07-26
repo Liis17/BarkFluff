@@ -112,10 +112,12 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
 
         // (4b) лимиты контента.
         FederationImportValidator.ValidateText(r.Text);
-        FederationImportValidator.ValidateAttachmentCount(r.Attachments.Count);
 
-        // (5) вставка сообщения. Вложения не рендерятся в этом этапе (Фаза 3.1); факт наличия сохраняем
-        // через пустой список — ImportFederatedMessageRequest.attachments уже приехал, но пока без снапшота.
+        // (4c) снапшот вложений (этап 3.1): валидируем и превращаем в строки MessageAttachments.
+        // Байты не реплицируются — они останутся на origin и потянутся по требованию (3.2/3.3).
+        var attachments = FederatedAttachmentImporter.Import(r.Attachments);
+
+        // (5) вставка сообщения.
         var sentAt = originTs;
         var message = new Message
         {
@@ -130,7 +132,7 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
             Content = new MessageContent
             {
                 Text = r.Text,
-                Attachments = new List<Domain.MessageAttachment>(),
+                Attachments = attachments,
             },
         };
 

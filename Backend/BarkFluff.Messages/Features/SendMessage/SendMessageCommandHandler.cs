@@ -32,6 +32,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly ChatCache _chatCache;
     private readonly MessagesStorage _messagesStorage;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
@@ -49,7 +50,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage,
-        MessageQueueSender messageQueueSender, MetricsCollector metrics, ILogger<SendMessageCommandHandler> logger)
+        MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
+        ILogger<SendMessageCommandHandler> logger)
     {
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
@@ -58,6 +60,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         _chatCache = chatCache;
         _messagesStorage = messagesStorage;
         _messageQueueSender = messageQueueSender;
+        _configuration = configuration;
         _metrics = metrics;
         _logger = logger;
     }
@@ -504,7 +507,13 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 fedInitiatorUuid,
                 fedInviteeUuid,
                 senderFid,
-                lastChangeAt: message.LastChangeAt);
+                lastChangeAt: message.LastChangeAt,
+                // Снапшот метаданных вложений (этап 3.1): переиспользуем уже полученный
+                // ответ Files, второго вызова ради федерации не делаем.
+                federatedAttachments: Features.Federation.FederatedAttachmentMapper.Build(
+                    message.Content?.Attachments,
+                    filesInfoMap,
+                    _configuration["Federation:ServerName"] ?? string.Empty));
         }
         else
         {
