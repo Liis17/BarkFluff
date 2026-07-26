@@ -6,7 +6,9 @@
 
 ### Текущая механика (внутри ноды)
 
-Клиент шлёт heartbeat `SetOnlineStatus`; Onliner держит статусы in-memory; подписчики получают изменения через server-stream `SubscribeToOnlineStatus`; >5 сек без heartbeat → Offline.
+Клиент шлёт heartbeat `SetOnlineStatus`; подписчики получают изменения через server-stream `SubscribeToOnlineStatus`; >5 сек без heartbeat → Offline.
+
+> **Актуализировано этапом 4.2.** Формулировка «Onliner держит статусы in-memory» устарела после работ по масштабированию (`docs/scaling/onliner.md`): presence живёт в **Redis** (sorted set `onliner:presence`, member = `long userId`, score = last-seen), а изменения между инстансами разносятся **RabbitMQ fan-out**'ом (`OnlineStatusChangedEvent`, очереди per-instance, autodelete). Offline-детектор — single-runner поверх того же sorted set.
 
 ### Федеративная схема — один агрегированный стрим на пару нод
 
@@ -35,13 +37,17 @@
 Нода B:
   Federation(B) полученные статусы транслирует в Onliner(B) через новый
   server-RPC UpsertRemoteStatus(uuid, status, last_seen)
-  → Onliner(B) хранит их в том же in-memory кеше (ключ — uuid-ветка)
-  → локальные подписчики получают события существующим механизмом.
+  → Onliner(B) кладёт их в отдельный кеш remote-статусов (ключ — uuid)
+  → локальные подписчики получают события существующим fan-out-механизмом.
 ```
 
 Детали:
 
-- **Ключи в Onliner**: сейчас всё ключуется `long userId`. Для remote — параллельная ветка `ConcurrentDictionary<Guid uuid, ...>` + подписки клиентов расширяются `oneof` (long для локальных, uuid для remote). В БД remote-статусы **не** персистятся (DatabasePersistenceService их пропускает) — источник истины на чужой ноде. Эвикция обязательна: uuid без локальных подписчиков удаляется из кеша и из S2S-подписки, иначе словарь растёт монотонно.
+- **Ключи в Onliner** (уточнено этапом 4.2): локальный presence ключуется `long userId` и живёт в sorted set `onliner:presence`. Remote-статусы — **отдельные Redis-ключи** `onliner:presence:remote:{uuid}` со значением «статус + last_seen» и TTL (`Onliner:RemotePresenceTtlSeconds`, дефолт 900), продлеваемым каждым обновлением. Подписки клиентов расширены параллельными полями `user_uuids` (не `oneof`: наборы объединяются, клиент может следить и за локальными, и за remote одной подпиской), в менеджере подписок заведён параллельный обратный индекс по uuid.
+  - **Почему отдельный ключ, а не тот же sorted set:** его обслуживает `OfflineDetectionService`, гасящий записи через 5 секунд без heartbeat. У remote-пользователей heartbeat'ов нет (истина на чужой ноде) — они уходили бы в offline мгновенно.
+  - В БД remote-статусы **не** персистятся: `DatabasePersistenceService` работает с sorted set и remote-ключей не видит вовсе; таблица `UsersOnlineStatuses` (PK `long UserId`) не расширяется.
+  - **Эвикция** решена тем же TTL, без фонового сервиса: uuid, за которым перестали следить, просто истекает. Интерес к remote-presence инстансы Onliner сообщают Federation полным набором раз в `Onliner:PresenceInterestIntervalSeconds` (`SetPresenceInterest`), и по опустевшему набору Federation закрывает S2S-подписку.
+  - **Отсутствие ключа = `UNKNOWN`, а не `OFFLINE`**: «нода-партнёр статус не отдаёт» и «человек не в сети» — разные состояния, и клиент обязан их различать.
 - **Лимит размера подписки** per-нода (максимум uuid в одном `SubscribePresence`) — против массового мониторинга и ресурсного злоупотребления.
 - **Разрыв S2S-стрима**: все remote-статусы этой ноды → `Unknown/Offline` локально; реконнект с backoff. Стрим также несёт keepalive-ping.
 - **Privacy проверяется origin-нодой** (владельцем данных). Нода B дополнительно не фильтрует — ей уже отдали только разрешённое. Меняется privacy у пользователя A → нода A шлёт «скрыт» в активные стримы.

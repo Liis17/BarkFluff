@@ -88,6 +88,17 @@
 | `db_persistence_errors` | counter | `DatabasePersistenceService` | Сбои сохранения |
 | `db_records_saved_total` | counter (cumulative) | `DatabasePersistenceService` | Сколько строк вставлено/обновлено за интервал |
 
+### Федерация presence/typing (этап 4.2)
+
+| Метрика | Тип | Где | Смысл |
+|---|---|---|---|
+| `remote_status_upserts` | counter | `UpsertRemoteStatusCommandHandler` | Статусов remote-пользователей влито Federation'ом |
+| `remote_typing_injections` | counter | `InjectRemoteTypingCommandHandler` | Событий набора remote-пользователей ретранслировано |
+| `remote_snapshot_errors` | counter | `SubscribeToOnlineStatusQueryHandler` | Стрим закрылся до отправки начального снимка remote-статусов |
+| `presence_interest_reports` | counter | `PresenceInterestReporter` | Успешных heartbeat'ов интереса в Federation |
+| `presence_interest_errors` | counter | `PresenceInterestReporter` | Сбоев heartbeat'а (ретраев нет — следующий тик через N секунд). `Unimplemented` сюда **не** попадает: до этапа 4.3 это норма |
+| `remote_tracked_uuids` | gauge | `MetricsSnapshotService` | Сколько уникальных remote-uuid отслеживает **этот** инстанс (per-instance, на дашбордах суммировать) |
+
 ### Прочее
 
 | Метрика | Тип | Где | Смысл |
@@ -103,6 +114,8 @@
 - **Стабильность Users-зависимости:** `visibility_check_errors / visibility_checks`. Рост = деградация сервиса Users.
 - **Privacy-pressure:** `subscriptions_hidden_by_privacy` показывает, сколько UserId-ов в подписках вырезано privacy.
 - **Аптайм:** `now() - service_started_unix`.
+- **Здоровье моста presence:** `presence_interest_errors / presence_interest_reports`. Устойчивый рост = Federation недоступен, и статусы remote-собеседников протухнут по TTL (`Onliner:RemotePresenceTtlSeconds`).
+- **Спрос на федеративный presence:** сумма `remote_tracked_uuids` по инстансам ≈ размер union'а, который Federation держит в S2S-подписках.
 
 ## Где смотреть в коде
 
