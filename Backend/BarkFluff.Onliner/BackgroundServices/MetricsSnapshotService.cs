@@ -35,6 +35,7 @@ public class MetricsSnapshotService : BackgroundService
             // одинаков на всех инстансах: на дашбордах агрегировать max/avg, не sum.
             _metrics.Set("active_subscriptions", _subscriptionsManager.GetActiveSubscriptionsCount());
             _metrics.Set("tracked_unique_users", _subscriptionsManager.GetTrackedUniqueUsersCount());
+            _metrics.Set("remote_tracked_uuids", _subscriptionsManager.GetTrackedUniqueUuidsCount());
             _metrics.Set("online_users_count", (int)await _presence.GetOnlineCountAsync(stoppingToken));
 
             try

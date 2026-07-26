@@ -6,6 +6,7 @@ using BarkFluff.Onliner.Features.SetOnlineStatus;
 using BarkFluff.Onliner.Features.SetTypingStatus;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 using BarkFluff.Onliner.Features.SubscribeToTyping;
+using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Shared.Identity;
 
@@ -46,7 +47,8 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
 
         var query = new GetOnlineStatusQuery
         {
-            UserIds = request.UserIds.ToList()
+            UserIds = request.UserIds.ToList(),
+            UserUuids = ParseTrackedUuids(request.UserUuids)
         };
 
         return _mediator.Send(query, context.CancellationToken);
@@ -75,6 +77,7 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         var query = new SubscribeToOnlineStatusQuery
         {
             UserIds = request.UserIds.ToList(),
+            UserUuids = ParseTrackedUuids(request.UserUuids),
             ResponseStream = responseStream,
             CancellationToken = context.CancellationToken
         };
@@ -91,7 +94,8 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
 
         var command = new ChangeUsersInSubscriptionCommand
         {
-            UserIds = request.UserIds.ToList()
+            UserIds = request.UserIds.ToList(),
+            UserUuids = ParseTrackedUuids(request.UserUuids)
         };
 
         return await _mediator.Send(command, context.CancellationToken);
@@ -142,5 +146,22 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         };
 
         return await _mediator.Send(command, context.CancellationToken);
+    }
+
+    /// <summary>
+    /// Разобрать remote-uuid подписки (этап 4.2). Невалидный элемент отбрасывается молча,
+    /// превышение лимита — <c>InvalidArgument</c>: подписка неограниченного размера —
+    /// вектор ресурсного злоупотребления.
+    /// </summary>
+    private static List<Guid> ParseTrackedUuids(IReadOnlyCollection<string> rawUuids)
+    {
+        if (rawUuids.Count > PresenceUuids.MaxSubscriptionUuids)
+        {
+            throw new RpcException(new Status(
+                StatusCode.InvalidArgument,
+                $"user_uuids: не более {PresenceUuids.MaxSubscriptionUuids} за вызов"));
+        }
+
+        return PresenceUuids.Parse(rawUuids);
     }
 }

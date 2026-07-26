@@ -11,6 +11,7 @@ public class GetOnlineStatusQueryHandlerEdgeCaseTests
     {
         return new GetOnlineStatusQueryHandler(
             _h.Presence,
+            _h.RemotePresence,
             _h.DbContext,
             _h.CreateUserContext(callerId),
             _h.CreateVisibilityFilter(),

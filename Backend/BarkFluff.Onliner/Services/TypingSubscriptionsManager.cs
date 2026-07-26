@@ -102,6 +102,20 @@ public class TypingSubscriptionsManager
     }
 
     /// <summary>
+    /// Получить все стримы, отслеживающие чат, без исключения отправителя (этап 4.2).
+    /// Для remote-набора автор живёт на чужой ноде — исключать среди наших подписчиков некого.
+    /// </summary>
+    public List<IServerStreamWriter<TypingEvent>> GetAllStreamsTrackingChat(string chatId)
+    {
+        if (!_reverseIndex.TryGetValue(chatId, out var connections))
+        {
+            return [];
+        }
+
+        return connections.Values.Select(entry => entry.Stream).ToList();
+    }
+
+    /// <summary>
     /// Обновить TrackedChatIds во всех активных подписках пользователя.
     /// </summary>
     /// <returns>Количество обновлённых подписок (0 если нет активных)</returns>

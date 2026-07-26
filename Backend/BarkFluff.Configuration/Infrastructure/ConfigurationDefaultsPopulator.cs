@@ -358,6 +358,19 @@ public class ConfigurationDefaultsPopulator
             return "100";
         }
 
+        // --- Onliner: uuid-ветка presence (этап 4.2) ---
+        if (config.Section == "Onliner")
+        {
+            return config.Key switch
+            {
+                // TTL кеша remote-статусов: заодно эвикция uuid, за которыми больше не следят.
+                "RemotePresenceTtlSeconds" => "900",
+                // Период heartbeat'а интереса; TTL записи в Federation ≈ 3 × этого значения.
+                "PresenceInterestIntervalSeconds" => "20",
+                _ => null
+            };
+        }
+
         // --- FederationService (inter-service, для будущих клиентов сервиса Federation) ---
         if (config.Section == "FederationService")
         {

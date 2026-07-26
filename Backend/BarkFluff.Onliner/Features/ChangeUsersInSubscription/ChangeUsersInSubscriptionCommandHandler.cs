@@ -43,7 +43,9 @@ public class ChangeUsersInSubscriptionCommandHandler
 
         var filteredUserIds = request.UserIds.Where(visibleIds.Contains).ToList();
 
-        var updatedCount = _subscriptionsManager.UpdateAllSubscriptions(userId, filteredUserIds);
+        // Remote-uuid privacy не фильтруются — их владелец на чужой ноде (этап 4.2).
+        var updatedCount = _subscriptionsManager.UpdateAllSubscriptions(
+            userId, filteredUserIds, request.UserUuids);
 
         if (updatedCount == 0)
         {

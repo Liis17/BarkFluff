@@ -16,6 +16,7 @@ public class SubscribeToOnlineStatusQueryHandlerTests
             _h.CreateUserContext(userId),
             _h.SubscriptionsManager,
             _h.CreateVisibilityFilter(),
+            _h.RemotePresence,
             _h.Metrics,
             TestHelper.CreateLogger<SubscribeToOnlineStatusQueryHandler>());
     }

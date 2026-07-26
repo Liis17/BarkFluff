@@ -18,6 +18,14 @@ public class OnlineStatusChangedConsumer(OnlineStatusNotifier notifier) : IConsu
     {
         var msg = context.Message;
 
+        // Remote-пользователь (этап 4.2): локального UserId нет, адресуем по UUID.
+        // Событие без нового поля (инстанс старой версии) идёт прежним путём.
+        if (msg.UserUuid.HasValue)
+        {
+            return notifier.NotifyRemoteStatusChanged(
+                msg.UserUuid.Value, (StatusTypeId)msg.Status, msg.LastSeen, context.CancellationToken);
+        }
+
         var status = new UserOnlineStatus
         {
             UserId = msg.UserId,

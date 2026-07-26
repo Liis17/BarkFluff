@@ -13,6 +13,7 @@ message SubscribeToOnlineStatusRequest {
 
 message GetOnlineStatusRequest {
   repeated int64 user_ids = 1;
+  repeated string user_uuids = 2; // remote-пользователи (UUID); объединяется с user_ids (этап 4.2)
 }
 
 message GetOnlineStatusResponse {
@@ -103,11 +104,16 @@ service OnlinerApi {
 // Реализация — Фаза 4.
 service OnlinerServerApi {
 
-  // Federation вливает статус remote-пользователя в in-memory кеш
+  // Federation вливает статус remote-пользователя в кеш remote-статусов (Redis, TTL)
   rpc UpsertRemoteStatus(UpsertRemoteStatusRequest) returns (UpsertRemoteStatusResponse);
 
   // Federation вливает typing remote-пользователя для ретрансляции подписчикам чата
   rpc InjectRemoteTyping(InjectRemoteTypingRequest) returns (InjectRemoteTypingResponse);
+
+  // Статусы НАШИХ пользователей для отдачи ноде-партнёру (этап 4.2). Privacy применяется
+  // здесь, в Onliner — владельцем данных: скрытому пользователю отдаётся
+  // STATUS_TYPE_ID_UNKNOWN, а не его настоящий статус.
+  rpc GetLocalPresence(GetLocalPresenceRequest) returns (GetLocalPresenceResponse);
 }
 
 message UpsertRemoteStatusRequest {
@@ -125,3 +131,11 @@ message InjectRemoteTypingRequest {
 }
 
 message InjectRemoteTypingResponse { }
+
+message GetLocalPresenceRequest {
+  repeated int64 user_ids = 1; // локальные пользователи, за которыми следит нода-партнёр
+}
+
+message GetLocalPresenceResponse {
+  repeated UserOnlineStatus statuses = 1; // уже отфильтрованы privacy владельца
+}

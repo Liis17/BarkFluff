@@ -16,6 +16,15 @@ public class TypingChangedConsumer(TypingNotifier notifier) : IConsumer<TypingCh
     public Task Consume(ConsumeContext<TypingChangedEvent> context)
     {
         var msg = context.Message;
+
+        // Remote-набор (этап 4.2): автор на чужой ноде, фильтр «кроме отправителя» неприменим.
+        // Событие без нового поля (инстанс старой версии) идёт прежним путём.
+        if (msg.UserUuid.HasValue)
+        {
+            return notifier.NotifyRemoteTyping(
+                msg.ChatId, msg.UserUuid.Value, (TypingAction)msg.Action, context.CancellationToken);
+        }
+
         return notifier.NotifyTyping(msg.ChatId, msg.UserId, (TypingAction)msg.Action, context.CancellationToken);
     }
 }

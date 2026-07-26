@@ -16,6 +16,7 @@ namespace BarkFluff.Onliner.Features.GetOnlineStatus;
 public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery, GetOnlineStatusResponse>
 {
     private readonly IPresenceStore _presence;
+    private readonly IRemotePresenceStore _remotePresence;
     private readonly OnlineStatusContext _dbContext;
     private readonly UserContext _userContext;
     private readonly OnlineVisibilityFilter _visibilityFilter;
@@ -23,12 +24,14 @@ public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery,
 
     public GetOnlineStatusQueryHandler(
         IPresenceStore presence,
+        IRemotePresenceStore remotePresence,
         OnlineStatusContext dbContext,
         UserContext userContext,
         OnlineVisibilityFilter visibilityFilter,
         ILogger<GetOnlineStatusQueryHandler> logger)
     {
         _presence = presence;
+        _remotePresence = remotePresence;
         _dbContext = dbContext;
         _userContext = userContext;
         _visibilityFilter = visibilityFilter;
@@ -59,7 +62,43 @@ public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery,
             response.UsersStatuses.Add(status);
         }
 
+        await AddRemoteStatusesAsync(request.UserUuids, response, cancellationToken);
+
         return response;
+    }
+
+    /// <summary>
+    /// Статусы remote-пользователей из кеша (этап 4.2). Privacy не применяется: настройки живут
+    /// на origin-ноде, она уже отфильтровала. Отсутствие ключа — <c>UNKNOWN</c>, не <c>OFFLINE</c>.
+    /// </summary>
+    private async Task AddRemoteStatusesAsync(
+        List<Guid> userUuids,
+        GetOnlineStatusResponse response,
+        CancellationToken cancellationToken)
+    {
+        if (userUuids.Count == 0)
+        {
+            return;
+        }
+
+        var known = await _remotePresence.GetManyAsync(userUuids, cancellationToken);
+
+        foreach (var uuid in userUuids)
+        {
+            response.UsersStatuses.Add(known.TryGetValue(uuid, out var entry)
+                ? new UserOnlineStatus
+                {
+                    UserUuid = uuid.ToString(),
+                    Status = MapStatus(entry.Status),
+                    LastSeen = Timestamp.FromDateTime(entry.LastSeen.ToUniversalTime()),
+                }
+                : new UserOnlineStatus
+                {
+                    UserUuid = uuid.ToString(),
+                    Status = ProtoStatusTypeId.Unknown,
+                    LastSeen = Timestamp.FromDateTime(DateTime.MinValue.ToUniversalTime()),
+                });
+        }
     }
 
     private async Task<UserOnlineStatus> GetUserStatusAsync(long userId, CancellationToken cancellationToken)

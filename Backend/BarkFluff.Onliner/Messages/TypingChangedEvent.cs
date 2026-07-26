@@ -13,4 +13,10 @@ public class TypingChangedEvent
 
     /// <summary>Значение proto <c>TypingAction</c>.</summary>
     public int Action { get; set; }
+
+    /// <summary>
+    /// Заполнен только для набора remote-пользователя (этап 4.2). Для локальных — null,
+    /// и фильтр «кроме отправителя» продолжает работать по <see cref="UserId"/>.
+    /// </summary>
+    public Guid? UserUuid { get; set; }
 }

@@ -18,7 +18,8 @@ dotnet build BarkFluff.Onliner.csproj
 
 Миграции применяются автоматически при старте.
 
-> Этап 0.4 rearch: в `onliner_api.proto` добавлены параллельные `user_uuid`/`user_uuids`-поля (Subscribe/Change/Status/Typing) для будущих remote-пользователей + новый сервис `OnlinerServerApi` (UpsertRemoteStatus/InjectRemoteTyping, Фаза 4) — пока только контракт, RPC не реализованы, логика Onliner не менялась.
+> Этап 0.4 rearch: в `onliner_api.proto` добавлены параллельные `user_uuid`/`user_uuids`-поля (Subscribe/Change/Status/Typing) для remote-пользователей + сервис `OnlinerServerApi`.
+> **Этап 4.2 реализовал их** (`UpsertRemoteStatus`, `InjectRemoteTyping`, новый `GetLocalPresence`), добавил `user_uuids` в `GetOnlineStatusRequest` и uuid-ветку подписок — см. раздел «uuid-ветка presence и мост федерации» ниже.
 
 ## Архитектура
 
@@ -40,8 +41,9 @@ Client → SetOnlineStatus (gRPC)
 | Класс | Назначение |
 |-------|-----------|
 | `IPresenceStore` / `RedisPresenceStore` | Общий presence-стор в Redis (sorted set `onliner:presence`). `MarkOnlineAsync` (ZADD, added=переход online), `SetOfflineAsync` (ZREM, атомарно дедуплицирует offline-переход между инстансами), `GetOnlineAsync`, `GetStaleUsersAsync`, `GetOnlineSnapshotAsync`. Online = член множества; offline-записей не хранит (offline last-seen — в БД) |
-| `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов по userId и subscriptionId. Дополнительно держит обратный индекс `trackedUserId → (connectionId → Stream)`, благодаря чему `GetStreamsTrackingUser` работает за O(1) |
-| `OnlineStatusNotifier` | Рассылает изменения по стримам, отслеживающим пользователя |
+| `IRemotePresenceStore` / `RedisRemotePresenceStore` | Кеш статусов remote-пользователей (этап 4.2): отдельные ключи `onliner:presence:remote:{uuid}` с TTL. Намеренно **не** в sorted set — его гасит `OfflineDetectionService`, а у remote heartbeat'ов нет |
+| `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов по userId и subscriptionId. Дополнительно держит обратный индекс `trackedUserId → (connectionId → Stream)` и (с 4.2) параллельный `trackedUuid → …`, благодаря чему `GetStreamsTrackingUser`/`GetStreamsTrackingUuid` работают за O(1) |
+| `OnlineStatusNotifier` | Рассылает изменения по стримам, отслеживающим пользователя (`NotifyStatusChanged`) или remote-uuid (`NotifyRemoteStatusChanged`, 4.2) |
 | `TypingSubscriptionsManager` | Реестр typing-стримов по `chatId` (прямой индекс `subscriberId → подписки` + обратный `chatId → стримы`). Аналог `OnlineStatusSubscriptionsManager`, но ключ — чат, а обратный индекс хранит `SubscriberId`, чтобы не слать набор обратно самому печатающему |
 | `TypingNotifier` | Ретранслирует `TypingEvent` подписчикам чата (`Task.WhenAll`), исключая отправителя |
 | `ChatMembershipFilter` (Scoped) | Фильтрует `chat_ids` по членству через gRPC-клиент `MessagesServerApi.CheckChatMembership`. Fail-closed: при ошибке — пустое множество. С этапа 4.1 возвращает `ChatMembershipResult` (чаты + `RequesterUuid` + `FederatedChats`), а не голый `HashSet<string>` |
@@ -70,6 +72,7 @@ Client → SetOnlineStatus (gRPC)
 - **Notifier:** `status_notifications_sent`, `status_notification_errors`
 - **Privacy filter:** `visibility_checks`, `visibility_check_errors`
 - **BG-сервисы:** `offline_detection_runs/_errors`, `db_persistence_runs/_errors`, `db_records_saved_total`
+- **Федерация (4.2):** `remote_status_upserts`, `remote_typing_injections`, `remote_snapshot_errors`, `presence_interest_reports`, `presence_interest_errors`, gauge `remote_tracked_uuids`
 - **Прочее:** `sessions_revoked`, gauge `service_started_unix`
 
 ### MassTransit Consumer
@@ -81,9 +84,9 @@ Client → SetOnlineStatus (gRPC)
 | Метод | Тип | Описание |
 |-------|-----|---------|
 | `SetOnlineStatus` | Unary | Heartbeat клиента |
-| `GetOnlineStatus` | Unary | Статусы для списка user_ids |
-| `SubscribeToOnlineStatus` | Server Stream | Подписка на изменения; соединение до отмены |
-| `ChangeUsersInSubscription` | Unary | Обновить список отслеживаемых без переоткрытия потока |
+| `GetOnlineStatus` | Unary | Статусы для списка user_ids и (с 4.2) user_uuids |
+| `SubscribeToOnlineStatus` | Server Stream | Подписка на изменения; соединение до отмены. С 4.2 принимает `user_uuids` и сразу отдаёт по ним начальный снимок |
+| `ChangeUsersInSubscription` | Unary | Обновить список отслеживаемых (user_ids + user_uuids) без переоткрытия потока |
 | `SetTypingStatus` | Unary | Heartbeat «печатает» в `chat_id` (Guid-строка). `action` (TYPING/CANCELLED; UNKNOWN→TYPING). Проверяет членство отправителя, затем ретранслирует участникам чата |
 | `SubscribeToTyping` | Server Stream | Подписка на `TypingEvent` по списку `chat_ids` (Guid-строки); соединение до отмены. Фильтрует чаты по членству |
 | `ChangeChatsInTypingSubscription` | Unary | Обновить список отслеживаемых чатов без переоткрытия потока. Фильтрует по членству |
@@ -136,3 +139,74 @@ Client → SetOnlineStatus (gRPC)
 - `onliner_api.proto` (Server) — 7 методов. Типы: `UserOnlineStatus` (user_id, status, last_seen), `TypingEvent` (chat_id: string, user_id, action), enum `TypingAction` (UNKNOWN/TYPING/CANCELLED).
 - `users_api.proto` (Client) — `GetUserPrivacy` для `OnlineVisibility`.
 - `messages_api.proto` (Client) — `MessagesServerApi.CheckChatMembership` для typing.
+
+## uuid-ветка presence и мост федерации (этап 4.2, docs/rearch/phase-4/step-4.2-onliner-uuid-branch.md)
+
+Onliner начинает работать с remote-пользователями, у которых нет `long userId`. Сетевого федеративного кода здесь нет — Onliner общается только со своей нодой, S2S-мост живёт в [[Backend/Federation]] (этапы 4.3/4.4).
+
+### Кеш remote-статусов (`IRemotePresenceStore` / `RedisRemotePresenceStore`)
+
+Ключ на пользователя `onliner:presence:remote:{uuid}`, значение `"{status}:{lastSeenUnixMs}"`, TTL `Onliner:RemotePresenceTtlSeconds` (дефолт 900) продлевается каждым обновлением.
+
+**Почему отдельный ключ, а не `onliner:presence`:** sorted set обслуживает `OfflineDetectionService`, гасящий записи через 5 секунд без heartbeat. У remote-пользователей heartbeat'ов нет — истина на чужой ноде, они уходили бы в offline мгновенно. TTL-ключи заодно дают эвикцию uuid без подписчиков **без фонового сервиса** (И-7 из ревью плана).
+
+**Изоляция от персиста жёсткая:** `DatabasePersistenceService` и `OfflineDetectionService` работают через `IPresenceStore` (sorted set) и remote-ключей не видят вовсе; `UsersOnlineStatuses` (PK `long UserId`) не расширяется. Remote-статусы не персистятся by design.
+
+**Отсутствие ключа = `STATUS_TYPE_ID_UNKNOWN`, а не `OFFLINE`** — «нода-партнёр статус не отдаёт» и «человек не в сети» это разные состояния.
+
+### Подписки по uuid
+
+`OnlineStatusSubscriptionsManager` получил параллельный обратный индекс `trackedUuid → (connectionId → Stream)` рядом с существующим по `userId` (та же структура и потокобезопасность):
+
+| Метод | Назначение |
+|-------|-----------|
+| `GetStreamsTrackingUuid(Guid)` | пара к `GetStreamsTrackingUser` |
+| `GetTrackedUuids()` | снимок интереса этого инстанса — для `PresenceInterestReporter` |
+| `RegisterSubscription` / `UpdateAllSubscriptions` | принимают список uuid; снятие подписки чистит **оба** индекса |
+
+Клиентские RPC `SubscribeToOnlineStatus` / `ChangeUsersInSubscription` / `GetOnlineStatus` принимают `user_uuids` параллельно с `user_ids` (не `oneof` — наборы объединяются). Невалидный uuid молча отбрасывается (не валит вызов), лимит `PresenceUuids.MaxSubscriptionUuids = 500` → `InvalidArgument`; исторического лимита на `user_ids` нет и он не вводится.
+
+**Privacy к remote не применяется.** `OnlineVisibilityFilter` работает только по локальным `user_ids`: origin-нода уже отфильтровала своё (инвариант №27), повторная фильтрация невозможна (их настроек у нас нет) и не нужна.
+
+**Начальный снимок.** Подписка с `user_uuids` сразу получает в стрим текущее содержимое кеша (или `UNKNOWN` по неизвестным uuid) — иначе клиент не узнал бы состояние до первого изменения на чужой ноде. Для локальных снимок по-прежнему берётся отдельным `GetOnlineStatus`.
+
+### `OnlinerServerApi` (`TokenType.Service`, зовёт только Federation своей ноды)
+
+| RPC | Что делает |
+|-----|-----------|
+| `UpsertRemoteStatus(user_uuid, status, last_seen)` | пишет в кеш → публикует `OnlineStatusChangedEvent` (fan-out) → консюмер каждого инстанса рассылает `UserOnlineStatus` стримам, следящим за uuid |
+| `InjectRemoteTyping(chat_id, user_uuid, action)` | публикует `TypingChangedEvent` (fan-out) → `TypingNotifier` ретранслирует `TypingEvent` подписчикам чата |
+| `GetLocalPresence(user_ids[])` | статусы **наших** пользователей для отдачи ноде-партнёру; **privacy применяется здесь** |
+
+`GetLocalPresence` — ключевое место инварианта №27: правило «`OnlineVisibility != All` ⇒ скрыт» (`Friends` === `None` до сервиса отношений) живёт в одном месте, у владельца данных. Скрытому пользователю отдаётся `UNKNOWN`, а не настоящий статус, поэтому Federation не заводит копию privacy-логики и не может её обойти. Сбой Users → `UNKNOWN` (fail-closed, как в существующем фильтре).
+
+Право вызывающего в этих RPC **не** проверяется: вызывает Federation своей ноды с service-токеном, а origin/членство проверяются до вызова (этапы 4.3/4.4).
+
+### Расширение fan-out событий
+
+`OnlineStatusChangedEvent` и `TypingChangedEvent` получили `Guid? UserUuid`. Заполнен только для remote; локальные пути не меняются (`null`). Консюмеры ветвятся по этому полю:
+
+- `OnlineStatusChangedConsumer` → рассылка через uuid-индекс, `UserOnlineStatus.user_uuid` заполнен, `user_id = 0`;
+- `TypingChangedConsumer` → `TypingEvent` с `user_uuid` и **без** фильтра «кроме отправителя» (`GetAllStreamsTrackingChat`): автор на чужой ноде, среди наших подписчиков его нет.
+
+Событие **без** нового поля (инстанс старой версии — обновляются они не одновременно) идёт прежним путём; это закреплено тестами.
+
+### `PresenceInterestReporter` (BackgroundService)
+
+Раз в `Onliner:PresenceInterestIntervalSeconds` (дефолт 20) шлёт `FederationInternalApi.SetPresenceInterest(instance_id, uuids[])` с **полным** набором `GetTrackedUuids()`.
+
+**Почему полный набор, а не дельты:** Onliner масштабируется горизонтально, стримы подписчиков живут на разных инстансах, и свести «+uuid/−uuid» от нескольких инстансов без общего состояния невозможно. Federation объединяет наборы живых инстансов, протухшие выпадают по TTL — рестарт инстанса самолечится, ретраев не нужно.
+
+Пустой набор тоже отправляется: это сигнал «за нами больше никто не следит», по которому Federation закрывает S2S-подписку. `Unimplemented` (до этапа 4.3) — debug-лог, не ошибка; недоступность Federation — warning + метрика, **без ретраев**.
+
+**Гейт:** сервис и gRPC-клиент Federation регистрируются только при заданном `FederationService:Host` — нода без федерации не поднимает их вовсе и не льёт ошибки.
+
+### Конфигурация (бакет `ServiceId.Onliner = 9`)
+
+| Ключ | Дефолт | Смысл |
+|------|--------|-------|
+| `FederationService:Host` / `Token` | из populator | клиент Federation; ключ живёт в бакете **потребителя**, не вызываемого сервиса |
+| `Onliner:RemotePresenceTtlSeconds` | 900 | TTL кеша remote-статусов = эвикция |
+| `Onliner:PresenceInterestIntervalSeconds` | 20 | период heartbeat'а интереса |
+
+Миграция — `20260727010000_AddOnlinerFederationPresenceConfiguration`.
