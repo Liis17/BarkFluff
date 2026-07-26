@@ -289,21 +289,22 @@ services:
     networks:
       - barkfluff-network
 
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
-    container_name: minio
-    restart: always
-    ports:
-      - "${MINIO_PORT}:${MINIO_PORT}"       # S3 API (9000)
-      - "${MINIO_WEBPORT}:${MINIO_WEBPORT}" # Console (9001)
-    environment:
-      MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
-      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":${MINIO_WEBPORT}"
-    networks:
-      - barkfluff-network
+  #включить для локальной разработки, если нужен S3-совместимый объектный сторедж
+  #minio:
+  #  image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+  #  container_name: minio
+  #  restart: always
+  #  ports:
+  #    - "${MINIO_PORT}:${MINIO_PORT}"       # S3 API (9000)
+  #    - "${MINIO_WEBPORT}:${MINIO_WEBPORT}" # Console (9001)
+  #  environment:
+  #    MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
+  #    MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+  #  volumes:
+  #    - minio_data:/data
+  #  command: server /data --console-address ":${MINIO_WEBPORT}"
+  #  networks:
+  #    - barkfluff-network
 
   rabbitmq:
     image: rabbitmq:latest
@@ -393,6 +394,20 @@ services:
     networks:
       - barkfluff-network
 
+  # включить если нет внешнего nginx, а нужно пробросить порты 80/443 наружу
+  #nginx:
+  #  image: nginx:alpine
+  #  container_name: nginx-proxy
+  #  ports:
+  #    - "80:80"
+  #    - "443:443"
+  #  volumes:
+  #    - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #    - ./sites:/etc/nginx/conf.d:ro
+  #    - ./certs:/etc/nginx/certs:ro
+  #  restart: always
+  #  networks:
+  #    - barkfluff-network
 networks:
   barkfluff-network:
     driver: bridge
