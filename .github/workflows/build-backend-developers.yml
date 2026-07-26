@@ -15,44 +15,8 @@ permissions:
   actions: write
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════
-  #  1. Проверка наличия .NET 10.0 SDK на раннере
-  # ═══════════════════════════════════════════════════════════════
-  check-dotnet:
-    name: "🔍 Проверка .NET 10.0 SDK"
-    runs-on: [self-hosted, linux]
-    steps:
-      - name: "Проверка наличия .NET 10.0 SDK"
-        id: check
-        run: |
-          if ! dotnet --list-sdks 2>/dev/null | grep -q "^10\.0\.110 "; then
-            echo "missing=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "missing=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: "\u274C .NET 10.0 SDK не установлен — уведомление в Telegram"
-        if: steps.check.outputs.missing == 'true'
-        env:
-          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TG_MESSAGE: |
-            ❌ *Сборка невозможна: .NET 10.0 SDK не установлен на раннере*
-
-            🐳 *Barkfluff.Developers*
-            📌 Ветка: `${{ github.ref_name }}`
-            👤 Автор: *${{ github.actor }}*
-        run: |
-          bash .github/scripts/send-telegram.sh
-          exit 1
-
-  # ═══════════════════════════════════════════════════════════════
-  #  2. Запрос подтверждения сборки через Telegram
-  # ═══════════════════════════════════════════════════════════════
   request-approval:
     name: "📲 Запрос подтверждения"
-    needs: check-dotnet
     runs-on: [self-hosted, linux]
     outputs:
       approved: ${{ steps.result.outputs.approved }}
@@ -83,15 +47,20 @@ jobs:
           fi
 
   # ═══════════════════════════════════════════════════════════════
-  #  3. dotnet publish → Docker build → Push
+  #  2. dotnet publish → Docker build → Push
   # ═══════════════════════════════════════════════════════════════
   build:
     name: "🐳 Сборка и публикация Barkfluff.Developers"
-    needs: [check-dotnet, request-approval]
+    needs: request-approval
     if: needs.request-approval.outputs.approved == 'true'
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
 
       - name: "\u2699\uFE0F dotnet publish (Linux Release)"
         run: |
