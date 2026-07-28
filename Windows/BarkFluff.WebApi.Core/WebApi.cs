@@ -77,6 +77,7 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiUpdateManager UpdateManager;
         internal readonly WebApiOnlinerManager OnlinerManager;
         internal readonly WebApiFastAuthManager FastAuthManager;
+        internal readonly WebApiChatFolderManager ChatFolderManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
@@ -104,6 +105,7 @@ namespace BarkFluff.WebApi.Core
             UpdateManager = new WebApiUpdateManager(this);
             OnlinerManager = new WebApiOnlinerManager(this);
             FastAuthManager = new WebApiFastAuthManager(this);
+            ChatFolderManager = new WebApiChatFolderManager(this);
         }
 
         #region IDisposable
@@ -227,6 +229,20 @@ namespace BarkFluff.WebApi.Core
         public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam) => await UserManager.UpdatePrivacySettings(settings, globalParam);
         public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) => await UserManager.SetNotificationsEnabled(enabled, globalParam);
         public async Task<ErrorReturner> Logout(GlobalParam globalParam) => await UserManager.Logout(globalParam);
+        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null) => await UserManager.SetChatMuted(chatId, muted, globalParam, mutedUntil);
+        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) => await UserManager.GetMutedChats(globalParam);
+        public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam) => await UserManager.SetFirebaseToken(firebaseToken, globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam) => await UserManager.ResolveFederatedUser(fid, globalParam);
+        #endregion
+
+        #region Папки чатов (делегирование к ChatFolderManager)
+        public async Task<(ErrorReturner error, List<Proto.Users.ChatFolderData>? folders)> GetChatFolders(GlobalParam globalParam) => await ChatFolderManager.GetChatFolders(globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> CreateChatFolder(string folderName, GlobalParam globalParam, string folderIcon = "") => await ChatFolderManager.CreateChatFolder(folderName, globalParam, folderIcon);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> UpdateChatFolder(string folderId, GlobalParam globalParam, string? folderName = null, string? folderIcon = null, List<string>? chatList = null) => await ChatFolderManager.UpdateChatFolder(folderId, globalParam, folderName, folderIcon, chatList);
+        public async Task<ErrorReturner> DeleteChatFolder(string folderId, GlobalParam globalParam) => await ChatFolderManager.DeleteChatFolder(folderId, globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.AddChatToFolder(folderId, chatId, globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.RemoveChatFromFolder(folderId, chatId, globalParam);
+        public async Task<ErrorReturner> ReorderChatFolders(Dictionary<string, int> orders, GlobalParam globalParam) => await ChatFolderManager.ReorderChatFolders(orders, globalParam);
         #endregion
 
         #region Персонализация (делегирование к UserManager)
@@ -324,6 +340,19 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<(ErrorReturner, IAsyncEnumerable<Proto.FastAuth.FastAuthResult>?)> SubscribeFastAuthResult(string fastAuthId, CancellationToken ct)
             => await FastAuthManager.SubscribeFastAuthResult(fastAuthId, ct);
+
+        /// <summary>
+        /// Подтверждение входа нового устройства с этого (уже авторизованного) клиента:
+        /// Scan → показать пользователю данные устройства → Accept или Reject.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.FastAuth.ScanFastAuthResponse? info)> ScanFastAuth(string fastAuthId, GlobalParam globalParam)
+            => await FastAuthManager.ScanFastAuth(fastAuthId, globalParam);
+
+        public async Task<ErrorReturner> AcceptFastAuth(string fastAuthId, string confirmationCode, GlobalParam globalParam)
+            => await FastAuthManager.AcceptFastAuth(fastAuthId, confirmationCode, globalParam);
+
+        public async Task<ErrorReturner> RejectFastAuth(string fastAuthId, string confirmationCode, GlobalParam globalParam)
+            => await FastAuthManager.RejectFastAuth(fastAuthId, confirmationCode, globalParam);
         #endregion
 
         #region Работа с онлайн-статусами (делегирование к OnlinerManager)
