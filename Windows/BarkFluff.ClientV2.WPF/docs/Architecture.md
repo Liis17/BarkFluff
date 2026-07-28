@@ -12,6 +12,8 @@
 
 - WPF UI — базовая библиотека контролов и тем.
 - Общие стили контролов размещаются только в `Resources/Styles/Controls.xaml`.
+- Палитры находятся в `Resources/Colors/Light.xaml`, `Dark.xaml` и `BarkFluffDark.xaml`; View использует только семантические brush-ключи, а не hex-значения.
+- Режим темы сохраняется как `ApplicationThemeMode` в `app_settings`: `System`, `Light`, `Dark` или `BarkFluffDark`. Системные режимы используют Windows accent, собственная тёмная палитра — `#81341E`.
 - Все пользовательские строки находятся в `Resources/Localization/Strings.ru.xaml` и `Strings.en.xaml`; набор ключей в словарях должен совпадать.
 - В XAML для локализованных строк использовать только `DynamicResource`.
 
@@ -24,5 +26,7 @@
 ## Сеть и тесты
 
 - Подключение к ноде проходит через `INodeConnectionService`; `NodeConnectionMapper` преобразует `GetServerInfoResponse` в параметры клиентской сессии.
+- Конфигурация сервисов выбранной ноды сохраняется отдельной записью SQLite без токенов и восстанавливается перед открытием экрана входа.
+- Обычный вход и FastAuth инкапсулированы в `IAuthenticationService`; ViewModel не обращается к `WebApi` напрямую. QR FastAuth приходит от сервера как PNG base64.
 - Логика без UI покрывается xUnit-тестами: адреса нод, mapper, SQLite и ViewModel-сценарии.
 - Перед изменением внешних библиотек сверяться с их актуальной документацией через Context7.

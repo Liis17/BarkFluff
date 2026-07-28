@@ -19,8 +19,27 @@
     <sys:String x:Key="ConnectedNode_Subtitle">The node is ready. Sign-in will be added in the next application stage.</sys:String>
     <sys:String x:Key="ConnectedNode_Status">Connected</sys:String>
     <sys:String x:Key="ConnectedNode_ChooseAnother">Choose another node</sys:String>
+    <sys:String x:Key="Login_Title">Sign in to BarkFluff</sys:String>
+    <sys:String x:Key="Login_Subtitle">Enter your account details for the selected node.</sys:String>
+    <sys:String x:Key="Login_Identifier">Username or email</sys:String>
+    <sys:String x:Key="Login_IdentifierPlaceholder">name or name@example.com</sys:String>
+    <sys:String x:Key="Login_Password">Password</sys:String>
+    <sys:String x:Key="Login_PasswordPlaceholder">Enter password</sys:String>
+    <sys:String x:Key="Login_TwoFactor">Two-factor authentication code</sys:String>
+    <sys:String x:Key="Login_TwoFactorHint">Enter the code from your authenticator app.</sys:String>
+    <sys:String x:Key="Login_Submit">Sign in</sys:String>
+    <sys:String x:Key="Login_Success">Signed in.</sys:String>
+    <sys:String x:Key="Login_ForgotPassword">Forgot password?</sys:String>
+    <sys:String x:Key="Login_Register">Create account</sys:String>
+    <sys:String x:Key="Login_ChooseAnotherNode">Choose another node</sys:String>
+    <sys:String x:Key="Login_FastAuthTitle">Quick sign-in</sys:String>
+    <sys:String x:Key="Login_FastAuthHint">Scan the QR code in an authorized BarkFluff client.</sys:String>
     <sys:String x:Key="Error_NodeAddressRequired">Enter a node address.</sys:String>
     <sys:String x:Key="Error_NodeAddressInvalid">Enter a valid HTTP or HTTPS node address.</sys:String>
     <sys:String x:Key="Error_NodeIpPortRequired">Specify a port for an IP address.</sys:String>
     <sys:String x:Key="Error_NodeConnectionFailed">Unable to get node information. Check the address and try again.</sys:String>
+    <sys:String x:Key="Error_LoginUnavailable">Choose a node first.</sys:String>
+    <sys:String x:Key="Error_LoginFailed">Unable to sign in. Check your username and password.</sys:String>
+    <sys:String x:Key="Error_LoginTwoFactorRequired">Enter your two-factor authentication code.</sys:String>
+    <sys:String x:Key="Error_LoginTwoFactorInvalid">The two-factor authentication code is invalid.</sys:String>
 </ResourceDictionary>

@@ -14,7 +14,15 @@ public interface IApplicationDataStore
 
     Task SaveLanguageAsync(string language, CancellationToken cancellationToken = default);
 
+    Task<ApplicationThemeMode?> GetThemeAsync(CancellationToken cancellationToken = default);
+
+    Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default);
+
     Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default);
 
     Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default);
+
+    Task SaveNodeServiceConfigurationAsync(NodeConnection connection, CancellationToken cancellationToken = default);
+
+    Task<NodeConnection?> GetNodeServiceConfigurationAsync(CancellationToken cancellationToken = default);
 }

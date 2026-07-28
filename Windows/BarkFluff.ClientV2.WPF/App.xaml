@@ -9,6 +9,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Light" />
                 <ui:ControlsDictionary />
+                <ResourceDictionary Source="Resources/Colors/Light.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Controls.xaml" />
                 <ResourceDictionary Source="Resources/Localization/Strings.en.xaml" />
             </ResourceDictionary.MergedDictionaries>
@@ -21,6 +22,9 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type viewModels:ConnectedNodeViewModel}">
                 <views:ConnectedNodeView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:LoginViewModel}">
+                <views:LoginView />
             </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>

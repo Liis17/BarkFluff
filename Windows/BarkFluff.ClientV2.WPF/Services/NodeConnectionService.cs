@@ -58,13 +58,32 @@ public sealed class NodeConnectionService : INodeConnectionService
         try
         {
             var connection = NodeConnectionMapper.Map(parameters.SocketBeacon, response.Item2);
-            _session.SetConnection(connection);
-            return NodeConnectionResult.Success(connection);
+            return RestoreConnection(connection)
+                ? NodeConnectionResult.Success(connection)
+                : NodeConnectionResult.Failure(ConnectionFailedResourceKey);
         }
         catch (InvalidOperationException)
         {
             return NodeConnectionResult.Failure(ConnectionFailedResourceKey);
         }
+    }
+
+    public bool RestoreConnection(NodeConnection connection)
+    {
+        var initialized = _webApi.CreateAC(
+            connection.ConnectionParameters,
+            Environment.MachineName,
+            Environment.OSVersion.VersionString,
+            "BarkFluff",
+            "2.0",
+            string.Empty);
+        if (!initialized.IsSuccess)
+        {
+            return false;
+        }
+
+        _session.SetConnection(connection);
+        return true;
     }
 
     private static string GetErrorResourceKey(NodeAddressError error) => error switch

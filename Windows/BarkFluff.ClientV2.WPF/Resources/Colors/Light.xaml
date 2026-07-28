@@ -1,0 +1,6 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="OnboardingWindowBackgroundBrush" Color="#FFF6F7FB" />
+    <SolidColorBrush x:Key="OnboardingAccentSurfaceBrush" Color="#E6F1FF" />
+    <SolidColorBrush x:Key="OnboardingSubtleSurfaceBrush" Color="#F5F7FB" />
+</ResourceDictionary>

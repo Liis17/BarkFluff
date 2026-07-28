@@ -28,6 +28,13 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
 
     public void ShowConnectedNode() => Navigate(_serviceProvider.GetRequiredService<ConnectedNodeViewModel>());
 
+    public void ShowLogin()
+    {
+        var viewModel = _serviceProvider.GetRequiredService<LoginViewModel>();
+        _ = viewModel.LoadFastAuthAsync();
+        Navigate(viewModel);
+    }
+
     private void Navigate(object viewModel)
     {
         CurrentViewModel = viewModel;

@@ -19,8 +19,27 @@
     <sys:String x:Key="ConnectedNode_Subtitle">Нода готова к работе. Авторизация будет добавлена на следующем этапе.</sys:String>
     <sys:String x:Key="ConnectedNode_Status">Подключение установлено</sys:String>
     <sys:String x:Key="ConnectedNode_ChooseAnother">Выбрать другую ноду</sys:String>
+    <sys:String x:Key="Login_Title">Вход в BarkFluff</sys:String>
+    <sys:String x:Key="Login_Subtitle">Введите данные аккаунта для выбранной ноды.</sys:String>
+    <sys:String x:Key="Login_Identifier">Логин или почта</sys:String>
+    <sys:String x:Key="Login_IdentifierPlaceholder">name или name@example.com</sys:String>
+    <sys:String x:Key="Login_Password">Пароль</sys:String>
+    <sys:String x:Key="Login_PasswordPlaceholder">Введите пароль</sys:String>
+    <sys:String x:Key="Login_TwoFactor">Код двухфакторной аутентификации</sys:String>
+    <sys:String x:Key="Login_TwoFactorHint">Введите код из приложения-аутентификатора.</sys:String>
+    <sys:String x:Key="Login_Submit">Войти</sys:String>
+    <sys:String x:Key="Login_Success">Вход выполнен.</sys:String>
+    <sys:String x:Key="Login_ForgotPassword">Забыли пароль?</sys:String>
+    <sys:String x:Key="Login_Register">Регистрация</sys:String>
+    <sys:String x:Key="Login_ChooseAnotherNode">Другая нода</sys:String>
+    <sys:String x:Key="Login_FastAuthTitle">Быстрый вход</sys:String>
+    <sys:String x:Key="Login_FastAuthHint">Отсканируйте QR-код в авторизованном клиенте BarkFluff.</sys:String>
     <sys:String x:Key="Error_NodeAddressRequired">Укажите адрес ноды.</sys:String>
     <sys:String x:Key="Error_NodeAddressInvalid">Укажите корректный HTTP- или HTTPS-адрес ноды.</sys:String>
     <sys:String x:Key="Error_NodeIpPortRequired">Для IP-адреса укажите порт.</sys:String>
     <sys:String x:Key="Error_NodeConnectionFailed">Не удалось получить информацию о ноде. Проверьте адрес и повторите попытку.</sys:String>
+    <sys:String x:Key="Error_LoginUnavailable">Сначала выберите ноду.</sys:String>
+    <sys:String x:Key="Error_LoginFailed">Не удалось войти. Проверьте логин и пароль.</sys:String>
+    <sys:String x:Key="Error_LoginTwoFactorRequired">Введите код двухфакторной аутентификации.</sys:String>
+    <sys:String x:Key="Error_LoginTwoFactorInvalid">Код двухфакторной аутентификации неверный.</sys:String>
 </ResourceDictionary>

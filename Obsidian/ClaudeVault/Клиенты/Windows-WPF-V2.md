@@ -33,6 +33,13 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 - Для интерактивных элементов использовать только `ui:*`-контролы WPF UI, не нативные WPF `Button`, `TextBox`, `ListBox` или `ProgressBar`.
 - Экраны онбординга используют общую типографику `Segoe UI Variable Text`, карточки, мягкие поверхности и короткую декларативную анимацию появления.
 
+## Темы и вход
+
+- `Resources/Colors/Light.xaml`, `Dark.xaml` и `BarkFluffDark.xaml` содержат семантические палитры. `ApplicationThemeService` применяет режим из SQLite: `System`, `Light`, `Dark` или фирменный `BarkFluffDark` с accent `#81341E`; первые три используют системный Windows accent, а `SystemThemeWatcher` отслеживает изменения Windows в запущенном приложении.
+- После `GetServerInfo` `NodeServiceConfiguration` сохраняет endpoints Beacon, Identity, Users, Files, Messages, Updates, Onliner, FastAuth и Calls без токенов. На следующем запуске конфигурация восстанавливает `IClientSession` и открывает вход.
+- `LoginViewModel` общается только с `IAuthenticationService`: обычный вход поддерживает login/email, пароль и 2FA. Код OTP — шесть полей, полная вставка в первом поле заполняет их все и запускает проверку. FastAuth QR берётся у сервера в PNG base64 и отображается как `ImageSource`.
+- Access/refresh токены живут только в памяти текущей сессии. Их постоянное хранение требует отдельной DPAPI-миграции.
+
 Подробные правила написания кода: `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md`.
 
 Полная карта классов и ресурсов: [[Клиенты/Windows-WPF-V2-ProjectMap]].

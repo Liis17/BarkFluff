@@ -1,4 +1,5 @@
 using BarkFluff.ClientV2.WPF.Infrastructure.Localization;
+using BarkFluff.ClientV2.WPF.Infrastructure.Appearance;
 using BarkFluff.ClientV2.WPF.Infrastructure.Storage;
 using BarkFluff.ClientV2.WPF.Services;
 using BarkFluff.ClientV2.WPF.ViewModels;
@@ -8,8 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using System.Windows;
-using Wpf.Ui.Appearance;
-using WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType;
 
 namespace BarkFluff.ClientV2.WPF;
 
@@ -23,17 +22,19 @@ public partial class App : Application
 
         try
         {
-            ApplicationThemeManager.Apply(
-                ApplicationTheme.Light,
-                WindowBackdropType.Mica,
-                updateAccent: true);
-
             _host = CreateHost();
             await _host.StartAsync();
 
             var services = _host.Services;
             var dataStore = services.GetRequiredService<IApplicationDataStore>();
             await dataStore.InitializeAsync();
+
+            var theme = await dataStore.GetThemeAsync() ?? Models.ApplicationThemeMode.System;
+            services.GetRequiredService<IApplicationThemeService>().Apply(theme);
+            if (await dataStore.GetThemeAsync() is null)
+            {
+                await dataStore.SaveThemeAsync(theme);
+            }
 
             var localization = services.GetRequiredService<ILocalizationService>();
             var language = await dataStore.GetLanguageAsync();
@@ -46,7 +47,13 @@ public partial class App : Application
             }
 
             var navigation = services.GetRequiredService<IOnboardingNavigationService>();
-            if (await dataStore.HasSeenWelcomeAsync())
+            var savedConnection = await dataStore.GetNodeServiceConfigurationAsync();
+            var nodeConnectionService = services.GetRequiredService<INodeConnectionService>();
+            if (savedConnection is not null && nodeConnectionService.RestoreConnection(savedConnection))
+            {
+                navigation.ShowLogin();
+            }
+            else if (await dataStore.HasSeenWelcomeAsync())
             {
                 navigation.ShowSelectNode();
             }
@@ -55,7 +62,9 @@ public partial class App : Application
                 navigation.ShowWelcome();
             }
 
-            services.GetRequiredService<MainWindow>().Show();
+            var mainWindow = services.GetRequiredService<MainWindow>();
+            mainWindow.Show();
+            services.GetRequiredService<IApplicationThemeService>().WatchSystemTheme(mainWindow, theme);
         }
         catch (Exception exception)
         {
@@ -85,17 +94,20 @@ public partial class App : Application
 
         builder.Services.AddSingleton(new AppDataPaths(AppContext.BaseDirectory));
         builder.Services.AddSingleton<IApplicationDataStore, SqliteApplicationDataStore>();
+        builder.Services.AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<WebApiClient>();
         builder.Services.AddSingleton<INodeAddressParser, NodeAddressParser>();
         builder.Services.AddSingleton<IClientSession, ClientSession>();
         builder.Services.AddSingleton<INodeConnectionService, NodeConnectionService>();
+        builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<IOnboardingNavigationService, OnboardingNavigationService>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddSingleton<WelcomeViewModel>();
         builder.Services.AddSingleton<SelectNodeViewModel>();
         builder.Services.AddSingleton<ConnectedNodeViewModel>();
+        builder.Services.AddSingleton<LoginViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();

@@ -17,11 +17,21 @@ public sealed class SqliteApplicationDataStoreTests
             await store.InitializeAsync();
             await store.MarkWelcomeSeenAsync();
             await store.SaveLanguageAsync("ru");
+            await store.SaveThemeAsync(ApplicationThemeMode.BarkFluffDark);
             await store.SaveSelectedNodeAsync(new NodeProfile("https://node.example.com", "Node", "Description"));
+            await store.SaveNodeServiceConfigurationAsync(new NodeConnection(
+                new NodeProfile("https://node.example.com", "Node", "Description"),
+                new BarkFluff.WebApi.Core.MessengerData.GlobalParam
+                {
+                    SocketIdentity = "https://identity.example.com:443",
+                    SocketUsers = "https://users.example.com:443"
+                }));
 
             Assert.True(await store.HasSeenWelcomeAsync());
             Assert.Equal("ru", await store.GetLanguageAsync());
+            Assert.Equal(ApplicationThemeMode.BarkFluffDark, await store.GetThemeAsync());
             Assert.Equal("Node", (await store.GetSelectedNodeAsync())!.Name);
+            Assert.Equal("https://identity.example.com:443", (await store.GetNodeServiceConfigurationAsync())!.ConnectionParameters.SocketIdentity);
         }
         finally
         {
