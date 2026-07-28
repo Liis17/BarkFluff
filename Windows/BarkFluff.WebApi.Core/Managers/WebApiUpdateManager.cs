@@ -17,120 +17,144 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi = webApi;
         }
 
+        /// <summary>
+        /// Общая обвязка подписки: все стримы Updates отличаются только вызовом,
+        /// а обработка ошибок и превращение в <see cref="IAsyncEnumerable{T}"/> у них одинаковые.
+        /// </summary>
+        /// <remarks>
+        /// CT прокидывается и в сам streaming-call, и в MoveNext (внутри ReadStream): без этого стрим
+        /// невозможно отменить со стороны клиента — он висит на сокете до тайм-аута/обрыва сервером
+        /// и держит соединение (утечка + race со свежими стримами после TokenRefreshed).
+        /// </remarks>
+        private async Task<(ErrorReturner error, IAsyncEnumerable<TEvent>? stream)> Subscribe<TEvent>(
+            Func<CancellationToken, AsyncServerStreamingCall<TEvent>> startCall,
+            GlobalParam globalParam,
+            CancellationToken ct)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var call = startCall(ct);
+                    return ((ErrorReturner, IAsyncEnumerable<TEvent>?))(new ErrorReturner(true, ""), ReadStream(call, ct));
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+            }
+        }
+
+        /// <summary>
+        /// Новые сообщения во всех чатах пользователя.
+        /// </summary>
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default)
-        {
-            try
-            {
-                return await _webApi.TokenManager.SafeCallAsync(async () =>
-                {
-                    // CT прокидываем и в сам streaming-call, и в MoveNext: без этого стрим
-                    // невозможно отменить со стороны клиента — он висит на сокете до тайм-аута/обрыва
-                    // сервером и держит соединение (утечка + race со свежими стримами после TokenRefreshed).
-                    var response = UpdatesAC!.SubscribeNewMessages(new SubscribeNewMessagesRequest { }, headers: null, deadline: null, cancellationToken: ct);
+            => await Subscribe(token => UpdatesAC!.SubscribeNewMessages(new SubscribeNewMessagesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                    // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<NewMessageEvent> GetMessageStream()
-                    {
-                        while (true)
-                        {
-                            bool hasNext;
-                            NewMessageEvent messageEvent;
+        /// <summary>
+        /// Отметки о прочтении сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeMessagesRead(new SubscribeMessagesReadRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                            try
-                            {
-                                hasNext = await response.ResponseStream.MoveNext(ct);
-                                if (!hasNext)
-                                {
-                                    yield break; // Стрим завершён
-                                }
-                                messageEvent = response.ResponseStream.Current;
-                            }
-                            catch (RpcException ex)
-                            {
-                                var a = ex;
-                                yield break;
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                yield break;
-                            }
-                            catch (Exception)
-                            {
-                                yield break;
-                            }
+        /// <summary>
+        /// Отредактированные сообщения.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageEditedEvent>? stream)> SubscribeToMessagesEdited(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeMessagesEdited(new SubscribeMessagesEditedRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                            yield return messageEvent;
-                        }
-                    }
+        /// <summary>
+        /// Удалённые сообщения.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageDeletedEvent>? stream)> SubscribeToMessagesDeleted(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeMessagesDeleted(new SubscribeMessagesDeletedRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                    return ((ErrorReturner, IAsyncEnumerable<NewMessageEvent>?))(new ErrorReturner(true, ""), GetMessageStream());
-                }, globalParam);
-            }
-            catch (RpcException)
-            {
-                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-            }
-            catch (Exception)
-            {
-                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
-            }
-        }
+        /// <summary>
+        /// Закрепления сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessagePinnedEvent>? stream)> SubscribeToMessagesPinned(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeMessagesPinned(new SubscribeMessagesPinnedRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(
-            GlobalParam globalParam, CancellationToken ct = default)
-        {
-            try
-            {
-                return await _webApi.TokenManager.SafeCallAsync(async () =>
-                {
-                    var request = new SubscribeMessagesReadRequest();
-                    var response = UpdatesAC!.SubscribeMessagesRead(request, headers: null, deadline: null, cancellationToken: ct);
+        /// <summary>
+        /// Открепления отдельных сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageUnpinnedEvent>? stream)> SubscribeToMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeMessagesUnpinned(new SubscribeMessagesUnpinnedRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                    // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<MessageReadEvent> GetReadReceiptStream()
-                    {
-                        while (true)
-                        {
-                            bool hasNext;
-                            MessageReadEvent update;
+        /// <summary>
+        /// Массовое открепление всех сообщений чата.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<AllMessagesUnpinnedEvent>? stream)> SubscribeToAllMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeAllMessagesUnpinned(new SubscribeAllMessagesUnpinnedRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                            try
-                            {
-                                hasNext = await response.ResponseStream.MoveNext(ct);
-                                if (!hasNext)
-                                {
-                                    yield break; // Стрим завершён
-                                }
-                                update = response.ResponseStream.Current;
-                            }
-                            catch (RpcException)
-                            {
-                                yield break;
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                yield break;
-                            }
-                            catch (Exception)
-                            {
-                                yield break;
-                            }
+        #region Приватные чаты (E2E через passphrase)
 
-                            yield return update;
-                        }
-                    }
+        /// <summary>
+        /// Новые зашифрованные сообщения приватных чатов. Расшифровка — на клиенте,
+        /// см. WebApi.DecryptPrivateMessage.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewEncryptedMessageEvent>? stream)> SubscribeToPrivateMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessages(new SubscribePrivateMessagesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
-                    return ((ErrorReturner, IAsyncEnumerable<MessageReadEvent>?))(new ErrorReturner(true, ""), GetReadReceiptStream());
-                }, globalParam);
-            }
-            catch (RpcException)
-            {
-                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
-            }
-            catch (Exception)
-            {
-                return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
-            }
-        }
+        /// <summary>
+        /// Правки зашифрованных сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<EncryptedMessageEditedEvent>? stream)> SubscribeToPrivateMessageEdits(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessageEdits(new SubscribePrivateMessageEditsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Удаления зашифрованных сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<EncryptedMessageDeletedEvent>? stream)> SubscribeToPrivateMessageDeletes(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessageDeletes(new SubscribePrivateMessageDeletesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Отметки о прочтении в приватных чатах.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<PrivateMessagesReadEvent>? stream)> SubscribeToPrivateMessagesRead(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessagesRead(new SubscribePrivateMessagesReadRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Приглашения в приватные чаты: в событии приходят salt и verifier для проверки кодовой фразы.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<PrivateChatInviteEvent>? stream)> SubscribeToPrivateChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateChatInvites(new SubscribePrivateChatInvitesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Ответы на отправленные приглашения (принято / отклонено).
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<PrivateChatInviteResolutionEvent>? stream)> SubscribeToPrivateChatInviteResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateChatInviteResolutions(new SubscribePrivateChatInviteResolutionsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        #endregion
+
+        #region Секретные чаты (transport без libsignal)
+
+        /// <summary>
+        /// Приглашения секретных чатов. Крипта libsignal не реализована,
+        /// initialEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<SecretChatInviteEvent>? stream)> SubscribeToSecretChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeSecretChatInvites(new SubscribeSecretChatInvitesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Ответы на отправленные приглашения секретных чатов. Крипта libsignal не реализована,
+        /// responseEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<SecretChatInviteResolutionEvent>? stream)> SubscribeToSecretChatResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeSecretChatResolutions(new SubscribeSecretChatResolutionsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Секретные сообщения текущего устройства. Крипта libsignal не реализована,
+        /// envelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewSecretMessageEvent>? stream)> SubscribeToSecretMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeSecretMessages(new SubscribeSecretMessagesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        #endregion
     }
 }

@@ -31,6 +31,7 @@ namespace BarkFluff.WebApi.Core.Managers
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var response = await BeaconAC!.GetServerInfoAsync(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
+                    ApplyServerInfo(param, response);
                     return ((ErrorReturner, BarkFluff.Proto.Beacon.GetServerInfoResponse?))(new ErrorReturner(true), response);
                 }, param);
             }
@@ -42,6 +43,23 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, $"Ошибка получения информации о сервере: {ex.Message}"), null);
             }
+        }
+
+        /// <summary>
+        /// Переносит в <see cref="GlobalParam"/> адреса сервисов, о которых знает только Beacon:
+        /// звонки (gRPC + LiveKit) и параметры федерации. Остальные сокеты заполняет приложение,
+        /// а эти появились позже и без такого переноса остались бы пустыми.
+        /// </summary>
+        public static void ApplyServerInfo(GlobalParam param, Proto.Beacon.GetServerInfoResponse response)
+        {
+            var callsEndpoint = response.Calls?.Endpoint;
+            param.SocketCalls = string.IsNullOrWhiteSpace(callsEndpoint?.Host)
+                ? string.Empty
+                : WebApi.BuildEndpointUrl(callsEndpoint.Host, callsEndpoint.Port, response.Calls!.TlsEnabled);
+
+            param.LivekitUrl = response.LivekitUrl;
+            param.ServerDnsName = response.ServerName;
+            param.FederationEnabled = response.FederationEnabled;
         }
 
         /// <summary>
