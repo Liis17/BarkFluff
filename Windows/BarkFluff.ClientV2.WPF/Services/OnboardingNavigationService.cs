@@ -49,6 +49,13 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
         Navigate(viewModel);
     }
 
+    public void ShowMessenger()
+    {
+        var viewModel = _serviceProvider.GetRequiredService<MessengerViewModel>();
+        _ = viewModel.LoadAsync();
+        Navigate(viewModel);
+    }
+
     private void Navigate(object viewModel)
     {
         if (CurrentViewModel is LoginViewModel loginViewModel && viewModel is not LoginViewModel)
