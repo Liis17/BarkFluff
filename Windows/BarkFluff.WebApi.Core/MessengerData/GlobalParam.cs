@@ -48,6 +48,28 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketUpdates { get; set; } = string.Empty;
         public string SocketOnliner { get; set; } = string.Empty;
         public string SocketFastAuth { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Адрес gRPC-сигнализации звонков. Пусто, если звонки на сервере не настроены.
+        /// Заполняется библиотекой из ответа Beacon (см. WebApiServerManager.GetServerInfo).
+        /// </summary>
+        public string SocketCalls { get; set; } = string.Empty;
+
+        /// <summary>
+        /// WSS-адрес LiveKit SFU для медиа-части звонков. Пусто, если звонки не настроены.
+        /// </summary>
+        public string LivekitUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// DNS-домен ноды для федерации (пусто, если федерация не настроена).
+        /// </summary>
+        public string ServerDnsName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Включена ли федерация на выбранной ноде.
+        /// </summary>
+        public bool FederationEnabled { get; set; } = false;
+
         public string AppPath { get; set; } = string.Empty;
         public string ServerName { get; set; } = string.Empty;
         public string ServerDescription { get; set; } = string.Empty;
