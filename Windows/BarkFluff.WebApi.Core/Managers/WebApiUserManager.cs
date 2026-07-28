@@ -1,6 +1,8 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Google.Protobuf.WellKnownTypes;
+
 namespace BarkFluff.WebApi.Core.Managers
 {
     /// <summary>
@@ -175,6 +177,107 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception)
             {
                 return new ErrorReturner(false, "Ошибка переименования устройства");
+            }
+        }
+
+        /// <summary>
+        /// Отключить или включить уведомления конкретного чата.
+        /// mutedUntil = null при muted=true означает «навсегда».
+        /// </summary>
+        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.SetChatMutedRequest
+                    {
+                        ChatId = chatId,
+                        Muted = muted
+                    };
+                    if (mutedUntil.HasValue)
+                        request.MutedUntil = Timestamp.FromDateTime(mutedUntil.Value.ToUniversalTime());
+
+                    await UsersAC!.SetChatMutedAsync(request);
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения уведомлений чата");
+            }
+        }
+
+        /// <summary>
+        /// Список чатов с активным mute у текущего пользователя.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.GetMutedChatsAsync(new Proto.Users.GetMutedChatsRequest());
+                    return (new ErrorReturner(true), response.Chats.ToList());
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения списка отключённых чатов"), null);
+            }
+        }
+
+        /// <summary>
+        /// Сохранить Firebase-токен текущего устройства для push-уведомлений.
+        /// </summary>
+        public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.SetFirebaseTokenAsync(new Proto.Users.SetFirebaseTokenRequest
+                    {
+                        FirebaseToken = firebaseToken
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка сохранения токена уведомлений");
+            }
+        }
+
+        /// <summary>
+        /// Найти пользователя другой ноды по федеративному идентификатору «@username:servername».
+        /// Возвращает found=false, если такого пользователя нет или федерация не настроена.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.ResolveFederatedUserAsync(new Proto.Users.ResolveFederatedUserRequest { Fid = fid });
+                    return ((ErrorReturner, Proto.Users.ResolveFederatedUserResponse?))(new ErrorReturner(true), response);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Federation.FederationNotConfiguredException)
+            {
+                return (new ErrorReturner(false, "Федерация не настроена на этом сервере"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Federation.InvalidServernameException)
+            {
+                return (new ErrorReturner(false, "Неверный формат федеративного идентификатора"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Federation.FederationServerBlockedException)
+            {
+                return (new ErrorReturner(false, "Сервер собеседника заблокирован"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка поиска пользователя другого сервера"), null);
             }
         }
 
