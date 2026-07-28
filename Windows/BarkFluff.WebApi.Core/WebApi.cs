@@ -80,6 +80,7 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiChatFolderManager ChatFolderManager;
         internal readonly WebApiCallsManager CallsManager;
         internal readonly WebApiPrivateChatManager PrivateChatManager;
+        internal readonly WebApiSecretChatManager SecretChatManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
@@ -110,6 +111,7 @@ namespace BarkFluff.WebApi.Core
             ChatFolderManager = new WebApiChatFolderManager(this);
             CallsManager = new WebApiCallsManager(this);
             PrivateChatManager = new WebApiPrivateChatManager(this);
+            SecretChatManager = new WebApiSecretChatManager(this);
         }
 
         #region IDisposable
@@ -237,6 +239,45 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) => await UserManager.GetMutedChats(globalParam);
         public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam) => await UserManager.SetFirebaseToken(firebaseToken, globalParam);
         public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam) => await UserManager.ResolveFederatedUser(fid, globalParam);
+        #endregion
+
+        #region Prekey bundle секретных чатов (делегирование к UserManager)
+        /// <summary>
+        /// Зарегистрировать prekey-bundle текущего устройства. Крипта libsignal не реализована:
+        /// ключи должны быть сгенерированы приложением и передаются как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RegisterPrekeyBundle(uint registrationId, byte[] identityPubkey,
+            Proto.Users.SignedPreKey signedPrekey, List<Proto.Users.OneTimePreKey> oneTimePrekeys, GlobalParam globalParam)
+            => await UserManager.RegisterPrekeyBundle(registrationId, identityPubkey, signedPrekey, oneTimePrekeys, globalParam);
+
+        /// <summary>
+        /// Получить prekey-bundle устройства собеседника. Крипта libsignal не реализована:
+        /// полученный bundle передаётся приложению как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Users.FetchPrekeyBundleResponse? response)> FetchPrekeyBundle(
+            long userId, string deviceId, GlobalParam globalParam)
+            => await UserManager.FetchPrekeyBundle(userId, deviceId, globalParam);
+
+        /// <summary>
+        /// Получить устройства собеседника, готовые к секретному чату. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Users.PeerDeviceInfo>? devices)> ListPeerDevices(long userId, GlobalParam globalParam)
+            => await UserManager.ListPeerDevices(userId, globalParam);
+
+        /// <summary>
+        /// Пополнить пул разовых prekey текущего устройства. Крипта libsignal не реализована:
+        /// новые ключи передаются как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, int totalOneTimePrekeys)> ReplenishOneTimePrekeys(
+            List<Proto.Users.OneTimePreKey> prekeys, GlobalParam globalParam)
+            => await UserManager.ReplenishOneTimePrekeys(prekeys, globalParam);
+
+        /// <summary>
+        /// Ротировать signed prekey текущего устройства. Крипта libsignal не реализована:
+        /// ключ должен быть сгенерирован приложением и передаётся как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RotateSignedPrekey(Proto.Users.SignedPreKey signedPrekey, GlobalParam globalParam)
+            => await UserManager.RotateSignedPrekey(signedPrekey, globalParam);
         #endregion
 
         #region Папки чатов (делегирование к ChatFolderManager)
@@ -369,6 +410,66 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateChatInviteResolutionEvent>? stream)> SubscribeToPrivateChatInviteResolutions(GlobalParam globalParam, CancellationToken ct = default)
             => await UpdateManager.SubscribeToPrivateChatInviteResolutions(globalParam, ct);
+        #endregion
+
+        #region Секретные чаты (транспорт без libsignal)
+        /// <summary>
+        /// Отправить инвайт секретного чата. Крипта libsignal не реализована,
+        /// initialEnvelope прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.SendSecretChatInviteResponse? response)> SendSecretChatInvite(
+            long recipientUserId, string recipientDeviceId, byte[] initialEnvelope, GlobalParam globalParam)
+            => await SecretChatManager.SendSecretChatInvite(recipientUserId, recipientDeviceId, initialEnvelope, globalParam);
+
+        /// <summary>
+        /// Принять инвайт секретного чата. Крипта libsignal не реализована,
+        /// responseEnvelope прокидывается как есть.
+        /// </summary>
+        public async Task<ErrorReturner> AcceptSecretChatInvite(string inviteId, byte[] responseEnvelope, GlobalParam globalParam)
+            => await SecretChatManager.AcceptSecretChatInvite(inviteId, responseEnvelope, globalParam);
+
+        /// <summary>
+        /// Отклонить инвайт секретного чата. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<ErrorReturner> RejectSecretChatInvite(string inviteId, GlobalParam globalParam)
+            => await SecretChatManager.RejectSecretChatInvite(inviteId, globalParam);
+
+        /// <summary>
+        /// Отправить секретное сообщение. Крипта libsignal не реализована,
+        /// envelope прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.SendSecretMessageResponse? response)> SendSecretMessage(
+            long recipientUserId, string recipientDeviceId, byte[] envelope, GlobalParam globalParam)
+            => await SecretChatManager.SendSecretMessage(recipientUserId, recipientDeviceId, envelope, globalParam);
+
+        /// <summary>
+        /// Подтвердить доставку секретного сообщения. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<ErrorReturner> AckSecretMessage(string messageId, GlobalParam globalParam)
+            => await SecretChatManager.AckSecretMessage(messageId, globalParam);
+        #endregion
+
+        #region Реалтайм обновления секретных чатов (транспорт без libsignal)
+        /// <summary>
+        /// Приглашения секретных чатов. Крипта libsignal не реализована,
+        /// initialEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.SecretChatInviteEvent>? stream)> SubscribeToSecretChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToSecretChatInvites(globalParam, ct);
+
+        /// <summary>
+        /// Ответы на приглашения секретных чатов. Крипта libsignal не реализована,
+        /// responseEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.SecretChatInviteResolutionEvent>? stream)> SubscribeToSecretChatResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToSecretChatResolutions(globalParam, ct);
+
+        /// <summary>
+        /// Секретные сообщения текущего устройства. Крипта libsignal не реализована,
+        /// envelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.NewSecretMessageEvent>? stream)> SubscribeToSecretMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToSecretMessages(globalParam, ct);
         #endregion
 
         #region Поиск (делегирование к SearchManager)

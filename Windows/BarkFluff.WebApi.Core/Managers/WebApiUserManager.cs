@@ -1,6 +1,7 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.WebApi.Core.Managers
@@ -646,5 +647,124 @@ namespace BarkFluff.WebApi.Core.Managers
                 return new ErrorReturner(false, "Ошибка обновления постера профиля");
             }
         }
+
+        #region Prekey bundle секретных чатов
+
+        /// <summary>
+        /// Зарегистрировать prekey-bundle текущего устройства. Крипта libsignal не реализована:
+        /// ключи должны быть сгенерированы приложением и передаются как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RegisterPrekeyBundle(uint registrationId, byte[] identityPubkey,
+            Proto.Users.SignedPreKey signedPrekey, List<Proto.Users.OneTimePreKey> oneTimePrekeys, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.RegisterPrekeyBundleRequest
+                    {
+                        RegistrationId = registrationId,
+                        IdentityPubkey = ByteString.CopyFrom(identityPubkey),
+                        SignedPrekey = signedPrekey
+                    };
+                    request.OneTimePrekeys.AddRange(oneTimePrekeys);
+                    await UsersAC!.RegisterPrekeyBundleAsync(request);
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка регистрации prekey-bundle");
+            }
+        }
+
+        /// <summary>
+        /// Получить prekey-bundle устройства собеседника. Крипта libsignal не реализована:
+        /// полученный bundle передаётся приложению как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Users.FetchPrekeyBundleResponse? response)> FetchPrekeyBundle(
+            long userId, string deviceId, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.FetchPrekeyBundleAsync(new Proto.Users.FetchPrekeyBundleRequest
+                    {
+                        UserId = userId,
+                        DeviceId = deviceId
+                    });
+                    return ((ErrorReturner, Proto.Users.FetchPrekeyBundleResponse?))(new ErrorReturner(true), response);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения prekey-bundle"), null);
+            }
+        }
+
+        /// <summary>
+        /// Получить устройства собеседника, готовые к секретному чату. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Users.PeerDeviceInfo>? devices)> ListPeerDevices(long userId, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.ListPeerDevicesAsync(new Proto.Users.ListPeerDevicesRequest { UserId = userId });
+                    return (new ErrorReturner(true), response.Devices.ToList());
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения устройств собеседника"), null);
+            }
+        }
+
+        /// <summary>
+        /// Пополнить пул разовых prekey текущего устройства. Крипта libsignal не реализована:
+        /// новые ключи передаются как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, int totalOneTimePrekeys)> ReplenishOneTimePrekeys(
+            List<Proto.Users.OneTimePreKey> prekeys, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.ReplenishOneTimePrekeysRequest();
+                    request.Prekeys.AddRange(prekeys);
+                    var response = await UsersAC!.ReplenishOneTimePrekeysAsync(request);
+                    return (new ErrorReturner(true), response.TotalOneTimePrekeys);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка пополнения prekey"), 0);
+            }
+        }
+
+        /// <summary>
+        /// Ротировать signed prekey текущего устройства. Крипта libsignal не реализована:
+        /// ключ должен быть сгенерирован приложением и передаётся как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RotateSignedPrekey(Proto.Users.SignedPreKey signedPrekey, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.RotateSignedPrekeyAsync(new Proto.Users.RotateSignedPrekeyRequest { SignedPrekey = signedPrekey });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка ротации signed prekey");
+            }
+        }
+
+        #endregion
     }
 }
