@@ -88,7 +88,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - `users_api.proto` — Client (валидация аватара)
 # Метрики
 
-[[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Download считается при фактической HTTP-выдаче файла, а не при создании временной ссылки.
+[[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Локальный download проходит через `CountingReadStream`: учитываются реально прочитанные HTTP-ответом байты, поэтому non-seekable S3-поток не даёт нулевой трафик. Завершённые federated downloads добавляются в те же общие Files-счётчики.
 
 ## `FetchFileStream` — отдача файла ноде-партнёру (этап 3.2, docs/rearch/phase-3/step-3.2-fetchfile-access.md)
 
