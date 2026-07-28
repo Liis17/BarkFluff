@@ -37,41 +37,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     // при каждом TokenRefreshed/переподключении.
                     var response = OnlinerAC!.SubscribeToOnlineStatus(request, headers: null, deadline: null, cancellationToken: ct);
 
-                    // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<UserOnlineStatus> GetStatusStream()
-                    {
-                        while (true)
-                        {
-                            bool hasNext;
-                            UserOnlineStatus statusUpdate;
-
-                            try
-                            {
-                                hasNext = await response.ResponseStream.MoveNext(ct);
-                                if (!hasNext)
-                                {
-                                    yield break; // Стрим завершён
-                                }
-                                statusUpdate = response.ResponseStream.Current;
-                            }
-                            catch (RpcException)
-                            {
-                                yield break;
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                yield break;
-                            }
-                            catch (Exception)
-                            {
-                                yield break;
-                            }
-
-                            yield return statusUpdate;
-                        }
-                    }
-
-                    return ((ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?))(new ErrorReturner(true, ""), GetStatusStream());
+                    return ((ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?))(new ErrorReturner(true, ""), ReadStream(response, ct));
                 }, globalParam);
             }
             catch (RpcException)

@@ -1,7 +1,5 @@
 using BarkFluff.Proto.FastAuth;
 
-using Grpc.Core;
-
 namespace BarkFluff.WebApi.Core.Managers
 {
     internal class WebApiFastAuthManager : WebApiBase
@@ -41,27 +39,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     new SubscribeFastAuthResultRequest { FastAuthId = fastAuthId },
                     headers: null, deadline: null, cancellationToken: ct);
 
-                async IAsyncEnumerable<FastAuthResult> GetStream()
-                {
-                    while (true)
-                    {
-                        bool hasNext;
-                        FastAuthResult item;
-                        try
-                        {
-                            hasNext = await call.ResponseStream.MoveNext(ct);
-                            if (!hasNext) yield break;
-                            item = call.ResponseStream.Current;
-                        }
-                        catch (RpcException) { yield break; }
-                        catch (OperationCanceledException) { yield break; }
-                        catch (Exception) { yield break; }
-
-                        yield return item;
-                    }
-                }
-
-                return (new ErrorReturner(true), GetStream());
+                return (new ErrorReturner(true), ReadStream(call, ct));
             }
             catch (Exception ex)
             {

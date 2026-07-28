@@ -1,4 +1,7 @@
+using Grpc.Core;
 using Grpc.Net.Client;
+
+using System.Runtime.CompilerServices;
 
 namespace BarkFluff.WebApi.Core
 {
@@ -21,6 +24,8 @@ namespace BarkFluff.WebApi.Core
         protected BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC => _webApi.UpdatesAC;
         protected BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC => _webApi.OnlinerAC;
         protected BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthAC => _webApi.FastAuthAC;
+        protected BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthUserAC => _webApi.FastAuthUserAC;
+        protected BarkFluff.Proto.Calls.CallsApi.CallsApiClient? CallsAC => _webApi.CallsAC;
 
         protected GrpcChannel? BeaconChannel => _webApi.BeaconChannel;
         protected GrpcChannel? UserChannel => _webApi.UserChannel;
@@ -31,10 +36,55 @@ namespace BarkFluff.WebApi.Core
         protected GrpcChannel? UpdatesChannel => _webApi.UpdatesChannel;
         protected GrpcChannel? OnlinerChannel => _webApi.OnlinerChannel;
         protected GrpcChannel? FastAuthChannel => _webApi.FastAuthChannel;
+        protected GrpcChannel? FastAuthUserChannel => _webApi.FastAuthUserChannel;
+        protected GrpcChannel? CallsChannel => _webApi.CallsChannel;
 
         protected WebApiBase(WebApi webApi)
         {
             _webApi = webApi;
+        }
+
+        /// <summary>
+        /// Превращает серверный gRPC-стрим в <see cref="IAsyncEnumerable{T}"/>.
+        /// Любой обрыв (RpcException, отмена, сетевая ошибка) завершает перечисление —
+        /// клиент решает, пересоздавать ли подписку (например, после события TokenRefreshed).
+        /// Сам вызов освобождается по завершении перечисления, в том числе когда
+        /// потребитель вышел из цикла досрочно — иначе стрим остаётся висеть на сокете.
+        /// </summary>
+        protected static async IAsyncEnumerable<T> ReadStream<T>(
+            AsyncServerStreamingCall<T> call,
+            [EnumeratorCancellation] CancellationToken ct)
+        {
+            using (call)
+            {
+                while (true)
+                {
+                    T item;
+
+                    try
+                    {
+                        if (!await call.ResponseStream.MoveNext(ct))
+                        {
+                            yield break; // Стрим завершён сервером
+                        }
+                        item = call.ResponseStream.Current;
+                    }
+                    catch (RpcException)
+                    {
+                        yield break;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        yield break;
+                    }
+                    catch (Exception)
+                    {
+                        yield break;
+                    }
+
+                    yield return item;
+                }
+            }
         }
     }
 }
