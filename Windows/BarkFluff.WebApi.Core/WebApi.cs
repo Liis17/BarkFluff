@@ -41,6 +41,12 @@ namespace BarkFluff.WebApi.Core
         internal BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC;
         internal BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC;
         internal BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthAC;
+        /// <summary>
+        /// FastAuth поверх авторизованного канала: ScanFastAuth/AcceptFastAuth/RejectFastAuth
+        /// требуют User-токен, анонимный <see cref="FastAuthAC"/> для них не подходит.
+        /// </summary>
+        internal BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthUserAC;
+        internal BarkFluff.Proto.Calls.CallsApi.CallsApiClient? CallsAC;
         #endregion
 
         #region gRPC Channels (internal для доступа менеджеров)
@@ -53,6 +59,8 @@ namespace BarkFluff.WebApi.Core
         internal GrpcChannel? UpdatesChannel;
         internal GrpcChannel? OnlinerChannel;
         internal GrpcChannel? FastAuthChannel;
+        internal GrpcChannel? FastAuthUserChannel;
+        internal GrpcChannel? CallsChannel;
         #endregion
 
         #region Менеджеры
@@ -73,6 +81,13 @@ namespace BarkFluff.WebApi.Core
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
         public bool BeaconIsnull => BeaconAC == null;
+
+        /// <summary>
+        /// Доступны ли звонки: сервис Calls есть в ответе Beacon и его канал создан.
+        /// Сервер может быть развёрнут без звонков — тогда все методы CallManager
+        /// вернут ошибку вместо исключения.
+        /// </summary>
+        public bool CallsAvailable => CallsAC != null;
 
         public WebApi()
         {
@@ -113,6 +128,8 @@ namespace BarkFluff.WebApi.Core
                 UpdatesChannel?.Dispose();
                 OnlinerChannel?.Dispose();
                 FastAuthChannel?.Dispose();
+                FastAuthUserChannel?.Dispose();
+                CallsChannel?.Dispose();
             }
             _disposed = true;
         }

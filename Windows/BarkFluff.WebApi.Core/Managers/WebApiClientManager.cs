@@ -111,6 +111,8 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi.MessagesAC = null!;
             _webApi.UpdatesAC = null!;
             _webApi.OnlinerAC = null!;
+            _webApi.CallsAC = null;
+            _webApi.FastAuthUserAC = null;
 
             try
             {
@@ -170,6 +172,28 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.MessagesAC = new Proto.Messages.MessagesApi.MessagesApiClient(messageInvoker);
                 _webApi.UpdatesAC = new Proto.Updates.UpdatesApi.UpdatesApiClient(updatesInvoker);
                 _webApi.OnlinerAC = new BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient(onlinerInvoker);
+
+                // Звонки есть не на каждом сервере, а сохранённый ранее GlobalParam мог быть
+                // записан до появления Calls — поэтому канал создаём только при известном адресе.
+                _webApi.CallsChannel?.Dispose();
+                _webApi.CallsChannel = null;
+                if (!string.IsNullOrWhiteSpace(_gParam.SocketCalls))
+                {
+                    _gParam.SocketCalls = WebApi.EnsureHttpPrefix(_gParam.SocketCalls);
+                    _webApi.CallsChannel = GrpcChannel.ForAddress(_gParam.SocketCalls);
+                    _webApi.CallsAC = new Proto.Calls.CallsApi.CallsApiClient(BuildInvoker(_webApi.CallsChannel, interceptors));
+                }
+
+                // Авторизованный FastAuth — для подтверждения входа нового устройства с этого клиента
+                // (Scan/Accept/Reject требуют User-токен, анонимный канал из CreateFastAuthClient не подходит).
+                _webApi.FastAuthUserChannel?.Dispose();
+                _webApi.FastAuthUserChannel = null;
+                if (!string.IsNullOrWhiteSpace(_gParam.SocketFastAuth))
+                {
+                    _gParam.SocketFastAuth = WebApi.EnsureHttpPrefix(_gParam.SocketFastAuth);
+                    _webApi.FastAuthUserChannel = GrpcChannel.ForAddress(_gParam.SocketFastAuth);
+                    _webApi.FastAuthUserAC = new Proto.FastAuth.FastAuthApi.FastAuthApiClient(BuildInvoker(_webApi.FastAuthUserChannel, interceptors));
+                }
 
                 return new ErrorReturner(true);
             }

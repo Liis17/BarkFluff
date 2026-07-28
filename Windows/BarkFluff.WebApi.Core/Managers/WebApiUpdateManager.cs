@@ -28,42 +28,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     // сервером и держит соединение (утечка + race со свежими стримами после TokenRefreshed).
                     var response = UpdatesAC!.SubscribeNewMessages(new SubscribeNewMessagesRequest { }, headers: null, deadline: null, cancellationToken: ct);
 
-                    // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<NewMessageEvent> GetMessageStream()
-                    {
-                        while (true)
-                        {
-                            bool hasNext;
-                            NewMessageEvent messageEvent;
-
-                            try
-                            {
-                                hasNext = await response.ResponseStream.MoveNext(ct);
-                                if (!hasNext)
-                                {
-                                    yield break; // Стрим завершён
-                                }
-                                messageEvent = response.ResponseStream.Current;
-                            }
-                            catch (RpcException ex)
-                            {
-                                var a = ex;
-                                yield break;
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                yield break;
-                            }
-                            catch (Exception)
-                            {
-                                yield break;
-                            }
-
-                            yield return messageEvent;
-                        }
-                    }
-
-                    return ((ErrorReturner, IAsyncEnumerable<NewMessageEvent>?))(new ErrorReturner(true, ""), GetMessageStream());
+                    return ((ErrorReturner, IAsyncEnumerable<NewMessageEvent>?))(new ErrorReturner(true, ""), ReadStream(response, ct));
                 }, globalParam);
             }
             catch (RpcException)
@@ -86,41 +51,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     var request = new SubscribeMessagesReadRequest();
                     var response = UpdatesAC!.SubscribeMessagesRead(request, headers: null, deadline: null, cancellationToken: ct);
 
-                    // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<MessageReadEvent> GetReadReceiptStream()
-                    {
-                        while (true)
-                        {
-                            bool hasNext;
-                            MessageReadEvent update;
-
-                            try
-                            {
-                                hasNext = await response.ResponseStream.MoveNext(ct);
-                                if (!hasNext)
-                                {
-                                    yield break; // Стрим завершён
-                                }
-                                update = response.ResponseStream.Current;
-                            }
-                            catch (RpcException)
-                            {
-                                yield break;
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                yield break;
-                            }
-                            catch (Exception)
-                            {
-                                yield break;
-                            }
-
-                            yield return update;
-                        }
-                    }
-
-                    return ((ErrorReturner, IAsyncEnumerable<MessageReadEvent>?))(new ErrorReturner(true, ""), GetReadReceiptStream());
+                    return ((ErrorReturner, IAsyncEnumerable<MessageReadEvent>?))(new ErrorReturner(true, ""), ReadStream(response, ct));
                 }, globalParam);
             }
             catch (RpcException)
