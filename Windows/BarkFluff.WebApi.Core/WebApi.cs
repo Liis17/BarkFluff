@@ -78,6 +78,7 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiOnlinerManager OnlinerManager;
         internal readonly WebApiFastAuthManager FastAuthManager;
         internal readonly WebApiChatFolderManager ChatFolderManager;
+        internal readonly WebApiCallsManager CallsManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
@@ -106,6 +107,7 @@ namespace BarkFluff.WebApi.Core
             OnlinerManager = new WebApiOnlinerManager(this);
             FastAuthManager = new WebApiFastAuthManager(this);
             ChatFolderManager = new WebApiChatFolderManager(this);
+            CallsManager = new WebApiCallsManager(this);
         }
 
         #region IDisposable
@@ -367,6 +369,43 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<ErrorReturner> ChangeUsersInSubscription(List<long> userIds, GlobalParam globalParam)
             => await OnlinerManager.ChangeUsersInSubscription(userIds, globalParam);
+        #endregion
+
+        #region Звонки (делегирование к CallsManager)
+        /// <summary>
+        /// Сигнализация звонков. Медиа библиотека не ведёт: в ответах приходят
+        /// livekit_url и access_token, подключение к LiveKit SFU — на стороне приложения.
+        /// Проверять доступность звонков на сервере — через <see cref="CallsAvailable"/>.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Calls.InitiateCallResponse? call)> InitiateCallToUser(long calleeUserId, Proto.Calls.CallMediaType mediaType, GlobalParam globalParam)
+            => await CallsManager.InitiateCallToUser(calleeUserId, mediaType, globalParam);
+
+        public async Task<(ErrorReturner error, Proto.Calls.InitiateCallResponse? call)> InitiateCallInChat(string chatId, Proto.Calls.CallMediaType mediaType, GlobalParam globalParam)
+            => await CallsManager.InitiateCallInChat(chatId, mediaType, globalParam);
+
+        public async Task<(ErrorReturner error, Proto.Calls.JoinCallResponse? call)> JoinCall(string callId, GlobalParam globalParam)
+            => await CallsManager.JoinCall(callId, globalParam);
+
+        public async Task<(ErrorReturner error, Proto.Calls.AcceptCallResponse? call)> AcceptCall(string callId, GlobalParam globalParam)
+            => await CallsManager.AcceptCall(callId, globalParam);
+
+        public async Task<ErrorReturner> RejectCall(string callId, GlobalParam globalParam)
+            => await CallsManager.RejectCall(callId, globalParam);
+
+        public async Task<ErrorReturner> EndCall(string callId, GlobalParam globalParam)
+            => await CallsManager.EndCall(callId, globalParam);
+
+        public async Task<ErrorReturner> SetCallAudioQuality(string callId, Proto.Calls.CallAudioQuality quality, GlobalParam globalParam)
+            => await CallsManager.SetCallAudioQuality(callId, quality, globalParam);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Calls.CallEvent>? stream)> SubscribeCallEvents(GlobalParam globalParam, CancellationToken ct = default)
+            => await CallsManager.SubscribeCallEvents(globalParam, ct);
+
+        public async Task<(ErrorReturner error, List<Proto.Calls.CallHistoryItem>? items, bool hasMore)> ListCallHistory(GlobalParam globalParam, Proto.Calls.CallHistoryFilter filter = Proto.Calls.CallHistoryFilter.CallHistoryAll, int limit = 50, DateTime? beforeStartedAt = null)
+            => await CallsManager.ListCallHistory(globalParam, filter, limit, beforeStartedAt);
+
+        public async Task<(ErrorReturner error, List<Proto.Calls.ActiveCallItem>? calls)> GetActiveCalls(List<string> chatIds, GlobalParam globalParam)
+            => await CallsManager.GetActiveCalls(chatIds, globalParam);
         #endregion
 
         #region Индикаторы набора текста (делегирование к OnlinerManager)
