@@ -226,6 +226,7 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, Proto.Users.PrivacySettings? settings)> GetPrivacySettings(GlobalParam globalParam) => await UserManager.GetPrivacySettings(globalParam);
         public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam) => await UserManager.UpdatePrivacySettings(settings, globalParam);
         public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) => await UserManager.SetNotificationsEnabled(enabled, globalParam);
+        public async Task<ErrorReturner> Logout(GlobalParam globalParam) => await UserManager.Logout(globalParam);
         #endregion
 
         #region Персонализация (делегирование к UserManager)
@@ -270,6 +271,17 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<Proto.Messages.ListChatMembersResponse.Types.DetailedChatMemberInfo>? members, int totalCount)> ListChatMembers(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListChatMembers(globalParam, chatId, offset, size);
         public async Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachments(GlobalParam globalParam, string chatId, Proto.Shared.MessageAttachmentType attachmentType = Proto.Shared.MessageAttachmentType.Unknown, bool sortDescending = true, int offset = 0, int size = 50) => await MessageManager.ListChatAttachments(globalParam, chatId, attachmentType, sortDescending, offset, size);
         public async Task<ErrorReturner> KickUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.KickUser(globalParam, chatId, userId);
+        public async Task<ErrorReturner> AddUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.AddUser(globalParam, chatId, userId);
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat)> UpdateGroupChat(GlobalParam globalParam, string chatId, string title = "", string pictureFileId = "") => await MessageManager.UpdateGroupChat(globalParam, chatId, title, pictureFileId);
+        public async Task<(ErrorReturner error, MessageModel? message)> EditMessage(GlobalParam globalParam, string chatId, long messageId, string text, List<string>? fileIds = null) => await MessageManager.EditMessage(globalParam, chatId, messageId, text, fileIds);
+        public async Task<ErrorReturner> DeleteMessage(GlobalParam globalParam, long messageId) => await MessageManager.DeleteMessage(globalParam, messageId);
+        #endregion
+
+        #region Закреплённые сообщения (делегирование к MessageManager)
+        public async Task<(ErrorReturner error, Proto.Shared.PinnedMessageInfo? pinned)> PinMessage(GlobalParam globalParam, string chatId, long messageId) => await MessageManager.PinMessage(globalParam, chatId, messageId);
+        public async Task<ErrorReturner> UnpinMessage(GlobalParam globalParam, string chatId, long messageId) => await MessageManager.UnpinMessage(globalParam, chatId, messageId);
+        public async Task<(ErrorReturner error, List<Proto.Shared.PinnedMessageInfo>? pinned, int totalCount)> ListPinnedMessages(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListPinnedMessages(globalParam, chatId, offset, size);
+        public async Task<(ErrorReturner error, int unpinnedCount)> UnpinAll(GlobalParam globalParam, string chatId) => await MessageManager.UnpinAll(globalParam, chatId);
         #endregion
 
         #region Поиск (делегирование к SearchManager)
@@ -293,6 +305,11 @@ namespace BarkFluff.WebApi.Core
         #region Реалтайм обновления (делегирование к UpdateManager)
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.JustUpdate(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToReadReceipts(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageEditedEvent>? stream)> SubscribeToMessagesEdited(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesEdited(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageDeletedEvent>? stream)> SubscribeToMessagesDeleted(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesDeleted(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessagePinnedEvent>? stream)> SubscribeToMessagesPinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesPinned(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageUnpinnedEvent>? stream)> SubscribeToMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesUnpinned(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<AllMessagesUnpinnedEvent>? stream)> SubscribeToAllMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToAllMessagesUnpinned(globalParam, ct);
         #endregion
 
         #region FastAuth (делегирование к FastAuthManager)
@@ -321,6 +338,17 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<ErrorReturner> ChangeUsersInSubscription(List<long> userIds, GlobalParam globalParam)
             => await OnlinerManager.ChangeUsersInSubscription(userIds, globalParam);
+        #endregion
+
+        #region Индикаторы набора текста (делегирование к OnlinerManager)
+        public async Task<ErrorReturner> SetTypingStatus(string chatId, Proto.Onliner.TypingAction action, GlobalParam globalParam)
+            => await OnlinerManager.SetTypingStatus(chatId, action, globalParam);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.TypingEvent>? stream)> SubscribeToTyping(List<string> chatIds, GlobalParam globalParam, CancellationToken ct = default)
+            => await OnlinerManager.SubscribeToTyping(chatIds, globalParam, ct);
+
+        public async Task<ErrorReturner> ChangeChatsInTypingSubscription(List<string> chatIds, GlobalParam globalParam)
+            => await OnlinerManager.ChangeChatsInTypingSubscription(chatIds, globalParam);
         #endregion
     }
 }
