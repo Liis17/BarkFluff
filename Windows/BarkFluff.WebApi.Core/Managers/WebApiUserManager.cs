@@ -1,6 +1,9 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
+
 namespace BarkFluff.WebApi.Core.Managers
 {
     /// <summary>
@@ -175,6 +178,132 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception)
             {
                 return new ErrorReturner(false, "Ошибка переименования устройства");
+            }
+        }
+
+        /// <summary>
+        /// Отключить или включить уведомления конкретного чата.
+        /// mutedUntil = null при muted=true означает «навсегда».
+        /// </summary>
+        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.SetChatMutedRequest
+                    {
+                        ChatId = chatId,
+                        Muted = muted
+                    };
+                    if (mutedUntil.HasValue)
+                        request.MutedUntil = Timestamp.FromDateTime(mutedUntil.Value.ToUniversalTime());
+
+                    await UsersAC!.SetChatMutedAsync(request);
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения уведомлений чата");
+            }
+        }
+
+        /// <summary>
+        /// Список чатов с активным mute у текущего пользователя.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.GetMutedChatsAsync(new Proto.Users.GetMutedChatsRequest());
+                    return (new ErrorReturner(true), response.Chats.ToList());
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения списка отключённых чатов"), null);
+            }
+        }
+
+        /// <summary>
+        /// Сохранить Firebase-токен текущего устройства для push-уведомлений.
+        /// </summary>
+        public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.SetFirebaseTokenAsync(new Proto.Users.SetFirebaseTokenRequest
+                    {
+                        FirebaseToken = firebaseToken
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка сохранения токена уведомлений");
+            }
+        }
+
+        /// <summary>
+        /// Найти пользователя другой ноды по федеративному идентификатору «@username:servername».
+        /// Возвращает found=false, если такого пользователя нет или федерация не настроена.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.ResolveFederatedUserAsync(new Proto.Users.ResolveFederatedUserRequest { Fid = fid });
+                    return ((ErrorReturner, Proto.Users.ResolveFederatedUserResponse?))(new ErrorReturner(true), response);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Federation.FederationNotConfiguredException)
+            {
+                return (new ErrorReturner(false, "Федерация не настроена на этом сервере"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Federation.InvalidServernameException)
+            {
+                return (new ErrorReturner(false, "Неверный формат федеративного идентификатора"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Federation.FederationServerBlockedException)
+            {
+                return (new ErrorReturner(false, "Сервер собеседника заблокирован"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка поиска пользователя другого сервера"), null);
+            }
+        }
+
+        /// <summary>
+        /// Завершает текущую сессию на сервере: refresh-токен этого устройства отзывается.
+        /// Локальные токены и авто-обновление гасит вызывающая сторона.
+        /// </summary>
+        public async Task<ErrorReturner> Logout(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await IdentityAC!.LogoutAsync(new Proto.Identity.LogoutRequest());
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.SessionNotFoundException)
+            {
+                // Сессии уже нет — с точки зрения клиента выход состоялся.
+                return new ErrorReturner(true);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка выхода из аккаунта");
             }
         }
 
@@ -518,5 +647,124 @@ namespace BarkFluff.WebApi.Core.Managers
                 return new ErrorReturner(false, "Ошибка обновления постера профиля");
             }
         }
+
+        #region Prekey bundle секретных чатов
+
+        /// <summary>
+        /// Зарегистрировать prekey-bundle текущего устройства. Крипта libsignal не реализована:
+        /// ключи должны быть сгенерированы приложением и передаются как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RegisterPrekeyBundle(uint registrationId, byte[] identityPubkey,
+            Proto.Users.SignedPreKey signedPrekey, List<Proto.Users.OneTimePreKey> oneTimePrekeys, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.RegisterPrekeyBundleRequest
+                    {
+                        RegistrationId = registrationId,
+                        IdentityPubkey = ByteString.CopyFrom(identityPubkey),
+                        SignedPrekey = signedPrekey
+                    };
+                    request.OneTimePrekeys.AddRange(oneTimePrekeys);
+                    await UsersAC!.RegisterPrekeyBundleAsync(request);
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка регистрации prekey-bundle");
+            }
+        }
+
+        /// <summary>
+        /// Получить prekey-bundle устройства собеседника. Крипта libsignal не реализована:
+        /// полученный bundle передаётся приложению как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Users.FetchPrekeyBundleResponse? response)> FetchPrekeyBundle(
+            long userId, string deviceId, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.FetchPrekeyBundleAsync(new Proto.Users.FetchPrekeyBundleRequest
+                    {
+                        UserId = userId,
+                        DeviceId = deviceId
+                    });
+                    return ((ErrorReturner, Proto.Users.FetchPrekeyBundleResponse?))(new ErrorReturner(true), response);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения prekey-bundle"), null);
+            }
+        }
+
+        /// <summary>
+        /// Получить устройства собеседника, готовые к секретному чату. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Users.PeerDeviceInfo>? devices)> ListPeerDevices(long userId, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.ListPeerDevicesAsync(new Proto.Users.ListPeerDevicesRequest { UserId = userId });
+                    return (new ErrorReturner(true), response.Devices.ToList());
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения устройств собеседника"), null);
+            }
+        }
+
+        /// <summary>
+        /// Пополнить пул разовых prekey текущего устройства. Крипта libsignal не реализована:
+        /// новые ключи передаются как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, int totalOneTimePrekeys)> ReplenishOneTimePrekeys(
+            List<Proto.Users.OneTimePreKey> prekeys, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.ReplenishOneTimePrekeysRequest();
+                    request.Prekeys.AddRange(prekeys);
+                    var response = await UsersAC!.ReplenishOneTimePrekeysAsync(request);
+                    return (new ErrorReturner(true), response.TotalOneTimePrekeys);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка пополнения prekey"), 0);
+            }
+        }
+
+        /// <summary>
+        /// Ротировать signed prekey текущего устройства. Крипта libsignal не реализована:
+        /// ключ должен быть сгенерирован приложением и передаётся как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RotateSignedPrekey(Proto.Users.SignedPreKey signedPrekey, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.RotateSignedPrekeyAsync(new Proto.Users.RotateSignedPrekeyRequest { SignedPrekey = signedPrekey });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка ротации signed prekey");
+            }
+        }
+
+        #endregion
     }
 }
