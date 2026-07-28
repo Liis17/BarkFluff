@@ -66,8 +66,8 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 - `DockerRegistryService` — без авторизации читает semver-теги из публичного `docker.barkfluff.com:5000/v2/{repository}/tags/list` и сравнивает их с образом запущенного BarkFluff-контейнера. Для `:latest` `DockerService` получает локальный `RepoDigest`, а сервис сопоставляет его с `Docker-Content-Digest` semver-manifest’ов registry. `barkfluff-*-dev` проверяется только в одноимённом dev-репозитории; hash и прочие не-semver-теги не участвуют в сравнении.
 - `SeqService` — проксирование логов из Seq (HttpClient), удаление по фильтру (`Seq.Api`), запись событий в CLEF-формате
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
-- `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. История витрины — 30 дней.
-- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет, что все исходные service-hour уже сохранены в витрине; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
+- `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из структурированных `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. Текущий и предыдущий час пересчитываются всегда; отсутствующие часы последних 72 часов догоняются по шесть за цикл. `MetricRollupHours` отмечает только полностью прочитанные часы, поэтому ошибка или лимит Seq не заменяют витрину частичным результатом. История — 30 дней.
+- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет `MetricRollupHours` для каждого исходного часа; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
@@ -140,7 +140,7 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | Token expiration | 3 дня |
 | Pending timeout | 10 минут |
 | Max gRPC file size | 20 МБ |
-| Metrics interval | 5 минут (пересчёт текущего и предыдущего часа) |
+| Metrics interval | 5 минут (пересчёт текущего/предыдущего часа + догон 72 часов) |
 | HourlyStats retention | 24 часа |
 | HourlyServiceMetrics retention | 30 дней |
 | Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |
