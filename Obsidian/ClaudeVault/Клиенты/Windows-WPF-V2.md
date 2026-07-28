@@ -1,0 +1,47 @@
+# BarkFluff.ClientV2.WPF
+
+Parent: [[Index]]
+
+## Назначение
+
+Новый Windows-клиент BarkFluff. Реализуется независимо от замороженного [[Клиенты/Windows-WPF]]: WPF .NET 10, MVVM, DI и WPF UI.
+
+Расположение: `Windows/BarkFluff.ClientV2.WPF/`  
+Target framework: `net10.0-windows10.0.26100.0`
+
+## Сборка и тесты
+
+```bash
+dotnet build Windows/BarkFluff.ClientV2.WPF/BarkFluff.ClientV2.WPF.csproj
+dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.csproj
+```
+
+Требуется SDK из корневого `global.json`.
+
+## Архитектура
+
+- `Views` — XAML-представления без UI-логики в code-behind.
+- `ViewModels` — состояние и команды через CommunityToolkit.Mvvm.
+- `Services` — навигация, подключение к ноде и сессия; [[Клиенты/Windows-WebApiCore]] используется только через `INodeConnectionService`.
+- `Infrastructure/Storage` — SQLite `data/barkfluff.db` рядом с exe: настройки онбординга/языка и выбранная нода.
+- `Infrastructure/Localization` — смена `ResourceDictionary`; `Resources/Localization/Strings.ru.xaml` и `Strings.en.xaml` имеют одинаковые ключи, в XAML используются `DynamicResource`.
+- `Resources/Styles/Controls.xaml` — единая точка общих стилей интерфейса поверх WPF UI.
+
+Подробные правила написания кода: `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md`.
+
+Полная карта классов и ресурсов: [[Клиенты/Windows-WPF-V2-ProjectMap]].
+
+## Первый реализованный маршрут
+
+```
+First run: Welcome → Select node → Connected node
+Next runs: Select node → Connected node
+```
+
+`SelectNodeViewModel` получает публичные ноды из Navigator и позволяет вручную подключиться к Beacon. Адреса `http(s)://host[:port]` и `host[:port]` поддерживаются; домен без порта использует HTTPS/443, IP требует явно указанный порт. `GetServerInfo` проверяет ноду, а `NodeConnectionMapper` переносит endpoint’ы сервисов в параметры сессии.
+
+## Важные ограничения
+
+- Авторизация, токены, кеш сообщений и локальные таблицы для них пока не реализованы.
+- При добавлении токенов использовать отдельную миграцию SQLite и DPAPI; открытое хранение запрещено.
+- Каталог рядом с exe должен быть доступен для записи; установка в `Program Files` требует отдельного решения прав доступа.

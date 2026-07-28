@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:String x:Key="App_Title">BarkFluff</sys:String>
+    <sys:String x:Key="Welcome_Title">Добро пожаловать в BarkFluff</sys:String>
+    <sys:String x:Key="Welcome_Subtitle">Выберите ноду, чтобы начать пользоваться распределённым мессенджером.</sys:String>
+    <sys:String x:Key="Welcome_Start">Начать</sys:String>
+    <sys:String x:Key="SelectNode_Title">Выберите ноду</sys:String>
+    <sys:String x:Key="SelectNode_Subtitle">Подключитесь к публичной ноде BarkFluff или укажите адрес своего Beacon.</sys:String>
+    <sys:String x:Key="SelectNode_PublicNodes">Публичные ноды</sys:String>
+    <sys:String x:Key="SelectNode_ConnectSelected">Подключиться к выбранной ноде</sys:String>
+    <sys:String x:Key="SelectNode_ManualNode">Своя нода</sys:String>
+    <sys:String x:Key="SelectNode_AddressPlaceholder">https://node.example.com или 192.168.1.10:7002</sys:String>
+    <sys:String x:Key="Common_Connect">Подключиться</sys:String>
+    <sys:String x:Key="ConnectedNode_Title">Нода подключена</sys:String>
+    <sys:String x:Key="ConnectedNode_Subtitle">Нода готова к работе. Авторизация будет добавлена на следующем этапе.</sys:String>
+    <sys:String x:Key="ConnectedNode_ChooseAnother">Выбрать другую ноду</sys:String>
+    <sys:String x:Key="Error_NodeAddressRequired">Укажите адрес ноды.</sys:String>
+    <sys:String x:Key="Error_NodeAddressInvalid">Укажите корректный HTTP- или HTTPS-адрес ноды.</sys:String>
+    <sys:String x:Key="Error_NodeIpPortRequired">Для IP-адреса укажите порт.</sys:String>
+    <sys:String x:Key="Error_NodeConnectionFailed">Не удалось получить информацию о ноде. Проверьте адрес и повторите попытку.</sys:String>
+</ResourceDictionary>

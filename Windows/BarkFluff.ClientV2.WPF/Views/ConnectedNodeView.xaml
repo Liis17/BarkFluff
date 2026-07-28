@@ -1,0 +1,33 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.ConnectedNodeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <Grid Margin="48">
+        <ui:Card HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Style="{StaticResource OnboardingCard}">
+            <StackPanel Width="440">
+                <TextBlock Style="{StaticResource OnboardingTitle}"
+                           Text="{DynamicResource ConnectedNode_Title}" />
+                <TextBlock Margin="0,16,0,0"
+                           Style="{StaticResource OnboardingDescription}"
+                           Text="{DynamicResource ConnectedNode_Subtitle}" />
+                <TextBlock Margin="0,28,0,0"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           Text="{Binding Node.Name}" />
+                <TextBlock Margin="0,8,0,0"
+                           Style="{StaticResource MutedText}"
+                           Text="{Binding Node.Description}"
+                           TextWrapping="Wrap" />
+                <TextBlock Margin="0,8,0,0"
+                           Style="{StaticResource MutedText}"
+                           Text="{Binding Node.BeaconAddress}" />
+                <ui:Button Margin="0,32,0,0"
+                           HorizontalAlignment="Left"
+                           Command="{Binding ChooseAnotherNodeCommand}"
+                           Content="{DynamicResource ConnectedNode_ChooseAnother}" />
+            </StackPanel>
+        </ui:Card>
+    </Grid>
+</UserControl>

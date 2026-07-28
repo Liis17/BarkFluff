@@ -1,24 +1,14 @@
-﻿using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using BarkFluff.ClientV2.WPF.ViewModels;
 
-namespace BarkFluff.ClientV2.WPF
+using Wpf.Ui.Controls;
+
+namespace BarkFluff.ClientV2.WPF;
+
+public partial class MainWindow : FluentWindow
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
+    public MainWindow(MainWindowViewModel viewModel)
     {
-        public MainWindow()
-        {
-            InitializeComponent();
-        }
+        DataContext = viewModel;
+        InitializeComponent();
     }
 }
