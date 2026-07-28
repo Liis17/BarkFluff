@@ -11,11 +11,44 @@ public sealed class AuthenticationService : IAuthenticationService
 {
     private readonly WebApiClient _webApi;
     private readonly IClientSession _session;
+    private readonly ISecureSessionStore _secureSessionStore;
 
-    public AuthenticationService(WebApiClient webApi, IClientSession session)
+    public AuthenticationService(WebApiClient webApi, IClientSession session, ISecureSessionStore secureSessionStore)
     {
         _webApi = webApi;
         _session = session;
+        _secureSessionStore = secureSessionStore;
+    }
+
+    public async Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default)
+    {
+        var parameters = GetConnectionParameters();
+        var saved = await _secureSessionStore.LoadAsync(cancellationToken);
+        if (parameters is null || saved is null)
+        {
+            return false;
+        }
+
+        parameters.AccessToken = new BarkFluff.Proto.Identity.Token { Value = saved.AccessToken };
+        parameters.RefreshToken = new BarkFluff.Proto.Identity.Token { Value = saved.RefreshToken };
+        var refreshed = await _webApi.ForceRefreshTokenAsync(parameters);
+        if (!refreshed.IsSuccess || parameters.AccessToken is null || !InitializeAuthorizedClient(parameters))
+        {
+            await _secureSessionStore.ClearAsync(cancellationToken);
+            return false;
+        }
+
+        var profile = await _webApi.GetUserData(parameters);
+        if (!profile.Error.IsSuccess || profile.Data is null)
+        {
+            await _secureSessionStore.ClearAsync(cancellationToken);
+            return false;
+        }
+
+        parameters.UserId = profile.Data.Id;
+        parameters.UserName = profile.Data.Username;
+        await PersistTokensAsync(cancellationToken);
+        return true;
     }
 
     public async Task<LoginResult> LoginAsync(
@@ -49,9 +82,13 @@ public sealed class AuthenticationService : IAuthenticationService
                 requiresTwoFactor);
         }
 
-        return ApplyTokens(result.accessToken, result.refreshToken)
-            ? LoginResult.Success()
-            : LoginResult.Failure("Error_LoginUnavailable");
+        if (!ApplyTokens(result.accessToken, result.refreshToken))
+        {
+            return LoginResult.Failure("Error_LoginUnavailable");
+        }
+
+        await InitializeProfileAndPersistAsync(cancellationToken);
+        return LoginResult.Success();
     }
 
     public async Task<FastAuthSession?> CreateFastAuthSessionAsync(CancellationToken cancellationToken = default)
@@ -109,7 +146,7 @@ public sealed class AuthenticationService : IAuthenticationService
                         yield break;
                     }
 
-                    yield return ApplyTokens(
+                    if (ApplyTokens(
                         new BarkFluff.Proto.Identity.Token
                         {
                             Value = result.AccessToken,
@@ -119,9 +156,15 @@ public sealed class AuthenticationService : IAuthenticationService
                         {
                             Value = result.RefreshToken,
                             ExpirationDate = result.RefreshTokenExpiresAt
-                        })
-                        ? new FastAuthUpdate(FastAuthUpdateKind.Accepted)
-                        : new FastAuthUpdate(FastAuthUpdateKind.Failed, "Error_LoginUnavailable");
+                        }))
+                    {
+                        await InitializeProfileAndPersistAsync(cancellationToken);
+                        yield return new FastAuthUpdate(FastAuthUpdateKind.Accepted);
+                    }
+                    else
+                    {
+                        yield return new FastAuthUpdate(FastAuthUpdateKind.Failed, "Error_LoginUnavailable");
+                    }
                     yield break;
                 case FastAuthStatus.Rejected:
                     yield return new FastAuthUpdate(FastAuthUpdateKind.Rejected);
@@ -255,6 +298,7 @@ public sealed class AuthenticationService : IAuthenticationService
             return AuthenticationOperationResult.Failure("Error_LoginUnavailable");
         }
 
+        await PersistTokensAsync();
         return AuthenticationOperationResult.Success();
     }
 
@@ -278,4 +322,28 @@ public sealed class AuthenticationService : IAuthenticationService
             "BarkFluff",
             "2.0",
             string.Empty).IsSuccess;
+
+    private async Task InitializeProfileAndPersistAsync(CancellationToken cancellationToken)
+    {
+        var parameters = GetConnectionParameters();
+        if (parameters is not null)
+        {
+            var profile = await _webApi.GetUserData(parameters);
+            if (profile.Error.IsSuccess && profile.Data is not null)
+            {
+                parameters.UserId = profile.Data.Id;
+                parameters.UserName = profile.Data.Username;
+            }
+        }
+
+        await PersistTokensAsync(cancellationToken);
+    }
+
+    private Task PersistTokensAsync(CancellationToken cancellationToken = default)
+    {
+        var parameters = GetConnectionParameters();
+        return parameters?.AccessToken is { Value.Length: > 0 } access && parameters.RefreshToken is { Value.Length: > 0 } refresh
+            ? _secureSessionStore.SaveAsync(new StoredSession(access.Value, refresh.Value), cancellationToken)
+            : Task.CompletedTask;
+    }
 }

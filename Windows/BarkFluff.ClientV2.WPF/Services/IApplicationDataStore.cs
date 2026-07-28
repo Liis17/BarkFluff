@@ -25,4 +25,10 @@ public interface IApplicationDataStore
     Task SaveNodeServiceConfigurationAsync(NodeConnection connection, CancellationToken cancellationToken = default);
 
     Task<NodeConnection?> GetNodeServiceConfigurationAsync(CancellationToken cancellationToken = default);
+
+    Task SaveProtectedSessionAsync(byte[] protectedData, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    Task<byte[]?> GetProtectedSessionAsync(CancellationToken cancellationToken = default) => Task.FromResult<byte[]?>(null);
+
+    Task DeleteProtectedSessionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

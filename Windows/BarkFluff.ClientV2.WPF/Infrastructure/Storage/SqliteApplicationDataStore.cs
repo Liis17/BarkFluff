@@ -49,6 +49,10 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 configuration_json TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS secure_session (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                protected_data BLOB NOT NULL
+            );
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -131,6 +135,31 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
         return string.IsNullOrWhiteSpace(json)
             ? null
             : JsonSerializer.Deserialize<NodeServiceConfiguration>(json)?.ToConnection();
+    }
+
+    public async Task SaveProtectedSessionAsync(byte[] protectedData, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO secure_session (id, protected_data) VALUES (1, $data) ON CONFLICT(id) DO UPDATE SET protected_data = excluded.protected_data;";
+        command.Parameters.AddWithValue("$data", protectedData);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<byte[]?> GetProtectedSessionAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT protected_data FROM secure_session WHERE id = 1;";
+        return await command.ExecuteScalarAsync(cancellationToken) as byte[];
+    }
+
+    public async Task DeleteProtectedSessionAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM secure_session WHERE id = 1;";
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken)
