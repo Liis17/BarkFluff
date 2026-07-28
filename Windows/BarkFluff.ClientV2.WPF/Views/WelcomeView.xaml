@@ -1,0 +1,23 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.WelcomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <Grid Margin="48">
+        <ui:Card HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Style="{StaticResource OnboardingCard}">
+            <StackPanel Width="440">
+                <TextBlock Style="{StaticResource OnboardingTitle}"
+                           Text="{DynamicResource Welcome_Title}" />
+                <TextBlock Margin="0,16,0,0"
+                           Style="{StaticResource OnboardingDescription}"
+                           Text="{DynamicResource Welcome_Subtitle}" />
+                <ui:Button Margin="0,32,0,0"
+                           HorizontalAlignment="Left"
+                           Appearance="Primary"
+                           Command="{Binding StartCommand}"
+                           Content="{DynamicResource Welcome_Start}" />
+            </StackPanel>
+        </ui:Card>
+    </Grid>
+</UserControl>

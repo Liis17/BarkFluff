@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:String x:Key="App_Title">BarkFluff</sys:String>
+    <sys:String x:Key="Welcome_Title">Welcome to BarkFluff</sys:String>
+    <sys:String x:Key="Welcome_Subtitle">Choose a node to start using your distributed messenger.</sys:String>
+    <sys:String x:Key="Welcome_Start">Get started</sys:String>
+    <sys:String x:Key="SelectNode_Title">Choose a node</sys:String>
+    <sys:String x:Key="SelectNode_Subtitle">Connect to a public BarkFluff node or enter your own Beacon address.</sys:String>
+    <sys:String x:Key="SelectNode_PublicNodes">Public nodes</sys:String>
+    <sys:String x:Key="SelectNode_ConnectSelected">Connect selected node</sys:String>
+    <sys:String x:Key="SelectNode_ManualNode">Your node</sys:String>
+    <sys:String x:Key="SelectNode_AddressPlaceholder">https://node.example.com or 192.168.1.10:7002</sys:String>
+    <sys:String x:Key="Common_Connect">Connect</sys:String>
+    <sys:String x:Key="ConnectedNode_Title">Node connected</sys:String>
+    <sys:String x:Key="ConnectedNode_Subtitle">The node is ready. Sign-in will be added in the next application stage.</sys:String>
+    <sys:String x:Key="ConnectedNode_ChooseAnother">Choose another node</sys:String>
+    <sys:String x:Key="Error_NodeAddressRequired">Enter a node address.</sys:String>
+    <sys:String x:Key="Error_NodeAddressInvalid">Enter a valid HTTP or HTTPS node address.</sys:String>
+    <sys:String x:Key="Error_NodeIpPortRequired">Specify a port for an IP address.</sys:String>
+    <sys:String x:Key="Error_NodeConnectionFailed">Unable to get node information. Check the address and try again.</sys:String>
+</ResourceDictionary>
