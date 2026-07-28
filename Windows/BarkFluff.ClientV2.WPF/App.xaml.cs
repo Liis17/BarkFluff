@@ -51,7 +51,15 @@ public partial class App : Application
             var nodeConnectionService = services.GetRequiredService<INodeConnectionService>();
             if (savedConnection is not null && nodeConnectionService.RestoreConnection(savedConnection))
             {
-                navigation.ShowLogin();
+                var authentication = services.GetRequiredService<IAuthenticationService>();
+                if (await authentication.TryRestoreSessionAsync())
+                {
+                    navigation.ShowMessenger();
+                }
+                else
+                {
+                    navigation.ShowLogin();
+                }
             }
             else if (await dataStore.HasSeenWelcomeAsync())
             {
@@ -94,6 +102,7 @@ public partial class App : Application
 
         builder.Services.AddSingleton(new AppDataPaths(AppContext.BaseDirectory));
         builder.Services.AddSingleton<IApplicationDataStore, SqliteApplicationDataStore>();
+        builder.Services.AddSingleton<ISecureSessionStore, DpapiSecureSessionStore>();
         builder.Services.AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<WebApiClient>();
@@ -110,6 +119,7 @@ public partial class App : Application
         builder.Services.AddSingleton<LoginViewModel>();
         builder.Services.AddSingleton<RegistrationViewModel>();
         builder.Services.AddSingleton<PasswordRecoveryViewModel>();
+        builder.Services.AddSingleton<MessengerViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();

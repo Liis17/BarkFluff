@@ -49,6 +49,11 @@ public sealed class NodeConnectionService : INodeConnectionService
 
         cancellationToken.ThrowIfCancellationRequested();
         var parameters = new GlobalParam { SocketBeacon = parsedAddress.Address!.GetLeftPart(UriPartial.Authority) };
+        if (!_webApi.CreateOnlyBeaconAC(parameters).IsSuccess)
+        {
+            return NodeConnectionResult.Failure(ConnectionFailedResourceKey);
+        }
+
         var response = await _webApi.GetServerInfo(parameters);
         if (!response.error.IsSuccess || response.Item2 is null)
         {

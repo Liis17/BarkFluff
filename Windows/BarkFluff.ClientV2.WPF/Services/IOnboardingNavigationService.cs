@@ -19,6 +19,8 @@ public interface IOnboardingNavigationService
     void ShowRegistration();
 
     void ShowPasswordRecovery();
+
+    void ShowMessenger() { }
 }
 
 public sealed class OnboardingNavigationEventArgs : EventArgs

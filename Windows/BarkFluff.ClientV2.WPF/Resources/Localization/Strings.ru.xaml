@@ -89,4 +89,8 @@
     <sys:String x:Key="Error_RecoveryIdentifierRequired">Укажите логин или почту.</sys:String>
     <sys:String x:Key="Error_PasswordResetFailed">Не удалось начать восстановление пароля. Попробуйте позже.</sys:String>
     <sys:String x:Key="Error_PasswordResetCodeInvalid">Код восстановления неверный или истёк.</sys:String>
+    <sys:String x:Key="Messenger_Search">Поиск чатов и пользователей</sys:String>
+    <sys:String x:Key="Messenger_Send">Отправить</sys:String>
+    <sys:String x:Key="Messenger_Empty">Выберите чат, чтобы начать переписку</sys:String>
+    <sys:String x:Key="Messenger_StatusOffline">Не в сети</sys:String>
 </ResourceDictionary>
