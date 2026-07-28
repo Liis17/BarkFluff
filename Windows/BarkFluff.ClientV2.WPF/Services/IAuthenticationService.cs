@@ -4,6 +4,8 @@ namespace BarkFluff.ClientV2.WPF.Services;
 
 public interface IAuthenticationService
 {
+    Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+
     Task<LoginResult> LoginAsync(string loginOrEmail, string password, string otpCode, CancellationToken cancellationToken = default);
 
     Task<FastAuthSession?> CreateFastAuthSessionAsync(CancellationToken cancellationToken = default);

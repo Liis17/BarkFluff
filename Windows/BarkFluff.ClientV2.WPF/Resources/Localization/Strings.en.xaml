@@ -89,4 +89,8 @@
     <sys:String x:Key="Error_RecoveryIdentifierRequired">Enter your username or email.</sys:String>
     <sys:String x:Key="Error_PasswordResetFailed">Unable to start password recovery. Try again later.</sys:String>
     <sys:String x:Key="Error_PasswordResetCodeInvalid">The reset code is invalid or expired.</sys:String>
+    <sys:String x:Key="Messenger_Search">Search chats and people</sys:String>
+    <sys:String x:Key="Messenger_Send">Send</sys:String>
+    <sys:String x:Key="Messenger_Empty">Select a chat to start messaging</sys:String>
+    <sys:String x:Key="Messenger_StatusOffline">Offline</sys:String>
 </ResourceDictionary>
