@@ -90,5 +90,46 @@ namespace BarkFluff.WebApi.Core.Managers
         /// </summary>
         public async Task<(ErrorReturner error, IAsyncEnumerable<AllMessagesUnpinnedEvent>? stream)> SubscribeToAllMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default)
             => await Subscribe(token => UpdatesAC!.SubscribeAllMessagesUnpinned(new SubscribeAllMessagesUnpinnedRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        #region Приватные чаты (E2E через passphrase)
+
+        /// <summary>
+        /// Новые зашифрованные сообщения приватных чатов. Расшифровка — на клиенте,
+        /// см. WebApi.DecryptPrivateMessage.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewEncryptedMessageEvent>? stream)> SubscribeToPrivateMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessages(new SubscribePrivateMessagesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Правки зашифрованных сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<EncryptedMessageEditedEvent>? stream)> SubscribeToPrivateMessageEdits(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessageEdits(new SubscribePrivateMessageEditsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Удаления зашифрованных сообщений.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<EncryptedMessageDeletedEvent>? stream)> SubscribeToPrivateMessageDeletes(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessageDeletes(new SubscribePrivateMessageDeletesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Отметки о прочтении в приватных чатах.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<PrivateMessagesReadEvent>? stream)> SubscribeToPrivateMessagesRead(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateMessagesRead(new SubscribePrivateMessagesReadRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Приглашения в приватные чаты: в событии приходят salt и verifier для проверки кодовой фразы.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<PrivateChatInviteEvent>? stream)> SubscribeToPrivateChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateChatInvites(new SubscribePrivateChatInvitesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Ответы на отправленные приглашения (принято / отклонено).
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<PrivateChatInviteResolutionEvent>? stream)> SubscribeToPrivateChatInviteResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribePrivateChatInviteResolutions(new SubscribePrivateChatInviteResolutionsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        #endregion
     }
 }
