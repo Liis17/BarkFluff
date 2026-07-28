@@ -15,6 +15,10 @@ public interface IOnboardingNavigationService
     void ShowConnectedNode();
 
     void ShowLogin();
+
+    void ShowRegistration();
+
+    void ShowPasswordRecovery();
 }
 
 public sealed class OnboardingNavigationEventArgs : EventArgs

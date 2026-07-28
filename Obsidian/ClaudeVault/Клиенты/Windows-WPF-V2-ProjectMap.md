@@ -13,8 +13,8 @@ Parent: [[Клиенты/Windows-WPF-V2]]
 | `Services/OnboardingNavigationService.cs` | `OnboardingNavigationService` | Переходы welcome / node selection / connected |
 | `Infrastructure/Storage/` | `SqliteApplicationDataStore` | База `data/barkfluff.db`, настройки и выбранная нода |
 | `Infrastructure/Localization/` | `LocalizationService` | Выбор RU/EN и swap XAML dictionary |
-| `ViewModels/` | `Welcome`, `SelectNode`, `ConnectedNode` | Состояние и команды трёх стартовых экранов |
-| `Views/` | `Welcome`, `SelectNode`, `ConnectedNode` | XAML-представления на WPF UI |
+| `ViewModels/` | `Welcome`, `SelectNode`, `ConnectedNode`, `Login`, `Registration`, `PasswordRecovery` | Состояние и команды стартовых и auth-экранов |
+| `Views/` | `Welcome`, `SelectNode`, `ConnectedNode`, `Login`, `Registration`, `PasswordRecovery` | XAML-представления на WPF UI |
 | `Resources/Styles/Controls.xaml` | — | Общие стили контролов V2 |
 | `Resources/Localization/Strings.*.xaml` | — | Синхронизированные английские и русские строки |
 | `docs/Architecture.md` | — | Правила разработки V2 |

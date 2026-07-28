@@ -3,6 +3,8 @@ using BarkFluff.ClientV2.WPF.Models;
 using BarkFluff.ClientV2.WPF.Services;
 using BarkFluff.ClientV2.WPF.ViewModels;
 
+using System.Runtime.CompilerServices;
+
 namespace BarkFluff.ClientV2.WPF.Tests;
 
 public sealed class LoginViewModelTests
@@ -46,8 +48,29 @@ public sealed class LoginViewModelTests
         public Task<LoginResult> LoginAsync(string loginOrEmail, string password, string otpCode, CancellationToken cancellationToken = default) =>
             Task.FromResult(_result);
 
-        public Task<FastAuthQrCode?> CreateFastAuthQrCodeAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<FastAuthQrCode?>(null);
+        public Task<FastAuthSession?> CreateFastAuthSessionAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<FastAuthSession?>(null);
+
+        public async IAsyncEnumerable<FastAuthUpdate> SubscribeFastAuthAsync(FastAuthSession session, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public Task<RegistrationStartResult> StartRegistrationAsync(string firstName, string lastName, string username, string email, CancellationToken cancellationToken = default) =>
+            Task.FromResult(RegistrationStartResult.Failure("Error_RegistrationFailed"));
+
+        public Task<AuthenticationOperationResult> ConfirmRegistrationAsync(string codeId, string code, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AuthenticationOperationResult.Failure("Error_RegistrationCodeInvalid"));
+
+        public Task<AuthenticationOperationResult> SetPasswordAsync(string password, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AuthenticationOperationResult.Failure("Error_PasswordInvalid"));
+
+        public Task<PasswordResetStartResult> StartPasswordResetAsync(string loginOrEmail, CancellationToken cancellationToken = default) =>
+            Task.FromResult(PasswordResetStartResult.Failure("Error_PasswordResetFailed"));
+
+        public Task<AuthenticationOperationResult> CompletePasswordResetAsync(string resetId, string code, string password, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AuthenticationOperationResult.Failure("Error_PasswordResetCodeInvalid"));
     }
 
     private sealed class TestNavigationService : IOnboardingNavigationService
@@ -62,6 +85,8 @@ public sealed class LoginViewModelTests
         public void ShowSelectNode() { }
         public void ShowConnectedNode() { }
         public void ShowLogin() { }
+        public void ShowRegistration() { }
+        public void ShowPasswordRecovery() { }
     }
 
     private sealed class TestLocalizationService : ILocalizationService

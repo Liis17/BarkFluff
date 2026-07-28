@@ -28,6 +28,8 @@ public sealed class MainWindowViewModelTests
         public void ShowConnectedNode() => Navigate(new object());
 
         public void ShowLogin() => Navigate(new object());
+        public void ShowRegistration() => Navigate(new object());
+        public void ShowPasswordRecovery() => Navigate(new object());
 
         public void Navigate(object viewModel)
         {

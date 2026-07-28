@@ -35,8 +35,28 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
         Navigate(viewModel);
     }
 
+    public void ShowRegistration()
+    {
+        var viewModel = _serviceProvider.GetRequiredService<RegistrationViewModel>();
+        viewModel.Reset();
+        Navigate(viewModel);
+    }
+
+    public void ShowPasswordRecovery()
+    {
+        var viewModel = _serviceProvider.GetRequiredService<PasswordRecoveryViewModel>();
+        viewModel.Reset();
+        Navigate(viewModel);
+    }
+
     private void Navigate(object viewModel)
     {
+        if (CurrentViewModel is LoginViewModel loginViewModel && viewModel is not LoginViewModel)
+        {
+            loginViewModel.StopFastAuth();
+            loginViewModel.ClearSensitiveState();
+        }
+
         CurrentViewModel = viewModel;
         CurrentViewModelChanged?.Invoke(this, new OnboardingNavigationEventArgs(viewModel));
     }

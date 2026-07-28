@@ -94,6 +94,8 @@ public sealed class SelectNodeViewModelTests
             ShowLoginCalled = true;
             Navigate(new object());
         }
+        public void ShowRegistration() => Navigate(new object());
+        public void ShowPasswordRecovery() => Navigate(new object());
 
         private void Navigate(object viewModel)
         {
