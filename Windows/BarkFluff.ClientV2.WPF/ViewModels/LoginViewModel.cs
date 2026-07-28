@@ -202,6 +202,7 @@ public sealed partial class LoginViewModel : ObservableObject
 
             StopFastAuth();
             StatusMessage = _localization.GetString("Login_Success");
+            _navigation.ShowMessenger();
         }
         catch (Exception)
         {
@@ -275,6 +276,7 @@ public sealed partial class LoginViewModel : ObservableObject
                     break;
                 case FastAuthUpdateKind.Accepted:
                     StatusMessage = _localization.GetString("Login_Success");
+                    _navigation.ShowMessenger();
                     return update.Kind;
                 case FastAuthUpdateKind.Rejected:
                     FastAuthStatusMessage = _localization.GetString("FastAuth_Rejected");
