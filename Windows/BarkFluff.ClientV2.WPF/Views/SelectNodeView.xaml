@@ -2,8 +2,21 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-    <Grid Margin="48">
-        <ui:Card Width="620"
+    <UserControl.RenderTransform>
+        <TranslateTransform Y="12" />
+    </UserControl.RenderTransform>
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.22" />
+                    <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="12" To="0" Duration="0:0:0.22" />
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </UserControl.Triggers>
+    <Grid Margin="40,24,40,40">
+        <ui:Card Width="700"
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
                  Style="{StaticResource OnboardingCard}">
@@ -20,43 +33,70 @@
                 <TextBlock Style="{StaticResource OnboardingTitle}"
                            Text="{DynamicResource SelectNode_Title}" />
                 <TextBlock Grid.Row="1"
-                           Margin="0,12,0,24"
+                           Margin="0,10,0,20"
                            Style="{StaticResource OnboardingDescription}"
                            Text="{DynamicResource SelectNode_Subtitle}" />
 
                 <TextBlock Grid.Row="2"
                            Style="{StaticResource SectionTitle}"
                            Text="{DynamicResource SelectNode_PublicNodes}" />
-                <Grid Grid.Row="3" Margin="0,12,0,24">
-                    <ListBox MinHeight="110"
-                             MaxHeight="180"
-                             ItemsSource="{Binding PublicNodes}"
-                             SelectedItem="{Binding SelectedPublicNode}">
-                        <ListBox.ItemTemplate>
+                <Grid Grid.Row="3" Margin="0,10,0,16">
+                    <ui:ListView MinHeight="104"
+                                 MaxHeight="154"
+                                 ItemsSource="{Binding PublicNodes}"
+                                 SelectedItem="{Binding SelectedPublicNode}"
+                                 Style="{StaticResource NodeList}">
+                        <ui:ListView.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="4">
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
-                                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding Description}" />
-                                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding Address}" />
-                                </StackPanel>
+                                <ui:Card Style="{StaticResource NodeItemCard}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                            <TextBlock Margin="0,3,0,0" Style="{StaticResource MutedText}" Text="{Binding Description}" />
+                                            <TextBlock Margin="0,3,0,0" Style="{StaticResource MutedText}" Text="{Binding Address}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="1"
+                                                Width="8"
+                                                Height="8"
+                                                Margin="16,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Background="{DynamicResource SystemAccentColorPrimaryBrush}"
+                                                CornerRadius="4" />
+                                    </Grid>
+                                </ui:Card>
                             </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    <ProgressBar Height="4"
-                                 VerticalAlignment="Top"
-                                 IsIndeterminate="True"
-                                 Visibility="{Binding IsLoadingPublicNodes, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </ui:ListView.ItemTemplate>
+                    </ui:ListView>
+                    <ui:ProgressRing Width="22"
+                                     Height="22"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     IsIndeterminate="True"
+                                     Visibility="{Binding IsLoadingPublicNodes, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </Grid>
 
                 <StackPanel Grid.Row="4">
-                    <Button Command="{Binding ConnectSelectedNodeCommand}"
-                            Content="{DynamicResource SelectNode_ConnectSelected}"
-                            Style="{StaticResource SecondaryButton}" />
-                    <TextBlock Margin="0,24,0,8"
+                    <ui:Button Command="{Binding ConnectSelectedNodeCommand}"
+                               Content="{DynamicResource SelectNode_ConnectSelected}"
+                               Style="{StaticResource SecondaryButton}" />
+                    <TextBlock Margin="0,20,0,8"
                                Style="{StaticResource SectionTitle}"
                                Text="{DynamicResource SelectNode_ManualNode}" />
-                    <ui:TextBox Text="{Binding ManualAddress, UpdateSourceTrigger=PropertyChanged}"
-                                PlaceholderText="{DynamicResource SelectNode_AddressPlaceholder}" />
+                    <Border Padding="14"
+                            Background="{DynamicResource OnboardingSubtleSurfaceBrush}"
+                            CornerRadius="12">
+                        <StackPanel>
+                            <ui:TextBox Text="{Binding ManualAddress, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="{DynamicResource SelectNode_AddressPlaceholder}" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Style="{StaticResource MutedText}"
+                                       Text="{DynamicResource SelectNode_ManualHint}" />
+                        </StackPanel>
+                    </Border>
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                                Text="{Binding ErrorMessage}"
@@ -64,16 +104,16 @@
                                Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="5" Margin="0,20,0,0" Orientation="Horizontal">
+                <StackPanel Grid.Row="5" Margin="0,16,0,0" Orientation="Horizontal">
                     <ui:Button Appearance="Primary"
                                Command="{Binding ConnectManualCommand}"
                                Content="{DynamicResource Common_Connect}" />
-                    <ProgressBar Width="100"
-                                 Height="4"
-                                 Margin="16,0,0,0"
-                                 VerticalAlignment="Center"
-                                 IsIndeterminate="True"
-                                 Visibility="{Binding IsConnecting, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <ui:ProgressRing Width="22"
+                                     Height="22"
+                                     Margin="14,0,0,0"
+                                     VerticalAlignment="Center"
+                                     IsIndeterminate="True"
+                                     Visibility="{Binding IsConnecting, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
             </Grid>
         </ui:Card>

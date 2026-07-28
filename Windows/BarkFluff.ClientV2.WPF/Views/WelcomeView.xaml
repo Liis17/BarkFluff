@@ -2,22 +2,76 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-    <Grid Margin="48">
-        <ui:Card HorizontalAlignment="Center"
+    <UserControl.RenderTransform>
+        <TranslateTransform Y="12" />
+    </UserControl.RenderTransform>
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.22" />
+                    <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="12" To="0" Duration="0:0:0.22" />
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </UserControl.Triggers>
+    <Grid Margin="40,24,40,40">
+        <ui:Card Width="760"
+                 HorizontalAlignment="Center"
                  VerticalAlignment="Center"
-                 Style="{StaticResource OnboardingCard}">
-            <StackPanel Width="440">
-                <TextBlock Style="{StaticResource OnboardingTitle}"
-                           Text="{DynamicResource Welcome_Title}" />
-                <TextBlock Margin="0,16,0,0"
-                           Style="{StaticResource OnboardingDescription}"
-                           Text="{DynamicResource Welcome_Subtitle}" />
-                <ui:Button Margin="0,32,0,0"
-                           HorizontalAlignment="Left"
-                           Appearance="Primary"
-                           Command="{Binding StartCommand}"
-                           Content="{DynamicResource Welcome_Start}" />
-            </StackPanel>
+                 Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.95*" />
+                    <ColumnDefinition Width="1.05*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Padding="36"
+                        Background="{DynamicResource OnboardingAccentSurfaceBrush}"
+                        CornerRadius="14">
+                    <StackPanel VerticalAlignment="Center">
+                        <Border Width="52"
+                                Height="52"
+                                HorizontalAlignment="Left"
+                                Background="{DynamicResource SystemAccentColorPrimaryBrush}"
+                                CornerRadius="16">
+                            <TextBlock HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       Text="BF" />
+                        </Border>
+                        <TextBlock Margin="0,24,0,0"
+                                   FontSize="24"
+                                   FontWeight="SemiBold"
+                                   Text="BarkFluff" />
+                        <TextBlock Margin="0,8,0,0"
+                                   Style="{StaticResource OnboardingDescription}"
+                                   Text="{DynamicResource Welcome_BrandDescription}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="1"
+                            Width="300"
+                            Margin="44,28"
+                            VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource SectionTitle}"
+                               Foreground="{DynamicResource SystemAccentColorPrimaryBrush}"
+                               Text="{DynamicResource Welcome_Eyebrow}" />
+                    <TextBlock Margin="0,12,0,0"
+                               Style="{StaticResource OnboardingTitle}"
+                               Text="{DynamicResource Welcome_Title}" />
+                    <TextBlock Margin="0,14,0,0"
+                               Style="{StaticResource OnboardingDescription}"
+                               Text="{DynamicResource Welcome_Subtitle}" />
+                    <ui:Button Margin="0,28,0,0"
+                               HorizontalAlignment="Left"
+                               Appearance="Primary"
+                               Command="{Binding StartCommand}"
+                               Content="{DynamicResource Welcome_Start}" />
+                </StackPanel>
+            </Grid>
         </ui:Card>
     </Grid>
 </UserControl>
