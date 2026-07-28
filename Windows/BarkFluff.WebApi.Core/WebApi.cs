@@ -79,6 +79,7 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiFastAuthManager FastAuthManager;
         internal readonly WebApiChatFolderManager ChatFolderManager;
         internal readonly WebApiCallsManager CallsManager;
+        internal readonly WebApiPrivateChatManager PrivateChatManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
@@ -108,6 +109,7 @@ namespace BarkFluff.WebApi.Core
             FastAuthManager = new WebApiFastAuthManager(this);
             ChatFolderManager = new WebApiChatFolderManager(this);
             CallsManager = new WebApiCallsManager(this);
+            PrivateChatManager = new WebApiPrivateChatManager(this);
         }
 
         #region IDisposable
@@ -300,6 +302,73 @@ namespace BarkFluff.WebApi.Core
         public async Task<ErrorReturner> UnpinMessage(GlobalParam globalParam, string chatId, long messageId) => await MessageManager.UnpinMessage(globalParam, chatId, messageId);
         public async Task<(ErrorReturner error, List<Proto.Shared.PinnedMessageInfo>? pinned, int totalCount)> ListPinnedMessages(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListPinnedMessages(globalParam, chatId, offset, size);
         public async Task<(ErrorReturner error, int unpinnedCount)> UnpinAll(GlobalParam globalParam, string chatId) => await MessageManager.UnpinAll(globalParam, chatId);
+        #endregion
+
+        #region Приватные чаты E2E (делегирование к PrivateChatManager)
+        /// <summary>
+        /// Создать приватный чат: библиотека сама выводит ключ из кодовой фразы (Argon2id)
+        /// и считает verifier — сама фраза на сервер не уходит. Ключ нужно сохранить самостоятельно
+        /// (библиотека его не хранит между вызовами) для последующих Send/List/Edit.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat, bool created, byte[]? key)> CreatePrivateChat(long peerUserId, string passphrase, GlobalParam globalParam)
+            => await PrivateChatManager.CreatePrivateChat(peerUserId, passphrase, globalParam);
+
+        /// <summary>
+        /// Принять приглашение: kdfSalt/passphraseVerifier берутся из события PrivateChatInviteEvent
+        /// или из Chat (ListChats). Кодовая фраза проверяется локально до обращения к серверу.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat, byte[]? key)> AcceptPrivateChat(string chatId, string passphrase, byte[] kdfSalt, byte[] passphraseVerifier, GlobalParam globalParam)
+            => await PrivateChatManager.AcceptPrivateChat(chatId, passphrase, kdfSalt, passphraseVerifier, globalParam);
+
+        public async Task<ErrorReturner> RejectPrivateChat(string chatId, GlobalParam globalParam)
+            => await PrivateChatManager.RejectPrivateChat(chatId, globalParam);
+
+        /// <summary>
+        /// Восстановить ключ уже принятого чата по кодовой фразе (без сетевых вызовов),
+        /// например после перезапуска приложения. Null означает неверную фразу.
+        /// </summary>
+        public static byte[]? UnlockPrivateChat(Proto.Messages.Chat chat, string passphrase) => WebApiPrivateChatManager.UnlockChat(chat, passphrase);
+
+        public async Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessage(string chatId, string text, byte[] key, GlobalParam globalParam)
+            => await PrivateChatManager.SendPrivateMessage(chatId, text, key, globalParam);
+
+        public async Task<(ErrorReturner error, List<PrivateMessageModel>? messages)> ListPrivateMessages(string chatId, byte[] key, GlobalParam globalParam, long fromMessageId = 0, int offsetBefore = 50, int offsetAfter = 0)
+            => await PrivateChatManager.ListPrivateMessages(chatId, key, globalParam, fromMessageId, offsetBefore, offsetAfter);
+
+        public async Task<(ErrorReturner error, PrivateMessageModel? message)> EditPrivateMessage(string chatId, long messageId, string text, byte[] key, GlobalParam globalParam)
+            => await PrivateChatManager.EditPrivateMessage(chatId, messageId, text, key, globalParam);
+
+        public async Task<ErrorReturner> DeletePrivateMessage(long messageId, GlobalParam globalParam)
+            => await PrivateChatManager.DeletePrivateMessage(messageId, globalParam);
+
+        public async Task<ErrorReturner> MarkPrivateMessagesAsRead(string chatId, long lastReadMessageId, GlobalParam globalParam)
+            => await PrivateChatManager.MarkPrivateMessagesAsRead(chatId, lastReadMessageId, globalParam);
+
+        /// <summary>
+        /// Расшифровать одно сообщение приватного чата, например пришедшее из
+        /// <see cref="SubscribeToPrivateMessages"/>/<see cref="SubscribeToPrivateMessageEdits"/>.
+        /// </summary>
+        public static PrivateMessageModel DecryptPrivateMessage(Proto.Shared.EncryptedMessage message, byte[] key) => WebApiPrivateChatManager.DecryptMessage(message, key);
+        #endregion
+
+        #region Реалтайм обновления приватных чатов (делегирование к UpdateManager)
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.NewEncryptedMessageEvent>? stream)> SubscribeToPrivateMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessages(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.EncryptedMessageEditedEvent>? stream)> SubscribeToPrivateMessageEdits(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessageEdits(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.EncryptedMessageDeletedEvent>? stream)> SubscribeToPrivateMessageDeletes(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessageDeletes(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateMessagesReadEvent>? stream)> SubscribeToPrivateMessagesRead(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessagesRead(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateChatInviteEvent>? stream)> SubscribeToPrivateChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateChatInvites(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateChatInviteResolutionEvent>? stream)> SubscribeToPrivateChatInviteResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateChatInviteResolutions(globalParam, ct);
         #endregion
 
         #region Поиск (делегирование к SearchManager)
