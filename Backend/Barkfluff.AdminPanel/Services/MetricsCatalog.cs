@@ -39,7 +39,7 @@ public static class MetricsCatalog
             Counter("sessions_rejected", "Отклонённые FastAuth-сессии"), Counter("sessions_expired", "Истёкшие FastAuth-сессии")),
         Service("BarkFluff.Bots", "Bots", false,
             Counter("bot_api_messages_sent", "Сообщения ботов"), Counter("bot_updates_stored", "Сохранённые bot updates"),
-            Counter("login_notifications_errors", "Ошибки bot-уведомлений"), Gauge("active_subscriptions", "Активные bot streams")),
+            Counter("login_notifications_errors", "Ошибки bot-уведомлений")),
         Service("BarkFluff.Notification", "Notification", false,
             Counter("emails_sent", "Отправленные email"), Counter("emails_failed", "Ошибки email")),
         Service("BarkFluff.CloudMessaging", "CloudMessaging", false,
