@@ -103,6 +103,93 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Сообщить серверу, что пользователь печатает в чате (или прекратил).
+        /// </summary>
+        public async Task<ErrorReturner> SetTypingStatus(string chatId, TypingAction action, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await OnlinerAC!.SetTypingStatusAsync(new SetTypingStatusRequest
+                    {
+                        ChatId = chatId,
+                        Action = action
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return new ErrorReturner(false, "Ошибка аутентификации при отправке индикатора набора");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка отправки индикатора набора");
+            }
+        }
+
+        /// <summary>
+        /// Подписаться на индикаторы набора текста в выбранных чатах (streaming).
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<TypingEvent>? stream)> SubscribeToTyping(
+            List<string> chatIds,
+            GlobalParam globalParam,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new SubscribeToTypingRequest();
+                    request.ChatIds.AddRange(chatIds);
+
+                    var response = OnlinerAC!.SubscribeToTyping(request, headers: null, deadline: null, cancellationToken: ct);
+
+                    return ((ErrorReturner, IAsyncEnumerable<TypingEvent>?))(new ErrorReturner(true, ""), ReadStream(response, ct));
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к индикаторам набора"), null);
+            }
+        }
+
+        /// <summary>
+        /// Изменить список чатов в существующей подписке на индикаторы набора.
+        /// </summary>
+        public async Task<ErrorReturner> ChangeChatsInTypingSubscription(List<string> chatIds, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new ChangeChatsInTypingSubscriptionRequest();
+                    request.ChatIds.AddRange(chatIds);
+
+                    await OnlinerAC!.ChangeChatsInTypingSubscriptionAsync(request);
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
+            {
+                return new ErrorReturner(false, "Нет активной подписки на индикаторы набора");
+            }
+            catch (RpcException)
+            {
+                return new ErrorReturner(false, "Ошибка аутентификации при изменении списка чатов");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения списка чатов подписки");
+            }
+        }
+
+        /// <summary>
         /// Изменить список отслеживаемых пользователей в существующей подписке.
         /// </summary>
         public async Task<ErrorReturner> ChangeUsersInSubscription(List<long> userIds, GlobalParam globalParam)
