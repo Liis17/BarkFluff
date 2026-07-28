@@ -314,7 +314,7 @@ public static class SeqEndpoints
             MetricsCacheDbContext cache,
             HttpContext context,
             string serviceName,
-            int hours = 24 * 30) =>
+            int hours = 72) =>
         {
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
@@ -322,7 +322,7 @@ public static class SeqEndpoints
             var service = MetricsCatalog.Find(serviceName);
             if (service is null) return Results.NotFound();
 
-            hours = Math.Clamp(hours, 1, 24 * 30);
+            hours = Math.Clamp(hours, 1, 72);
             var cutoff = TruncateToHour(DateTime.UtcNow).AddHours(-hours);
             var rows = cache.HourlyServiceMetrics
                 .Find(x => x.ServiceName == service.Name && x.HourUtc >= cutoff && x.SchemaVersion == 2)

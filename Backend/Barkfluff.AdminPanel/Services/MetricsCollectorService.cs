@@ -1,27 +1,22 @@
 using Barkfluff.AdminPanel.Data;
 
-using System.Text.Json;
-
 namespace Barkfluff.AdminPanel.Services;
 
-/// <summary>
-/// Builds the dashboard's hourly metric rollups from the versioned ServiceMetrics Seq events.
-/// Counters are summed within an hour while gauges retain their latest value.
-/// </summary>
+/// <summary>Builds idempotent hourly rollups from ServiceMetrics schema v2 events in Seq.</summary>
 public class MetricsCollectorService : BackgroundService
 {
     private static readonly TimeSpan CollectionInterval = TimeSpan.FromMinutes(5);
     private const int StatsHoursToKeep = 24;
     private const int ServiceMetricsHoursToKeep = 24 * 30;
-    private const int MaxEventsPerServiceHour = 100_000;
+    private const int RecoveryHours = 72;
+    private const int RecoveryHoursPerCycle = 6;
+    private const int MaxEventsPerHour = 100_000;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly MetricsCacheDbContext _cache;
     private readonly ILogger<MetricsCollectorService> _logger;
 
-    public MetricsCollectorService(
-        IServiceProvider serviceProvider,
-        MetricsCacheDbContext cache,
+    public MetricsCollectorService(IServiceProvider serviceProvider, MetricsCacheDbContext cache,
         ILogger<MetricsCollectorService> logger)
     {
         _serviceProvider = serviceProvider;
@@ -63,10 +58,7 @@ public class MetricsCollectorService : BackgroundService
         foreach (var hour in new[] { currentHour.AddHours(-1), currentHour })
         {
             ct.ThrowIfCancellationRequested();
-            var events = await seq.GetAllEventsListAsync(
-                fromDateUtc: hour,
-                toDateUtc: hour.AddHours(1),
-                maxEvents: 10_000);
+            var events = await seq.GetAllEventsListAsync(fromDateUtc: hour, toDateUtc: hour.AddHours(1), maxEvents: 10_000);
             if (events is null) continue;
 
             var perService = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
@@ -78,73 +70,88 @@ public class MetricsCollectorService : BackgroundService
                 if (level is "Error" or "Fatal") errors++;
                 if (level == "Warning") warnings++;
                 var service = GetEventApplication(evt);
-                if (service is not null)
-                    perService[service] = perService.GetValueOrDefault(service) + 1;
+                if (service is not null) perService[service] = perService.GetValueOrDefault(service) + 1;
             }
 
-            var stats = new HourlyStats
-            {
-                HourUtc = hour,
-                TotalEvents = events.Count,
-                ErrorCount = errors,
-                WarningCount = warnings,
-                PerService = perService
-            };
+            var stats = new HourlyStats { HourUtc = hour, TotalEvents = events.Count, ErrorCount = errors, WarningCount = warnings, PerService = perService };
             _cache.HourlyStats.Upsert(stats);
-            _cache.HourlyTraffic.Upsert(new HourlyTraffic
-            {
-                HourUtc = hour,
-                AllCount = stats.TotalEvents,
-                ErrorCount = errors,
-                WarningCount = warnings
-            });
+            _cache.HourlyTraffic.Upsert(new HourlyTraffic { HourUtc = hour, AllCount = stats.TotalEvents, ErrorCount = errors, WarningCount = warnings });
         }
     }
 
     private async Task CollectServiceMetricsAsync(SeqService seq, CancellationToken ct)
     {
         var currentHour = TruncateToHour(DateTime.UtcNow);
-        // Recompute the current and previous hour so late Seq ingestion cannot produce a stale rollup.
-        foreach (var hour in new[] { currentHour.AddHours(-1), currentHour })
+        await CollectServiceMetricHourAsync(seq, currentHour.AddHours(-1), ct);
+        await CollectServiceMetricHourAsync(seq, currentHour, ct);
+
+        var oldest = currentHour.AddHours(-RecoveryHours);
+        var recoveryHours = Enumerable.Range(0, RecoveryHours)
+            .Select(offset => oldest.AddHours(offset))
+            .Where(hour => hour != currentHour && hour != currentHour.AddHours(-1))
+            .Where(hour => _cache.MetricRollupHours.FindById(hour) is null)
+            .Take(RecoveryHoursPerCycle);
+
+        foreach (var hour in recoveryHours)
         {
-            foreach (var service in MetricsCatalog.Services)
-            {
-                ct.ThrowIfCancellationRequested();
-                var filter = $"Application = '{service.Name.Replace("'", "''")}' and @Message like 'ServiceMetrics%'";
-                var events = await seq.GetAllEventsListAsync(
-                    filter, hour, MaxEventsPerServiceHour, hour.AddHours(1));
-                if (events is null) continue;
-
-                var counters = new Dictionary<string, long>(StringComparer.Ordinal);
-                var gauges = new Dictionary<string, (DateTime Timestamp, long Value)>(StringComparer.Ordinal);
-                foreach (var evt in events)
-                {
-                    var snapshot = ExtractSnapshot(evt);
-                    if (snapshot is null) continue;
-
-                    foreach (var (name, value) in snapshot.Counters)
-                        counters[name] = counters.GetValueOrDefault(name) + value;
-
-                    foreach (var (name, value) in snapshot.Gauges)
-                    {
-                        if (!gauges.TryGetValue(name, out var current) || snapshot.Timestamp >= current.Timestamp)
-                            gauges[name] = (snapshot.Timestamp, value);
-                    }
-                }
-
-                _cache.HourlyServiceMetrics.DeleteMany(x => x.HourUtc == hour && x.ServiceName == service.Name);
-                if (counters.Count == 0 && gauges.Count == 0) continue;
-
-                _cache.HourlyServiceMetrics.Insert(new HourlyServiceMetrics
-                {
-                    HourUtc = hour,
-                    ServiceName = service.Name,
-                    Counters = counters,
-                    Gauges = gauges.ToDictionary(x => x.Key, x => x.Value.Value),
-                    SchemaVersion = 2
-                });
-            }
+            ct.ThrowIfCancellationRequested();
+            await CollectServiceMetricHourAsync(seq, hour, ct);
         }
+    }
+
+    private async Task CollectServiceMetricHourAsync(SeqService seq, DateTime hour, CancellationToken ct)
+    {
+        var events = await seq.GetAllEventsListAsync(
+            filter: "Metrics.SchemaVersion = 2",
+            fromDateUtc: hour,
+            maxEvents: MaxEventsPerHour,
+            toDateUtc: hour.AddHours(1));
+        if (events is null) return;
+        if (events.Count >= MaxEventsPerHour)
+        {
+            _logger.LogWarning("MetricsCollector: {Hour:o} reached the {Limit} Seq event limit; retrying without replacing rollup", hour, MaxEventsPerHour);
+            return;
+        }
+
+        var counters = new Dictionary<string, Dictionary<string, long>>(StringComparer.OrdinalIgnoreCase);
+        var gauges = new Dictionary<string, Dictionary<string, (DateTime Timestamp, long Value)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var evt in events)
+        {
+            if (!ServiceMetricsEventParser.TryParse(evt, out var snapshot)) continue;
+            var service = MetricsCatalog.Find(snapshot.ServiceName);
+            if (service is null) continue;
+
+            var allowedCounters = service.Metrics.Where(metric => metric.Kind == "counter").Select(metric => metric.Id).ToHashSet(StringComparer.Ordinal);
+            var allowedGauges = service.Metrics.Where(metric => metric.Kind == "gauge").Select(metric => metric.Id).ToHashSet(StringComparer.Ordinal);
+            var serviceCounters = counters.GetValueOrDefault(service.Name) ?? (counters[service.Name] = new(StringComparer.Ordinal));
+            var serviceGauges = gauges.GetValueOrDefault(service.Name) ?? (gauges[service.Name] = new(StringComparer.Ordinal));
+
+            foreach (var (name, value) in snapshot.Counters)
+                if (allowedCounters.Contains(name)) serviceCounters[name] = serviceCounters.GetValueOrDefault(name) + value;
+            foreach (var (name, value) in snapshot.Gauges)
+                if (allowedGauges.Contains(name) && (!serviceGauges.TryGetValue(name, out var current) || snapshot.Timestamp >= current.Timestamp))
+                    serviceGauges[name] = (snapshot.Timestamp, value);
+        }
+
+        foreach (var service in MetricsCatalog.Services)
+        {
+            _cache.HourlyServiceMetrics.DeleteMany(row => row.HourUtc == hour && row.ServiceName == service.Name);
+            counters.TryGetValue(service.Name, out var serviceCounters);
+            gauges.TryGetValue(service.Name, out var serviceGauges);
+            if (serviceCounters is null && serviceGauges is null)
+                continue;
+
+            _cache.HourlyServiceMetrics.Insert(new HourlyServiceMetrics
+            {
+                HourUtc = hour,
+                ServiceName = service.Name,
+                Counters = serviceCounters ?? new(),
+                Gauges = serviceGauges?.ToDictionary(item => item.Key, item => item.Value.Value) ?? new(),
+                SchemaVersion = 2
+            });
+        }
+
+        _cache.MetricRollupHours.Upsert(new MetricRollupHour { HourUtc = hour, CompletedAtUtc = DateTime.UtcNow });
     }
 
     private void CleanupOldData()
@@ -153,69 +160,24 @@ public class MetricsCollectorService : BackgroundService
         _cache.HourlyStats.DeleteMany(x => x.HourUtc < now.AddHours(-StatsHoursToKeep));
         _cache.HourlyTraffic.DeleteMany(x => x.HourUtc < now.AddHours(-StatsHoursToKeep));
         _cache.HourlyServiceMetrics.DeleteMany(x => x.HourUtc < now.AddHours(-ServiceMetricsHoursToKeep));
+        _cache.MetricRollupHours.DeleteMany(x => x.HourUtc < now.AddHours(-ServiceMetricsHoursToKeep));
     }
 
-    private static DateTime TruncateToHour(DateTime value) =>
-        new(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
+    private static DateTime TruncateToHour(DateTime value) => new(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
 
-    private static MetricSnapshot? ExtractSnapshot(JsonElement evt)
+    private static string? GetEventLevel(System.Text.Json.JsonElement evt) =>
+        evt.TryGetProperty("Level", out var level) && level.ValueKind == System.Text.Json.JsonValueKind.String ? level.GetString() : null;
+
+    private static string? GetEventApplication(System.Text.Json.JsonElement evt)
     {
         if (!evt.TryGetProperty("Properties", out var props)) return null;
-        var wrapper = GetProperty(props, "Metrics");
-        if (wrapper is null || wrapper.Value.ValueKind != JsonValueKind.Object) return null;
-
-        var metrics = wrapper.Value;
-        if (metrics.TryGetProperty("Metrics", out var nested) && nested.ValueKind == JsonValueKind.Object)
-            metrics = nested;
-        if (!metrics.TryGetProperty("SchemaVersion", out var version) || version.GetInt32() != 2)
-            return null;
-
-        var timestamp = GetEventTimestamp(evt) ?? DateTime.MinValue;
-        return new MetricSnapshot(
-            ExtractValues(metrics, "Counters"),
-            ExtractValues(metrics, "Gauges"),
-            timestamp);
-    }
-
-    private static Dictionary<string, long> ExtractValues(JsonElement source, string property)
-    {
-        var values = new Dictionary<string, long>(StringComparer.Ordinal);
-        if (!source.TryGetProperty(property, out var objectValue) || objectValue.ValueKind != JsonValueKind.Object)
-            return values;
-        foreach (var item in objectValue.EnumerateObject())
-            if (item.Value.ValueKind == JsonValueKind.Number && item.Value.TryGetInt64(out var value))
-                values[item.Name] = value;
-        return values;
-    }
-
-    private static string? GetEventLevel(JsonElement evt) =>
-        evt.TryGetProperty("Level", out var level) && level.ValueKind == JsonValueKind.String ? level.GetString() : null;
-
-    private static DateTime? GetEventTimestamp(JsonElement evt) =>
-        evt.TryGetProperty("Timestamp", out var timestamp) && timestamp.ValueKind == JsonValueKind.String &&
-        DateTime.TryParse(timestamp.GetString(), out var value) ? value.ToUniversalTime() : null;
-
-    private static string? GetEventApplication(JsonElement evt)
-    {
-        if (!evt.TryGetProperty("Properties", out var props)) return null;
-        var app = GetProperty(props, "Application");
-        return app?.ValueKind == JsonValueKind.String ? app.Value.GetString() : null;
-    }
-
-    private static JsonElement? GetProperty(JsonElement props, string name)
-    {
-        if (props.ValueKind == JsonValueKind.Object)
-            return props.TryGetProperty(name, out var value) ? value : null;
-        if (props.ValueKind != JsonValueKind.Array) return null;
+        if (props.ValueKind == System.Text.Json.JsonValueKind.Object)
+            return props.TryGetProperty("Application", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : null;
+        if (props.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
         foreach (var property in props.EnumerateArray())
-            if (property.TryGetProperty("Name", out var propertyName) && propertyName.GetString() == name &&
-                property.TryGetProperty("Value", out var value))
-                return value;
+            if (property.TryGetProperty("Name", out var name) && name.GetString() == "Application" &&
+                property.TryGetProperty("Value", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String)
+                return value.GetString();
         return null;
     }
-
-    private sealed record MetricSnapshot(
-        Dictionary<string, long> Counters,
-        Dictionary<string, long> Gauges,
-        DateTime Timestamp);
 }

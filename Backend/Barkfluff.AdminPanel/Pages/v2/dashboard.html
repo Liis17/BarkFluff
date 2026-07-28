@@ -121,6 +121,7 @@
         }
         .service-card-body { padding: 16px; }
         .canvas-wrap { position: relative; height: 220px; }
+        .metric-empty { display:flex; height:100%; align-items:center; justify-content:center; color:var(--md-on-surface-variant); font-size:13px; }
         .metric-value { color: var(--md-primary); font-variant-numeric: tabular-nums; font-weight: 650; }
         .metric-unit { color: var(--md-on-surface-variant); font-size: 11px; margin-left: 4px; }
         .svc-loading-indicator { color: var(--md-primary); }
@@ -392,7 +393,7 @@
         const grid = section.querySelector('.service-grid');
         grid.innerHTML = '<div style="color:var(--md-on-surface-variant);padding:16px">Загрузка...</div>';
         try {
-            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=720`);
+            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`);
             if (!response.ok) throw new Error(response.status);
             const data = await response.json();
             grid.innerHTML = '';
@@ -401,8 +402,10 @@
                 const points = metric.points || [];
                 const last = [...points].reverse().find(point => point.value != null)?.value;
                 card.className = 'service-card';
-                card.innerHTML = `<div class="service-card-head"><span class="name">${metric.title}</span><span><span class="metric-value">${formatMetricValue(last, metric.unit)}</span><span class="metric-unit">${metric.kind === 'counter' ? 'за час' : 'сейчас'}</span></span></div><div class="service-card-body"><div class="canvas-wrap"><canvas></canvas></div></div>`;
+                const hasData = points.some(point => point.value != null);
+                card.innerHTML = `<div class="service-card-head"><span class="name">${metric.title}</span><span><span class="metric-value">${formatMetricValue(last, metric.unit)}</span><span class="metric-unit">${metric.kind === 'counter' ? 'за час' : 'сейчас'}</span></span></div><div class="service-card-body"><div class="canvas-wrap">${hasData ? '<canvas></canvas>' : '<div class="metric-empty">Нет данных за 3 дня</div>'}</div></div>`;
                 grid.appendChild(card);
+                if (!hasData) return;
                 const color = metricColors[index % metricColors.length];
                 new Chart(card.querySelector('canvas').getContext('2d'), {
                     type: 'line',

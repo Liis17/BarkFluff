@@ -34,12 +34,15 @@ public class MetricsCacheDbContext : IDisposable
         HourlyServiceMetrics.EnsureIndex(x => x.HourUtc);
         HourlyServiceMetrics.EnsureIndex(x => x.ServiceName);
 
+        MetricRollupHours = _db.GetCollection<MetricRollupHour>("metric_rollup_hours");
+
         CompressionRuns = _db.GetCollection<MetricsCompressionRun>("compression_runs");
     }
 
     public ILiteCollection<HourlyStats> HourlyStats { get; }
     public ILiteCollection<HourlyTraffic> HourlyTraffic { get; }
     public ILiteCollection<HourlyServiceMetrics> HourlyServiceMetrics { get; }
+    public ILiteCollection<MetricRollupHour> MetricRollupHours { get; }
     public ILiteCollection<MetricsCompressionRun> CompressionRuns { get; }
 
     public void Dispose()
@@ -81,4 +84,12 @@ public class HourlyServiceMetrics
     public Dictionary<string, long> Counters { get; set; } = new();
     public Dictionary<string, long> Gauges { get; set; } = new();
     public int SchemaVersion { get; set; } = 2;
+}
+
+/// <summary>Подтверждает, что все ServiceMetrics указанного часа были безопасно обработаны.</summary>
+public class MetricRollupHour
+{
+    [BsonId]
+    public DateTime HourUtc { get; set; }
+    public DateTime CompletedAtUtc { get; set; }
 }
