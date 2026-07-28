@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using System.Windows;
+using Wpf.Ui.Appearance;
+using WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType;
 
 namespace BarkFluff.ClientV2.WPF;
 
@@ -21,6 +23,11 @@ public partial class App : Application
 
         try
         {
+            ApplicationThemeManager.Apply(
+                ApplicationTheme.Light,
+                WindowBackdropType.Mica,
+                updateAccent: true);
+
             _host = CreateHost();
             await _host.StartAsync();
 

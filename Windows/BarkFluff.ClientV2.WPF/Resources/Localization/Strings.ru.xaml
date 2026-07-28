@@ -4,6 +4,8 @@
     <sys:String x:Key="App_Title">BarkFluff</sys:String>
     <sys:String x:Key="Welcome_Title">Добро пожаловать в BarkFluff</sys:String>
     <sys:String x:Key="Welcome_Subtitle">Выберите ноду, чтобы начать пользоваться распределённым мессенджером.</sys:String>
+    <sys:String x:Key="Welcome_Eyebrow">BarkFluff для Windows</sys:String>
+    <sys:String x:Key="Welcome_BrandDescription">Ваше пространство для общения в распределённой сети.</sys:String>
     <sys:String x:Key="Welcome_Start">Начать</sys:String>
     <sys:String x:Key="SelectNode_Title">Выберите ноду</sys:String>
     <sys:String x:Key="SelectNode_Subtitle">Подключитесь к публичной ноде BarkFluff или укажите адрес своего Beacon.</sys:String>
@@ -11,9 +13,11 @@
     <sys:String x:Key="SelectNode_ConnectSelected">Подключиться к выбранной ноде</sys:String>
     <sys:String x:Key="SelectNode_ManualNode">Своя нода</sys:String>
     <sys:String x:Key="SelectNode_AddressPlaceholder">https://node.example.com или 192.168.1.10:7002</sys:String>
+    <sys:String x:Key="SelectNode_ManualHint">Используйте HTTPS-адрес или IP-адрес с портом.</sys:String>
     <sys:String x:Key="Common_Connect">Подключиться</sys:String>
     <sys:String x:Key="ConnectedNode_Title">Нода подключена</sys:String>
     <sys:String x:Key="ConnectedNode_Subtitle">Нода готова к работе. Авторизация будет добавлена на следующем этапе.</sys:String>
+    <sys:String x:Key="ConnectedNode_Status">Подключение установлено</sys:String>
     <sys:String x:Key="ConnectedNode_ChooseAnother">Выбрать другую ноду</sys:String>
     <sys:String x:Key="Error_NodeAddressRequired">Укажите адрес ноды.</sys:String>
     <sys:String x:Key="Error_NodeAddressInvalid">Укажите корректный HTTP- или HTTPS-адрес ноды.</sys:String>
