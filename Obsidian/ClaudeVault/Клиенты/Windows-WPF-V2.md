@@ -22,7 +22,7 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 
 - `Views` — XAML-представления без UI-логики в code-behind.
 - `ViewModels` — состояние и команды через CommunityToolkit.Mvvm.
-- `Services` — навигация, подключение к ноде и сессия; [[Клиенты/Windows-WebApiCore]] используется только через `INodeConnectionService`.
+- `Services` — навигация, подключение к ноде и сессия; `OnboardingNavigationService` хранит последнее ViewModel, поэтому стартовый маршрут не зависит от порядка создания окна. [[Клиенты/Windows-WebApiCore]] используется только через `INodeConnectionService`.
 - `Infrastructure/Storage` — SQLite `data/barkfluff.db` рядом с exe: настройки онбординга/языка и выбранная нода.
 - `Infrastructure/Localization` — смена `ResourceDictionary`; `Resources/Localization/Strings.ru.xaml` и `Strings.en.xaml` имеют одинаковые ключи, в XAML используются `DynamicResource`.
 - `Resources/Styles/Controls.xaml` — единая точка общих стилей интерфейса поверх WPF UI.

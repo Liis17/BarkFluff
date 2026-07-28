@@ -4,6 +4,8 @@ namespace BarkFluff.ClientV2.WPF.Services;
 
 public interface IOnboardingNavigationService
 {
+    object? CurrentViewModel { get; }
+
     event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged;
 
     void ShowWelcome();

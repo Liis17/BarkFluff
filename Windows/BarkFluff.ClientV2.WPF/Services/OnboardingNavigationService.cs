@@ -15,6 +15,8 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
 
     public event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged;
 
+    public object? CurrentViewModel { get; private set; }
+
     public void ShowWelcome() => Navigate(_serviceProvider.GetRequiredService<WelcomeViewModel>());
 
     public void ShowSelectNode()
@@ -28,6 +30,7 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
 
     private void Navigate(object viewModel)
     {
+        CurrentViewModel = viewModel;
         CurrentViewModelChanged?.Invoke(this, new OnboardingNavigationEventArgs(viewModel));
     }
 }
