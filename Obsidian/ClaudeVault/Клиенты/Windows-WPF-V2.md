@@ -25,7 +25,13 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 - `Services` — навигация, подключение к ноде и сессия; `OnboardingNavigationService` хранит последнее ViewModel, поэтому стартовый маршрут не зависит от порядка создания окна. [[Клиенты/Windows-WebApiCore]] используется только через `INodeConnectionService`.
 - `Infrastructure/Storage` — SQLite `data/barkfluff.db` рядом с exe: настройки онбординга/языка и выбранная нода.
 - `Infrastructure/Localization` — смена `ResourceDictionary`; `Resources/Localization/Strings.ru.xaml` и `Strings.en.xaml` имеют одинаковые ключи, в XAML используются `DynamicResource`.
-- `Resources/Styles/Controls.xaml` — единая точка общих стилей интерфейса поверх WPF UI.
+- `Resources/Styles/Controls.xaml` — единая точка общих стилей интерфейса поверх WPF UI: Fluent-контролы, поверхности, карточки и типографика.
+
+## Визуальный стиль
+
+- Интерфейс следует Windows 11 Fluent: `ApplicationThemeManager` включает светлую тему, Mica и системный accent; `MainWindow` содержит `TitleBar` WPF UI.
+- Для интерактивных элементов использовать только `ui:*`-контролы WPF UI, не нативные WPF `Button`, `TextBox`, `ListBox` или `ProgressBar`.
+- Экраны онбординга используют общую типографику `Segoe UI Variable Text`, карточки, мягкие поверхности и короткую декларативную анимацию появления.
 
 Подробные правила написания кода: `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md`.
 
