@@ -173,7 +173,7 @@ public sealed partial class LoginViewModel : ObservableObject
             image.Freeze();
             return image;
         }
-        catch (FormatException)
+        catch (Exception)
         {
             return null;
         }
