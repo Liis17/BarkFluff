@@ -13,6 +13,8 @@ public interface IOnboardingNavigationService
     void ShowSelectNode();
 
     void ShowConnectedNode();
+
+    void ShowLogin();
 }
 
 public sealed class OnboardingNavigationEventArgs : EventArgs

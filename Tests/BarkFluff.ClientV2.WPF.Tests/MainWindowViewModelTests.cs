@@ -27,6 +27,8 @@ public sealed class MainWindowViewModelTests
         public void ShowSelectNode() => Navigate(new object());
         public void ShowConnectedNode() => Navigate(new object());
 
+        public void ShowLogin() => Navigate(new object());
+
         public void Navigate(object viewModel)
         {
             CurrentViewModel = viewModel;

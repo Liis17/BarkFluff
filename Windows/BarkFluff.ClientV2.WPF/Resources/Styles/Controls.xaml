@@ -5,10 +5,6 @@
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
 
-    <SolidColorBrush x:Key="OnboardingWindowBackgroundBrush" Color="#EEF6F7FB" />
-    <SolidColorBrush x:Key="OnboardingAccentSurfaceBrush" Color="#E6F1FF" />
-    <SolidColorBrush x:Key="OnboardingSubtleSurfaceBrush" Color="#F5F7FB" />
-
     <Style x:Key="OnboardingCard"
            TargetType="ui:Card"
            BasedOn="{StaticResource {x:Type ui:Card}}">

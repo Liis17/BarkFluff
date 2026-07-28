@@ -14,20 +14,17 @@ public sealed class SelectNodeViewModelTests
         var profile = new NodeProfile("https://node.example.com", "Node", "Description");
         var dataStore = new MemoryDataStore();
         var navigation = new TestNavigationService();
-        var connectedNode = new ConnectedNodeViewModel(navigation);
         var viewModel = new SelectNodeViewModel(
             new FakeNodeConnectionService(NodeConnectionResult.Success(new NodeConnection(profile, new GlobalParam()))),
             dataStore,
             navigation,
-            connectedNode,
             new TestLocalizationService());
         viewModel.ManualAddress = profile.BeaconAddress;
 
         await viewModel.ConnectManualCommand.ExecuteAsync(null);
 
-        Assert.Equal(profile, dataStore.SelectedNode);
-        Assert.Equal(profile, connectedNode.Node);
-        Assert.True(navigation.ShowConnectedNodeCalled);
+        Assert.Equal(profile, dataStore.Connection!.Profile);
+        Assert.True(navigation.ShowLoginCalled);
     }
 
     private sealed class FakeNodeConnectionService : INodeConnectionService
@@ -44,24 +41,36 @@ public sealed class SelectNodeViewModelTests
 
         public Task<NodeConnectionResult> ConnectAsync(string address, CancellationToken cancellationToken = default) =>
             Task.FromResult(_result);
+
+        public bool RestoreConnection(NodeConnection connection) => true;
     }
 
     private sealed class MemoryDataStore : IApplicationDataStore
     {
-        public NodeProfile? SelectedNode { get; private set; }
+        public NodeConnection? Connection { get; private set; }
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<bool> HasSeenWelcomeAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task MarkWelcomeSeenAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<string?> GetLanguageAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
         public Task SaveLanguageAsync(string language, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default) => Task.FromResult(SelectedNode);
+        public Task<ApplicationThemeMode?> GetThemeAsync(CancellationToken cancellationToken = default) => Task.FromResult<ApplicationThemeMode?>(null);
+        public Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default) => Task.FromResult(Connection?.Profile);
 
         public Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default)
         {
-            SelectedNode = node;
+            Connection = new NodeConnection(node, new GlobalParam());
             return Task.CompletedTask;
         }
+
+        public Task SaveNodeServiceConfigurationAsync(NodeConnection connection, CancellationToken cancellationToken = default)
+        {
+            Connection = connection;
+            return Task.CompletedTask;
+        }
+
+        public Task<NodeConnection?> GetNodeServiceConfigurationAsync(CancellationToken cancellationToken = default) => Task.FromResult(Connection);
     }
 
     private sealed class TestNavigationService : IOnboardingNavigationService
@@ -70,7 +79,7 @@ public sealed class SelectNodeViewModelTests
 
         public object? CurrentViewModel => LastViewModel;
 
-        public bool ShowConnectedNodeCalled { get; private set; }
+        public bool ShowLoginCalled { get; private set; }
 
         public event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged;
 
@@ -78,7 +87,11 @@ public sealed class SelectNodeViewModelTests
         public void ShowSelectNode() => Navigate(new object());
         public void ShowConnectedNode()
         {
-            ShowConnectedNodeCalled = true;
+            Navigate(new object());
+        }
+        public void ShowLogin()
+        {
+            ShowLoginCalled = true;
             Navigate(new object());
         }
 
