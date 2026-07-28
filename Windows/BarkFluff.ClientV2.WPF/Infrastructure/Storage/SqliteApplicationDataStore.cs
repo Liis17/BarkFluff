@@ -4,6 +4,7 @@ using BarkFluff.ClientV2.WPF.Services;
 using Microsoft.Data.Sqlite;
 
 using System.IO;
+using System.Text.Json;
 
 namespace BarkFluff.ClientV2.WPF.Infrastructure.Storage;
 
@@ -11,6 +12,7 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
 {
     private const string WelcomeSeenKey = "onboarding.welcome-seen";
     private const string LanguageKey = "application.language";
+    private const string ThemeKey = "application.theme";
 
     private readonly AppDataPaths _paths;
     private readonly string _connectionString;
@@ -43,6 +45,10 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
                 name TEXT NOT NULL,
                 description TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS selected_node_services (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                configuration_json TEXT NOT NULL
+            );
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -60,6 +66,17 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
 
     public Task SaveLanguageAsync(string language, CancellationToken cancellationToken = default) =>
         SaveSettingAsync(LanguageKey, language, cancellationToken);
+
+    public async Task<ApplicationThemeMode?> GetThemeAsync(CancellationToken cancellationToken = default)
+    {
+        var value = await GetSettingAsync(ThemeKey, cancellationToken);
+        return Enum.TryParse<ApplicationThemeMode>(value, ignoreCase: true, out var theme)
+            ? theme
+            : null;
+    }
+
+    public Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default) =>
+        SaveSettingAsync(ThemeKey, theme.ToString(), cancellationToken);
 
     public async Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default)
     {
@@ -88,6 +105,32 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
         return await reader.ReadAsync(cancellationToken)
             ? new NodeProfile(reader.GetString(0), reader.GetString(1), reader.GetString(2))
             : null;
+    }
+
+    public async Task SaveNodeServiceConfigurationAsync(NodeConnection connection, CancellationToken cancellationToken = default)
+    {
+        await SaveSelectedNodeAsync(connection.Profile, cancellationToken);
+
+        await using var database = await OpenConnectionAsync(cancellationToken);
+        await using var command = database.CreateCommand();
+        command.CommandText = """
+            INSERT INTO selected_node_services (id, configuration_json)
+            VALUES (1, $configuration)
+            ON CONFLICT(id) DO UPDATE SET configuration_json = excluded.configuration_json;
+            """;
+        command.Parameters.AddWithValue("$configuration", JsonSerializer.Serialize(NodeServiceConfiguration.From(connection)));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<NodeConnection?> GetNodeServiceConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        await using var database = await OpenConnectionAsync(cancellationToken);
+        await using var command = database.CreateCommand();
+        command.CommandText = "SELECT configuration_json FROM selected_node_services WHERE id = 1;";
+        var json = await command.ExecuteScalarAsync(cancellationToken) as string;
+        return string.IsNullOrWhiteSpace(json)
+            ? null
+            : JsonSerializer.Deserialize<NodeServiceConfiguration>(json)?.ToConnection();
     }
 
     private async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken)

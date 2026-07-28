@@ -14,20 +14,17 @@ public sealed partial class SelectNodeViewModel : ObservableObject
     private readonly INodeConnectionService _nodeConnectionService;
     private readonly IApplicationDataStore _dataStore;
     private readonly IOnboardingNavigationService _navigation;
-    private readonly ConnectedNodeViewModel _connectedNodeViewModel;
     private readonly ILocalizationService _localization;
 
     public SelectNodeViewModel(
         INodeConnectionService nodeConnectionService,
         IApplicationDataStore dataStore,
         IOnboardingNavigationService navigation,
-        ConnectedNodeViewModel connectedNodeViewModel,
         ILocalizationService localization)
     {
         _nodeConnectionService = nodeConnectionService;
         _dataStore = dataStore;
         _navigation = navigation;
-        _connectedNodeViewModel = connectedNodeViewModel;
         _localization = localization;
     }
 
@@ -98,9 +95,8 @@ public sealed partial class SelectNodeViewModel : ObservableObject
                 return;
             }
 
-            await _dataStore.SaveSelectedNodeAsync(result.Connection!.Profile);
-            _connectedNodeViewModel.SetNode(result.Connection.Profile);
-            _navigation.ShowConnectedNode();
+            await _dataStore.SaveNodeServiceConfigurationAsync(result.Connection!);
+            _navigation.ShowLogin();
         }
         catch (Exception)
         {
