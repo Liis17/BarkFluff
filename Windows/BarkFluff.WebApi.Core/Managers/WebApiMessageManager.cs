@@ -17,6 +17,32 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Преобразует серверное сообщение в модель клиента.
+        /// </summary>
+        private static MessageModel MapMessage(Proto.Shared.Message message, string chatId) => new MessageModel
+        {
+            MessageId = message.Id,
+            ChatId = chatId,
+            Text = message.Content.Text,
+            Attachments = message.Content.Attachments.Select(a => new AttachmentsModel
+            {
+                Id = a.Id,
+                Type = a.Type,
+                PreviewUrl = a.PreviewUrl,
+                FileId = a.FileId,
+                PreviewFileId = a.PreviewFileId,
+                FileName = a.FileName,
+                Size = a.AttachmentSize,
+                ImageWidth = a.ImageWidth,
+                ImageHeight = a.ImageHeight,
+            }).ToList(),
+            SenderId = message.SenderId,
+            SentAt = message.SentAt,
+            Type = message.Type,
+            ReadBy = message.ReadBy.ToList(),
+        };
+
+        /// <summary>
         /// Получение списка чатов
         /// </summary>
         /// <param name="globalParam"></param>
@@ -128,30 +154,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         });
                     }
 
-                    var sentMessage = new MessageModel
-                    {
-                        MessageId = response.Message.Id,
-                        ChatId = chatId,
-                        Text = response.Message.Content.Text,
-                        Attachments = response.Message.Content.Attachments.Select(a => new AttachmentsModel
-                        {
-                            Id = a.Id,
-                            Type = a.Type,
-                            PreviewUrl = a.PreviewUrl,
-                            FileId = a.FileId,
-                            PreviewFileId = a.PreviewFileId,
-                            FileName = a.FileName,
-                            Size = a.AttachmentSize,
-                            ImageWidth = a.ImageWidth,
-                            ImageHeight = a.ImageHeight,
-                        }).ToList(),
-                        SenderId = response.Message.SenderId,
-                        SentAt = response.Message.SentAt,
-                        Type = response.Message.Type,
-                        ReadBy = response.Message.ReadBy.ToList(),
-                    };
-
-                    return (new ErrorReturner(true), sentMessage);
+                    return (new ErrorReturner(true), MapMessage(response.Message, chatId));
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
@@ -235,28 +238,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     {
                         return (new ErrorReturner(false, "Нет сообщений в этом чате", 1), null);
                     }
-                    return (new ErrorReturner(true), response.Messages.Select(m => new MessageModel
-                    {
-                        MessageId = m.Id,
-                        ChatId = chatId,
-                        Text = m.Content.Text,
-                        Attachments = m.Content.Attachments.Select(a => new AttachmentsModel
-                        {
-                            Id = a.Id,
-                            Type = a.Type,
-                            PreviewUrl = a.PreviewUrl,
-                            FileId = a.FileId,
-                            PreviewFileId = a.PreviewFileId,
-                            FileName = a.FileName,
-                            Size = a.AttachmentSize,
-                            ImageWidth = a.ImageWidth,
-                            ImageHeight = a.ImageHeight,
-                        }).ToList(),
-                        SenderId = m.SenderId,
-                        SentAt = m.SentAt,
-                        Type = m.Type,
-                        ReadBy = m.ReadBy.ToList(),
-                    }).ToList());
+                    return (new ErrorReturner(true), response.Messages.Select(m => MapMessage(m, chatId)).ToList());
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
@@ -290,28 +272,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     {
                         return (new ErrorReturner(false, "Нет сообщений в этом чате", 1), null);
                     }
-                    return (new ErrorReturner(true), response.Messages.Select(m => new MessageModel
-                    {
-                        MessageId = m.Id,
-                        ChatId = chatId,
-                        Text = m.Content.Text,
-                        Attachments = m.Content.Attachments.Select(a => new AttachmentsModel
-                        {
-                            Id = a.Id,
-                            Type = a.Type,
-                            PreviewUrl = a.PreviewUrl,
-                            FileId = a.FileId,
-                            PreviewFileId = a.PreviewFileId,
-                            FileName = a.FileName,
-                            Size = a.AttachmentSize,
-                            ImageWidth = a.ImageWidth,
-                            ImageHeight = a.ImageHeight,
-                        }).ToList(),
-                        SenderId = m.SenderId,
-                        SentAt = m.SentAt,
-                        Type = m.Type,
-                        ReadBy = m.ReadBy.ToList(),
-                    }).ToList());
+                    return (new ErrorReturner(true), response.Messages.Select(m => MapMessage(m, chatId)).ToList());
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
@@ -448,6 +409,295 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка получения вложений чата"), null, 0);
+            }
+        }
+
+        /// <summary>
+        /// Редактирование текста и списка файлов своего сообщения.
+        /// </summary>
+        public async Task<(ErrorReturner error, MessageModel? message)> EditMessage(
+            GlobalParam globalParam, string chatId, long messageId, string text, List<string>? fileIds = null)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Messages.EditMessageRequest
+                    {
+                        MessageId = messageId,
+                        Text = text,
+                    };
+                    if (fileIds != null)
+                        request.FilesIds.AddRange(fileIds);
+
+                    var response = await MessagesAC!.EditMessageAsync(request);
+                    return (new ErrorReturner(true), MapMessage(response.Message, chatId));
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException)
+            {
+                return (new ErrorReturner(false, "Сообщение не найдено"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return (new ErrorReturner(false, "Редактировать можно только свои сообщения"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageTextTooLongException)
+            {
+                return (new ErrorReturner(false, "Текст сообщения слишком длинный"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка редактирования сообщения"), null);
+            }
+        }
+
+        /// <summary>
+        /// Удаление своего сообщения.
+        /// </summary>
+        public async Task<ErrorReturner> DeleteMessage(GlobalParam globalParam, long messageId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await MessagesAC!.DeleteMessageAsync(new Proto.Messages.DeleteMessageRequest { MessageId = messageId });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException)
+            {
+                return new ErrorReturner(false, "Сообщение не найдено");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return new ErrorReturner(false, "Удалять можно только свои сообщения");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return new ErrorReturner(false, "Нет доступа к чату");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка удаления сообщения");
+            }
+        }
+
+        /// <summary>
+        /// Закрепить сообщение в чате.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Shared.PinnedMessageInfo? pinned)> PinMessage(
+            GlobalParam globalParam, string chatId, long messageId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.PinMessageAsync(new Proto.Messages.PinMessageRequest
+                    {
+                        ChatId = chatId,
+                        MessageId = messageId
+                    });
+                    return ((ErrorReturner, Proto.Shared.PinnedMessageInfo?))(new ErrorReturner(true), response.Pinned);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.TooManyPinnedMessagesException)
+            {
+                return (new ErrorReturner(false, "Достигнут лимит закреплённых сообщений в чате"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException)
+            {
+                return (new ErrorReturner(false, "Сообщение не найдено"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return (new ErrorReturner(false, "Нет прав на закрепление сообщений"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка закрепления сообщения"), null);
+            }
+        }
+
+        /// <summary>
+        /// Открепить сообщение.
+        /// </summary>
+        public async Task<ErrorReturner> UnpinMessage(GlobalParam globalParam, string chatId, long messageId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await MessagesAC!.UnpinMessageAsync(new Proto.Messages.UnpinMessageRequest
+                    {
+                        ChatId = chatId,
+                        MessageId = messageId
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException)
+            {
+                return new ErrorReturner(false, "Сообщение не найдено");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return new ErrorReturner(false, "Нет прав на открепление сообщений");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return new ErrorReturner(false, "Нет доступа к чату");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка открепления сообщения");
+            }
+        }
+
+        /// <summary>
+        /// Список закреплённых сообщений чата.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Shared.PinnedMessageInfo>? pinned, int totalCount)> ListPinnedMessages(
+            GlobalParam globalParam, string chatId, int offset = 0, int size = DefaultPageSize)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.ListPinnedMessagesAsync(new Proto.Messages.ListPinnedMessagesRequest
+                    {
+                        ChatId = chatId,
+                        Pagination = new Proto.Shared.PageRequest { Offset = offset, Size = size }
+                    });
+                    return (new ErrorReturner(true), response.Pinned.ToList(), response.TotalCount);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return (new ErrorReturner(false, "Чат не найден"), null, 0);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), null, 0);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения закреплённых сообщений"), null, 0);
+            }
+        }
+
+        /// <summary>
+        /// Открепить все сообщения чата. Возвращает количество откреплённых.
+        /// </summary>
+        public async Task<(ErrorReturner error, int unpinnedCount)> UnpinAll(GlobalParam globalParam, string chatId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.UnpinAllAsync(new Proto.Messages.UnpinAllRequest { ChatId = chatId });
+                    return (new ErrorReturner(true), response.UnpinnedCount);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return (new ErrorReturner(false, "Нет прав на открепление сообщений"), 0);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), 0);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка открепления сообщений"), 0);
+            }
+        }
+
+        /// <summary>
+        /// Добавить пользователя в групповой чат.
+        /// </summary>
+        public async Task<ErrorReturner> AddUser(GlobalParam globalParam, string chatId, long userId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await MessagesAC!.AddUserAsync(new Proto.Messages.AddUserRequest
+                    {
+                        ChatId = chatId,
+                        UserId = userId
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.UserAlreadyMemberChatException)
+            {
+                return new ErrorReturner(false, "Пользователь уже состоит в чате");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.IsNotGroupChatException)
+            {
+                return new ErrorReturner(false, "Добавлять участников можно только в групповой чат");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return new ErrorReturner(false, "Нет прав на добавление участников");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return new ErrorReturner(false, "Чат не найден");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка добавления пользователя в чат");
+            }
+        }
+
+        /// <summary>
+        /// Изменить название и/или обложку группового чата. Пустая строка = поле не меняется.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat)> UpdateGroupChat(
+            GlobalParam globalParam, string chatId, string title = "", string pictureFileId = "")
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.UpdateGroupChatAsync(new Proto.Messages.UpdateGroupChatRequest
+                    {
+                        ChatId = chatId,
+                        Title = title,
+                        PictureFileId = pictureFileId
+                    });
+                    return ((ErrorReturner, Proto.Messages.Chat?))(new ErrorReturner(true), response.Chat);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.IsNotGroupChatException)
+            {
+                return (new ErrorReturner(false, "Изменять можно только групповой чат"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoPermissionException)
+            {
+                return (new ErrorReturner(false, "Нет прав на изменение чата"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.FileHasNotGroupPictureTypeException)
+            {
+                return (new ErrorReturner(false, "Файл не подходит в качестве обложки чата"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return (new ErrorReturner(false, "Чат не найден"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка изменения чата"), null);
             }
         }
 

@@ -179,6 +179,31 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Завершает текущую сессию на сервере: refresh-токен этого устройства отзывается.
+        /// Локальные токены и авто-обновление гасит вызывающая сторона.
+        /// </summary>
+        public async Task<ErrorReturner> Logout(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await IdentityAC!.LogoutAsync(new Proto.Identity.LogoutRequest());
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.SessionNotFoundException)
+            {
+                // Сессии уже нет — с точки зрения клиента выход состоялся.
+                return new ErrorReturner(true);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка выхода из аккаунта");
+            }
+        }
+
+        /// <summary>
         /// Удаляет активную сессию по идентификатору устройства.
         /// </summary>
         public async Task<ErrorReturner> RemoveActiveSession(string deviceId, GlobalParam globalParam)
