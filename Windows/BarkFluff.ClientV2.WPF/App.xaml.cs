@@ -108,6 +108,8 @@ public partial class App : Application
         builder.Services.AddSingleton<SelectNodeViewModel>();
         builder.Services.AddSingleton<ConnectedNodeViewModel>();
         builder.Services.AddSingleton<LoginViewModel>();
+        builder.Services.AddSingleton<RegistrationViewModel>();
+        builder.Services.AddSingleton<PasswordRecoveryViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();
