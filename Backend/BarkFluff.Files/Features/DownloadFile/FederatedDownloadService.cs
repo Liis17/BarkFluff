@@ -42,12 +42,13 @@ public class FederatedDownloadService
     /// <summary>
     /// Аватар remote-пользователя (этап 3.4): снапшота размера нет — вместо него глобальный кап.
     /// </summary>
-    public Task WriteAvatarToResponseAsync(
+    public async Task WriteAvatarToResponseAsync(
         string serverName,
         Guid fileId,
         long maxBytes,
         HttpContext httpContext)
-        => WriteToResponseAsync(
+    {
+        await WriteToResponseAsync(
             new TempFile
             {
                 OriginalFileId = fileId,
@@ -57,12 +58,13 @@ public class FederatedDownloadService
             },
             httpContext,
             hardLimitBytes: maxBytes);
+    }
 
     /// <summary>
     /// Записать содержимое (или запрошенный диапазон) прямо в ответ. Заголовки выставляются
     /// здесь же: хелпер <c>File()</c> не подходит — поток не seekable.
     /// </summary>
-    public async Task WriteToResponseAsync(
+    public async Task<FederatedDownloadResult> WriteToResponseAsync(
         TempFile tempFile,
         HttpContext httpContext,
         long? hardLimitBytes = null)
@@ -77,7 +79,7 @@ public class FederatedDownloadService
         {
             response.StatusCode = StatusCodes.Status416RangeNotSatisfiable;
             response.Headers.ContentRange = $"bytes */{totalSize}";
-            return;
+            return new FederatedDownloadResult(false, 0);
         }
 
         var isPartial = rangeStatus == ByteRangeHeader.Status.Satisfiable;
@@ -136,7 +138,7 @@ public class FederatedDownloadService
 
                 // Заголовки уже ушли — корректного кода ошибки не осталось, рвём соединение.
                 httpContext.Abort();
-                return;
+                return new FederatedDownloadResult(false, written);
             }
 
             chunk.Data.WriteTo(response.Body);
@@ -151,10 +153,12 @@ public class FederatedDownloadService
             _metrics.Increment("fed_download_total.ok");
             _metrics.Increment("fed_downloads");
             _metrics.Add("fed_download_bytes_total", written);
+            return new FederatedDownloadResult(true, written);
         }
         catch (RpcException ex) when (!headersSent)
         {
             WriteErrorStatus(response, ex, tempFile);
+            return new FederatedDownloadResult(false, written);
         }
         catch (RpcException)
         {
@@ -162,6 +166,7 @@ public class FederatedDownloadService
             // и ретраит с Range (докачка).
             _metrics.Increment("fed_download_total.aborted");
             httpContext.Abort();
+            return new FederatedDownloadResult(false, written);
         }
     }
 
@@ -256,3 +261,5 @@ public class FederatedDownloadService
         return sanitized is "." or ".." ? string.Empty : sanitized;
     }
 }
+
+public readonly record struct FederatedDownloadResult(bool Completed, long BytesWritten);

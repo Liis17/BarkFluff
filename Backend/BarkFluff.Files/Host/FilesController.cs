@@ -146,7 +146,9 @@ public class FilesController : Controller
             var tempFile = await _tempFilesStorage.GetTempFile(fileId);
             if (tempFile?.OriginServer is { Length: > 0 })
             {
-                await _federatedDownload.WriteToResponseAsync(tempFile, HttpContext);
+                var transfer = await _federatedDownload.WriteToResponseAsync(tempFile, HttpContext);
+                if (transfer.Completed)
+                    RecordCompletedDownload(transfer.BytesWritten);
                 return new EmptyResult();
             }
 
@@ -156,14 +158,16 @@ public class FilesController : Controller
             };
 
             var result = await _mediator.Send(command);
-            _metrics.Increment("files_downloaded");
-            if (result.FileStream.CanSeek)
+            var meteredStream = new CountingReadStream(result.FileStream);
+            HttpContext.Response.OnCompleted(() =>
             {
-                _metrics.Add("download_bytes_total", result.FileStream.Length);
-                _metrics.Add("file_traffic_bytes_total", result.FileStream.Length);
-            }
+                if (!HttpContext.RequestAborted.IsCancellationRequested &&
+                    HttpContext.Response.StatusCode is >= StatusCodes.Status200OK and < StatusCodes.Status400BadRequest)
+                    RecordCompletedDownload(meteredStream.BytesRead);
+                return Task.CompletedTask;
+            });
 
-            return File(result.FileStream, result.ContentType, result.FileName);
+            return File(meteredStream, result.ContentType, result.FileName);
         }
         catch (FileNotUploadedException ex)
         {
@@ -176,5 +180,13 @@ public class FilesController : Controller
             _logger.LogError(ex, "Ошибка при скачивании файла {FileId}", fileId);
             return NotFound("Файл недоступен");
         }
+    }
+
+    private void RecordCompletedDownload(long bytes)
+    {
+        if (bytes <= 0) return;
+        _metrics.Increment("files_downloaded");
+        _metrics.Add("download_bytes_total", bytes);
+        _metrics.Add("file_traffic_bytes_total", bytes);
     }
 }
