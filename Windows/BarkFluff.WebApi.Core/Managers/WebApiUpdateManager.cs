@@ -131,5 +131,30 @@ namespace BarkFluff.WebApi.Core.Managers
             => await Subscribe(token => UpdatesAC!.SubscribePrivateChatInviteResolutions(new SubscribePrivateChatInviteResolutionsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
 
         #endregion
+
+        #region Секретные чаты (transport без libsignal)
+
+        /// <summary>
+        /// Приглашения секретных чатов. Крипта libsignal не реализована,
+        /// initialEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<SecretChatInviteEvent>? stream)> SubscribeToSecretChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeSecretChatInvites(new SubscribeSecretChatInvitesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Ответы на отправленные приглашения секретных чатов. Крипта libsignal не реализована,
+        /// responseEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<SecretChatInviteResolutionEvent>? stream)> SubscribeToSecretChatResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeSecretChatResolutions(new SubscribeSecretChatResolutionsRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        /// <summary>
+        /// Секретные сообщения текущего устройства. Крипта libsignal не реализована,
+        /// envelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewSecretMessageEvent>? stream)> SubscribeToSecretMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await Subscribe(token => UpdatesAC!.SubscribeSecretMessages(new SubscribeSecretMessagesRequest(), headers: null, deadline: null, cancellationToken: token), globalParam, ct);
+
+        #endregion
     }
 }
