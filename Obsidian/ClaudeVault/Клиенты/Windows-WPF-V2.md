@@ -39,7 +39,13 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 - После `GetServerInfo` `NodeServiceConfiguration` сохраняет endpoints Beacon, Identity, Users, Files, Messages, Updates, Onliner, FastAuth и Calls без токенов. На следующем запуске конфигурация восстанавливает `IClientSession` и открывает вход.
 - `LoginViewModel` общается только с `IAuthenticationService`: обычный вход поддерживает login/email, пароль и 2FA. Код OTP — шесть полей, полная вставка в первом поле заполняет их все и запускает проверку. FastAuth создаёт анонимную QR-сессию, слушает server-stream статусов; `SCANNED` показывает ожидание, `ACCEPTED` применяет токены, а `REJECTED`/`EXPIRED` автоматически выпускают новый QR. При уходе с экрана стрим отменяется.
 - `RegistrationViewModel` реализует минимальный серверный флоу `CreateAccount → ConfirmAccount → SetPassword`; `PasswordRecoveryViewModel` — `ResetPassword → ConfirmResetPassword → SetPassword`. Все строки экранов находятся в синхронизированных RU/EN resource dictionaries.
-- Access/refresh токены живут только в памяти текущей сессии. Их постоянное хранение требует отдельной DPAPI-миграции.
+- Access/refresh токены сохраняются в SQLite только как DPAPI (`CurrentUser`) blob. При следующем запуске клиент восстанавливает выбранную ноду, обновляет access token через refresh token и, если проверка профиля успешна, сразу открывает главный экран; повреждённая или недействительная сессия удаляется.
+
+## Мессенджер
+
+- `MessengerViewModel` — основной маршрут после авторизации: двухпанельный экран со списком чатов, областью выбранного чата, загрузкой истории и composer. Обычные сообщения отправляются кнопкой или `Enter`; `Shift+Enter` оставляет перенос строки.
+- Список и история берутся через [[Клиенты/Windows-WebApiCore]] (`GetChats`, `GetMessagesWithOffset`, `SendMessage`), а пользователь текущей сессии загружается после входа для корректного выравнивания исходящих сообщений.
+- `DpapiSecureSessionStore` изолирует чувствительные токены от открытой SQLite-базы. Кеш сообщений, файлов и realtime/presence/private-chat flows остаются следующими подэтапами реализации.
 
 Подробные правила написания кода: `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md`.
 
@@ -52,7 +58,7 @@ First run: Welcome → Select node → Connected node
 Next runs: Select node → Connected node
 ```
 
-`SelectNodeViewModel` получает публичные ноды из Navigator и позволяет вручную подключиться к Beacon. Адреса `http(s)://host[:port]` и `host[:port]` поддерживаются; домен без порта использует HTTPS/443, IP требует явно указанный порт. `GetServerInfo` проверяет ноду, а `NodeConnectionMapper` переносит endpoint’ы сервисов в параметры сессии.
+`SelectNodeViewModel` получает публичные ноды из Navigator и позволяет вручную подключиться к Beacon. Адреса `http(s)://host[:port]` и `host[:port]` поддерживаются; домен без порта использует HTTPS/443, IP требует явно указанный порт. Перед каждым `GetServerInfo` [[Клиенты/Windows-WPF-V2-ProjectMap|NodeConnectionService]] пересоздаёт Beacon-клиент для выбранного адреса, поэтому возврат со входа и смена ноды не используют старый канал. `NodeConnectionMapper` переносит endpoint’ы сервисов в параметры сессии.
 
 ## Важные ограничения
 
