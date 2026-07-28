@@ -27,19 +27,20 @@ public class MetricsReporterService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var immediateReader = _collector.ImmediateSnapshots;
+        Task<bool>? immediateAvailable = null;
+        var nextFlush = Task.Delay(BufferedFlushInterval, stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            using var waitCancellation = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            var immediateAvailable = immediateReader.WaitToReadAsync(waitCancellation.Token).AsTask();
-            var nextFlush = Task.Delay(BufferedFlushInterval, waitCancellation.Token);
+            immediateAvailable ??= immediateReader.WaitToReadAsync(stoppingToken).AsTask();
             var completed = await Task.WhenAny(immediateAvailable, nextFlush);
-            waitCancellation.Cancel();
 
             if (completed == immediateAvailable && await immediateAvailable)
             {
                 while (immediateReader.TryRead(out var snapshot))
                     Report(snapshot);
+
+                immediateAvailable = null;
             }
 
             if (completed == nextFlush && !stoppingToken.IsCancellationRequested)
@@ -47,6 +48,8 @@ public class MetricsReporterService : BackgroundService
                 var snapshot = _collector.TakeBufferedSnapshot();
                 if (snapshot.Counters.Count != 0 || snapshot.Gauges.Count != 0)
                     Report(snapshot);
+
+                nextFlush = Task.Delay(BufferedFlushInterval, stoppingToken);
             }
         }
     }

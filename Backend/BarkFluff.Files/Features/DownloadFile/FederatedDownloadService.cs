@@ -98,6 +98,7 @@ public class FederatedDownloadService
 
         var headersSent = false;
         long written = 0;
+        var expectedBytes = isPartial ? range.Length : totalSize;
 
         // Заголовки пишем только после первого чанка: пока ответ не начат, ошибку ещё можно
         // отдать честным кодом (503/404), а не оборванным телом (этап 3.5).
@@ -114,40 +115,50 @@ public class FederatedDownloadService
 
             await foreach (var chunk in call.ResponseStream.ReadAllAsync(httpContext.RequestAborted))
             {
-            if (!headersSent)
-            {
-                WriteHeaders(response, tempFile, chunk.ContentType, isPartial, range, totalSize);
-                headersSent = true;
+                if (!headersSent)
+                {
+                    WriteHeaders(response, tempFile, chunk.ContentType, isPartial, range, totalSize);
+                    headersSent = true;
+                }
+
+                if (chunk.Data.IsEmpty)
+                {
+                    continue;
+                }
+
+                written += chunk.Data.Length;
+
+                // Отсечение по снапшоту (риск №44, второй уровень): origin не может прислать
+                // больше, чем мы записали у себя при импорте сообщения.
+                if (limit > 0 && written > limit)
+                {
+                    _metrics.Increment("fed_download_size_exceeded");
+                    _logger.LogWarning(
+                        "Origin {Origin} прислал больше байт ({Written}), чем допускает снапшот ({Limit}) для {FileId}",
+                        tempFile.OriginServer, written, limit, tempFile.OriginalFileId);
+
+                    // Заголовки уже ушли — корректного кода ошибки не осталось, рвём соединение.
+                    httpContext.Abort();
+                    return new FederatedDownloadResult(false, written);
+                }
+
+                chunk.Data.WriteTo(response.Body);
+                await response.Body.FlushAsync(httpContext.RequestAborted);
             }
-
-            if (chunk.Data.IsEmpty)
-            {
-                continue;
-            }
-
-            written += chunk.Data.Length;
-
-            // Отсечение по снапшоту (риск №44, второй уровень): origin не может прислать
-            // больше, чем мы записали у себя при импорте сообщения.
-            if (limit > 0 && written > limit)
-            {
-                _metrics.Increment("fed_download_size_exceeded");
-                _logger.LogWarning(
-                    "Origin {Origin} прислал больше байт ({Written}), чем допускает снапшот ({Limit}) для {FileId}",
-                    tempFile.OriginServer, written, limit, tempFile.OriginalFileId);
-
-                // Заголовки уже ушли — корректного кода ошибки не осталось, рвём соединение.
-                httpContext.Abort();
-                return new FederatedDownloadResult(false, written);
-            }
-
-            chunk.Data.WriteTo(response.Body);
-            await response.Body.FlushAsync(httpContext.RequestAborted);
-        }
 
             if (!headersSent)
             {
                 WriteHeaders(response, tempFile, contentType: null, isPartial, range, totalSize);
+            }
+
+            if (expectedBytes > 0 && written != expectedBytes)
+            {
+                _metrics.Increment("fed_download_total.aborted");
+                _logger.LogWarning(
+                    "Origin {Origin} завершил поток {FileId} с {Written} байтами вместо ожидаемых {ExpectedBytes}",
+                    tempFile.OriginServer, tempFile.OriginalFileId, written, expectedBytes);
+                httpContext.Abort();
+                return new FederatedDownloadResult(false, written);
             }
 
             _metrics.Increment("fed_download_total.ok");

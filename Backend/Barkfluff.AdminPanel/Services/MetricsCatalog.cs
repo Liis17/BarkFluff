@@ -62,7 +62,8 @@ public static class MetricsCatalog
         Service("BarkFluff.Web", "Web", false, Counter("http_requests_total", "HTTP-запросы"), Counter("http_requests_errors", "HTTP-ошибки")),
         Service("BarkFluff.Developers", "Developers", false, Counter("grpc_requests_total", "gRPC-запросы"), Counter("grpc_requests_errors", "Ошибки gRPC")),
         Service("BarkFluff.WebServer", "WebServer", false,
-            Counter("installer_downloads", "Скачивания инсталлятора"), Counter("support_requests", "Support-запросы"), Counter("http_requests_errors", "HTTP-ошибки"))
+            Counter("installer_downloads", "Скачивания инсталлятора"), Counter("support_requests", "Support-запросы"),
+            Counter("http_requests_total", "HTTP-запросы"), Counter("http_requests_errors", "HTTP-ошибки"))
     ];
 
     public static MetricServiceDefinition? Find(string serviceName) =>

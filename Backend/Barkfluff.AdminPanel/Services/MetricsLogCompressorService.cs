@@ -174,7 +174,7 @@ public class MetricsLogCompressorService : BackgroundService
         int deletedCount = 0;
         if (!settings.DryRun)
         {
-            var filterDelete = $"@MessageTemplate = '{EscapeSeqString(settings.SourceMessageTemplate)}'";
+            var filterDelete = $"Metrics.SchemaVersion = 2 and @MessageTemplate = '{EscapeSeqString(settings.SourceMessageTemplate)}'";
             try
             {
                 await seq.DeleteEventsAsync(
