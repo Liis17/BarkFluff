@@ -11,6 +11,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public MainWindowViewModel(IOnboardingNavigationService navigation)
     {
+        CurrentViewModel = navigation.CurrentViewModel;
         navigation.CurrentViewModelChanged += (_, eventArgs) => CurrentViewModel = eventArgs.ViewModel;
     }
 }

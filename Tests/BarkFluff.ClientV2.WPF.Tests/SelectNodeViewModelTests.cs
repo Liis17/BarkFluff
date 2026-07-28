@@ -68,6 +68,8 @@ public sealed class SelectNodeViewModelTests
     {
         public object? LastViewModel { get; private set; }
 
+        public object? CurrentViewModel => LastViewModel;
+
         public bool ShowConnectedNodeCalled { get; private set; }
 
         public event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged;
