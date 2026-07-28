@@ -37,41 +37,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     // при каждом TokenRefreshed/переподключении.
                     var response = OnlinerAC!.SubscribeToOnlineStatus(request, headers: null, deadline: null, cancellationToken: ct);
 
-                    // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<UserOnlineStatus> GetStatusStream()
-                    {
-                        while (true)
-                        {
-                            bool hasNext;
-                            UserOnlineStatus statusUpdate;
-
-                            try
-                            {
-                                hasNext = await response.ResponseStream.MoveNext(ct);
-                                if (!hasNext)
-                                {
-                                    yield break; // Стрим завершён
-                                }
-                                statusUpdate = response.ResponseStream.Current;
-                            }
-                            catch (RpcException)
-                            {
-                                yield break;
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                yield break;
-                            }
-                            catch (Exception)
-                            {
-                                yield break;
-                            }
-
-                            yield return statusUpdate;
-                        }
-                    }
-
-                    return ((ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?))(new ErrorReturner(true, ""), GetStatusStream());
+                    return ((ErrorReturner, IAsyncEnumerable<UserOnlineStatus>?))(new ErrorReturner(true, ""), ReadStream(response, ct));
                 }, globalParam);
             }
             catch (RpcException)
@@ -133,6 +99,93 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка получения статусов онлайна"), null);
+            }
+        }
+
+        /// <summary>
+        /// Сообщить серверу, что пользователь печатает в чате (или прекратил).
+        /// </summary>
+        public async Task<ErrorReturner> SetTypingStatus(string chatId, TypingAction action, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await OnlinerAC!.SetTypingStatusAsync(new SetTypingStatusRequest
+                    {
+                        ChatId = chatId,
+                        Action = action
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return new ErrorReturner(false, "Ошибка аутентификации при отправке индикатора набора");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка отправки индикатора набора");
+            }
+        }
+
+        /// <summary>
+        /// Подписаться на индикаторы набора текста в выбранных чатах (streaming).
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<TypingEvent>? stream)> SubscribeToTyping(
+            List<string> chatIds,
+            GlobalParam globalParam,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new SubscribeToTypingRequest();
+                    request.ChatIds.AddRange(chatIds);
+
+                    var response = OnlinerAC!.SubscribeToTyping(request, headers: null, deadline: null, cancellationToken: ct);
+
+                    return ((ErrorReturner, IAsyncEnumerable<TypingEvent>?))(new ErrorReturner(true, ""), ReadStream(response, ct));
+                }, globalParam);
+            }
+            catch (RpcException)
+            {
+                return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подключения к индикаторам набора"), null);
+            }
+        }
+
+        /// <summary>
+        /// Изменить список чатов в существующей подписке на индикаторы набора.
+        /// </summary>
+        public async Task<ErrorReturner> ChangeChatsInTypingSubscription(List<string> chatIds, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new ChangeChatsInTypingSubscriptionRequest();
+                    request.ChatIds.AddRange(chatIds);
+
+                    await OnlinerAC!.ChangeChatsInTypingSubscriptionAsync(request);
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
+            {
+                return new ErrorReturner(false, "Нет активной подписки на индикаторы набора");
+            }
+            catch (RpcException)
+            {
+                return new ErrorReturner(false, "Ошибка аутентификации при изменении списка чатов");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения списка чатов подписки");
             }
         }
 
