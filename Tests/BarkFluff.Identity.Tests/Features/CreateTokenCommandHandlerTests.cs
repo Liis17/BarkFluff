@@ -3,6 +3,7 @@ using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public class CreateTokenCommandHandlerTests
     private readonly RefreshTokensStorage _refreshTokensStorage;
     private readonly JwtService _jwtService;
     private readonly MetricsCollector _metrics;
+    private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
     private readonly Mock<ILogger<CreateTokenCommandHandler>> _logger;
 
     public CreateTokenCommandHandlerTests()
@@ -28,13 +30,14 @@ public class CreateTokenCommandHandlerTests
         _refreshTokensStorage = new RefreshTokensStorage(_context);
         _jwtService = TestHelper.CreateJwtService();
         _metrics = new MetricsCollector();
+        _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
         _logger = new Mock<ILogger<CreateTokenCommandHandler>>();
     }
 
     private CreateTokenCommandHandler CreateHandler()
     {
         return new CreateTokenCommandHandler(
-            _refreshTokensStorage, _jwtService, _metrics, _logger.Object);
+            _refreshTokensStorage, _jwtService, _usersClient.Object, _metrics, _logger.Object);
     }
 
     [Fact]
