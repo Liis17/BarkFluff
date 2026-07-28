@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace BarkFluff.GrpcServer.Metrics;
 
@@ -8,15 +9,26 @@ namespace BarkFluff.GrpcServer.Metrics;
 /// </summary>
 public class MetricsCollector
 {
-    private readonly ConcurrentDictionary<string, long> _counters = new();
+    private readonly ConcurrentDictionary<string, long> _bufferedCounters = new();
     private readonly ConcurrentDictionary<string, long> _gauges = new();
+    private readonly ConcurrentDictionary<string, long> _changedGauges = new();
+    private readonly Channel<MetricsSnapshot> _immediateSnapshots = Channel.CreateUnbounded<MetricsSnapshot>(
+        new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
+    private readonly MetricsExportProfile _profile;
+
+    public MetricsCollector() : this(MetricsExportProfile.BufferAll()) { }
+
+    public MetricsCollector(MetricsExportProfile profile)
+    {
+        _profile = profile;
+    }
 
     /// <summary>
     /// Увеличивает счётчик на 1.
     /// </summary>
     public void Increment(string metricName)
     {
-        _counters.AddOrUpdate(metricName, 1, static (_, oldValue) => oldValue + 1);
+        Add(metricName, 1);
     }
 
     /// <summary>
@@ -24,7 +36,17 @@ public class MetricsCollector
     /// </summary>
     public void Add(string metricName, long value)
     {
-        _counters.AddOrUpdate(metricName, value, (_, oldValue) => oldValue + value);
+        if (value == 0) return;
+
+        if (_profile.IsBuffered(metricName))
+        {
+            _bufferedCounters.AddOrUpdate(metricName, value, (_, oldValue) => oldValue + value);
+            return;
+        }
+
+        _immediateSnapshots.Writer.TryWrite(new MetricsSnapshot(
+            new Dictionary<string, long> { [metricName] = value },
+            new Dictionary<string, long>()));
     }
 
     /// <summary>
@@ -32,7 +54,11 @@ public class MetricsCollector
     /// </summary>
     public void Set(string metricName, long value)
     {
-        _gauges[metricName] = value;
+        if (!_gauges.TryGetValue(metricName, out var oldValue) || oldValue != value)
+        {
+            _gauges[metricName] = value;
+            _changedGauges[metricName] = value;
+        }
     }
 
     /// <summary>
@@ -64,9 +90,9 @@ public class MetricsCollector
         var gauges = new Dictionary<string, long>(_gauges);
         hadCounterActivity = false;
 
-        foreach (var key in _counters.Keys)
+        foreach (var key in _bufferedCounters.Keys)
         {
-            var value = _counters.TryRemove(key, out var v) ? v : 0;
+            var value = _bufferedCounters.TryRemove(key, out var v) ? v : 0;
             if (value == 0) continue;
 
             counters[key] = value;
@@ -75,8 +101,53 @@ public class MetricsCollector
 
         return new MetricsSnapshot(counters, gauges);
     }
+
+    /// <summary>
+    /// Получает накопленные high-throughput counters и gauges, изменившиеся с прошлого flush.
+    /// При отсутствии активности возвращает пустой снимок — idle-метрики не экспортируются.
+    /// </summary>
+    public MetricsSnapshot TakeBufferedSnapshot()
+    {
+        var counters = new Dictionary<string, long>();
+        var gauges = new Dictionary<string, long>();
+
+        foreach (var key in _bufferedCounters.Keys)
+        {
+            var value = _bufferedCounters.TryRemove(key, out var current) ? current : 0;
+            if (value != 0) counters[key] = value;
+        }
+
+        foreach (var key in _changedGauges.Keys)
+        {
+            if (_changedGauges.TryRemove(key, out var value))
+                gauges[key] = value;
+        }
+
+        return new MetricsSnapshot(counters, gauges);
+    }
+
+    public ChannelReader<MetricsSnapshot> ImmediateSnapshots => _immediateSnapshots.Reader;
 }
 
 public sealed record MetricsSnapshot(
     IReadOnlyDictionary<string, long> Counters,
     IReadOnlyDictionary<string, long> Gauges);
+
+/// <summary>Определяет, какие counters должны агрегироваться перед экспортом в Seq.</summary>
+public sealed class MetricsExportProfile
+{
+    private readonly bool _bufferAll;
+    private readonly HashSet<string> _bufferedMetrics;
+
+    private MetricsExportProfile(bool bufferAll, IEnumerable<string>? bufferedMetrics = null)
+    {
+        _bufferAll = bufferAll;
+        _bufferedMetrics = bufferedMetrics?.ToHashSet(StringComparer.Ordinal) ?? [];
+    }
+
+    public static MetricsExportProfile BufferAll() => new(true);
+    public static MetricsExportProfile ImmediateByDefault(params string[] bufferedMetrics) => new(false, bufferedMetrics);
+
+    public bool IsBuffered(string metricName) =>
+        _bufferAll || metricName.Contains("bytes", StringComparison.OrdinalIgnoreCase) || _bufferedMetrics.Contains(metricName);
+}
