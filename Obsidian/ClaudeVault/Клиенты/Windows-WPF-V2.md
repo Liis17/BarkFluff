@@ -44,10 +44,11 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 ## Мессенджер
 
 - `MessengerViewModel` — основной маршрут после авторизации: двухпанельный экран со списком чатов, областью выбранного чата, загрузкой истории и composer. Обычные сообщения отправляются кнопкой или `Enter`; `Shift+Enter` оставляет перенос строки.
-- `Views/Controls/ChatListItemControl` показывает аватар, имя/фамилию собеседника в личном диалоге, время последней активности и счётчик непрочитанных. В отсутствие аватара отображаются инициалы. Во время `IsLoading` список перекрывается пятью `ChatListSkeletonControl`.
-- `Views/Controls/MessageBubbleControl` выравнивает исходящие и входящие сообщения, показывает выделяемый текст, фото и видео (видеоплеер запускается по кнопке поверх превью), а по правому клику открывает контекстное меню. У приватных чатов превью последнего сообщения не запрашивается и не отображается.
-- Список и история берутся через [[Клиенты/Windows-WebApiCore]] (`GetChats`, `GetMessagesWithOffset`, `SendMessage`, `GetUserData`, `GetFile`), а пользователь текущей сессии загружается после входа для корректного выравнивания исходящих сообщений.
-- `DpapiSecureSessionStore` изолирует чувствительные токены от открытой SQLite-базы. Кеш сообщений, файлов и realtime/presence/private-chat flows остаются следующими подэтапами реализации.
+- `Views/Controls/ChatListItemControl` показывает аватар, имя/фамилию собеседника в личном диалоге, время последней активности и счётчик непрочитанных. В отсутствие или при ошибке загрузки аватара остаются инициалы; превью обычного чата нормализуется до одной строки и 20 текстовых символов. Во время `IsLoading` список перекрывается пятью `ChatListSkeletonControl`.
+- `Views/Controls/MessageBubbleControl` выравнивает исходящие и входящие сообщения, показывает выделяемый текст без поверхности внутреннего `TextBox`, фото и видео; одно медиа занимает облачко без внутреннего отступа, 2+ — сетку, а документы отображаются списком. У исходящих сообщений realtime receipt показывает «Прочитано».
+- История использует виртуализированный `ui:ListView` и [[Клиенты/Windows-WebApiCore]]: если непрочитанных нет, View прокручивает её вниз; иначе загружает страницу вокруг `FirstUnreadMessageId` и центрирует его. `MessageListBehavior` сообщает VM о сообщениях, видимых минимум на 50%; обычные чаты отмечаются через `MarkMessageAsRead`, private — через `MarkPrivateMessagesAsRead`.
+- `RealtimeMessengerService` запускает отменяемые `SubscribeToReadReceipts` и `SubscribeToPrivateMessagesRead`, а после refresh токена пересоздаёт их. События применяются на UI-потоке.
+- `DpapiSecureSessionStore` изолирует токены, а `DpapiPrivateChatKeyStore` хранит выведенный AES-ключ accepted private-чата как DPAPI blob, изолированный по ноде, пользователю и чату. Если ключа нет, `MessengerView` запрашивает passphrase, локально вызывает `UnlockPrivateChat` и затем использует отдельные private API истории/отправки. Private API пока текстовый: защищённые вложения не реализованы.
 
 Подробные правила написания кода: `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md`.
 
