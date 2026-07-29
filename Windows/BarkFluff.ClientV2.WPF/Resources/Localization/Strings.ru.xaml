@@ -96,4 +96,13 @@
     <sys:String x:Key="Messenger_CopyMessage">Копировать сообщение</sys:String>
     <sys:String x:Key="Messenger_ReplyToMessage">Ответить</sys:String>
     <sys:String x:Key="Messenger_Read">Прочитано</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlockTitle">Разблокировать приватный чат</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlockHint">Введите кодовую фразу. Она используется только на этом устройстве для вывода ключа чата.</sys:String>
+    <sys:String x:Key="Messenger_PrivatePassphrase">Кодовая фраза</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlock">Разблокировать</sys:String>
+    <sys:String x:Key="Messenger_PrivateCancel">Отмена</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlockInvalid">Неверная кодовая фраза.</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnavailable">Приглашение в приватный чат ещё не принято.</sys:String>
+    <sys:String x:Key="Messenger_PrivateDeleted">Сообщение удалено</sys:String>
+    <sys:String x:Key="Messenger_PrivateDecryptionFailed">Не удалось расшифровать сообщение</sys:String>
 </ResourceDictionary>

@@ -31,4 +31,10 @@ public interface IApplicationDataStore
     Task<byte[]?> GetProtectedSessionAsync(CancellationToken cancellationToken = default) => Task.FromResult<byte[]?>(null);
 
     Task DeleteProtectedSessionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    Task SaveProtectedPrivateChatKeyAsync(string scope, byte[] protectedData, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    Task<byte[]?> GetProtectedPrivateChatKeyAsync(string scope, CancellationToken cancellationToken = default) => Task.FromResult<byte[]?>(null);
+
+    Task DeleteProtectedPrivateChatKeyAsync(string scope, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
