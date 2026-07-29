@@ -1,131 +1,183 @@
 # BarkFluff Datenschutzerklärung
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 17. Juni 2026
+**Letzte Aktualisierung:** 29. Juli 2026
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
-## 1. Einleitung
+## 1. Wer für Ihre Daten verantwortlich ist
 
-Diese Erklärung beschreibt die Daten, die in der aktuellen BarkFluff-Plattform verarbeitet werden: Konto, Profil, Geräte, Nachrichten, Dateien, Client-Versionen, öffentliche Profilseiten und der Support-Chat auf der Website.
+BarkFluff ist ein föderiertes Netzwerk unabhängiger Server („Knoten“). Jeder Knoten wird von seinem Administrator bereitgestellt und betrieben; die Knoten kommunizieren untereinander, um Nutzer verschiedener Knoten zu verbinden.
 
-## 2. Welche Daten verarbeitet werden
+Verantwortlicher für Ihre personenbezogenen Daten ist **der Administrator des Knotens, auf dem Ihr Konto angelegt wurde**. Er betreibt die Dienste, besitzt die Datenbank, den Dateispeicher, die Sicherungskopien und die Protokolle, legt die Speicherfristen fest, beantwortet Ihre Anfragen und ist für die Einhaltung des für ihn geltenden Rechts verantwortlich.
 
-### 2.1 Konto und Profil
+Die Entwickler von BarkFluff veröffentlichen die Software und die Protokollspezifikation. Sie betreiben **keine** fremden Knoten, haben **keinen** Zugriff auf deren Daten, Schlüssel, Datenverkehr oder Sicherungskopien, **können** Daten auf einem fremden Knoten weder herausgeben noch ändern oder löschen und sind **nicht** Verantwortliche für Ihre Daten.
+
+Dieses Dokument beschreibt das Verhalten der Software in der Standardkonfiguration und gilt für den Knoten **barkfluff.com**. Der Administrator jedes anderen Knotens veröffentlicht seine eigene Fassung und darf Konfiguration oder Quellcode ändern — dann gelten seine Bedingungen. Wurde Ihr Konto nicht auf barkfluff.com angelegt, wenden Sie sich an den Administrator Ihres Knotens.
+
+## 2. Was der Knotenadministrator technisch sehen kann
+
+- Gewöhnliche Einzel- und Gruppennachrichten werden auf dem Knoten im Klartext gespeichert. Der Knotenadministrator hat technischen Zugriff auf Datenbank, Dateispeicher und Protokolle und **kann deren Inhalt lesen**.
+- Private Chats speichern auf dem Server nur den Geheimtext; der Schlüssel wird auf Ihrem Gerät aus der Passphrase abgeleitet und nie an den Knoten übertragen.
+- Geheime Chats werden vom Knoten nur zwischen Geräten weitergeleitet und nicht als Verlauf gespeichert.
+- Wenn Sie dem Administrator eines bestimmten Knotens nicht vertrauen möchten, nutzen Sie private oder geheime Chats oder betreiben Sie einen eigenen Knoten.
+
+## 3. Welche Daten verarbeitet werden
+
+### 3.1 Konto und Profil
 
 | Daten | Verwendung | Speicherung |
 | --- | --- | --- |
 | E-Mail | Registrierung, Anmeldung, Bestätigungen, Zugangswiederherstellung, Benachrichtigungen | Users / Identity |
 | Benutzername | Anmeldung, Suche, öffentliche Profilseite, Anzeige in Chats | Users |
 | Passwort-Hash | Passwortprüfung; das Passwort im Klartext wird nicht gespeichert | Identity |
-| Vorname, Nachname, Bio | Benutzerprofil und öffentliche Profildaten | Users |
-| Avatar und Profil-Poster | Gestaltung des Profils und der öffentlichen Seite | Files / Minio + Users-Metadaten |
-| Datenschutz- und Personalisierungseinstellungen | Anzeige der Profildaten und Erscheinungsbild des Clients | Users |
+| Vorname, Nachname, Bio | Nutzerprofil und öffentliche Profildaten | Users |
+| Avatar und Profilposter | Gestaltung des Profils und der öffentlichen Seite | Files / Minio + Users-Metadaten |
+| Datenschutz- und Personalisierungseinstellungen | Anzeige der Profildaten, Erscheinungsbild des Clients, Erlaubnis föderierter Chats | Users |
 
-### 2.2 Geräte und Sitzungen
+### 3.2 Geräte und Sitzungen
 
 | Daten | Verwendung | Speicherung |
 | --- | --- | --- |
-| Device ID | Bindung des Refresh-Tokens, Liste aktiver Sitzungen, Widerruf einer Sitzung | Identity.RefreshTokens, Users.UserDevices |
+| Device ID | Bindung des Refresh-Tokens, Liste aktiver Sitzungen, Sitzungsentzug | Identity.RefreshTokens, Users.UserDevices |
 | Gerätename | Anzeige und Umbenennung des Geräts | Users.UserDevices |
 | Betriebssystem, App-Name | Client-Kompatibilität und Geräteliste | Users.UserDevices |
 | Location | Anzeige des Geräts in der Sitzungsliste | Users.UserDevices |
 | Firebase-Token | Push-Benachrichtigungen über Firebase Cloud Messaging | Users.UserDevices |
 | Refresh-Token | Verlängerung der Sitzung und Abmeldung vom Gerät | Identity.RefreshTokens |
 
-Die IP-Adresse wird in den gRPC-Service-Metadaten-Headern übertragen und zur Verarbeitung der aktuellen Anfragen verwendet.
+Die IP-Adresse wird in den gRPC-Metadaten-Headern übertragen und zur Bearbeitung der aktuellen Anfragen verwendet. Diese Daten verlassen Ihren Knoten nicht und werden nicht an andere Knoten übermittelt.
 
-### 2.3 Nachrichten, Chats und Dateien
+### 3.3 Nachrichten, Chats und Dateien
 
 | Daten | Verwendung | Speicherung |
 | --- | --- | --- |
-| Reguläre Nachrichten | Einzel- und Gruppenchats, Synchronisierung, Read Receipts, Bearbeitung und Löschung | Messages / PostgreSQL |
-| Private verschlüsselte Chats | 1-zu-1-Chats mit clientseitiger Verschlüsselung | Messages speichert Chiffretext und Chat-Metadaten |
-| Geheime Chats | 1-zu-1-Chats zwischen bestimmten Geräten | Der Server leitet den Envelope weiter und puffert ihn temporär |
+| Gewöhnliche Nachrichten | Einzel- und Gruppenchats, Synchronisierung, Lesebestätigungen, Bearbeiten und Löschen | Messages / PostgreSQL |
+| Private verschlüsselte Chats | 1-zu-1-Chats mit clientseitiger Verschlüsselung, nur innerhalb eines Knotens | Messages speichert Geheimtext und Chat-Metadaten |
+| Geheime Chats | 1-zu-1-Chats zwischen bestimmten Geräten, nur innerhalb eines Knotens | Der Knoten leitet das Envelope weiter und puffert es vorübergehend |
 | Anhänge und Vorschauen | Übertragung von Dateien, Bildern, Videos, Dokumenten, Audio und Avataren | Files / Minio + PostgreSQL-Metadaten |
 | Lesestatus | Anzeige gelesener Nachrichten | Messages |
 
-### 2.4 Online-Status und Updates
+### 3.4 Online-Status und Aktualisierungen
 
-Onliner speichert und liefert den Online-Status und die Zeit der letzten Aktivität. Updates übermittelt Echtzeit-Ereignisse per gRPC-Streaming an die Clients.
+Onliner speichert und liefert den Online-Status und den Zeitpunkt der letzten Aktivität. Updates überträgt Echtzeit-Ereignisse über gRPC-Streaming an die Clients.
 
-### 2.5 Website und Support
+### 3.5 Website und Support
 
-WebServer liefert die Startseite, öffentliche Profilseiten, Legal-Seiten, Installationsskripte, Client-Versionen und die öffentliche Profil-REST-API. Nachrichten aus dem Support-Formular der Website werden im Speicher des WebServer-Prozesses gehalten und über die Telegram Bot API an den Administrator weitergeleitet.
+WebServer liefert die Startseite, öffentliche Profilseiten, Rechtsseiten, Installationsskripte, Client-Versionen und die öffentliche Profil-REST-API. Nachrichten aus dem Support-Formular der Website werden im Arbeitsspeicher des WebServer-Prozesses gehalten und über die Telegram Bot API an den Knotenadministrator weitergeleitet, sofern er eine solche Weiterleitung eingerichtet hat.
 
-Beim Klick auf „Im Browser schreiben" auf einer öffentlichen Profilseite erzeugt WebServer ein kurzlebiges Cookie `bf_open_chat`, damit der Web-Client den Chat mit dem ausgewählten Benutzer öffnet.
+Beim Klick auf „Im Browser schreiben“ auf einer öffentlichen Profilseite erstellt WebServer ein kurzlebiges Cookie `bf_open_chat`, damit der Web-Client den Chat mit dem gewählten Nutzer öffnet.
 
-## 3. Wofür die Daten verwendet werden
+## 4. Föderierter Datenaustausch
+
+Die Föderation ist standardmäßig deaktiviert (`Federation:Enabled = false`) — der Knotenadministrator schaltet sie ein. Ist sie aktiviert und schreiben Sie mit einem Nutzer eines anderen Knotens, verlässt ein Teil der Daten die Grenze Ihres Knotens.
+
+| Was an einen anderen Knoten geht | Wann | Wie |
+| --- | --- | --- |
+| Kennung, Benutzername, Name und Profilavatar | Wenn ein Nutzer eines anderen Knotens Sie findet oder Ihre Profilkarte öffnet | Profilabfrage zwischen Knoten unter Beachtung Ihrer Datenschutzeinstellungen |
+| Nachrichtentext, Bearbeitungen, Löschungen, Lesebestätigungen | 1-zu-1-Konversation mit einem Nutzer eines anderen Knotens | Signierte Ereignisse mit garantierter Zustellung und Wiederholungen |
+| Dateien und Anhänge | Wenn Ihr Gesprächspartner eine Datei öffnet | Streaming auf Anfrage seines Knotens; es wird keine Kopie im Voraus angelegt |
+| Online-Status und Zeitpunkt der letzten Aktivität | Solange ein föderierter Chat aktiv ist | Laufender Stream zwischen Knoten; Ihre Datenschutzeinstellungen gelten |
+| „Schreibt …“ | Während Sie eine Nachricht tippen | Einmalige Benachrichtigung ohne Speicherung |
+
+Wichtig zu verstehen:
+
+- Föderierte Chats sind ausschließlich 1-zu-1. Gruppenchats zwischen Knoten werden nicht unterstützt.
+- **Föderierte Nachrichten sind nicht Ende-zu-Ende-verschlüsselt.** Ihr Inhalt ist sowohl Ihrem Knoten als auch dem Knoten des Gesprächspartners zugänglich. Private und geheime Chats funktionieren nur innerhalb eines Knotens.
+- Der empfangende Knoten wird zum **eigenständigen Verantwortlichen** für seine Kopie. Weder Ihr Knoten noch die Entwickler kontrollieren, wie lange und auf welche Weise er diese Daten aufbewahrt. Das Modell entspricht dem der E-Mail.
+- Das Löschen einer Nachricht oder eines Kontos auf Ihrem Knoten **löscht keine** Kopien, die bereits an andere Knoten zugestellt wurden. Eine automatische Weitergabe von Löschungen über die Föderation gibt es derzeit nicht.
+- Sie können eingehende föderierte Einzelchats in den Datenschutzeinstellungen ablehnen — ein Versuch, von einem anderen Knoten aus einen Chat mit Ihnen zu beginnen, wird dann abgewiesen.
+- Der Administrator Ihres Knotens kann einen ganzen Knoten sperren — der Datenaustausch mit ihm endet.
+
+**Technische Garantien und ihre Grenzen.** Ereignisse zwischen Knoten werden mit Ed25519 signiert, Verbindungen nutzen TLS mit Prüfung des Server-Schlüsselfingerabdrucks, Anfragen werden innerhalb eines begrenzten Zeitfensters signiert. Das belegt, **von welchem Knoten** die Daten stammen und dass sie unterwegs nicht verändert wurden, gibt aber keinerlei Garantie dafür, wie der Administrator jenes Knotens mit der erhaltenen Kopie umgeht.
+
+## 5. Wofür die Daten verwendet werden
 
 - Registrierung, Anmeldung, 2FA, Passwortwiederherstellung und Sitzungsverwaltung;
-- Betrieb von Profilen, Benutzersuche, öffentlichen Seiten und Datenschutzeinstellungen;
-- Zustellung von Nachrichten, Dateien, Read Receipts, Echtzeit-Updates und Push-Benachrichtigungen;
-- Export der Benutzerdaten über `Users.ExportData`;
-- Benutzersupport über die Website, E-Mail und den Telegram-Bot;
+- Profile, Nutzersuche, öffentliche Seiten und Datenschutzeinstellungen;
+- Zustellung von Nachrichten, Dateien, Lesebestätigungen, Echtzeit-Updates und Push-Benachrichtigungen;
+- Nachrichtenaustausch mit Nutzern anderer Knoten, wenn die Föderation aktiviert ist;
+- Export der Nutzerdaten über `Users.ExportData`;
+- Nutzerunterstützung über die vom Knotenadministrator eingerichteten Kanäle;
 - Protokollierung von Fehlern, Metriken und Sicherheitsereignissen.
 
-## 4. Datenschutz
+## 6. Datenschutzmaßnahmen
 
-### 4.1 Datenübertragung
+### 6.1 Datenübertragung
 
-- Clients und Microservices verwenden gRPC/HTTP/2 und HTTPS/TLS am äußeren Perimeter.
-- Die Autorisierung von gRPC-Anfragen verwendet XAuth-Metadaten: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`.
+- Clients und Microservices nutzen gRPC/HTTP/2 und HTTPS/TLS am äußeren Perimeter.
+- Die Autorisierung von gRPC-Anfragen nutzt XAuth-Metadaten: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`.
 - Interne asynchrone Ereignisse laufen über RabbitMQ / MassTransit.
+- Der Verkehr zwischen Knoten läuft über einen separaten gesicherten Kanal — siehe „Verschlüsselung“.
 
-### 4.2 Passwörter, Tokens und 2FA
+### 6.2 Passwörter, Token und 2FA
 
 - Passwörter werden als Hashes gespeichert.
-- Access Token — ein JWT im Header `x-auth-token`; die Lebensdauer wird durch die Identity-Konfiguration festgelegt.
-- Der Refresh-Token ist an die Device ID gebunden und wird in Identity gespeichert.
+- Access Token — ein JWT im Header `x-auth-token`; die Lebensdauer wird durch die Identity-Konfiguration Ihres Knotens festgelegt.
+- Der Refresh Token ist an die Device ID gebunden und wird in Identity gespeichert.
 - 2FA unterstützt TOTP-Authenticator und E-Mail-Codes.
 
-### 4.3 Verschlüsselte Chats
+### 6.3 Verschlüsselte Chats
 
-- **Private Chats:** der Server speichert den Chiffretext `EncryptedMessage`, Nonce und AAD; der Schlüssel wird auf dem Client aus der Passphrase und dem Chat-Salt abgeleitet.
-- **Geheime Chats:** der Server arbeitet mit einem an Geräte gebundenen opaken Envelope, leitet ihn an den Empfänger weiter und puffert ihn mit einer TTL von 24 Stunden.
-- **Reguläre Chats:** Nachrichten werden im Messages-Dienst gespeichert und sind der Serverlogik zugänglich, die Synchronisierung, Export und Chat-Funktionen bereitstellt.
+- **Private Chats:** Der Knoten speichert den Geheimtext `EncryptedMessage`, Nonce und AAD; der Schlüssel wird auf dem Client aus Passphrase und Chat-Salt abgeleitet.
+- **Geheime Chats:** Der Knoten arbeitet mit einem an Geräte gebundenen opaken Envelope, leitet es an den Empfänger weiter und puffert es mit einer TTL von 24 Stunden.
+- **Gewöhnliche Chats:** Nachrichten werden im Messages-Dienst Ihres Knotens gespeichert und sind sowohl der Serverlogik als auch dem Knotenadministrator zugänglich.
 
-## 5. Weitergabe an Dritte
+## 7. Weitergabe an Dritte
 
-Wir verkaufen keine personenbezogenen Daten. Daten werden an externe Anbieter nur zum Betrieb der aktuellen Funktionen weitergegeben:
+Personenbezogene Daten werden nicht verkauft. Daten werden an externe Anbieter nur weitergegeben, um die vom Knotenadministrator aktivierten Funktionen zu betreiben:
 
+- **Andere Knoten der Föderation:** siehe Abschnitt 4.
 - **SMTP:** E-Mail-Benachrichtigungen, Bestätigungscodes, Zugangswiederherstellung.
 - **Firebase Cloud Messaging:** Push-Benachrichtigungen an Geräte mit Firebase-Token.
-- **Telegram Bot API:** Verarbeitung von Nachrichten aus dem Support-Chat der Website.
+- **Telegram Bot API:** Bearbeitung von Nachrichten aus dem Support-Chat der Website.
 - **Hosting und Infrastruktur:** Betrieb von Diensten, Datenbanken, Dateispeicher, RabbitMQ, Redis und Seq.
 
-## 6. Rechte der Nutzer
+Welche Anbieter konkret eingesetzt werden, entscheidet der Knotenadministrator: Er kann Push deaktivieren, einen anderen SMTP-Dienst nutzen oder auf Telegram verzichten.
 
-- **Zugang und Export:** der Export liefert die JSON-Dateien `profile.json`, `messages.json` und `files.json`.
-- **Berichtigung:** Profil, Bio, Avatar, Poster, Datenschutz, Geräte und Passwort können über die Client-Funktionen geändert werden, soweit verfügbar.
-- **Löschung:** einen Antrag auf Löschung des Kontos und der zugehörigen personenbezogenen Daten können Sie an privacy@barkfluff.com senden.
-- **Widerruf einer Sitzung:** eine aktive Sitzung kann über die Geräteverwaltung beendet werden.
+## 8. Rechte der Nutzer
 
-## 7. Löschung von Nachrichten und Daten
+Richten Sie Anfragen zu Ihren Daten an den Administrator Ihres Knotens — nur er kann sie erfüllen.
 
-- Reguläre Nachrichten können über die Messages-API gelöscht werden.
-- Private verschlüsselte Nachrichten werden beim Löschen als gelöscht markiert und der Chiffretext wird entfernt.
-- Geheime Nachrichten werden nach Bestätigung der Zustellung oder Ablauf der TTL aus dem temporären Puffer entfernt.
-- Für die Löschung eines Kontos und von Daten, die nicht durch Client-Funktionen abgedeckt sind, verwenden Sie eine Support-Anfrage.
+- **Auskunft und Export:** Der Export liefert die JSON-Dateien `profile.json`, `messages.json` und `files.json`.
+- **Berichtigung:** Profil, Bio, Avatar, Poster, Datenschutz, Geräte und Passwort lassen sich über die Client-Funktionen ändern, soweit verfügbar.
+- **Löschung:** siehe „Richtlinie zur Kontolöschung“.
+- **Sitzungsentzug:** Eine aktive Sitzung kann über die Geräteverwaltung beendet werden.
+- **Einschränkung der Föderation:** Eingehende föderierte Einzelchats können in den Datenschutzeinstellungen abgelehnt werden.
 
-## 8. Cookies und lokale Speicherung
+## 9. Löschung von Nachrichten und Daten
 
-- Native Clients verwenden lokalen Speicher für Tokens, Einstellungen und Caches.
-- Der Windows-Client speichert `GlobalParam.json` und kann diese Datei mit einer PIN schützen.
-- Der macOS-Client verwendet für Tokens die Keychain.
-- WebServer verwendet das Cookie `bf_open_chat` ausschließlich für den Übergang von einer öffentlichen Profilseite zum Web-Client.
+- Gewöhnliche Nachrichten können über die Messages-API gelöscht werden.
+- Private verschlüsselte Nachrichten werden beim Löschen als gelöscht markiert, der Geheimtext wird entfernt.
+- Geheime Nachrichten werden nach Zustellbestätigung oder Ablauf der TTL aus dem temporären Puffer entfernt.
+- Die Löschung wirkt innerhalb Ihres Knotens. Kopien, die bereits an einen anderen Knoten zugestellt wurden, kann nur dessen Administrator löschen.
+- Für die Löschung eines Kontos und von Daten, die nicht über Client-Funktionen abgedeckt sind, wenden Sie sich an den Knotenadministrator.
 
-## 9. Kinder
+## 10. Cookies und lokale Speicherung
 
-BarkFluff ist nicht für Nutzer unter 13 Jahren bestimmt. Wenn Sie glauben, dass ein Kind unter 13 Jahren ein Konto erstellt hat, kontaktieren Sie uns: privacy@barkfluff.com.
+- Native Clients nutzen den lokalen Speicher für Token, Einstellungen und Caches.
+- Der Windows-Client speichert `GlobalParam.json` und kann sie mit einer PIN schützen.
+- Der macOS-Client nutzt den Keychain für Token.
+- WebServer nutzt das Cookie `bf_open_chat` nur für den Wechsel von einer öffentlichen Profilseite zum Web-Client.
 
-## 10. Änderungen der Erklärung
+## 11. Kinder
 
-Bei Änderungen dieser Erklärung wird das Datum „Aktualisiert" angepasst. Über wesentliche Änderungen kann über die App oder per E-Mail informiert werden.
+BarkFluff ist nicht für Nutzer unter 13 Jahren bestimmt. Ein Knotenadministrator darf eine höhere Altersgrenze festlegen. Wenn Sie glauben, dass ein Kind unter 13 Jahren ein Konto erstellt hat, informieren Sie den Administrator des betreffenden Knotens.
 
-## 11. Kontakt
+## 12. Änderungen der Erklärung
 
-- Datenschutz: privacy@barkfluff.com
+Bei Änderungen dieser Erklärung wird das Datum „Letzte Aktualisierung“ angepasst. Wesentliche Änderungen können über die App oder per E-Mail mitgeteilt werden. Ein Knotenadministrator veröffentlicht Änderungen seiner eigenen Fassung selbst.
+
+## 13. Kontakte
+
+**Administrator des Knotens barkfluff.com** — für Ihre Daten, Export, Löschung, Support und Beschwerden:
+
+- Daten und Datenschutz: privacy@barkfluff.com
 - Support: support@barkfluff.com
-- Sicherheit: security@barkfluff.com
-- Website: https://barkfluff.com
+- Rechtsfragen und Inhaltsbeschwerden: legal@barkfluff.com
+
+**Entwickler der BarkFluff-Software** — für Schwachstellen im Code und Fragen zum Protokoll:
+
+- Sicherheit und Protokoll: security@barkfluff.com
+
+Der Entwickler hat keinen Zugriff auf Daten auf fremden Knoten und kann eine Anfrage zu deren Löschung oder Herausgabe nicht bearbeiten. Wurde Ihr Konto auf einem anderen Knoten angelegt, finden Sie die Kontakte seines Administrators auf der Website dieses Knotens.
