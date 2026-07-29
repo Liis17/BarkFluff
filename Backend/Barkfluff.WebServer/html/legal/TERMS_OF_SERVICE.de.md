@@ -1,88 +1,123 @@
 # BarkFluff Nutzungsbedingungen
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 17. Juni 2026
+**Letzte Aktualisierung:** 29. Juli 2026
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
-## 1. Annahme der Bedingungen
+## 1. Mit wem Sie diese Vereinbarung schließen
 
-Willkommen bei **BarkFluff** — einer Messaging-Plattform.
+BarkFluff ist ein föderiertes Netzwerk unabhängiger Server („Knoten“). Jeder Knoten wird von seinem Administrator bereitgestellt und betrieben; die Knoten kommunizieren untereinander, um Nutzer verschiedener Knoten zu verbinden.
 
-Durch die Nutzung von BarkFluff stimmen Sie diesen Nutzungsbedingungen und den zugehörigen Dokumenten zu: der Datenschutzerklärung, der Kontolöschung und der Verschlüsselung.
+Der Dienst wird Ihnen von **dem Administrator des Knotens erbracht, auf dem Ihr Konto angelegt wurde**. Diese Vereinbarung wird zwischen Ihnen und ihm geschlossen. Die Entwickler von BarkFluff sind nicht Partei dieser Vereinbarung: Sie veröffentlichen die Software, erbringen Ihnen aber keinen Kommunikationsdienst und betreiben keine fremden Knoten.
 
-## 2. Der Dienst
+Dieser Text gilt für den Knoten **barkfluff.com**. Der Administrator jedes anderen Knotens veröffentlicht seine eigene Fassung der Bedingungen und darf eigene Regeln aufstellen. Wurde Ihr Konto nicht auf barkfluff.com angelegt, gelten die Bedingungen Ihres Knotens.
 
-BarkFluff umfasst Backend-Microservices, die Clients für Windows, Android, macOS und Web, die öffentliche WebServer-Website, den gRPC-Web-Proxy, das Entwicklerportal, das Dateisystem, Echtzeit-Updates, Push-Benachrichtigungen, E-Mail-Benachrichtigungen und den Support-Chat.
+Mit der Nutzung von BarkFluff stimmen Sie diesen Bedingungen und den zugehörigen Dokumenten zu: der Datenschutzerklärung, der Kontolöschung und der Verschlüsselung.
 
-- **Konto** — ein Benutzerkonto mit E-Mail, Benutzername, Passwort, Profil und Geräten.
+## 2. Rollen und Verantwortungsbereiche
+
+- **Der BarkFluff-Entwickler** schreibt den Code, veröffentlicht Client-Releases und die Protokollspezifikation und nimmt Schwachstellenmeldungen entgegen. Er betreibt keine fremden Knoten, hat keinen Zugriff auf deren Daten und ist nicht verantwortlich für deren Betrieb, Verfügbarkeit, Moderation oder das Handeln ihrer Administratoren.
+- **Der Knotenadministrator** stellt den Knoten bereit, aktualisiert und konfiguriert ihn, ist verantwortlich für die Sicherheit und Rechtmäßigkeit der Verarbeitung der Daten seiner Nutzer, für Sicherungskopien, für die Moderation und für die Beantwortung von Anfragen. Er entscheidet auch, ob die Föderation aktiviert wird und mit welchen Knoten kommuniziert wird.
+- **Sie** sind verantwortlich für Ihre Geräte, Ihr Passwort und Ihre 2FA-Codes sowie für die Inhalte, die Sie senden und veröffentlichen.
+
+## 3. Der Dienst
+
+Ein BarkFluff-Knoten besteht aus Backend-Microservices, mit denen sich die Clients für Windows, Android, macOS und der Web-Client verbinden. Ein Knoten kann eine öffentliche Website, den gRPC-Web-Proxy, das Entwicklerportal, Dateispeicher, Echtzeit-Updates, Push-Benachrichtigungen, E-Mail-Benachrichtigungen und einen Support-Chat bereitstellen — den genauen Umfang bestimmt sein Administrator.
+
+- **Konto** — ein Nutzerkonto mit E-Mail, Benutzername, Passwort, Profil und Geräten. Das Konto gehört zu einem bestimmten Knoten und gilt auf einem anderen Knoten nicht.
 - **Inhalte** — Nachrichten, Dateien, Bilder, Avatare, Poster, Reaktionen, Einstellungen und andere Daten, die Sie erstellen oder hochladen.
-- **Client** — die BarkFluff-Anwendung oder Web-Oberfläche, die die gRPC/gRPC-Web-API verwendet.
+- **Client** — die BarkFluff-Anwendung oder die Weboberfläche, die die gRPC/gRPC-Web-API nutzt.
 
-## 3. Nutzungsvoraussetzungen
+## 4. Nutzungsvoraussetzungen
 
-- Sie müssen mindestens 13 Jahre alt sein.
+- Sie müssen mindestens 13 Jahre alt sein. Ein Knotenadministrator darf eine höhere Altersgrenze festlegen.
 - Bei der Registrierung müssen Sie eine gültige E-Mail-Adresse und einen gültigen Benutzernamen angeben.
-- Sie sind für den Schutz Ihres Passworts, Ihrer 2FA-Codes und der Geräte mit einer aktiven Sitzung verantwortlich.
+- Sie sind für die Sicherheit Ihres Passworts, Ihrer 2FA-Codes und der Geräte mit aktiver Sitzung verantwortlich.
 - Bei Verlust eines Geräts können Sie die aktive Sitzung über die Geräteverwaltung beenden.
 
-## 4. Erlaubte Nutzung
+## 5. Zulässige Nutzung
 
 - private und berufliche Kommunikation;
 - Einzel- und Gruppenchats;
 - Austausch von Dateien und Medien;
 - private verschlüsselte Chats und geheime Chats;
+- Kommunikation mit Nutzern anderer Knoten, sofern der Administrator Ihres Knotens die Föderation aktiviert hat;
 - Nutzung öffentlicher Profilseiten und des Web-Clients;
-- Nutzung offener Proto-/API-Materialien über das Entwicklerportal.
+- Nutzung offener Proto-/API-Materialien über das Entwicklerportal;
+- Betrieb eines eigenen Knotens gemäß den Bedingungen der Softwarelizenz.
 
-## 5. Verbotene Nutzung
+## 6. Unzulässige Nutzung
 
-- Gesetzesverstöße, Betrug, Phishing, Malware und Versuche unbefugten Zugriffs;
-- Drohungen, Belästigung, Doxing, Vortäuschung einer anderen Identität;
-- massenhafter unerwünschter Nachrichtenversand, Spam-Automatisierung und Überlastung der Dienste;
-- Veröffentlichung oder Übermittlung illegaler Inhalte;
-- Umgehung von Sicherheitsbeschränkungen, Ausnutzung von Schwachstellen und Eingriffe in die Infrastruktur.
+- Rechtsverstöße, Betrug, Phishing, Schadsoftware und Versuche unbefugten Zugriffs;
+- Drohungen, Belästigung, Doxing, Ausgeben als andere Person;
+- massenhafte unerwünschte Nachrichten, Spam-Automatisierung und Überlastung der Dienste — sowohl des eigenen als auch fremder Knoten;
+- Veröffentlichung oder Übermittlung rechtswidriger Inhalte;
+- Umgehung von Sicherheitsbeschränkungen, Ausnutzung von Schwachstellen und Eingriffe in die Infrastruktur;
+- Missbrauch des Föderationskanals: Fälschung der Identität eines fremden Knotens, Umgehung seiner Beschränkungen und Limits.
 
-Bei Verstößen können wir den Zugang beschränken, die verstoßenden Inhalte entfernen, Sitzungen beenden, das Konto sperren oder löschen sowie die zuständigen Behörden einschalten, sofern dies gesetzlich erforderlich ist.
+Ein Knotenadministrator darf diese Liste um eigene Regeln ergänzen.
 
-## 6. Inhalte und Rechte
+## 7. Moderation und Sperren
+
+- Bei Verstößen kann der Knotenadministrator den Zugang einschränken, rechtsverletzende Inhalte entfernen, Sitzungen beenden, das Konto sperren oder löschen sowie die zuständigen Behörden einschalten, soweit dies gesetzlich vorgeschrieben ist.
+- Die Moderation wirkt innerhalb des Knotens. Der Administrator Ihres Knotens kann keine Inhalte auf einem fremden Knoten entfernen und ist für die Moderation anderswo nicht verantwortlich.
+- Der Administrator darf einen ganzen Knoten sperren. In diesem Fall endet die Kommunikation mit dessen Nutzern; bereits empfangene Nachrichten verbleiben auf Ihrem Knoten.
+- Ihr Knoten steht nur für seine eigenen Nutzer ein und bestätigt deren Identität gegenüber den Partnerknoten. Für Inhalte von anderen Knoten sind jene Knoten und ihre Nutzer verantwortlich.
+
+## 8. Was die Föderation für Sie bedeutet
+
+- Die Föderation ist standardmäßig deaktiviert; der Knotenadministrator schaltet sie ein.
+- Föderierte Chats sind ausschließlich 1-zu-1. Gruppenchats zwischen Knoten werden nicht unterstützt.
+- **Föderierte Nachrichten sind nicht Ende-zu-Ende-verschlüsselt.** Ihr Inhalt ist sowohl Ihrem Knoten als auch dem Knoten des Gesprächspartners zugänglich. Private und geheime Chats funktionieren nur innerhalb eines Knotens.
+- Wenn Sie mit einem Nutzer eines anderen Knotens schreiben, geben Sie Ihre Nachrichten und Dateien faktisch in die Kontrolle des Administrators jenes Knotens. Ein Löschen auf Ihrer Seite löscht dessen Kopie nicht.
+- Eingehende föderierte Einzelchats können in den Datenschutzeinstellungen abgelehnt werden.
+- Einzelheiten finden Sie in der Datenschutzerklärung, Abschnitt „Föderierter Datenaustausch“.
+
+## 9. Inhalte und Rechte
 
 - Sie behalten die Rechte an Ihren Inhalten.
-- Sie gewähren BarkFluff das Recht, Ihre Inhalte in dem Umfang zu speichern, zu übertragen, zu synchronisieren, anzuzeigen und zu verarbeiten, der für den Betrieb der Dienstfunktionen erforderlich ist.
-- Alle Rechte am Code, Design, Namen, an den Logos und der Infrastruktur von BarkFluff gehören den Projektinhabern oder den jeweiligen Lizenzgebern.
-- Offene Komponenten und Proto-Verträge werden gemäß den Bedingungen der jeweiligen Lizenzen und Dokumentationen verwendet.
+- Sie räumen dem Knotenadministrator das Recht ein, Ihre Inhalte in dem Umfang zu speichern, zu übertragen, zu synchronisieren, anzuzeigen und zu verarbeiten, der für den Betrieb der Dienstfunktionen erforderlich ist — einschließlich der Übermittlung an einen anderen Knoten, wenn Sie selbst eine föderierte Konversation beginnen.
+- Die Rechte an Code, Design, Name und Logos von BarkFluff liegen bei den Projektinhabern oder den jeweiligen Lizenzgebern. Name und Logos gehen nicht zusammen mit dem Recht, die Software zu betreiben, auf einen Knotenadministrator über.
+- Offene Komponenten und Proto-Verträge werden zu den Bedingungen der jeweiligen Lizenzen und Dokumentation genutzt.
 
-## 7. Datenschutz und Sicherheit
+## 10. Die Software
 
-- Reguläre Nachrichten werden vom Messages-Dienst gespeichert und synchronisiert.
-- Private Chats speichern auf dem Server nur Chiffretext und technische Metadaten.
-- Geheime Chats verwenden die temporäre Übermittlung eines opaken Envelopes zwischen Geräten.
-- Dateien werden in Files / Minio gespeichert, Metadaten in PostgreSQL.
-- Push-Benachrichtigungen werden über Firebase Cloud Messaging ausgeliefert.
+Die BarkFluff-Software wird vom Entwickler „wie besehen“ bereitgestellt, ohne jegliche Gewährleistung, einschließlich der Gewährleistung der Eignung für einen bestimmten Zweck, der Fehlerfreiheit oder des unterbrechungsfreien Betriebs. Die Verantwortung für Auswahl, Konfiguration, Aktualisierung und Betrieb eines Knotens liegt bei dessen Administrator.
 
-## 8. Verfügbarkeit und Änderungen des Dienstes
+Wenn Sie einen eigenen Knoten betreiben, werden Sie Administrator und übernehmen die Pflichten eines Verantwortlichen für die personenbezogenen Daten Ihrer Nutzer, einschließlich der Veröffentlichung eigener Bedingungen und einer eigenen Datenschutzerklärung.
 
-BarkFluff wird „wie besehen" bereitgestellt. Ausfälle, Wartungsarbeiten sowie Fehler des Clients oder der Backend-Dienste sind möglich. Wir können bestehende Dienstfunktionen ändern, um Zuverlässigkeit, Sicherheit und Client-Kompatibilität zu erhalten.
+## 11. Verfügbarkeit und Änderungen des Dienstes
 
-## 9. Haftungsbeschränkung
+Ein Knoten wird „wie besehen“ bereitgestellt. Störungen, Wartungsarbeiten sowie Fehler des Clients oder der Backend-Dienste sind möglich. Der Knotenadministrator kann den Funktionsumfang ändern, Funktionen einschränken sowie den Knoten aussetzen oder vollständig einstellen — gegebenenfalls ohne Nachfolger. Exportieren Sie wichtige Daten rechtzeitig.
 
-Wir haften nicht für indirekte Schäden, Datenverlust durch Handlungen des Nutzers, Kompromittierung von Gerät oder Passwort, Handlungen Dritter sowie die Nichtverfügbarkeit externer Anbieter, einschließlich E-Mail, Firebase, Telegram, Hosting und Netzwerkinfrastruktur.
+## 12. Haftungsbeschränkung
 
-## 10. Änderungen der Vereinbarung
+- **Der Entwickler** haftet nicht für Betrieb und Verfügbarkeit irgendeines Knotens, für Handeln oder Unterlassen seiner Administratoren, für die Sicherheit und Verarbeitung der dortigen Daten, für Nutzerinhalte oder für Schäden, die aus der Nutzung der Software entstehen.
+- **Der Knotenadministrator** haftet nicht für mittelbare Schäden, Datenverlust durch Handlungen des Nutzers, Kompromittierung von Gerät oder Passwort, Handlungen Dritter, von anderen Knoten empfangene Inhalte sowie die Nichtverfügbarkeit externer Anbieter, einschließlich E-Mail, Firebase, Telegram, Hosting und Netzinfrastruktur.
 
-Bei Änderungen der Vereinbarung wird das Datum „Aktualisiert" angepasst. Durch die weitere Nutzung von BarkFluff nach einer Aktualisierung akzeptieren Sie die neue Fassung.
+## 13. Änderung der Vereinbarung
 
-## 11. Streitbeilegung
+Bei Änderungen der Vereinbarung wird das Datum „Letzte Aktualisierung“ angepasst. Wenn Sie den Knoten nach einer Aktualisierung weiter nutzen, akzeptieren Sie die neue Fassung. Ein Knotenadministrator veröffentlicht Änderungen seiner eigenen Fassung selbst.
 
-Bei rechtlichen Angelegenheiten senden Sie Ihre Anfrage an legal@barkfluff.com. Die Bearbeitungszeit einer Anfrage beträgt bis zu 30 Tage.
+## 14. Anwendbares Recht und Streitigkeiten
 
-## 12. Kontakt
+Das anwendbare Recht und das Verfahren zur Streitbeilegung richten sich nach der Jurisdiktion des Administrators Ihres Knotens. Für Angelegenheiten des Knotens barkfluff.com richten Sie Ihre Anfrage an legal@barkfluff.com; die Bearbeitungsfrist beträgt bis zu 30 Tage.
 
-- Rechtliche Angelegenheiten: legal@barkfluff.com
+## 15. Kontakte
+
+**Administrator des Knotens barkfluff.com** — zu Dienst, Konto, Moderation und Beschwerden:
+
+- Rechtsfragen und Inhaltsbeschwerden: legal@barkfluff.com
 - Support: support@barkfluff.com
-- Sicherheit: security@barkfluff.com
-- Website: https://barkfluff.com
+- Daten und Datenschutz: privacy@barkfluff.com
 
-## 13. Einverständnis
+**Entwickler der BarkFluff-Software** — für Schwachstellen im Code und Fragen zum Protokoll:
 
-Durch die Nutzung von BarkFluff bestätigen Sie, dass Sie die Vereinbarung gelesen haben, die Regeln einzuhalten zustimmen und mindestens 13 Jahre alt sind.
+- Sicherheit und Protokoll: security@barkfluff.com
+
+Wurde Ihr Konto auf einem anderen Knoten angelegt, finden Sie die Kontakte seines Administrators auf der Website dieses Knotens — über dessen Nutzer entscheiden weder der Entwickler noch der Administrator von barkfluff.com.
+
+## 16. Zustimmung
+
+Mit der Nutzung von BarkFluff bestätigen Sie, dass Sie die Vereinbarung gelesen haben, verstehen, dass der Dienst von einem Knotenadministrator erbracht wird, den Regeln zu folgen zustimmen und mindestens 13 Jahre alt sind.
