@@ -1,0 +1,64 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.Controls.ChatListItemControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:BarkFluff.ClientV2.WPF.Infrastructure.Converters"
+             x:Name="Root">
+    <UserControl.Resources>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
+    </UserControl.Resources>
+    <Grid Margin="8" MinHeight="60">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="52" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Width="44" Height="44" VerticalAlignment="Top" ClipToBounds="True">
+            <Ellipse Fill="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Image x:Name="AvatarImage"
+                   Source="{Binding AvatarUrl, Converter={StaticResource StringToImageSourceConverter}, NotifyOnTargetUpdated=True}"
+                   Stretch="UniformToFill"
+                   TargetUpdated="OnAvatarSourceUpdated"
+                   ImageFailed="OnAvatarImageFailed">
+                <Image.Clip>
+                    <EllipseGeometry Center="22,22" RadiusX="22" RadiusY="22" />
+                </Image.Clip>
+            </Image>
+            <TextBlock x:Name="Initials"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       Text="{Binding Initials}" />
+        </Grid>
+
+        <Grid Grid.Column="1" Margin="0,1,8,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+            <TextBlock Grid.Row="1"
+                       Margin="0,3,0,0"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{Binding Preview}"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       Visibility="{Binding HasPreview, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </Grid>
+
+        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
+            <TextBlock HorizontalAlignment="Right"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="{Binding LastMessageAt, StringFormat={}{0:HH:mm}}" />
+            <Border Margin="0,8,0,0"
+                    Padding="6,1"
+                    HorizontalAlignment="Right"
+                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                    CornerRadius="10"
+                    Visibility="{Binding HasUnreadMessages, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock FontSize="11" Foreground="White" Text="{Binding UnreadCount}" />
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>
