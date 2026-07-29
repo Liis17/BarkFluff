@@ -96,4 +96,13 @@
     <sys:String x:Key="Messenger_CopyMessage">Copy message</sys:String>
     <sys:String x:Key="Messenger_ReplyToMessage">Reply</sys:String>
     <sys:String x:Key="Messenger_Read">Read</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlockTitle">Unlock private chat</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlockHint">Enter the passphrase. It is used only on this device to derive the chat key.</sys:String>
+    <sys:String x:Key="Messenger_PrivatePassphrase">Passphrase</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlock">Unlock</sys:String>
+    <sys:String x:Key="Messenger_PrivateCancel">Cancel</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnlockInvalid">The passphrase is incorrect.</sys:String>
+    <sys:String x:Key="Messenger_PrivateUnavailable">The private chat invitation has not been accepted yet.</sys:String>
+    <sys:String x:Key="Messenger_PrivateDeleted">Message deleted</sys:String>
+    <sys:String x:Key="Messenger_PrivateDecryptionFailed">Unable to decrypt message</sys:String>
 </ResourceDictionary>
