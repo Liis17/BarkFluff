@@ -29,6 +29,8 @@
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
     .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
     .lang-btn:hover { color:var(--text); }
+    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
+    .callout p { margin:0; }
   </style>
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
@@ -47,12 +49,26 @@
     </nav>
     <article data-lang="ru">
       <h1>Техническое описание шифрования</h1>
-      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
+      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</p>
 
       <h2>1. Введение</h2>
-      <p>Эта страница описывает только те механизмы защиты и шифрования, которые присутствуют в текущей архитектуре Barkfluff.</p>
+      <p>Эта страница описывает только те механизмы защиты и шифрования, которые присутствуют в текущей архитектуре Barkfluff. Она относится к программному обеспечению; конкретную конфигурацию — какие функции включены, какие ключи используются, как хранятся резервные копии — определяет администратор ноды, на которой создан ваш аккаунт.</p>
 
-      <h2>2. Передача данных и авторизация</h2>
+      <h2>2. Кто что видит: краткая сводка</h2>
+      <table>
+        <thead><tr><th>Тип переписки</th><th>Видит ваша нода</th><th>Видит нода собеседника</th></tr></thead>
+        <tbody>
+          <tr><td>Обычный чат внутри ноды</td><td>Содержимое сообщений и файлы</td><td>—</td></tr>
+          <tr><td>Private-чат (passphrase)</td><td>Только шифротекст и метаданные</td><td>—</td></tr>
+          <tr><td>Secret-чат (устройство-устройство)</td><td>Только opaque envelope, временно</td><td>—</td></tr>
+          <tr><td>Федеративный чат 1-к-1</td><td>Содержимое сообщений и файлы</td><td>Содержимое сообщений и файлы</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p><strong>Сквозного шифрования в федеративных чатах нет.</strong> Private- и secret-чаты работают только между пользователями одной ноды. Если вам нужно, чтобы содержимое не было доступно серверу вообще, — используйте private- или secret-чат внутри своей ноды.</p>
+      </div>
+
+      <h2>3. Передача данных и авторизация</h2>
       <ul>
         <li>Клиенты взаимодействуют с backend через gRPC или gRPC-Web.</li>
         <li>Внешний HTTP/gRPC-трафик проходит через HTTPS/TLS на публичном контуре.</li>
@@ -60,44 +76,60 @@
         <li>Авторизация gRPC-запросов использует XAuth metadata, включая <code>x-auth-token</code> и device-заголовки.</li>
       </ul>
 
-      <h2>3. JWT, refresh-токены и 2FA</h2>
+      <h2>4. JWT, refresh-токены и 2FA</h2>
       <ul>
-        <li>Access token — JWT, подписанный ключом из конфигурации Identity.</li>
+        <li>Access token — JWT, подписанный ключом из конфигурации Identity вашей ноды.</li>
         <li>Время жизни access token задается <code>JwtSettings:ExpiryMinutes</code>.</li>
         <li>Refresh token хранится в <code>Identity.RefreshTokens</code> и привязан к Device ID.</li>
         <li>Сессии можно просматривать и отзывать через <code>GetActiveSessions</code> и <code>RemoveActiveSession</code>.</li>
         <li>2FA поддерживает TOTP authenticator и email-коды.</li>
       </ul>
 
-      <h2>4. Обычные сообщения</h2>
-      <p>Обычные личные и групповые сообщения хранятся в Messages-сервисе. Серверная логика использует эти данные для списка чатов, истории сообщений, read receipts, редактирования, удаления, экспорта и realtime-обновлений.</p>
+      <h2>5. Обычные сообщения</h2>
+      <p>Обычные личные и групповые сообщения хранятся в Messages-сервисе вашей ноды. Серверная логика использует эти данные для списка чатов, истории сообщений, read receipts, редактирования, удаления, экспорта и realtime-обновлений. Администратор ноды имеет технический доступ к этой базе данных.</p>
 
-      <h2>5. Private-чаты</h2>
-      <p>Private-чаты — это 1-к-1 encrypted-чаты через passphrase.</p>
+      <h2>6. Private-чаты</h2>
+      <p>Private-чаты — это 1-к-1 encrypted-чаты через passphrase внутри одной ноды.</p>
       <ul>
         <li>Клиент создает соль <code>kdf_salt</code> и <code>passphrase_verifier</code>.</li>
         <li>Ключ выводится на клиенте из passphrase и соли чата.</li>
         <li>Сообщение отправляется как <code>ciphertext</code>, <code>nonce</code> и <code>associated_data</code>.</li>
-        <li>Сервер хранит <code>EncryptedMessage</code> как opaque blob и не получает passphrase.</li>
+        <li>Нода хранит <code>EncryptedMessage</code> как opaque blob и не получает passphrase.</li>
         <li>Редактирование private-сообщения заменяет ciphertext/nonce/AAD.</li>
         <li>Удаление private-сообщения помечает его удаленным и очищает ciphertext.</li>
       </ul>
 
-      <h2>6. Secret-чаты</h2>
-      <p>Secret-чаты — это 1-к-1 чаты между конкретными устройствами.</p>
+      <h2>7. Secret-чаты</h2>
+      <p>Secret-чаты — это 1-к-1 чаты между конкретными устройствами внутри одной ноды.</p>
       <ul>
         <li>Устройства регистрируют prekey bundle: identity key, signed prekey и one-time prekeys.</li>
         <li>Инициатор получает prekey bundle устройства собеседника через <code>FetchPrekeyBundle</code>.</li>
         <li>Сообщения передаются как opaque <code>SecretEnvelope</code>.</li>
-        <li>Сервер не создает обычный Chat и не сохраняет историю secret-чата в Messages DB.</li>
+        <li>Нода не создает обычный Chat и не сохраняет историю secret-чата в Messages DB.</li>
         <li>Envelope ретранслируется получателю и временно буферизуется с TTL 24 часа, если получатель офлайн.</li>
         <li>После <code>AckSecretMessage</code> envelope удаляется из буфера.</li>
       </ul>
 
-      <h2>7. Файлы</h2>
-      <p>Файлы, аватары, постеры, вложения и превью обслуживаются Files-сервисом и хранятся в Minio/S3-compatible хранилище. Метаданные файлов используются для скачивания, превью, экспорта и отображения в чатах.</p>
+      <h2>8. Защита канала между нодами</h2>
+      <p>Федеративный трафик идет по отдельному защищенному каналу. Он защищает переписку от подмены и перехвата <em>в пути</em>, но не скрывает содержимое от самих нод.</p>
+      <ul>
+        <li><strong>TLS с пиннингом ключа:</strong> соединение принимается, только если отпечаток публичного ключа сертификата (SPKI, SHA-256) совпадает с известным для этой ноды. Цепочка удостоверяющих центров при этом намеренно не используется; пустой список отпечатков означает отказ соединяться.</li>
+        <li><strong>Подпись каждого запроса:</strong> отправитель подписывает каноническую строку из имени своей ноды, имени ноды-получателя, времени, имени вызываемого метода и хеша тела запроса.</li>
+        <li><strong>Окно времени:</strong> подпись действует ограниченное время (по умолчанию 5 минут), что закрывает повтор перехваченного запроса.</li>
+        <li><strong>Подпись каждого события:</strong> сообщения, правки, удаления и отметки о прочтении подписываются Ed25519-ключом ноды-отправителя отдельно от подписи транспорта.</li>
+        <li><strong>Идентичность ноды:</strong> ключи публикуются в подписанном документе по адресу <code>/.well-known/barkfluff</code>; при первом контакте они дополнительно сверяются через каталог Navigator. Смена ключей принимается, только если новый документ всё ещё содержит хотя бы один ранее доверенный ключ.</li>
+        <li><strong>Ротация ключей:</strong> старый ключ остается действительным в течение окна перекрытия, чтобы доставка не прерывалась.</li>
+        <li><strong>Дедупликация и лимиты:</strong> повторно доставленное событие не применяется дважды; на создание чатов, запросы файлов и индикаторы набора действуют лимиты частоты для каждой ноды.</li>
+        <li><strong>Блоклист:</strong> администратор может заблокировать ноду — её запросы отклоняются.</li>
+        <li><strong>Анти-SSRF:</strong> перед любым исходящим запросом имя ноды нормализуется (защита от похожих доменов), IP-литералы и приватные диапазоны отклоняются, соединение идет по уже проверенному адресу.</li>
+      </ul>
+      <p><strong>Чего этот канал не делает:</strong> он не мешает администратору ноды-получателя читать и хранить доставленные ему сообщения и файлы. Подпись подтверждает происхождение данных, а не добросовестность получателя.</p>
 
-      <h2>8. Локальное хранение клиентов</h2>
+      <h2>9. Файлы</h2>
+      <p>Файлы, аватары, постеры, вложения и превью обслуживаются Files-сервисом и хранятся в Minio/S3-совместимом хранилище вашей ноды. Метаданные файлов используются для скачивания, превью, экспорта и отображения в чатах.</p>
+      <p>В федеративном чате файлы не копируются на чужую ноду заранее: нода собеседника запрашивает их у вашей в момент открытия, и ваша нода перед выдачей проверяет, что запрашивающая нода действительно участвует в чате с этим вложением. Для аватаров вместо проверки чата применяются настройки приватности владельца.</p>
+
+      <h2>10. Локальное хранение клиентов</h2>
       <table>
         <thead><tr><th>Клиент</th><th>Что используется</th></tr></thead>
         <tbody>
@@ -108,85 +140,115 @@
         </tbody>
       </table>
 
-      <h2>9. Push-уведомления</h2>
-      <p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging. Для secret-сообщений push не содержит текст сообщения.</p>
+      <h2>11. Push-уведомления</h2>
+      <p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging, если администратор ноды включил эту функцию. Для secret-сообщений push не содержит текст сообщения.</p>
 
-      <h2>10. Контакты</h2>
+      <h2>12. Контакты</h2>
       <ul>
-        <li>Безопасность: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
-        <li>Приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Уязвимости в коде и вопросы протокола (разработчик): <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+        <li>Настройки и данные вашей ноды: администратор этой ноды; для barkfluff.com — <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
     </article>
     <article data-lang="en">
-      <h1>Technical Encryption Overview</h1>
-      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+      <h1>Encryption: technical overview</h1>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</p>
 
       <h2>1. Introduction</h2>
-      <p>This page describes only the protection and encryption mechanisms present in the current Barkfluff architecture.</p>
+      <p>This page describes only those protection and encryption mechanisms that exist in the current Barkfluff architecture. It concerns the software; the specific configuration — which features are enabled, which keys are used, how backups are kept — is decided by the administrator of the node where your account was created.</p>
 
-      <h2>2. Data transfer and authorization</h2>
+      <h2>2. Who sees what: a short summary</h2>
+      <table>
+        <thead><tr><th>Type of conversation</th><th>Your node sees</th><th>The other node sees</th></tr></thead>
+        <tbody>
+          <tr><td>Regular chat within a node</td><td>Message content and files</td><td>—</td></tr>
+          <tr><td>Private chat (passphrase)</td><td>Ciphertext and metadata only</td><td>—</td></tr>
+          <tr><td>Secret chat (device to device)</td><td>An opaque envelope only, temporarily</td><td>—</td></tr>
+          <tr><td>Federated 1-to-1 chat</td><td>Message content and files</td><td>Message content and files</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p><strong>There is no end-to-end encryption in federated chats.</strong> Private and secret chats work only between users of the same node. If you need the content to be unavailable to the server at all, use a private or secret chat within your own node.</p>
+      </div>
+
+      <h2>3. Data transfer and authorization</h2>
       <ul>
-        <li>Clients interact with the backend via gRPC or gRPC-Web.</li>
-        <li>External HTTP/gRPC traffic goes over HTTPS/TLS on the public perimeter.</li>
-        <li>Internal events between services are transmitted via RabbitMQ / MassTransit.</li>
-        <li>gRPC request authorization uses XAuth metadata, including <code>x-auth-token</code> and device headers.</li>
+        <li>Clients talk to the backend via gRPC or gRPC-Web.</li>
+        <li>External HTTP/gRPC traffic goes through HTTPS/TLS on the public perimeter.</li>
+        <li>Internal events between services are delivered via RabbitMQ / MassTransit.</li>
+        <li>gRPC request authorization uses XAuth metadata, including <code>x-auth-token</code> and the device headers.</li>
       </ul>
 
-      <h2>3. JWT, refresh tokens and 2FA</h2>
+      <h2>4. JWT, refresh tokens and 2FA</h2>
       <ul>
-        <li>Access token — a JWT signed with a key from the Identity configuration.</li>
+        <li>Access token — a JWT signed with a key from your node's Identity configuration.</li>
         <li>The access token lifetime is set by <code>JwtSettings:ExpiryMinutes</code>.</li>
         <li>The refresh token is stored in <code>Identity.RefreshTokens</code> and bound to the Device ID.</li>
-        <li>Sessions can be viewed and revoked via <code>GetActiveSessions</code> and <code>RemoveActiveSession</code>.</li>
+        <li>Sessions can be listed and revoked via <code>GetActiveSessions</code> and <code>RemoveActiveSession</code>.</li>
         <li>2FA supports a TOTP authenticator and email codes.</li>
       </ul>
 
-      <h2>4. Regular messages</h2>
-      <p>Regular private and group messages are stored in the Messages service. Server logic uses this data for the chat list, message history, read receipts, editing, deletion, export and realtime updates.</p>
+      <h2>5. Regular messages</h2>
+      <p>Regular private and group messages are stored in your node's Messages service. Server logic uses this data for the chat list, message history, read receipts, editing, deletion, export and realtime updates. The node administrator has technical access to this database.</p>
 
-      <h2>5. Private chats</h2>
-      <p>Private chats are 1-to-1 encrypted chats secured by a passphrase.</p>
+      <h2>6. Private chats</h2>
+      <p>Private chats are 1-to-1 encrypted chats via a passphrase, within a single node.</p>
       <ul>
-        <li>The client generates a <code>kdf_salt</code> and a <code>passphrase_verifier</code>.</li>
-        <li>The key is derived on the client from the passphrase and chat salt.</li>
+        <li>The client creates the <code>kdf_salt</code> and the <code>passphrase_verifier</code>.</li>
+        <li>The key is derived on the client from the passphrase and the chat salt.</li>
         <li>A message is sent as <code>ciphertext</code>, <code>nonce</code> and <code>associated_data</code>.</li>
-        <li>The server stores <code>EncryptedMessage</code> as an opaque blob and never receives the passphrase.</li>
+        <li>The node stores <code>EncryptedMessage</code> as an opaque blob and never receives the passphrase.</li>
         <li>Editing a private message replaces the ciphertext/nonce/AAD.</li>
         <li>Deleting a private message marks it as deleted and clears the ciphertext.</li>
       </ul>
 
-      <h2>6. Secret chats</h2>
-      <p>Secret chats are 1-to-1 chats between specific devices.</p>
+      <h2>7. Secret chats</h2>
+      <p>Secret chats are 1-to-1 chats between specific devices, within a single node.</p>
       <ul>
         <li>Devices register a prekey bundle: identity key, signed prekey and one-time prekeys.</li>
-        <li>The initiator fetches the peer device's prekey bundle via <code>FetchPrekeyBundle</code>.</li>
+        <li>The initiator obtains the correspondent's device prekey bundle via <code>FetchPrekeyBundle</code>.</li>
         <li>Messages are transmitted as an opaque <code>SecretEnvelope</code>.</li>
-        <li>The server does not create a regular Chat and does not store secret chat history in the Messages DB.</li>
+        <li>The node does not create a regular Chat and does not store secret chat history in the Messages DB.</li>
         <li>The envelope is relayed to the recipient and buffered temporarily with a 24-hour TTL if the recipient is offline.</li>
-        <li>After <code>AckSecretMessage</code>, the envelope is removed from the buffer.</li>
+        <li>After <code>AckSecretMessage</code> the envelope is removed from the buffer.</li>
       </ul>
 
-      <h2>7. Files</h2>
-      <p>Files, avatars, posters, attachments and previews are served by the Files service and stored in a Minio/S3-compatible storage. File metadata is used for downloading, previews, export and display in chats.</p>
+      <h2>8. Protection of the inter-node channel</h2>
+      <p>Federated traffic goes through a separate secured channel. It protects the conversation from tampering and interception <em>in transit</em>, but it does not hide the content from the nodes themselves.</p>
+      <ul>
+        <li><strong>TLS with key pinning:</strong> a connection is accepted only if the certificate's public key fingerprint (SPKI, SHA-256) matches the one known for that node. The certificate authority chain is deliberately not used; an empty fingerprint list means the connection is refused.</li>
+        <li><strong>Per-request signature:</strong> the sender signs a canonical string built from its own node name, the destination node name, the timestamp, the name of the called method and a hash of the request body.</li>
+        <li><strong>Time window:</strong> a signature is valid for a limited time (5 minutes by default), which closes off replay of an intercepted request.</li>
+        <li><strong>Per-event signature:</strong> messages, edits, deletions and read receipts are signed with the sending node's Ed25519 key, separately from the transport signature.</li>
+        <li><strong>Node identity:</strong> keys are published in a signed document at <code>/.well-known/barkfluff</code>; on first contact they are additionally cross-checked through the Navigator directory. A key change is accepted only if the new document still contains at least one previously trusted key.</li>
+        <li><strong>Key rotation:</strong> the old key remains valid during an overlap window so that delivery is not interrupted.</li>
+        <li><strong>Deduplication and limits:</strong> a redelivered event is not applied twice; chat creation, file requests and typing indicators are rate-limited per node.</li>
+        <li><strong>Block list:</strong> an administrator can block a node — its requests are then rejected.</li>
+        <li><strong>Anti-SSRF:</strong> before any outgoing request the node name is normalized (protection against look-alike domains), IP literals and private ranges are rejected, and the connection is made to the already validated address.</li>
+      </ul>
+      <p><strong>What this channel does not do:</strong> it does not prevent the receiving node's administrator from reading and storing the messages and files delivered to them. A signature proves the origin of the data, not the good faith of the recipient.</p>
 
-      <h2>8. Client local storage</h2>
+      <h2>9. Files</h2>
+      <p>Files, avatars, posters, attachments and previews are served by the Files service and stored in your node's Minio/S3-compatible storage. File metadata is used for downloads, previews, export and display in chats.</p>
+      <p>In a federated chat, files are not copied to the other node in advance: your correspondent's node requests them from yours at the moment they are opened, and your node first verifies that the requesting node really participates in a chat containing that attachment. For avatars, the owner's privacy settings apply instead of the chat check.</p>
+
+      <h2>10. Client local storage</h2>
       <table>
         <thead><tr><th>Client</th><th>What is used</th></tr></thead>
         <tbody>
           <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN protection, local client settings</td></tr>
           <tr><td>Android</td><td><code>GlobalParam</code>, local settings, Firebase token, key/prekey data for encrypted/secret chats</td></tr>
           <tr><td>macOS</td><td>Keychain for tokens and local app settings</td></tr>
-          <tr><td>Web</td><td>gRPC-Web, cookies only for technical web-client scenarios and the transition from a public profile page</td></tr>
+          <tr><td>Web</td><td>gRPC-Web, cookies only for technical web client scenarios and the transition from a public profile page</td></tr>
         </tbody>
       </table>
 
-      <h2>9. Push notifications</h2>
-      <p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging. For secret messages, the push does not contain the message text.</p>
+      <h2>11. Push notifications</h2>
+      <p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging, if the node administrator has enabled this feature. For secret messages the push does not contain the message text.</p>
 
-      <h2>10. Contacts</h2>
+      <h2>12. Contacts</h2>
       <ul>
-        <li>Security: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
-        <li>Privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Code vulnerabilities and protocol questions (developer): <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+        <li>Your node's configuration and data: that node's administrator; for barkfluff.com — <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
     </article>
     <footer>2026 Barkfluff</footer>
