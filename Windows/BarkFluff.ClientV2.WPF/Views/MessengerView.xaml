@@ -33,15 +33,37 @@
         <Grid Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" Margin="0,0,16,16">
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <StackPanel Margin="20,16" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}"><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SelectedChat.Title}" /><TextBlock Opacity=".7" Text="{DynamicResource Messenger_StatusOffline}" /></StackPanel>
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Messages}">
-                    <ItemsControl.ItemTemplate>
+            <ui:ListView Grid.Row="1"
+                         Margin="0,0,4,0"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ItemsSource="{Binding Messages}"
+                         ScrollViewer.CanContentScroll="True"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         behaviors:MessageListBehavior.ScrollRequest="{Binding ScrollRequest}"
+                         behaviors:MessageListBehavior.VisibleMessageCommand="{Binding MessageBecameVisibleCommand}">
+                <ui:ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ui:ListView.ItemsPanel>
+                <ui:ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="IsTabStop" Value="False" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                </ui:ListView.ItemContainerStyle>
+                <ui:ListView.ItemTemplate>
                         <DataTemplate>
                             <controls:MessageBubbleControl />
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                </ui:ListView.ItemTemplate>
+            </ui:ListView>
             <Grid Grid.Row="2" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}" />
         </Grid>
