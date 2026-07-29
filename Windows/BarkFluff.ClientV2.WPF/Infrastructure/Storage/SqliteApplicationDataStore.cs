@@ -53,6 +53,10 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 protected_data BLOB NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS private_chat_keys (
+                scope TEXT PRIMARY KEY,
+                protected_data BLOB NOT NULL
+            );
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -159,6 +163,34 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM secure_session WHERE id = 1;";
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task SaveProtectedPrivateChatKeyAsync(string scope, byte[] protectedData, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO private_chat_keys (scope, protected_data) VALUES ($scope, $data) ON CONFLICT(scope) DO UPDATE SET protected_data = excluded.protected_data;";
+        command.Parameters.AddWithValue("$scope", scope);
+        command.Parameters.AddWithValue("$data", protectedData);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<byte[]?> GetProtectedPrivateChatKeyAsync(string scope, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT protected_data FROM private_chat_keys WHERE scope = $scope;";
+        command.Parameters.AddWithValue("$scope", scope);
+        return await command.ExecuteScalarAsync(cancellationToken) as byte[];
+    }
+
+    public async Task DeleteProtectedPrivateChatKeyAsync(string scope, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM private_chat_keys WHERE scope = $scope;";
+        command.Parameters.AddWithValue("$scope", scope);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

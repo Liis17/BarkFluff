@@ -103,6 +103,8 @@ public partial class App : Application
         builder.Services.AddSingleton(new AppDataPaths(AppContext.BaseDirectory));
         builder.Services.AddSingleton<IApplicationDataStore, SqliteApplicationDataStore>();
         builder.Services.AddSingleton<ISecureSessionStore, DpapiSecureSessionStore>();
+        builder.Services.AddSingleton<IPrivateChatKeyStore, DpapiPrivateChatKeyStore>();
+        builder.Services.AddSingleton<IRealtimeMessengerService, RealtimeMessengerService>();
         builder.Services.AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<WebApiClient>();
