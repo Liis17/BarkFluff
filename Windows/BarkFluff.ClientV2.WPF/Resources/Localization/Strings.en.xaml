@@ -93,4 +93,7 @@
     <sys:String x:Key="Messenger_Send">Send</sys:String>
     <sys:String x:Key="Messenger_Empty">Select a chat to start messaging</sys:String>
     <sys:String x:Key="Messenger_StatusOffline">Offline</sys:String>
+    <sys:String x:Key="Messenger_CopyMessage">Copy message</sys:String>
+    <sys:String x:Key="Messenger_ReplyToMessage">Reply</sys:String>
+    <sys:String x:Key="Messenger_Read">Read</sys:String>
 </ResourceDictionary>
