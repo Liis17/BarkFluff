@@ -71,7 +71,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 - `html/barkfluff.html` — главная страница
 - `html/userpage.html` — шаблон страницы пользователя
 - `html/UniqueUsers/paws.page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
-- `html/selfhosted.html` — self-hosted
+- `html/selfhosted.html` — инструкция по развёртыванию своей ноды, см. ниже
 - `html/legal/*.html` — юридические страницы **для сайта** (RU+EN в одном файле через `<article data-lang>`, переключатель на клиенте)
 - `html/legal/*.md` — те же документы **для клиентов**, см. ниже
 - `html/new/` — **WIP** редизайн главной страницы (Barkfluff Redesign.html, profile.html, стили)
@@ -120,6 +120,25 @@ Android-клиент забирает `.md` на этапе сборки gradle-
 | Файлы не реплицируются, отдаются потоком по запросу | этап 3.2, `FetchFile` |
 | Федерация выключена по умолчанию | `Federation:Enabled = false` |
 | Можно запретить входящие федеративные ЛС | `DenyFederatedDm` в [[Backend/Users]] |
+
+## Страница self-hosted (редакция от 29.07.2026)
+
+`html/selfhosted.html` — руководство администратора ноды. Раздаётся `LegalPageService` по пути `/selfhosted`, RU-only (в отличие от `legal/*.html` — переключателя языка нет).
+
+Содержимое выведено из кода, а не из общих слов; при изменениях в этих местах страницу надо править:
+
+| Блок страницы | Источник |
+|---|---|
+| `docker-compose.yml` | `docker/backend/docker-compose-dev-backend.yml`, образы без `-dev` (реальное имя релизного образа — `image:` в `.github/workflows/build-backend-*.yml`) |
+| `.env` | `docker/backend/sample-backend.env` |
+| Таблица субдоменов | `server_name` в `docker/nginx/*.conf` + `SubdomainNames` в `ConfigurationDefaultsPopulator` |
+| «Остаются пустыми» (`Email`, `ServerProps`, `ServerColor`) | seed-миграции Configuration; `ResolveDefault` эти секции не обрабатывает |
+| «Автозаполнение поставило заглушку» | `ResolveDefault`: `ExternalEndpoint:Host` → `*.example.com`, `S3Buckets:*` → `minioadmin`, `LiveKit` → `devkey`/`devsecret_change_me…`, `NavigatorUrl` → `http://navigator:7010` |
+| Федерация | `Federation:ServerName`/`ExternalEndpoint`/`TlsSpkiSha256` пустые по замыслу, `Enabled=false` — см. [[Backend/Federation]] |
+
+Отличия релизного compose на странице от dev-варианта: образы без `-dev`; порт postgres не публикуется; `seq`/`minio` без проброса портов; `minio` раскомментирован; у `livekit` 7880 не публикуется (за nginx); убраны сервисы и переменные, специфичные для инфраструктуры barkfluff.com (`developers`, `Mail__*`, `RemoteServers__*`, `TELEGRAM_PROXY_*`).
+
+Расхождение в `sample-backend.env`: `CONFIGURATION_SERVICE_HOST=http://configuration:7010`, хотя Configuration слушает **7003** (`ConfigurationService:Host` в миграции `20260308000000` и дефолт в `WebApplicationBuilderExtensions`). На странице указан 7003.
 
 ## Proto
 
