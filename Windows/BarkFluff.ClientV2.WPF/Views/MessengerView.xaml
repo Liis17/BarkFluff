@@ -68,7 +68,7 @@
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}" />
         </Grid>
         <Border Panel.ZIndex="10"
-                Background="#99000000"
+                Background="{DynamicResource MessengerModalScrimBrush}"
                 Visibility="{Binding IsPrivateUnlockVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Width="360"
                      HorizontalAlignment="Center"

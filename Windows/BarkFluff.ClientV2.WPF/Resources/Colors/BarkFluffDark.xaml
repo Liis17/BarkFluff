@@ -5,4 +5,8 @@
     <SolidColorBrush x:Key="OnboardingWindowBackgroundBrush" Color="#FF211A18" />
     <SolidColorBrush x:Key="OnboardingAccentSurfaceBrush" Color="#FF3A241E" />
     <SolidColorBrush x:Key="OnboardingSubtleSurfaceBrush" Color="#FF2A211F" />
+    <SolidColorBrush x:Key="MessengerModalScrimBrush" Color="#99000000" />
+    <SolidColorBrush x:Key="MessageMediaTimestampBrush" Color="#99000000" />
+    <SolidColorBrush x:Key="MessageMediaTimestampTextBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="ChatUnreadBadgeTextBrush" Color="#FFFFFFFF" />
 </ResourceDictionary>

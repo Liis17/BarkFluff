@@ -6,16 +6,17 @@ namespace BarkFluff.ClientV2.WPF.Services;
 public sealed class RealtimeMessengerService : IRealtimeMessengerService
 {
     private readonly WebApiClient _webApi;
+    private readonly IClientSession _session;
     private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _messageReadsTask;
     private Task? _privateMessageReadsTask;
-    private GlobalParam? _parameters;
     private bool _isDisposed;
 
-    public RealtimeMessengerService(WebApiClient webApi)
+    public RealtimeMessengerService(WebApiClient webApi, IClientSession session)
     {
         _webApi = webApi;
+        _session = session;
         _webApi.TokenRefreshed += OnTokenRefreshed;
     }
 
@@ -23,14 +24,17 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
 
     public event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
 
-    public async Task StartAsync(GlobalParam parameters, CancellationToken cancellationToken = default)
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
+        if (_session.CurrentConnection?.ConnectionParameters is not { } parameters)
+        {
+            return;
+        }
         await _lifecycleLock.WaitAsync(cancellationToken);
         try
         {
             await StopCoreAsync();
-            _parameters = parameters;
             _cancellationTokenSource = new CancellationTokenSource();
             _messageReadsTask = ListenMessageReadsAsync(parameters, _cancellationTokenSource.Token);
             _privateMessageReadsTask = ListenPrivateMessageReadsAsync(parameters, _cancellationTokenSource.Token);
@@ -115,7 +119,6 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
 
     private async Task StopCoreAsync()
     {
-        _parameters = null;
         var cancellation = _cancellationTokenSource;
         _cancellationTokenSource = null;
         cancellation?.Cancel();
@@ -139,17 +142,17 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
 
     private void OnTokenRefreshed(object? sender, EventArgs eventArgs)
     {
-        if (_parameters is { } parameters && !_isDisposed)
+        if (!_isDisposed)
         {
-            _ = RestartAfterTokenRefreshAsync(parameters);
+            _ = RestartAfterTokenRefreshAsync();
         }
     }
 
-    private async Task RestartAfterTokenRefreshAsync(GlobalParam parameters)
+    private async Task RestartAfterTokenRefreshAsync()
     {
         try
         {
-            await StartAsync(parameters);
+            await StartAsync();
         }
         catch (ObjectDisposedException)
         {

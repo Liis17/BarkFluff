@@ -3,9 +3,7 @@ using BarkFluff.ClientV2.WPF.Services;
 using BarkFluff.ClientV2.WPF.Infrastructure.Localization;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
-using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
-using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,8 +16,7 @@ namespace BarkFluff.ClientV2.WPF.ViewModels;
 
 public sealed partial class MessengerViewModel : ObservableObject
 {
-    private readonly WebApiClient _webApi;
-    private readonly IClientSession _session;
+    private readonly IMessengerService _messenger;
     private readonly IPrivateChatKeyStore _privateChatKeyStore;
     private readonly IRealtimeMessengerService _realtimeMessenger;
     private readonly ILocalizationService _localization;
@@ -28,14 +25,12 @@ public sealed partial class MessengerViewModel : ObservableObject
     private int _messageLoadVersion;
 
     public MessengerViewModel(
-        WebApiClient webApi,
-        IClientSession session,
+        IMessengerService messenger,
         IPrivateChatKeyStore privateChatKeyStore,
         IRealtimeMessengerService realtimeMessenger,
         ILocalizationService localization)
     {
-        _webApi = webApi;
-        _session = session;
+        _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
         _realtimeMessenger = realtimeMessenger;
         _localization = localization;
@@ -57,8 +52,8 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     public async Task LoadAsync()
     {
-        var parameters = _session.CurrentConnection?.ConnectionParameters;
-        if (parameters is null)
+        var currentUserId = _messenger.CurrentUserId;
+        if (currentUserId is null)
         {
             return;
         }
@@ -66,15 +61,15 @@ public sealed partial class MessengerViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            await _realtimeMessenger.StartAsync(parameters);
-            var result = await _webApi.GetChats(parameters);
+            await _realtimeMessenger.StartAsync();
+            var result = await _messenger.GetChatsAsync();
             if (!result.error.IsSuccess || result.chats is null)
             {
                 return;
             }
 
             var chats = result.chats.OrderByDescending(chat => chat.LastActivityAt?.ToDateTimeOffset());
-            var items = await Task.WhenAll(chats.Select(chat => CreateChatItemAsync(chat, parameters)));
+            var items = await Task.WhenAll(chats.Select(chat => CreateChatItemAsync(chat, currentUserId.Value)));
 
             Chats.Clear();
             foreach (var item in items)
@@ -106,38 +101,35 @@ public sealed partial class MessengerViewModel : ObservableObject
     [RelayCommand]
     private async Task SendAsync()
     {
-        var parameters = _session.CurrentConnection?.ConnectionParameters;
-        if (parameters is null || SelectedChat is null || string.IsNullOrWhiteSpace(DraftText))
+        var currentUserId = _messenger.CurrentUserId;
+        if (currentUserId is null || SelectedChat is null || string.IsNullOrWhiteSpace(DraftText))
         {
             return;
         }
 
         if (SelectedChat.IsPrivate)
         {
-            var key = await GetPrivateChatKeyAsync(SelectedChat, parameters);
+            var key = await GetPrivateChatKeyAsync(SelectedChat);
             if (key is null)
             {
                 ShowPrivateUnlock(SelectedChat);
                 return;
             }
 
-            var privateResult = await _webApi.SendPrivateMessage(SelectedChat.Id, DraftText.Trim(), key, parameters);
+            var privateResult = await _messenger.SendPrivateMessageAsync(SelectedChat.Id, DraftText.Trim(), key);
             if (privateResult.error.IsSuccess && privateResult.message is not null)
             {
-                Messages.Add(CreatePrivateMessageItem(privateResult.message, parameters.UserId));
+                Messages.Add(CreatePrivateMessageItem(privateResult.message, currentUserId.Value));
                 DraftText = string.Empty;
                 ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
             }
             return;
         }
 
-        var result = await _webApi.SendMessage(
-            parameters,
-            (false, SelectedChat.Id),
-            new ForwardingLetter { Text = DraftText.Trim() });
+        var result = await _messenger.SendMessageAsync(SelectedChat.Id, DraftText.Trim());
         if (result.error.IsSuccess && result.message is not null)
         {
-            Messages.Add(await CreateMessageItemAsync(result.message, parameters.UserId, parameters));
+            Messages.Add(await CreateMessageItemAsync(result.message, currentUserId.Value));
             DraftText = string.Empty;
             ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
         }
@@ -160,21 +152,20 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task LoadMessagesAsync(ChatItemViewModel chat, int loadVersion)
     {
-        var parameters = _session.CurrentConnection?.ConnectionParameters;
-        if (parameters is null)
+        var currentUserId = _messenger.CurrentUserId;
+        if (currentUserId is null)
         {
             return;
         }
 
         if (chat.IsPrivate)
         {
-            await LoadPrivateMessagesAsync(chat, parameters, loadVersion);
+            await LoadPrivateMessagesAsync(chat, loadVersion);
             return;
         }
 
         var hasUnreadMessages = chat.UnreadCount > 0 && chat.FirstUnreadMessageId > 0;
-        var result = await _webApi.GetMessagesWithOffset(
-            parameters,
+        var result = await _messenger.GetMessagesAsync(
             chat.Id,
             hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
             50,
@@ -187,7 +178,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         Messages.Clear();
         foreach (var message in result.messages.OrderBy(message => message.MessageId))
         {
-            Messages.Add(await CreateMessageItemAsync(message, parameters.UserId, parameters));
+            Messages.Add(await CreateMessageItemAsync(message, currentUserId.Value));
         }
 
         ScrollRequest = hasUnreadMessages
@@ -198,9 +189,9 @@ public sealed partial class MessengerViewModel : ObservableObject
     [RelayCommand]
     private async Task UnlockPrivateChatAsync()
     {
-        var parameters = _session.CurrentConnection?.ConnectionParameters;
         var chat = SelectedChat;
-        if (parameters is null || chat is null || !chat.IsPrivate || string.IsNullOrWhiteSpace(PrivatePassphrase))
+        var currentUserId = _messenger.CurrentUserId;
+        if (currentUserId is null || chat is null || !chat.IsPrivate || string.IsNullOrWhiteSpace(PrivatePassphrase))
         {
             return;
         }
@@ -211,18 +202,18 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        var key = WebApiClient.UnlockPrivateChat(chat.Definition, PrivatePassphrase);
+        var key = _messenger.UnlockPrivateChat(chat.Definition, PrivatePassphrase);
         if (key is null)
         {
             PrivateUnlockError = _localization.GetString("Messenger_PrivateUnlockInvalid");
             return;
         }
 
-        await _privateChatKeyStore.SaveAsync(GetNodeAddress(), parameters.UserId, chat.Id, key);
+        await _privateChatKeyStore.SaveAsync(_messenger.CurrentNodeAddress, currentUserId.Value, chat.Id, key);
         PrivatePassphrase = string.Empty;
         PrivateUnlockError = null;
         IsPrivateUnlockVisible = false;
-        await LoadPrivateMessagesAsync(chat, parameters, _messageLoadVersion, key);
+        await LoadPrivateMessagesAsync(chat, _messageLoadVersion, key);
     }
 
     [RelayCommand]
@@ -235,7 +226,6 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task LoadPrivateMessagesAsync(
         ChatItemViewModel chat,
-        GlobalParam parameters,
         int loadVersion,
         byte[]? knownKey = null)
     {
@@ -246,7 +236,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        var key = knownKey ?? await GetPrivateChatKeyAsync(chat, parameters);
+        var key = knownKey ?? await GetPrivateChatKeyAsync(chat);
         if (key is null)
         {
             ShowPrivateUnlock(chat);
@@ -254,10 +244,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         var hasUnreadMessages = chat.UnreadCount > 0 && chat.FirstUnreadMessageId > 0;
-        var result = await _webApi.ListPrivateMessages(
+        var result = await _messenger.GetPrivateMessagesAsync(
             chat.Id,
             key,
-            parameters,
             hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
             50,
             hasUnreadMessages ? 50 : 0);
@@ -269,7 +258,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         Messages.Clear();
         foreach (var message in result.messages.OrderBy(message => message.MessageId))
         {
-            var item = CreatePrivateMessageItem(message, parameters.UserId);
+            var item = CreatePrivateMessageItem(message, _messenger.CurrentUserId!.Value);
             if (!hasUnreadMessages || item.Id < chat.FirstUnreadMessageId)
             {
                 item.MarkReadByCurrentUser();
@@ -283,8 +272,13 @@ public sealed partial class MessengerViewModel : ObservableObject
             : new MessageScrollRequest(MessageScrollTarget.Bottom);
     }
 
-    private async Task<byte[]?> GetPrivateChatKeyAsync(ChatItemViewModel chat, GlobalParam parameters) =>
-        await _privateChatKeyStore.TryGetAsync(GetNodeAddress(), parameters.UserId, chat.Id);
+    private async Task<byte[]?> GetPrivateChatKeyAsync(ChatItemViewModel chat)
+    {
+        var currentUserId = _messenger.CurrentUserId;
+        return currentUserId is null
+            ? null
+            : await _privateChatKeyStore.TryGetAsync(_messenger.CurrentNodeAddress, currentUserId.Value, chat.Id);
+    }
 
     private void ShowPrivateUnlock(ChatItemViewModel chat)
     {
@@ -297,8 +291,6 @@ public sealed partial class MessengerViewModel : ObservableObject
         PrivateUnlockError = null;
         IsPrivateUnlockVisible = true;
     }
-
-    private string GetNodeAddress() => _session.CurrentConnection?.Profile.BeaconAddress ?? string.Empty;
 
     private void ScheduleReadBatch(ChatItemViewModel chat)
     {
@@ -318,36 +310,29 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
-            var parameters = _session.CurrentConnection?.ConnectionParameters;
-            if (parameters is null)
-            {
-                return;
-            }
-
             var messageIds = _pendingReadMessageIds.ToArray();
             var result = chat.IsPrivate
-                ? await _webApi.MarkPrivateMessagesAsRead(chat.Id, messageIds.Max(), parameters)
-                : await _webApi.MarkMessageAsRead(parameters, messageIds.ToList());
+                ? await _messenger.MarkPrivateMessagesReadAsync(chat.Id, messageIds.Max())
+                : await _messenger.MarkMessagesReadAsync(messageIds);
             if (!result.IsSuccess || SelectedChat?.Id != chat.Id)
             {
                 _pendingReadMessageIds.ExceptWith(messageIds);
                 return;
             }
 
-            foreach (var message in chat.IsPrivate
+            var messagesToMark = (chat.IsPrivate
                 ? Messages.Where(message => !message.IsMine && message.Id <= messageIds.Max())
                 : Messages.Where(message => messageIds.Contains(message.Id)))
+                .Where(message => !message.IsReadByCurrentUser)
+                .ToArray();
+            foreach (var message in messagesToMark)
             {
                 message.MarkReadByCurrentUser();
             }
 
             _pendingReadMessageIds.ExceptWith(messageIds);
-            chat.UnreadCount = Math.Max(0, chat.UnreadCount - messageIds.Length);
-            chat.FirstUnreadMessageId = Messages
-                .Where(message => !message.IsMine && !message.IsReadByCurrentUser)
-                .Select(message => message.Id)
-                .DefaultIfEmpty()
-                .Min();
+            UpdateUnreadState(chat, messagesToMark.Length);
+            await RefreshUnreadStateAsync(chat);
         }
         catch (OperationCanceledException)
         {
@@ -362,25 +347,25 @@ public sealed partial class MessengerViewModel : ObservableObject
         _pendingReadMessageIds.Clear();
     }
 
-    private async Task<ChatItemViewModel> CreateChatItemAsync(Chat chat, GlobalParam parameters)
+    private async Task<ChatItemViewModel> CreateChatItemAsync(Chat chat, long currentUserId)
     {
-        var title = string.IsNullOrWhiteSpace(chat.Title) ? "Chat" : chat.Title;
+        var title = string.IsNullOrWhiteSpace(chat.Title) ? _localization.GetString("Messenger_Chat") : chat.Title;
         var firstName = string.Empty;
         var lastName = string.Empty;
-        var avatarUrl = await ResolveFileUrlAsync(parameters, chat.Picture);
+        var avatarUrl = await ResolveFileUrlAsync(chat.Picture);
 
         if (!chat.IsGroupChat)
         {
-            var otherMember = chat.Members.FirstOrDefault(member => member.UserId != parameters.UserId);
+            var otherMember = chat.Members.FirstOrDefault(member => member.UserId != currentUserId);
             if (otherMember is not null)
             {
-                var userResult = await _webApi.GetUserData(parameters, otherMember.UserId);
+                var userResult = await _messenger.GetUserDataAsync(otherMember.UserId);
                 if (userResult.Error.IsSuccess && userResult.Data is not null)
                 {
                     firstName = userResult.Data.FirstName;
                     lastName = userResult.Data.LastName;
                     title = string.Join(' ', new[] { firstName, lastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
-                    title = string.IsNullOrWhiteSpace(title) ? chat.Title : title;
+                    title = string.IsNullOrWhiteSpace(title) ? _localization.GetString("Messenger_Chat") : title;
                     avatarUrl = userResult.Data.ProfilePicturePreviewUrl;
                 }
             }
@@ -389,10 +374,10 @@ public sealed partial class MessengerViewModel : ObservableObject
         return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl);
     }
 
-    private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId, GlobalParam parameters)
+    private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
     {
         var attachments = await Task.WhenAll(message.Attachments
-            .Select(attachment => CreateAttachmentItemAsync(attachment, parameters)));
+            .Select(CreateAttachmentItemAsync));
 
         return new MessageItemViewModel(message, message.SenderId == currentUserId, attachments, currentUserId);
     }
@@ -407,33 +392,34 @@ public sealed partial class MessengerViewModel : ObservableObject
         return new MessageItemViewModel(message, text, message.SenderId == currentUserId, currentUserId);
     }
 
-    private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment, GlobalParam parameters)
+    private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment)
     {
         var previewUrl = attachment.PreviewUrl;
         if (attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker
             && string.IsNullOrWhiteSpace(previewUrl))
         {
-            previewUrl = await ResolveFileUrlAsync(parameters, attachment.PreviewFileId);
+            previewUrl = await ResolveFileUrlAsync(attachment.PreviewFileId);
         }
 
-        var fileUrl = await ResolveFileUrlAsync(parameters, attachment.FileId);
+        var fileUrl = await ResolveFileUrlAsync(attachment.FileId);
         return new MessageAttachmentItemViewModel(
             attachment.Type,
             previewUrl,
             fileUrl,
-            attachment.FileName,
-            attachment.Size);
+            string.IsNullOrWhiteSpace(attachment.FileName) ? _localization.GetString("Messenger_File") : attachment.FileName,
+            attachment.Size,
+            attachment.ImageWidth,
+            attachment.ImageHeight);
     }
 
-    private async Task<string> ResolveFileUrlAsync(GlobalParam parameters, string fileId)
+    private async Task<string> ResolveFileUrlAsync(string fileId)
     {
         if (string.IsNullOrWhiteSpace(fileId))
         {
             return string.Empty;
         }
 
-        var result = await _webApi.GetFile(parameters, fileId);
-        return result.error.IsSuccess ? result.url ?? string.Empty : string.Empty;
+        return await _messenger.ResolveFileUrlAsync(fileId);
     }
 
     private void OnMessageRead(object? sender, MessageReadReceipt receipt)
@@ -473,7 +459,7 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
-            var currentUserId = _session.CurrentConnection?.ConnectionParameters.UserId;
+            var currentUserId = _messenger.CurrentUserId;
             if (currentUserId is null)
             {
                 return;
@@ -498,14 +484,37 @@ public sealed partial class MessengerViewModel : ObservableObject
         });
     }
 
-    private static void UpdateUnreadState(ChatItemViewModel chat, int count)
+    private void UpdateUnreadState(ChatItemViewModel chat, int count)
     {
-        if (count <= 0)
+        chat.UnreadCount = Math.Max(0, chat.UnreadCount - Math.Max(0, count));
+        var firstUnreadMessageId = Messages
+            .Where(message => !message.IsMine && !message.IsReadByCurrentUser)
+            .Select(message => message.Id)
+            .DefaultIfEmpty()
+            .Min();
+
+        if (firstUnreadMessageId > 0 || chat.UnreadCount == 0)
+        {
+            chat.FirstUnreadMessageId = firstUnreadMessageId;
+        }
+    }
+
+    private async Task RefreshUnreadStateAsync(ChatItemViewModel chat)
+    {
+        var result = await _messenger.GetChatsAsync();
+        if (!result.error.IsSuccess || result.chats is null)
         {
             return;
         }
 
-        chat.UnreadCount = Math.Max(0, chat.UnreadCount - count);
+        var updatedChat = result.chats.FirstOrDefault(item => item.Id == chat.Id);
+        if (updatedChat is null)
+        {
+            return;
+        }
+
+        chat.UnreadCount = updatedChat.CountUnread;
+        chat.FirstUnreadMessageId = updatedChat.FirstUnreadMessageId;
     }
 }
 
@@ -515,7 +524,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
     {
         Definition = chat;
         Id = chat.Id;
-        Title = string.IsNullOrWhiteSpace(title) ? "Chat" : title;
+        Title = title;
         FirstName = firstName;
         LastName = lastName;
         AvatarUrl = avatarUrl;
@@ -599,6 +608,9 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles;
     public bool HasMetadataBelowMedia => !HasOnlyMedia;
     public bool IsSingleMedia => MediaAttachments.Count == 1;
+    public int MediaColumns => IsSingleMedia ? 1 : 2;
+    public double MediaPanelWidth => IsSingleMedia ? MediaAttachments.First().SingleMediaWidth : 344;
+    public double MediaTileHeight => IsSingleMedia ? MediaAttachments.First().SingleMediaHeight : 128;
 
     [ObservableProperty] private bool _isReadByCurrentUser;
     [ObservableProperty] private bool _isReadBySomeoneElse;
@@ -623,19 +635,37 @@ public sealed class MessageAttachmentItemViewModel(
     string previewUrl,
     string fileUrl,
     string fileName,
-    long size)
+    long size,
+    int imageWidth,
+    int imageHeight)
 {
     public string PreviewUrl { get; } = previewUrl;
     public string FileUrl { get; } = fileUrl;
-    public string FileName { get; } = string.IsNullOrWhiteSpace(fileName) ? "File" : fileName;
+    public string FileName { get; } = fileName;
     public long Size { get; } = size;
+    public int ImageWidth { get; } = imageWidth;
+    public int ImageHeight { get; } = imageHeight;
     public bool IsVideo { get; } = type == MessageAttachmentType.Video;
     public bool IsMedia => type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker;
     public bool IsFile => !IsMedia;
+    public string FileTypeLabel => type.ToString();
+    public double SingleMediaWidth => GetSingleMediaSize().Width;
+    public double SingleMediaHeight => GetSingleMediaSize().Height;
     public string SizeLabel => Size switch
     {
         < 1024 => $"{Size} B",
         < 1024 * 1024 => $"{Size / 1024d:0.#} KB",
         _ => $"{Size / 1024d / 1024d:0.#} MB"
     };
+
+    private (double Width, double Height) GetSingleMediaSize()
+    {
+        if (ImageWidth <= 0 || ImageHeight <= 0)
+        {
+            return (344, 258);
+        }
+
+        var scale = Math.Min(344d / ImageWidth, 258d / ImageHeight);
+        return (Math.Round(ImageWidth * scale), Math.Round(ImageHeight * scale));
+    }
 }
