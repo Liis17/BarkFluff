@@ -49,6 +49,8 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 
 Подробные правила написания кода: `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md`.
 
+Матрица функций всех клиентов и бэклог V2 по этапам: `docs/clients-feature-matrix.md`.
+
 Полная карта классов и ресурсов: [[Клиенты/Windows-WPF-V2-ProjectMap]].
 
 ## Первый реализованный маршрут
