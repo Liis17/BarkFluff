@@ -1,3 +1,4 @@
+using BarkFluff.ClientV2.WPF.Models;
 using BarkFluff.ClientV2.WPF.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
@@ -17,6 +18,9 @@ public sealed partial class MessengerViewModel : ObservableObject
 {
     private readonly WebApiClient _webApi;
     private readonly IClientSession _session;
+    private readonly HashSet<long> _pendingReadMessageIds = [];
+    private CancellationTokenSource? _readBatchCancellationTokenSource;
+    private int _messageLoadVersion;
 
     public MessengerViewModel(WebApiClient webApi, IClientSession session)
     {
@@ -31,6 +35,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     [ObservableProperty] private string _draftText = string.Empty;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private MessageScrollRequest? _scrollRequest;
 
     public async Task LoadAsync()
     {
@@ -66,10 +71,13 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     partial void OnSelectedChatChanged(ChatItemViewModel? value)
     {
+        _messageLoadVersion++;
+        CancelPendingReadBatch();
         Messages.Clear();
+        ScrollRequest = null;
         if (value is not null)
         {
-            _ = LoadMessagesAsync(value);
+            _ = LoadMessagesAsync(value, _messageLoadVersion);
         }
     }
 
@@ -90,10 +98,26 @@ public sealed partial class MessengerViewModel : ObservableObject
         {
             Messages.Add(await CreateMessageItemAsync(result.message, parameters.UserId, parameters));
             DraftText = string.Empty;
+            ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
         }
     }
 
-    private async Task LoadMessagesAsync(ChatItemViewModel chat)
+    [RelayCommand]
+    private void MessageBecameVisible(MessageItemViewModel message)
+    {
+        var chat = SelectedChat;
+        if (chat is null || chat.IsPrivate || message.IsMine || message.IsReadByCurrentUser)
+        {
+            return;
+        }
+
+        if (_pendingReadMessageIds.Add(message.Id))
+        {
+            ScheduleReadBatch(chat);
+        }
+    }
+
+    private async Task LoadMessagesAsync(ChatItemViewModel chat, int loadVersion)
     {
         var parameters = _session.CurrentConnection?.ConnectionParameters;
         if (parameters is null)
@@ -101,8 +125,14 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        var result = await _webApi.GetMessagesWithOffset(parameters, chat.Id, 0, 50, 0);
-        if (!result.error.IsSuccess || result.messages is null || SelectedChat?.Id != chat.Id)
+        var hasUnreadMessages = chat.UnreadCount > 0 && chat.FirstUnreadMessageId > 0;
+        var result = await _webApi.GetMessagesWithOffset(
+            parameters,
+            chat.Id,
+            hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
+            50,
+            hasUnreadMessages ? 50 : 0);
+        if (!result.error.IsSuccess || result.messages is null || SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
         {
             return;
         }
@@ -112,6 +142,68 @@ public sealed partial class MessengerViewModel : ObservableObject
         {
             Messages.Add(await CreateMessageItemAsync(message, parameters.UserId, parameters));
         }
+
+        ScrollRequest = hasUnreadMessages
+            ? new MessageScrollRequest(MessageScrollTarget.Message, chat.FirstUnreadMessageId)
+            : new MessageScrollRequest(MessageScrollTarget.Bottom);
+    }
+
+    private void ScheduleReadBatch(ChatItemViewModel chat)
+    {
+        _readBatchCancellationTokenSource?.Cancel();
+        _readBatchCancellationTokenSource?.Dispose();
+        _readBatchCancellationTokenSource = new CancellationTokenSource();
+        _ = FlushReadBatchAsync(chat, _readBatchCancellationTokenSource.Token);
+    }
+
+    private async Task FlushReadBatchAsync(ChatItemViewModel chat, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(400), cancellationToken);
+            if (SelectedChat?.Id != chat.Id || chat.IsPrivate || _pendingReadMessageIds.Count == 0)
+            {
+                return;
+            }
+
+            var parameters = _session.CurrentConnection?.ConnectionParameters;
+            if (parameters is null)
+            {
+                return;
+            }
+
+            var messageIds = _pendingReadMessageIds.ToArray();
+            var result = await _webApi.MarkMessageAsRead(parameters, messageIds.ToList());
+            if (!result.IsSuccess || SelectedChat?.Id != chat.Id)
+            {
+                _pendingReadMessageIds.ExceptWith(messageIds);
+                return;
+            }
+
+            foreach (var message in Messages.Where(message => messageIds.Contains(message.Id)))
+            {
+                message.MarkReadByCurrentUser();
+            }
+
+            _pendingReadMessageIds.ExceptWith(messageIds);
+            chat.UnreadCount = Math.Max(0, chat.UnreadCount - messageIds.Length);
+            chat.FirstUnreadMessageId = Messages
+                .Where(message => !message.IsMine && !message.IsReadByCurrentUser)
+                .Select(message => message.Id)
+                .DefaultIfEmpty()
+                .Min();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void CancelPendingReadBatch()
+    {
+        _readBatchCancellationTokenSource?.Cancel();
+        _readBatchCancellationTokenSource?.Dispose();
+        _readBatchCancellationTokenSource = null;
+        _pendingReadMessageIds.Clear();
     }
 
     private async Task<ChatItemViewModel> CreateChatItemAsync(Chat chat, GlobalParam parameters)
@@ -202,7 +294,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
     public string AvatarUrl { get; }
     public string Preview { get; }
     [ObservableProperty] private long _unreadCount;
-    public long FirstUnreadMessageId { get; }
+    [ObservableProperty] private long _firstUnreadMessageId;
     public bool IsPrivate { get; }
     public DateTimeOffset? LastMessageAt { get; }
     public bool HasPreview => !string.IsNullOrWhiteSpace(Preview);
