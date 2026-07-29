@@ -105,4 +105,6 @@
     <sys:String x:Key="Messenger_PrivateUnavailable">Приглашение в приватный чат ещё не принято.</sys:String>
     <sys:String x:Key="Messenger_PrivateDeleted">Сообщение удалено</sys:String>
     <sys:String x:Key="Messenger_PrivateDecryptionFailed">Не удалось расшифровать сообщение</sys:String>
+    <sys:String x:Key="Messenger_Chat">Чат</sys:String>
+    <sys:String x:Key="Messenger_File">Файл</sys:String>
 </ResourceDictionary>

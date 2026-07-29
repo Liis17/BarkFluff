@@ -1,5 +1,3 @@
-using BarkFluff.WebApi.Core.MessengerData;
-
 namespace BarkFluff.ClientV2.WPF.Services;
 
 public sealed record MessageReadReceipt(string ChatId, long MessageId, IReadOnlyCollection<long> ReadBy);
@@ -12,7 +10,7 @@ public interface IRealtimeMessengerService : IAsyncDisposable
 
     event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
 
-    Task StartAsync(GlobalParam parameters, CancellationToken cancellationToken = default);
+    Task StartAsync(CancellationToken cancellationToken = default);
 
     Task StopAsync();
 }

@@ -52,8 +52,8 @@ public sealed class MessengerPresentationTests
     [Fact]
     public void MessageItemViewModel_SeparatesMediaAndFiles()
     {
-        var media = new MessageAttachmentItemViewModel(MessageAttachmentType.Image, "preview", "file", "image.jpg", 1024);
-        var document = new MessageAttachmentItemViewModel(MessageAttachmentType.Document, string.Empty, "file", "report.pdf", 2048);
+        var media = new MessageAttachmentItemViewModel(MessageAttachmentType.Image, "preview", "file", "image.jpg", 1024, 800, 600);
+        var document = new MessageAttachmentItemViewModel(MessageAttachmentType.Document, string.Empty, "file", "report.pdf", 2048, 0, 0);
         var message = new MessageItemViewModel(
             new MessageModel
             {
