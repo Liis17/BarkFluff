@@ -339,9 +339,10 @@ PeriodicTimer(30s)
 |-------|------|
 | `UserData` | `Username`, `FirstName`, `LastName`, `Email`, `Id`, `RegistrationDate`, `Badges`, `ProfilePictureUrl`, `ProfilePicturePreviewUrl`, `Description` |
 | `ChatInfo` | `ChatId`, `Members`, `Title`, `CountUnread`, `FirstUnreadId`, `IsGroup`, `LastMessageId`, `Picture` |
-| `MessageModel` | `MessageId`, `ChatId`, `Text`, `Attachments`, `SenderId`, `SentAt`, `Type`, `ReadBy`, `IsSystemMessage` |
-| `AttachmentsModel` | `Id`, `Type`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`, `ImageWidth`, `ImageHeight` |
-| `ForwardingLetter` | `Text`, `FilesId: List<string>` |
+| `MessageModel` | `MessageId`, `ChatId`, `Text`, `Attachments`, `SenderId`, `SentAt`, `Type`, `ReadBy`, `IsSystemMessage`, `IsEdited`, `EditedAt` |
+| `AttachmentsModel` | `Id`, `Type`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`, `ImageWidth`, `ImageHeight`, `ForwardedMessage?` |
+| `ForwardedMessageModel` | `AuthorName`, `OriginalMessageId`, `Text`, `Attachments` |
+| `ForwardingLetter` | `Text`, `FilesId: List<string>`, `ForwardedMessageId` |
 | `ServerDataElement` | `Title`, `Description`, `Ip`, `UserCount`, `PublicName`, `Location`, `HexColor` |
 | `ChatCacheClass` | `ChatId`, `ChatName`, `AvatarFileId`, `LastMessage?` |
 
