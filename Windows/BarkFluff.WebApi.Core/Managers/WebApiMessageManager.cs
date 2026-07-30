@@ -24,22 +24,48 @@ namespace BarkFluff.WebApi.Core.Managers
             MessageId = message.Id,
             ChatId = chatId,
             Text = message.Content.Text,
-            Attachments = message.Content.Attachments.Select(a => new AttachmentsModel
-            {
-                Id = a.Id,
-                Type = a.Type,
-                PreviewUrl = a.PreviewUrl,
-                FileId = a.FileId,
-                PreviewFileId = a.PreviewFileId,
-                FileName = a.FileName,
-                Size = a.AttachmentSize,
-                ImageWidth = a.ImageWidth,
-                ImageHeight = a.ImageHeight,
-            }).ToList(),
+            Attachments = message.Content.Attachments.Select(MapAttachment).ToList(),
             SenderId = message.SenderId,
             SentAt = message.SentAt,
             Type = message.Type,
             ReadBy = message.ReadBy.ToList(),
+            IsEdited = message.IsEdited,
+            EditedAt = message.EditedAt,
+        };
+
+        /// <summary>
+        /// Преобразует серверное вложение в модель клиента. Вложения внутри пересланного
+        /// сообщения маппятся без ForwardedMessage — сервер рекурсию не присылает.
+        /// </summary>
+        private static AttachmentsModel MapAttachment(Proto.Shared.MessageAttachment a) => new AttachmentsModel
+        {
+            Id = a.Id,
+            Type = a.Type,
+            PreviewUrl = a.PreviewUrl,
+            FileId = a.FileId,
+            PreviewFileId = a.PreviewFileId,
+            FileName = a.FileName,
+            Size = a.AttachmentSize,
+            ImageWidth = a.ImageWidth,
+            ImageHeight = a.ImageHeight,
+            ForwardedMessage = a.ForwardedMessage is null ? null : new ForwardedMessageModel
+            {
+                AuthorName = a.ForwardedMessage.AuthorName,
+                OriginalMessageId = a.ForwardedMessage.OriginalMessageId,
+                Text = a.ForwardedMessage.Text,
+                Attachments = a.ForwardedMessage.Attachments.Select(inner => new AttachmentsModel
+                {
+                    Id = inner.Id,
+                    Type = inner.Type,
+                    PreviewUrl = inner.PreviewUrl,
+                    FileId = inner.FileId,
+                    PreviewFileId = inner.PreviewFileId,
+                    FileName = inner.FileName,
+                    Size = inner.AttachmentSize,
+                    ImageWidth = inner.ImageWidth,
+                    ImageHeight = inner.ImageHeight,
+                }).ToList(),
+            },
         };
 
         /// <summary>
@@ -141,7 +167,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             ChatId = options.recipient,
-                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId } },
+                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId }, ForwardedMessageId = letter.ForwardedMessageId },
                         });
                     }
                     else
@@ -150,7 +176,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             UserId = long.Parse(options.recipient),
-                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId } },
+                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId }, ForwardedMessageId = letter.ForwardedMessageId },
                         });
                     }
 

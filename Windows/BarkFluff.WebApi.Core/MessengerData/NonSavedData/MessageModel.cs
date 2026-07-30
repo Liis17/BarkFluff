@@ -13,6 +13,8 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public Timestamp SentAt { get; set; } = new Timestamp();
         public BarkFluff.Proto.Shared.MessageContentType Type { get; set; } = Proto.Shared.MessageContentType.Generic;
         public bool IsSystemMessage { get; set; } = false;
+        public bool IsEdited { get; set; } = false;
+        public Timestamp? EditedAt { get; set; } = null;
         public MessageModel() { }
 
     }
