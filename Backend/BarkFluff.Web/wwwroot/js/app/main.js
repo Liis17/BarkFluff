@@ -55,6 +55,9 @@
     var chatListLoading = false;
     var pendingUploads = new Map(); // local message id -> optimistic upload state
     var pendingUploadCounter = 0;
+    var GENERIC_MESSAGE_TYPE = 1;
+    var IMAGE_UPLOAD_TYPE = 2;
+    var GIF_UPLOAD_TYPE = 4;
 
     // Reply / Forward / Context menu state
     var pendingReply = null;
@@ -450,6 +453,12 @@
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
+                pendingUploads.forEach(function (entry) {
+                    if (entry.settled || String(entry.chatId) !== String(chatId)) return;
+                    var serverMessage = messages.find(function (msg) { return pendingUploadMatches(entry, msg); });
+                    if (serverMessage) reconcilePendingUpload(chatId, serverMessage, entry);
+                    else messages.push(entry.localMessage);
+                });
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
                 renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
@@ -542,8 +551,7 @@
 
     function scrollToBottom() { messagesArea.scrollTop = messagesArea.scrollHeight; }
 
-    function appendMessageToView(msg) {
-        if (msg && msg.id) knownMessageIds.add(msg.id);
+    function buildMessageViewElement(msg) {
         var atts = (msg.content && msg.content.attachments) || [];
         var fileIds = atts.map(function (a) { return a.fileId; }).filter(function (id) { return id && !BF.files.getCachedFileUrl(id); });
         collectFwdAttachments(msg).forEach(function (a) {
@@ -552,6 +560,14 @@
         var p = fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
 
         return p.then(function () {
+            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
+            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
+        });
+    }
+
+    function appendMessageToView(msg) {
+        if (msg && msg.id) knownMessageIds.add(msg.id);
+        return buildMessageViewElement(msg).then(function (el) {
             var msgDate = u.formatDate(msg.sentAt);
             var lastMsgDate = null;
             for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
@@ -564,9 +580,6 @@
                 sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                 messagesInner.appendChild(sep);
             }
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
-        }).then(function (el) {
             el.dataset.date = u.formatDate(msg.sentAt);
             messagesInner.appendChild(el);
         });
@@ -602,17 +615,21 @@
             .sort();
     }
 
+    function pendingUploadMatches(entry, msg) {
+        var serverIds = messageFileIds(msg);
+        var pendingIds = entry.fileIds.map(function (id) { return String(id).toLowerCase(); }).sort();
+        return pendingIds.length > 0 &&
+            pendingIds.length === serverIds.length &&
+            pendingIds.every(function (id, index) { return id === serverIds[index]; });
+    }
+
     function findPendingUpload(chatId, msg) {
         if (!msg || msg.senderId !== myUserId) return null;
-        var serverIds = messageFileIds(msg);
-        if (serverIds.length === 0) return null;
 
         var found = null;
         pendingUploads.forEach(function (entry) {
             if (found || entry.settled || String(entry.chatId) !== String(chatId)) return;
-            var pendingIds = entry.fileIds.map(function (id) { return String(id).toLowerCase(); }).sort();
-            if (pendingIds.length !== serverIds.length) return;
-            if (pendingIds.every(function (id, index) { return id === serverIds[index]; })) found = entry;
+            if (pendingUploadMatches(entry, msg)) found = entry;
         });
         return found;
     }
@@ -623,26 +640,7 @@
         });
         if (!oldEl) { releasePendingPreviews(entry); return; }
 
-        var atts = (msg.content && msg.content.attachments) || [];
-        var fileIds = atts.map(function (a) { return a.fileId; }).filter(function (id) {
-            return id && !BF.files.getCachedFileUrl(id);
-        });
-        collectFwdAttachments(msg).forEach(function (a) {
-            if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) fileIds.push(a.fileId);
-        });
-
-        var preload = fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
-        preload.then(function () {
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            return BF.messages.buildMessageElement(
-                msg,
-                myUserId,
-                !!(currentChatInfo && currentChatInfo.isGroupChat),
-                getUser,
-                showMediaOverlay,
-                bldOpts
-            );
-        }).then(function (newEl) {
+        buildMessageViewElement(msg).then(function (newEl) {
             newEl.dataset.date = u.formatDate(msg.sentAt);
             if (oldEl.isConnected) oldEl.replaceWith(newEl);
             releasePendingPreviews(entry);
@@ -808,11 +806,11 @@
         var previewUrls = [];
         var localAttachments = files.map(function (file, index) {
             var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
-            var isImage = !asDocuments && (uploadType === 2 || uploadType === 4);
+            var isImage = !asDocuments && (uploadType === IMAGE_UPLOAD_TYPE || uploadType === GIF_UPLOAD_TYPE);
             var previewUrl = isImage ? URL.createObjectURL(file) : '';
             if (previewUrl) previewUrls.push(previewUrl);
             return {
-                type: isImage ? (uploadType === 4 ? 'GIF' : 'IMAGE') : 'DOCUMENT',
+                type: isImage ? (uploadType === GIF_UPLOAD_TYPE ? 'GIF' : 'IMAGE') : 'DOCUMENT',
                 fileId: '',
                 fileName: file.name,
                 attachmentSize: file.size,
@@ -827,14 +825,14 @@
             senderId: myUserId,
             readBy: [],
             sentAt: Date.now(),
-            type: 1,
+            type: GENERIC_MESSAGE_TYPE,
             isPending: true,
             content: { text: text || '', attachments: localAttachments }
         };
         var pendingEntry = {
             localId: localId,
             chatId: sentChatId,
-            message: pendingMessage,
+            localMessage: pendingMessage,
             fileIds: [],
             previewUrls: previewUrls,
             settled: false
@@ -858,18 +856,19 @@
                         pendingEntry.fileIds.push(fid);
                         ids.push(fid);
                         return ids;
-                    })
-                    .catch(function () { return ids; });
+                    });
             });
         }, Promise.resolve([]));
 
         var replyId = pendingReply ? pendingReply.messageId : 0;
+        var uploadsComplete = false;
         uploadChain.then(function (fileIds) {
             if (fileIds.length === 0) {
                 removePendingUpload(pendingEntry);
                 sendBtn.disabled = false;
                 return;
             }
+            uploadsComplete = true;
             return BF.api.sendMessage({
                 chatId: sentChatId,
                 text: text || null,
@@ -894,11 +893,13 @@
                     }
                 } else {
                     removePendingUpload(pendingEntry);
+                    groupToast('Не удалось отправить сообщение');
                 }
             });
         }).catch(function () {
             removePendingUpload(pendingEntry);
             sendBtn.disabled = false;
+            groupToast(uploadsComplete ? 'Не удалось отправить сообщение' : 'Не удалось загрузить вложение');
         });
     }
 

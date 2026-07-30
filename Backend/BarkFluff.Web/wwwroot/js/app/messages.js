@@ -10,6 +10,10 @@
 
     var u = function () { return BF.utils; };
 
+    function normalizeProgress(percent) {
+        return Math.max(0, Math.min(100, Number(percent) || 0));
+    }
+
     function updateMessageStatus(statusEl, isRead, isPending) {
         statusEl.replaceChildren();
         var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -221,7 +225,7 @@
     }
 
     function createCircularProgress(percent) {
-        var progress = Math.max(0, Math.min(100, Number(percent) || 0));
+        var progress = normalizeProgress(percent);
         var wrap = document.createElement('div');
         wrap.className = 'upload-progress-circle';
         wrap.setAttribute('role', 'progressbar');
@@ -358,7 +362,7 @@
                 link.download = a.fileName || '';
                 BF.files.bindResilientLink(link, a.fileId);
             }
-            var progress = Math.max(0, Math.min(100, Number(a.uploadProgress) || 0));
+            var progress = normalizeProgress(a.uploadProgress);
             link.innerHTML =
                 '<span class="attach-doc-icon">' + u().docIcon(a.fileName) + '</span>' +
                 '<div class="attach-doc-info">' +
@@ -379,7 +383,7 @@
         });
         if (!group) return;
 
-        var progress = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+        var progress = Math.round(normalizeProgress(percent));
         var item = group.querySelector('[data-upload-index="' + attachmentIndex + '"]');
         if (!item) return;
 
