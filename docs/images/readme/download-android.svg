@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="132" viewBox="0 0 460 132" role="img" aria-labelledby="title">
+  <title id="title">Download BarkFluff for Android</title>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#252525"/><stop offset="1" stop-color="#193d34"/></linearGradient></defs>
+  <rect x="2" y="2" width="456" height="128" rx="22" fill="url(#bg)" stroke="#8de4b7" stroke-opacity=".62" stroke-width="3"/>
+  <g fill="#8de4b7"><rect x="41" y="46" width="74" height="51" rx="22"/><path d="M48 42l-10-14m70 14l10-14" fill="none" stroke="#8de4b7" stroke-width="5" stroke-linecap="round"/><circle cx="63" cy="65" r="4" fill="#163329"/><circle cx="94" cy="65" r="4" fill="#163329"/></g>
+  <text x="146" y="52" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="20" letter-spacing="2">DOWNLOAD FOR</text>
+  <text x="146" y="91" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700">Android</text>
+  <path d="M405 53v29m0 0l-13-13m13 13l13-13" fill="none" stroke="#bff4d5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
