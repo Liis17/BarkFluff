@@ -62,7 +62,7 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 Источник — `Backend/Barkfluff.WebServer/html/legal/*.md`, тот же, что у сайта (см. [[Backend/WebServer]]).
 
 - **Сборка.** Gradle-таск `copyLegalDocs` (`app/build.gradle.kts`) копирует `TERMS_OF_SERVICE.*.md` и `PRIVACY_POLICY.*.md` в `assets/legal/`. Подключён через `androidComponents.onVariants { ... addGeneratedSourceDirectory(...) }`, а не `preBuild.dependsOn` — Gradle 9 строг к неявным зависимостям с merge-assets. Путь вывода назначает AGP (`build/generated/assets/copyLegalDocs/`), задавать `outputDirectory` вручную бессмысленно. Пустой результат копирования **останавливает сборку**: APK без актуальных соглашений выпускать нельзя. CI `build-client-android.yml` триггерится на `Backend/Barkfluff.WebServer/html/legal/**`.
-- **`utils/LegalDocsRepository.kt`** — читает `legal/<DOC>.<lang>.md` по активной локали (маппинг как в `LocaleManager`), fallback — `ru`. Таблицы markdown разворачивает в списки, потому что `MarkdownRenderer` таблицы не поддерживает.
+- **`utils/LegalDocsRepository.kt`** — читает `legal/<DOC>.<lang>.md` по активной локали (маппинг как в `LocaleManager`), fallback — `ru`. Таблицы markdown намеренно разворачивает в списки: consent sheet использует одиночный `TextView`, тогда как нативная сетка таблиц поддержана только внутри bubble сообщений.
 - **Редакция.** `revision()` берёт дату «Последнее обновление» из шапки и **всегда из русского файла**: значение уходит в `GlobalParam.acceptedLegalRevision`, и локализованная строка превращала бы смену языка приложения в «новую редакцию». Regex не требует ASCII-двоеточия — в zh-CN шапка использует полноширинное `：`.
 - **`LegalConsentBottomSheet`** — два таба (соглашение / конфиденциальность), рендер через `MarkdownRenderer`, чекбокс + «Принять»/«Отмена». В режиме согласия лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` — только чтение и «Закрыть».
 - **Согласие хранится как редакция, а не флаг** (`GlobalParam.acceptedLegalRevision`): обновили соглашение — согласие запрашивается заново.
@@ -360,11 +360,12 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
   - Inline: `**bold**`/`__bold__`, `*italic*`/`_italic_`, `~~strike~~`, `` `code` `` (monospace + фон), `[текст](url)` (`URLSpan`). Inline-код защищён от повторного разбора.
   - Автолинковка «голых» URL через `Patterns.WEB_URL` — вручную, чтобы не затирать markdown-ссылки (в отличие от `Linkify.addLinks`, который стирает существующие `URLSpan`).
   - Цвета code-фона/цитаты — alpha-overlay поверх `textView.currentTextColor` (работает и на sent, и на received пузыре).
+  - В bubble сообщений `renderMessageInto` распознаёт GFM-таблицу по шапке и строке-разделителю, строит нативные `TableLayout`-ячейки с уже существующей inline-разметкой, выравниванием `:---`/`:---:`/`---:` и горизонтальной прокруткой для широких таблиц. Парсер учитывает экранированный `\|` и пайп внутри inline-кода; короткие строки дополняет пустыми ячейками.
   - `applyTo(textView, source)` — ставит текст, линкует, включает/**сбрасывает** `movementMethod` (сброс критичен для переиспользования ViewHolder). `strip(source)` — убирает всю разметку в чистый однострочный текст для превью.
-- **Рендер (`applyTo`)**: главный пузырь sent/received (`MessageAdapter` ~315/484, покрывает и закреплённые через `PinnedMessagesActivity`). E2E-чаты (приватный/секретный) рендерятся тем же `MessageAdapter` в общем `ChatActivity` (расшифрованный текст мапится в `MessageItem`).
+- **Рендер (`renderMessageInto`)**: главный пузырь sent/received (`MessageAdapter` ~315/484, покрывает и закреплённые через `PinnedMessagesActivity`). E2E-чаты (приватный/секретный) рендерятся тем же `MessageAdapter` в общем `ChatActivity` (расшифрованный текст мапится в `MessageItem`).
 - **`autoLink="web"` убран** из `item_message_sent.xml` / `item_message_received.xml` — заменён Linkify внутри рендерера. Контекстное меню сообщения висит на `binding.root.setOnClickListener` (не long-press), поэтому `LinkMovementMethod` сосуществует с тап-в-меню как и раньше.
 - **Strip (чистый текст в превью)**: reply-превью (`buildPreviewLine`), тело пересланного сообщения (`forwardTextTextView`), последнее сообщение в списке чатов (`ChatAdapter`), пуш-уведомление (`NotificationHelper`). Иначе в однострочных превью светились бы символы `**`, `~~`, `` ` ``.
-- Вложенные списки, таблицы, HTML — не поддерживаются (вне «базового» набора).
+- Вложенные списки и HTML не поддерживаются; таблицы поддержаны только в bubble сообщений.
 
 ## Typing-индикатор («печатает…»)
 
