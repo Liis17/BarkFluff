@@ -1,7 +1,7 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Navigator;
 
-namespace BarkFluff.Beacon.Features.RegisterServer;
+namespace BarkFluff.Beacon.BackgroundServices;
 
 using Configurations;
 
