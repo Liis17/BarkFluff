@@ -4,11 +4,13 @@ using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Files.Services;
+using BarkFluff.GrpcServer.Metrics;
 
 using MediatR;
 
 using SixLabors.ImageSharp;
 
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 using UploadFileType = BarkFluff.Files.Domain.UploadFileType;
@@ -24,6 +26,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
     private readonly ImageCompressor _imageCompressor;
     private readonly FileTypeDetector _fileTypeDetector;
     private readonly VideoThumbnailExtractor _videoThumbnailExtractor;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<UploadFileCommandHandler> _logger;
 
 
@@ -71,6 +74,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         ImageCompressor imageCompressor,
         FileTypeDetector fileTypeDetector,
         VideoThumbnailExtractor videoThumbnailExtractor,
+        MetricsCollector metrics,
         ILogger<UploadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
@@ -80,11 +84,18 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         _imageCompressor = imageCompressor;
         _fileTypeDetector = fileTypeDetector;
         _videoThumbnailExtractor = videoThumbnailExtractor;
+        _metrics = metrics;
         _logger = logger;
     }
 
     public async Task<string> Handle(UploadFileCommand request, CancellationToken cancellationToken)
     {
+        var totalTimer = Stopwatch.StartNew();
+        var bufferingDuration = TimeSpan.Zero;
+        var hashDuration = TimeSpan.Zero;
+        var processingDuration = TimeSpan.Zero;
+        var s3Duration = TimeSpan.Zero;
+
         _logger.LogInformation("Начало обработки загрузки файла с ID: {FileId}", request.FileId);
 
         var file = await _filesStorage.GetFile(request.FileId);
@@ -135,7 +146,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             var tempStream = new FileStream(
                 tempFilePath, FileMode.Create, FileAccess.ReadWrite,
                 FileShare.Read, 81920, FileOptions.None);
+            var bufferingTimer = Stopwatch.StartNew();
             await request.FileStream.CopyToAsync(tempStream, cancellationToken);
+            bufferingDuration = bufferingTimer.Elapsed;
             tempStream.Position = 0;
             originalStream = tempStream;
         }
@@ -143,7 +156,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         {
             // Изображения и файлы до 100 МБ — в оперативной памяти для скорости
             var memStream = new MemoryStream();
+            var bufferingTimer = Stopwatch.StartNew();
             await request.FileStream.CopyToAsync(memStream, cancellationToken);
+            bufferingDuration = bufferingTimer.Elapsed;
             memStream.Position = 0;
             originalStream = memStream;
         }
@@ -153,7 +168,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         string fileHash;
         using (var sha256 = SHA256.Create())
         {
+            var hashTimer = Stopwatch.StartNew();
             var hashBytes = await sha256.ComputeHashAsync(originalStream, cancellationToken);
+            hashDuration = hashTimer.Elapsed;
             fileHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
 
@@ -233,6 +250,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
                 await originalStream.DisposeAsync();
 
+                RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
                 return existingFileId.Value.ToString();
             }
 
@@ -243,6 +261,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         try
         {
+            var processingTimer = Stopwatch.StartNew();
             // Объединённая обработка изображения за один Image.LoadAsync:
             // получаем размеры, опционально сжатый оригинал и опционально превью.
             // Пришло на смену трём отдельным декодированиям одного и того же изображения
@@ -351,7 +370,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 }
             }
 
+            processingDuration = processingTimer.Elapsed;
+
             // Загружаем файл в S3 напрямую из стрима
+            var s3Timer = Stopwatch.StartNew();
             var etag = await _s3Uploader.UploadAsync(
                 bucketName, // Имя бакета на основе типа файла
                 $"{file.Id}", // Используем ID файла как ключ
@@ -384,6 +406,8 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                     _logger.LogError(ex, "Ошибка при загрузке превью для изображения с ID {FileId}", file.Id);
                 }
             }
+
+            s3Duration = s3Timer.Elapsed;
 
             // Обновляем метаданные файла
             file.Etag = etag;
@@ -420,11 +444,27 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         };
         await _hashesStorage.AddHash(fileHashEntity, cancellationToken);
 
+        RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
+
         _logger.LogInformation("Хеш файла сохранен в базу данных");
 
         _logger.LogInformation("Обработка файла {FileId} успешно завершена", file.Id);
 
         return file.Id.ToString();
+    }
+
+    private void RecordUploadTimings(
+        TimeSpan total,
+        TimeSpan buffering,
+        TimeSpan hashing,
+        TimeSpan processing,
+        TimeSpan s3)
+    {
+        _metrics.Set("files_last_upload_total_ms", (long)total.TotalMilliseconds);
+        _metrics.Set("files_last_upload_buffering_ms", (long)buffering.TotalMilliseconds);
+        _metrics.Set("files_last_upload_hashing_ms", (long)hashing.TotalMilliseconds);
+        _metrics.Set("files_last_upload_processing_ms", (long)processing.TotalMilliseconds);
+        _metrics.Set("files_last_upload_s3_ms", (long)s3.TotalMilliseconds);
     }
 
     /// <summary>
