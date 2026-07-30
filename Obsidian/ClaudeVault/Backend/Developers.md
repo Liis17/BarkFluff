@@ -28,7 +28,8 @@ dotnet build Barkfluff.Developers.csproj
 ### Слои
 
 - `Domain/` — `DocumentationSection`, `ProtoMetadata`, `ErrorCodeEntry`
-- `Features/` — MediatR команды/запросы (CQRS):
+- `Features/` — MediatR команды/запросы (CQRS). Каждый request и его `*Handler`
+  находятся в отдельных файлах, как в [[Backend/Identity]]:
   - **Exposed via gRPC** (5 методов): `GetSections`, `GetSectionByKey`, `GetProtoFiles`, `GetProtoFileContent`, `GetErrorCodes`
   - **Внутренние** (используются только `SeedData`/админ-флоу, не в proto): `CreateSection`, `UpdateSection`, `DeleteSection`
 - `Host/` — `DevelopersApiService` (gRPC)
