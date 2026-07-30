@@ -94,6 +94,14 @@
     <sys:String x:Key="Messenger_Empty">Выберите чат, чтобы начать переписку</sys:String>
     <sys:String x:Key="Messenger_StatusOffline">Не в сети</sys:String>
     <sys:String x:Key="Messenger_ReplyToMessage">Ответить</sys:String>
+    <sys:String x:Key="Messenger_ReplyingTo">Ответ на сообщение</sys:String>
+    <sys:String x:Key="Messenger_Forward">Переслать</sys:String>
+    <sys:String x:Key="Messenger_ForwardTitle">Переслать сообщение</sys:String>
+    <sys:String x:Key="Messenger_ForwardComment">Комментарий (необязательно)</sys:String>
+    <sys:String x:Key="Messenger_ForwardSend">Переслать</sys:String>
+    <sys:String x:Key="Messenger_ForwardSelected">Выбрано:</sys:String>
+    <sys:String x:Key="Messenger_ForwardNoneSelected">Не выбрано чатов</sys:String>
+    <sys:String x:Key="Messenger_Attachment">Вложение</sys:String>
     <sys:String x:Key="Messenger_CopyText">Копировать текст</sys:String>
     <sys:String x:Key="Messenger_CopyImage">Копировать изображение</sys:String>
     <sys:String x:Key="Messenger_Pin">Закрепить</sys:String>
