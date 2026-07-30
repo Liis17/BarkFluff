@@ -736,6 +736,7 @@ class ChatActivity : AppCompatActivity() {
                 val item = messageAdapter.getMessageAt(position) ?: return@ReplySwipeCallback
                 setPendingReply(item)
             }
+            addOnItemTouchListener(com.barkfluff.client.adapter.ReplySwipeTableTouchGate(swipeCallback))
             androidx.recyclerview.widget.ItemTouchHelper(swipeCallback).attachToRecyclerView(this)
 
             // Обработчик скролла для пагинации и кнопки "вниз"
