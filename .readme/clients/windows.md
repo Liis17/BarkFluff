@@ -1,6 +1,22 @@
 [← Documentation hub](../README.md)
 
-# Windows
+<p align="center">
+  <img src="../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Windows</h1>
+
+<p align="center">
+  <strong>Build the primary WPF client for the BarkFluff platform.</strong>
+</p>
+
+<p align="center">
+  <a href="../../README.md">Overview</a> ·
+  <a href="#requirements">Requirements</a> ·
+  <a href="#build">Build</a>
+</p>
+
+---
 
 The primary Windows client is a WPF application targeting `net10.0-windows10.0.26100.0` on x64.
 
