@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 using BarkFluff.Calls.Domain;
 using BarkFluff.Calls.Persistence;
-using BarkFluff.Calls.Services;
+using BarkFluff.Calls.Features.CallLifecycle;
 using BarkFluff.Calls.Settings;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
@@ -22,7 +22,7 @@ namespace BarkFluff.Calls.Tests;
 
 /// <summary>
 /// Общие фабрики для тестов Calls: in-memory CDR, UserContext из claims, готовый
-/// <see cref="CallsService"/> с реальными store/subscriptions и замоканной периферией.
+/// <see cref="CallLifecycleHandler"/> с реальными store/subscriptions и замоканной периферией.
 /// </summary>
 public static class TestHelper
 {
@@ -55,7 +55,7 @@ public static class TestHelper
         return new UserContext(accessor.Object);
     }
 
-    public static CallsService CreateService(
+    public static CallLifecycleHandler CreateService(
         CallsContext db,
         long actingUserId,
         CallEventSubscriptionsManager subscriptions,
@@ -70,7 +70,7 @@ public static class TestHelper
             ApiSecret = "0123456789abcdef0123456789abcdef", // ≥32 байта — требование подписи токена
         };
 
-        return new CallsService(
+        return new CallLifecycleHandler(
             db,
             new LiveKitTokenService(settings),
             new LocalCallEventDispatcher(subscriptions),
@@ -79,7 +79,7 @@ public static class TestHelper
             Mock.Of<IPublishEndpoint>(),
             CreateUserContext(actingUserId, deviceId),
             new MetricsCollector(),
-            NullLogger<CallsService>.Instance);
+            NullLogger<CallLifecycleHandler>.Instance);
     }
 
     public static CallSession AddDirectCall(CallsContext db, long caller, long callee, CallStatus status)
@@ -104,7 +104,7 @@ public static class TestHelper
 
 /// <summary>
 /// Тестовый диспетчер: доставляет события напрямую в локальный менеджер (без RabbitMQ),
-/// чтобы тесты проверяли доменную логику CallsService (кому какое событие), а не транспорт.
+/// чтобы тесты проверяли доменную логику CallLifecycleHandler (кому какое событие), а не транспорт.
 /// </summary>
 public sealed class LocalCallEventDispatcher(CallEventSubscriptionsManager subscriptions) : ICallEventDispatcher
 {

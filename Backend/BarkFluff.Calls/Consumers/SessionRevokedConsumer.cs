@@ -39,7 +39,7 @@ public class SessionRevokedConsumer(
     }
 
     /// <summary>
-    /// LiveKit identity — всегда userId (без device-scope, см. CallsService.CreateToken),
+    /// LiveKit identity — всегда userId (без device-scope, см. CallLifecycleHandler.CreateToken),
     /// поэтому отзыв одной сессии кикает пользователя из звонка независимо от устройства.
     /// Групповые комнаты не хранят список участников в БД, поэтому пробуем удалить из всех
     /// активных групповых комнат — RemoveParticipant на отсутствующем участнике не считается ошибкой.
