@@ -1,6 +1,6 @@
 using BarkFluff.Federation.Domain.Entities;
 using BarkFluff.Federation.Domain.Enums;
-using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Features.FederationS2SApi;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
@@ -51,7 +51,7 @@ public class SubscribePresenceS2STests
     }
 
     private sealed record Harness(
-        FederationS2SApiService Service,
+        FederationS2SApiHandler Service,
         FederationContext Context,
         Mock<MessagesServerApi.MessagesServerApiClient> Messages,
         Mock<UsersServerApi.UsersServerApiClient> Users,
@@ -77,7 +77,7 @@ public class SubscribePresenceS2STests
         var users = new Mock<UsersServerApi.UsersServerApiClient>();
         var onliner = new Mock<OnlinerServerApi.OnlinerServerApiClient>();
 
-        var service = new FederationS2SApiService(
+        var service = new FederationS2SApiHandler(
             configuration,
             TestHelpers.CreateSigningKeyService(context, configuration),
             users.Object,
@@ -93,7 +93,7 @@ public class SubscribePresenceS2STests
             new TypingValidationCache(new PresenceOptions(configuration)),
             new MetricsCollector(),
             new FakeChatCreatedQuotaLimiter(),
-            NullLogger<FederationS2SApiService>.Instance);
+            NullLogger<FederationS2SApiHandler>.Instance);
 
         return new Harness(service, context, messages, users, onliner, registry);
     }

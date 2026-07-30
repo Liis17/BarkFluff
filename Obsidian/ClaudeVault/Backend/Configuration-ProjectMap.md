@@ -40,9 +40,14 @@
 
 | Файл | Описание |
 |------|----------|
-| `Infrastructure/ConfigurationContext.cs` | EF Core `DbContext`. Один `DbSet<ConfigurationItem> Configurations`. Минималистичный контекст без флюентной конфигурации. |
-| `Infrastructure/ConfigurationStorage.cs` | Репозиторий для работы с БД. **Конфигурации:** `GetConfiguration(serviceId)` — загружает записи для конкретного ServiceId + Unknown, приоритет отдаётся конкретному сервису на уровне хендлера. `UpdateConfigurationAsync` — upsert по Section+Key+ServiceId. **Reserved Names:** хранит список зарезервированных юзернеймов как одну строку CSV (`Section="ReservedNames"`, `Key="Usernames"`). CRUD: `GetReservedNamesAsync`, `AddReservedNameAsync`, `UpdateReservedNameAsync`, `DeleteReservedNameAsync`. Имена нормализуются в lowercase. |
 | `Infrastructure/ConfigurationDefaultsPopulator.cs` | Авто-заполнение пустых конфигураций при старте. Ищет записи с `Value == ""` и подставляет дефолты. Генерирует `JwtSettings:SecretKey` (64-символьный random). Генерирует JWT-сервисные токены (TTL 10 лет) для межсервисного взаимодействия. Поддерживаемые секции: `RunSettings` (Port, Http1Port), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls). Словари: `ContainerNames`, `DefaultPorts`, `SubdomainNames`, `DatabaseNames`. |
+
+## Persistence
+
+| Файл | Описание |
+|------|----------|
+| `Persistence/Contexts/ConfigurationContext.cs` | EF Core `DbContext`. Один `DbSet<ConfigurationItem> Configurations`. |
+| `Persistence/Services/ConfigurationStorage.cs` | Репозиторий БД: конфигурации и CSV-список зарезервированных имён. |
 
 ---
 

@@ -1,4 +1,4 @@
-using BarkFluff.Configuration.Infrastructure;
+using BarkFluff.Configuration.Persistence;
 using BarkFluff.Proto.Configuration;
 
 using Google.Protobuf.WellKnownTypes;

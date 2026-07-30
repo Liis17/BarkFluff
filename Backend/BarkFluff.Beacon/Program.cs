@@ -1,4 +1,5 @@
 using BarkFluff.Beacon.Configurations;
+using BarkFluff.Beacon.BackgroundServices;
 using BarkFluff.Beacon.Host;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
@@ -56,7 +57,7 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["ConfigurationServiceAddr"]);
         });
-        builder.Services.AddHostedService<BarkFluff.Beacon.Features.RegisterServer.ServerRegistrationService>();
+        builder.Services.AddHostedService<ServerRegistrationService>();
 
         var app = builder.Build();
 

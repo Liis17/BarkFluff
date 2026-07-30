@@ -1,6 +1,6 @@
 using BarkFluff.Federation.Domain.Entities;
 using BarkFluff.Federation.Domain.Enums;
-using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Features.FederationS2SApi;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
@@ -29,7 +29,7 @@ public class DeliverTypingS2STests
     private static readonly string ChatId = Guid.NewGuid().ToString();
 
     private sealed record Harness(
-        FederationS2SApiService Service,
+        FederationS2SApiHandler Service,
         FederationContext Context,
         Mock<MessagesServerApi.MessagesServerApiClient> Messages,
         Mock<UsersServerApi.UsersServerApiClient> Users,
@@ -52,7 +52,7 @@ public class DeliverTypingS2STests
                 It.IsAny<InjectRemoteTypingRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(TestHelpers.UnaryCall(new InjectRemoteTypingResponse()));
 
-        var service = new FederationS2SApiService(
+        var service = new FederationS2SApiHandler(
             configuration,
             TestHelpers.CreateSigningKeyService(context, configuration),
             users.Object,
@@ -68,7 +68,7 @@ public class DeliverTypingS2STests
             new TypingValidationCache(options),
             new MetricsCollector(),
             new FakeChatCreatedQuotaLimiter(),
-            NullLogger<FederationS2SApiService>.Instance);
+            NullLogger<FederationS2SApiHandler>.Instance);
 
         return new Harness(service, context, messages, users, onliner);
     }

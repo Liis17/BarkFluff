@@ -12,6 +12,7 @@ public class MetricsCollector
     private readonly ConcurrentDictionary<string, long> _bufferedCounters = new();
     private readonly ConcurrentDictionary<string, long> _gauges = new();
     private readonly ConcurrentDictionary<string, long> _changedGauges = new();
+    private readonly object _gaugesLock = new();
     private readonly Channel<MetricsSnapshot> _immediateSnapshots = Channel.CreateUnbounded<MetricsSnapshot>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
     private readonly MetricsExportProfile _profile;
@@ -54,10 +55,25 @@ public class MetricsCollector
     /// </summary>
     public void Set(string metricName, long value)
     {
-        if (!_gauges.TryGetValue(metricName, out var oldValue) || oldValue != value)
+        SetMany(new KeyValuePair<string, long>(metricName, value));
+    }
+
+    /// <summary>
+    /// Атомарно устанавливает связанные показатели, чтобы экспорт не смешивал значения
+    /// разных операций в одном снимке.
+    /// </summary>
+    public void SetMany(params KeyValuePair<string, long>[] gauges)
+    {
+        lock (_gaugesLock)
         {
-            _gauges[metricName] = value;
-            _changedGauges[metricName] = value;
+            foreach (var (metricName, value) in gauges)
+            {
+                if (!_gauges.TryGetValue(metricName, out var oldValue) || oldValue != value)
+                {
+                    _gauges[metricName] = value;
+                    _changedGauges[metricName] = value;
+                }
+            }
         }
     }
 
@@ -87,7 +103,9 @@ public class MetricsCollector
     public MetricsSnapshot SnapshotAndResetDetailed(out bool hadCounterActivity)
     {
         var counters = new Dictionary<string, long>();
-        var gauges = new Dictionary<string, long>(_gauges);
+        Dictionary<string, long> gauges;
+        lock (_gaugesLock)
+            gauges = new Dictionary<string, long>(_gauges);
         hadCounterActivity = false;
 
         foreach (var key in _bufferedCounters.Keys)
@@ -117,10 +135,13 @@ public class MetricsCollector
             if (value != 0) counters[key] = value;
         }
 
-        foreach (var key in _changedGauges.Keys)
+        lock (_gaugesLock)
         {
-            if (_changedGauges.TryRemove(key, out var value))
-                gauges[key] = value;
+            foreach (var key in _changedGauges.Keys)
+            {
+                if (_changedGauges.TryRemove(key, out var value))
+                    gauges[key] = value;
+            }
         }
 
         return new MetricsSnapshot(counters, gauges);

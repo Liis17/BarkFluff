@@ -1,4 +1,5 @@
 using BarkFluff.Configuration.Domain;
+using BarkFluff.Configuration.Persistence;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
 

@@ -1,6 +1,6 @@
 using BarkFluff.Calls.Domain;
 using BarkFluff.Calls.Persistence;
-using BarkFluff.Calls.Services;
+using BarkFluff.Calls.Features.CallLifecycle;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +8,7 @@ namespace BarkFluff.Calls.BackgroundServices;
 
 /// <summary>
 /// Durable-детектор таймаута ринга: периодически находит звонки в статусе Ringing старше
-/// <see cref="RingTimeout"/> и помечает их пропущенными через <see cref="CallsService.TimeoutAsync"/>.
+/// <see cref="RingTimeout"/> и помечает их пропущенными через <see cref="CallLifecycleHandler.TimeoutAsync"/>.
 /// Атомарный захват в TimeoutAsync делает обработку ровно-однократной при нескольких инстансах,
 /// а опрос БД (вместо in-memory таймера) переживает перезапуск инстанса и не требует плагина
 /// RabbitMQ delayed-exchange (см. docs/scaling/calls.md).
@@ -46,7 +46,7 @@ public class CallRingTimeoutSweeper(IServiceScopeFactory scopeFactory, ILogger<C
 
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CallsContext>();
-        var calls = scope.ServiceProvider.GetRequiredService<CallsService>();
+        var calls = scope.ServiceProvider.GetRequiredService<CallLifecycleHandler>();
 
         var expired = await db.CallSessions.AsNoTracking()
             .Where(c => c.Status == CallStatus.Ringing && c.StartedAt < cutoff)

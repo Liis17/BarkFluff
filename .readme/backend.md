@@ -1,6 +1,23 @@
 [← Documentation hub](README.md)
 
-# Backend: run and build
+<p align="center">
+  <img src="../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Backend</h1>
+
+<p align="center">
+  <strong>Run the distributed .NET platform locally or build an individual service from source.</strong>
+</p>
+
+<p align="center">
+  <a href="../README.md">Overview</a> ·
+  <a href="#start-the-container-stack">Run</a> ·
+  <a href="#build-from-source">Build</a> ·
+  <a href="#useful-references">Reference</a>
+</p>
+
+---
 
 ## Prerequisites
 

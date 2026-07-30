@@ -63,4 +63,22 @@ public class MetricsCollectorTests
 
         collector.TakeBufferedSnapshot().Gauges.Should().BeEmpty();
     }
+
+    [Fact]
+    public void SetMany_PublishesRelatedGaugesInOneSnapshot()
+    {
+        var collector = new MetricsCollector();
+
+        collector.SetMany(
+            new("upload_buffering_ms", 5),
+            new("upload_hashing_ms", 7),
+            new("upload_s3_ms", 11));
+
+        collector.TakeBufferedSnapshot().Gauges.Should().BeEquivalentTo(new Dictionary<string, long>
+        {
+            ["upload_buffering_ms"] = 5,
+            ["upload_hashing_ms"] = 7,
+            ["upload_s3_ms"] = 11
+        });
+    }
 }
