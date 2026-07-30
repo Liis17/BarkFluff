@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Кисти-синглтоны: ApplicationThemeService переписывает им Color при смене темы.
+        Значения здесь — стартовые, из светлой палитры.
+    -->
+    <SolidColorBrush x:Key="OnboardingWindowBackgroundBrush" Color="#FFF6F7FB" />
+    <SolidColorBrush x:Key="OnboardingAccentSurfaceBrush" Color="#E6F1FF" />
+    <SolidColorBrush x:Key="OnboardingSubtleSurfaceBrush" Color="#F5F7FB" />
+    <SolidColorBrush x:Key="MessengerModalScrimBrush" Color="#99000000" />
+    <SolidColorBrush x:Key="MessageMediaTimestampBrush" Color="#99000000" />
+    <SolidColorBrush x:Key="MessageMediaTimestampTextBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="ChatUnreadBadgeTextBrush" Color="#FFFFFFFF" />
+</ResourceDictionary>
