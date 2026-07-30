@@ -15,7 +15,7 @@ if ! diff <(grep -o 'x:Key="[^"]*"' "$en" | sort) <(grep -o 'x:Key="[^"]*"' "$ru
 fi
 
 # Строковые ключи узнаются по префиксу экрана; кисти и стили сюда не попадают.
-prefixes='App_|Settings_|Tray_|Welcome_|SelectNode_|ConnectedNode_|Login_|FastAuth_|Registration_|Recovery_|Messenger_|Common_|Error_'
+prefixes='App_|Settings_|Tray_|Welcome_|SelectNode_|ConnectedNode_|Login_|FastAuth_|Registration_|PasswordRecovery_|Messenger_|Common_|Error_'
 missing=$(grep -rhoE "\{StaticResource ($prefixes)[A-Za-z0-9_]*\}" --include='*.xaml' . \
     | sed -E 's/\{StaticResource (.*)\}/\1/' | sort -u \
     | while read -r key; do

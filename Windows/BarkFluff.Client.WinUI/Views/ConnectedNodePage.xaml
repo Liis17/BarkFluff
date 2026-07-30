@@ -2,5 +2,61 @@
     x:Class="BarkFluff.Client.WinUI.Views.ConnectedNodePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid />
+    <Grid Margin="40,24,40,40">
+        <Border Width="580"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Style="{StaticResource OnboardingCard}">
+            <StackPanel>
+                <Border Width="52"
+                        Height="52"
+                        HorizontalAlignment="Left"
+                        Background="{StaticResource OnboardingAccentSurfaceBrush}"
+                        CornerRadius="16">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="24"
+                               FontWeight="SemiBold"
+                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                               Text="&#x2713;" />
+                </Border>
+                <TextBlock Margin="0,22,0,0"
+                           Style="{StaticResource OnboardingTitle}"
+                           Text="{StaticResource ConnectedNode_Title}" />
+                <TextBlock Margin="0,10,0,0"
+                           Style="{StaticResource OnboardingDescription}"
+                           Text="{StaticResource ConnectedNode_Subtitle}" />
+                <Border Margin="0,24,0,0"
+                        Padding="18"
+                        Background="{StaticResource OnboardingSubtleSurfaceBrush}"
+                        CornerRadius="12">
+                    <StackPanel>
+                        <Border HorizontalAlignment="Left" Style="{StaticResource StatusPill}">
+                            <TextBlock FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                       Text="{StaticResource ConnectedNode_Status}" />
+                        </Border>
+                        <TextBlock Margin="0,14,0,0"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Text="{x:Bind ViewModel.Node.Name, Mode=OneWay}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Style="{StaticResource MutedText}"
+                                   Text="{x:Bind ViewModel.Node.Description, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,10,0,0"
+                                   FontFamily="Cascadia Mono"
+                                   FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind ViewModel.Node.BeaconAddress, Mode=OneWay}" />
+                    </StackPanel>
+                </Border>
+                <Button Margin="0,24,0,0"
+                        HorizontalAlignment="Left"
+                        Command="{x:Bind ViewModel.ChooseAnotherNodeCommand}"
+                        Content="{StaticResource ConnectedNode_ChooseAnother}" />
+            </StackPanel>
+        </Border>
+    </Grid>
 </Page>

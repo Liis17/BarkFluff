@@ -1,3 +1,5 @@
+using BarkFluff.Client.Core.ViewModels;
+
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -7,9 +9,12 @@ public sealed partial class PasswordRecoveryPage : Page
 {
     public PasswordRecoveryPage() => InitializeComponent();
 
+    public PasswordRecoveryViewModel ViewModel { get; private set; } = null!;
+
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        DataContext = e.Parameter;
+        ViewModel = (PasswordRecoveryViewModel)e.Parameter;
+        Bindings.Update();
     }
 }

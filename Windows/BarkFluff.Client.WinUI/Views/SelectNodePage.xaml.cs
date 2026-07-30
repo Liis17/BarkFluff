@@ -1,3 +1,5 @@
+using BarkFluff.Client.Core.ViewModels;
+
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -7,9 +9,12 @@ public sealed partial class SelectNodePage : Page
 {
     public SelectNodePage() => InitializeComponent();
 
+    public SelectNodeViewModel ViewModel { get; private set; } = null!;
+
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        DataContext = e.Parameter;
+        ViewModel = (SelectNodeViewModel)e.Parameter;
+        Bindings.Update();
     }
 }
