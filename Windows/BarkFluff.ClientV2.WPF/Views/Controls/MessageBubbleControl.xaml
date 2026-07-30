@@ -23,7 +23,8 @@
         <Border x:Name="Bubble"
                 MaxWidth="520"
                 CornerRadius="12"
-                ClipToBounds="True">
+                ClipToBounds="True"
+                ContextMenuService.IsEnabled="{Binding CanUseActions}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Padding" Value="12,8" />
@@ -39,9 +40,50 @@
                 </Style>
             </Border.Style>
             <Border.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="{DynamicResource Messenger_CopyMessage}" />
-                    <MenuItem Header="{DynamicResource Messenger_ReplyToMessage}" />
+                <!--  ContextMenu живёт вне визуального дерева, поэтому контекст берём с PlacementTarget.  -->
+                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                    <MenuItem Command="{Binding Owner.CopyMessageTextCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_CopyText}"
+                              Visibility="{Binding CanCopyText, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Copy16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.CopyMessageImageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_CopyImage}"
+                              Visibility="{Binding CanCopyImage, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Image16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.TogglePinMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{Binding PinMenuHeader}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Pin16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.StartEditMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_Edit}"
+                              Visibility="{Binding CanModify, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Edit16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.RequestDeleteMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                              Header="{DynamicResource Messenger_Delete}"
+                              Visibility="{Binding CanModify, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14"
+                                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                           Symbol="Delete16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
                 </ContextMenu>
             </Border.ContextMenu>
             <Grid>
@@ -140,6 +182,11 @@
                     <StackPanel HorizontalAlignment="Right"
                                 Orientation="Horizontal"
                                 Visibility="{Binding HasMetadataBelowMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Margin="0,5,6,0"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="{DynamicResource Messenger_Edited}"
+                                   Visibility="{Binding IsEdited, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         <TextBlock Margin="0,5,0,0"
                                    FontSize="11"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
