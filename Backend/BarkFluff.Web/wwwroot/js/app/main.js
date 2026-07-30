@@ -453,12 +453,7 @@
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
-                pendingUploads.forEach(function (entry) {
-                    if (entry.settled || String(entry.chatId) !== String(chatId)) return;
-                    var serverMessage = messages.find(function (msg) { return pendingUploadMatches(entry, msg); });
-                    if (serverMessage) reconcilePendingUpload(chatId, serverMessage, entry);
-                    else messages.push(entry.localMessage);
-                });
+                mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
                 renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
@@ -591,6 +586,12 @@
         entry.previewUrls = [];
     }
 
+    function findMessageGroup(messageId) {
+        return Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
+            return String(node.dataset.msgId) === String(messageId);
+        });
+    }
+
     function removePendingUpload(entry) {
         if (!entry || entry.settled) return;
         entry.settled = true;
@@ -601,9 +602,7 @@
         if (idx >= 0) messages.splice(idx, 1);
         knownMessageIds.delete(entry.localId);
 
-        var el = Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
-            return String(node.dataset.msgId) === String(entry.localId);
-        });
+        var el = findMessageGroup(entry.localId);
         if (el) el.remove();
     }
 
@@ -623,6 +622,20 @@
             pendingIds.every(function (id, index) { return id === serverIds[index]; });
     }
 
+    function mergePendingUploadsIntoMessages(chatId) {
+        pendingUploads.forEach(function (entry) {
+            if (entry.settled || String(entry.chatId) !== String(chatId)) return;
+            var serverMessage = messages.find(function (msg) { return pendingUploadMatches(entry, msg); });
+            if (serverMessage) {
+                entry.settled = true;
+                pendingUploads.delete(entry.localId);
+                releasePendingPreviews(entry);
+            } else {
+                messages.push(entry.localMessage);
+            }
+        });
+    }
+
     function findPendingUpload(chatId, msg) {
         if (!msg || msg.senderId !== myUserId) return null;
 
@@ -635,9 +648,7 @@
     }
 
     function replacePendingElement(entry, msg) {
-        var oldEl = Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
-            return String(node.dataset.msgId) === String(entry.localId);
-        });
+        var oldEl = findMessageGroup(entry.localId);
         if (!oldEl) { releasePendingPreviews(entry); return; }
 
         buildMessageViewElement(msg).then(function (newEl) {
@@ -677,9 +688,7 @@
         if (localIdx >= 0 && serverIdx < 0) {
             replacePendingElement(entry, msg);
         } else {
-            var oldEl = Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
-                return String(node.dataset.msgId) === String(entry.localId);
-            });
+            var oldEl = findMessageGroup(entry.localId);
             if (oldEl) oldEl.remove();
             releasePendingPreviews(entry);
             if (serverIdx < 0) appendMessageToView(msg).then(function () {
@@ -846,15 +855,15 @@
 
         var uploadChain = files.reduce(function (chain, file, index) {
             return chain.then(function (ids) {
-                var t = BF.files.getUploadFileType(file.type, asDocuments, file.name);
-                return BF.files.uploadFile(file, t, function (progress) {
+                var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
+                return BF.files.uploadFile(file, uploadType, function (progress) {
                     localAttachments[index].uploadProgress = progress;
                     BF.messages.updateAttachmentProgress(localId, index, progress);
                 })
-                    .then(function (fid) {
-                        localAttachments[index].fileId = fid;
-                        pendingEntry.fileIds.push(fid);
-                        ids.push(fid);
+                    .then(function (fileId) {
+                        localAttachments[index].fileId = fileId;
+                        pendingEntry.fileIds.push(fileId);
+                        ids.push(fileId);
                         return ids;
                     });
             });
@@ -1553,12 +1562,16 @@
 
             // Новые сообщения не в хвосте (окно прыгало через scrollToMessage, или своё
             // сообщение ушло раньше resync-дебаунса) — точечно не вставить, полный render.
-            var maxCurId = messages.length > 0
-                ? Math.max.apply(null, messages.map(function (m) { return Number(m.id); }))
+            var numericMessageIds = messages
+                .map(function (m) { return Number(m.id); })
+                .filter(Number.isFinite);
+            var maxCurId = numericMessageIds.length > 0
+                ? Math.max.apply(null, numericMessageIds)
                 : -Infinity;
-            var tailOnly = messages.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            var tailOnly = numericMessageIds.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
             if (!tailOnly) {
                 messages = fetched;
+                mergePendingUploadsIntoMessages(chatId);
                 renderMessages().then(function () {
                     if (wasAtBottom) scrollToBottom();
                 });
