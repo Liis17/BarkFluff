@@ -31,10 +31,58 @@
             </Grid>
         </Grid>
         <Grid Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" Margin="0,0,16,16">
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+
+            <!--  Плашка закреплённого: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
+            <Border Grid.Row="1"
+                    Margin="16,0,16,8"
+                    Padding="10,6"
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Visibility="{Binding HasPinnedMessages, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="2"
+                            Margin="0,0,8,0"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                            CornerRadius="1" />
+                    <TextBlock Grid.Column="1"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding PinnedPreview.Counter}"
+                               Visibility="{Binding PinnedPreview.HasCounter, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <StackPanel Grid.Column="2" Cursor="Hand">
+                        <StackPanel.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding CyclePinnedMessageCommand}" />
+                        </StackPanel.InputBindings>
+                        <TextBlock FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding PinnedPreview.Author}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="12"
+                                   Opacity=".8"
+                                   Text="{Binding PinnedPreview.Preview}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="3"
+                               Margin="8,0,0,0"
+                               Appearance="Secondary"
+                               Command="{Binding UnpinFromBarCommand}"
+                               Content="✕"
+                               ToolTip="{DynamicResource Messenger_Unpin}" />
+                </Grid>
+            </Border>
             <StackPanel Margin="20,16" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}"><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SelectedChat.Title}" /><TextBlock Opacity=".7" Text="{DynamicResource Messenger_StatusOffline}" /></StackPanel>
             <!--  VerticalAlignment="Bottom" на содержимом ScrollViewer прижимает короткую переписку к нижней кромке.  -->
-            <ScrollViewer Grid.Row="1"
+            <ScrollViewer Grid.Row="2"
                           Margin="0,0,4,0"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
@@ -51,7 +99,7 @@
             </ScrollViewer>
             <!--  Одна панель на два режима: пока активна правка, кнопка отправки применяет правку,
                   а в режиме ответа отправляет сообщение со ссылкой на оригинал.  -->
-            <Border Grid.Row="2"
+            <Border Grid.Row="3"
                     Margin="16,0"
                     Padding="10,8"
                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
@@ -75,13 +123,13 @@
                                Content="✕" />
                 </Grid>
             </Border>
-            <TextBlock Grid.Row="3"
+            <TextBlock Grid.Row="4"
                        Margin="16,6,16,0"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        Text="{Binding ActionError}"
                        TextWrapping="Wrap"
                        Visibility="{Binding ActionError, Converter={StaticResource StringToVisibilityConverter}}" />
-            <Grid Grid.Row="4" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
+            <Grid Grid.Row="5" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}" />
         </Grid>
         <Border Panel.ZIndex="12"

@@ -106,6 +106,7 @@
     <sys:String x:Key="Messenger_CopyImage">Копировать изображение</sys:String>
     <sys:String x:Key="Messenger_Pin">Закрепить</sys:String>
     <sys:String x:Key="Messenger_Unpin">Открепить</sys:String>
+    <sys:String x:Key="Messenger_PinnedLabel">Закреплённое</sys:String>
     <sys:String x:Key="Messenger_Edit">Изменить</sys:String>
     <sys:String x:Key="Messenger_Delete">Удалить</sys:String>
     <sys:String x:Key="Messenger_Cancel">Отмена</sys:String>
