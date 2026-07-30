@@ -1,5 +1,7 @@
 using BarkFluff.Federation.BackgroundServices;
 using BarkFluff.Federation.Consumers;
+using BarkFluff.Federation.Features.FederationInternalApi;
+using BarkFluff.Federation.Features.FederationS2SApi;
 using BarkFluff.Federation.Host;
 using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Persistence.Contexts;
@@ -70,6 +72,9 @@ public class Program
                 npgsql.EnableRetryOnFailure(3);
                 npgsql.CommandTimeout(30);
             }));
+
+        builder.Services.AddScoped<FederationInternalApiHandler>();
+        builder.Services.AddScoped<FederationS2SApiHandler>();
 
         builder.Services.AddScoped<SigningKeyService>();
         builder.Services.AddSingleton<WellKnownDocumentService>();
