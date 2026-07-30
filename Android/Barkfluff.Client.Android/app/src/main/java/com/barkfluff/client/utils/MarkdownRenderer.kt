@@ -1,6 +1,7 @@
 package com.barkfluff.client.utils
 
 import android.content.res.Resources
+import android.graphics.drawable.GradientDrawable
 import android.graphics.Typeface
 import android.text.Spannable
 import android.text.SpannableStringBuilder
@@ -18,7 +19,15 @@ import android.text.style.StyleSpan
 import android.text.style.TypefaceSpan
 import android.text.style.URLSpan
 import android.util.Patterns
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
+import android.widget.TableLayout
+import android.widget.TableRow
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 
@@ -30,7 +39,8 @@ import androidx.core.graphics.ColorUtils
  * горизонтальные линии, блоки кода + inline (**bold**, *italic*, ~~strike~~,
  * `code`, [текст](url)) и автолинковка «голых» URL.
  *
- * Вложенные списки, таблицы и HTML не поддерживаются (вне «базового» набора).
+ * Вложенные списки и HTML не поддерживаются. GFM-таблицы поддерживаются только
+ * в bubble сообщений через [renderMessageInto], где для них нужна отдельная View-иерархия.
  */
 object MarkdownRenderer {
 
@@ -46,6 +56,7 @@ object MarkdownRenderer {
     private val ITALIC_STAR = Regex("\\*([^*]+?)\\*")
     private val ITALIC_UNDER = Regex("(?<!\\w)_([^_]+?)_(?!\\w)")
     private val LINK = Regex("\\[([^\\]]+)\\]\\(([^)\\s]+)\\)")
+    private val TABLE_DELIMITER_CELL = Regex("^:?-+:?$")
 
     private val density = Resources.getSystem().displayMetrics.density
     private fun dp(v: Float) = (v * density).toInt()
@@ -63,6 +74,41 @@ object MarkdownRenderer {
         val hasLink = sb.getSpans(0, sb.length, URLSpan::class.java).isNotEmpty()
         textView.movementMethod = if (hasLink) LinkOnlyMovementMethod else null
         textView.text = sb
+    }
+
+    /**
+     * Рендерит текст сообщения в bubble. Таблицы получают собственную сетку с прокруткой,
+     * обычные блоки остаются [TextView] со всеми прежними Spannable-стилями.
+     */
+    fun renderMessageInto(container: LinearLayout, template: TextView, source: String) {
+        val blocks = splitMessageBlocks(source)
+        container.removeAllViews()
+
+        if (blocks.none { it is MessageBlock.Table }) {
+            container.addView(template)
+            applyTo(template, source)
+            template.visibility = TextView.VISIBLE
+            return
+        }
+
+        template.text = ""
+        template.visibility = TextView.GONE
+        blocks.forEach { block ->
+            when (block) {
+                is MessageBlock.Text -> {
+                    if (block.source.isNotEmpty()) container.addView(createTextBlock(template, block.source))
+                }
+                is MessageBlock.Table -> container.addView(createTableBlock(template, block.table))
+            }
+        }
+    }
+
+    /** Сбрасывает динамические блоки при переиспользовании ViewHolder для нетекстового сообщения. */
+    fun clearMessageContent(container: LinearLayout, template: TextView) {
+        container.removeAllViews()
+        template.text = ""
+        template.visibility = TextView.GONE
+        container.addView(template)
     }
 
     /** Убирает markdown-разметку в чистый однострочный текст для превью. */
@@ -164,6 +210,176 @@ object MarkdownRenderer {
         return out
     }
 
+    private fun splitMessageBlocks(source: String): List<MessageBlock> {
+        val lines = source.split("\n")
+        val blocks = mutableListOf<MessageBlock>()
+        var textStart = 0
+        var index = 0
+        var inCodeBlock = false
+
+        while (index < lines.size) {
+            if (lines[index].trimStart().startsWith("```")) {
+                inCodeBlock = !inCodeBlock
+                index++
+                continue
+            }
+
+            val table = if (!inCodeBlock) parseTable(lines, index) else null
+            if (table == null) {
+                index++
+                continue
+            }
+
+            if (index > textStart) blocks += MessageBlock.Text(lines.subList(textStart, index).joinToString("\n"))
+            blocks += MessageBlock.Table(table.table)
+            index = table.endIndex
+            textStart = index
+        }
+
+        if (textStart < lines.size) blocks += MessageBlock.Text(lines.subList(textStart, lines.size).joinToString("\n"))
+        return blocks.ifEmpty { listOf(MessageBlock.Text(source)) }
+    }
+
+    private fun parseTable(lines: List<String>, start: Int): ParsedTable? {
+        if (start + 1 >= lines.size) return null
+        val header = splitTableRow(lines[start])
+        val delimiter = splitTableRow(lines[start + 1])
+        if (!lines[start].contains('|') || header.isEmpty() || header.size != delimiter.size ||
+            delimiter.any { !TABLE_DELIMITER_CELL.matches(it.trim()) }) return null
+
+        val alignments = delimiter.map { cell ->
+            val value = cell.trim()
+            when {
+                value.startsWith(":") && value.endsWith(":") -> TableAlignment.CENTER
+                value.endsWith(":") -> TableAlignment.END
+                else -> TableAlignment.START
+            }
+        }
+        val rows = mutableListOf<List<String>>()
+        var end = start + 2
+        while (end < lines.size && lines[end].contains('|')) {
+            rows += normalizeTableRow(splitTableRow(lines[end]), header.size)
+            end++
+        }
+        return ParsedTable(MarkdownTable(header, alignments, rows), end)
+    }
+
+    private fun splitTableRow(line: String): List<String> {
+        val cells = mutableListOf<String>()
+        val current = StringBuilder()
+        var inCode = false
+        var index = 0
+        while (index < line.length) {
+            val ch = line[index]
+            when {
+                ch == '\\' && line.getOrNull(index + 1) == '|' -> {
+                    current.append('|')
+                    index++
+                }
+                ch == '`' -> {
+                    inCode = !inCode
+                    current.append(ch)
+                }
+                ch == '|' && !inCode -> {
+                    cells += current.toString().trim()
+                    current.clear()
+                }
+                else -> current.append(ch)
+            }
+            index++
+        }
+        cells += current.toString().trim()
+
+        if (line.trimStart().startsWith("|") && cells.firstOrNull().isNullOrEmpty()) cells.removeAt(0)
+        if (line.trimEnd().endsWith("|") && cells.lastOrNull().isNullOrEmpty()) cells.removeAt(cells.lastIndex)
+        return cells
+    }
+
+    private fun normalizeTableRow(cells: List<String>, width: Int): List<String> =
+        List(width) { cells.getOrElse(it) { "" } }
+
+    private fun createTextBlock(template: TextView, source: String): TextView = TextView(template.context).apply {
+        val original = template.layoutParams as ViewGroup.MarginLayoutParams
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+            it.leftMargin = original.leftMargin
+            it.rightMargin = original.rightMargin
+            it.topMargin = original.topMargin
+            it.bottomMargin = original.bottomMargin
+        }
+        setTextColor(template.currentTextColor)
+        setTextSize(TypedValue.COMPLEX_UNIT_PX, template.textSize)
+        typeface = template.typeface
+        letterSpacing = template.letterSpacing
+        includeFontPadding = template.includeFontPadding
+        gravity = template.gravity
+        setLineSpacing(template.lineSpacingExtra, template.lineSpacingMultiplier)
+        applyTo(this, source)
+    }
+
+    private fun createTableBlock(template: TextView, table: MarkdownTable): HorizontalScrollView {
+        val context = template.context
+        val tableLayout = TableLayout(context).apply {
+            isShrinkAllColumns = false
+            isStretchAllColumns = false
+        }
+        addTableRow(tableLayout, template, table.headers, table.alignments, header = true, rowIndex = 0)
+        table.rows.forEachIndexed { rowIndex, row ->
+            addTableRow(tableLayout, template, row, table.alignments, header = false, rowIndex = rowIndex)
+        }
+
+        tableLayout.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val maxWidth = context.resources.displayMetrics.widthPixels - dp(88f)
+        return HorizontalScrollView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                tableLayout.measuredWidth.coerceAtMost(maxWidth),
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also {
+                it.leftMargin = dp(14f)
+                it.rightMargin = dp(14f)
+                it.topMargin = dp(4f)
+                it.bottomMargin = dp(4f)
+            }
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = false
+            isNestedScrollingEnabled = true
+            addView(tableLayout)
+        }
+    }
+
+    private fun addTableRow(
+        tableLayout: TableLayout,
+        template: TextView,
+        cells: List<String>,
+        alignments: List<TableAlignment>,
+        header: Boolean,
+        rowIndex: Int
+    ) {
+        val baseColor = template.currentTextColor
+        val fillAlpha = if (header) 0x1c else if (rowIndex % 2 == 0) 0x0e else 0x08
+        val row = TableRow(template.context)
+        cells.forEachIndexed { index, value ->
+            val cell = createTextBlock(template, value).apply {
+                layoutParams = TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                setPadding(dp(10f), dp(7f), dp(10f), dp(7f))
+                gravity = when (alignments[index]) {
+                    TableAlignment.START -> Gravity.START
+                    TableAlignment.CENTER -> Gravity.CENTER_HORIZONTAL
+                    TableAlignment.END -> Gravity.END
+                }
+                background = GradientDrawable().apply {
+                    setColor(ColorUtils.setAlphaComponent(baseColor, fillAlpha))
+                    setStroke(dp(1f), ColorUtils.setAlphaComponent(baseColor, 0x33))
+                }
+                if (header) setTypeface(typeface, Typeface.BOLD)
+            }
+            row.addView(cell)
+        }
+        tableLayout.addView(row)
+    }
+
     /** Inline-разбор строки: сначала защищаем inline-код, остальное — через wrap-паттерны. */
     private fun parseInline(text: String, baseColor: Int): SpannableStringBuilder {
         val result = SpannableStringBuilder()
@@ -253,6 +469,20 @@ object MarkdownRenderer {
         3 -> 1.15f
         else -> 1.05f
     }
+
+    private sealed interface MessageBlock {
+        data class Text(val source: String) : MessageBlock
+        data class Table(val table: MarkdownTable) : MessageBlock
+    }
+
+    private data class ParsedTable(val table: MarkdownTable, val endIndex: Int)
+    private data class MarkdownTable(
+        val headers: List<String>,
+        val alignments: List<TableAlignment>,
+        val rows: List<List<String>>
+    )
+
+    private enum class TableAlignment { START, CENTER, END }
 
     /**
      * Перехватывает тап только над ссылкой; остальные тапы отдаёт родителю,
