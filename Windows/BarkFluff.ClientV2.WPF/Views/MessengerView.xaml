@@ -31,7 +31,7 @@
             </Grid>
         </Grid>
         <Grid Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" Margin="0,0,16,16">
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <StackPanel Margin="20,16" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}"><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SelectedChat.Title}" /><TextBlock Opacity=".7" Text="{DynamicResource Messenger_StatusOffline}" /></StackPanel>
             <!--  VerticalAlignment="Bottom" на содержимом ScrollViewer прижимает короткую переписку к нижней кромке.  -->
             <ScrollViewer Grid.Row="1"
@@ -49,9 +49,65 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-            <Grid Grid.Row="2" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
+            <!--  Пока активен режим правки, кнопка отправки применяет правку выбранного сообщения.  -->
+            <Border Grid.Row="2"
+                    Margin="16,0"
+                    Padding="10,8"
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{DynamicResource Messenger_EditingMessage}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="12"
+                                   Opacity=".75"
+                                   Text="{Binding EditingMessage.Text}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="1"
+                               Margin="8,0,0,0"
+                               Appearance="Secondary"
+                               Command="{Binding CancelEditCommand}"
+                               Content="✕" />
+                </Grid>
+            </Border>
+            <TextBlock Grid.Row="3"
+                       Margin="16,6,16,0"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                       Text="{Binding ActionError}"
+                       TextWrapping="Wrap"
+                       Visibility="{Binding ActionError, Converter={StaticResource StringToVisibilityConverter}}" />
+            <Grid Grid.Row="4" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}" />
         </Grid>
+        <Border Panel.ZIndex="11"
+                Background="{DynamicResource MessengerModalScrimBrush}"
+                Visibility="{Binding IsDeleteConfirmVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Width="360"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{DynamicResource Messenger_DeleteConfirmTitle}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Opacity=".75"
+                               TextWrapping="Wrap"
+                               Text="{DynamicResource Messenger_DeleteConfirmText}" />
+                    <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
+                        <ui:Button Appearance="Danger"
+                                   Command="{Binding ConfirmDeleteMessageCommand}"
+                                   Content="{DynamicResource Messenger_Delete}" />
+                        <ui:Button Margin="8,0,0,0"
+                                   Command="{Binding CancelDeleteMessageCommand}"
+                                   Content="{DynamicResource Messenger_Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </ui:Card>
+        </Border>
         <Border Panel.ZIndex="10"
                 Background="{DynamicResource MessengerModalScrimBrush}"
                 Visibility="{Binding IsPrivateUnlockVisible, Converter={StaticResource BooleanToVisibilityConverter}}">

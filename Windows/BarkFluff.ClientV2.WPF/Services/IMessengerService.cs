@@ -2,6 +2,7 @@ using BarkFluff.Proto.Messages;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+using PinnedMessageInfo = BarkFluff.Proto.Shared.PinnedMessageInfo;
 
 namespace BarkFluff.ClientV2.WPF.Services;
 
@@ -13,7 +14,17 @@ public interface IMessengerService
 
     Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default);
 
-    Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, CancellationToken cancellationToken = default);
+    Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long forwardedMessageId = 0, CancellationToken cancellationToken = default);
+
+    Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default);
+
+    Task<ErrorReturner> DeleteMessageAsync(long messageId, CancellationToken cancellationToken = default);
+
+    Task<(ErrorReturner error, PinnedMessageInfo? pinned)> PinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default);
+
+    Task<ErrorReturner> UnpinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default);
+
+    Task<(ErrorReturner error, List<PinnedMessageInfo>? pinned)> GetPinnedMessagesAsync(string chatId, CancellationToken cancellationToken = default);
 
     Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessageAsync(string chatId, string text, byte[] key, CancellationToken cancellationToken = default);
 

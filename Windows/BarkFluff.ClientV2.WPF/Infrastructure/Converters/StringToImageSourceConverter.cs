@@ -7,9 +7,16 @@ namespace BarkFluff.ClientV2.WPF.Infrastructure.Converters;
 
 public sealed class StringToImageSourceConverter : IValueConverter
 {
-    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is string source ? TryCreate(source) : null;
+
+    /// <summary>
+    /// Загружает изображение по адресу. Возвращает null, если адрес пустой, невалидный
+    /// или изображение не удалось загрузить.
+    /// </summary>
+    public static BitmapImage? TryCreate(string source)
     {
-        if (value is not string source || string.IsNullOrWhiteSpace(source) || !Uri.TryCreate(source, UriKind.Absolute, out var uri))
+        if (string.IsNullOrWhiteSpace(source) || !Uri.TryCreate(source, UriKind.Absolute, out var uri))
         {
             return null;
         }

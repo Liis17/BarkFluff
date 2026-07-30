@@ -2,6 +2,7 @@ using BarkFluff.Proto.Messages;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+using PinnedMessageInfo = BarkFluff.Proto.Shared.PinnedMessageInfo;
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 namespace BarkFluff.ClientV2.WPF.Services;
@@ -24,8 +25,26 @@ public sealed class MessengerService : IMessengerService
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.GetChats(parameters));
 
-    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, CancellationToken cancellationToken = default) =>
-        WithParametersAsync(parameters => _webApi.SendMessage(parameters, (false, chatId), new ForwardingLetter { Text = text }));
+    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long forwardedMessageId = 0, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.SendMessage(parameters, (false, chatId), new ForwardingLetter { Text = text, ForwardedMessageId = forwardedMessageId }));
+
+    public Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.EditMessage(parameters, chatId, messageId, text));
+
+    public Task<ErrorReturner> DeleteMessageAsync(long messageId, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.DeleteMessage(parameters, messageId));
+
+    public Task<(ErrorReturner error, PinnedMessageInfo? pinned)> PinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.PinMessage(parameters, chatId, messageId));
+
+    public Task<ErrorReturner> UnpinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.UnpinMessage(parameters, chatId, messageId));
+
+    public async Task<(ErrorReturner error, List<PinnedMessageInfo>? pinned)> GetPinnedMessagesAsync(string chatId, CancellationToken cancellationToken = default)
+    {
+        var result = await WithParametersAsync(parameters => _webApi.ListPinnedMessages(parameters, chatId));
+        return (result.error, result.pinned);
+    }
 
     public Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessageAsync(string chatId, string text, byte[] key, CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.SendPrivateMessage(chatId, text, key, parameters));
