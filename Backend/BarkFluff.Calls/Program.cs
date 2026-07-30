@@ -1,5 +1,6 @@
 using BarkFluff.Calls.BackgroundServices;
 using BarkFluff.Calls.Consumers;
+using BarkFluff.Calls.Features.CallLifecycle;
 using BarkFluff.Calls.Host;
 using BarkFluff.Calls.Persistence;
 using BarkFluff.Calls.Services;
@@ -65,7 +66,7 @@ public class Program
                 .Replace("ws://", "http://", StringComparison.OrdinalIgnoreCase);
             return new RoomServiceClient(httpUrl, settings.ApiKey, settings.ApiSecret);
         });
-        builder.Services.AddScoped<CallsService>();
+        builder.Services.AddScoped<CallLifecycleHandler>();
         // Доставка событий звонка — через RabbitMQ fan-out (корректно при нескольких инстансах).
         builder.Services.AddScoped<ICallEventDispatcher, CallEventDispatcher>();
 
@@ -133,7 +134,7 @@ public class Program
         app.MapPost("/livekit/webhook", async (
             HttpRequest request,
             WebhookReceiver receiver,
-            CallsService calls,
+            CallLifecycleHandler calls,
             ILogger<Program> logger) =>
         {
             using var reader = new StreamReader(request.Body);

@@ -56,21 +56,42 @@
      * Returns the file ID assigned by the server.
      * @param {File} file — browser File object
      * @param {number} uploadFileType — UploadFileType enum value
+     * @param {Function} [onProgress] — function(percent) for bytes sent to the server
      * @returns {Promise<string>} — file ID
      */
-    function uploadFile(file, uploadFileType) {
+    function uploadFile(file, uploadFileType, onProgress) {
         return BF.api.getUploadUrl(uploadFileType).then(function (data) {
             if (!data || !data.fileId) return Promise.reject(new Error('no_upload_url'));
 
             var formData = new FormData();
             formData.append('file', file, file.name);
 
-            return fetch('/api/files/upload/' + data.fileId, {
-                method: 'POST',
-                body: formData
-            }).then(function (resp) {
-                if (!resp.ok) return Promise.reject(new Error('upload_failed_' + resp.status));
-                return resp.json().then(function (body) { return body.fileId; });
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/files/upload/' + data.fileId);
+
+                xhr.upload.addEventListener('progress', function (event) {
+                    if (!event.lengthComputable || typeof onProgress !== 'function') return;
+                    onProgress(Math.round(event.loaded / event.total * 100));
+                });
+                xhr.addEventListener('load', function () {
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        reject(new Error('upload_failed_' + xhr.status));
+                        return;
+                    }
+                    var body;
+                    try {
+                        body = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        reject(new Error('upload_invalid_response'));
+                        return;
+                    }
+                    if (typeof onProgress === 'function') onProgress(100);
+                    resolve(body.fileId);
+                });
+                xhr.addEventListener('error', function () { reject(new Error('upload_failed_network')); });
+                xhr.addEventListener('abort', function () { reject(new Error('upload_aborted')); });
+                xhr.send(formData);
             });
         });
     }

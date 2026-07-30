@@ -53,6 +53,11 @@
     var chatListOffset = 0;
     var chatListTotal = 0;
     var chatListLoading = false;
+    var pendingUploads = new Map(); // local message id -> optimistic upload state
+    var pendingUploadCounter = 0;
+    var GENERIC_MESSAGE_TYPE = 1;
+    var IMAGE_UPLOAD_TYPE = 2;
+    var GIF_UPLOAD_TYPE = 4;
 
     // Reply / Forward / Context menu state
     var pendingReply = null;
@@ -448,6 +453,7 @@
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
+                mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
                 renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
@@ -540,8 +546,7 @@
 
     function scrollToBottom() { messagesArea.scrollTop = messagesArea.scrollHeight; }
 
-    function appendMessageToView(msg) {
-        if (msg && msg.id) knownMessageIds.add(msg.id);
+    function buildMessageViewElement(msg) {
         var atts = (msg.content && msg.content.attachments) || [];
         var fileIds = atts.map(function (a) { return a.fileId; }).filter(function (id) { return id && !BF.files.getCachedFileUrl(id); });
         collectFwdAttachments(msg).forEach(function (a) {
@@ -550,6 +555,14 @@
         var p = fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
 
         return p.then(function () {
+            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
+            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
+        });
+    }
+
+    function appendMessageToView(msg) {
+        if (msg && msg.id) knownMessageIds.add(msg.id);
+        return buildMessageViewElement(msg).then(function (el) {
             var msgDate = u.formatDate(msg.sentAt);
             var lastMsgDate = null;
             for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
@@ -562,12 +575,128 @@
                 sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                 messagesInner.appendChild(sep);
             }
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
-        }).then(function (el) {
             el.dataset.date = u.formatDate(msg.sentAt);
             messagesInner.appendChild(el);
         });
+    }
+
+    function releasePendingPreviews(entry) {
+        if (!entry || !entry.previewUrls) return;
+        entry.previewUrls.forEach(function (url) { URL.revokeObjectURL(url); });
+        entry.previewUrls = [];
+    }
+
+    function findMessageGroup(messageId) {
+        return Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
+            return String(node.dataset.msgId) === String(messageId);
+        });
+    }
+
+    function removePendingUpload(entry) {
+        if (!entry || entry.settled) return;
+        entry.settled = true;
+        pendingUploads.delete(entry.localId);
+        releasePendingPreviews(entry);
+
+        var idx = messages.findIndex(function (m) { return String(m.id) === String(entry.localId); });
+        if (idx >= 0) messages.splice(idx, 1);
+        knownMessageIds.delete(entry.localId);
+
+        var el = findMessageGroup(entry.localId);
+        if (el) el.remove();
+    }
+
+    function messageFileIds(msg) {
+        return ((msg && msg.content && msg.content.attachments) || [])
+            .map(function (a) { return a.fileId; })
+            .filter(Boolean)
+            .map(function (id) { return String(id).toLowerCase(); })
+            .sort();
+    }
+
+    function pendingUploadMatches(entry, msg) {
+        var serverIds = messageFileIds(msg);
+        var pendingIds = entry.fileIds.map(function (id) { return String(id).toLowerCase(); }).sort();
+        return pendingIds.length > 0 &&
+            pendingIds.length === serverIds.length &&
+            pendingIds.every(function (id, index) { return id === serverIds[index]; });
+    }
+
+    function mergePendingUploadsIntoMessages(chatId) {
+        pendingUploads.forEach(function (entry) {
+            if (entry.settled || String(entry.chatId) !== String(chatId)) return;
+            var serverMessage = messages.find(function (msg) { return pendingUploadMatches(entry, msg); });
+            if (serverMessage) {
+                entry.settled = true;
+                pendingUploads.delete(entry.localId);
+                releasePendingPreviews(entry);
+            } else {
+                messages.push(entry.localMessage);
+            }
+        });
+    }
+
+    function findPendingUpload(chatId, msg) {
+        if (!msg || msg.senderId !== myUserId) return null;
+
+        var found = null;
+        pendingUploads.forEach(function (entry) {
+            if (found || entry.settled || String(entry.chatId) !== String(chatId)) return;
+            if (pendingUploadMatches(entry, msg)) found = entry;
+        });
+        return found;
+    }
+
+    function replacePendingElement(entry, msg) {
+        var oldEl = findMessageGroup(entry.localId);
+        if (!oldEl) { releasePendingPreviews(entry); return; }
+
+        buildMessageViewElement(msg).then(function (newEl) {
+            newEl.dataset.date = u.formatDate(msg.sentAt);
+            if (oldEl.isConnected) oldEl.replaceWith(newEl);
+            releasePendingPreviews(entry);
+        }).catch(function () {
+            renderMessages().then(function () { releasePendingPreviews(entry); });
+        });
+    }
+
+    function reconcilePendingUpload(chatId, msg, hintedEntry) {
+        var entry = hintedEntry && !hintedEntry.settled ? hintedEntry : findPendingUpload(chatId, msg);
+        if (!entry) return false;
+
+        entry.settled = true;
+        pendingUploads.delete(entry.localId);
+
+        if (String(chatId) !== String(currentChatId)) {
+            releasePendingPreviews(entry);
+            return true;
+        }
+
+        var localIdx = messages.findIndex(function (m) { return String(m.id) === String(entry.localId); });
+        var serverIdx = messages.findIndex(function (m) { return m.id === msg.id; });
+        if (serverIdx >= 0) {
+            if (localIdx >= 0 && localIdx !== serverIdx) messages.splice(localIdx, 1);
+        } else if (localIdx >= 0) {
+            messages[localIdx] = msg;
+        } else {
+            messages.push(msg);
+        }
+
+        knownMessageIds.delete(entry.localId);
+        if (msg.id) knownMessageIds.add(msg.id);
+        var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+        if (localIdx >= 0 && serverIdx < 0) {
+            replacePendingElement(entry, msg);
+        } else {
+            var oldEl = findMessageGroup(entry.localId);
+            if (oldEl) oldEl.remove();
+            releasePendingPreviews(entry);
+            if (serverIdx < 0) appendMessageToView(msg).then(function () {
+                if (wasAtBottom) scrollToBottom();
+            });
+        }
+        if (wasAtBottom && localIdx >= 0 && serverIdx < 0) setTimeout(scrollToBottom, 0);
+        return true;
     }
 
     // Lazy-load older messages
@@ -682,18 +811,73 @@
         var sentChatId = currentChatId;
         sendBtn.disabled = true;
 
-        var uploadChain = files.reduce(function (chain, file) {
+        var localId = 'pending-upload-' + Date.now() + '-' + (++pendingUploadCounter);
+        var previewUrls = [];
+        var localAttachments = files.map(function (file, index) {
+            var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
+            var isImage = !asDocuments && (uploadType === IMAGE_UPLOAD_TYPE || uploadType === GIF_UPLOAD_TYPE);
+            var previewUrl = isImage ? URL.createObjectURL(file) : '';
+            if (previewUrl) previewUrls.push(previewUrl);
+            return {
+                type: isImage ? (uploadType === GIF_UPLOAD_TYPE ? 'GIF' : 'IMAGE') : 'DOCUMENT',
+                fileId: '',
+                fileName: file.name,
+                attachmentSize: file.size,
+                localPreviewUrl: previewUrl,
+                uploadProgress: 0,
+                uploadIndex: index,
+                isPending: true
+            };
+        });
+        var pendingMessage = {
+            id: localId,
+            senderId: myUserId,
+            readBy: [],
+            sentAt: Date.now(),
+            type: GENERIC_MESSAGE_TYPE,
+            isPending: true,
+            content: { text: text || '', attachments: localAttachments }
+        };
+        var pendingEntry = {
+            localId: localId,
+            chatId: sentChatId,
+            localMessage: pendingMessage,
+            fileIds: [],
+            previewUrls: previewUrls,
+            settled: false
+        };
+        pendingUploads.set(localId, pendingEntry);
+
+        if (String(sentChatId) === String(currentChatId)) {
+            messages.push(pendingMessage);
+            appendMessageToView(pendingMessage).then(scrollToBottom);
+        }
+
+        var uploadChain = files.reduce(function (chain, file, index) {
             return chain.then(function (ids) {
-                var t = BF.files.getUploadFileType(file.type, asDocuments, file.name);
-                return BF.files.uploadFile(file, t)
-                    .then(function (fid) { ids.push(fid); return ids; })
-                    .catch(function () { return ids; });
+                var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
+                return BF.files.uploadFile(file, uploadType, function (progress) {
+                    localAttachments[index].uploadProgress = progress;
+                    BF.messages.updateAttachmentProgress(localId, index, progress);
+                })
+                    .then(function (fileId) {
+                        localAttachments[index].fileId = fileId;
+                        pendingEntry.fileIds.push(fileId);
+                        ids.push(fileId);
+                        return ids;
+                    });
             });
         }, Promise.resolve([]));
 
         var replyId = pendingReply ? pendingReply.messageId : 0;
+        var uploadsComplete = false;
         uploadChain.then(function (fileIds) {
-            if (fileIds.length === 0) { sendBtn.disabled = false; return; }
+            if (fileIds.length === 0) {
+                removePendingUpload(pendingEntry);
+                sendBtn.disabled = false;
+                return;
+            }
+            uploadsComplete = true;
             return BF.api.sendMessage({
                 chatId: sentChatId,
                 text: text || null,
@@ -707,10 +891,7 @@
                 clearPendingReply();
                 if (resp && resp.message) {
                     var msg = resp.message;
-                    if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
-                        messages.push(msg);
-                        appendMessageToView(msg).then(scrollToBottom);
-                    }
+                    reconcilePendingUpload(sentChatId, msg, pendingEntry);
                     var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
                     if (chatIdx >= 0) {
                         var chat = chats[chatIdx];
@@ -719,9 +900,16 @@
                         chats.unshift(chat);
                         renderChatList();
                     }
+                } else {
+                    removePendingUpload(pendingEntry);
+                    groupToast('Не удалось отправить сообщение');
                 }
             });
-        }).catch(function () { sendBtn.disabled = false; });
+        }).catch(function () {
+            removePendingUpload(pendingEntry);
+            sendBtn.disabled = false;
+            groupToast(uploadsComplete ? 'Не удалось отправить сообщение' : 'Не удалось загрузить вложение');
+        });
     }
 
     function openAttachModal(files) {
@@ -1374,12 +1562,16 @@
 
             // Новые сообщения не в хвосте (окно прыгало через scrollToMessage, или своё
             // сообщение ушло раньше resync-дебаунса) — точечно не вставить, полный render.
-            var maxCurId = messages.length > 0
-                ? Math.max.apply(null, messages.map(function (m) { return Number(m.id); }))
+            var numericMessageIds = messages
+                .map(function (m) { return Number(m.id); })
+                .filter(Number.isFinite);
+            var maxCurId = numericMessageIds.length > 0
+                ? Math.max.apply(null, numericMessageIds)
                 : -Infinity;
-            var tailOnly = messages.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            var tailOnly = numericMessageIds.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
             if (!tailOnly) {
                 messages = fetched;
+                mergePendingUploadsIntoMessages(chatId);
                 renderMessages().then(function () {
                     if (wasAtBottom) scrollToBottom();
                 });
@@ -1396,6 +1588,7 @@
             diff.news.forEach(function (m) {
                 chain = chain.then(function () {
                     if (chatId !== currentChatId) return;
+                    if (reconcilePendingUpload(chatId, m)) return;
                     messages.push(m);
                     return appendMessageToView(m);
                 });
@@ -1528,7 +1721,8 @@
     });
 
     function handleNewMessage(chatId, msg) {
-        if (chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
+        var reconciledPending = reconcilePendingUpload(chatId, msg);
+        if (!reconciledPending && chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
 
         var chatIdx = chats.findIndex(function (c) { return c.id === chatId; });
         var chatTitle = '';
@@ -1555,7 +1749,7 @@
 
         updateTitleBadge();
 
-        if (chatId === currentChatId) {
+        if (chatId === currentChatId && !reconciledPending) {
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
             messages.push(msg);
             appendMessageToView(msg).then(function () {

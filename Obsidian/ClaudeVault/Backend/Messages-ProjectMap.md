@@ -165,9 +165,9 @@
 | `Persistence/Migrations/20250518232855_AddedJoinedAtProperty` | Поле `JoinedAt` для `ChatMember` |
 | `Persistence/Migrations/20250519230454_AddMessageContent` | Owned type `MessageContent`, таблица `MessageAttachments` |
 | `Persistence/Migrations/20250525182402_AddGroupChats` | Таблица `GroupChatInfo`, поле `UsersCanKick` |
-| `Migrations/20250720120941_AddAttachmentsPreview` | Поле `PreviewUrl` и `FileSize` для вложений (вне папки Persistence — возможно ошибка размещения) |
-| `Migrations/20260502205903_AddForwardedMessageAttachment` | Таблица `ForwardedMessageAttachments`, поля Forward-снапшота (`ForwardedAuthorName`/`ForwardedOriginalMessageId`/`ForwardedText`) в `MessageAttachments` |
-| `Migrations/20260507120000_AddMessageTextMaxLength` | Ограничение длины текста сообщения (≤4096 символов) на уровне колонки |
+| `Persistence/Migrations/20250720120941_AddAttachmentsPreview` | Поле `PreviewUrl` и `FileSize` для вложений |
+| `Persistence/Migrations/20260502205903_AddForwardedMessageAttachment` | Таблица `ForwardedMessageAttachments`, поля Forward-снапшота (`ForwardedAuthorName`/`ForwardedOriginalMessageId`/`ForwardedText`) в `MessageAttachments` |
+| `Persistence/Migrations/20260507120000_AddMessageTextMaxLength` | Ограничение длины текста сообщения (≤4096 символов) на уровне колонки |
 | `Persistence/Migrations/20260508163127_AddMessageEditedDeletedFlags` | Поля `IsEdited`, `EditedAt`, `IsDeleted` для `Message` |
 | `Persistence/Migrations/20260509011814_AddPinnedMessages` | Таблица `PinnedMessages` с FK на Chats и Messages, уникальный индекс `(ChatId, MessageId)` |
 | `Persistence/Migrations/20260509041314_AddPrivateAndSecretChats` | `Chat.Type`/`KdfSalt`/`PassphraseVerifier`, таблица `EncryptedMessages` |
@@ -193,5 +193,5 @@
 - ✅ Redis-кеш ключи и структура — актуальны  
 - ✅ Список Features — полный и актуальный
 - ⚠️ **`SessionRevokedConsumer`** — в `Messages.md` не упомянут (очередь `session-revoked-messages`, инвалидирует сессии через XAuth)
-- ⚠️ **Миграция `20250720120941_AddAttachmentsPreview`** — лежит вне папки `Persistence/Migrations` (в корне `Migrations/`), возможно перемещена ошибочно
+- ✅ Все EF Core миграции находятся в `Persistence/Migrations/`.
 - ⚠️ **Фильтрация пустых чатов** в `ChatsStorage.GetUserChats` — чаты без сообщений (`LastMessage == null`) не возвращаются (поведение не задокументировано)
