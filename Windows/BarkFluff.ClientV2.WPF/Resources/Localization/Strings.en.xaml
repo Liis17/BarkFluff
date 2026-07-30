@@ -2,6 +2,14 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <sys:String x:Key="App_Title">BarkFluff</sys:String>
+    <sys:String x:Key="Settings_Title">Settings</sys:String>
+    <sys:String x:Key="Settings_Close">Done</sys:String>
+    <sys:String x:Key="Settings_OnWindowClose">When the window is closed</sys:String>
+    <sys:String x:Key="Settings_OnWindowCloseExit">Quit the application</sys:String>
+    <sys:String x:Key="Settings_OnWindowCloseTray">Minimize to the tray</sys:String>
+    <sys:String x:Key="Settings_OnWindowCloseTrayHint">The application keeps running in the notification area. Use Exit in the icon's menu to quit.</sys:String>
+    <sys:String x:Key="Tray_Open">Open BarkFluff</sys:String>
+    <sys:String x:Key="Tray_Exit">Exit</sys:String>
     <sys:String x:Key="Welcome_Title">Welcome to BarkFluff</sys:String>
     <sys:String x:Key="Welcome_Subtitle">Choose a node to start using your distributed messenger.</sys:String>
     <sys:String x:Key="Welcome_Eyebrow">BarkFluff for Windows</sys:String>

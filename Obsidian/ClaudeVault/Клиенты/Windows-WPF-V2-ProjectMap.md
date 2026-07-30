@@ -14,6 +14,9 @@ Parent: [[Клиенты/Windows-WPF-V2]]
 | `Infrastructure/Storage/` | `SqliteApplicationDataStore` | База `data/barkfluff.db`, настройки и выбранная нода |
 | `Infrastructure/Storage/DpapiSecureSessionStore.cs` | `DpapiSecureSessionStore` | DPAPI-защищённое сохранение и восстановление access/refresh токенов |
 | `Infrastructure/Localization/` | `LocalizationService` | Выбор RU/EN и swap XAML dictionary |
+| `Models/WindowClosingBehavior.cs` | `WindowClosingBehavior` | Что делать при закрытии окна: `Exit` или `MinimizeToTray` |
+| `ViewModels/SettingsViewModel.cs` | `SettingsViewModel` | Настройки приложения; владеет поведением при закрытии окна |
+| `Resources/Icons/barkfluff.ico` | — | Иконка приложения и значка в трее |
 | `ViewModels/` | `Welcome`, `SelectNode`, `ConnectedNode`, `Login`, `Registration`, `PasswordRecovery` | Состояние и команды стартовых и auth-экранов |
 | `ViewModels/MessengerViewModel.cs` | `MessengerViewModel`, `ChatItemViewModel`, `MessageItemViewModel`, `ForwardedContentViewModel` | Главный экран: список чатов, история выбранного чата и отправка обычных сообщений |
 | `ViewModels/MessengerViewModel.MessageActions.cs` | `MessengerViewModel` (partial), `PinnedPreviewViewModel`, `ForwardTargetViewModel` | Действия над сообщением: копирование, закрепы, правка, удаление, ответ и пересылка |
