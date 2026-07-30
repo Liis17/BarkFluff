@@ -111,6 +111,34 @@ class ReplySwipeCallback(
         viewHolder.itemView.translationX = 0f
         triggeredHolders.remove(viewHolder.bindingAdapterPosition)
     }
+
+    private fun isTouchOnScrollableTable(recyclerView: RecyclerView, event: MotionEvent): Boolean {
+        val itemView = recyclerView.findChildViewUnder(event.x, event.y) ?: return false
+        val recyclerLocation = IntArray(2)
+        recyclerView.getLocationOnScreen(recyclerLocation)
+        val touchX = (recyclerLocation[0] + event.x).toInt()
+        val touchY = (recyclerLocation[1] + event.y).toInt()
+        return findScrollableTableAt(itemView, touchX, touchY)
+    }
+
+    private fun findScrollableTableAt(view: View, touchX: Int, touchY: Int): Boolean {
+        if (view is HorizontalScrollView &&
+            (view.canScrollHorizontally(-1) || view.canScrollHorizontally(1))
+        ) {
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            if (touchX in location[0]..(location[0] + view.width) &&
+                touchY in location[1]..(location[1] + view.height)
+            ) {
+                return true
+            }
+        }
+        if (view !is ViewGroup) return false
+        for (index in 0 until view.childCount) {
+            if (findScrollableTableAt(view.getChildAt(index), touchX, touchY)) return true
+        }
+        return false
+    }
 }
 
 class ReplySwipeTableTouchGate(
