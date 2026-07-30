@@ -14,6 +14,8 @@ namespace BarkFluff.ClientV2.WPF;
 
 public partial class App : Application
 {
+    private static readonly TimeSpan HostShutdownTimeout = TimeSpan.FromSeconds(2);
+
     private IHost? _host;
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -87,13 +89,39 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        if (_host is not null)
+        ShutdownHost();
+        base.OnExit(e);
+    }
+
+    /// <summary>
+    /// Останавливает host, не давая процессу зависнуть. Контейнер держит сервисы с
+    /// <see cref="IAsyncDisposable"/> и gRPC-каналы: закрытие канала с живым server-стримом
+    /// может не вернуться, а блокирующее ожидание на UI-потоке в этом случае не даёт процессу
+    /// завершиться совсем. Поэтому теардаун выполняется вне UI-потока и с ограничением по времени.
+    /// </summary>
+    private void ShutdownHost()
+    {
+        var host = _host;
+        _host = null;
+        if (host is null)
         {
-            _host.StopAsync().GetAwaiter().GetResult();
-            _host.Dispose();
+            return;
         }
 
-        base.OnExit(e);
+        var teardown = Task.Run(async () =>
+        {
+            await host.StopAsync();
+            if (host is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync();
+            }
+            else
+            {
+                host.Dispose();
+            }
+        });
+
+        teardown.Wait(HostShutdownTimeout);
     }
 
     private static IHost CreateHost()
