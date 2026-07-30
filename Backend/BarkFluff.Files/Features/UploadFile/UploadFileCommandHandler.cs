@@ -178,6 +178,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         _logger.LogInformation("Вычислен хеш файла: {FileHash}", fileHash);
 
+        var processingTimer = Stopwatch.StartNew();
         // Определяем реальный тип файла по содержимому для MessageAttachment типов
         if (TypesRequiringDetection.Contains(file.Type))
         {
@@ -220,6 +221,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             originalStream.Position = 0;
         }
 
+        processingDuration = processingTimer.Elapsed;
         originalStream.Position = 0;
 
         // Серверная дедупликация: проверяем, существует ли файл с таким хешем
@@ -250,6 +252,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
                 await originalStream.DisposeAsync();
 
+                processingDuration = processingTimer.Elapsed;
                 RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
                 return existingFileId.Value.ToString();
             }
@@ -261,7 +264,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         try
         {
-            var processingTimer = Stopwatch.StartNew();
+            var contentProcessingTimer = Stopwatch.StartNew();
             // Объединённая обработка изображения за один Image.LoadAsync:
             // получаем размеры, опционально сжатый оригинал и опционально превью.
             // Пришло на смену трём отдельным декодированиям одного и того же изображения
@@ -370,7 +373,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 }
             }
 
-            processingDuration = processingTimer.Elapsed;
+            processingDuration += contentProcessingTimer.Elapsed;
 
             // Загружаем файл в S3 напрямую из стрима
             var s3Timer = Stopwatch.StartNew();
@@ -460,11 +463,12 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         TimeSpan processing,
         TimeSpan s3)
     {
-        _metrics.Set("files_last_upload_total_ms", (long)total.TotalMilliseconds);
-        _metrics.Set("files_last_upload_buffering_ms", (long)buffering.TotalMilliseconds);
-        _metrics.Set("files_last_upload_hashing_ms", (long)hashing.TotalMilliseconds);
-        _metrics.Set("files_last_upload_processing_ms", (long)processing.TotalMilliseconds);
-        _metrics.Set("files_last_upload_s3_ms", (long)s3.TotalMilliseconds);
+        _metrics.SetMany(
+            new("files_last_upload_total_ms", (long)total.TotalMilliseconds),
+            new("files_last_upload_buffering_ms", (long)buffering.TotalMilliseconds),
+            new("files_last_upload_hashing_ms", (long)hashing.TotalMilliseconds),
+            new("files_last_upload_processing_ms", (long)processing.TotalMilliseconds),
+            new("files_last_upload_s3_ms", (long)s3.TotalMilliseconds));
     }
 
     /// <summary>
