@@ -42,90 +42,90 @@ public static class MessageListBehavior
 
     private static void OnScrollRequestChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
-        if (dependencyObject is ListBox listBox && eventArgs.NewValue is MessageScrollRequest request)
+        if (dependencyObject is ItemsControl itemsControl && eventArgs.NewValue is MessageScrollRequest request)
         {
-            listBox.Dispatcher.BeginInvoke(
-                () => ApplyScrollRequest(listBox, request),
+            itemsControl.Dispatcher.BeginInvoke(
+                () => ApplyScrollRequest(itemsControl, request),
                 DispatcherPriority.Loaded);
         }
     }
 
     private static void OnVisibleMessageCommandChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
-        if (dependencyObject is not ListBox listBox)
+        if (dependencyObject is not ItemsControl itemsControl)
         {
             return;
         }
 
         if (eventArgs.OldValue is not null)
         {
-            listBox.Loaded -= OnListLoaded;
-            listBox.Unloaded -= OnListUnloaded;
-            listBox.LayoutUpdated -= OnListLayoutUpdated;
+            itemsControl.Loaded -= OnListLoaded;
+            itemsControl.Unloaded -= OnListUnloaded;
+            itemsControl.LayoutUpdated -= OnListLayoutUpdated;
         }
 
         if (eventArgs.NewValue is not null)
         {
-            listBox.Loaded += OnListLoaded;
-            listBox.Unloaded += OnListUnloaded;
-            listBox.LayoutUpdated += OnListLayoutUpdated;
+            itemsControl.Loaded += OnListLoaded;
+            itemsControl.Unloaded += OnListUnloaded;
+            itemsControl.LayoutUpdated += OnListLayoutUpdated;
         }
     }
 
     private static void OnListLoaded(object sender, RoutedEventArgs eventArgs)
     {
-        if (sender is ListBox listBox)
+        if (sender is ItemsControl itemsControl)
         {
-            QueueVisibilityCheck(listBox);
+            QueueVisibilityCheck(itemsControl);
         }
     }
 
     private static void OnListUnloaded(object sender, RoutedEventArgs eventArgs)
     {
-        if (sender is ListBox listBox)
+        if (sender is ItemsControl itemsControl)
         {
-            listBox.SetValue(IsLayoutCheckPendingProperty, false);
+            itemsControl.SetValue(IsLayoutCheckPendingProperty, false);
         }
     }
 
     private static void OnListLayoutUpdated(object? sender, EventArgs eventArgs)
     {
-        if (sender is ListBox listBox)
+        if (sender is ItemsControl itemsControl)
         {
-            QueueVisibilityCheck(listBox);
+            QueueVisibilityCheck(itemsControl);
         }
     }
 
-    private static void QueueVisibilityCheck(ListBox listBox)
+    private static void QueueVisibilityCheck(ItemsControl itemsControl)
     {
-        if ((bool)listBox.GetValue(IsLayoutCheckPendingProperty))
+        if ((bool)itemsControl.GetValue(IsLayoutCheckPendingProperty))
         {
             return;
         }
 
-        listBox.SetValue(IsLayoutCheckPendingProperty, true);
-        listBox.Dispatcher.BeginInvoke(
+        itemsControl.SetValue(IsLayoutCheckPendingProperty, true);
+        itemsControl.Dispatcher.BeginInvoke(
             () =>
             {
-                listBox.SetValue(IsLayoutCheckPendingProperty, false);
-                ReportVisibleMessages(listBox);
+                itemsControl.SetValue(IsLayoutCheckPendingProperty, false);
+                ReportVisibleMessages(itemsControl);
             },
             DispatcherPriority.Background);
     }
 
-    private static void ReportVisibleMessages(ListBox listBox)
+    private static void ReportVisibleMessages(ItemsControl itemsControl)
     {
-        var command = GetVisibleMessageCommand(listBox);
-        var scrollViewer = FindDescendant<ScrollViewer>(listBox);
+        var command = GetVisibleMessageCommand(itemsControl);
+        var scrollViewer = FindAncestor<ScrollViewer>(itemsControl);
         if (command is null || scrollViewer is null || scrollViewer.ViewportHeight <= 0)
         {
             return;
         }
 
         var viewport = new Rect(0, 0, scrollViewer.ViewportWidth, scrollViewer.ViewportHeight);
-        for (var index = 0; index < listBox.Items.Count; index++)
+        for (var index = 0; index < itemsControl.Items.Count; index++)
         {
-            if (listBox.ItemContainerGenerator.ContainerFromIndex(index) is not FrameworkElement container
+            if (itemsControl.ItemContainerGenerator.ContainerFromIndex(index) is not FrameworkElement container
                 || container.DataContext is not MessageItemViewModel message
                 || container.ActualHeight <= 0)
             {
@@ -142,9 +142,9 @@ public static class MessageListBehavior
         }
     }
 
-    private static void ApplyScrollRequest(ListBox listBox, MessageScrollRequest request)
+    private static void ApplyScrollRequest(ItemsControl itemsControl, MessageScrollRequest request)
     {
-        var scrollViewer = FindDescendant<ScrollViewer>(listBox);
+        var scrollViewer = FindAncestor<ScrollViewer>(itemsControl);
         if (scrollViewer is null)
         {
             return;
@@ -156,21 +156,21 @@ public static class MessageListBehavior
             return;
         }
 
-        var message = listBox.Items.OfType<MessageItemViewModel>().FirstOrDefault(item => item.Id == request.MessageId);
+        var message = itemsControl.Items.OfType<MessageItemViewModel>().FirstOrDefault(item => item.Id == request.MessageId);
         if (message is null)
         {
             return;
         }
 
-        listBox.ScrollIntoView(message);
-        listBox.Dispatcher.BeginInvoke(
-            () => CenterMessage(listBox, scrollViewer, message),
+        // Контейнеры не виртуализируются, так что достаточно одного прохода после раскладки.
+        itemsControl.Dispatcher.BeginInvoke(
+            () => CenterMessage(itemsControl, scrollViewer, message),
             DispatcherPriority.ContextIdle);
     }
 
-    private static void CenterMessage(ListBox listBox, ScrollViewer scrollViewer, MessageItemViewModel message)
+    private static void CenterMessage(ItemsControl itemsControl, ScrollViewer scrollViewer, MessageItemViewModel message)
     {
-        if (listBox.ItemContainerGenerator.ContainerFromItem(message) is not FrameworkElement container)
+        if (itemsControl.ItemContainerGenerator.ContainerFromItem(message) is not FrameworkElement container)
         {
             return;
         }
@@ -180,21 +180,14 @@ public static class MessageListBehavior
         scrollViewer.ScrollToVerticalOffset(Math.Max(0, scrollViewer.VerticalOffset + bounds.Top - (scrollViewer.ViewportHeight - bounds.Height) / 2));
     }
 
-    private static T? FindDescendant<T>(DependencyObject root)
+    private static T? FindAncestor<T>(DependencyObject element)
         where T : DependencyObject
     {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        for (var parent = VisualTreeHelper.GetParent(element); parent is not null; parent = VisualTreeHelper.GetParent(parent))
         {
-            var child = VisualTreeHelper.GetChild(root, index);
-            if (child is T typed)
+            if (parent is T typed)
             {
                 return typed;
-            }
-
-            var descendant = FindDescendant<T>(child);
-            if (descendant is not null)
-            {
-                return descendant;
             }
         }
 
