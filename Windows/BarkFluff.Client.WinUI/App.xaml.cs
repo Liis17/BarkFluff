@@ -162,6 +162,7 @@ public partial class App : Application
         builder.Services.AddSingleton<ISecureSessionStore, DpapiSecureSessionStore>();
         builder.Services.AddSingleton<IPrivateChatKeyStore, DpapiPrivateChatKeyStore>();
         builder.Services.AddSingleton<IRealtimeMessengerService, RealtimeMessengerService>();
+        builder.Services.AddSingleton<IOnlinePresenceService, OnlinePresenceService>();
         builder.Services.AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<IUiDispatcher, DispatcherQueueUiDispatcher>();
