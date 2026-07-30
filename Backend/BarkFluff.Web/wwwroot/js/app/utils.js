@@ -59,7 +59,7 @@
 
     // --- Markdown rendering (safe) ---
     // Модель безопасности: текст экранируется ПЕРВЫМ (escapeHtml), затем добавляются только
-    // наши теги — сырых < > & в строке не остаётся, поэтому innerHTML безопасен.
+    // наши теги. URL дополнительно экранируется в контексте HTML-атрибута.
     // Ссылки — allowlist схем; javascript:/data: и т.п. не становятся ссылками.
 
     var URL_SCHEME_ALLOW = /^(?:https?:|mailto:)/i;
@@ -70,6 +70,12 @@
         if (!url) return null;
         var s = url.trim();
         return URL_SCHEME_ALLOW.test(s) ? s : null;
+    }
+
+    // URL уже прошёл escapeHtml, поэтому &amp; должен остаться без повторного экранирования.
+    // Кавычки escapeHtml для текстового узла не гарантирует, а в href они закрывают атрибут.
+    function escapeHtmlAttribute(value) {
+        return value.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // Emphasis на «обычном» (уже экранированном) сегменте. bold до italic.
@@ -99,18 +105,96 @@
                 var lm = m[2].match(/^\[([^\]]+)\]\(([^)\s]+)\)$/);
                 var lsafe = lm && sanitizeUrl(lm[2]);
                 out += lsafe
-                    ? '<a href="' + lsafe + '" target="_blank" rel="noopener noreferrer">' + lm[1] + '</a>'
+                    ? '<a href="' + escapeHtmlAttribute(lsafe) + '" target="_blank" rel="noopener noreferrer">' + lm[1] + '</a>'
                     : m[2];
             } else {
                 var asafe = sanitizeUrl(m[3]);
                 out += asafe
-                    ? '<a href="' + asafe + '" target="_blank" rel="noopener noreferrer">' + m[3] + '</a>'
+                    ? '<a href="' + escapeHtmlAttribute(asafe) + '" target="_blank" rel="noopener noreferrer">' + m[3] + '</a>'
                     : m[3];
             }
             last = protectRe.lastIndex;
         }
         out += emphasis(esc.slice(last));
         return out;
+    }
+
+    // Разделяет GFM-строку таблицы, не принимая \| внутри inline-кода и экранированные \|
+    // за границу ячейки. Внешние | у таблицы опциональны.
+    function splitTableRow(line) {
+        var cells = [];
+        var cell = '';
+        var inCode = false;
+        for (var j = 0; j < line.length; j++) {
+            var ch = line[j];
+            if (ch === '\\' && line[j + 1] === '|') {
+                cell += '|';
+                j++;
+            } else if (ch === '`') {
+                inCode = !inCode;
+                cell += ch;
+            } else if (ch === '|' && !inCode) {
+                cells.push(cell.trim());
+                cell = '';
+            } else {
+                cell += ch;
+            }
+        }
+        cells.push(cell.trim());
+        if (/^\s*\|/.test(line)) cells.shift();
+        if (/\|\s*$/.test(line)) cells.pop();
+        return cells;
+    }
+
+    function tableAlignClass(separator) {
+        var value = separator.trim();
+        var left = value[0] === ':';
+        var right = value[value.length - 1] === ':';
+        if (left && right) return ' md-align-center';
+        if (right) return ' md-align-right';
+        if (left) return ' md-align-left';
+        return '';
+    }
+
+    function normalizeTableRow(cells, count) {
+        var normalized = cells.slice(0, count);
+        while (normalized.length < count) normalized.push('');
+        return normalized;
+    }
+
+    function isTableStart(lines, index) {
+        if (index + 1 >= lines.length || lines[index].indexOf('|') < 0) return false;
+        var headers = splitTableRow(lines[index]);
+        var separators = splitTableRow(lines[index + 1]);
+        return headers.length > 0 && headers.length === separators.length
+            && separators.every(function (cell) { return /^:?-+:?$/.test(cell); });
+    }
+
+    function renderTable(lines, start) {
+        var headers = splitTableRow(lines[start]);
+        var separators = splitTableRow(lines[start + 1]);
+        var rows = [];
+        var i = start + 2;
+        while (i < lines.length && lines[i].indexOf('|') >= 0 && !/^\s*$/.test(lines[i])) {
+            var cells = splitTableRow(lines[i]);
+            rows.push(normalizeTableRow(cells, headers.length));
+            i++;
+        }
+
+        var headHtml = headers.map(function (cell, index) {
+            return '<th scope="col" class="md-table-cell' + tableAlignClass(separators[index]) + '">' + inlineMd(cell) + '</th>';
+        }).join('');
+        var bodyHtml = rows.map(function (row) {
+            return '<tr>' + row.map(function (cell, index) {
+                return '<td class="md-table-cell' + tableAlignClass(separators[index]) + '">' + inlineMd(cell) + '</td>';
+            }).join('') + '</tr>';
+        }).join('');
+
+        return {
+            html: '<div class="md-table-wrap"><table class="md-table"><thead><tr>' + headHtml
+                + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>',
+            next: i
+        };
     }
 
     // Блочный + инлайн разбор. Возвращает безопасную HTML-строку для innerHTML.
@@ -134,6 +218,14 @@
 
             // Пустая строка
             if (/^\s*$/.test(line)) { i++; continue; }
+
+            // GFM-таблица: строка заголовков + строка-разделитель (-, :---:, ---:).
+            if (isTableStart(lines, i)) {
+                var table = renderTable(lines, i);
+                out.push(table.html);
+                i = table.next;
+                continue;
+            }
 
             // Заголовок # … ######
             var h = line.match(/^(#{1,6})\s+(.*)$/);
@@ -184,7 +276,8 @@
                 && !/^#{1,6}\s+/.test(lines[i])
                 && !/^>\s?/.test(lines[i])
                 && !/^[-*+]\s+/.test(lines[i])
-                && !/^\d+\.\s+/.test(lines[i])) {
+                && !/^\d+\.\s+/.test(lines[i])
+                && !isTableStart(lines, i)) {
                 pbuf.push(inlineMd(lines[i]));
                 i++;
             }
