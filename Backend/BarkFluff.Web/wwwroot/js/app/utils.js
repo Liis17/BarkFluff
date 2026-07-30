@@ -78,6 +78,66 @@
         return value.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    function escapeRawHtmlAttribute(value) {
+        return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function htmlAttributes(raw) {
+        var attributes = {};
+        var attrRe = /([a-z][a-z0-9-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi;
+        var match;
+        while ((match = attrRe.exec(raw)) !== null) {
+            attributes[match[1].toLowerCase()] = match[2] || match[3] || match[4] || '';
+        }
+        return attributes;
+    }
+
+    function sanitizeImageUrl(url) {
+        if (!url) return null;
+        var value = url.trim();
+        if (/^https?:/i.test(value)) return value;
+        return null;
+    }
+
+    function htmlAlignment(value) {
+        value = (value || '').toLowerCase();
+        return value === 'center' || value === 'right' || value === 'left' ? value : null;
+    }
+
+    // HTML в сообщениях не передаётся в innerHTML как есть. Разрешённые теги
+    // пересобираются из allowlist, все остальные далее экранируются как текст.
+    function renderSafeHtmlTag(tag) {
+        var parsed = tag.match(/^<\s*(\/?)\s*([a-z][a-z0-9]*)\b([^>]*)>$/i);
+        if (!parsed) return null;
+        var closing = parsed[1] === '/';
+        var name = parsed[2].toLowerCase();
+        var attrs = htmlAttributes(parsed[3]);
+
+        if ((name === 'strong' || name === 'sub') && /^\s*$/.test(parsed[3])) {
+            return closing ? '</' + name + '>' : '<' + name + '>';
+        }
+        if (name === 'a' && !closing) {
+            var href = sanitizeUrl(attrs.href);
+            return href
+                ? '<a href="' + escapeRawHtmlAttribute(href) + '" target="_blank" rel="noopener noreferrer">'
+                : null;
+        }
+        if (name === 'a' && closing) return '</a>';
+        if (name === 'img' && !closing) {
+            var src = sanitizeImageUrl(attrs.src);
+            if (!src) return '<span class="md-image-alt">' + escapeHtml(attrs.alt || '') + '</span>';
+            var width = parseInt(attrs.width, 10);
+            var height = parseInt(attrs.height, 10);
+            var size = '';
+            if (width > 0 && width <= 2048) size += ' width="' + width + '"';
+            if (height > 0 && height <= 2048) size += ' height="' + height + '"';
+            return '<img class="md-image" src="' + escapeRawHtmlAttribute(src) + '" alt="'
+                + escapeRawHtmlAttribute(attrs.alt || '') + '" loading="lazy"' + size + '>';
+        }
+        return null;
+    }
+
     // Emphasis на «обычном» (уже экранированном) сегменте. bold до italic.
     function emphasis(s) {
         s = s.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
@@ -91,7 +151,32 @@
     // Инлайн-разбор одной строки. На входе — сырой текст, на выходе — безопасный HTML.
     // Сегментный подход: защищённые куски (код/ссылки) не проходят emphasis, обычные — проходят.
     function inlineMd(raw) {
-        var esc = escapeHtml(raw);
+        var htmlTokens = [];
+        var tokenPrefix = '\uE000bfhtml';
+        var suppressedAnchor = false;
+        var protectedHtml = raw.replace(/<\/?[a-z][^>]*>/gi, function (tag) {
+            var anchor = tag.match(/^<\s*(\/?)\s*a\b/i);
+            if (anchor && anchor[1] && suppressedAnchor) {
+                suppressedAnchor = false;
+                var closingToken = tokenPrefix + htmlTokens.length + '\uE001';
+                htmlTokens.push('');
+                return closingToken;
+            }
+            var safeTag = renderSafeHtmlTag(tag);
+            if (safeTag === null) {
+                if (anchor && !anchor[1]) {
+                    suppressedAnchor = true;
+                    var openingToken = tokenPrefix + htmlTokens.length + '\uE001';
+                    htmlTokens.push('');
+                    return openingToken;
+                }
+                return tag;
+            }
+            var token = tokenPrefix + htmlTokens.length + '\uE001';
+            htmlTokens.push(safeTag);
+            return token;
+        });
+        var esc = escapeHtml(protectedHtml);
         // Защищённые: `код`, [текст](url), голый http(s)://…
         var protectRe = /(`[^`]+`)|(\[[^\]]+\]\([^)\s]+\))|(https?:\/\/[^\s<]+)/g;
         var out = '';
@@ -116,7 +201,9 @@
             last = protectRe.lastIndex;
         }
         out += emphasis(esc.slice(last));
-        return out;
+        return out.replace(new RegExp(tokenPrefix + '(\\d+)\\uE001', 'g'), function (_, index) {
+            return htmlTokens[Number(index)];
+        });
     }
 
     // Разделяет GFM-строку таблицы, не принимая \| внутри inline-кода и экранированные \|
@@ -224,6 +311,36 @@
                 var table = renderTable(lines, i);
                 out.push(table.html);
                 i = table.next;
+                continue;
+            }
+
+            // HTML-абзац из README: поддерживается только безопасный align и
+            // только при явном закрывающем </p>, чтобы не менять правила markdown.
+            var htmlParagraph = line.match(/^\s*<p(?:\s+align\s*=\s*(?:"(left|center|right)"|'(left|center|right)'|(left|center|right)))?\s*>\s*$/i);
+            if (htmlParagraph) {
+                var paragraphLines = [];
+                var next = i + 1;
+                while (next < lines.length && !/^\s*<\/p>\s*$/i.test(lines[next])) {
+                    paragraphLines.push(lines[next]);
+                    next++;
+                }
+                if (next < lines.length) {
+                    var alignment = htmlAlignment(htmlParagraph[1] || htmlParagraph[2] || htmlParagraph[3]);
+                    out.push('<p class="md-p' + (alignment ? ' md-html-align-' + alignment : '') + '">'
+                        + paragraphLines.map(inlineMd).join('<br>') + '</p>');
+                    i = next + 1;
+                    continue;
+                }
+            }
+
+            // HTML-заголовки из README. Уровни h1…h6 соответствуют markdown-заголовкам.
+            var htmlHeading = line.match(/^\s*<h([1-6])(?:\s+align\s*=\s*(?:"(left|center|right)"|'(left|center|right)'|(left|center|right)))?\s*>([\s\S]*?)<\/h\1>\s*$/i);
+            if (htmlHeading) {
+                var htmlLevel = htmlHeading[1];
+                var headingAlignment = htmlAlignment(htmlHeading[2] || htmlHeading[3] || htmlHeading[4]);
+                out.push('<h' + htmlLevel + ' class="md-h' + (headingAlignment ? ' md-html-align-' + headingAlignment : '')
+                    + '">' + inlineMd(htmlHeading[5]) + '</h' + htmlLevel + '>');
+                i++;
                 continue;
             }
 
