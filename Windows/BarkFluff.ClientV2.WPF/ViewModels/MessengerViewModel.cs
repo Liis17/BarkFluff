@@ -41,6 +41,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     public ObservableCollection<ChatItemViewModel> Chats { get; } = [];
     public ObservableCollection<MessageItemViewModel> Messages { get; } = [];
 
+    internal ILocalizationService Localization => _localization;
+
     [ObservableProperty] private ChatItemViewModel? _selectedChat;
     [ObservableProperty] private string _draftText = string.Empty;
     [ObservableProperty] private bool _isLoading;
@@ -87,6 +89,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     {
         _messageLoadVersion++;
         CancelPendingReadBatch();
+        ResetMessageActionState();
         Messages.Clear();
         ScrollRequest = null;
         IsPrivateUnlockVisible = false;
@@ -104,6 +107,12 @@ public sealed partial class MessengerViewModel : ObservableObject
         var currentUserId = _messenger.CurrentUserId;
         if (currentUserId is null || SelectedChat is null || string.IsNullOrWhiteSpace(DraftText))
         {
+            return;
+        }
+
+        if (IsEditing)
+        {
+            await ApplyEditAsync();
             return;
         }
 
@@ -184,6 +193,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         ScrollRequest = hasUnreadMessages
             ? new MessageScrollRequest(MessageScrollTarget.Message, chat.FirstUnreadMessageId)
             : new MessageScrollRequest(MessageScrollTarget.Bottom);
+
+        await LoadPinnedMessagesAsync(chat, loadVersion);
     }
 
     [RelayCommand]
@@ -379,7 +390,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         var attachments = await Task.WhenAll(message.Attachments
             .Select(CreateAttachmentItemAsync));
 
-        return new MessageItemViewModel(message, message.SenderId == currentUserId, attachments, currentUserId);
+        return new MessageItemViewModel(this, message, message.SenderId == currentUserId, attachments, currentUserId);
     }
 
     private MessageItemViewModel CreatePrivateMessageItem(PrivateMessageModel message, long currentUserId)
@@ -389,7 +400,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             : message.DecryptionFailed
                 ? _localization.GetString("Messenger_PrivateDecryptionFailed")
                 : message.Text;
-        return new MessageItemViewModel(message, text, message.SenderId == currentUserId, currentUserId);
+        return new MessageItemViewModel(this, message, text, message.SenderId == currentUserId, currentUserId);
     }
 
     private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment)
@@ -569,25 +580,30 @@ public sealed partial class MessageItemViewModel : ObservableObject
 {
     private readonly long _currentUserId;
 
-    public MessageItemViewModel(MessageModel message, bool isMine, IReadOnlyCollection<MessageAttachmentItemViewModel> attachments, long currentUserId)
+    public MessageItemViewModel(MessengerViewModel owner, MessageModel message, bool isMine, IReadOnlyCollection<MessageAttachmentItemViewModel> attachments, long currentUserId)
     {
+        Owner = owner;
         Id = message.MessageId;
         Text = message.Text;
         IsMine = isMine;
+        IsSystem = message.Type == MessageContentType.System;
         SentAt = message.SentAt.ToDateTimeOffset();
         Attachments = attachments;
         MediaAttachments = attachments.Where(attachment => attachment.IsMedia).ToArray();
         FileAttachments = attachments.Where(attachment => attachment.IsFile).ToArray();
         _currentUserId = currentUserId;
+        IsEdited = message.IsEdited;
         IsReadByCurrentUser = message.ReadBy.Contains(currentUserId);
         IsReadBySomeoneElse = isMine && message.ReadBy.Any(userId => userId != currentUserId);
     }
 
-    public MessageItemViewModel(PrivateMessageModel message, string text, bool isMine, long currentUserId)
+    public MessageItemViewModel(MessengerViewModel owner, PrivateMessageModel message, string text, bool isMine, long currentUserId)
     {
+        Owner = owner;
         Id = message.MessageId;
         Text = text;
         IsMine = isMine;
+        IsPrivateMessage = true;
         SentAt = message.SentAt.ToDateTimeOffset();
         Attachments = Array.Empty<MessageAttachmentItemViewModel>();
         MediaAttachments = Array.Empty<MessageAttachmentItemViewModel>();
@@ -595,9 +611,11 @@ public sealed partial class MessageItemViewModel : ObservableObject
         _currentUserId = currentUserId;
     }
 
+    public MessengerViewModel Owner { get; }
     public long Id { get; }
-    public string Text { get; }
     public bool IsMine { get; }
+    public bool IsSystem { get; }
+    public bool IsPrivateMessage { get; }
     public DateTimeOffset SentAt { get; }
     public IReadOnlyCollection<MessageAttachmentItemViewModel> Attachments { get; }
     public IReadOnlyCollection<MessageAttachmentItemViewModel> MediaAttachments { get; }
@@ -612,6 +630,20 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public double MediaPanelWidth => IsSingleMedia ? MediaAttachments.First().SingleMediaWidth : 344;
     public double MediaTileHeight => IsSingleMedia ? MediaAttachments.First().SingleMediaHeight : 128;
 
+    // Приватные (E2E) и системные сообщения действий не поддерживают — как в веб-версии.
+    public bool CanUseActions => !IsSystem && !IsPrivateMessage;
+    public bool CanModify => CanUseActions && IsMine;
+    public bool CanCopyText => CanUseActions && HasText;
+    public bool CanCopyImage => CanUseActions && IsSingleMedia && MediaAttachments.First().IsImageOrGif;
+    public string PinMenuHeader => Owner.Localization.GetString(IsPinned ? "Messenger_Unpin" : "Messenger_Pin");
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasText), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(CanCopyText))]
+    private string _text = string.Empty;
+    [ObservableProperty] private bool _isEdited;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PinMenuHeader))]
+    private bool _isPinned;
     [ObservableProperty] private bool _isReadByCurrentUser;
     [ObservableProperty] private bool _isReadBySomeoneElse;
 
@@ -646,6 +678,7 @@ public sealed class MessageAttachmentItemViewModel(
     public int ImageWidth { get; } = imageWidth;
     public int ImageHeight { get; } = imageHeight;
     public bool IsVideo { get; } = type == MessageAttachmentType.Video;
+    public bool IsImageOrGif { get; } = type is MessageAttachmentType.Image or MessageAttachmentType.Gif;
     public bool IsMedia => type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker;
     public bool IsFile => !IsMedia;
     public string FileTypeLabel => type.ToString();
