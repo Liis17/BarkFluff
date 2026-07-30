@@ -1,4 +1,20 @@
-# 🐳 Docker Compose настройка для BarkFluff
+<p align="center">
+  <img src="../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Docker reference</h1>
+
+<p align="center">
+  <strong>Service topology and configuration patterns for the BarkFluff container stack.</strong>
+</p>
+
+<p align="center">
+  <a href="../README.md">Overview</a> ·
+  <a href="../.readme/backend.md">Backend guide</a> ·
+  <a href="#-структура-сервисов">Services</a>
+</p>
+
+---
 
 Эта конфигурация поднимает все Backend сервисы BarkFluff в Docker с использованием портов из `.env` файла.
 

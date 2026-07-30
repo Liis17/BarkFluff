@@ -1,6 +1,22 @@
 [← Documentation hub](../README.md)
 
-# Linux
+<p align="center">
+  <img src="../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Linux</h1>
+
+<p align="center">
+  <strong>Build the Qt 6 desktop client with CMake, gRPC, and Protobuf.</strong>
+</p>
+
+<p align="center">
+  <a href="../../README.md">Overview</a> ·
+  <a href="#requirements">Requirements</a> ·
+  <a href="#build">Build</a>
+</p>
+
+---
 
 The Linux client is a Qt 6 / C++20 desktop application using gRPC and Protobuf.
 

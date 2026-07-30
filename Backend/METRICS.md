@@ -1,4 +1,21 @@
-# BarkFluff Metrics Reference
+<p align="center">
+  <img src="../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Metrics reference</h1>
+
+<p align="center">
+  <strong>Operational metrics emitted by BarkFluff services and collected through Seq.</strong>
+</p>
+
+<p align="center">
+  <a href="../README.md">Overview</a> ·
+  <a href="../.readme/backend.md">Backend guide</a> ·
+  <a href="#global-metrics-all-services-via-serverexceptioninterceptor">Global metrics</a> ·
+  <a href="#seq-access">Seq</a>
+</p>
+
+---
 
 All metrics are emitted as structured log events every 5 seconds via `MetricsReporterService`.
 They are sent to Seq and can be queried by `Application` property or metric name.

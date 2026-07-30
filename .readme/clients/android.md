@@ -1,6 +1,22 @@
 [← Documentation hub](../README.md)
 
-# Android
+<p align="center">
+  <img src="../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Android</h1>
+
+<p align="center">
+  <strong>Build the supported Kotlin Android client and its shared gRPC foundation.</strong>
+</p>
+
+<p align="center">
+  <a href="../../README.md">Overview</a> ·
+  <a href="#requirements">Requirements</a> ·
+  <a href="#build-v1">Build V1</a>
+</p>
+
+---
 
 The supported Android client is **V1**, implemented with Kotlin, Views/XML, and gRPC-OkHttp. Android V2 is a Compose experiment and is not part of normal development work.
 
