@@ -15,18 +15,37 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="{StaticResource App_Title}">
-            <TitleBar.RightHeader>
-                <Button Background="Transparent"
-                        BorderThickness="0"
-                        Click="OnSettingsRequested"
-                        ToolTipService.ToolTip="{StaticResource Settings_Title}">
-                    <FontIcon FontSize="16" Glyph="&#xE713;" />
-                </Button>
-            </TitleBar.RightHeader>
-        </TitleBar>
+        <TitleBar x:Name="AppTitleBar" Title="{StaticResource App_Title}" />
 
-        <Frame x:Name="ContentFrame" Grid.Row="1" />
+        <!--
+            LeftMinimal — единственный режим NavigationView, который даёт ровно кнопку-бургер
+            сверху слева и панель поверх контента. Панель прячется целиком, пока пользователь
+            не вошёл: на онбординге и логине идти из неё некуда.
+        -->
+        <NavigationView x:Name="RootNavigation"
+                        Grid.Row="1"
+                        BackRequested="OnBackRequested"
+                        IsBackButtonVisible="Visible"
+                        IsBackEnabled="False"
+                        IsPaneVisible="False"
+                        IsSettingsVisible="False"
+                        ItemInvoked="OnNavigationItemInvoked"
+                        PaneDisplayMode="LeftMinimal">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="{StaticResource Nav_Profile}" Tag="profile">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE77B;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{StaticResource Settings_Title}" Tag="settings">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <Frame x:Name="ContentFrame" Navigated="OnContentFrameNavigated" />
+        </NavigationView>
 
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ContextMenuMode="PopupMenu"
