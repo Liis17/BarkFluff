@@ -80,7 +80,7 @@
                                ToolTip="{DynamicResource Messenger_Unpin}" />
                 </Grid>
             </Border>
-            <StackPanel Margin="20,16" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}"><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SelectedChat.Title}" /><TextBlock Opacity=".7" Text="{DynamicResource Messenger_StatusOffline}" /></StackPanel>
+            <StackPanel Margin="20,16" Visibility="{Binding HasSelectedChat, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SelectedChat.Title}" /><TextBlock Opacity=".7" Text="{DynamicResource Messenger_StatusOffline}" /></StackPanel>
             <!--  VerticalAlignment="Bottom" на содержимом ScrollViewer прижимает короткую переписку к нижней кромке.  -->
             <ScrollViewer Grid.Row="2"
                           Margin="0,0,4,0"
@@ -130,7 +130,8 @@
                        TextWrapping="Wrap"
                        Visibility="{Binding ActionError, Converter={StaticResource StringToVisibilityConverter}}" />
             <Grid Grid.Row="5" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
-            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}" />
+            <!--  Заглушка лежит в строке ленты, чтобы центрироваться по всей свободной области, а не по высоте заголовка.  -->
+            <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding IsChatPlaceholderVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </Grid>
         <Border Panel.ZIndex="12"
                 Background="{DynamicResource MessengerModalScrimBrush}"
