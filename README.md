@@ -28,28 +28,21 @@
 
 BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover their service endpoints through Beacon, receive live changes through streaming updates, and communicate with independent services that can evolve and scale without turning the product into a distributed tangle.
 
+<p align="center">
+  <img src="docs/images/readme/product-preview-placeholder.svg" alt="Placeholder for a BarkFluff product preview" width="920">
+</p>
+
 ## What is inside
 
-| Layer | What it does | Built with |
-|---|---|---|
-| **Service entry** | Gives clients one trusted place to discover the platform | Beacon, Configuration, gRPC |
-| **Product services** | Identity, profiles, messaging, files, presence, calls, bots, federation, and more | .NET 10, CQRS, MediatR |
-| **Real time** | Delivers messages and product events over persistent streams | gRPC streaming, RabbitMQ |
-| **Data & operations** | Stores state, caches hot data, serves objects, and runs the stack | PostgreSQL, Redis, MinIO, Docker |
-| **Clients** | Brings the product to desktop, mobile, and the web | Kotlin, WPF, SwiftUI, Qt, web |
+**One entry point.** Beacon gives clients one trusted way to discover the platform; Configuration supplies the service registry and runtime settings.
 
-## Architecture
+**Independent product services.** Identity, profiles, messaging, files, presence, calls, bots, federation, and more run as focused .NET services, with CQRS and MediatR where they fit.
 
-```mermaid
-flowchart LR
-    Clients["Native & web clients"] --> Beacon["Beacon\nservice discovery"]
-    Beacon --> Services["gRPC microservices"]
-    Services --> Configuration["Configuration\nservice registry"]
-    Services <--> Broker["RabbitMQ\nasynchronous events"]
-    Services --> Data["PostgreSQL · Redis · MinIO"]
-```
+**Real-time by default.** The Updates service uses persistent gRPC streams for live product events, while RabbitMQ carries asynchronous work between services.
 
-The request path stays direct: a client asks **Beacon** for endpoints and calls the responsible service over gRPC. **Configuration** supplies service configuration, while **RabbitMQ** carries asynchronous events between services. Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
+**Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WPF, SwiftUI, Qt, and web technologies.
+
+Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
 
 ## Run the platform
 
@@ -70,14 +63,16 @@ dotnet build Backend/BarkFluff.Identity/BarkFluff.Identity.csproj
 
 ## Clients
 
-| Platform | Stack | Guide |
-|---|---|---|
-| Android | Kotlin, gRPC-OkHttp | [Build Android](.readme/clients/android.md) |
-| Windows | WPF, .NET | [Build Windows](.readme/clients/windows.md) |
-| macOS | SwiftUI, gRPC-Swift | [Build macOS](.readme/clients/macos.md) |
-| iOS | SwiftUI, gRPC-Swift | [Build iOS](.readme/clients/ios.md) |
-| Linux | Qt 6, C++20, gRPC | [Build Linux](.readme/clients/linux.md) |
-| Web | gRPC-Web and a vanilla-JS SPA | [Build web](.readme/clients/web.md) |
+<p align="center">
+  <img src="docs/images/readme/clients-placeholder.svg" alt="Placeholder for BarkFluff client screenshots" width="920">
+</p>
+
+- **Android** — Kotlin and gRPC-OkHttp · [build guide](.readme/clients/android.md)
+- **Windows** — WPF and .NET · [build guide](.readme/clients/windows.md)
+- **macOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/macos.md)
+- **iOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/ios.md)
+- **Linux** — Qt 6, C++20, and gRPC · [build guide](.readme/clients/linux.md)
+- **Web** — gRPC-Web and a vanilla-JS SPA · [build guide](.readme/clients/web.md)
 
 ## Repository map
 
@@ -98,11 +93,7 @@ BarkFluff/
 
 BarkFluff is actively developed. Android V1 is the supported Android client; the Compose-based V2 project is experimental and should only change as part of an explicit task.
 
-| Client | `dev` | `master` |
-|---|---|---|
-| Android | [![Android Client CI/CD · dev](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=dev)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml?query=branch%3Adev) | [![Android Client CI/CD · master](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=master)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml?query=branch%3Amaster) |
-| Windows (WPF) | [![WPF Client CI/CD · dev](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=dev)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml?query=branch%3Adev) | [![WPF Client CI/CD · master](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=master)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml?query=branch%3Amaster) |
-| macOS | [![macOS Client CI/CD · dev](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=dev)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml?query=branch%3Adev) | [![macOS Client CI/CD · master](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=master)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml?query=branch%3Amaster) |
+Client workflow status is shown above; open [GitHub Actions](https://github.com/Liis17/BarkFluff/actions) for the complete matrix.
 
 ## Reference
 
