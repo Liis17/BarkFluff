@@ -313,10 +313,17 @@ class MessageAdapter(
                 binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
-                    MarkdownRenderer.applyTo(binding.messageTextView, item.text)
+                    MarkdownRenderer.renderMessageInto(
+                        binding.messageMarkdownContainer,
+                        binding.messageTextView,
+                        item.text
+                    )
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
-                    binding.messageTextView.visibility = View.GONE
+                    MarkdownRenderer.clearMessageContent(
+                        binding.messageMarkdownContainer,
+                        binding.messageTextView
+                    )
                 }
 
                 binding.timeTextView.text = formatTime(item.timestamp)
@@ -482,10 +489,17 @@ class MessageAdapter(
                 binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
-                    MarkdownRenderer.applyTo(binding.messageTextView, item.text)
+                    MarkdownRenderer.renderMessageInto(
+                        binding.messageMarkdownContainer,
+                        binding.messageTextView,
+                        item.text
+                    )
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
-                    binding.messageTextView.visibility = View.GONE
+                    MarkdownRenderer.clearMessageContent(
+                        binding.messageMarkdownContainer,
+                        binding.messageTextView
+                    )
                 }
 
                 binding.timeTextView.text = formatTime(item.timestamp)
