@@ -1,4 +1,4 @@
-using BarkFluff.Configuration.Infrastructure;
+using BarkFluff.Configuration.Persistence;
 
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;

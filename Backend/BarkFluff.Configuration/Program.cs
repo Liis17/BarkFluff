@@ -1,4 +1,5 @@
 using BarkFluff.Configuration.Host;
+using BarkFluff.Configuration.Persistence;
 using BarkFluff.Configuration.Infrastructure;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;

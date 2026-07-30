@@ -2,7 +2,7 @@ using BarkFluff.Configuration.Domain;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace BarkFluff.Configuration.Infrastructure;
+namespace BarkFluff.Configuration.Persistence;
 
 public class ConfigurationContext : DbContext
 {
