@@ -45,6 +45,10 @@ WebApi (IDisposable, фасад)
 | `WebApiBase` | Абстрактный базовый класс менеджеров; содержит общий `ReadStream<T>` для безопасного чтения и отмены server-streaming RPC |
 | `GlobalParam` | Состояние (токены, URL, профиль), включая `SocketCalls`, `LivekitUrl`, `ServerDnsName`, `FederationEnabled`; AES-256-GCM; KDF PBKDF2-SHA512 × 600k (формат BFV3); чтение legacy BFV2 (PBKDF2-SHA256 × 100k) для миграции |
 | `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode)` |
+| `ForwardingLetter` | Исходящее сообщение: `Text`, `FilesId`, `ForwardedMessageId` (0 = обычная отправка). Одно и то же поле обслуживает и ответ, и пересылку — как в веб-клиенте |
+| `MessageModel` | Сообщение чата, включая `IsEdited` / `EditedAt` |
+| `AttachmentsModel` | Вложение; для типа `ForwardedMessage` заполнен `ForwardedMessage` |
+| `ForwardedMessageModel` | Содержимое пересланного сообщения: `AuthorName`, `OriginalMessageId`, `Text`, `Attachments` (без вложенной пересылки — сервер рекурсию не присылает) |
 | `ImageProcessor` | JPEG, WebP, resize через SixLabors.ImageSharp |
 
 **События `WebApi`:**
