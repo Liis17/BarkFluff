@@ -48,6 +48,8 @@ public partial class App : Application
                 await dataStore.SaveLanguageAsync(language);
             }
 
+            await services.GetRequiredService<SettingsViewModel>().LoadAsync();
+
             var navigation = services.GetRequiredService<IOnboardingNavigationService>();
             var savedConnection = await dataStore.GetNodeServiceConfigurationAsync();
             var nodeConnectionService = services.GetRequiredService<INodeConnectionService>();
@@ -144,6 +146,7 @@ public partial class App : Application
         builder.Services.AddSingleton<IOnboardingNavigationService, OnboardingNavigationService>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
+        builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<WelcomeViewModel>();
         builder.Services.AddSingleton<SelectNodeViewModel>();
         builder.Services.AddSingleton<ConnectedNodeViewModel>();

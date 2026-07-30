@@ -1,0 +1,26 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <StackPanel>
+        <TextBlock FontSize="20"
+                   FontWeight="SemiBold"
+                   Text="{DynamicResource Settings_Title}" />
+        <TextBlock Margin="0,20,0,0"
+                   FontWeight="SemiBold"
+                   Text="{DynamicResource Settings_OnWindowClose}" />
+        <!--  WPF UI не предоставляет RadioButton, поэтому здесь штатный контрол: его стилизует ControlsDictionary.  -->
+        <RadioButton Margin="0,10,0,0"
+                     Content="{DynamicResource Settings_OnWindowCloseExit}"
+                     GroupName="WindowClosingBehavior"
+                     IsChecked="{Binding ExitsOnClose}" />
+        <RadioButton Margin="0,6,0,0"
+                     Content="{DynamicResource Settings_OnWindowCloseTray}"
+                     GroupName="WindowClosingBehavior"
+                     IsChecked="{Binding MinimizesToTray}" />
+        <TextBlock Margin="0,8,0,0"
+                   Opacity=".7"
+                   TextWrapping="Wrap"
+                   Text="{DynamicResource Settings_OnWindowCloseTrayHint}" />
+    </StackPanel>
+</UserControl>
