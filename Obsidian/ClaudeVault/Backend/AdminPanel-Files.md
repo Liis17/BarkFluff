@@ -35,7 +35,7 @@
 | Файл | Эндпоинт-группа | Что делает |
 |------|----------------|-----------|
 | `AuthEndpoints.cs` | `/api/auth` | Запрос входа через Telegram, polling статуса, me, logout, управление токенами (список, rename, delete). |
-| `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart/pull конкретного, рестарт и обновление всей платформы, self-restart/update AdminPanel. |
+| `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart/pull конкретного, проверка обновления и self-restart/update AdminPanel, рестарт и обновление всей платформы. |
 | `BadgesEndpoints.cs` | `/api/badges` | CRUD бейджей пользователей через gRPC Users + Files (загрузка изображения). |
 | `StickersEndpoints.cs` | `/api/stickers` | Управление стикерпаками: CRUD пака, CRUD стикеров, смена обложки, прокси S3. gRPC Files. |
 | `UsersEndpoints.cs` | `/api/users` | Поиск пользователей, полный профиль (параллельные gRPC-вызовы), назначение бейджей, лимит хранилища, отключение 2FA, аватар, удаление сессий. |

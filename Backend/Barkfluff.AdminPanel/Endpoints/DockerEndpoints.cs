@@ -42,6 +42,24 @@ public static class DockerEndpoints
         .WithName("GetContainerStatus")
         .WithOpenApi();
 
+        group.MapGet("/containers/admin-panel/update-status", async (
+            DockerService dockerService,
+            DockerRegistryService dockerRegistryService,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var status = await dockerService.GetContainerStatusAsync("admin-panel");
+            if (status is null)
+                return Results.NotFound("Контейнер admin-panel не найден");
+
+            var versionStatus = await dockerRegistryService.GetVersionStatusAsync(status.Image, status.ImageDigest);
+            return Results.Ok(versionStatus);
+        })
+        .WithName("GetAdminPanelUpdateStatus")
+        .WithOpenApi();
+
         // Запустить контейнер
         group.MapPost("/containers/{name}/start", async (
             DockerService dockerService,
