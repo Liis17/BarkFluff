@@ -7,6 +7,8 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
 {
     private readonly WebApiClient _webApi;
     private readonly IClientSession _session;
+    private static readonly TimeSpan StreamStopTimeout = TimeSpan.FromSeconds(1);
+
     private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _messageReadsTask;
@@ -128,13 +130,10 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         _privateMessageReadsTask = null;
         if (tasks.Length > 0)
         {
-            try
-            {
-                await Task.WhenAll(tasks);
-            }
-            catch (OperationCanceledException)
-            {
-            }
+            // Читатели стримов кооперативные, но gRPC-вызов не всегда отпускает по отмене.
+            // Ждать их бесконечно нельзя: этот метод вызывается при завершении приложения,
+            // и зависшее ожидание не давало процессу закрыться.
+            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(StreamStopTimeout));
         }
 
         cancellation?.Dispose();
