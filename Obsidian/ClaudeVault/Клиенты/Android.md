@@ -358,6 +358,7 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - **`utils/MarkdownRenderer.kt`** (`object`) — line-based парсер `markdown → SpannableStringBuilder`:
   - Блоки: заголовки `#…######` (`RelativeSizeSpan` + bold), маркированные `-/*/+` (`BulletSpan`) и нумерованные `1.` (`LeadingMarginSpan`) списки, цитаты `>` (`QuoteSpan` + приглушённый цвет), горизонтальные линии `---/***/___`, ограждённые блоки кода ` ``` ` (monospace + фон + отступ).
   - Inline: `**bold**`/`__bold__`, `*italic*`/`_italic_`, `~~strike~~`, `` `code` `` (monospace + фон), `[текст](url)` (`URLSpan`). Inline-код защищён от повторного разбора.
+  - HTML allowlist из README: `p`/`h1…h6` с `align=left|center|right`, `strong`, `sub`, `a[href]`, `img[src,alt,width,height]`. Ссылки принимают `http(s)`/`mailto`, `src` — только `http(s)`; HTML-картинка строится отдельным `ImageView` через Coil, центрирование применяется и к ней. Относительные/fragment URL не имеют безопасной базы внутри сообщения: ссылка становится обычным текстом, а картинка выводит `alt` как fallback. Другие теги и атрибуты не интерпретируются.
   - Автолинковка «голых» URL через `Patterns.WEB_URL` — вручную, чтобы не затирать markdown-ссылки (в отличие от `Linkify.addLinks`, который стирает существующие `URLSpan`).
   - Цвета code-фона/цитаты — alpha-overlay поверх `textView.currentTextColor` (работает и на sent, и на received пузыре).
   - В bubble сообщений `renderMessageInto` распознаёт GFM-таблицу по шапке и строке-разделителю, строит нативные `TableLayout`-ячейки с уже существующей inline-разметкой, выравниванием `:---`/`:---:`/`---:` и горизонтальной прокруткой для широких таблиц. Парсер учитывает экранированный `\|` и пайп внутри inline-кода; короткие строки дополняет пустыми ячейками. Жест, начатый над прокручиваемой таблицей, не перехватывается swipe-to-reply, поэтому горизонтальный drag листает таблицу, а не открывает ответ.
@@ -365,7 +366,7 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - **Рендер (`renderMessageInto`)**: главный пузырь sent/received (`MessageAdapter` ~315/484, покрывает и закреплённые через `PinnedMessagesActivity`). E2E-чаты (приватный/секретный) рендерятся тем же `MessageAdapter` в общем `ChatActivity` (расшифрованный текст мапится в `MessageItem`).
 - **`autoLink="web"` убран** из `item_message_sent.xml` / `item_message_received.xml` — заменён Linkify внутри рендерера. Контекстное меню сообщения висит на `binding.root.setOnClickListener` (не long-press), поэтому `LinkMovementMethod` сосуществует с тап-в-меню как и раньше.
 - **Strip (чистый текст в превью)**: reply-превью (`buildPreviewLine`), тело пересланного сообщения (`forwardTextTextView`), последнее сообщение в списке чатов (`ChatAdapter`), пуш-уведомление (`NotificationHelper`). Иначе в однострочных превью светились бы символы `**`, `~~`, `` ` ``.
-- Вложенные списки и HTML не поддерживаются; таблицы поддержаны только в bubble сообщений.
+- Вложенные списки не поддерживаются; таблицы и HTML-картинки поддержаны только в bubble сообщений.
 
 ## Typing-индикатор («печатает…»)
 
