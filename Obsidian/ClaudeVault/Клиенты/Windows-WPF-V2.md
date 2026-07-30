@@ -4,7 +4,9 @@ Parent: [[Index]]
 
 ## Назначение
 
-Новый Windows-клиент BarkFluff. Реализуется независимо от замороженного [[Клиенты/Windows-WPF]]: WPF .NET 10, MVVM, DI и WPF UI.
+Windows-клиент BarkFluff на WPF .NET 10, MVVM, DI и WPF UI. Реализован независимо от замороженного [[Клиенты/Windows-WPF]].
+
+> Целевой платформой стал WinUI 3: функциональность переносится в [[Клиенты/Windows-WinUI]]. Этот документ остаётся источником поведения и описанием текущего работающего клиента.
 
 Расположение: `Windows/BarkFluff.ClientV2.WPF/`  
 Target framework: `net10.0-windows10.0.26100.0`
