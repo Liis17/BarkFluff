@@ -100,6 +100,9 @@
     <x:String x:Key="Messenger_Send">Отправить</x:String>
     <x:String x:Key="Messenger_Empty">Выберите чат, чтобы начать переписку</x:String>
     <x:String x:Key="Messenger_StatusOffline">Не в сети</x:String>
+    <x:String x:Key="Messenger_StatusOnline">В сети</x:String>
+    <x:String x:Key="Messenger_StatusLastSeenAt">был(а) в {0}</x:String>
+    <x:String x:Key="Messenger_StatusLastSeenOn">был(а) {0}</x:String>
     <x:String x:Key="Messenger_ReplyToMessage">Ответить</x:String>
     <x:String x:Key="Messenger_ReplyingTo">Ответ на сообщение</x:String>
     <x:String x:Key="Messenger_Forward">Переслать</x:String>
@@ -136,4 +139,10 @@
     <x:String x:Key="Messenger_PrivateDecryptionFailed">Не удалось расшифровать сообщение</x:String>
     <x:String x:Key="Messenger_Chat">Чат</x:String>
     <x:String x:Key="Messenger_File">Файл</x:String>
+    <x:String x:Key="Nav_Profile">Профиль</x:String>
+    <x:String x:Key="Profile_Title">Профиль</x:String>
+    <x:String x:Key="Profile_Email">Электронная почта</x:String>
+    <x:String x:Key="Profile_About">О себе</x:String>
+    <x:String x:Key="Profile_RegisteredAt">С нами с</x:String>
+    <x:String x:Key="Error_ProfileLoadFailed">Не удалось загрузить профиль.</x:String>
 </ResourceDictionary>

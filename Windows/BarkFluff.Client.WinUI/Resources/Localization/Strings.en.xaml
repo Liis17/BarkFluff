@@ -100,6 +100,9 @@
     <x:String x:Key="Messenger_Send">Send</x:String>
     <x:String x:Key="Messenger_Empty">Select a chat to start messaging</x:String>
     <x:String x:Key="Messenger_StatusOffline">Offline</x:String>
+    <x:String x:Key="Messenger_StatusOnline">Online</x:String>
+    <x:String x:Key="Messenger_StatusLastSeenAt">last seen at {0}</x:String>
+    <x:String x:Key="Messenger_StatusLastSeenOn">last seen on {0}</x:String>
     <x:String x:Key="Messenger_ReplyToMessage">Reply</x:String>
     <x:String x:Key="Messenger_ReplyingTo">Replying to</x:String>
     <x:String x:Key="Messenger_Forward">Forward</x:String>
@@ -136,4 +139,10 @@
     <x:String x:Key="Messenger_PrivateDecryptionFailed">Unable to decrypt message</x:String>
     <x:String x:Key="Messenger_Chat">Chat</x:String>
     <x:String x:Key="Messenger_File">File</x:String>
+    <x:String x:Key="Nav_Profile">Profile</x:String>
+    <x:String x:Key="Profile_Title">Profile</x:String>
+    <x:String x:Key="Profile_Email">Email</x:String>
+    <x:String x:Key="Profile_About">About</x:String>
+    <x:String x:Key="Profile_RegisteredAt">Member since</x:String>
+    <x:String x:Key="Error_ProfileLoadFailed">Could not load the profile.</x:String>
 </ResourceDictionary>

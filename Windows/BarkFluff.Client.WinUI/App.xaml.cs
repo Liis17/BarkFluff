@@ -27,6 +27,12 @@ public partial class App : Application
 
     public App() => InitializeComponent();
 
+    /// <summary>
+    /// Контейнер для страниц, на которые переходят из другой страницы: у <c>Page</c> нет
+    /// конструктора с зависимостями, а ViewModel такой страницы неоткуда взять параметром.
+    /// </summary>
+    internal static IServiceProvider Services => ((App)Current)._host!.Services;
+
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
