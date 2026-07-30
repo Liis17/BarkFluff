@@ -909,6 +909,7 @@
             flex-direction: column;
             gap: 2px;
             max-width: 70%;
+            min-width: 0;
         }
 
         .msg-group.outgoing { align-self: flex-end; }
@@ -1061,6 +1062,28 @@
         .md h2.md-h { font-size: 1.2em; }
         .md h3.md-h { font-size: 1.1em; }
         .md h4.md-h, .md h5.md-h, .md h6.md-h { font-size: 1em; }
+        .md-table-wrap {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .md-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 0.93em;
+        }
+        .md-table-cell {
+            padding: 5px 8px;
+            vertical-align: top;
+            border: 1px solid rgba(127, 127, 127, 0.35);
+            text-align: left;
+        }
+        .md-table th { font-weight: 700; }
+        .md-table tr:nth-child(even) td { background: rgba(127, 127, 127, 0.08); }
+        .md-table .md-align-center { text-align: center; }
+        .md-table .md-align-right { text-align: right; }
 
         .msg-attachments {
             display: flex;
