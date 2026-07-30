@@ -19,7 +19,7 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Преобразует серверное сообщение в модель клиента.
         /// </summary>
-        private static MessageModel MapMessage(Proto.Shared.Message message, string chatId) => new MessageModel
+        internal static MessageModel MapMessage(Proto.Shared.Message message, string chatId) => new MessageModel
         {
             MessageId = message.Id,
             ChatId = chatId,
