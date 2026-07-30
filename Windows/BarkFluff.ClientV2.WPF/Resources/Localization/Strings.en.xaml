@@ -106,6 +106,7 @@
     <sys:String x:Key="Messenger_CopyImage">Copy image</sys:String>
     <sys:String x:Key="Messenger_Pin">Pin</sys:String>
     <sys:String x:Key="Messenger_Unpin">Unpin</sys:String>
+    <sys:String x:Key="Messenger_PinnedLabel">Pinned message</sys:String>
     <sys:String x:Key="Messenger_Edit">Edit</sys:String>
     <sys:String x:Key="Messenger_Delete">Delete</sys:String>
     <sys:String x:Key="Messenger_Cancel">Cancel</sys:String>

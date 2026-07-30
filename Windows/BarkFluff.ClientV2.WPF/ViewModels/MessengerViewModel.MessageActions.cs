@@ -21,6 +21,11 @@ public sealed partial class MessengerViewModel
     private readonly List<PinnedMessageInfo> _pinnedMessages = [];
 
     private long _forwardSourceMessageId;
+    private int _pinnedBarIndex;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPinnedMessages))]
+    private PinnedPreviewViewModel? _pinnedPreview;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview))]
@@ -39,6 +44,8 @@ public sealed partial class MessengerViewModel
     [ObservableProperty] private string _forwardComment = string.Empty;
 
     public ObservableCollection<ForwardTargetViewModel> ForwardTargets { get; } = [];
+
+    public bool HasPinnedMessages => PinnedPreview is not null;
 
     public bool IsEditing => EditingMessage is not null;
 
@@ -106,6 +113,8 @@ public sealed partial class MessengerViewModel
 
             _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
             message.IsPinned = false;
+            _pinnedBarIndex = 0;
+            RefreshPinnedBar();
             return;
         }
 
@@ -116,8 +125,113 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        // Новый закреп показываем первым — как это делает веб-клиент.
+        _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
         _pinnedMessages.Insert(0, pinned);
         message.IsPinned = true;
+        _pinnedBarIndex = 0;
+        RefreshPinnedBar();
+    }
+
+    /// <summary>
+    /// Клик по плашке: переход к текущему закрепу и перелистывание на следующий по кругу.
+    /// </summary>
+    [RelayCommand]
+    private void CyclePinnedMessage()
+    {
+        if (_pinnedMessages.Count == 0)
+        {
+            return;
+        }
+
+        var messageId = _pinnedMessages[_pinnedBarIndex].Message?.Id ?? 0;
+        if (messageId > 0)
+        {
+            // MessageScrollRequest — запись со сравнением по значению, поэтому сбрасываем,
+            // чтобы повторный переход к тому же сообщению тоже сработал.
+            ScrollRequest = null;
+            ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Message, messageId);
+        }
+
+        if (_pinnedMessages.Count > 1)
+        {
+            _pinnedBarIndex = (_pinnedBarIndex + 1) % _pinnedMessages.Count;
+            RefreshPinnedBar();
+        }
+    }
+
+    [RelayCommand]
+    private async Task UnpinFromBarAsync()
+    {
+        var chat = SelectedChat;
+        var preview = PinnedPreview;
+        if (chat is null || preview is null)
+        {
+            return;
+        }
+
+        var error = await _messenger.UnpinMessageAsync(chat.Id, preview.MessageId);
+        if (!error.IsSuccess)
+        {
+            ActionError = DescribeError(error);
+            return;
+        }
+
+        _pinnedMessages.RemoveAll(info => info.Message?.Id == preview.MessageId);
+        var message = Messages.FirstOrDefault(item => item.Id == preview.MessageId);
+        if (message is not null)
+        {
+            message.IsPinned = false;
+        }
+
+        _pinnedBarIndex = 0;
+        RefreshPinnedBar();
+    }
+
+    private void RefreshPinnedBar()
+    {
+        if (_pinnedMessages.Count == 0)
+        {
+            PinnedPreview = null;
+            return;
+        }
+
+        if (_pinnedBarIndex >= _pinnedMessages.Count)
+        {
+            _pinnedBarIndex = 0;
+        }
+
+        var pinnedMessage = _pinnedMessages[_pinnedBarIndex].Message;
+        var text = pinnedMessage?.Content?.Text ?? string.Empty;
+        var preview = new PinnedPreviewViewModel(
+            pinnedMessage?.Id ?? 0,
+            _localization.GetString("Messenger_PinnedLabel"),
+            string.IsNullOrWhiteSpace(text)
+                ? _localization.GetString("Messenger_Attachment")
+                : ChatItemViewModel.CreatePreview(text, 80),
+            $"{_pinnedBarIndex + 1}/{_pinnedMessages.Count}",
+            _pinnedMessages.Count > 1);
+        PinnedPreview = preview;
+
+        if (pinnedMessage is { SenderId: not 0 })
+        {
+            _ = ResolvePinnedAuthorAsync(preview, pinnedMessage.SenderId);
+        }
+    }
+
+    private async Task ResolvePinnedAuthorAsync(PinnedPreviewViewModel preview, long senderId)
+    {
+        var (error, data) = await _messenger.GetUserDataAsync(senderId);
+        if (!error.IsSuccess || data is null || PinnedPreview != preview)
+        {
+            return;
+        }
+
+        var name = string.Join(' ', new[] { data.FirstName, data.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            preview.Author = name;
+        }
     }
 
     [RelayCommand]
@@ -290,10 +404,18 @@ public sealed partial class MessengerViewModel
         }
 
         Messages.Remove(message);
+        // Сервер сам снимает закреп с удалённого сообщения, локальный кеш чистим сразу.
         _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
+        _pinnedBarIndex = 0;
+        RefreshPinnedBar();
         if (EditingMessage == message)
         {
             CancelEdit();
+        }
+
+        if (ReplyTarget == message)
+        {
+            ReplyTarget = null;
         }
     }
 
@@ -332,7 +454,9 @@ public sealed partial class MessengerViewModel
 
         _pinnedMessages.Clear();
         _pinnedMessages.AddRange(pinned.OrderByDescending(info => info.PinnedAt?.ToDateTimeOffset()));
+        _pinnedBarIndex = 0;
         ApplyPinnedState();
+        RefreshPinnedBar();
     }
 
     private void ApplyPinnedState()
@@ -351,6 +475,8 @@ public sealed partial class MessengerViewModel
         MessagePendingDelete = null;
         ActionError = null;
         _pinnedMessages.Clear();
+        _pinnedBarIndex = 0;
+        RefreshPinnedBar();
         CancelForward();
     }
 
@@ -375,6 +501,20 @@ public sealed partial class MessengerViewModel
             ActionError = _localization.GetString("Messenger_ClipboardFailed");
         }
     }
+}
+
+/// <summary>
+/// Плашка закреплённого сообщения над лентой чата.
+/// </summary>
+public sealed partial class PinnedPreviewViewModel(long messageId, string author, string preview, string counter, bool hasCounter) : ObservableObject
+{
+    public long MessageId { get; } = messageId;
+    public string Preview { get; } = preview;
+    public string Counter { get; } = counter;
+    public bool HasCounter { get; } = hasCounter;
+
+    /// <summary>Подпись плашки: сначала общая, затем имя автора оригинала, когда оно подгрузится.</summary>
+    [ObservableProperty] private string _author = author;
 }
 
 /// <summary>

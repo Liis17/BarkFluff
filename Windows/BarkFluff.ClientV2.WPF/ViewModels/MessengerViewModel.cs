@@ -573,7 +573,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
         LastName = lastName;
         AvatarUrl = avatarUrl;
         IsPrivate = chat.ChatType == ChatType.Private;
-        Preview = IsPrivate ? string.Empty : CreatePreview(chat.LastMessage?.Content?.Text ?? string.Empty);
+        Preview = IsPrivate ? string.Empty : CreatePreview(chat.LastMessage?.Content?.Text ?? string.Empty, 20);
         UnreadCount = chat.CountUnread;
         FirstUnreadMessageId = chat.FirstUnreadMessageId;
         LastMessageAt = chat.LastActivityAt?.ToDateTimeOffset();
@@ -599,13 +599,16 @@ public sealed partial class ChatItemViewModel : ObservableObject
         ? initials
         : Title[..1].ToUpperInvariant();
 
-    private static string CreatePreview(string text)
+    /// <summary>
+    /// Сжимает текст в одну строку и обрезает по числу видимых символов.
+    /// </summary>
+    internal static string CreatePreview(string text, int maxElements)
     {
         var normalized = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         var elementStarts = StringInfo.ParseCombiningCharacters(normalized);
-        return elementStarts.Length <= 20
+        return elementStarts.Length <= maxElements
             ? normalized
-            : normalized[..elementStarts[19]].TrimEnd() + "…";
+            : normalized[..elementStarts[maxElements - 1]].TrimEnd() + "…";
     }
 }
 
