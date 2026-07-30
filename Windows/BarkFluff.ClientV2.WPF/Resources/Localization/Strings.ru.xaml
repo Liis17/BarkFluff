@@ -95,6 +95,7 @@
     <sys:String x:Key="Messenger_StatusOffline">Не в сети</sys:String>
     <sys:String x:Key="Messenger_CopyMessage">Копировать сообщение</sys:String>
     <sys:String x:Key="Messenger_ReplyToMessage">Ответить</sys:String>
+    <sys:String x:Key="Messenger_Delivered">Доставлено</sys:String>
     <sys:String x:Key="Messenger_Read">Прочитано</sys:String>
     <sys:String x:Key="Messenger_PrivateUnlockTitle">Разблокировать приватный чат</sys:String>
     <sys:String x:Key="Messenger_PrivateUnlockHint">Введите кодовую фразу. Она используется только на этом устройстве для вывода ключа чата.</sys:String>
