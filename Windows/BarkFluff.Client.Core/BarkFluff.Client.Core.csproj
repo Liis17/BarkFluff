@@ -31,4 +31,9 @@
     <ProjectReference Include="..\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--  Тестам нужны internal-члены вьюмоделей: расширять публичный API ради проверок незачем.  -->
+    <InternalsVisibleTo Include="BarkFluff.Client.WinUI.Tests" />
+  </ItemGroup>
+
 </Project>

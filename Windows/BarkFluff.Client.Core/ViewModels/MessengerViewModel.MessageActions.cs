@@ -159,10 +159,7 @@ public sealed partial class MessengerViewModel
         var messageId = _pinnedMessages[_pinnedBarIndex].Message?.Id ?? 0;
         if (messageId > 0)
         {
-            // MessageScrollRequest — запись со сравнением по значению, поэтому сбрасываем,
-            // чтобы повторный переход к тому же сообщению тоже сработал.
-            ScrollRequest = null;
-            ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Message, messageId);
+            RequestScroll(MessageScrollTarget.Message, messageId);
         }
 
         if (_pinnedMessages.Count > 1)
@@ -301,7 +298,7 @@ public sealed partial class MessengerViewModel
     {
         if (message.IsReplyQuote && message.Forwarded is not null)
         {
-            ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Message, message.Forwarded.OriginalMessageId);
+            RequestScroll(MessageScrollTarget.Message, message.Forwarded.OriginalMessageId);
         }
     }
 
@@ -370,9 +367,9 @@ public sealed partial class MessengerViewModel
 
             if (message is not null && SelectedChat?.Id == chatId)
             {
-                Messages.Add(await CreateMessageItemAsync(message, currentUserId.Value));
+                InsertMessageInOrder(await CreateMessageItemAsync(message, currentUserId.Value));
                 ApplyReplyQuoteState();
-                ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
+                RequestScroll(MessageScrollTarget.Bottom);
             }
         }
 
