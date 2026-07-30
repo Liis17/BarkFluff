@@ -67,3 +67,11 @@ BarkFluff/
 ## Status
 
 BarkFluff is under active development. The Android V1 client is the supported Android implementation; the Compose-based V2 project is experimental and should not be changed without an explicit task.
+
+## Client build status
+
+| Client | `dev` | `master` |
+|---|---|---|
+| Android | [![Android Client CI/CD · dev](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=dev)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml?query=branch%3Adev) | [![Android Client CI/CD · master](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=master)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml?query=branch%3Amaster) |
+| Windows (WPF) | [![WPF Client CI/CD · dev](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=dev)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml?query=branch%3Adev) | [![WPF Client CI/CD · master](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=master)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml?query=branch%3Amaster) |
+| macOS | [![macOS Client CI/CD · dev](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=dev)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml?query=branch%3Adev) | [![macOS Client CI/CD · master](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=master)](https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml?query=branch%3Amaster) |
