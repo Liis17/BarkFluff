@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "BarkFluff.Client.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "BarkFluff.Client.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
