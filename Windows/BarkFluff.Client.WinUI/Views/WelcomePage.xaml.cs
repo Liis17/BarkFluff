@@ -1,3 +1,5 @@
+using BarkFluff.Client.Core.ViewModels;
+
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -7,9 +9,16 @@ public sealed partial class WelcomePage : Page
 {
     public WelcomePage() => InitializeComponent();
 
+    /// <summary>
+    /// Заполняется в <see cref="OnNavigatedTo"/>: страница создаётся навигацией без параметров,
+    /// поэтому к моменту <c>InitializeComponent</c> модели ещё нет.
+    /// </summary>
+    public WelcomeViewModel ViewModel { get; private set; } = null!;
+
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        DataContext = e.Parameter;
+        ViewModel = (WelcomeViewModel)e.Parameter;
+        Bindings.Update();
     }
 }

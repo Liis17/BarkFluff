@@ -31,12 +31,15 @@ public class ListOtpVerificationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoAuthProperties_ThrowsOtpNotCreatedException()
+    public async Task Handle_NoAuthProperties_ReturnsDisabledStatus()
     {
         var handler = new ListOtpVerificationCommandHandler(_userContext, _authPropsStorage, _logger.Object);
         var cmd = new ListOtpVerificationCommand();
 
-        await Assert.ThrowsAsync<BarkFluff.Identity.Persistence.Exceptions.OtpNotCreatedException>(() => handler.Handle(cmd, CancellationToken.None));
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        Assert.False(result.AuthenticatorEnabled);
+        Assert.False(result.EmailEnabled);
     }
 
     [Fact]
