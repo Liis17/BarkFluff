@@ -18,7 +18,7 @@ docker-compose -f docker-compose-dev.yml up web
 Три функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
 2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP. **Base64-фрейминг:** каждый Write кодируется независимым padded base64-чанком и сразу флашится (`=` в середине потока — законный разделитель по спеке gRPC-Web, декодер клиента обрабатывает 4-символьные группы независимо). Раньше остаток 1-2 байта буферизовался до следующего Write — из-за этого server-streaming сообщения приходили с отставанием на одно.
-3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**)
+3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**). До чтения тела Web поднимает Kestrel-лимит только для этого маршрута до **512 МБ**; иначе дефолт Kestrel (~28,6 МБ) вернёт `413` до передачи в [[Backend/Files]].
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 

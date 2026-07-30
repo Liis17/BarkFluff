@@ -81,6 +81,21 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+// Kestrel по умолчанию ограничивает тело запроса примерно 28.6 МБ.
+// Поднимаем лимит только для проксируемой HTTP-загрузки, до первого чтения тела.
+app.Use((ctx, next) =>
+{
+    if (HttpMethods.IsPost(ctx.Request.Method) &&
+        ctx.Request.Path.StartsWithSegments("/api/files/upload"))
+    {
+        var maxRequestBodySize = ctx.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (maxRequestBodySize is { IsReadOnly: false })
+            maxRequestBodySize.MaxRequestBodySize = 512L * 1024 * 1024;
+    }
+
+    return next();
+});
+
 // Применяем X-Forwarded-For/-Proto только от доверенных прокси (см. KnownNetworks выше).
 // После этого ctx.Connection.RemoteIpAddress = реальный IP клиента; подделать нельзя.
 app.UseForwardedHeaders();
