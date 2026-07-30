@@ -2,5 +2,91 @@
     x:Class="BarkFluff.Client.WinUI.Views.RegistrationPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid />
+    <Grid Margin="40,24,40,40">
+        <Border Width="560"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Style="{StaticResource OnboardingCard}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Visibility="{x:Bind ViewModel.IsProfileStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Style="{StaticResource OnboardingTitle}" Text="{StaticResource Registration_Title}" />
+                    <TextBlock Margin="0,10,0,24"
+                               Style="{StaticResource OnboardingDescription}"
+                               Text="{StaticResource Registration_Subtitle}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_FirstName}" />
+                    <TextBox Margin="0,8,0,14" Text="{x:Bind ViewModel.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_LastName}" />
+                    <TextBox Margin="0,8,0,14" Text="{x:Bind ViewModel.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_Username}" />
+                    <TextBox Margin="0,8,0,14"
+                             PlaceholderText="{StaticResource Registration_UsernameHint}"
+                             Text="{x:Bind ViewModel.Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_Email}" />
+                    <TextBox Margin="0,8,0,20" Text="{x:Bind ViewModel.Email, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button HorizontalAlignment="Left"
+                            Command="{x:Bind ViewModel.CreateAccountCommand}"
+                            Content="{StaticResource Registration_SendCode}"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Visibility="{x:Bind ViewModel.IsConfirmationStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Style="{StaticResource OnboardingTitle}" Text="{StaticResource Registration_ConfirmTitle}" />
+                    <TextBlock Margin="0,10,0,24"
+                               Style="{StaticResource OnboardingDescription}"
+                               Text="{StaticResource Registration_ConfirmSubtitle}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_ConfirmationCode}" />
+                    <TextBox Margin="0,8,0,20"
+                             MaxLength="6"
+                             Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button HorizontalAlignment="Left"
+                            Command="{x:Bind ViewModel.ConfirmAccountCommand}"
+                            Content="{StaticResource Registration_Confirm}"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Visibility="{x:Bind ViewModel.IsPasswordStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Style="{StaticResource OnboardingTitle}" Text="{StaticResource Registration_PasswordTitle}" />
+                    <TextBlock Margin="0,10,0,24"
+                               Style="{StaticResource OnboardingDescription}"
+                               Text="{StaticResource Registration_PasswordSubtitle}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_Password}" />
+                    <PasswordBox Margin="0,8,0,14"
+                                 Password="{x:Bind ViewModel.Password, Mode=TwoWay}"
+                                 PasswordRevealMode="Peek" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_PasswordConfirmation}" />
+                    <PasswordBox Margin="0,8,0,20"
+                                 Password="{x:Bind ViewModel.PasswordConfirmation, Mode=TwoWay}"
+                                 PasswordRevealMode="Peek" />
+                    <Button HorizontalAlignment="Left"
+                            Command="{x:Bind ViewModel.SetPasswordCommand}"
+                            Content="{StaticResource Registration_Finish}"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Bottom">
+                    <TextBlock Margin="0,18,0,0"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                               Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.StatusMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                        <HyperlinkButton Command="{x:Bind ViewModel.ShowLoginCommand}" Content="{StaticResource Common_BackToLogin}" />
+                        <ProgressRing Width="22"
+                                      Height="22"
+                                      Margin="14,0,0,0"
+                                      IsActive="True"
+                                      Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Page>
