@@ -136,6 +136,20 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 
 Миграции (`FederationContext`) применяются автоматически при старте (`Database.Migrate()`).
 
+## Структура кода
+
+- `Host/` содержит только gRPC-адаптеры: `FederationInternalApiService` и
+  `FederationS2SApiService` сопоставляют RPC с прикладными обработчиками.
+- `Features/FederationInternalApi/FederationInternalApiHandler` реализует use-cases
+  внутреннего API: управление пирами и ключами, presence, исходящий typing,
+  федеративное скачивание и outbox.
+- `Features/FederationS2SApi/FederationS2SApiHandler` реализует S2S use-cases:
+  presence и file streaming, typing, ключи, профиль и доставку событий.
+
+Стриминговые RPC намеренно вызывают handler напрямую: это соответствует подходу
+[[Backend/Onliner]] для долгоживущих server-streaming операций и не создаёт
+искусственных MediatR-команд, несущих `IServerStreamWriter`.
+
 ## Ed25519-ключи (`SigningKeyService`)
 
 - Библиотека — `BouncyCastle.Cryptography` 2.6.2 (managed, снимает chiseled-риск конструктивно; выбор и бенчмарки — [[../../../docs/rearch/phase-0/step-0.5-report|docs/rearch/phase-0/step-0.5-report.md]]).

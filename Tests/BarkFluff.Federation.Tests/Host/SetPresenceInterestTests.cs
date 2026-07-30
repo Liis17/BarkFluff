@@ -1,4 +1,4 @@
-using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Features.FederationInternalApi;
 using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
@@ -17,7 +17,7 @@ namespace BarkFluff.Federation.Tests.Host;
 /// </summary>
 public class SetPresenceInterestTests
 {
-    private sealed record Harness(FederationInternalApiService Service, PresenceInterestRegistry Registry);
+    private sealed record Harness(FederationInternalApiHandler Service, PresenceInterestRegistry Registry);
 
     private static Harness CreateHarness(int maxSubscriptionSize = 500)
     {
@@ -35,7 +35,7 @@ public class SetPresenceInterestTests
         var signing = TestHelpers.CreateSigningKeyService(context, configuration);
         var keyCache = new ActiveSigningKeyCache(provider.GetRequiredService<IServiceScopeFactory>());
 
-        var service = new FederationInternalApiService(
+        var service = new FederationInternalApiHandler(
             context,
             configuration,
             signing,
@@ -58,7 +58,7 @@ public class SetPresenceInterestTests
             new MetricsCollector(),
             new FederatedFileOptions(configuration),
                 new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
-            NullLogger<FederationInternalApiService>.Instance);
+            NullLogger<FederationInternalApiHandler>.Instance);
 
         return new Harness(service, registry);
     }

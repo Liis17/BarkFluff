@@ -1,6 +1,6 @@
 using BarkFluff.Federation.Domain.Entities;
 using BarkFluff.Federation.Domain.Enums;
-using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Features.FederationInternalApi;
 using BarkFluff.Federation.Infrastructure;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
@@ -33,7 +33,7 @@ public class FederationInternalApiServiceTests
         public FakeWellKnownClient FakeWellKnown { get; } = new();
         public FakeNavigatorClient FakeNavigator { get; } = new();
         public PresenceInterestRegistry PresenceInterest { get; } = new(TestHelpers.CreatePresenceOptions());
-        public FederationInternalApiService Service { get; }
+        public FederationInternalApiHandler Service { get; }
 
         public Fixture(IDictionary<string, string?>? configOverrides = null)
         {
@@ -60,7 +60,7 @@ public class FederationInternalApiServiceTests
 
             var writer = new OutboxWriter(Context, signing, configuration, new MetricsCollector());
 
-            Service = new FederationInternalApiService(
+            Service = new FederationInternalApiHandler(
                 Context, configuration, signing, WellKnown, KeyCache, resolver, channelFactory, writer,
                 PresenceInterest, TestHelpers.CreatePresenceOptions(),
                 TestHelpers.CreateFederationSwitch(configuration), new TypingCoalescer(),
@@ -69,7 +69,7 @@ public class FederationInternalApiServiceTests
                 new MetricsCollector(),
                 new FederatedFileOptions(configuration),
                 new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
-                NullLogger<FederationInternalApiService>.Instance);
+                NullLogger<FederationInternalApiHandler>.Instance);
         }
 
         public void Dispose()

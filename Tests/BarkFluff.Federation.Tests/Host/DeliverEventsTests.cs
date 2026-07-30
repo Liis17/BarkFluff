@@ -1,5 +1,5 @@
 using BarkFluff.Federation.Domain.Entities;
-using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Features.FederationS2SApi;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
@@ -23,10 +23,10 @@ public class DeliverEventsTests
 {
     private const string Origin = "peer.test";
 
-    private static (FederationContext Context, FederationS2SApiService Service) Create(IChatCreatedQuotaLimiter? quotaLimiter = null)
+    private static (FederationContext Context, FederationS2SApiHandler Service) Create(IChatCreatedQuotaLimiter? quotaLimiter = null)
     {
         var context = TestHelpers.CreateContext();
-        var service = new FederationS2SApiService(
+        var service = new FederationS2SApiHandler(
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
@@ -42,16 +42,16 @@ public class DeliverEventsTests
             new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
             quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
-            NullLogger<FederationS2SApiService>.Instance);
+            NullLogger<FederationS2SApiHandler>.Instance);
         return (context, service);
     }
 
-    private static (FederationContext Context, FederationS2SApiService Service, Mock<MessagesServerApi.MessagesServerApiClient> MessagesMock) CreateWithMessagesMock(
+    private static (FederationContext Context, FederationS2SApiHandler Service, Mock<MessagesServerApi.MessagesServerApiClient> MessagesMock) CreateWithMessagesMock(
         IChatCreatedQuotaLimiter? quotaLimiter = null)
     {
         var context = TestHelpers.CreateContext();
         var messagesMock = new Mock<MessagesServerApi.MessagesServerApiClient>();
-        var service = new FederationS2SApiService(
+        var service = new FederationS2SApiHandler(
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             Mock.Of<UsersServerApi.UsersServerApiClient>(),
@@ -67,7 +67,7 @@ public class DeliverEventsTests
             new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
             quotaLimiter ?? new FakeChatCreatedQuotaLimiter(),
-            NullLogger<FederationS2SApiService>.Instance);
+            NullLogger<FederationS2SApiHandler>.Instance);
         return (context, service, messagesMock);
     }
 
