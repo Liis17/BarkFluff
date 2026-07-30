@@ -10,24 +10,28 @@
 
     var u = function () { return BF.utils; };
 
-    function updateMessageStatus(statusEl, isRead) {
+    function updateMessageStatus(statusEl, isRead, isPending) {
         statusEl.replaceChildren();
         var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        icon.setAttribute('class', 'msg-status-icon' + (isRead ? ' msg-status-icon--read' : ''));
-        icon.setAttribute('viewBox', isRead ? '0 0 20 12' : '0 0 12 12');
+        icon.setAttribute('class', 'msg-status-icon'
+            + (isRead ? ' msg-status-icon--read' : '')
+            + (isPending ? ' msg-status-icon--pending' : ''));
+        icon.setAttribute('viewBox', isPending ? '0 0 16 16' : (isRead ? '0 0 20 12' : '0 0 12 12'));
         icon.setAttribute('aria-hidden', 'true');
         icon.setAttribute('focusable', 'false');
 
-        var paths = isRead
-            ? ['M1 6.2 4.5 9.8 11 2', 'M7 6.2 10.5 9.8 17 2']
-            : ['M1 6.2 4.5 9.8 11 2'];
+        var paths = isPending
+            ? ['M8 1.5a6.5 6.5 0 1 1-6.5 6.5A6.5 6.5 0 0 1 8 1.5Z', 'M8 4.5V8l2.5 1.5']
+            : (isRead
+                ? ['M1 6.2 4.5 9.8 11 2', 'M7 6.2 10.5 9.8 17 2']
+                : ['M1 6.2 4.5 9.8 11 2']);
         paths.forEach(function (d) {
             var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', d);
             icon.appendChild(path);
         });
         statusEl.appendChild(icon);
-        statusEl.setAttribute('aria-label', isRead ? 'Прочитано' : 'Доставлено');
+        statusEl.setAttribute('aria-label', isPending ? 'Отправляется' : (isRead ? 'Прочитано' : 'Доставлено'));
     }
 
     // --- Audio Player Singleton ---
@@ -195,13 +199,43 @@
 
             var im = document.createElement('img');
             if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
-            im.src = prev || url; im.loading = 'lazy';
-            im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-            BF.files.bindResilientMedia(im, a.fileId, true);
-            im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
-            grid.appendChild(im);
+            im.src = a.localPreviewUrl || prev || url;
+
+            if (a.isPending) {
+                var item = document.createElement('div');
+                item.className = 'attach-image-item is-uploading';
+                item.dataset.uploadIndex = a.uploadIndex;
+                im.alt = a.fileName || '';
+                item.appendChild(im);
+                item.appendChild(createCircularProgress(a.uploadProgress || 0));
+                grid.appendChild(item);
+            } else {
+                im.loading = 'lazy';
+                im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
+                BF.files.bindResilientMedia(im, a.fileId, true);
+                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
+                grid.appendChild(im);
+            }
         }
         container.appendChild(grid);
+    }
+
+    function createCircularProgress(percent) {
+        var progress = Math.max(0, Math.min(100, Number(percent) || 0));
+        var wrap = document.createElement('div');
+        wrap.className = 'upload-progress-circle';
+        wrap.setAttribute('role', 'progressbar');
+        wrap.setAttribute('aria-label', 'Загрузка файла');
+        wrap.setAttribute('aria-valuemin', '0');
+        wrap.setAttribute('aria-valuemax', '100');
+        wrap.setAttribute('aria-valuenow', progress);
+        wrap.innerHTML =
+            '<svg viewBox="0 0 44 44" aria-hidden="true">' +
+            '<circle class="upload-progress-track" cx="22" cy="22" r="18"></circle>' +
+            '<circle class="upload-progress-value" cx="22" cy="22" r="18" pathLength="100"></circle>' +
+            '</svg><span>' + Math.round(progress) + '%</span>';
+        wrap.querySelector('.upload-progress-value').style.strokeDashoffset = String(100 - progress);
+        return wrap;
     }
 
     function renderVideos(videos, container, onMediaClick) {
@@ -312,21 +346,55 @@
         docs.forEach(function (a) {
             var fd = BF.files.getCachedFileUrl(a.fileId);
             var url = (fd && fd.url) || '';
-            var link = document.createElement('a');
+            var link = document.createElement(a.isPending ? 'div' : 'a');
             link.className = 'attach-doc';
-            link.href = url;
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.download = a.fileName || '';
-            BF.files.bindResilientLink(link, a.fileId);
+            if (a.isPending) {
+                link.classList.add('is-uploading');
+                link.dataset.uploadIndex = a.uploadIndex;
+            } else {
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.download = a.fileName || '';
+                BF.files.bindResilientLink(link, a.fileId);
+            }
+            var progress = Math.max(0, Math.min(100, Number(a.uploadProgress) || 0));
             link.innerHTML =
                 '<span class="attach-doc-icon">' + u().docIcon(a.fileName) + '</span>' +
                 '<div class="attach-doc-info">' +
                 '<div class="attach-doc-name">' + u().escapeHtml(a.fileName || 'Файл') + '</div>' +
+                (a.isPending
+                    ? '<div class="attach-upload-progress" role="progressbar" aria-label="Загрузка файла" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '">' +
+                      '<div class="attach-upload-progress-fill" style="width:' + progress + '%"></div></div>'
+                    : '') +
                 '<div class="attach-doc-size">' + u().formatFileSize(a.attachmentSize || 0) + '</div>' +
                 '</div>';
             container.appendChild(link);
         });
+    }
+
+    function updateAttachmentProgress(messageId, attachmentIndex, percent) {
+        var group = Array.prototype.find.call(document.querySelectorAll('.msg-group'), function (el) {
+            return String(el.dataset.msgId) === String(messageId);
+        });
+        if (!group) return;
+
+        var progress = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+        var item = group.querySelector('[data-upload-index="' + attachmentIndex + '"]');
+        if (!item) return;
+
+        var circular = item.querySelector('.upload-progress-circle');
+        if (circular) {
+            circular.setAttribute('aria-valuenow', progress);
+            circular.querySelector('.upload-progress-value').style.strokeDashoffset = String(100 - progress);
+            circular.querySelector('span').textContent = progress + '%';
+        }
+
+        var linear = item.querySelector('.attach-upload-progress');
+        if (linear) {
+            linear.setAttribute('aria-valuenow', progress);
+            linear.querySelector('.attach-upload-progress-fill').style.width = progress + '%';
+        }
     }
 
     /**
@@ -469,7 +537,7 @@
                     statusEl.className = 'msg-status';
                     statusEl.dataset.msgId = msg.id;
                     var readCount = (msg.readBy || []).filter(function (id) { return id !== myUserId; }).length;
-                    updateMessageStatus(statusEl, readCount > 0);
+                    updateMessageStatus(statusEl, readCount > 0, !!msg.isPending);
                     meta.appendChild(statusEl);
                 }
                 bubble.appendChild(meta);
@@ -483,6 +551,7 @@
     window.BF.messages = {
         buildMessageElement: buildMessageElement,
         updateMessageStatus: updateMessageStatus,
+        updateAttachmentProgress: updateAttachmentProgress,
         renderAttachments: renderAttachments,
         renderForwardedBlock: renderForwardedBlock,
         renderReplyQuote: renderReplyQuote
