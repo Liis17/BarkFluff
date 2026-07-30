@@ -184,6 +184,7 @@ public partial class App : Application
         builder.Services.AddSingleton<RegistrationViewModel>();
         builder.Services.AddSingleton<PasswordRecoveryViewModel>();
         builder.Services.AddSingleton<MessengerViewModel>();
+        builder.Services.AddSingleton<ProfileViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();

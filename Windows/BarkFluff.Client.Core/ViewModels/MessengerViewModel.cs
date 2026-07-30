@@ -1,6 +1,7 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.Infrastructure.Localization;
+using BarkFluff.Client.Core.Infrastructure.Presence;
 using BarkFluff.Client.Core.Infrastructure.Threading;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
@@ -19,29 +20,38 @@ public sealed partial class MessengerViewModel : ObservableObject
     private readonly IMessengerService _messenger;
     private readonly IPrivateChatKeyStore _privateChatKeyStore;
     private readonly IRealtimeMessengerService _realtimeMessenger;
+    private readonly IOnlinePresenceService _presence;
     private readonly ILocalizationService _localization;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly HashSet<long> _pendingReadMessageIds = [];
     private CancellationTokenSource? _readBatchCancellationTokenSource;
     private int _messageLoadVersion;
+    private bool _isFeedAtBottom = true;
 
     public MessengerViewModel(
         IMessengerService messenger,
         IPrivateChatKeyStore privateChatKeyStore,
         IRealtimeMessengerService realtimeMessenger,
+        IOnlinePresenceService presence,
         ILocalizationService localization,
         IUiDispatcher uiDispatcher)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
         _realtimeMessenger = realtimeMessenger;
+        _presence = presence;
         _localization = localization;
         _uiDispatcher = uiDispatcher;
+        _realtimeMessenger.MessageReceived += OnMessageReceived;
         _realtimeMessenger.MessageRead += OnMessageRead;
         _realtimeMessenger.PrivateMessageRead += OnPrivateMessageRead;
+        _presence.PresenceChanged += OnPresenceChanged;
     }
 
     public ObservableCollection<ChatItemViewModel> Chats { get; } = [];
+
+    /// <summary>Отфильтрованная поиском проекция <see cref="Chats"/>; к ней привязан список в разметке.</summary>
+    public ObservableCollection<ChatItemViewModel> VisibleChats { get; } = [];
     public ObservableCollection<MessageItemViewModel> Messages { get; } = [];
 
     internal ILocalizationService Localization => _localization;
@@ -87,10 +97,34 @@ public sealed partial class MessengerViewModel : ObservableObject
             {
                 Chats.Add(item);
             }
+
+            ApplyChatFilter();
+            await TrackPresenceForChatsAsync();
         }
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyChatFilter();
+
+    /// <summary>
+    /// Выбранный чат остаётся в выборке даже когда не подходит под фильтр: иначе список
+    /// сбросил бы <c>SelectedItem</c> и открытая переписка закрылась бы на середине фразы.
+    /// </summary>
+    private void ApplyChatFilter()
+    {
+        var query = SearchText.Trim();
+        var filtered = Chats.Where(chat =>
+            query.Length == 0
+            || chat == SelectedChat
+            || chat.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+
+        VisibleChats.Clear();
+        foreach (var chat in filtered)
+        {
+            VisibleChats.Add(chat);
         }
     }
 
@@ -101,6 +135,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         ResetMessageActionState();
         Messages.Clear();
         ScrollRequest = null;
+        // Только что открытый чат следует за новыми сообщениями, пока пользователь не ушёл вверх.
+        _isFeedAtBottom = true;
         IsPrivateUnlockVisible = false;
         PrivateUnlockError = null;
         PrivatePassphrase = string.Empty;
@@ -137,9 +173,9 @@ public sealed partial class MessengerViewModel : ObservableObject
             var privateResult = await _messenger.SendPrivateMessageAsync(SelectedChat.Id, DraftText.Trim(), key);
             if (privateResult.error.IsSuccess && privateResult.message is not null)
             {
-                Messages.Add(CreatePrivateMessageItem(privateResult.message, currentUserId.Value));
+                InsertMessageInOrder(CreatePrivateMessageItem(privateResult.message, currentUserId.Value));
                 DraftText = string.Empty;
-                ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
+                RequestScroll(MessageScrollTarget.Bottom);
             }
             return;
         }
@@ -147,11 +183,11 @@ public sealed partial class MessengerViewModel : ObservableObject
         var result = await _messenger.SendMessageAsync(SelectedChat.Id, DraftText.Trim(), ReplyTarget?.Id ?? 0);
         if (result.error.IsSuccess && result.message is not null)
         {
-            Messages.Add(await CreateMessageItemAsync(result.message, currentUserId.Value));
+            InsertMessageInOrder(await CreateMessageItemAsync(result.message, currentUserId.Value));
             ApplyReplyQuoteState();
             DraftText = string.Empty;
             ReplyTarget = null;
-            ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
+            RequestScroll(MessageScrollTarget.Bottom);
         }
     }
 
@@ -202,9 +238,14 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         ApplyReplyQuoteState();
-        ScrollRequest = hasUnreadMessages
-            ? new MessageScrollRequest(MessageScrollTarget.Message, chat.FirstUnreadMessageId)
-            : new MessageScrollRequest(MessageScrollTarget.Bottom);
+        if (hasUnreadMessages)
+        {
+            RequestScroll(MessageScrollTarget.Message, chat.FirstUnreadMessageId);
+        }
+        else
+        {
+            RequestScroll(MessageScrollTarget.Bottom);
+        }
 
         await LoadPinnedMessagesAsync(chat, loadVersion);
     }
@@ -290,9 +331,14 @@ public sealed partial class MessengerViewModel : ObservableObject
             Messages.Add(item);
         }
 
-        ScrollRequest = hasUnreadMessages
-            ? new MessageScrollRequest(MessageScrollTarget.Message, chat.FirstUnreadMessageId)
-            : new MessageScrollRequest(MessageScrollTarget.Bottom);
+        if (hasUnreadMessages)
+        {
+            RequestScroll(MessageScrollTarget.Message, chat.FirstUnreadMessageId);
+        }
+        else
+        {
+            RequestScroll(MessageScrollTarget.Bottom);
+        }
     }
 
     private async Task<byte[]?> GetPrivateChatKeyAsync(ChatItemViewModel chat)
@@ -375,6 +421,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         var title = string.IsNullOrWhiteSpace(chat.Title) ? _localization.GetString("Messenger_Chat") : chat.Title;
         var firstName = string.Empty;
         var lastName = string.Empty;
+        long? peerUserId = null;
         // Chat.Picture сервер отдаёт готовой ссылкой на файл, а не идентификатором,
         // поэтому её нельзя разрешать через Files — она уже готова к показу.
         var avatarUrl = chat.Picture;
@@ -384,6 +431,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             var otherMember = chat.Members.FirstOrDefault(member => member.UserId != currentUserId);
             if (otherMember is not null)
             {
+                peerUserId = otherMember.UserId;
                 var userResult = await _messenger.GetUserDataAsync(otherMember.UserId);
                 if (userResult.Error.IsSuccess && userResult.Data is not null)
                 {
@@ -396,7 +444,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             }
         }
 
-        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl);
+        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization);
     }
 
     private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
@@ -476,6 +524,148 @@ public sealed partial class MessengerViewModel : ObservableObject
 
         return await _messenger.ResolveFileUrlAsync(fileId);
     }
+
+    /// <summary>
+    /// <see cref="MessageScrollRequest"/> — запись со сравнением по значению, поэтому повторная
+    /// установка того же запроса не поднимет <c>PropertyChanged</c> и лента не прокрутится.
+    /// Сброс в <c>null</c> гарантирует уведомление; поведение прокрутки на <c>null</c> не реагирует.
+    /// </summary>
+    private void RequestScroll(MessageScrollTarget target, long? messageId = null)
+    {
+        ScrollRequest = null;
+        ScrollRequest = new MessageScrollRequest(target, messageId);
+    }
+
+    /// <summary>
+    /// Лента отсортирована по возрастанию идентификатора. Сообщение из стрима может обогнать ответ
+    /// на собственную отправку, поэтому позиция ищется, а уже показанный идентификатор молча
+    /// пропускается: сервер рассылает новое сообщение и самому отправителю тоже.
+    /// </summary>
+    private bool InsertMessageInOrder(MessageItemViewModel message)
+    {
+        if (Messages.Any(item => item.Id == message.Id))
+        {
+            return false;
+        }
+
+        var index = Messages.Count;
+        while (index > 0 && Messages[index - 1].Id > message.Id)
+        {
+            index--;
+        }
+
+        Messages.Insert(index, message);
+        return true;
+    }
+
+    /// <summary>
+    /// Лента сообщает, стоит ли она у нижней кромки. Догонять входящее прокруткой можно только
+    /// тогда — иначе чтение истории сбрасывалось бы в конец при каждом чужом сообщении.
+    /// </summary>
+    [RelayCommand]
+    private void FeedPositionChanged(bool isAtBottom) => _isFeedAtBottom = isAtBottom;
+
+    private void OnMessageReceived(object? sender, IncomingMessage incoming) =>
+        _uiDispatcher.Post(() => ApplyIncomingMessage(incoming));
+
+    private void ApplyIncomingMessage(IncomingMessage incoming)
+    {
+        if (_messenger.CurrentUserId is not { } currentUserId)
+        {
+            return;
+        }
+
+        var chat = Chats.FirstOrDefault(item => item.Id == incoming.ChatId);
+        if (chat is null)
+        {
+            _ = AppendUnknownChatAsync(incoming, currentUserId);
+            return;
+        }
+
+        chat.ApplyIncomingMessage(
+            incoming.Message.MessageId,
+            incoming.Message.Text,
+            incoming.Message.SentAt.ToDateTimeOffset(),
+            countAsUnread: incoming.Message.SenderId != currentUserId);
+        MoveChatToTop(chat);
+
+        // Приватные чаты обслуживает отдельный шифрованный стрим, в этот их сообщения не попадают.
+        if (SelectedChat?.Id != incoming.ChatId || SelectedChat.IsPrivate)
+        {
+            return;
+        }
+
+        _ = AppendIncomingMessageAsync(SelectedChat, incoming.Message, currentUserId, _messageLoadVersion);
+    }
+
+    private async Task AppendIncomingMessageAsync(ChatItemViewModel chat, MessageModel message, long currentUserId, int loadVersion)
+    {
+        // Ссылки на вложения разрешаются отдельными вызовами — за это время чат мог смениться.
+        var item = await CreateMessageItemAsync(message, currentUserId);
+        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion || !InsertMessageInOrder(item))
+        {
+            return;
+        }
+
+        ApplyReplyQuoteState();
+        if (_isFeedAtBottom)
+        {
+            RequestScroll(MessageScrollTarget.Bottom);
+        }
+    }
+
+    /// <summary>
+    /// Чат мог появиться уже после загрузки списка. Подтягивается только он: <c>Clear</c> на
+    /// привязанной коллекции обнулил бы <see cref="SelectedChat"/> и закрыл открытую переписку.
+    /// </summary>
+    private async Task AppendUnknownChatAsync(IncomingMessage incoming, long currentUserId)
+    {
+        var (error, chats) = await _messenger.GetChatsAsync();
+        var definition = chats?.FirstOrDefault(item => item.Id == incoming.ChatId);
+        if (!error.IsSuccess || definition is null || Chats.Any(item => item.Id == incoming.ChatId))
+        {
+            return;
+        }
+
+        Chats.Insert(0, await CreateChatItemAsync(definition, currentUserId));
+        ApplyChatFilter();
+        await TrackPresenceForChatsAsync();
+    }
+
+    /// <summary>
+    /// Чат с новым сообщением поднимается наверх. <c>Move</c> вместо пересборки коллекции:
+    /// он не пересоздаёт элементы и сохраняет выбор в списке.
+    /// </summary>
+    private void MoveChatToTop(ChatItemViewModel chat)
+    {
+        var index = Chats.IndexOf(chat);
+        if (index > 0)
+        {
+            Chats.Move(index, 0);
+        }
+
+        var visibleIndex = VisibleChats.IndexOf(chat);
+        if (visibleIndex > 0)
+        {
+            VisibleChats.Move(visibleIndex, 0);
+        }
+    }
+
+    /// <summary>
+    /// Онлайн-статус имеет смысл только для личных чатов: у группового нет одного собеседника.
+    /// </summary>
+    private Task TrackPresenceForChatsAsync() =>
+        _presence.WatchAsync([.. Chats.Where(chat => chat.PeerUserId is not null).Select(chat => chat.PeerUserId!.Value)]);
+
+    private void OnPresenceChanged(object? sender, UserPresence presence) =>
+        _uiDispatcher.Post(() =>
+        {
+            foreach (var chat in Chats.Where(chat => chat.PeerUserId == presence.UserId))
+            {
+                chat.IsOnline = presence.IsOnline;
+                chat.LastSeen = presence.LastSeen;
+            }
+        });
 
     private void OnMessageRead(object? sender, MessageReadReceipt receipt)
     {
@@ -575,14 +765,18 @@ public sealed partial class MessengerViewModel : ObservableObject
 
 public sealed partial class ChatItemViewModel : ObservableObject
 {
-    public ChatItemViewModel(Chat chat, string title, string firstName, string lastName, string avatarUrl)
+    private readonly ILocalizationService _localization;
+
+    public ChatItemViewModel(Chat chat, string title, string firstName, string lastName, string avatarUrl, long? peerUserId, ILocalizationService localization)
     {
+        _localization = localization;
         Definition = chat;
         Id = chat.Id;
         Title = title;
         FirstName = firstName;
         LastName = lastName;
         AvatarUrl = avatarUrl;
+        PeerUserId = peerUserId;
         IsPrivate = chat.ChatType == ChatType.Private;
         Preview = IsPrivate ? string.Empty : CreatePreview(chat.LastMessage?.Content?.Text ?? string.Empty, 20);
         UnreadCount = chat.CountUnread;
@@ -596,19 +790,60 @@ public sealed partial class ChatItemViewModel : ObservableObject
     public string FirstName { get; }
     public string LastName { get; }
     public string AvatarUrl { get; }
-    public string Preview { get; }
+
+    /// <summary>Собеседник личного чата; <c>null</c> у групповых — им присутствие не показывается.</summary>
+    public long? PeerUserId { get; }
+
+    // Превью и время последней активности переписывает входящее сообщение, поэтому они
+    // наблюдаемые, а не вычисленные один раз в конструкторе.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreview))]
+    private string _preview = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LastMessageAtLabel))]
+    private DateTimeOffset? _lastMessageAt;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasUnreadMessages))]
     private long _unreadCount;
     [ObservableProperty] private long _firstUnreadMessageId;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PresenceLabel))]
+    private bool _isOnline;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PresenceLabel))]
+    private DateTimeOffset? _lastSeen;
     public bool IsPrivate { get; }
     public bool IsPrivateAccepted => !IsPrivate || Definition.PrivateInviteState == PrivateChatInviteState.Accepted;
-    public DateTimeOffset? LastMessageAt { get; }
+    public bool HasPresence => PeerUserId is not null;
+    public string PresenceLabel => LastSeenFormatter.Format(_localization, IsOnline, LastSeen, DateTimeOffset.Now);
+
+    /// <summary>В WinUI нет <c>StringFormat</c>, поэтому время приходит в разметку готовой строкой.</summary>
+    public string LastMessageAtLabel => LastMessageAt?.ToLocalTime().ToString("HH:mm") ?? string.Empty;
     public bool HasPreview => !string.IsNullOrWhiteSpace(Preview);
     public bool HasUnreadMessages => UnreadCount > 0;
     public string Initials => string.Concat((FirstName + " " + LastName).Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(name => name[0])).ToUpperInvariant() is { Length: > 0 } initials
         ? initials
         : Title[..1].ToUpperInvariant();
+
+    /// <summary>
+    /// Превью приватного чата остаётся пустым: расшифровать текст здесь нечем,
+    /// а показывать шифртекст нельзя.
+    /// </summary>
+    internal void ApplyIncomingMessage(long messageId, string text, DateTimeOffset sentAt, bool countAsUnread)
+    {
+        Preview = IsPrivate ? string.Empty : CreatePreview(text, 20);
+        LastMessageAt = sentAt;
+        if (!countAsUnread)
+        {
+            return;
+        }
+
+        UnreadCount++;
+        if (FirstUnreadMessageId == 0)
+        {
+            FirstUnreadMessageId = messageId;
+        }
+    }
 
     /// <summary>
     /// Сжимает текст в одну строку и обрезает по числу видимых символов.
@@ -669,6 +904,8 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public IReadOnlyCollection<MessageAttachmentItemViewModel> Attachments { get; }
     public IReadOnlyCollection<MessageAttachmentItemViewModel> MediaAttachments { get; }
     public IReadOnlyCollection<MessageAttachmentItemViewModel> FileAttachments { get; }
+    /// <summary>В WinUI нет <c>StringFormat</c>, поэтому время приходит в разметку готовой строкой.</summary>
+    public string SentAtLabel => SentAt.ToLocalTime().ToString("HH:mm");
     public bool HasText => !string.IsNullOrWhiteSpace(Text);
     public bool HasMedia => MediaAttachments.Count > 0;
     public bool HasFiles => FileAttachments.Count > 0;

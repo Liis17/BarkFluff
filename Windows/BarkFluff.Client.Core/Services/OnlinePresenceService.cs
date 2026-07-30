@@ -57,7 +57,12 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
             if (_statusTask is not null)
             {
                 _watchedUserIds = requested;
-                await _webApi.ChangeUsersInSubscription([.. requested], parameters);
+                var changeError = await _webApi.ChangeUsersInSubscription([.. requested], parameters);
+                if (changeError.IsSuccess)
+                {
+                    await ApplySnapshotAsync(requested, parameters);
+                }
+
                 return;
             }
 
@@ -65,6 +70,7 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
             _cancellationTokenSource = new CancellationTokenSource();
             _statusTask = ListenOnlineStatusesAsync(requested, parameters, _cancellationTokenSource.Token);
             _keepAliveTask = KeepAliveAsync(parameters, _cancellationTokenSource.Token);
+            await ApplySnapshotAsync(requested, parameters);
         }
         finally
         {
@@ -98,6 +104,40 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
         _lifecycleLock.Dispose();
     }
 
+    /// <summary>
+    /// Для локальных пользователей стрим отдаёт только изменения статуса, без начального снимка,
+    /// поэтому текущее состояние приходится дозапрашивать унарным вызовом. Иначе шапка чата
+    /// оставалась бы пустой до первого переключения собеседника.
+    /// </summary>
+    private async Task ApplySnapshotAsync(long[] userIds, GlobalParam parameters)
+    {
+        if (userIds.Length == 0)
+        {
+            return;
+        }
+
+        var (error, response) = await _webApi.GetOnlineStatus([.. userIds], parameters);
+        if (!error.IsSuccess || response is null)
+        {
+            return;
+        }
+
+        foreach (var status in response.UsersStatuses)
+        {
+            Publish(status);
+        }
+    }
+
+    private void Publish(UserOnlineStatus status)
+    {
+        var presence = new UserPresence(
+            status.UserId,
+            status.Status == StatusTypeId.StatusOnline,
+            status.LastSeen?.ToDateTimeOffset() ?? DateTimeOffset.MinValue);
+        _presence[presence.UserId] = presence;
+        PresenceChanged?.Invoke(this, presence);
+    }
+
     private async Task ListenOnlineStatusesAsync(long[] userIds, GlobalParam parameters, CancellationToken cancellationToken)
     {
         var (error, stream) = await _webApi.SubscribeToOnlineStatus([.. userIds], parameters, cancellationToken);
@@ -110,12 +150,7 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
         {
             await foreach (var status in stream.WithCancellation(cancellationToken))
             {
-                var presence = new UserPresence(
-                    status.UserId,
-                    status.Status == StatusTypeId.StatusOnline,
-                    status.LastSeen?.ToDateTimeOffset() ?? DateTimeOffset.MinValue);
-                _presence[presence.UserId] = presence;
-                PresenceChanged?.Invoke(this, presence);
+                Publish(status);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
