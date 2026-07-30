@@ -4,7 +4,7 @@ using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace BarkFluff.Configuration.Infrastructure;
+namespace BarkFluff.Configuration.Persistence;
 
 public class ConfigurationStorage
 {

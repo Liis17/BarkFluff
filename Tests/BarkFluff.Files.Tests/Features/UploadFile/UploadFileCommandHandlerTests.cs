@@ -12,6 +12,7 @@ public class UploadFileCommandHandlerTests
     private readonly TestHelper _helper = new();
     private readonly Mock<IS3Uploader> _s3Uploader;
     private readonly Mock<IS3BucketRegistry> _bucketRegistry;
+    private readonly MetricsCollector _metrics = new();
     private readonly UploadFileCommandHandler _handler;
 
     public UploadFileCommandHandlerTests()
@@ -27,6 +28,7 @@ public class UploadFileCommandHandlerTests
             _helper.ImageCompressor,
             _helper.FileTypeDetector,
             _helper.VideoThumbnailExtractor,
+            _metrics,
             TestHelper.CreateLogger<UploadFileCommandHandler>()
         );
     }
@@ -161,6 +163,39 @@ public class UploadFileCommandHandlerTests
         _s3Uploader.Verify(
             u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), "application/pdf"),
             Times.Once());
+    }
+
+    [Fact]
+    public async Task Handle_Document_RecordsLastUploadStageDurations()
+    {
+        var file = await _helper.SeedFile(type: UploadFileType.MessageAttachmentDocument);
+        SetupBucketForType(UploadFileType.MessageAttachmentDocument, "message-documents");
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+            .Returns(async () =>
+            {
+                await Task.Delay(20);
+                return "test-etag";
+            });
+
+        using var command = new UploadFileCommand
+        {
+            FileId = file.Id,
+            FileStream = new MemoryStream([1, 2, 3]),
+            FileName = "doc.pdf",
+            FileSize = 3
+        };
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        var timings = _metrics.TakeBufferedSnapshot().Gauges;
+        timings.Should().ContainKeys(
+            "files_last_upload_total_ms",
+            "files_last_upload_buffering_ms",
+            "files_last_upload_hashing_ms",
+            "files_last_upload_processing_ms",
+            "files_last_upload_s3_ms");
+        timings["files_last_upload_s3_ms"].Should().BeGreaterThanOrEqualTo(15);
+        timings["files_last_upload_total_ms"].Should().BeGreaterThanOrEqualTo(timings["files_last_upload_s3_ms"]);
     }
 
     [Fact]

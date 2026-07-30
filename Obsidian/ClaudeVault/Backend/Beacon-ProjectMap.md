@@ -47,7 +47,7 @@ gRPC-сервис (реализует `BeaconApi.BeaconApiBase` из `beacon_api
 
 ---
 
-### `Features/RegisterServer/ServerRegistrationService.cs`
+### `BackgroundServices/ServerRegistrationService.cs`
 `BackgroundService` — периодическая регистрация Beacon в Navigator.
 
 - Интервал: **5 минут** (`TimeSpan.FromMinutes(5)`)

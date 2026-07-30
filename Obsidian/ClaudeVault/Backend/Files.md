@@ -91,6 +91,8 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 [[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Локальный download проходит через `CountingReadStream`: учитываются реально прочитанные HTTP-ответом байты, поэтому non-seekable S3-поток не даёт нулевой трафик. Завершённые federated downloads добавляются в те же общие Files-счётчики.
 
+Для диагностики долгих загрузок сервис публикует gauges последнего успешного upload (в миллисекундах): `files_last_upload_total_ms`, `files_last_upload_buffering_ms`, `files_last_upload_hashing_ms`, `files_last_upload_processing_ms`, `files_last_upload_s3_ms`. Это измерения копирования запроса в буфер, SHA-256, детекции/валидации/обработки превью, исходных S3-загрузок и полного пайплайна соответственно. Они сохраняются только в памяти и экспортируются обычным фоновым batched-репортёром, без отдельного лога на файл; все пять значений обновляются атомарно, поэтому относятся к одной загрузке.
+
 ## `FetchFileStream` — отдача файла ноде-партнёру (этап 3.2, docs/rearch/phase-3/step-3.2-fetchfile-access.md)
 
 Server-streaming RPC в `FilesServerApi`. Зовёт только [[Backend/Federation]] своей ноды с service-токеном, **уже выполнив авторизацию на уровне ноды** (`Messages.CheckFileFederationAccess`).

@@ -1,4 +1,21 @@
-# BarkFluff Backend Services - Порты и настройки
+<p align="center">
+  <img src="../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Ports & configuration</h1>
+
+<p align="center">
+  <strong>Default network ports and runtime configuration for the BarkFluff backend.</strong>
+</p>
+
+<p align="center">
+  <a href="../README.md">Overview</a> ·
+  <a href="../.readme/backend.md">Backend guide</a> ·
+  <a href="#-таблица-портов-сервисов">Services</a> ·
+  <a href="#-инфраструктурные-сервисы">Infrastructure</a>
+</p>
+
+---
 
 Этот документ описывает дефолтные порты для всех Backend сервисов BarkFluff для запуска на localhost и в Docker.
 

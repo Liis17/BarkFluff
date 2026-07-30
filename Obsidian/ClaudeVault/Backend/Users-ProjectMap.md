@@ -236,4 +236,4 @@ BarkFluff.Users
 - ✅ Документация в [[Backend/Users]] соответствует коду
 - ✅ `SessionRevokedConsumer` в Obsidian **не упомянут** — добавлен в этот файл
 - ✅ `UserInfoQueueSender` зарегистрирован как `Scoped` (не `Transient` как написано в Users.md) — в Program.cs: `AddScoped<UserInfoQueueSender>()`
-- ✅ Структура миграций разделена на два каталога: `Persistence/Migrations/` (старые) и `Migrations/` (новые — AddPreviewAvatar, Badges, StorageLimit, UserDevices, Firebase, NotificationsEnabled, UserPrivacy, UserPersonalization)
+- ✅ Все EF Core миграции находятся в `Persistence/Migrations/`.
