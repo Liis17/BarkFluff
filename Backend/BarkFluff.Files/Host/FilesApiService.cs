@@ -6,6 +6,7 @@ using BarkFluff.Files.Features.GetUserStorageInfo;
 using BarkFluff.Files.Features.ListStickerPacks;
 using BarkFluff.Proto.Files;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Shared.Exceptions.Files;
 using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
@@ -23,11 +24,13 @@ public class FilesApiService : FilesApi.FilesApiBase
 {
     private readonly IMediator _mediator;
     private readonly UserContext _userContext;
+    private readonly ILogger<FilesApiService> _logger;
 
-    public FilesApiService(IMediator mediator, UserContext userContext)
+    public FilesApiService(IMediator mediator, UserContext userContext, ILogger<FilesApiService> logger)
     {
         _mediator = mediator;
         _userContext = userContext;
+        _logger = logger;
     }
 
     public override Task<GetUploadUrlResponse> GetUploadUrl(GetUploadUrlRequest request, ServerCallContext context)
@@ -43,7 +46,21 @@ public class FilesApiService : FilesApi.FilesApiBase
 
     public override async Task<GetTempDownloadUrlResponse> GetTempDownloadUrl(GetTempDownloadUrlRequest request, ServerCallContext context)
     {
-        var guids = request.FileIds.Select(Guid.Parse).ToList();
+        var guids = new List<Guid>(request.FileIds.Count);
+
+        foreach (var fileId in request.FileIds)
+        {
+            // Клиент может прислать не-guid (например S3-ключ вместо идентификатора файла) —
+            // это ошибка клиента, а не сбой сервиса, поэтому не даём Guid.Parse уронить вызов.
+            if (!Guid.TryParse(fileId, out var guid))
+            {
+                _logger.LogWarning("Невалидный file_id в запросе GetTempDownloadUrl: {FileId}", fileId);
+
+                throw new NotValidFileIdException();
+            }
+
+            guids.Add(guid);
+        }
 
         var command = new GetTempDownloadUrlCommand()
         {

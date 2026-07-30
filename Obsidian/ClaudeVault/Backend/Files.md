@@ -23,6 +23,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 **FilesApiService** (`TokenType.User`) — клиентский API:
 - `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`
 - Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`
+- `GetTempDownloadUrl` валидирует `file_ids` через `Guid.TryParse` и на невалидном значении бросает `NotValidFileIdException` (логируя само значение). Раньше `Guid.Parse` ронял вызов `FormatException` — в логах это выглядело как «КРИТИЧЕСКАЯ ОШИБКА», хотя виноват клиент, приславший вместо идентификатора, например, готовый URL картинки
 
 **FilesServerApiService** (`TokenType.Service`) — серверный API (включает админ-операции для [[Backend/AdminPanel]]):
 - `GetFileData` / `GetFilesData` — метаданные файлов

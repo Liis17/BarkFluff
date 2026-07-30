@@ -372,7 +372,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         var title = string.IsNullOrWhiteSpace(chat.Title) ? _localization.GetString("Messenger_Chat") : chat.Title;
         var firstName = string.Empty;
         var lastName = string.Empty;
-        var avatarUrl = await ResolveFileUrlAsync(chat.Picture);
+        // Chat.Picture сервер отдаёт готовой ссылкой на файл, а не идентификатором,
+        // поэтому её нельзя разрешать через Files — она уже готова к показу.
+        var avatarUrl = chat.Picture;
 
         if (!chat.IsGroupChat)
         {
