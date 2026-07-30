@@ -64,12 +64,24 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 `App.OnLaunched` повторяет конвейер WPF-версии (стор → тема → локализация → `SettingsViewModel` → восстановление ноды/сессии → навигация → окно), включая `ShutdownHost` с теардауном вне UI-потока и таймаутом 2 с. Ошибка старта показывается отдельным окном: `ContentDialog` требует `XamlRoot`, которого до создания окна ещё нет.
 
+Файлы, адресуемые как `ms-appx:///...`, обязаны быть объявлены `Content` в csproj — иначе они не попадают в MSIX. Так было с иконкой трея: `BitmapImage` грузит `UriSource` асинхронно, уже после конструктора окна, поэтому ошибка не ловилась try/catch в `OnLaunched` и всплывала как необработанное исключение. Проверять раскладку пакета через `dotnet build` бесполезно — она собирается таргетом упаковки; смотреть надо `dotnet msbuild -t:GetPackagingOutputs -getItem:PackagingOutputs`.
+
+В solution проекту нужны строки `.Deploy.0` во всех конфигурациях: `dotnet sln add` их не пишет, а без них Visual Studio отказывается запускать отладку MSIX-проекта.
+
+## Страницы
+
+`Frame.Navigate(pageType, viewModel)` + `OnNavigatedTo` присваивают типизированное свойство `ViewModel` и вызывают `Bindings.Update()`. Это позволяет использовать `x:Bind` вместо `Binding` — опечатки в биндингах становятся ошибками сборки, что критично, раз UI не прогоняется автоматически.
+
+Замены контролов WPF UI → WinUI: `ui:Card` → `Border` со стилем `OnboardingCard`; `ui:Button Appearance="Primary"` → `Style="{StaticResource AccentButtonStyle}"`; `ui:PasswordBox RevealButtonEnabled` → `PasswordRevealMode="Peek"`; `ui:ProgressRing` → `ProgressRing IsActive="True"` с `Visibility` по флагу (так поведение совпадает с WPF: скрытый индикатор не занимает места); fade-in `Storyboard` четырёх экранов → `EntranceNavigationTransitionInfo` на `Frame`.
+
+`OtpInputBehavior` переписан на `BeforeTextChanging` (отменяемый фильтр цифр), `TextChanged` + `FocusManager.TryMoveFocus` и `TextBox.Paste`. Отличие от WPF: буфер обмена в WinRT читается только асинхронно, а `Handled` обязан выставляться синхронно, поэтому штатная вставка отменяется всегда и весь разбор текста делает `PasteOtpCodeCommand`.
+
 ## Состояние порта
 
 | Этап | Содержимое | Статус |
 | --- | --- | --- |
 | 1 | Каркас, Core-сборка, инфраструктура, shell, трей, настройки, тесты | Готово |
-| 2 | Онбординг и авторизация (6 страниц, FastAuth QR, OTP) | Страницы-заглушки |
+| 2 | Онбординг и авторизация (6 страниц, FastAuth QR, OTP) | Готово |
 | 3 | Мессенджер (список чатов, лента, composer) | Не начат |
 | 4 | Действия над сообщениями (ответ, пересылка, закрепы, удаление) | Не начат |
 
