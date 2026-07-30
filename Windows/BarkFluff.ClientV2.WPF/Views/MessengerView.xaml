@@ -49,28 +49,29 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-            <!--  Пока активен режим правки, кнопка отправки применяет правку выбранного сообщения.  -->
+            <!--  Одна панель на два режима: пока активна правка, кнопка отправки применяет правку,
+                  а в режиме ответа отправляет сообщение со ссылкой на оригинал.  -->
             <Border Grid.Row="2"
                     Margin="16,0"
                     Padding="10,8"
                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
                     CornerRadius="8"
-                    Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    Visibility="{Binding IsComposerHintVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{DynamicResource Messenger_EditingMessage}" />
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding ComposerHintTitle}" />
                         <TextBlock Margin="0,2,0,0"
                                    FontSize="12"
                                    Opacity=".75"
-                                   Text="{Binding EditingMessage.Text}"
+                                   Text="{Binding ComposerHintPreview}"
                                    TextTrimming="CharacterEllipsis"
                                    TextWrapping="NoWrap" />
                     </StackPanel>
                     <ui:Button Grid.Column="1"
                                Margin="8,0,0,0"
                                Appearance="Secondary"
-                               Command="{Binding CancelEditCommand}"
+                               Command="{Binding CancelComposerHintCommand}"
                                Content="✕" />
                 </Grid>
             </Border>
@@ -83,6 +84,80 @@
             <Grid Grid.Row="4" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding SelectedChat, Converter={StaticResource StringToVisibilityConverter}}" />
         </Grid>
+        <Border Panel.ZIndex="12"
+                Background="{DynamicResource MessengerModalScrimBrush}"
+                Visibility="{Binding IsForwardVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Width="400"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{DynamicResource Messenger_ForwardTitle}" />
+                    <ScrollViewer Margin="0,12,0,0"
+                                  MaxHeight="260"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding ForwardTargets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,4"
+                                            Padding="8"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            CornerRadius="6"
+                                            Cursor="Hand">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.ToggleForwardTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Border.InputBindings>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Width="32" Height="32" Margin="0,0,10,0">
+                                                <Ellipse Fill="{DynamicResource ControlFillColorDefaultBrush}" />
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Initials}" />
+                                            </Grid>
+                                            <TextBlock Grid.Column="1"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Title}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <ui:SymbolIcon Grid.Column="2"
+                                                           FontSize="16"
+                                                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                           Symbol="Checkmark12"
+                                                           Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <ui:TextBox Margin="0,12,0,0"
+                                PlaceholderText="{DynamicResource Messenger_ForwardComment}"
+                                Text="{Binding ForwardComment, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Margin="0,10,0,0"
+                               FontSize="12"
+                               Opacity=".75"
+                               Text="{Binding ForwardSelectionSummary}" />
+                    <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                        <ui:Button Appearance="Primary"
+                                   Command="{Binding SubmitForwardCommand}"
+                                   Content="{DynamicResource Messenger_ForwardSend}"
+                                   IsEnabled="{Binding CanSubmitForward}" />
+                        <ui:Button Margin="8,0,0,0"
+                                   Command="{Binding CancelForwardCommand}"
+                                   Content="{DynamicResource Messenger_Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </ui:Card>
+        </Border>
         <Border Panel.ZIndex="11"
                 Background="{DynamicResource MessengerModalScrimBrush}"
                 Visibility="{Binding IsDeleteConfirmVisible, Converter={StaticResource BooleanToVisibilityConverter}}">

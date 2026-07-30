@@ -94,6 +94,14 @@
     <sys:String x:Key="Messenger_Empty">Select a chat to start messaging</sys:String>
     <sys:String x:Key="Messenger_StatusOffline">Offline</sys:String>
     <sys:String x:Key="Messenger_ReplyToMessage">Reply</sys:String>
+    <sys:String x:Key="Messenger_ReplyingTo">Replying to</sys:String>
+    <sys:String x:Key="Messenger_Forward">Forward</sys:String>
+    <sys:String x:Key="Messenger_ForwardTitle">Forward message</sys:String>
+    <sys:String x:Key="Messenger_ForwardComment">Comment (optional)</sys:String>
+    <sys:String x:Key="Messenger_ForwardSend">Forward</sys:String>
+    <sys:String x:Key="Messenger_ForwardSelected">Selected:</sys:String>
+    <sys:String x:Key="Messenger_ForwardNoneSelected">No chats selected</sys:String>
+    <sys:String x:Key="Messenger_Attachment">Attachment</sys:String>
     <sys:String x:Key="Messenger_CopyText">Copy text</sys:String>
     <sys:String x:Key="Messenger_CopyImage">Copy image</sys:String>
     <sys:String x:Key="Messenger_Pin">Pin</sys:String>

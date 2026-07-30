@@ -42,6 +42,20 @@
             <Border.ContextMenu>
                 <!--  ContextMenu живёт вне визуального дерева, поэтому контекст берём с PlacementTarget.  -->
                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                    <MenuItem Command="{Binding Owner.StartReplyMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_ReplyToMessage}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="ArrowReply16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.StartForwardMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_Forward}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="ArrowForward16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <MenuItem Command="{Binding Owner.CopyMessageTextCommand}"
                               CommandParameter="{Binding}"
                               Header="{DynamicResource Messenger_CopyText}"
@@ -88,6 +102,7 @@
             </Border.ContextMenu>
             <Grid>
                 <StackPanel>
+                    <controls:MessageQuoteControl />
                     <ui:TextBox IsReadOnly="True"
                                 IsTabStop="False"
                                 FocusVisualStyle="{x:Null}"
