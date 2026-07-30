@@ -1,5 +1,6 @@
 using BarkFluff.Calls.Domain;
 using BarkFluff.Calls.Persistence;
+using BarkFluff.Calls.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Calls;
@@ -14,7 +15,7 @@ using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace BarkFluff.Calls.Services;
+namespace BarkFluff.Calls.Features.CallLifecycle;
 
 /// <summary>
 /// Доменная логика жизненного цикла звонка: ringing → active → ended.
@@ -22,7 +23,7 @@ namespace BarkFluff.Calls.Services;
 /// Доставка ринга — через <see cref="ICallEventDispatcher"/> (fan-out по RabbitMQ на все
 /// инстансы; каждый доставляет своим локальным device-scope стримам).
 /// </summary>
-public class CallsService
+public class CallLifecycleHandler
 {
     private readonly CallsContext _db;
     private readonly LiveKitTokenService _tokens;
@@ -32,9 +33,9 @@ public class CallsService
     private readonly IPublishEndpoint _publish;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
-    private readonly ILogger<CallsService> _logger;
+    private readonly ILogger<CallLifecycleHandler> _logger;
 
-    public CallsService(
+    public CallLifecycleHandler(
         CallsContext db,
         LiveKitTokenService tokens,
         ICallEventDispatcher dispatcher,
@@ -43,7 +44,7 @@ public class CallsService
         IPublishEndpoint publish,
         UserContext userContext,
         MetricsCollector metrics,
-        ILogger<CallsService> logger)
+        ILogger<CallLifecycleHandler> logger)
     {
         _db = db;
         _tokens = tokens;

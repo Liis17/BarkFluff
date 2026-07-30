@@ -23,12 +23,17 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
                           BarkFluff.Calls (финализация CDR)
 ```
 
-- **Ринг — через RabbitMQ fan-out** (`ICallEventDispatcher` → `DeliverCallEvent`): `CallsService` публикует событие звонка в fan-out exchange, `CallEventDeliveryConsumer` на КАЖДОМ инстансе доставляет его своим локальным `CallEventSubscriptionsManager` (device-scope, как `SubscribeSecretMessages` в [[Backend/Updates]]). Так ринг доходит до подписчика, чей стрим живёт на другом инстансе. Событие рассылается на все устройства получателя; при ответе с одного устройства ринг гасится на остальных (`SendToUserExceptDevice`, фильтрация в локальном менеджере). Корректно при нескольких инстансах (см. `docs/scaling/calls.md`).
+- `Host/CallsApiService` содержит только gRPC-адаптер и server-streaming подписку.
+- `Features/CallLifecycle/CallLifecycleHandler` реализует use-cases жизненного цикла
+  звонка, историю, активные звонки и обработку webhook/timeout. Общие transport- и
+  доменные сервисы остаются в `Services/`.
+
+- **Ринг — через RabbitMQ fan-out** (`ICallEventDispatcher` → `DeliverCallEvent`): `CallLifecycleHandler` публикует событие звонка в fan-out exchange, `CallEventDeliveryConsumer` на КАЖДОМ инстансе доставляет его своим локальным `CallEventSubscriptionsManager` (device-scope, как `SubscribeSecretMessages` в [[Backend/Updates]]). Так ринг доходит до подписчика, чей стрим живёт на другом инстансе. Событие рассылается на все устройства получателя; при ответе с одного устройства ринг гасится на остальных (`SendToUserExceptDevice`, фильтрация в локальном менеджере). Корректно при нескольких инстансах (см. `docs/scaling/calls.md`).
 - **Push для background/killed app** — параллельно с in-process рингом `InitiateCall` публикует `IncomingCallPushEvent` в RabbitMQ; [[Backend/CloudMessaging]] шлёт high-priority data-only FCM `type=incoming_call`. При завершении ринга (accept/reject/end/timeout/room_finished) публикуется `CallDismissPushEvent` → FCM `type=dismiss_call`, чтобы погасить нотификацию на остальных устройствах. Получатели push те же, что у ринга (`GetRingRecipientsAsync`). См. раздел «Push-события» ниже.
 - **Токены** — `LiveKitTokenService` (NuGet `Livekit.Server.Sdk.Dotnet`): `AccessToken` с `VideoGrants` на комнату `call:{id}`, HS256-подпись секретом LiveKit.
 - **Webhooks** — отдельный HTTP/1.1-листенер (`RunSettings:Http1Port=7026`), `WebhookReceiver` верифицирует подпись. `room_finished` → финализация CDR; `participant_joined/left` → `ParticipantEvent` в стрим.
 - **CDR** — таблица `CallSessions` (Postgres/EF Core): caller/callee/chat, room, media, status (Ringing→Active→Ended), reason, тайминги, длительность.
-- **Таймаут** — `CallRingTimeoutSweeper` (`BackgroundService`, опрос БД раз в 5с): звонок в статусе `Ringing` старше 45с → `CallEndReason.Missed` через `CallsService.TimeoutAsync`. Захват атомарный (`ExecuteUpdate WHERE Status=Ringing`) — ровно-однократная обработка при нескольких инстансах; durable (переживает рестарт), не требует плагина delayed-exchange.
+- **Таймаут** — `CallRingTimeoutSweeper` (`BackgroundService`, опрос БД раз в 5с): звонок в статусе `Ringing` старше 45с → `CallEndReason.Missed` через `CallLifecycleHandler.TimeoutAsync`. Захват атомарный (`ExecuteUpdate WHERE Status=Ringing`) — ровно-однократная обработка при нескольких инстансах; durable (переживает рестарт), не требует плагина delayed-exchange.
 - **Системное сообщение** — при завершении звонок пишет в чат системное сообщение («Звонок · 5:23» / «Пропущенный звонок» / «Звонок отклонён») через `MessagesServerApi.PostCallSystemMessage` (best-effort). Для личного звонка — в существующий личный чат; если чата ещё нет, сообщение не пишется (чат не создаётся).
 
 ## gRPC API (`calls_api.proto`, `CallsApi`)
