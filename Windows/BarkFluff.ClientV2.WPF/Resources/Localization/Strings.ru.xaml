@@ -2,6 +2,14 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <sys:String x:Key="App_Title">BarkFluff</sys:String>
+    <sys:String x:Key="Settings_Title">Настройки</sys:String>
+    <sys:String x:Key="Settings_Close">Готово</sys:String>
+    <sys:String x:Key="Settings_OnWindowClose">При закрытии окна</sys:String>
+    <sys:String x:Key="Settings_OnWindowCloseExit">Завершать работу</sys:String>
+    <sys:String x:Key="Settings_OnWindowCloseTray">Сворачивать в трей</sys:String>
+    <sys:String x:Key="Settings_OnWindowCloseTrayHint">Приложение продолжит работать в области уведомлений. Чтобы выйти, используйте пункт «Выход» в меню значка.</sys:String>
+    <sys:String x:Key="Tray_Open">Открыть BarkFluff</sys:String>
+    <sys:String x:Key="Tray_Exit">Выход</sys:String>
     <sys:String x:Key="Welcome_Title">Добро пожаловать в BarkFluff</sys:String>
     <sys:String x:Key="Welcome_Subtitle">Выберите ноду, чтобы начать пользоваться распределённым мессенджером.</sys:String>
     <sys:String x:Key="Welcome_Eyebrow">BarkFluff для Windows</sys:String>

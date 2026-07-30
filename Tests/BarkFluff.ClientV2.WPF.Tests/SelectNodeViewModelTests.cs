@@ -56,6 +56,8 @@ public sealed class SelectNodeViewModelTests
         public Task SaveLanguageAsync(string language, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<ApplicationThemeMode?> GetThemeAsync(CancellationToken cancellationToken = default) => Task.FromResult<ApplicationThemeMode?>(null);
         public Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<WindowClosingBehavior?> GetWindowClosingBehaviorAsync(CancellationToken cancellationToken = default) => Task.FromResult<WindowClosingBehavior?>(null);
+        public Task SaveWindowClosingBehaviorAsync(WindowClosingBehavior behavior, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default) => Task.FromResult(Connection?.Profile);
 
         public Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default)

@@ -18,6 +18,10 @@ public interface IApplicationDataStore
 
     Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default);
 
+    Task<WindowClosingBehavior?> GetWindowClosingBehaviorAsync(CancellationToken cancellationToken = default);
+
+    Task SaveWindowClosingBehaviorAsync(WindowClosingBehavior behavior, CancellationToken cancellationToken = default);
+
     Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default);
 
     Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default);

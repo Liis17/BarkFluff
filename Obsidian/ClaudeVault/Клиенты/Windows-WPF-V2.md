@@ -25,6 +25,7 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 - `Services` — навигация, подключение к ноде и сессия; `OnboardingNavigationService` хранит последнее ViewModel, поэтому стартовый маршрут не зависит от порядка создания окна. [[Клиенты/Windows-WebApiCore]] используется только через `INodeConnectionService`.
 - `Infrastructure/Storage` — SQLite `data/barkfluff.db` рядом с exe: настройки онбординга/языка и выбранная нода.
 - `Infrastructure/Localization` — смена `ResourceDictionary`; `Resources/Localization/Strings.ru.xaml` и `Strings.en.xaml` имеют одинаковые ключи, в XAML используются `DynamicResource`.
+- Завершение приложения: `App.ShutdownHost` останавливает host **вне UI-потока и с таймаутом**, через `DisposeAsync`. Блокирующее ожидание на UI-потоке недопустимо: контейнер держит `IAsyncDisposable`-сервисы и gRPC-каналы, а зависший disposable в этом случае не даёт процессу завершиться вообще.
 - `Resources/Styles/Controls.xaml` — единая точка общих стилей интерфейса поверх WPF UI: Fluent-контролы, поверхности, карточки и типографика.
 
 ## Визуальный стиль
@@ -32,6 +33,14 @@ dotnet test Tests/BarkFluff.ClientV2.WPF.Tests/BarkFluff.ClientV2.WPF.Tests.cspr
 - Интерфейс следует Windows 11 Fluent: `ApplicationThemeManager` включает светлую тему, Mica и системный accent; `MainWindow` содержит `TitleBar` WPF UI.
 - Для интерактивных элементов использовать только `ui:*`-контролы WPF UI, не нативные WPF `Button`, `TextBox`, `ListBox` или `ProgressBar`.
 - Экраны онбординга используют общую типографику `Segoe UI Variable Text`, карточки, мягкие поверхности и короткую декларативную анимацию появления.
+
+## Настройки и трей
+
+- `SettingsViewModel` — единственный источник истины о поведении при закрытии окна (`WindowClosingBehavior`: `Exit` по умолчанию, `MinimizeToTray`). Значение хранится в SQLite (`application.window-closing-behavior`) по тому же образцу, что тема; при первом запуске записывается значение по умолчанию.
+- Экран открывается кнопкой-шестерёнкой в `ui:TitleBar.TrailingContent` и показывается оверлеем поверх контента `MainWindow`, поэтому навигацию трогать не нужно. Пока в нём только переключатель поведения при закрытии; тема и язык всё ещё не выведены в UI.
+- Трей — `Wpf.Ui.Tray.Controls.NotifyIcon` (пакет `WPF-UI.Tray`), иконка `Resources/Icons/barkfluff.ico` (она же `ApplicationIcon`). Меню: «Открыть» и «Выход», двойной клик по значку раскрывает окно.
+- `MainWindow.OnClosing` в режиме `MinimizeToTray` отменяет закрытие и прячет окно. Скрытое окно остаётся в `Application.Windows`, поэтому `ShutdownMode.OnLastWindowClose` не срабатывает и приложение продолжает работать. Пункт «Выход» выставляет флаг и закрывает окно уже по-настоящему.
+- WPF UI не предоставляет `RadioButton`, поэтому в `SettingsView` используется штатный контрол — его стилизует `ui:ControlsDictionary`.
 
 ## Темы и вход
 

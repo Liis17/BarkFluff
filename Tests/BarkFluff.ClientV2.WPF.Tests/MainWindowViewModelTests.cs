@@ -12,7 +12,7 @@ public sealed class MainWindowViewModelTests
         var expectedViewModel = new object();
         navigation.Navigate(expectedViewModel);
 
-        var viewModel = new MainWindowViewModel(navigation);
+        var viewModel = new MainWindowViewModel(navigation, new SettingsViewModel(new TestApplicationDataStore()));
 
         Assert.Same(expectedViewModel, viewModel.CurrentViewModel);
     }

@@ -1,0 +1,37 @@
+using BarkFluff.ClientV2.WPF.Models;
+using BarkFluff.ClientV2.WPF.Services;
+
+namespace BarkFluff.ClientV2.WPF.Tests;
+
+/// <summary>
+/// Хранилище настроек в памяти для тестов ViewModel.
+/// </summary>
+internal sealed class TestApplicationDataStore : IApplicationDataStore
+{
+    public WindowClosingBehavior? StoredClosingBehavior { get; set; }
+
+    public int ClosingBehaviorSaveCount { get; private set; }
+
+    public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<bool> HasSeenWelcomeAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+    public Task MarkWelcomeSeenAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<string?> GetLanguageAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+    public Task SaveLanguageAsync(string language, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<ApplicationThemeMode?> GetThemeAsync(CancellationToken cancellationToken = default) => Task.FromResult<ApplicationThemeMode?>(null);
+    public Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<WindowClosingBehavior?> GetWindowClosingBehaviorAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(StoredClosingBehavior);
+
+    public Task SaveWindowClosingBehaviorAsync(WindowClosingBehavior behavior, CancellationToken cancellationToken = default)
+    {
+        StoredClosingBehavior = behavior;
+        ClosingBehaviorSaveCount++;
+        return Task.CompletedTask;
+    }
+
+    public Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default) => Task.FromResult<NodeProfile?>(null);
+    public Task SaveNodeServiceConfigurationAsync(NodeConnection connection, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<NodeConnection?> GetNodeServiceConfigurationAsync(CancellationToken cancellationToken = default) => Task.FromResult<NodeConnection?>(null);
+}

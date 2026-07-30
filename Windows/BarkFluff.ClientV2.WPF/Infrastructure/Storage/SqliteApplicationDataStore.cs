@@ -13,6 +13,7 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
     private const string WelcomeSeenKey = "onboarding.welcome-seen";
     private const string LanguageKey = "application.language";
     private const string ThemeKey = "application.theme";
+    private const string WindowClosingBehaviorKey = "application.window-closing-behavior";
 
     private readonly AppDataPaths _paths;
     private readonly string _connectionString;
@@ -85,6 +86,17 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
 
     public Task SaveThemeAsync(ApplicationThemeMode theme, CancellationToken cancellationToken = default) =>
         SaveSettingAsync(ThemeKey, theme.ToString(), cancellationToken);
+
+    public async Task<WindowClosingBehavior?> GetWindowClosingBehaviorAsync(CancellationToken cancellationToken = default)
+    {
+        var value = await GetSettingAsync(WindowClosingBehaviorKey, cancellationToken);
+        return Enum.TryParse<WindowClosingBehavior>(value, ignoreCase: true, out var behavior)
+            ? behavior
+            : null;
+    }
+
+    public Task SaveWindowClosingBehaviorAsync(WindowClosingBehavior behavior, CancellationToken cancellationToken = default) =>
+        SaveSettingAsync(WindowClosingBehaviorKey, behavior.ToString(), cancellationToken);
 
     public async Task SaveSelectedNodeAsync(NodeProfile node, CancellationToken cancellationToken = default)
     {
