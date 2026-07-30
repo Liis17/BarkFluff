@@ -1588,6 +1588,7 @@
             diff.news.forEach(function (m) {
                 chain = chain.then(function () {
                     if (chatId !== currentChatId) return;
+                    if (reconcilePendingUpload(chatId, m)) return;
                     messages.push(m);
                     return appendMessageToView(m);
                 });
