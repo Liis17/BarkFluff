@@ -43,7 +43,13 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     internal ILocalizationService Localization => _localization;
 
-    [ObservableProperty] private ChatItemViewModel? _selectedChat;
+    public bool HasSelectedChat => SelectedChat is not null;
+
+    public bool IsChatPlaceholderVisible => SelectedChat is null;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedChat), nameof(IsChatPlaceholderVisible))]
+    private ChatItemViewModel? _selectedChat;
     [ObservableProperty] private string _draftText = string.Empty;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _searchText = string.Empty;
