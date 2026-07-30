@@ -87,7 +87,7 @@
                         return;
                     }
                     if (typeof onProgress === 'function') onProgress(100);
-                    resolve(body.fileId || data.fileId);
+                    resolve(body.fileId);
                 });
                 xhr.addEventListener('error', function () { reject(new Error('upload_failed_network')); });
                 xhr.addEventListener('abort', function () { reject(new Error('upload_aborted')); });
