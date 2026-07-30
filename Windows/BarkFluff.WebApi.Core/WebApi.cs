@@ -498,6 +498,13 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessagePinnedEvent>? stream)> SubscribeToMessagesPinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesPinned(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageUnpinnedEvent>? stream)> SubscribeToMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesUnpinned(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<AllMessagesUnpinnedEvent>? stream)> SubscribeToAllMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToAllMessagesUnpinned(globalParam, ct);
+
+        /// <summary>
+        /// События обновлений несут сырое proto-сообщение, а остальные методы отдают наружу
+        /// <see cref="MessageModel"/>. Маппер живёт во внутреннем менеджере, поэтому подписчикам
+        /// стримов он доступен только через этот проброс.
+        /// </summary>
+        public static MessageModel MapEventMessage(Proto.Shared.Message message, string chatId) => WebApiMessageManager.MapMessage(message, chatId);
         #endregion
 
         #region FastAuth (делегирование к FastAuthManager)

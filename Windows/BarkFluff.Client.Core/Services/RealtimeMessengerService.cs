@@ -11,6 +11,7 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
 
     private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
     private CancellationTokenSource? _cancellationTokenSource;
+    private Task? _newMessagesTask;
     private Task? _messageReadsTask;
     private Task? _privateMessageReadsTask;
     private bool _isDisposed;
@@ -21,6 +22,8 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         _session = session;
         _webApi.TokenRefreshed += OnTokenRefreshed;
     }
+
+    public event EventHandler<IncomingMessage>? MessageReceived;
 
     public event EventHandler<MessageReadReceipt>? MessageRead;
 
@@ -38,6 +41,7 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         {
             await StopCoreAsync();
             _cancellationTokenSource = new CancellationTokenSource();
+            _newMessagesTask = ListenNewMessagesAsync(parameters, _cancellationTokenSource.Token);
             _messageReadsTask = ListenMessageReadsAsync(parameters, _cancellationTokenSource.Token);
             _privateMessageReadsTask = ListenPrivateMessageReadsAsync(parameters, _cancellationTokenSource.Token);
         }
@@ -71,6 +75,34 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         _webApi.TokenRefreshed -= OnTokenRefreshed;
         await StopAsync();
         _lifecycleLock.Dispose();
+    }
+
+    private async Task ListenNewMessagesAsync(GlobalParam parameters, CancellationToken cancellationToken)
+    {
+        var (error, stream) = await _webApi.JustUpdate(parameters, cancellationToken);
+        if (!error.IsSuccess || stream is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await foreach (var update in stream.WithCancellation(cancellationToken))
+            {
+                if (update.Message is null)
+                {
+                    continue;
+                }
+
+                MessageReceived?.Invoke(this, new IncomingMessage(update.ChatId, WebApiClient.MapEventMessage(update.Message, update.ChatId)));
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+        }
     }
 
     private async Task ListenMessageReadsAsync(GlobalParam parameters, CancellationToken cancellationToken)
@@ -125,7 +157,8 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         _cancellationTokenSource = null;
         cancellation?.Cancel();
 
-        var tasks = new[] { _messageReadsTask, _privateMessageReadsTask }.Where(task => task is not null).Cast<Task>().ToArray();
+        var tasks = new[] { _newMessagesTask, _messageReadsTask, _privateMessageReadsTask }.Where(task => task is not null).Cast<Task>().ToArray();
+        _newMessagesTask = null;
         _messageReadsTask = null;
         _privateMessageReadsTask = null;
         if (tasks.Length > 0)
