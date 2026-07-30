@@ -101,17 +101,20 @@
      * Если MIME пустой или нераспознан (напр. application/octet-stream при drag-drop на Windows),
      * используем расширение файла как fallback.
      * @param {string} mimeType
-     * @param {boolean} [asDocument] — force DOCUMENT type
+     * @param {boolean} [asDocument] — force DOCUMENT type (кроме видео)
      * @param {string} [fileName] — для fallback по расширению
      */
     function getUploadFileType(mimeType, asDocument, fileName) {
-        if (asDocument) return 5;
         var mime = mimeType || '';
+        var ext = (fileName || '').split('.').pop().toLowerCase();
+        // MP4 открывается модальным окном в режиме «Файлы», но должен остаться
+        // видео-вложением для встроенного превью и воспроизведения.
+        var isVideo = mime.startsWith('video/') || ['mp4','mov','avi','mkv','webm','m4v'].indexOf(ext) !== -1;
+        if (asDocument && !isVideo) return 5;
         if (mime.startsWith('image/gif')) return 4;
         if (mime.startsWith('image/')) return 2;
         if (mime.startsWith('video/')) return 3;
         if (mime.startsWith('audio/')) return 7;
-        var ext = (fileName || '').split('.').pop().toLowerCase();
         if (ext === 'gif') return 4;
         if (['jpg','jpeg','png','webp','bmp','avif','heic','heif','tiff','tif','svg','ico'].indexOf(ext) !== -1) return 2;
         if (['mp4','mov','avi','mkv','webm','m4v'].indexOf(ext) !== -1) return 3;
