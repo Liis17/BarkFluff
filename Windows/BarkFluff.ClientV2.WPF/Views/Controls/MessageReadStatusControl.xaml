@@ -1,0 +1,26 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.Controls.MessageReadStatusControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             x:Name="Root"
+             Visibility="{Binding IsMine, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <!--  Одна галочка — доставлено, вторая появляется при прочтении. Цвет берётся с Foreground контрола,
+          чтобы поверх медиа галочки были белыми, а в обычном пузыре — приглушёнными.  -->
+    <StackPanel Orientation="Horizontal">
+        <ui:SymbolIcon Width="16"
+                       Height="16"
+                       FontSize="14"
+                       Foreground="{Binding Foreground, ElementName=Root}"
+                       Symbol="Checkmark12"
+                       ToolTip="{DynamicResource Messenger_Delivered}" />
+        <ui:SymbolIcon Width="16"
+                       Height="16"
+                       Margin="-11,0,0,0"
+                       Panel.ZIndex="-1"
+                       FontSize="14"
+                       Foreground="{Binding Foreground, ElementName=Root}"
+                       Symbol="Checkmark12"
+                       ToolTip="{DynamicResource Messenger_Read}"
+                       Visibility="{Binding IsReadBySomeoneElse, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    </StackPanel>
+</UserControl>

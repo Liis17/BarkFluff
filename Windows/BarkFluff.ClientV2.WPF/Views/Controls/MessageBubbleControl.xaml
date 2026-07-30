@@ -4,6 +4,7 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:converters="clr-namespace:BarkFluff.ClientV2.WPF.Infrastructure.Converters"
              xmlns:behaviors="clr-namespace:BarkFluff.ClientV2.WPF.Infrastructure.Behaviors"
+             xmlns:controls="clr-namespace:BarkFluff.ClientV2.WPF.Views.Controls"
              xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
              x:Name="Root">
     <UserControl.Resources>
@@ -143,11 +144,8 @@
                                    FontSize="11"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                    Text="{Binding SentAt, StringFormat={}{0:HH:mm}}" />
-                        <TextBlock Margin="6,5,0,0"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                   Text="{DynamicResource Messenger_Read}"
-                                   Visibility="{Binding IsReadBySomeoneElse, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <controls:MessageReadStatusControl Margin="6,4,0,0"
+                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                 </StackPanel>
                 <Border HorizontalAlignment="Right"
@@ -159,11 +157,8 @@
                         Visibility="{Binding HasOnlyMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock FontSize="11" Foreground="{DynamicResource MessageMediaTimestampTextBrush}" Text="{Binding SentAt, StringFormat={}{0:HH:mm}}" />
-                        <TextBlock Margin="6,0,0,0"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource MessageMediaTimestampTextBrush}"
-                                   Text="{DynamicResource Messenger_Read}"
-                                   Visibility="{Binding IsReadBySomeoneElse, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <controls:MessageReadStatusControl Margin="6,0,0,0"
+                                                          Foreground="{DynamicResource MessageMediaTimestampTextBrush}" />
                     </StackPanel>
                 </Border>
             </Grid>
