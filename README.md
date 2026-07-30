@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="#run-the-platform">Get started</a> ·
-  <a href="#architecture">Architecture</a> ·
+  <a href="#download">Download</a> ·
+  <a href="#what-is-inside">Platform</a> ·
   <a href="#clients">Clients</a> ·
   <a href=".readme/README.md">Documentation</a>
 </p>
@@ -32,6 +32,18 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
   <img src="docs/images/readme/product-preview-placeholder.svg" alt="Placeholder for a BarkFluff product preview" width="920">
 </p>
 
+## Download
+
+<p align="center">
+  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="docs/images/readme/download-windows.svg" alt="Download BarkFluff for Windows" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="docs/images/readme/download-android.svg" alt="Download BarkFluff for Android" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="docs/images/readme/download-macos.svg" alt="Download BarkFluff for macOS" height="88"></a>
+</p>
+
+<p align="center">
+  <sub>Windows, Android, and macOS release builds. Other clients are available from source below.</sub>
+</p>
+
 ## What is inside
 
 **One entry point.** Beacon gives clients one trusted way to discover the platform; Configuration supplies the service registry and runtime settings.
@@ -43,23 +55,6 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 **Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WPF, SwiftUI, Qt, and web technologies.
 
 Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
-
-## Run the platform
-
-The supplied development stack runs prebuilt backend images. You need Docker Engine with the Compose plugin, access to the private registry, and environment credentials that are deliberately kept outside Git.
-
-```bash
-cd docker/backend
-docker login docker.barkfluff.com:5000
-docker compose -f docker-compose-dev-backend.yml config
-docker compose -f docker-compose-dev-backend.yml up -d
-```
-
-The [`Backend setup guide`](.readme/backend.md) covers the required environment, LiveKit configuration, image pull, safe shutdown, and source builds. To build one service while developing it:
-
-```bash
-dotnet build Backend/BarkFluff.Identity/BarkFluff.Identity.csproj
-```
 
 ## Clients
 
@@ -74,31 +69,39 @@ dotnet build Backend/BarkFluff.Identity/BarkFluff.Identity.csproj
 - **Linux** — Qt 6, C++20, and gRPC · [build guide](.readme/clients/linux.md)
 - **Web** — gRPC-Web and a vanilla-JS SPA · [build guide](.readme/clients/web.md)
 
-## Repository map
+## Explore the repository
 
-```text
-BarkFluff/
-├── Backend/       # .NET microservices and web hosts
-├── Shared/        # protobuf contracts and shared .NET libraries
-├── Android/       # supported Android V1 and experimental V2
-├── Windows/       # WPF clients and supporting tools
-├── Mac/ · iOS/    # SwiftUI clients and local Swift packages
-├── Linux/         # Qt 6 / C++20 client
-├── Frontend/      # developer portal frontend
-├── docker/        # local platform and infrastructure stacks
-└── .readme/       # setup and build guides
-```
+> ### 🧩 Platform
+> [`Backend/`](Backend) contains the .NET microservices and web hosts. [`Shared/`](Shared) holds protobuf contracts and common .NET libraries.
+
+> ### 📱 Clients
+> [`Android/`](Android), [`Windows/`](Windows), [`Mac/`](Mac), [`iOS/`](iOS), and [`Linux/`](Linux) contain the native applications. [`Frontend/`](Frontend) contains the developer portal frontend.
+
+> ### ⚙️ Infrastructure
+> [`docker/`](docker) contains local platform and infrastructure stacks. [`Tests/`](Tests) contains automated and load tests.
+
+> ### 📖 Documentation
+> [`.readme/`](.readme) is the public setup hub; [`Obsidian/ClaudeVault/`](Obsidian/ClaudeVault) is the project knowledge base.
 
 ## Project status
 
-BarkFluff is actively developed. Android V1 is the supported Android client; the Compose-based V2 project is experimental and should only change as part of an explicit task.
+<p align="center">
+  <img src="docs/images/readme/project-status.svg" alt="BarkFluff is under active development" width="920">
+</p>
 
-Client workflow status is shown above; open [GitHub Actions](https://github.com/Liis17/BarkFluff/actions) for the complete matrix.
+> ### 🚧 Actively developed
+> BarkFluff is under active development. Android V1 is the supported Android client; the Compose-based V2 project is experimental and should only change as part of an explicit task.
 
-## Reference
+> ### ✅ Build health
+> Client workflow status is shown above. Open [GitHub Actions](https://github.com/Liis17/BarkFluff/actions) for the complete matrix.
 
-- [Backend ports and environment variables](Backend/PORTS_CONFIGURATION.md)
-- [Docker setup reference](Backend/DOCKER_SETUP.md)
-- [Metrics catalogue](Backend/METRICS.md)
-- [Project knowledge base](Obsidian/ClaudeVault/Index.md)
-- [MIT License](LICENSE)
+## Reference & documentation
+
+> ### 🛠️ Run and operate
+> [Backend setup](.readme/backend.md) · [Ports & environment](Backend/PORTS_CONFIGURATION.md) · [Docker reference](Backend/DOCKER_SETUP.md) · [Metrics catalogue](Backend/METRICS.md)
+
+> ### 📚 Learn the system
+> [Documentation hub](.readme/README.md) · [Architecture](Obsidian/ClaudeVault/Архитектура.md) · [Project knowledge base](Obsidian/ClaudeVault/Index.md)
+
+> ### ⚖️ License
+> [MIT License](LICENSE)

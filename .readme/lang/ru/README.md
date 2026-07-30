@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="#запуск-платформы">Начать</a> ·
-  <a href="#архитектура">Архитектура</a> ·
+  <a href="#скачать">Скачать</a> ·
+  <a href="#что-внутри">Платформа</a> ·
   <a href="#клиенты">Клиенты</a> ·
   <a href="../../README.md">Документация</a>
 </p>
@@ -32,6 +32,18 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
   <img src="../../../docs/images/readme/product-preview-placeholder.svg" alt="Заглушка для продуктового скриншота BarkFluff" width="920">
 </p>
 
+## Скачать
+
+<p align="center">
+  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="../../../docs/images/readme/download-windows.svg" alt="Скачать BarkFluff для Windows" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="../../../docs/images/readme/download-android.svg" alt="Скачать BarkFluff для Android" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="../../../docs/images/readme/download-macos.svg" alt="Скачать BarkFluff для macOS" height="88"></a>
+</p>
+
+<p align="center">
+  <sub>Релизные сборки для Windows, Android и macOS. Остальные клиенты доступны из исходников ниже.</sub>
+</p>
+
 ## Что внутри
 
 **Единая точка входа.** Beacon даёт клиентам доверенный способ обнаружить платформу; Configuration предоставляет реестр сервисов и runtime-настройки.
@@ -43,23 +55,6 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 **Готовность к эксплуатации.** PostgreSQL хранит состояние, Redis обслуживает горячие данные, MinIO отвечает за объекты, а Docker запускает стек. Нативные и web-клиенты сделаны на Kotlin, WPF, SwiftUI, Qt и web-технологиях.
 
 В [гайде по архитектуре](../../../Obsidian/ClaudeVault/Архитектура.md) описаны порты, аутентификация, доставка событий и соглашения сервисов.
-
-## Запуск платформы
-
-Готовый development-стек запускает предсобранные образы бэкенда. Нужны Docker Engine с Compose, доступ к приватному registry и переменные окружения с учётными данными — они намеренно не хранятся в Git.
-
-```bash
-cd docker/backend
-docker login docker.barkfluff.com:5000
-docker compose -f docker-compose-dev-backend.yml config
-docker compose -f docker-compose-dev-backend.yml up -d
-```
-
-В [инструкции по бэкенду](../../backend.md) есть требуемое окружение, конфигурация LiveKit, загрузка образов, безопасная остановка и сборка из исходников. Чтобы собрать один сервис во время разработки:
-
-```bash
-dotnet build Backend/BarkFluff.Identity/BarkFluff.Identity.csproj
-```
 
 ## Клиенты
 
@@ -74,31 +69,39 @@ dotnet build Backend/BarkFluff.Identity/BarkFluff.Identity.csproj
 - **Linux** — Qt 6, C++20 и gRPC · [инструкция по сборке](../../clients/linux.md)
 - **Web** — gRPC-Web и vanilla-JS SPA · [инструкция по сборке](../../clients/web.md)
 
-## Карта репозитория
+## Исследовать репозиторий
 
-```text
-BarkFluff/
-├── Backend/       # .NET-микросервисы и web-хосты
-├── Shared/        # protobuf-контракты и общие .NET-библиотеки
-├── Android/       # поддерживаемый Android V1 и экспериментальный V2
-├── Windows/       # WPF-клиенты и вспомогательные инструменты
-├── Mac/ · iOS/    # SwiftUI-клиенты и локальные Swift-пакеты
-├── Linux/         # Qt 6 / C++20 клиент
-├── Frontend/      # фронтенд портала для разработчиков
-├── docker/        # локальные стеки платформы и инфраструктуры
-└── .readme/       # инструкции по запуску и сборке
-```
+> ### 🧩 Платформа
+> [`Backend/`](../../../Backend) содержит .NET-микросервисы и web-хосты. В [`Shared/`](../../../Shared) лежат protobuf-контракты и общие .NET-библиотеки.
+
+> ### 📱 Клиенты
+> В [`Android/`](../../../Android), [`Windows/`](../../../Windows), [`Mac/`](../../../Mac), [`iOS/`](../../../iOS) и [`Linux/`](../../../Linux) находятся нативные приложения. [`Frontend/`](../../../Frontend) содержит фронтенд портала для разработчиков.
+
+> ### ⚙️ Инфраструктура
+> В [`docker/`](../../../docker) лежат локальные стеки платформы и инфраструктуры. В [`Tests/`](../../../Tests) — автоматические и нагрузочные тесты.
+
+> ### 📖 Документация
+> [`.readme/`](../../) — публичный хаб запуска; [`Obsidian/ClaudeVault/`](../../../Obsidian/ClaudeVault) — база знаний проекта.
 
 ## Статус проекта
 
-BarkFluff активно развивается. Android V1 — поддерживаемый Android-клиент; проект V2 на Jetpack Compose экспериментальный и должен меняться только в рамках отдельной задачи.
+<p align="center">
+  <img src="../../../docs/images/readme/project-status.svg" alt="BarkFluff активно развивается" width="920">
+</p>
 
-Статус клиентских workflow показан выше; полная матрица доступна в [GitHub Actions](https://github.com/Liis17/BarkFluff/actions).
+> ### 🚧 Активная разработка
+> BarkFluff активно развивается. Android V1 — поддерживаемый Android-клиент; проект V2 на Jetpack Compose экспериментальный и должен меняться только в рамках отдельной задачи.
 
-## Справка
+> ### ✅ Состояние сборок
+> Статус клиентских workflow показан выше. Полная матрица доступна в [GitHub Actions](https://github.com/Liis17/BarkFluff/actions).
 
-- [Порты и переменные окружения бэкенда](../../../Backend/PORTS_CONFIGURATION.md)
-- [Справка по Docker](../../../Backend/DOCKER_SETUP.md)
-- [Реестр метрик](../../../Backend/METRICS.md)
-- [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md)
-- [Лицензия MIT](../../../LICENSE)
+## Справка и документация
+
+> ### 🛠️ Запуск и эксплуатация
+> [Инструкция по бэкенду](../../backend.md) · [Порты и переменные окружения](../../../Backend/PORTS_CONFIGURATION.md) · [Справка по Docker](../../../Backend/DOCKER_SETUP.md) · [Реестр метрик](../../../Backend/METRICS.md)
+
+> ### 📚 Изучить систему
+> [Документационный хаб](../../README.md) · [Архитектура](../../../Obsidian/ClaudeVault/Архитектура.md) · [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md)
+
+> ### ⚖️ Лицензия
+> [Лицензия MIT](../../../LICENSE)
