@@ -118,6 +118,10 @@
                     <span class="msr size-18">autorenew</span>
                     Авто-обновление: 30с
                 </span>
+                <span id="adminPanelUpdateBadge" class="md-status md-status-warn" title="Доступно обновление админ-панели" style="display:none;">
+                    <span class="msr size-16">system_update_alt</span>
+                    Обновление
+                </span>
                 <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
                     <span class="msr size-18">restart_alt</span>
                     Перезапустить
@@ -320,6 +324,18 @@
             renderServicesTable();
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="8" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
+        }
+    }
+
+    async function loadAdminPanelUpdateStatus() {
+        const badge = document.getElementById('adminPanelUpdateBadge');
+        try {
+            const response = await fetch('/api/docker/containers/admin-panel/update-status');
+            if (!response.ok) throw new Error(response.status);
+            const status = await response.json();
+            badge.style.display = status.updateAvailable ? '' : 'none';
+        } catch {
+            badge.style.display = 'none';
         }
     }
 
@@ -589,10 +605,13 @@
         const auth = await checkAuth();
         if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? `Создан: ${formatDate(auth.createdAt)}` : '');
-        await loadServices();
+        await Promise.all([loadServices(), loadAdminPanelUpdateStatus()]);
         document.getElementById('loading-overlay').classList.add('hidden');
         setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
-        refreshInterval = setInterval(loadServices, 30000);
+        refreshInterval = setInterval(() => {
+            loadServices();
+            loadAdminPanelUpdateStatus();
+        }, 30000);
     })();
 </script>
 </body>
