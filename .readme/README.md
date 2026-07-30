@@ -1,8 +1,24 @@
 [English](../README.md) · [Русский](lang/ru/README.md)
 
-# BarkFluff documentation
+<p align="center">
+  <img src="../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="112" alt="BarkFluff logo">
+</p>
 
-This directory keeps setup instructions out of the project overview while making them easy to find.
+<h1 align="center">BarkFluff documentation</h1>
+
+<p align="center">
+  <strong>Focused setup guides for running, building, and exploring BarkFluff.</strong>
+</p>
+
+<p align="center">
+  <a href="../README.md">Overview</a> ·
+  <a href="#backend">Backend</a> ·
+  <a href="#clients">Clients</a>
+</p>
+
+---
+
+Choose the guide for the part of the platform you are working with. Architecture, service conventions, and deeper implementation notes live in the [project knowledge base](../Obsidian/ClaudeVault/Index.md).
 
 ## Backend
 

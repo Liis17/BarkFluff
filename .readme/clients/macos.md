@@ -1,6 +1,22 @@
 [← Documentation hub](../README.md)
 
-# macOS
+<p align="center">
+  <img src="../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">macOS</h1>
+
+<p align="center">
+  <strong>Build the native SwiftUI client and its shared Swift packages.</strong>
+</p>
+
+<p align="center">
+  <a href="../../README.md">Overview</a> ·
+  <a href="#requirements">Requirements</a> ·
+  <a href="#build">Build</a>
+</p>
+
+---
 
 The macOS client is a SwiftUI application with local Swift packages for shared core, networking, protobuf, and calls code.
 
