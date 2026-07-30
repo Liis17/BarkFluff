@@ -135,11 +135,13 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        var result = await _messenger.SendMessageAsync(SelectedChat.Id, DraftText.Trim());
+        var result = await _messenger.SendMessageAsync(SelectedChat.Id, DraftText.Trim(), ReplyTarget?.Id ?? 0);
         if (result.error.IsSuccess && result.message is not null)
         {
             Messages.Add(await CreateMessageItemAsync(result.message, currentUserId.Value));
+            ApplyReplyQuoteState();
             DraftText = string.Empty;
+            ReplyTarget = null;
             ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
         }
     }
@@ -190,6 +192,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             Messages.Add(await CreateMessageItemAsync(message, currentUserId.Value));
         }
 
+        ApplyReplyQuoteState();
         ScrollRequest = hasUnreadMessages
             ? new MessageScrollRequest(MessageScrollTarget.Message, chat.FirstUnreadMessageId)
             : new MessageScrollRequest(MessageScrollTarget.Bottom);
@@ -387,10 +390,40 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
     {
+        // Пересланное сообщение приходит отдельным вложением — оно рисуется цитатой, а не файлом.
+        var forwarded = message.Attachments
+            .FirstOrDefault(attachment => attachment.Type == MessageAttachmentType.ForwardedMessage)?.ForwardedMessage;
         var attachments = await Task.WhenAll(message.Attachments
+            .Where(attachment => attachment.Type != MessageAttachmentType.ForwardedMessage)
             .Select(CreateAttachmentItemAsync));
 
-        return new MessageItemViewModel(this, message, message.SenderId == currentUserId, attachments, currentUserId);
+        return new MessageItemViewModel(this, message, message.SenderId == currentUserId, attachments, currentUserId, CreateForwardedContent(forwarded));
+    }
+
+    private ForwardedContentViewModel? CreateForwardedContent(ForwardedMessageModel? forwarded)
+    {
+        if (forwarded is null)
+        {
+            return null;
+        }
+
+        var preview = string.IsNullOrWhiteSpace(forwarded.Text)
+            ? _localization.GetString("Messenger_Attachment")
+            : forwarded.Text;
+        return new ForwardedContentViewModel(forwarded.AuthorName, forwarded.OriginalMessageId, preview);
+    }
+
+    /// <summary>
+    /// Сообщение с ссылкой на уже загруженный оригинал показывается цитатой ответа,
+    /// иначе — блоком пересылки. Так же различает режимы веб-клиент.
+    /// </summary>
+    private void ApplyReplyQuoteState()
+    {
+        var loadedIds = Messages.Select(message => message.Id).ToHashSet();
+        foreach (var message in Messages)
+        {
+            message.IsReplyQuote = message.Forwarded is not null && loadedIds.Contains(message.Forwarded.OriginalMessageId);
+        }
     }
 
     private MessageItemViewModel CreatePrivateMessageItem(PrivateMessageModel message, long currentUserId)
@@ -580,9 +613,10 @@ public sealed partial class MessageItemViewModel : ObservableObject
 {
     private readonly long _currentUserId;
 
-    public MessageItemViewModel(MessengerViewModel owner, MessageModel message, bool isMine, IReadOnlyCollection<MessageAttachmentItemViewModel> attachments, long currentUserId)
+    public MessageItemViewModel(MessengerViewModel owner, MessageModel message, bool isMine, IReadOnlyCollection<MessageAttachmentItemViewModel> attachments, long currentUserId, ForwardedContentViewModel? forwarded)
     {
         Owner = owner;
+        Forwarded = forwarded;
         Id = message.MessageId;
         Text = message.Text;
         IsMine = isMine;
@@ -612,6 +646,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
     }
 
     public MessengerViewModel Owner { get; }
+    public ForwardedContentViewModel? Forwarded { get; }
     public long Id { get; }
     public bool IsMine { get; }
     public bool IsSystem { get; }
@@ -623,7 +658,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool HasText => !string.IsNullOrWhiteSpace(Text);
     public bool HasMedia => MediaAttachments.Count > 0;
     public bool HasFiles => FileAttachments.Count > 0;
-    public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles;
+    public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles && !HasForwarded;
     public bool HasMetadataBelowMedia => !HasOnlyMedia;
     public bool IsSingleMedia => MediaAttachments.Count == 1;
     public int MediaColumns => IsSingleMedia ? 1 : 2;
@@ -636,10 +671,12 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool CanCopyText => CanUseActions && HasText;
     public bool CanCopyImage => CanUseActions && IsSingleMedia && MediaAttachments.First().IsImageOrGif;
     public string PinMenuHeader => Owner.Localization.GetString(IsPinned ? "Messenger_Unpin" : "Messenger_Pin");
+    public bool HasForwarded => Forwarded is not null;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasText), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(CanCopyText))]
     private string _text = string.Empty;
+    [ObservableProperty] private bool _isReplyQuote;
     [ObservableProperty] private bool _isEdited;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PinMenuHeader))]
@@ -660,6 +697,16 @@ public sealed partial class MessageItemViewModel : ObservableObject
             IsReadBySomeoneElse = true;
         }
     }
+}
+
+/// <summary>
+/// Содержимое пересланного сообщения. Используется и для цитаты ответа, и для блока пересылки.
+/// </summary>
+public sealed class ForwardedContentViewModel(string authorName, long originalMessageId, string preview)
+{
+    public string AuthorName { get; } = authorName;
+    public long OriginalMessageId { get; } = originalMessageId;
+    public string Preview { get; } = preview;
 }
 
 public sealed class MessageAttachmentItemViewModel(

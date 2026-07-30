@@ -1,9 +1,11 @@
 using BarkFluff.ClientV2.WPF.Infrastructure.Converters;
+using BarkFluff.ClientV2.WPF.Models;
 using BarkFluff.WebApi.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using System.Collections.ObjectModel;
 using System.Windows;
 
 using PinnedMessageInfo = BarkFluff.Proto.Shared.PinnedMessageInfo;
@@ -18,19 +20,43 @@ public sealed partial class MessengerViewModel
 {
     private readonly List<PinnedMessageInfo> _pinnedMessages = [];
 
+    private long _forwardSourceMessageId;
+
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEditing))]
+    [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview))]
     private MessageItemViewModel? _editingMessage;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsReplying), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview))]
+    private MessageItemViewModel? _replyTarget;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDeleteConfirmVisible))]
     private MessageItemViewModel? _messagePendingDelete;
 
     [ObservableProperty] private string? _actionError;
+    [ObservableProperty] private bool _isForwardVisible;
+    [ObservableProperty] private string _forwardComment = string.Empty;
+
+    public ObservableCollection<ForwardTargetViewModel> ForwardTargets { get; } = [];
 
     public bool IsEditing => EditingMessage is not null;
 
+    public bool IsReplying => ReplyTarget is not null;
+
     public bool IsDeleteConfirmVisible => MessagePendingDelete is not null;
+
+    public bool IsComposerHintVisible => IsEditing || IsReplying;
+
+    public string ComposerHintTitle => _localization.GetString(IsEditing ? "Messenger_EditingMessage" : "Messenger_ReplyingTo");
+
+    public string ComposerHintPreview => (EditingMessage ?? ReplyTarget)?.Text ?? string.Empty;
+
+    public bool CanSubmitForward => ForwardTargets.Any(target => target.IsSelected);
+
+    public string ForwardSelectionSummary => CanSubmitForward
+        ? $"{_localization.GetString("Messenger_ForwardSelected")} {ForwardTargets.Count(target => target.IsSelected)}"
+        : _localization.GetString("Messenger_ForwardNoneSelected");
 
     [RelayCommand]
     private void CopyMessageText(MessageItemViewModel message)
@@ -103,6 +129,7 @@ public sealed partial class MessengerViewModel
         }
 
         ActionError = null;
+        ReplyTarget = null;
         EditingMessage = message;
         DraftText = message.Text;
     }
@@ -112,6 +139,124 @@ public sealed partial class MessengerViewModel
     {
         EditingMessage = null;
         DraftText = string.Empty;
+    }
+
+    [RelayCommand]
+    private void StartReplyMessage(MessageItemViewModel message)
+    {
+        if (!message.CanUseActions)
+        {
+            return;
+        }
+
+        ActionError = null;
+        CancelEdit();
+        ReplyTarget = message;
+    }
+
+    /// <summary>
+    /// Кнопка отмены в панели над полем ввода: закрывает активный режим,
+    /// но при отмене ответа набранный текст не теряется.
+    /// </summary>
+    [RelayCommand]
+    private void CancelComposerHint()
+    {
+        if (IsEditing)
+        {
+            CancelEdit();
+            return;
+        }
+
+        ReplyTarget = null;
+    }
+
+    [RelayCommand]
+    private void ScrollToOriginal(MessageItemViewModel message)
+    {
+        if (message.IsReplyQuote && message.Forwarded is not null)
+        {
+            ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Message, message.Forwarded.OriginalMessageId);
+        }
+    }
+
+    [RelayCommand]
+    private void StartForwardMessage(MessageItemViewModel message)
+    {
+        if (!message.CanUseActions)
+        {
+            return;
+        }
+
+        ActionError = null;
+        // Пересылаем оригинал, а не саму пересылку — так же поступает веб-клиент.
+        _forwardSourceMessageId = message.Forwarded is { OriginalMessageId: > 0 } forwarded
+            ? forwarded.OriginalMessageId
+            : message.Id;
+
+        ForwardComment = string.Empty;
+        ForwardTargets.Clear();
+        // Приватные чаты шифруются отдельным методом отправки, пересылка в них не поддерживается.
+        foreach (var chat in Chats.Where(chat => !chat.IsPrivate))
+        {
+            ForwardTargets.Add(new ForwardTargetViewModel(chat.Id, chat.Title, chat.Initials));
+        }
+
+        NotifyForwardSelectionChanged();
+        IsForwardVisible = true;
+    }
+
+    [RelayCommand]
+    private void ToggleForwardTarget(ForwardTargetViewModel target)
+    {
+        target.IsSelected = !target.IsSelected;
+        NotifyForwardSelectionChanged();
+    }
+
+    [RelayCommand]
+    private void CancelForward()
+    {
+        IsForwardVisible = false;
+        ForwardTargets.Clear();
+        ForwardComment = string.Empty;
+        NotifyForwardSelectionChanged();
+    }
+
+    [RelayCommand]
+    private async Task SubmitForwardAsync()
+    {
+        var currentUserId = _messenger.CurrentUserId;
+        var targetChatIds = ForwardTargets.Where(target => target.IsSelected).Select(target => target.ChatId).ToArray();
+        if (currentUserId is null || targetChatIds.Length == 0 || _forwardSourceMessageId == 0)
+        {
+            return;
+        }
+
+        var comment = ForwardComment.Trim();
+        IsForwardVisible = false;
+        foreach (var chatId in targetChatIds)
+        {
+            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, _forwardSourceMessageId);
+            if (!error.IsSuccess)
+            {
+                ActionError = DescribeError(error);
+                continue;
+            }
+
+            if (message is not null && SelectedChat?.Id == chatId)
+            {
+                Messages.Add(await CreateMessageItemAsync(message, currentUserId.Value));
+                ApplyReplyQuoteState();
+                ScrollRequest = new MessageScrollRequest(MessageScrollTarget.Bottom);
+            }
+        }
+
+        CancelForward();
+    }
+
+    private void NotifyForwardSelectionChanged()
+    {
+        OnPropertyChanged(nameof(CanSubmitForward));
+        OnPropertyChanged(nameof(ForwardSelectionSummary));
     }
 
     [RelayCommand]
@@ -202,9 +347,11 @@ public sealed partial class MessengerViewModel
     private void ResetMessageActionState()
     {
         EditingMessage = null;
+        ReplyTarget = null;
         MessagePendingDelete = null;
         ActionError = null;
         _pinnedMessages.Clear();
+        CancelForward();
     }
 
     /// <summary>
@@ -228,4 +375,16 @@ public sealed partial class MessengerViewModel
             ActionError = _localization.GetString("Messenger_ClipboardFailed");
         }
     }
+}
+
+/// <summary>
+/// Чат в списке получателей пересылки.
+/// </summary>
+public sealed partial class ForwardTargetViewModel(string chatId, string title, string initials) : ObservableObject
+{
+    public string ChatId { get; } = chatId;
+    public string Title { get; } = title;
+    public string Initials { get; } = initials;
+
+    [ObservableProperty] private bool _isSelected;
 }
