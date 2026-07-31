@@ -158,7 +158,9 @@ WebServer 提供首页、公开个人资料页面、法律页面、安装脚本�
 - 原生客户端使用本地存储保存令牌、设置与缓存。
 - Windows 客户端保存 `GlobalParam.json`，并可用 PIN 码保护。
 - macOS 客户端使用 Keychain 保存令牌。
-- WebServer 仅在从公开个人资料页面跳转到 Web 客户端时使用 cookie `bf_open_chat`。
+- 网站使用 cookie `barkfluff_chat_id`（支持聊天会话，1 年）、`bf_open_chat`（从公开个人资料页面跳转到 Web 客户端的短时 cookie）与 `bf_cookie_notice`（已展示 cookie 提示的记录，1 年）。
+- Web 客户端使用 cookie `bf_theme`（所选配色方案，1 年）与 `bf_legal_accepted`（已接受的《用户协议》与《隐私政策》版本，1 年）；访问令牌保存在浏览器的 localStorage 或 sessionStorage 中。
+- 不使用任何用于分析、广告或追踪的 cookie。
 
 ## 11. 儿童
 

@@ -158,7 +158,9 @@ Send requests about your data to your node's administrator — only they can act
 - Native clients use local storage for tokens, settings and caches.
 - The Windows client stores `GlobalParam.json` and can protect it with a PIN.
 - The macOS client uses the Keychain for tokens.
-- WebServer uses the `bf_open_chat` cookie only for the transition from a public profile page to the web client.
+- The site uses the cookies `barkfluff_chat_id` (support chat session, 1 year), `bf_open_chat` (short-lived transition from a public profile page to the web client) and `bf_cookie_notice` (a record that the cookie notice has been shown, 1 year).
+- The web client uses the cookies `bf_theme` (selected colour scheme, 1 year) and `bf_legal_accepted` (the revision of the accepted Terms of Service and Privacy Policy, 1 year); access tokens are kept in the browser's localStorage or sessionStorage.
+- No cookies are used for analytics, advertising or tracking.
 
 ## 11. Children
 

@@ -158,7 +158,9 @@ Richten Sie Anfragen zu Ihren Daten an den Administrator Ihres Knotens — nur e
 - Native Clients nutzen den lokalen Speicher für Token, Einstellungen und Caches.
 - Der Windows-Client speichert `GlobalParam.json` und kann sie mit einer PIN schützen.
 - Der macOS-Client nutzt den Keychain für Token.
-- WebServer nutzt das Cookie `bf_open_chat` nur für den Wechsel von einer öffentlichen Profilseite zum Web-Client.
+- Die Website nutzt die Cookies `barkfluff_chat_id` (Sitzung des Support-Chats, 1 Jahr), `bf_open_chat` (kurzlebiger Wechsel von einer öffentlichen Profilseite zum Web-Client) und `bf_cookie_notice` (Vermerk, dass der Cookie-Hinweis angezeigt wurde, 1 Jahr).
+- Der Web-Client nutzt die Cookies `bf_theme` (gewähltes Farbschema, 1 Jahr) und `bf_legal_accepted` (Fassung der akzeptierten Nutzungsbedingungen und Datenschutzerklärung, 1 Jahr); Zugriffstoken werden im localStorage oder sessionStorage des Browsers gespeichert.
+- Cookies für Analyse, Werbung oder Tracking werden nicht verwendet.
 
 ## 11. Kinder
 
