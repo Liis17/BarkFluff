@@ -15,9 +15,10 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
-        /// Устанавливает новый пароль для пользователя.
+        /// Устанавливает новый пароль для пользователя. Старый пароль обязателен, только если пароль уже
+        /// установлен: после сброса через код хеш очищен, и <paramref name="oldPassword"/> остаётся пустым.
         /// </summary>
-        public async Task<ErrorReturner> SetPassword(string newPassword, GlobalParam globalParam)
+        public async Task<ErrorReturner> SetPassword(string newPassword, GlobalParam globalParam, string oldPassword = "")
         {
             if (globalParam == null)
                 return new ErrorReturner(false, "Параметры приложения не могут быть null");
@@ -26,7 +27,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    await IdentityAC!.SetPasswordAsync(new Proto.Identity.SetPasswordRequest { Password = newPassword });
+                    await IdentityAC!.SetPasswordAsync(new Proto.Identity.SetPasswordRequest { Password = newPassword, OldPassword = oldPassword });
                     return new ErrorReturner(true);
                 }, globalParam);
             }
