@@ -16,8 +16,9 @@ namespace BarkFluff.WebApi.Core.Managers
 
         /// <summary>
         /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
+        /// Для <see cref="Proto.Identity.OtpTypeId.Email"/> сервер шлёт код письмом, поэтому QR и ручной код приходят пустыми.
         /// </summary>
-        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam)
+        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam, Proto.Identity.OtpTypeId otpType = Proto.Identity.OtpTypeId.Authenticator)
         {
             try
             {
@@ -25,7 +26,7 @@ namespace BarkFluff.WebApi.Core.Managers
                 {
                     var response = await IdentityAC!.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest
                     {
-                        OtpType = Proto.Identity.OtpTypeId.Authenticator
+                        OtpType = otpType
                     });
 
                     return (new ErrorReturner(true), response.OtpQr, response.OtpCode);
@@ -60,7 +61,11 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
-        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam)
+        /// <summary>
+        /// Отключает метод двухфакторной аутентификации. Код требуется только для
+        /// <see cref="Proto.Identity.OtpTypeId.Authenticator"/>; при отключении email передаётся пустая строка.
+        /// </summary>
+        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam, Proto.Identity.OtpTypeId otpType = Proto.Identity.OtpTypeId.Authenticator, string otpCode = "")
         {
             try
             {
@@ -68,7 +73,8 @@ namespace BarkFluff.WebApi.Core.Managers
                 {
                     await IdentityAC!.DisableOtpVerificationAsync(new Proto.Identity.DisableOtpVerificationRequest
                     {
-                        OtpType = Proto.Identity.OtpTypeId.Authenticator
+                        OtpType = otpType,
+                        OtpCode = otpCode
                     });
                     return new ErrorReturner(true);
                 }, globalParam);

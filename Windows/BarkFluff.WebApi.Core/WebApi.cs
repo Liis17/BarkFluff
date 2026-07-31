@@ -302,9 +302,9 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Настройка двухфакторной аутентификации (делегирование к AuthManager)
-        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam) => await AuthManager.OtpReceipt(globalParam);
+        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam, Proto.Identity.OtpTypeId otpType = Proto.Identity.OtpTypeId.Authenticator) => await AuthManager.OtpReceipt(globalParam, otpType);
         public async Task<ErrorReturner> OtpAccept(GlobalParam globalParam, string code) => await AuthManager.OtpAccept(globalParam, code);
-        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam) => await AuthManager.OtpDisable(globalParam);
+        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam, Proto.Identity.OtpTypeId otpType = Proto.Identity.OtpTypeId.Authenticator, string otpCode = "") => await AuthManager.OtpDisable(globalParam, otpType, otpCode);
         public async Task<(ErrorReturner error, bool authenticatorEnabled, bool emailEnabled)> OtpStatus(GlobalParam globalParam) => await AuthManager.OtpStatus(globalParam);
         #endregion
 
@@ -314,7 +314,7 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Сброс пароля (делегирование к PasswordManager)
-        public async Task<ErrorReturner> SetPassword(string newPassword, GlobalParam globalParam) => await PasswordManager.SetPassword(newPassword, globalParam);
+        public async Task<ErrorReturner> SetPassword(string newPassword, GlobalParam globalParam, string oldPassword = "") => await PasswordManager.SetPassword(newPassword, globalParam, oldPassword);
         public async Task<(ErrorReturner error, string? resetId)> ResetPassword(string email, string username, GlobalParam globalParam) => await PasswordManager.ResetPassword(email, username, globalParam);
         public async Task<(ErrorReturner error, BarkFluff.Proto.Identity.Token? refreshToken)> ConfirmResetCode(string resetId, string otpCode, GlobalParam globalParam) => await PasswordManager.ConfirmResetCode(resetId, otpCode, globalParam);
         #endregion
