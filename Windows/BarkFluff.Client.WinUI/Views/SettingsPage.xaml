@@ -2,28 +2,117 @@
     x:Class="BarkFluff.Client.WinUI.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer>
-        <StackPanel Margin="40,24,40,40"
-                    MaxWidth="640"
-                    HorizontalAlignment="Left">
-            <TextBlock Style="{StaticResource OnboardingTitle}" Text="{StaticResource Settings_Title}" />
-            <Border Margin="0,24,0,0" Style="{StaticResource OnboardingCard}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_OnWindowClose}" />
-                    <RadioButton Margin="0,10,0,0"
-                                 Content="{StaticResource Settings_OnWindowCloseExit}"
-                                 GroupName="WindowClosingBehavior"
-                                 IsChecked="{x:Bind ViewModel.ExitsOnClose, Mode=TwoWay}" />
-                    <RadioButton Margin="0,6,0,0"
-                                 Content="{StaticResource Settings_OnWindowCloseTray}"
-                                 GroupName="WindowClosingBehavior"
-                                 IsChecked="{x:Bind ViewModel.MinimizesToTray, Mode=TwoWay}" />
-                    <TextBlock Margin="0,8,0,0"
-                               Opacity=".7"
-                               Style="{StaticResource MutedText}"
-                               Text="{StaticResource Settings_OnWindowCloseTrayHint}" />
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="248" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Margin="24,24,0,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Margin="12,0,0,16"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Title}" />
+
+            <!--
+                Разделы перечислены прямо в разметке, как пункты RootNavigation в MainWindow: так
+                каждое название остаётся строкой из словаря и попадает под проверку check-localization.
+            -->
+            <ListView x:Name="SectionList"
+                      Grid.Row="1"
+                      SelectionChanged="OnSectionSelected"
+                      SelectionMode="Single">
+                <ListViewItem Tag="general">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE713;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_General}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="account">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE77B;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Account}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="security">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE72E;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Security}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="privacy">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE890;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Privacy}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="devices">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE772;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Devices}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="personalization">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE771;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Personalization}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="widgets">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE80F;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Widgets}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="chatfolders">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE8B7;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_ChatFolders}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="notifications">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE7ED;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Notifications}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="language">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE774;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Language}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="storage">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE74E;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Storage}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="update">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE896;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Update}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="about">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xE946;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_About}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="testing">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <FontIcon FontSize="16" Glyph="&#xEC7A;" />
+                        <TextBlock Text="{StaticResource Settings_Nav_Testing}" />
+                    </StackPanel>
+                </ListViewItem>
+            </ListView>
+        </Grid>
+
+        <Frame x:Name="SectionFrame" Grid.Column="1" />
+    </Grid>
 </Page>

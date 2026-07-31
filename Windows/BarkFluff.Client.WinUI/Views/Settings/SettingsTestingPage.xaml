@@ -1,0 +1,39 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsTestingPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Testing_Title}" />
+
+            <InfoBar Margin="0,0,0,20"
+                     IsClosable="False"
+                     IsOpen="True"
+                     Message="{StaticResource Settings_Testing_ExperimentalHint}"
+                     Severity="Warning" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Testing_SectionParameters}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Description="{StaticResource Settings_Testing_ShowIdsHint}" Header="{StaticResource Settings_Testing_ShowIds}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Description="{StaticResource Settings_Testing_SecretChatsHint}" Header="{StaticResource Settings_Testing_SecretChats}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Description="{StaticResource Settings_Testing_PrivateChatsHint}" Header="{StaticResource Settings_Testing_PrivateChats}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Description="{StaticResource Settings_Testing_ShowServerAddressesHint}" Header="{StaticResource Settings_Testing_ShowServerAddresses}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
