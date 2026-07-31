@@ -210,7 +210,9 @@
         <li>Нативные клиенты используют локальное хранилище для токенов, настроек и кешей.</li>
         <li>Windows-клиент хранит <code>GlobalParam.json</code> и может защищать его PIN-кодом.</li>
         <li>macOS-клиент использует Keychain для токенов.</li>
-        <li>WebServer использует cookie <code>bf_open_chat</code> только для перехода с публичной страницы профиля в web-клиент.</li>
+        <li>Сайт использует cookie <code>barkfluff_chat_id</code> (сессия чата поддержки, 1 год), <code>bf_open_chat</code> (краткоживущий переход с публичной страницы профиля в web-клиент) и <code>bf_cookie_notice</code> (отметка о показанном уведомлении об использовании cookie, 1 год).</li>
+        <li>Web-клиент использует cookie <code>bf_theme</code> (выбранная цветовая схема, 1 год) и <code>bf_legal_accepted</code> (редакция принятых Пользовательского соглашения и Политики конфиденциальности, 1 год); токены доступа хранятся в localStorage или sessionStorage браузера.</li>
+        <li>Cookie для аналитики, рекламы и отслеживания не используются.</li>
       </ul>
 
       <h2>11. Дети</h2>
@@ -395,7 +397,9 @@
         <li>Native clients use local storage for tokens, settings and caches.</li>
         <li>The Windows client stores <code>GlobalParam.json</code> and can protect it with a PIN.</li>
         <li>The macOS client uses the Keychain for tokens.</li>
-        <li>WebServer uses the <code>bf_open_chat</code> cookie only for the transition from a public profile page to the web client.</li>
+        <li>The site uses the cookies <code>barkfluff_chat_id</code> (support chat session, 1 year), <code>bf_open_chat</code> (short-lived transition from a public profile page to the web client) and <code>bf_cookie_notice</code> (a record that the cookie notice has been shown, 1 year).</li>
+        <li>The web client uses the cookies <code>bf_theme</code> (selected colour scheme, 1 year) and <code>bf_legal_accepted</code> (the revision of the accepted Terms of Service and Privacy Policy, 1 year); access tokens are kept in the browser's localStorage or sessionStorage.</li>
+        <li>No cookies are used for analytics, advertising or tracking.</li>
       </ul>
 
       <h2>11. Children</h2>
@@ -441,5 +445,6 @@
       requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
     })();
   </script>
+  <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>
