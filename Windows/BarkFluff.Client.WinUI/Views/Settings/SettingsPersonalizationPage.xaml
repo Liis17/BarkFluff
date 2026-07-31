@@ -27,27 +27,27 @@
                 <StackPanel>
                     <controls:SettingsRow Header="{StaticResource Settings_Personalization_CornerRadius}">
                         <Slider Width="220"
-                                IsEnabled="False"
                                 Maximum="30"
                                 Minimum="0"
-                                Value="20" />
+                                Value="{x:Bind ViewModel.ChatCornerRadius, Mode=OneWay}"
+                                ValueChanged="OnCornerRadiusChanged" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_Personalization_BlurBackground}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ChatBackgroundBlur, Mode=OneWay}" OffContent="" OnContent="" Toggled="OnBlurToggled" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_Personalization_BlurStrength}">
                         <Slider Width="220"
-                                IsEnabled="False"
                                 Maximum="25"
                                 Minimum="1"
-                                Value="10" />
+                                Value="{x:Bind ViewModel.ChatBackgroundBlurRadius, Mode=OneWay}"
+                                ValueChanged="OnBlurStrengthChanged" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_Personalization_DimBackground}">
                         <Slider Width="220"
-                                IsEnabled="False"
                                 Maximum="100"
                                 Minimum="0"
-                                Value="0" />
+                                Value="{x:Bind ViewModel.ChatBackgroundDim, Mode=OneWay}"
+                                ValueChanged="OnDimChanged" />
                     </controls:SettingsRow>
                 </StackPanel>
             </Border>
@@ -92,7 +92,7 @@
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_OnlineTime}" />
             <Border Style="{StaticResource SettingsGroupCard}">
                 <controls:SettingsRow Description="{StaticResource Settings_Personalization_RelativeOnlineTimeHint}" Header="{StaticResource Settings_Personalization_RelativeOnlineTime}">
-                    <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.RelativeOnlineTime, Mode=OneWay}" OffContent="" OnContent="" Toggled="OnRelativeOnlineTimeToggled" />
                 </controls:SettingsRow>
             </Border>
 
