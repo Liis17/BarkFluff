@@ -206,6 +206,14 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task DeleteAllProtectedPrivateChatKeysAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM private_chat_keys;";
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);

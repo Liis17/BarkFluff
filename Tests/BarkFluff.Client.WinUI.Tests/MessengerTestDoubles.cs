@@ -72,6 +72,7 @@ internal sealed class StubLocalizationService : ILocalizationService
 
 internal sealed class FakePrivateChatKeyStore : IPrivateChatKeyStore
 {
+    public Action? OnForgetAll { get; set; }
     public Task<byte[]?> TryGetAsync(string nodeAddress, long userId, string chatId, CancellationToken cancellationToken = default) =>
         Task.FromResult<byte[]?>(null);
 
@@ -80,10 +81,20 @@ internal sealed class FakePrivateChatKeyStore : IPrivateChatKeyStore
 
     public Task ForgetAsync(string nodeAddress, long userId, string chatId, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    public int ForgetAllCalls { get; private set; }
+
+    public Task ForgetAllAsync(CancellationToken cancellationToken = default)
+    {
+        ForgetAllCalls++;
+        OnForgetAll?.Invoke();
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class FakeRealtimeMessengerService : IRealtimeMessengerService
 {
+    public Action? OnStop { get; set; }
     public event EventHandler<IncomingMessage>? MessageReceived;
     public event EventHandler<MessageReadReceipt>? MessageRead;
     public event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
@@ -96,7 +107,11 @@ internal sealed class FakeRealtimeMessengerService : IRealtimeMessengerService
 
     public Task StartAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    public Task StopAsync() => Task.CompletedTask;
+    public Task StopAsync()
+    {
+        OnStop?.Invoke();
+        return Task.CompletedTask;
+    }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
@@ -108,6 +123,8 @@ internal sealed class FakeOnlinePresenceService : IOnlinePresenceService
     public event EventHandler<UserPresence>? PresenceChanged;
 
     public List<long[]> WatchedSets { get; } = [];
+
+    public Action? OnStop { get; set; }
 
     public void Seed(UserPresence presence) => _known[presence.UserId] = presence;
 
@@ -125,7 +142,11 @@ internal sealed class FakeOnlinePresenceService : IOnlinePresenceService
         return Task.CompletedTask;
     }
 
-    public Task StopAsync() => Task.CompletedTask;
+    public Task StopAsync()
+    {
+        OnStop?.Invoke();
+        return Task.CompletedTask;
+    }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
