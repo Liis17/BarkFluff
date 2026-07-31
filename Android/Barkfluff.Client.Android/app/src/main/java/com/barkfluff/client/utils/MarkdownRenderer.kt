@@ -462,7 +462,7 @@ object MarkdownRenderer {
         return ImageView(context).apply {
             this.layoutParams = layoutParams
             adjustViewBounds = true
-            maxWidth = maxWidth
+            this.maxWidth = maxWidth
             maxHeight = dp(1024f)
             contentDescription = image.alt
             AvatarLoader.getImageLoader(context).enqueue(
