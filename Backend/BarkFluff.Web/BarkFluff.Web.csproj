@@ -39,4 +39,27 @@
     </Content>
   </ItemGroup>
 
+  <!-- wwwroot\legal наполняется таргетом ниже, поэтому убираем каталог из дефолтных
+       глоб-шаблонов SDK: иначе на втором сборке файлы попали бы в Content дважды. -->
+  <ItemGroup>
+    <Content Remove="wwwroot\legal\**" />
+  </ItemGroup>
+
+  <!-- Юридические документы живут в одном месте — Barkfluff.WebServer\html\legal.
+       Модалка согласия на странице входа читает их с своего origin (web.barkfluff.com),
+       поэтому markdown копируется в wwwroot. Зеркало gradle-таска copyLegalDocs у Android.
+       AssignTargetPaths — последний момент, когда добавленные Content ещё попадут в вывод. -->
+  <Target Name="CopyLegalDocs" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <LegalDoc Include="..\Barkfluff.WebServer\html\legal\TERMS_OF_SERVICE.*.md" />
+      <LegalDoc Include="..\Barkfluff.WebServer\html\legal\PRIVACY_POLICY.*.md" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LegalDoc)"
+          DestinationFolder="$(MSBuildProjectDirectory)\wwwroot\legal"
+          SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <Content Include="wwwroot\legal\*.md" CopyToOutputDirectory="Always" />
+    </ItemGroup>
+  </Target>
+
 </Project>

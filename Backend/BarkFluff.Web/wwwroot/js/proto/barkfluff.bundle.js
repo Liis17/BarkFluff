@@ -8572,7 +8572,7 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.shared.PageRequest.prototype.setSize = function(value) {
         return jspb2.Message.setProto3IntField(this, 2, value);
       };
-      proto.barkfluff.shared.Message.repeatedFields_ = [3];
+      proto.barkfluff.shared.Message.repeatedFields_ = [3, 11];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.shared.Message.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.shared.Message.toObject(opt_includeInstance, this);
@@ -8586,7 +8586,10 @@ var BarkFluffBundle = (() => {
             content: (f2 = msg.getContent()) && proto.barkfluff.shared.MessageContent.toObject(includeInstance, f2),
             type: jspb2.Message.getFieldWithDefault(msg, 6, 0),
             isEdited: jspb2.Message.getBooleanFieldWithDefault(msg, 7, false),
-            editedAt: (f2 = msg.getEditedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+            editedAt: (f2 = msg.getEditedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            federatedId: jspb2.Message.getFieldWithDefault(msg, 9, ""),
+            senderUuid: jspb2.Message.getFieldWithDefault(msg, 10, ""),
+            federatedReadByList: (f2 = jspb2.Message.getRepeatedField(msg, 11)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -8657,6 +8660,27 @@ var BarkFluffBundle = (() => {
               var value = new google_protobuf_timestamp_pb.Timestamp();
               reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
               msg.setEditedAt(value);
+              break;
+            case 9:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFederatedId(value);
+              break;
+            case 10:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderUuid(value);
+              break;
+            case 11:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addFederatedReadBy(value);
               break;
             default:
               reader.skipField();
@@ -8729,6 +8753,27 @@ var BarkFluffBundle = (() => {
             8,
             f2,
             google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getFederatedId();
+        if (f2.length > 0) {
+          writer.writeString(
+            9,
+            f2
+          );
+        }
+        f2 = message.getSenderUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            10,
+            f2
+          );
+        }
+        f2 = message.getFederatedReadByList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            11,
+            f2
           );
         }
       };
@@ -8827,6 +8872,39 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.shared.Message.prototype.hasEditedAt = function() {
         return jspb2.Message.getField(this, 8) != null;
+      };
+      proto.barkfluff.shared.Message.prototype.getFederatedId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 9, "")
+        );
+      };
+      proto.barkfluff.shared.Message.prototype.setFederatedId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 9, value);
+      };
+      proto.barkfluff.shared.Message.prototype.getSenderUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 10, "")
+        );
+      };
+      proto.barkfluff.shared.Message.prototype.setSenderUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 10, value);
+      };
+      proto.barkfluff.shared.Message.prototype.getFederatedReadByList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 11)
+        );
+      };
+      proto.barkfluff.shared.Message.prototype.setFederatedReadByList = function(value) {
+        return jspb2.Message.setField(this, 11, value || []);
+      };
+      proto.barkfluff.shared.Message.prototype.addFederatedReadBy = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 11, value, opt_index);
+      };
+      proto.barkfluff.shared.Message.prototype.clearFederatedReadByList = function() {
+        return this.setFederatedReadByList([]);
       };
       proto.barkfluff.shared.MessageContent.repeatedFields_ = [2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -8939,6 +9017,7 @@ var BarkFluffBundle = (() => {
             attachmentSize: jspb2.Message.getFieldWithDefault(msg, 5, 0),
             previewFileId: jspb2.Message.getFieldWithDefault(msg, 6, ""),
             fileName: jspb2.Message.getFieldWithDefault(msg, 7, ""),
+            originServer: jspb2.Message.getFieldWithDefault(msg, 11, ""),
             imageWidth: jspb2.Message.getFieldWithDefault(msg, 8, 0),
             imageHeight: jspb2.Message.getFieldWithDefault(msg, 9, 0),
             forwardedMessage: (f2 = msg.getForwardedMessage()) && proto.barkfluff.shared.ForwardedMessageAttachment.toObject(includeInstance, f2)
@@ -9009,6 +9088,13 @@ var BarkFluffBundle = (() => {
                 reader.readString()
               );
               msg.setFileName(value);
+              break;
+            case 11:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
               break;
             case 8:
               var value = (
@@ -9089,6 +9175,13 @@ var BarkFluffBundle = (() => {
         if (f2.length > 0) {
           writer.writeString(
             7,
+            f2
+          );
+        }
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            11,
             f2
           );
         }
@@ -9177,6 +9270,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.shared.MessageAttachment.prototype.setFileName = function(value) {
         return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      proto.barkfluff.shared.MessageAttachment.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 11, "")
+        );
+      };
+      proto.barkfluff.shared.MessageAttachment.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 11, value);
       };
       proto.barkfluff.shared.MessageAttachment.prototype.getImageWidth = function() {
         return (
@@ -10097,6 +10199,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.identity.ConfirmResetPasswordResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.CreateAccountRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.CreateAccountResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.identity.CreateBotTokenServerRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.identity.CreateBotTokenServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.CreateSessionForUserServerRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.CreateSessionForUserServerResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.identity.CreateTokenRequest", null, global2);
@@ -10173,6 +10277,20 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.identity.RemoveActiveSessionServerRequest, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.identity.RemoveActiveSessionServerRequest.displayName = "proto.barkfluff.identity.RemoveActiveSessionServerRequest";
+      }
+      proto.barkfluff.identity.CreateBotTokenServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.identity.CreateBotTokenServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.identity.CreateBotTokenServerRequest.displayName = "proto.barkfluff.identity.CreateBotTokenServerRequest";
+      }
+      proto.barkfluff.identity.CreateBotTokenServerResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.identity.CreateBotTokenServerResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.identity.CreateBotTokenServerResponse.displayName = "proto.barkfluff.identity.CreateBotTokenServerResponse";
       }
       proto.barkfluff.identity.ForceSetPasswordServerRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
@@ -11017,6 +11135,158 @@ var BarkFluffBundle = (() => {
         );
       };
       proto.barkfluff.identity.RemoveActiveSessionServerRequest.prototype.setDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.identity.CreateBotTokenServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.identity.CreateBotTokenServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.identity.CreateBotTokenServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            botUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.identity.CreateBotTokenServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.identity.CreateBotTokenServerRequest();
+        return proto.barkfluff.identity.CreateBotTokenServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.identity.CreateBotTokenServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setBotUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.identity.CreateBotTokenServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.identity.CreateBotTokenServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.identity.CreateBotTokenServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getBotUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.identity.CreateBotTokenServerRequest.prototype.getBotUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.identity.CreateBotTokenServerRequest.prototype.setBotUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.identity.CreateBotTokenServerResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.identity.CreateBotTokenServerResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.identity.CreateBotTokenServerResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            token: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            tokenId: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.identity.CreateBotTokenServerResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.identity.CreateBotTokenServerResponse();
+        return proto.barkfluff.identity.CreateBotTokenServerResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setToken(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setTokenId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.identity.CreateBotTokenServerResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getToken();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getTokenId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.prototype.getToken = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.prototype.setToken = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.prototype.getTokenId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.identity.CreateBotTokenServerResponse.prototype.setTokenId = function(value) {
         return jspb2.Message.setProto3StringField(this, 2, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -14536,6 +14806,37 @@ var BarkFluffBundle = (() => {
           methodDescriptor_IdentityServerApi_ForceSetPasswordServer
         );
       };
+      var methodDescriptor_IdentityServerApi_CreateBotTokenServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.identity.IdentityServerApi/CreateBotTokenServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.identity.CreateBotTokenServerRequest,
+        proto2.barkfluff.identity.CreateBotTokenServerResponse,
+        /**
+         * @param {!proto.barkfluff.identity.CreateBotTokenServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.identity.CreateBotTokenServerResponse.deserializeBinary
+      );
+      proto2.barkfluff.identity.IdentityServerApiClient.prototype.createBotTokenServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.identity.IdentityServerApi/CreateBotTokenServer",
+          request,
+          metadata || {},
+          methodDescriptor_IdentityServerApi_CreateBotTokenServer,
+          callback
+        );
+      };
+      proto2.barkfluff.identity.IdentityServerApiPromiseClient.prototype.createBotTokenServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.identity.IdentityServerApi/CreateBotTokenServer",
+          request,
+          metadata || {},
+          methodDescriptor_IdentityServerApi_CreateBotTokenServer
+        );
+      };
       module2.exports = proto2.barkfluff.identity;
     }
   });
@@ -14552,6 +14853,8 @@ var BarkFluffBundle = (() => {
       goog2.object.extend(proto, google_protobuf_timestamp_pb);
       var shared_pb = require_shared_pb();
       goog2.object.extend(proto, shared_pb);
+      goog2.exportSymbol("proto.barkfluff.users.AcceptLegalConsentRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.AcceptLegalConsentResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.AddChatToFolderRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.AddChatToFolderResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.AddDraftUserRequest", null, global2);
@@ -14570,6 +14873,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.CheckExistEmailRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CheckExistResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CheckExistUsernameRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.CheckRemoteAvatarRefRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.CheckRemoteAvatarRefResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ConfirmUserRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ConfirmUserResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CreateBadgeRequest", null, global2);
@@ -14609,6 +14914,9 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesWithFirebaseTokensByDeviceIdsRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetDevicesWithFirebaseTokensResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetFederatedProfileRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetFederatedProfileRequest.UserCase", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetFederatedProfileResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetMutedChatIdsRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetMutedChatIdsResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetMutedChatsRequest", null, global2);
@@ -14633,6 +14941,10 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.GetUserPrivacyResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetUserRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.GetUserResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetUsersByUuidRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.GetUsersByUuidResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.IsAvatarVisibleToFederationRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.IsAvatarVisibleToFederationResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.JsonFile", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ListByIdsRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ListByIdsResponse", null, global2);
@@ -14658,6 +14970,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.ReorderChatFoldersResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ReplenishOneTimePrekeysRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ReplenishOneTimePrekeysResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ResolveFederatedUserRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ResolveFederatedUserResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RotateSignedPrekeyRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RotateSignedPrekeyResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.SearchUsersRequest", null, global2);
@@ -14683,6 +14997,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.UpdateBadgeResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateChatFolderRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateChatFolderResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpdateDeviceAppInfoRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpdateDeviceAppInfoResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdatePersonalizationRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdatePersonalizationResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdatePrivacySettingsRequest", null, global2);
@@ -14693,10 +15009,15 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.UpdateStorageLimitResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateUserBadgePriorityRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UpdateUserBadgePriorityResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpsertRemoteUserInfo", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpsertRemoteUserResult", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpsertRemoteUsersRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UpsertRemoteUsersResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.User", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UserBadge", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UserContact", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.UserPersonalizationData", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.UserProfileByUuid", null, global2);
       proto.barkfluff.users.DeleteBotUserRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -15012,6 +15333,20 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.User.displayName = "proto.barkfluff.users.User";
       }
+      proto.barkfluff.users.ResolveFederatedUserRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ResolveFederatedUserRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ResolveFederatedUserRequest.displayName = "proto.barkfluff.users.ResolveFederatedUserRequest";
+      }
+      proto.barkfluff.users.ResolveFederatedUserResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ResolveFederatedUserResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ResolveFederatedUserResponse.displayName = "proto.barkfluff.users.ResolveFederatedUserResponse";
+      }
       proto.barkfluff.users.Badge = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -15222,6 +15557,20 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.RegisterDeviceResponse.displayName = "proto.barkfluff.users.RegisterDeviceResponse";
       }
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpdateDeviceAppInfoRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpdateDeviceAppInfoRequest.displayName = "proto.barkfluff.users.UpdateDeviceAppInfoRequest";
+      }
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpdateDeviceAppInfoResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpdateDeviceAppInfoResponse.displayName = "proto.barkfluff.users.UpdateDeviceAppInfoResponse";
+      }
       proto.barkfluff.users.GetUserDevicesRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -15410,6 +15759,20 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.users.UpdatePrivacySettingsResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.UpdatePrivacySettingsResponse.displayName = "proto.barkfluff.users.UpdatePrivacySettingsResponse";
+      }
+      proto.barkfluff.users.AcceptLegalConsentRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.AcceptLegalConsentRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.AcceptLegalConsentRequest.displayName = "proto.barkfluff.users.AcceptLegalConsentRequest";
+      }
+      proto.barkfluff.users.AcceptLegalConsentResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.AcceptLegalConsentResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.AcceptLegalConsentResponse.displayName = "proto.barkfluff.users.AcceptLegalConsentResponse";
       }
       proto.barkfluff.users.GetUserPrivacyRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
@@ -15697,6 +16060,97 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.users.RotateSignedPrekeyResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.RotateSignedPrekeyResponse.displayName = "proto.barkfluff.users.RotateSignedPrekeyResponse";
+      }
+      proto.barkfluff.users.UpsertRemoteUserInfo = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpsertRemoteUserInfo, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpsertRemoteUserInfo.displayName = "proto.barkfluff.users.UpsertRemoteUserInfo";
+      }
+      proto.barkfluff.users.UpsertRemoteUsersRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.UpsertRemoteUsersRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpsertRemoteUsersRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpsertRemoteUsersRequest.displayName = "proto.barkfluff.users.UpsertRemoteUsersRequest";
+      }
+      proto.barkfluff.users.UpsertRemoteUserResult = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpsertRemoteUserResult, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpsertRemoteUserResult.displayName = "proto.barkfluff.users.UpsertRemoteUserResult";
+      }
+      proto.barkfluff.users.UpsertRemoteUsersResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.UpsertRemoteUsersResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UpsertRemoteUsersResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UpsertRemoteUsersResponse.displayName = "proto.barkfluff.users.UpsertRemoteUsersResponse";
+      }
+      proto.barkfluff.users.UserProfileByUuid = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.UserProfileByUuid, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.UserProfileByUuid.displayName = "proto.barkfluff.users.UserProfileByUuid";
+      }
+      proto.barkfluff.users.GetUsersByUuidRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.GetUsersByUuidRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetUsersByUuidRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetUsersByUuidRequest.displayName = "proto.barkfluff.users.GetUsersByUuidRequest";
+      }
+      proto.barkfluff.users.GetUsersByUuidResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.GetUsersByUuidResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetUsersByUuidResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetUsersByUuidResponse.displayName = "proto.barkfluff.users.GetUsersByUuidResponse";
+      }
+      proto.barkfluff.users.GetFederatedProfileRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_);
+      };
+      goog2.inherits(proto.barkfluff.users.GetFederatedProfileRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetFederatedProfileRequest.displayName = "proto.barkfluff.users.GetFederatedProfileRequest";
+      }
+      proto.barkfluff.users.GetFederatedProfileResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.GetFederatedProfileResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.GetFederatedProfileResponse.displayName = "proto.barkfluff.users.GetFederatedProfileResponse";
+      }
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.IsAvatarVisibleToFederationRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.IsAvatarVisibleToFederationRequest.displayName = "proto.barkfluff.users.IsAvatarVisibleToFederationRequest";
+      }
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.IsAvatarVisibleToFederationResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.IsAvatarVisibleToFederationResponse.displayName = "proto.barkfluff.users.IsAvatarVisibleToFederationResponse";
+      }
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.CheckRemoteAvatarRefRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.CheckRemoteAvatarRefRequest.displayName = "proto.barkfluff.users.CheckRemoteAvatarRefRequest";
+      }
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.CheckRemoteAvatarRefResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.CheckRemoteAvatarRefResponse.displayName = "proto.barkfluff.users.CheckRemoteAvatarRefResponse";
       }
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.DeleteBotUserRequest.prototype.toObject = function(opt_includeInstance) {
@@ -18939,7 +19393,8 @@ var BarkFluffBundle = (() => {
             ),
             storageLimitGb: jspb2.Message.getFieldWithDefault(msg, 10, 0),
             profilePosterFileId: jspb2.Message.getFieldWithDefault(msg, 11, ""),
-            isBot: jspb2.Message.getBooleanFieldWithDefault(msg, 12, false)
+            isBot: jspb2.Message.getBooleanFieldWithDefault(msg, 12, false),
+            uuid: jspb2.Message.getFieldWithDefault(msg, 13, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -19039,6 +19494,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setIsBot(value);
               break;
+            case 13:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -19136,6 +19598,13 @@ var BarkFluffBundle = (() => {
         if (f2) {
           writer.writeBool(
             12,
+            f2
+          );
+        }
+        f2 = message.getUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            13,
             f2
           );
         }
@@ -19259,6 +19728,311 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.users.User.prototype.setIsBot = function(value) {
         return jspb2.Message.setProto3BooleanField(this, 12, value);
+      };
+      proto.barkfluff.users.User.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 13, "")
+        );
+      };
+      proto.barkfluff.users.User.prototype.setUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 13, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ResolveFederatedUserRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ResolveFederatedUserRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ResolveFederatedUserRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fid: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ResolveFederatedUserRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ResolveFederatedUserRequest();
+        return proto.barkfluff.users.ResolveFederatedUserRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ResolveFederatedUserRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFid(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ResolveFederatedUserRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ResolveFederatedUserRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ResolveFederatedUserRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFid();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.ResolveFederatedUserRequest.prototype.getFid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserRequest.prototype.setFid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ResolveFederatedUserResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ResolveFederatedUserResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ResolveFederatedUserResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            found: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false),
+            uuid: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            username: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            serverName: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            firstName: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            lastName: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            bio: jspb2.Message.getFieldWithDefault(msg, 7, ""),
+            avatarUrl: jspb2.Message.getFieldWithDefault(msg, 8, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ResolveFederatedUserResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ResolveFederatedUserResponse();
+        return proto.barkfluff.users.ResolveFederatedUserResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setFound(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUsername(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setServerName(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFirstName(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLastName(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setBio(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAvatarUrl(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ResolveFederatedUserResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFound();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getFirstName();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getLastName();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getBio();
+        if (f2.length > 0) {
+          writer.writeString(
+            7,
+            f2
+          );
+        }
+        f2 = message.getAvatarUrl();
+        if (f2.length > 0) {
+          writer.writeString(
+            8,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getFound = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setFound = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getFirstName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setFirstName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getLastName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setLastName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getBio = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setBio = function(value) {
+        return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.getAvatarUrl = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 8, "")
+        );
+      };
+      proto.barkfluff.users.ResolveFederatedUserResponse.prototype.setAvatarUrl = function(value) {
+        return jspb2.Message.setProto3StringField(this, 8, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.Badge.prototype.toObject = function(opt_includeInstance) {
@@ -22026,6 +22800,206 @@ var BarkFluffBundle = (() => {
         return jspb2.Message.getField(this, 1) != null;
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpdateDeviceAppInfoRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpdateDeviceAppInfoRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            deviceId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            userId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            originalName: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            appName: jspb2.Message.getFieldWithDefault(msg, 4, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpdateDeviceAppInfoRequest();
+        return proto.barkfluff.users.UpdateDeviceAppInfoRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setDeviceId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginalName(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAppName(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpdateDeviceAppInfoRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getDeviceId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getOriginalName();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAppName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.getDeviceId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.setDeviceId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.getOriginalName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.setOriginalName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.getAppName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoRequest.prototype.setAppName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpdateDeviceAppInfoResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpdateDeviceAppInfoResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpdateDeviceAppInfoResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            updated: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpdateDeviceAppInfoResponse();
+        return proto.barkfluff.users.UpdateDeviceAppInfoResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setUpdated(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpdateDeviceAppInfoResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUpdated();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse.prototype.getUpdated = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.users.UpdateDeviceAppInfoResponse.prototype.setUpdated = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.GetUserDevicesRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.users.GetUserDevicesRequest.toObject(opt_includeInstance, this);
         };
@@ -23748,7 +24722,8 @@ var BarkFluffBundle = (() => {
             bioVisibility: jspb2.Message.getFieldWithDefault(msg, 3, 0),
             emailVisibility: jspb2.Message.getFieldWithDefault(msg, 4, 0),
             searchVisible: jspb2.Message.getBooleanFieldWithDefault(msg, 5, false),
-            onlineVisibility: jspb2.Message.getFieldWithDefault(msg, 6, 0)
+            onlineVisibility: jspb2.Message.getFieldWithDefault(msg, 6, 0),
+            denyFederatedDm: jspb2.Message.getBooleanFieldWithDefault(msg, 7, false)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -23810,6 +24785,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setOnlineVisibility(value);
               break;
+            case 7:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setDenyFederatedDm(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -23863,6 +24845,13 @@ var BarkFluffBundle = (() => {
         if (f2 !== 0) {
           writer.writeEnum(
             6,
+            f2
+          );
+        }
+        f2 = message.getDenyFederatedDm();
+        if (f2) {
+          writer.writeBool(
+            7,
             f2
           );
         }
@@ -23920,6 +24909,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.users.PrivacySettings.prototype.setOnlineVisibility = function(value) {
         return jspb2.Message.setProto3EnumField(this, 6, value);
+      };
+      proto.barkfluff.users.PrivacySettings.prototype.getDenyFederatedDm = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 7, false)
+        );
+      };
+      proto.barkfluff.users.PrivacySettings.prototype.setDenyFederatedDm = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 7, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.GetPrivacySettingsRequest.prototype.toObject = function(opt_includeInstance) {
@@ -24135,6 +25133,109 @@ var BarkFluffBundle = (() => {
         return writer.getResultBuffer();
       };
       proto.barkfluff.users.UpdatePrivacySettingsResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.AcceptLegalConsentRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.AcceptLegalConsentRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.AcceptLegalConsentRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            revision: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.AcceptLegalConsentRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.AcceptLegalConsentRequest();
+        return proto.barkfluff.users.AcceptLegalConsentRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.AcceptLegalConsentRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRevision(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.AcceptLegalConsentRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.AcceptLegalConsentRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.AcceptLegalConsentRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getRevision();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.AcceptLegalConsentRequest.prototype.getRevision = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.AcceptLegalConsentRequest.prototype.setRevision = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.AcceptLegalConsentResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.AcceptLegalConsentResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.AcceptLegalConsentResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.AcceptLegalConsentResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.AcceptLegalConsentResponse();
+        return proto.barkfluff.users.AcceptLegalConsentResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.AcceptLegalConsentResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.AcceptLegalConsentResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.AcceptLegalConsentResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.AcceptLegalConsentResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -27462,6 +28563,1573 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.users.RotateSignedPrekeyResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpsertRemoteUserInfo.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpsertRemoteUserInfo.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpsertRemoteUserInfo.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            uuid: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            username: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            serverName: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            firstName: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            lastName: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            bio: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            avatarFileId: jspb2.Message.getFieldWithDefault(msg, 7, ""),
+            isDeactivated: jspb2.Message.getBooleanFieldWithDefault(msg, 8, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpsertRemoteUserInfo.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpsertRemoteUserInfo();
+        return proto.barkfluff.users.UpsertRemoteUserInfo.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUsername(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setServerName(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFirstName(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLastName(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setBio(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAvatarFileId(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setIsDeactivated(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpsertRemoteUserInfo.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getFirstName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getLastName();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getBio();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getAvatarFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            7,
+            f2
+          );
+        }
+        f2 = message.getIsDeactivated();
+        if (f2) {
+          writer.writeBool(
+            8,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getFirstName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setFirstName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getLastName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setLastName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getBio = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setBio = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getAvatarFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setAvatarFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.getIsDeactivated = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 8, false)
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserInfo.prototype.setIsDeactivated = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 8, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpsertRemoteUsersRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpsertRemoteUsersRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpsertRemoteUsersRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            recordsList: jspb2.Message.toObjectList(
+              msg.getRecordsList(),
+              proto.barkfluff.users.UpsertRemoteUserInfo.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpsertRemoteUsersRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpsertRemoteUsersRequest();
+        return proto.barkfluff.users.UpsertRemoteUsersRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.UpsertRemoteUserInfo();
+              reader.readMessage(value, proto.barkfluff.users.UpsertRemoteUserInfo.deserializeBinaryFromReader);
+              msg.addRecords(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpsertRemoteUsersRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getRecordsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.users.UpsertRemoteUserInfo.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.prototype.getRecordsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.users.UpsertRemoteUserInfo>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.users.UpsertRemoteUserInfo, 1)
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.prototype.setRecordsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.prototype.addRecords = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.users.UpsertRemoteUserInfo, opt_index);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersRequest.prototype.clearRecordsList = function() {
+        return this.setRecordsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpsertRemoteUserResult.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpsertRemoteUserResult.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpsertRemoteUserResult.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            uuid: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            ok: jspb2.Message.getBooleanFieldWithDefault(msg, 2, false),
+            rejectReason: jspb2.Message.getFieldWithDefault(msg, 3, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpsertRemoteUserResult.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpsertRemoteUserResult();
+        return proto.barkfluff.users.UpsertRemoteUserResult.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setOk(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRejectReason(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpsertRemoteUserResult.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getOk();
+        if (f2) {
+          writer.writeBool(
+            2,
+            f2
+          );
+        }
+        f2 = message.getRejectReason();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.setUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.getOk = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 2, false)
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.setOk = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 2, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.getRejectReason = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUserResult.prototype.setRejectReason = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UpsertRemoteUsersResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UpsertRemoteUsersResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UpsertRemoteUsersResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            resultsList: jspb2.Message.toObjectList(
+              msg.getResultsList(),
+              proto.barkfluff.users.UpsertRemoteUserResult.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UpsertRemoteUsersResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UpsertRemoteUsersResponse();
+        return proto.barkfluff.users.UpsertRemoteUsersResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.UpsertRemoteUserResult();
+              reader.readMessage(value, proto.barkfluff.users.UpsertRemoteUserResult.deserializeBinaryFromReader);
+              msg.addResults(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UpsertRemoteUsersResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getResultsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.users.UpsertRemoteUserResult.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.prototype.getResultsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.users.UpsertRemoteUserResult>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.users.UpsertRemoteUserResult, 1)
+        );
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.prototype.setResultsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.prototype.addResults = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.users.UpsertRemoteUserResult, opt_index);
+      };
+      proto.barkfluff.users.UpsertRemoteUsersResponse.prototype.clearResultsList = function() {
+        return this.setResultsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.UserProfileByUuid.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.UserProfileByUuid.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.UserProfileByUuid.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            uuid: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            found: jspb2.Message.getBooleanFieldWithDefault(msg, 2, false),
+            isRemote: jspb2.Message.getBooleanFieldWithDefault(msg, 3, false),
+            serverName: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            username: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            firstName: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            lastName: jspb2.Message.getFieldWithDefault(msg, 7, ""),
+            bio: jspb2.Message.getFieldWithDefault(msg, 8, ""),
+            avatarFileId: jspb2.Message.getFieldWithDefault(msg, 9, ""),
+            isDeactivated: jspb2.Message.getBooleanFieldWithDefault(msg, 10, false),
+            userId: jspb2.Message.getFieldWithDefault(msg, 11, 0),
+            denyFederatedDm: jspb2.Message.getBooleanFieldWithDefault(msg, 12, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.UserProfileByUuid.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.UserProfileByUuid();
+        return proto.barkfluff.users.UserProfileByUuid.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.UserProfileByUuid.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setFound(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setIsRemote(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setServerName(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUsername(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFirstName(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLastName(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setBio(value);
+              break;
+            case 9:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAvatarFileId(value);
+              break;
+            case 10:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setIsDeactivated(value);
+              break;
+            case 11:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 12:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setDenyFederatedDm(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.UserProfileByUuid.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.UserProfileByUuid.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFound();
+        if (f2) {
+          writer.writeBool(
+            2,
+            f2
+          );
+        }
+        f2 = message.getIsRemote();
+        if (f2) {
+          writer.writeBool(
+            3,
+            f2
+          );
+        }
+        f2 = message.getServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getFirstName();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getLastName();
+        if (f2.length > 0) {
+          writer.writeString(
+            7,
+            f2
+          );
+        }
+        f2 = message.getBio();
+        if (f2.length > 0) {
+          writer.writeString(
+            8,
+            f2
+          );
+        }
+        f2 = message.getAvatarFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            9,
+            f2
+          );
+        }
+        f2 = message.getIsDeactivated();
+        if (f2) {
+          writer.writeBool(
+            10,
+            f2
+          );
+        }
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            11,
+            f2
+          );
+        }
+        f2 = message.getDenyFederatedDm();
+        if (f2) {
+          writer.writeBool(
+            12,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getFound = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 2, false)
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setFound = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 2, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getIsRemote = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 3, false)
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setIsRemote = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 3, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getFirstName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setFirstName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getLastName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setLastName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getBio = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 8, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setBio = function(value) {
+        return jspb2.Message.setProto3StringField(this, 8, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getAvatarFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 9, "")
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setAvatarFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 9, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getIsDeactivated = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 10, false)
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setIsDeactivated = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 10, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 11, 0)
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 11, value);
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.getDenyFederatedDm = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 12, false)
+        );
+      };
+      proto.barkfluff.users.UserProfileByUuid.prototype.setDenyFederatedDm = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 12, value);
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetUsersByUuidRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetUsersByUuidRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetUsersByUuidRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            uuidsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetUsersByUuidRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetUsersByUuidRequest();
+        return proto.barkfluff.users.GetUsersByUuidRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addUuids(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetUsersByUuidRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUuidsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.prototype.getUuidsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.prototype.setUuidsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.prototype.addUuids = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.users.GetUsersByUuidRequest.prototype.clearUuidsList = function() {
+        return this.setUuidsList([]);
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetUsersByUuidResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetUsersByUuidResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetUsersByUuidResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            usersList: jspb2.Message.toObjectList(
+              msg.getUsersList(),
+              proto.barkfluff.users.UserProfileByUuid.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetUsersByUuidResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetUsersByUuidResponse();
+        return proto.barkfluff.users.GetUsersByUuidResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.users.UserProfileByUuid();
+              reader.readMessage(value, proto.barkfluff.users.UserProfileByUuid.deserializeBinaryFromReader);
+              msg.addUsers(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetUsersByUuidResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUsersList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.users.UserProfileByUuid.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.prototype.getUsersList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.users.UserProfileByUuid>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.users.UserProfileByUuid, 1)
+        );
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.prototype.setUsersList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.prototype.addUsers = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.users.UserProfileByUuid, opt_index);
+      };
+      proto.barkfluff.users.GetUsersByUuidResponse.prototype.clearUsersList = function() {
+        return this.setUsersList([]);
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_ = [[1, 2]];
+      proto.barkfluff.users.GetFederatedProfileRequest.UserCase = {
+        USER_NOT_SET: 0,
+        USERNAME: 1,
+        UUID: 2
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.getUserCase = function() {
+        return (
+          /** @type {proto.barkfluff.users.GetFederatedProfileRequest.UserCase} */
+          jspb2.Message.computeOneofCase(this, proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_[0])
+        );
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetFederatedProfileRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetFederatedProfileRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetFederatedProfileRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            username: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            uuid: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetFederatedProfileRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetFederatedProfileRequest();
+        return proto.barkfluff.users.GetFederatedProfileRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUsername(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetFederatedProfileRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = /** @type {string} */
+        jspb2.Message.getField(message, 1);
+        if (f2 != null) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = /** @type {string} */
+        jspb2.Message.getField(message, 2);
+        if (f2 != null) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.getUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.setUsername = function(value) {
+        return jspb2.Message.setOneofField(this, 1, proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.clearUsername = function() {
+        return jspb2.Message.setOneofField(this, 1, proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_[0], void 0);
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.hasUsername = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.setUuid = function(value) {
+        return jspb2.Message.setOneofField(this, 2, proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.clearUuid = function() {
+        return jspb2.Message.setOneofField(this, 2, proto.barkfluff.users.GetFederatedProfileRequest.oneofGroups_[0], void 0);
+      };
+      proto.barkfluff.users.GetFederatedProfileRequest.prototype.hasUuid = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.GetFederatedProfileResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.GetFederatedProfileResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.GetFederatedProfileResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            found: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false),
+            uuid: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            username: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            firstName: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            lastName: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            bio: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            avatarFileId: jspb2.Message.getFieldWithDefault(msg, 7, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.GetFederatedProfileResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.GetFederatedProfileResponse();
+        return proto.barkfluff.users.GetFederatedProfileResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setFound(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUuid(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUsername(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFirstName(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setLastName(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setBio(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAvatarFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.GetFederatedProfileResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFound();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getFirstName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getLastName();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getBio();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getAvatarFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            7,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getFound = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setFound = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getFirstName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setFirstName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getLastName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setLastName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getBio = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setBio = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.getAvatarFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.users.GetFederatedProfileResponse.prototype.setAvatarFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.IsAvatarVisibleToFederationRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.IsAvatarVisibleToFederationRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.IsAvatarVisibleToFederationRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.IsAvatarVisibleToFederationRequest();
+        return proto.barkfluff.users.IsAvatarVisibleToFederationRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.IsAvatarVisibleToFederationRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.IsAvatarVisibleToFederationResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.IsAvatarVisibleToFederationResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.IsAvatarVisibleToFederationResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            visible: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.IsAvatarVisibleToFederationResponse();
+        return proto.barkfluff.users.IsAvatarVisibleToFederationResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setVisible(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.IsAvatarVisibleToFederationResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getVisible();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse.prototype.getVisible = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.users.IsAvatarVisibleToFederationResponse.prototype.setVisible = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.CheckRemoteAvatarRefRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.CheckRemoteAvatarRefRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.CheckRemoteAvatarRefRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            serverName: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            fileId: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.CheckRemoteAvatarRefRequest();
+        return proto.barkfluff.users.CheckRemoteAvatarRefRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setServerName(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.CheckRemoteAvatarRefRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.prototype.getServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.prototype.setServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefRequest.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.CheckRemoteAvatarRefResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.CheckRemoteAvatarRefResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.CheckRemoteAvatarRefResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            exists: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.CheckRemoteAvatarRefResponse();
+        return proto.barkfluff.users.CheckRemoteAvatarRefResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setExists(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.CheckRemoteAvatarRefResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getExists();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse.prototype.getExists = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.users.CheckRemoteAvatarRefResponse.prototype.setExists = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
       proto.barkfluff.users.ProfileFieldVisibility = {
         ALL: 0,
         FRIENDS: 1,
@@ -27739,6 +30407,37 @@ var BarkFluffBundle = (() => {
           request,
           metadata || {},
           methodDescriptor_UsersApi_SearchUsers
+        );
+      };
+      var methodDescriptor_UsersApi_ResolveFederatedUser = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/ResolveFederatedUser",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.ResolveFederatedUserRequest,
+        proto2.barkfluff.users.ResolveFederatedUserResponse,
+        /**
+         * @param {!proto.barkfluff.users.ResolveFederatedUserRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.ResolveFederatedUserResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.resolveFederatedUser = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ResolveFederatedUser",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ResolveFederatedUser,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.resolveFederatedUser = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ResolveFederatedUser",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ResolveFederatedUser
         );
       };
       var methodDescriptor_UsersApi_GetUserBadges = new grpc.web.MethodDescriptor(
@@ -28049,6 +30748,37 @@ var BarkFluffBundle = (() => {
           request,
           metadata || {},
           methodDescriptor_UsersApi_UpdatePrivacySettings
+        );
+      };
+      var methodDescriptor_UsersApi_AcceptLegalConsent = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/AcceptLegalConsent",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.AcceptLegalConsentRequest,
+        proto2.barkfluff.users.AcceptLegalConsentResponse,
+        /**
+         * @param {!proto.barkfluff.users.AcceptLegalConsentRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.AcceptLegalConsentResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.acceptLegalConsent = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/AcceptLegalConsent",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_AcceptLegalConsent,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.acceptLegalConsent = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/AcceptLegalConsent",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_AcceptLegalConsent
         );
       };
       var methodDescriptor_UsersApi_GetPersonalization = new grpc.web.MethodDescriptor(
@@ -29179,6 +31909,37 @@ var BarkFluffBundle = (() => {
           methodDescriptor_UsersServerApi_DeleteUserDevice
         );
       };
+      var methodDescriptor_UsersServerApi_UpdateDeviceAppInfo = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/UpdateDeviceAppInfo",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.UpdateDeviceAppInfoRequest,
+        proto2.barkfluff.users.UpdateDeviceAppInfoResponse,
+        /**
+         * @param {!proto.barkfluff.users.UpdateDeviceAppInfoRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.UpdateDeviceAppInfoResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.updateDeviceAppInfo = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/UpdateDeviceAppInfo",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_UpdateDeviceAppInfo,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.updateDeviceAppInfo = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/UpdateDeviceAppInfo",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_UpdateDeviceAppInfo
+        );
+      };
       var methodDescriptor_UsersServerApi_GetUserByUsername = new grpc.web.MethodDescriptor(
         "/barkfluff.users.UsersServerApi/GetUserByUsername",
         grpc.web.MethodType.UNARY,
@@ -29613,6 +32374,161 @@ var BarkFluffBundle = (() => {
           methodDescriptor_UsersServerApi_DeleteBotUser
         );
       };
+      var methodDescriptor_UsersServerApi_UpsertRemoteUsers = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/UpsertRemoteUsers",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.UpsertRemoteUsersRequest,
+        proto2.barkfluff.users.UpsertRemoteUsersResponse,
+        /**
+         * @param {!proto.barkfluff.users.UpsertRemoteUsersRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.UpsertRemoteUsersResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.upsertRemoteUsers = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/UpsertRemoteUsers",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_UpsertRemoteUsers,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.upsertRemoteUsers = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/UpsertRemoteUsers",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_UpsertRemoteUsers
+        );
+      };
+      var methodDescriptor_UsersServerApi_GetUsersByUuid = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/GetUsersByUuid",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.GetUsersByUuidRequest,
+        proto2.barkfluff.users.GetUsersByUuidResponse,
+        /**
+         * @param {!proto.barkfluff.users.GetUsersByUuidRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.GetUsersByUuidResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.getUsersByUuid = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetUsersByUuid",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetUsersByUuid,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.getUsersByUuid = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetUsersByUuid",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetUsersByUuid
+        );
+      };
+      var methodDescriptor_UsersServerApi_GetFederatedProfile = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/GetFederatedProfile",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.GetFederatedProfileRequest,
+        proto2.barkfluff.users.GetFederatedProfileResponse,
+        /**
+         * @param {!proto.barkfluff.users.GetFederatedProfileRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.GetFederatedProfileResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.getFederatedProfile = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetFederatedProfile",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetFederatedProfile,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.getFederatedProfile = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/GetFederatedProfile",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_GetFederatedProfile
+        );
+      };
+      var methodDescriptor_UsersServerApi_IsAvatarVisibleToFederation = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/IsAvatarVisibleToFederation",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.IsAvatarVisibleToFederationRequest,
+        proto2.barkfluff.users.IsAvatarVisibleToFederationResponse,
+        /**
+         * @param {!proto.barkfluff.users.IsAvatarVisibleToFederationRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.IsAvatarVisibleToFederationResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.isAvatarVisibleToFederation = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/IsAvatarVisibleToFederation",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_IsAvatarVisibleToFederation,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.isAvatarVisibleToFederation = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/IsAvatarVisibleToFederation",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_IsAvatarVisibleToFederation
+        );
+      };
+      var methodDescriptor_UsersServerApi_CheckRemoteAvatarRef = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersServerApi/CheckRemoteAvatarRef",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.CheckRemoteAvatarRefRequest,
+        proto2.barkfluff.users.CheckRemoteAvatarRefResponse,
+        /**
+         * @param {!proto.barkfluff.users.CheckRemoteAvatarRefRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.CheckRemoteAvatarRefResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersServerApiClient.prototype.checkRemoteAvatarRef = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/CheckRemoteAvatarRef",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_CheckRemoteAvatarRef,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersServerApiPromiseClient.prototype.checkRemoteAvatarRef = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersServerApi/CheckRemoteAvatarRef",
+          request,
+          metadata || {},
+          methodDescriptor_UsersServerApi_CheckRemoteAvatarRef
+        );
+      };
       module2.exports = proto2.barkfluff.users;
     }
   });
@@ -29637,27 +32553,47 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.messages.AckSecretMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.AddUserRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.AddUserResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ApplyFederatedDeleteRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ApplyFederatedDeleteResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ApplyFederatedEditRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ApplyFederatedEditResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ApplyFederatedReadRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ApplyFederatedReadResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CallSystemResult", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.Chat", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ChatAttachmentInfo", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ChatMember", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CheckChatMembershipRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CheckChatMembershipResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckFedFileUserAccessRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckFedFileUserAccessResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckFederatedPresenceAccessRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckFederatedPresenceAccessResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckFileFederationAccessRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.CheckFileFederationAccessResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CreateGroupChatRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CreateGroupChatResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CreatePrivateChatRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.CreatePrivateChatResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.DeleteMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.DeleteMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.DeleteMessageServerRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.DeletePrivateMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.DeletePrivateMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.EditMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.EditMessageResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.EditMessageServerRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.EditPrivateMessageRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.EditPrivateMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ExportAttachment", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ExportChat", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ExportChatEventsRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ExportChatEventsResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ExportMessage", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.FederatedChatContext", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.FederatedChatEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.FederatedChatPeer", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.FederatedFileRefFlat", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetChatInfoRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetChatInfoResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetChatMemberIdsRequest", null, global2);
@@ -29666,6 +32602,10 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.messages.GetPersonChatIdResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetUserAllMessagesRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.GetUserAllMessagesResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ImportFederatedChatRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ImportFederatedChatResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ImportFederatedMessageRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.messages.ImportFederatedMessageResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.KickUserRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.KickUserResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.messages.ListChatAttachmentsRequest", null, global2);
@@ -30189,6 +33129,20 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.messages.SendMessageServerRequest.displayName = "proto.barkfluff.messages.SendMessageServerRequest";
       }
+      proto.barkfluff.messages.EditMessageServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.EditMessageServerRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.EditMessageServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.EditMessageServerRequest.displayName = "proto.barkfluff.messages.EditMessageServerRequest";
+      }
+      proto.barkfluff.messages.DeleteMessageServerRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.DeleteMessageServerRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.DeleteMessageServerRequest.displayName = "proto.barkfluff.messages.DeleteMessageServerRequest";
+      }
       proto.barkfluff.messages.GetUserAllMessagesRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -30238,6 +33192,20 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.messages.CheckChatMembershipResponse.displayName = "proto.barkfluff.messages.CheckChatMembershipResponse";
       }
+      proto.barkfluff.messages.FederatedChatContext = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.FederatedChatContext.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.FederatedChatContext, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.FederatedChatContext.displayName = "proto.barkfluff.messages.FederatedChatContext";
+      }
+      proto.barkfluff.messages.FederatedChatPeer = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.FederatedChatPeer, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.FederatedChatPeer.displayName = "proto.barkfluff.messages.FederatedChatPeer";
+      }
       proto.barkfluff.messages.GetChatMemberIdsRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
       };
@@ -30272,6 +33240,146 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.messages.PostCallSystemMessageResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.messages.PostCallSystemMessageResponse.displayName = "proto.barkfluff.messages.PostCallSystemMessageResponse";
+      }
+      proto.barkfluff.messages.FederatedFileRefFlat = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.FederatedFileRefFlat, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.FederatedFileRefFlat.displayName = "proto.barkfluff.messages.FederatedFileRefFlat";
+      }
+      proto.barkfluff.messages.FederatedChatEvent = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.FederatedChatEvent.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.FederatedChatEvent, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.FederatedChatEvent.displayName = "proto.barkfluff.messages.FederatedChatEvent";
+      }
+      proto.barkfluff.messages.ImportFederatedChatRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ImportFederatedChatRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ImportFederatedChatRequest.displayName = "proto.barkfluff.messages.ImportFederatedChatRequest";
+      }
+      proto.barkfluff.messages.ImportFederatedChatResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ImportFederatedChatResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ImportFederatedChatResponse.displayName = "proto.barkfluff.messages.ImportFederatedChatResponse";
+      }
+      proto.barkfluff.messages.ImportFederatedMessageRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.ImportFederatedMessageRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ImportFederatedMessageRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ImportFederatedMessageRequest.displayName = "proto.barkfluff.messages.ImportFederatedMessageRequest";
+      }
+      proto.barkfluff.messages.ImportFederatedMessageResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ImportFederatedMessageResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ImportFederatedMessageResponse.displayName = "proto.barkfluff.messages.ImportFederatedMessageResponse";
+      }
+      proto.barkfluff.messages.ApplyFederatedEditRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.ApplyFederatedEditRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ApplyFederatedEditRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ApplyFederatedEditRequest.displayName = "proto.barkfluff.messages.ApplyFederatedEditRequest";
+      }
+      proto.barkfluff.messages.ApplyFederatedEditResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ApplyFederatedEditResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ApplyFederatedEditResponse.displayName = "proto.barkfluff.messages.ApplyFederatedEditResponse";
+      }
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ApplyFederatedDeleteRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ApplyFederatedDeleteRequest.displayName = "proto.barkfluff.messages.ApplyFederatedDeleteRequest";
+      }
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ApplyFederatedDeleteResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ApplyFederatedDeleteResponse.displayName = "proto.barkfluff.messages.ApplyFederatedDeleteResponse";
+      }
+      proto.barkfluff.messages.ApplyFederatedReadRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ApplyFederatedReadRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ApplyFederatedReadRequest.displayName = "proto.barkfluff.messages.ApplyFederatedReadRequest";
+      }
+      proto.barkfluff.messages.ApplyFederatedReadResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ApplyFederatedReadResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ApplyFederatedReadResponse.displayName = "proto.barkfluff.messages.ApplyFederatedReadResponse";
+      }
+      proto.barkfluff.messages.ExportChatEventsRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ExportChatEventsRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ExportChatEventsRequest.displayName = "proto.barkfluff.messages.ExportChatEventsRequest";
+      }
+      proto.barkfluff.messages.ExportChatEventsResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.ExportChatEventsResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.ExportChatEventsResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.ExportChatEventsResponse.displayName = "proto.barkfluff.messages.ExportChatEventsResponse";
+      }
+      proto.barkfluff.messages.CheckFileFederationAccessRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckFileFederationAccessRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckFileFederationAccessRequest.displayName = "proto.barkfluff.messages.CheckFileFederationAccessRequest";
+      }
+      proto.barkfluff.messages.CheckFileFederationAccessResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckFileFederationAccessResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckFileFederationAccessResponse.displayName = "proto.barkfluff.messages.CheckFileFederationAccessResponse";
+      }
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckFederatedPresenceAccessRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.displayName = "proto.barkfluff.messages.CheckFederatedPresenceAccessRequest";
+      }
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckFederatedPresenceAccessResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.displayName = "proto.barkfluff.messages.CheckFederatedPresenceAccessResponse";
+      }
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckFedFileUserAccessRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckFedFileUserAccessRequest.displayName = "proto.barkfluff.messages.CheckFedFileUserAccessRequest";
+      }
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.messages.CheckFedFileUserAccessResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.messages.CheckFedFileUserAccessResponse.displayName = "proto.barkfluff.messages.CheckFedFileUserAccessResponse";
       }
       proto.barkfluff.messages.EditMessageRequest.repeatedFields_ = [3];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -31904,11 +35012,12 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.messages.CreateGroupChatResponse.prototype.hasCreatedChat = function() {
         return jspb2.Message.getField(this, 1) != null;
       };
-      proto.barkfluff.messages.SendMessageRequest.oneofGroups_ = [[1, 2]];
+      proto.barkfluff.messages.SendMessageRequest.oneofGroups_ = [[1, 2, 4]];
       proto.barkfluff.messages.SendMessageRequest.SourceIdCase = {
         SOURCE_ID_NOT_SET: 0,
         CHAT_ID: 1,
-        USER_ID: 2
+        USER_ID: 2,
+        USER_UUID: 4
       };
       proto.barkfluff.messages.SendMessageRequest.prototype.getSourceIdCase = function() {
         return (
@@ -31924,6 +35033,7 @@ var BarkFluffBundle = (() => {
           var f2, obj = {
             chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
             userId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 4, ""),
             message: (f2 = msg.getMessage()) && proto.barkfluff.messages.OutgoingMessage.toObject(includeInstance, f2)
           };
           if (includeInstance) {
@@ -31958,6 +35068,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setUserId(value);
               break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
             case 3:
               var value = new proto.barkfluff.messages.OutgoingMessage();
               reader.readMessage(value, proto.barkfluff.messages.OutgoingMessage.deserializeBinaryFromReader);
@@ -31990,6 +35107,14 @@ var BarkFluffBundle = (() => {
         if (f2 != null) {
           writer.writeInt64(
             2,
+            f2
+          );
+        }
+        f2 = /** @type {string} */
+        jspb2.Message.getField(message, 4);
+        if (f2 != null) {
+          writer.writeString(
+            4,
             f2
           );
         }
@@ -32031,6 +35156,21 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.messages.SendMessageRequest.prototype.hasUserId = function() {
         return jspb2.Message.getField(this, 2) != null;
+      };
+      proto.barkfluff.messages.SendMessageRequest.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.SendMessageRequest.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setOneofField(this, 4, proto.barkfluff.messages.SendMessageRequest.oneofGroups_[0], value);
+      };
+      proto.barkfluff.messages.SendMessageRequest.prototype.clearUserUuid = function() {
+        return jspb2.Message.setOneofField(this, 4, proto.barkfluff.messages.SendMessageRequest.oneofGroups_[0], void 0);
+      };
+      proto.barkfluff.messages.SendMessageRequest.prototype.hasUserUuid = function() {
+        return jspb2.Message.getField(this, 4) != null;
       };
       proto.barkfluff.messages.SendMessageRequest.prototype.getMessage = function() {
         return (
@@ -33313,7 +36453,9 @@ var BarkFluffBundle = (() => {
         proto.barkfluff.messages.ChatMember.toObject = function(includeInstance, msg) {
           var f2, obj = {
             userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
-            joinedAt: (f2 = msg.getJoinedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+            joinedAt: (f2 = msg.getJoinedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            serverName: jspb2.Message.getFieldWithDefault(msg, 6, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -33345,6 +36487,20 @@ var BarkFluffBundle = (() => {
               reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
               msg.setJoinedAt(value);
               break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setServerName(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -33374,6 +36530,20 @@ var BarkFluffBundle = (() => {
             google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
           );
         }
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
       };
       proto.barkfluff.messages.ChatMember.prototype.getUserId = function() {
         return (
@@ -33398,6 +36568,24 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.messages.ChatMember.prototype.hasJoinedAt = function() {
         return jspb2.Message.getField(this, 4) != null;
+      };
+      proto.barkfluff.messages.ChatMember.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.messages.ChatMember.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.messages.ChatMember.prototype.getServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.messages.ChatMember.prototype.setServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
       };
       proto.barkfluff.messages.OutgoingMessage.repeatedFields_ = [2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -33524,7 +36712,8 @@ var BarkFluffBundle = (() => {
         };
         proto.barkfluff.messages.GetPersonChatIdRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 2, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -33551,6 +36740,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setUserId(value);
               break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -33572,6 +36768,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
       };
       proto.barkfluff.messages.GetPersonChatIdRequest.prototype.getUserId = function() {
         return (
@@ -33581,6 +36784,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.messages.GetPersonChatIdRequest.prototype.setUserId = function(value) {
         return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.GetPersonChatIdRequest.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.GetPersonChatIdRequest.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.messages.GetPersonChatIdResponse.prototype.toObject = function(opt_includeInstance) {
@@ -36790,6 +40002,237 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.messages.SendMessageServerRequest.prototype.setAllowChatCreation = function(value) {
         return jspb2.Message.setProto3BooleanField(this, 5, value);
       };
+      proto.barkfluff.messages.EditMessageServerRequest.repeatedFields_ = [4];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.EditMessageServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.EditMessageServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.EditMessageServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            senderUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            messageId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            text: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            filesIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 4)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.EditMessageServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.EditMessageServerRequest();
+        return proto.barkfluff.messages.EditMessageServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSenderUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setMessageId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setText(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addFilesIds(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.EditMessageServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getSenderUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getText();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getFilesIdsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.getSenderUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.setSenderUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.getMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.getText = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.setText = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.getFilesIdsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 4)
+        );
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.setFilesIdsList = function(value) {
+        return jspb2.Message.setField(this, 4, value || []);
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.addFilesIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 4, value, opt_index);
+      };
+      proto.barkfluff.messages.EditMessageServerRequest.prototype.clearFilesIdsList = function() {
+        return this.setFilesIdsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.DeleteMessageServerRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.DeleteMessageServerRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.DeleteMessageServerRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            senderUserId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            messageId: jspb2.Message.getFieldWithDefault(msg, 2, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.DeleteMessageServerRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.DeleteMessageServerRequest();
+        return proto.barkfluff.messages.DeleteMessageServerRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSenderUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setMessageId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.DeleteMessageServerRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getSenderUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.prototype.getSenderUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.prototype.setSenderUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.prototype.getMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.messages.DeleteMessageServerRequest.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.messages.GetUserAllMessagesRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.messages.GetUserAllMessagesRequest.toObject(opt_includeInstance, this);
@@ -37577,7 +41020,8 @@ var BarkFluffBundle = (() => {
         proto.barkfluff.messages.CheckChatMembershipRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
             userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
-            chatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2
+            chatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2,
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 3, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -37611,6 +41055,13 @@ var BarkFluffBundle = (() => {
               );
               msg.addChatIds(value);
               break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -37639,6 +41090,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
       };
       proto.barkfluff.messages.CheckChatMembershipRequest.prototype.getUserId = function() {
         return (
@@ -37664,14 +41122,29 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.messages.CheckChatMembershipRequest.prototype.clearChatIdsList = function() {
         return this.setChatIdsList([]);
       };
-      proto.barkfluff.messages.CheckChatMembershipResponse.repeatedFields_ = [1];
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.CheckChatMembershipRequest.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.repeatedFields_ = [1, 2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.messages.CheckChatMembershipResponse.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.messages.CheckChatMembershipResponse.toObject(opt_includeInstance, this);
         };
         proto.barkfluff.messages.CheckChatMembershipResponse.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            memberChatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+            memberChatIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2,
+            federatedChatsList: jspb2.Message.toObjectList(
+              msg.getFederatedChatsList(),
+              proto.barkfluff.messages.FederatedChatContext.toObject,
+              includeInstance
+            ),
+            requesterUuid: jspb2.Message.getFieldWithDefault(msg, 3, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -37698,6 +41171,18 @@ var BarkFluffBundle = (() => {
               );
               msg.addMemberChatIds(value);
               break;
+            case 2:
+              var value = new proto.barkfluff.messages.FederatedChatContext();
+              reader.readMessage(value, proto.barkfluff.messages.FederatedChatContext.deserializeBinaryFromReader);
+              msg.addFederatedChats(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRequesterUuid(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -37719,6 +41204,21 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getFederatedChatsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            2,
+            f2,
+            proto.barkfluff.messages.FederatedChatContext.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getRequesterUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
       };
       proto.barkfluff.messages.CheckChatMembershipResponse.prototype.getMemberChatIdsList = function() {
         return (
@@ -37734,6 +41234,216 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.messages.CheckChatMembershipResponse.prototype.clearMemberChatIdsList = function() {
         return this.setMemberChatIdsList([]);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.getFederatedChatsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.messages.FederatedChatContext>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.messages.FederatedChatContext, 2)
+        );
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.setFederatedChatsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 2, value);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.addFederatedChats = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.barkfluff.messages.FederatedChatContext, opt_index);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.clearFederatedChatsList = function() {
+        return this.setFederatedChatsList([]);
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.getRequesterUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.CheckChatMembershipResponse.prototype.setRequesterUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.FederatedChatContext.repeatedFields_ = [2];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.FederatedChatContext.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.FederatedChatContext.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.FederatedChatContext.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            peersList: jspb2.Message.toObjectList(
+              msg.getPeersList(),
+              proto.barkfluff.messages.FederatedChatPeer.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.FederatedChatContext.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.FederatedChatContext();
+        return proto.barkfluff.messages.FederatedChatContext.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.FederatedChatContext.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = new proto.barkfluff.messages.FederatedChatPeer();
+              reader.readMessage(value, proto.barkfluff.messages.FederatedChatPeer.deserializeBinaryFromReader);
+              msg.addPeers(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.FederatedChatContext.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.FederatedChatContext.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getPeersList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            2,
+            f2,
+            proto.barkfluff.messages.FederatedChatPeer.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.getPeersList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.messages.FederatedChatPeer>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.messages.FederatedChatPeer, 2)
+        );
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.setPeersList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 2, value);
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.addPeers = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.barkfluff.messages.FederatedChatPeer, opt_index);
+      };
+      proto.barkfluff.messages.FederatedChatContext.prototype.clearPeersList = function() {
+        return this.setPeersList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.FederatedChatPeer.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.FederatedChatPeer.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.FederatedChatPeer.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            serverName: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.FederatedChatPeer.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.FederatedChatPeer();
+        return proto.barkfluff.messages.FederatedChatPeer.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.FederatedChatPeer.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setServerName(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.FederatedChatPeer.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.FederatedChatPeer.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.FederatedChatPeer.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.FederatedChatPeer.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatPeer.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.FederatedChatPeer.prototype.getServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatPeer.prototype.setServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.messages.GetChatMemberIdsRequest.prototype.toObject = function(opt_includeInstance) {
@@ -38207,6 +41917,2732 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.messages.PostCallSystemMessageResponse.prototype.setPosted = function(value) {
         return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.FederatedFileRefFlat.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.FederatedFileRefFlat.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.FederatedFileRefFlat.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            originServer: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            fileId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            filename: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            sizeBytes: jspb2.Message.getFieldWithDefault(msg, 4, 0),
+            attachmentType: jspb2.Message.getFieldWithDefault(msg, 5, 0),
+            previewFileId: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            imageWidth: jspb2.Message.getFieldWithDefault(msg, 7, 0),
+            imageHeight: jspb2.Message.getFieldWithDefault(msg, 8, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.FederatedFileRefFlat.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.FederatedFileRefFlat();
+        return proto.barkfluff.messages.FederatedFileRefFlat.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFilename(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSizeBytes(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setAttachmentType(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setPreviewFileId(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setImageWidth(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setImageHeight(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.FederatedFileRefFlat.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getFilename();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getSizeBytes();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            4,
+            f2
+          );
+        }
+        f2 = message.getAttachmentType();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            5,
+            f2
+          );
+        }
+        f2 = message.getPreviewFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getImageWidth();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            7,
+            f2
+          );
+        }
+        f2 = message.getImageHeight();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            8,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getFilename = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setFilename = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getSizeBytes = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setSizeBytes = function(value) {
+        return jspb2.Message.setProto3IntField(this, 4, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getAttachmentType = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 5, 0)
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setAttachmentType = function(value) {
+        return jspb2.Message.setProto3IntField(this, 5, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getPreviewFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setPreviewFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getImageWidth = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 7, 0)
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setImageWidth = function(value) {
+        return jspb2.Message.setProto3IntField(this, 7, value);
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.getImageHeight = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 8, 0)
+        );
+      };
+      proto.barkfluff.messages.FederatedFileRefFlat.prototype.setImageHeight = function(value) {
+        return jspb2.Message.setProto3IntField(this, 8, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.repeatedFields_ = [8];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.FederatedChatEvent.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.FederatedChatEvent.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.FederatedChatEvent.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            eventKind: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            originTsMs: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            federatedMessageId: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            senderUuid: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            senderUsername: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            senderServerName: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            text: jspb2.Message.getFieldWithDefault(msg, 7, ""),
+            attachmentsList: jspb2.Message.toObjectList(
+              msg.getAttachmentsList(),
+              proto.barkfluff.messages.FederatedFileRefFlat.toObject,
+              includeInstance
+            ),
+            readerUuid: jspb2.Message.getFieldWithDefault(msg, 9, ""),
+            upToFederatedMessageId: jspb2.Message.getFieldWithDefault(msg, 10, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.FederatedChatEvent.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.FederatedChatEvent();
+        return proto.barkfluff.messages.FederatedChatEvent.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setEventKind(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setOriginTsMs(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFederatedMessageId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderUuid(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderUsername(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderServerName(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setText(value);
+              break;
+            case 8:
+              var value = new proto.barkfluff.messages.FederatedFileRefFlat();
+              reader.readMessage(value, proto.barkfluff.messages.FederatedFileRefFlat.deserializeBinaryFromReader);
+              msg.addAttachments(value);
+              break;
+            case 9:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setReaderUuid(value);
+              break;
+            case 10:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUpToFederatedMessageId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.FederatedChatEvent.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.FederatedChatEvent.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getEventKind();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getOriginTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getFederatedMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getSenderUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getSenderUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getSenderServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getText();
+        if (f2.length > 0) {
+          writer.writeString(
+            7,
+            f2
+          );
+        }
+        f2 = message.getAttachmentsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            8,
+            f2,
+            proto.barkfluff.messages.FederatedFileRefFlat.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getReaderUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            9,
+            f2
+          );
+        }
+        f2 = message.getUpToFederatedMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            10,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getEventKind = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setEventKind = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getOriginTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setOriginTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getFederatedMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setFederatedMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getSenderUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setSenderUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getSenderUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setSenderUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getSenderServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setSenderServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getText = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setText = function(value) {
+        return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getAttachmentsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.messages.FederatedFileRefFlat>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.messages.FederatedFileRefFlat, 8)
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setAttachmentsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 8, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.addAttachments = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 8, opt_value, proto.barkfluff.messages.FederatedFileRefFlat, opt_index);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.clearAttachmentsList = function() {
+        return this.setAttachmentsList([]);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getReaderUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 9, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setReaderUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 9, value);
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.getUpToFederatedMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 10, "")
+        );
+      };
+      proto.barkfluff.messages.FederatedChatEvent.prototype.setUpToFederatedMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 10, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ImportFederatedChatRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ImportFederatedChatRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ImportFederatedChatRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            initiatorUuid: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            initiatorUsername: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            initiatorServerName: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            inviteeUuid: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            originTsMs: jspb2.Message.getFieldWithDefault(msg, 6, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ImportFederatedChatRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ImportFederatedChatRequest();
+        return proto.barkfluff.messages.ImportFederatedChatRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInitiatorUuid(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInitiatorUsername(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInitiatorServerName(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setInviteeUuid(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setOriginTsMs(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ImportFederatedChatRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getInitiatorUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getInitiatorUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getInitiatorServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getInviteeUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getOriginTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            6,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.getInitiatorUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.setInitiatorUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.getInitiatorUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.setInitiatorUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.getInitiatorServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.setInitiatorServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.getInviteeUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.setInviteeUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.getOriginTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 6, 0)
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatRequest.prototype.setOriginTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 6, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ImportFederatedChatResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ImportFederatedChatResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ImportFederatedChatResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            imported: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ImportFederatedChatResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ImportFederatedChatResponse();
+        return proto.barkfluff.messages.ImportFederatedChatResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ImportFederatedChatResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setImported(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ImportFederatedChatResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ImportFederatedChatResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ImportFederatedChatResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getImported();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ImportFederatedChatResponse.prototype.getImported = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedChatResponse.prototype.setImported = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.repeatedFields_ = [7];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ImportFederatedMessageRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ImportFederatedMessageRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            federatedMessageId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            senderUuid: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            senderUsername: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            senderServerName: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            text: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            attachmentsList: jspb2.Message.toObjectList(
+              msg.getAttachmentsList(),
+              proto.barkfluff.messages.FederatedFileRefFlat.toObject,
+              includeInstance
+            ),
+            originTsMs: jspb2.Message.getFieldWithDefault(msg, 8, 0),
+            rawEvent: msg.getRawEvent_asB64(),
+            eventId: jspb2.Message.getFieldWithDefault(msg, 10, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ImportFederatedMessageRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ImportFederatedMessageRequest();
+        return proto.barkfluff.messages.ImportFederatedMessageRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFederatedMessageId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderUuid(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderUsername(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setSenderServerName(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setText(value);
+              break;
+            case 7:
+              var value = new proto.barkfluff.messages.FederatedFileRefFlat();
+              reader.readMessage(value, proto.barkfluff.messages.FederatedFileRefFlat.deserializeBinaryFromReader);
+              msg.addAttachments(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setOriginTsMs(value);
+              break;
+            case 9:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setRawEvent(value);
+              break;
+            case 10:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setEventId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ImportFederatedMessageRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFederatedMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSenderUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getSenderUsername();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getSenderServerName();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getText();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getAttachmentsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            7,
+            f2,
+            proto.barkfluff.messages.FederatedFileRefFlat.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getOriginTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            8,
+            f2
+          );
+        }
+        f2 = message.getRawEvent_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            9,
+            f2
+          );
+        }
+        f2 = message.getEventId();
+        if (f2.length > 0) {
+          writer.writeString(
+            10,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getFederatedMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setFederatedMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getSenderUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setSenderUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getSenderUsername = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setSenderUsername = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getSenderServerName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setSenderServerName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getText = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setText = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getAttachmentsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.messages.FederatedFileRefFlat>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.messages.FederatedFileRefFlat, 7)
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setAttachmentsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 7, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.addAttachments = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 7, opt_value, proto.barkfluff.messages.FederatedFileRefFlat, opt_index);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.clearAttachmentsList = function() {
+        return this.setAttachmentsList([]);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getOriginTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 8, 0)
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setOriginTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 8, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getRawEvent = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 9, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getRawEvent_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getRawEvent()
+          )
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getRawEvent_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getRawEvent()
+          )
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setRawEvent = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 9, value);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.getEventId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 10, "")
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageRequest.prototype.setEventId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 10, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ImportFederatedMessageResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ImportFederatedMessageResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ImportFederatedMessageResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            messageId: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ImportFederatedMessageResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ImportFederatedMessageResponse();
+        return proto.barkfluff.messages.ImportFederatedMessageResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ImportFederatedMessageResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setMessageId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ImportFederatedMessageResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ImportFederatedMessageResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ImportFederatedMessageResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getMessageId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ImportFederatedMessageResponse.prototype.getMessageId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.ImportFederatedMessageResponse.prototype.setMessageId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.repeatedFields_ = [4];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ApplyFederatedEditRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ApplyFederatedEditRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            federatedMessageId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            newText: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            attachmentsList: jspb2.Message.toObjectList(
+              msg.getAttachmentsList(),
+              proto.barkfluff.messages.FederatedFileRefFlat.toObject,
+              includeInstance
+            ),
+            originTsMs: jspb2.Message.getFieldWithDefault(msg, 5, 0),
+            originServer: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            eventId: jspb2.Message.getFieldWithDefault(msg, 7, ""),
+            rawEvent: msg.getRawEvent_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ApplyFederatedEditRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ApplyFederatedEditRequest();
+        return proto.barkfluff.messages.ApplyFederatedEditRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFederatedMessageId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setNewText(value);
+              break;
+            case 4:
+              var value = new proto.barkfluff.messages.FederatedFileRefFlat();
+              reader.readMessage(value, proto.barkfluff.messages.FederatedFileRefFlat.deserializeBinaryFromReader);
+              msg.addAttachments(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setOriginTsMs(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
+              break;
+            case 7:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setEventId(value);
+              break;
+            case 8:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setRawEvent(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ApplyFederatedEditRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFederatedMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getNewText();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAttachmentsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            4,
+            f2,
+            proto.barkfluff.messages.FederatedFileRefFlat.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getOriginTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            5,
+            f2
+          );
+        }
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getEventId();
+        if (f2.length > 0) {
+          writer.writeString(
+            7,
+            f2
+          );
+        }
+        f2 = message.getRawEvent_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            8,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getFederatedMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setFederatedMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getNewText = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setNewText = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getAttachmentsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.messages.FederatedFileRefFlat>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.messages.FederatedFileRefFlat, 4)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setAttachmentsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 4, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.addAttachments = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.barkfluff.messages.FederatedFileRefFlat, opt_index);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.clearAttachmentsList = function() {
+        return this.setAttachmentsList([]);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getOriginTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 5, 0)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setOriginTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 5, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getEventId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 7, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setEventId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 7, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getRawEvent = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 8, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getRawEvent_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getRawEvent()
+          )
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.getRawEvent_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getRawEvent()
+          )
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditRequest.prototype.setRawEvent = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 8, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ApplyFederatedEditResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ApplyFederatedEditResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ApplyFederatedEditResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            applied: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ApplyFederatedEditResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ApplyFederatedEditResponse();
+        return proto.barkfluff.messages.ApplyFederatedEditResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ApplyFederatedEditResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setApplied(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ApplyFederatedEditResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ApplyFederatedEditResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ApplyFederatedEditResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getApplied();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ApplyFederatedEditResponse.prototype.getApplied = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedEditResponse.prototype.setApplied = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ApplyFederatedDeleteRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ApplyFederatedDeleteRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            federatedMessageId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            originTsMs: jspb2.Message.getFieldWithDefault(msg, 3, 0),
+            originServer: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            eventId: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            rawEvent: msg.getRawEvent_asB64()
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ApplyFederatedDeleteRequest();
+        return proto.barkfluff.messages.ApplyFederatedDeleteRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFederatedMessageId(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setOriginTsMs(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setEventId(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setRawEvent(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ApplyFederatedDeleteRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFederatedMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getOriginTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getEventId();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getRawEvent_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            6,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getFederatedMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.setFederatedMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getOriginTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.setOriginTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getEventId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.setEventId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getRawEvent = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getRawEvent_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getRawEvent()
+          )
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.getRawEvent_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getRawEvent()
+          )
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteRequest.prototype.setRawEvent = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 6, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ApplyFederatedDeleteResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ApplyFederatedDeleteResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ApplyFederatedDeleteResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            applied: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ApplyFederatedDeleteResponse();
+        return proto.barkfluff.messages.ApplyFederatedDeleteResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setApplied(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ApplyFederatedDeleteResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getApplied();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse.prototype.getApplied = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedDeleteResponse.prototype.setApplied = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ApplyFederatedReadRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ApplyFederatedReadRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            readerUuid: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            upToFederatedMessageId: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            originTsMs: jspb2.Message.getFieldWithDefault(msg, 4, 0),
+            originServer: jspb2.Message.getFieldWithDefault(msg, 5, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ApplyFederatedReadRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ApplyFederatedReadRequest();
+        return proto.barkfluff.messages.ApplyFederatedReadRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setReaderUuid(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUpToFederatedMessageId(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setOriginTsMs(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ApplyFederatedReadRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getReaderUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getUpToFederatedMessageId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getOriginTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            4,
+            f2
+          );
+        }
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.getReaderUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.setReaderUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.getUpToFederatedMessageId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.setUpToFederatedMessageId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.getOriginTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.setOriginTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 4, value);
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedReadRequest.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ApplyFederatedReadResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ApplyFederatedReadResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ApplyFederatedReadResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            applied: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ApplyFederatedReadResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ApplyFederatedReadResponse();
+        return proto.barkfluff.messages.ApplyFederatedReadResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ApplyFederatedReadResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setApplied(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ApplyFederatedReadResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ApplyFederatedReadResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ApplyFederatedReadResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getApplied();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ApplyFederatedReadResponse.prototype.getApplied = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.ApplyFederatedReadResponse.prototype.setApplied = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ExportChatEventsRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ExportChatEventsRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ExportChatEventsRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            sinceTsMs: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            limit: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ExportChatEventsRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ExportChatEventsRequest();
+        return proto.barkfluff.messages.ExportChatEventsRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSinceTsMs(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setLimit(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ExportChatEventsRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getSinceTsMs();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getLimit();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.getSinceTsMs = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.setSinceTsMs = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.getLimit = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.messages.ExportChatEventsRequest.prototype.setLimit = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.ExportChatEventsResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.ExportChatEventsResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.ExportChatEventsResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            eventsList: jspb2.Message.toObjectList(
+              msg.getEventsList(),
+              proto.barkfluff.messages.FederatedChatEvent.toObject,
+              includeInstance
+            ),
+            hasMore: jspb2.Message.getBooleanFieldWithDefault(msg, 2, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.ExportChatEventsResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.ExportChatEventsResponse();
+        return proto.barkfluff.messages.ExportChatEventsResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.messages.FederatedChatEvent();
+              reader.readMessage(value, proto.barkfluff.messages.FederatedChatEvent.deserializeBinaryFromReader);
+              msg.addEvents(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setHasMore(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.ExportChatEventsResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getEventsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.messages.FederatedChatEvent.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getHasMore();
+        if (f2) {
+          writer.writeBool(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.getEventsList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.messages.FederatedChatEvent>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.messages.FederatedChatEvent, 1)
+        );
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.setEventsList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.addEvents = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.messages.FederatedChatEvent, opt_index);
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.clearEventsList = function() {
+        return this.setEventsList([]);
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.getHasMore = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 2, false)
+        );
+      };
+      proto.barkfluff.messages.ExportChatEventsResponse.prototype.setHasMore = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckFileFederationAccessRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckFileFederationAccessRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckFileFederationAccessRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fileId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            requestingServer: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckFileFederationAccessRequest();
+        return proto.barkfluff.messages.CheckFileFederationAccessRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRequestingServer(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckFileFederationAccessRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRequestingServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.prototype.getRequestingServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessRequest.prototype.setRequestingServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckFileFederationAccessResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckFileFederationAccessResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckFileFederationAccessResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            allowed: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckFileFederationAccessResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckFileFederationAccessResponse();
+        return proto.barkfluff.messages.CheckFileFederationAccessResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setAllowed(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckFileFederationAccessResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getAllowed();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessResponse.prototype.getAllowed = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.CheckFileFederationAccessResponse.prototype.setAllowed = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.repeatedFields_ = [2];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            requestingServer: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            userUuidsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckFederatedPresenceAccessRequest();
+        return proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRequestingServer(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addUserUuids(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getRequestingServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUserUuidsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.getRequestingServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.setRequestingServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.getUserUuidsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 2)
+        );
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.setUserUuidsList = function(value) {
+        return jspb2.Message.setField(this, 2, value || []);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.addUserUuids = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 2, value, opt_index);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessRequest.prototype.clearUserUuidsList = function() {
+        return this.setUserUuidsList([]);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            allowedUserUuidsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckFederatedPresenceAccessResponse();
+        return proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addAllowedUserUuids(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getAllowedUserUuidsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.prototype.getAllowedUserUuidsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.prototype.setAllowedUserUuidsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.prototype.addAllowedUserUuids = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.messages.CheckFederatedPresenceAccessResponse.prototype.clearAllowedUserUuidsList = function() {
+        return this.setAllowedUserUuidsList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckFedFileUserAccessRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckFedFileUserAccessRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            originServer: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            fileId: jspb2.Message.getFieldWithDefault(msg, 3, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckFedFileUserAccessRequest();
+        return proto.barkfluff.messages.CheckFedFileUserAccessRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckFedFileUserAccessRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            1,
+            f2
+          );
+        }
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 1, value);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessRequest.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.messages.CheckFedFileUserAccessResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.messages.CheckFedFileUserAccessResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            allowed: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false),
+            fileName: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            sizeBytes: jspb2.Message.getFieldWithDefault(msg, 3, 0),
+            attachmentType: jspb2.Message.getFieldWithDefault(msg, 4, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.messages.CheckFedFileUserAccessResponse();
+        return proto.barkfluff.messages.CheckFedFileUserAccessResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setAllowed(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileName(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setSizeBytes(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {number} */
+                reader.readInt32()
+              );
+              msg.setAttachmentType(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.messages.CheckFedFileUserAccessResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getAllowed();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFileName();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getSizeBytes();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAttachmentType();
+        if (f2 !== 0) {
+          writer.writeInt32(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.getAllowed = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.setAllowed = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.getFileName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.setFileName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.getSizeBytes = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.setSizeBytes = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.getAttachmentType = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.messages.CheckFedFileUserAccessResponse.prototype.setAttachmentType = function(value) {
+        return jspb2.Message.setProto3IntField(this, 4, value);
       };
       proto.barkfluff.messages.CallSystemResult = {
         CALL_SYSTEM_RESULT_UNKNOWN: 0,
@@ -39368,6 +45804,347 @@ var BarkFluffBundle = (() => {
           methodDescriptor_MessagesServerApi_SendMessageServer
         );
       };
+      var methodDescriptor_MessagesServerApi_EditMessageServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/EditMessageServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.EditMessageServerRequest,
+        proto2.barkfluff.messages.EditMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.EditMessageServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.EditMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.editMessageServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/EditMessageServer",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_EditMessageServer,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.editMessageServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/EditMessageServer",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_EditMessageServer
+        );
+      };
+      var methodDescriptor_MessagesServerApi_DeleteMessageServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/DeleteMessageServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.DeleteMessageServerRequest,
+        proto2.barkfluff.messages.DeleteMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.DeleteMessageServerRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.DeleteMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.deleteMessageServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/DeleteMessageServer",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_DeleteMessageServer,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.deleteMessageServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/DeleteMessageServer",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_DeleteMessageServer
+        );
+      };
+      var methodDescriptor_MessagesServerApi_ImportFederatedChat = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/ImportFederatedChat",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ImportFederatedChatRequest,
+        proto2.barkfluff.messages.ImportFederatedChatResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ImportFederatedChatRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ImportFederatedChatResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.importFederatedChat = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ImportFederatedChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ImportFederatedChat,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.importFederatedChat = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ImportFederatedChat",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ImportFederatedChat
+        );
+      };
+      var methodDescriptor_MessagesServerApi_ImportFederatedMessage = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/ImportFederatedMessage",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ImportFederatedMessageRequest,
+        proto2.barkfluff.messages.ImportFederatedMessageResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ImportFederatedMessageRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ImportFederatedMessageResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.importFederatedMessage = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ImportFederatedMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ImportFederatedMessage,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.importFederatedMessage = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ImportFederatedMessage",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ImportFederatedMessage
+        );
+      };
+      var methodDescriptor_MessagesServerApi_ApplyFederatedEdit = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/ApplyFederatedEdit",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ApplyFederatedEditRequest,
+        proto2.barkfluff.messages.ApplyFederatedEditResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ApplyFederatedEditRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ApplyFederatedEditResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.applyFederatedEdit = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ApplyFederatedEdit",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ApplyFederatedEdit,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.applyFederatedEdit = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ApplyFederatedEdit",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ApplyFederatedEdit
+        );
+      };
+      var methodDescriptor_MessagesServerApi_ApplyFederatedDelete = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/ApplyFederatedDelete",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ApplyFederatedDeleteRequest,
+        proto2.barkfluff.messages.ApplyFederatedDeleteResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ApplyFederatedDeleteRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ApplyFederatedDeleteResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.applyFederatedDelete = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ApplyFederatedDelete",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ApplyFederatedDelete,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.applyFederatedDelete = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ApplyFederatedDelete",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ApplyFederatedDelete
+        );
+      };
+      var methodDescriptor_MessagesServerApi_ApplyFederatedRead = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/ApplyFederatedRead",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ApplyFederatedReadRequest,
+        proto2.barkfluff.messages.ApplyFederatedReadResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ApplyFederatedReadRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ApplyFederatedReadResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.applyFederatedRead = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ApplyFederatedRead",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ApplyFederatedRead,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.applyFederatedRead = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ApplyFederatedRead",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ApplyFederatedRead
+        );
+      };
+      var methodDescriptor_MessagesServerApi_ExportChatEvents = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/ExportChatEvents",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.ExportChatEventsRequest,
+        proto2.barkfluff.messages.ExportChatEventsResponse,
+        /**
+         * @param {!proto.barkfluff.messages.ExportChatEventsRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.ExportChatEventsResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.exportChatEvents = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ExportChatEvents",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ExportChatEvents,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.exportChatEvents = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/ExportChatEvents",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_ExportChatEvents
+        );
+      };
+      var methodDescriptor_MessagesServerApi_CheckFileFederationAccess = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/CheckFileFederationAccess",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.CheckFileFederationAccessRequest,
+        proto2.barkfluff.messages.CheckFileFederationAccessResponse,
+        /**
+         * @param {!proto.barkfluff.messages.CheckFileFederationAccessRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.CheckFileFederationAccessResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.checkFileFederationAccess = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckFileFederationAccess",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckFileFederationAccess,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.checkFileFederationAccess = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckFileFederationAccess",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckFileFederationAccess
+        );
+      };
+      var methodDescriptor_MessagesServerApi_CheckFederatedPresenceAccess = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/CheckFederatedPresenceAccess",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.CheckFederatedPresenceAccessRequest,
+        proto2.barkfluff.messages.CheckFederatedPresenceAccessResponse,
+        /**
+         * @param {!proto.barkfluff.messages.CheckFederatedPresenceAccessRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.CheckFederatedPresenceAccessResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.checkFederatedPresenceAccess = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckFederatedPresenceAccess",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckFederatedPresenceAccess,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.checkFederatedPresenceAccess = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckFederatedPresenceAccess",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckFederatedPresenceAccess
+        );
+      };
+      var methodDescriptor_MessagesServerApi_CheckFedFileUserAccess = new grpc.web.MethodDescriptor(
+        "/barkfluff.messages.MessagesServerApi/CheckFedFileUserAccess",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.messages.CheckFedFileUserAccessRequest,
+        proto2.barkfluff.messages.CheckFedFileUserAccessResponse,
+        /**
+         * @param {!proto.barkfluff.messages.CheckFedFileUserAccessRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.messages.CheckFedFileUserAccessResponse.deserializeBinary
+      );
+      proto2.barkfluff.messages.MessagesServerApiClient.prototype.checkFedFileUserAccess = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckFedFileUserAccess",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckFedFileUserAccess,
+          callback
+        );
+      };
+      proto2.barkfluff.messages.MessagesServerApiPromiseClient.prototype.checkFedFileUserAccess = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.messages.MessagesServerApi/CheckFedFileUserAccess",
+          request,
+          metadata || {},
+          methodDescriptor_MessagesServerApi_CheckFedFileUserAccess
+        );
+      };
       module2.exports = proto2.barkfluff.messages;
     }
   });
@@ -39386,12 +46163,17 @@ var BarkFluffBundle = (() => {
       goog2.object.extend(proto, shared_pb);
       goog2.exportSymbol("proto.barkfluff.files.AddStickerRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.AddStickerResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.CheckFedAvatarAccessRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.CheckFedAvatarAccessResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.CheckFileHashRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.CheckFileHashResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.CreateStickerPackRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.CreateStickerPackResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.DeleteStickerPackRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.DeleteStickerPackResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.FedFileRef", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.FetchFileStreamRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.files.FileStreamChunk", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.GetFileDataRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.GetFileDataResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.files.GetFilesDataRequest", null, global2);
@@ -39437,6 +46219,13 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.files.GetTempDownloadUrlRequest, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.files.GetTempDownloadUrlRequest.displayName = "proto.barkfluff.files.GetTempDownloadUrlRequest";
+      }
+      proto.barkfluff.files.FedFileRef = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.FedFileRef, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.FedFileRef.displayName = "proto.barkfluff.files.FedFileRef";
       }
       proto.barkfluff.files.GetTempDownloadUrlResponse = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.files.GetTempDownloadUrlResponse.repeatedFields_, null);
@@ -39753,14 +46542,47 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.files.UploadStickerImageResponse.displayName = "proto.barkfluff.files.UploadStickerImageResponse";
       }
-      proto.barkfluff.files.GetTempDownloadUrlRequest.repeatedFields_ = [1];
+      proto.barkfluff.files.FetchFileStreamRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.FetchFileStreamRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.FetchFileStreamRequest.displayName = "proto.barkfluff.files.FetchFileStreamRequest";
+      }
+      proto.barkfluff.files.FileStreamChunk = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.FileStreamChunk, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.FileStreamChunk.displayName = "proto.barkfluff.files.FileStreamChunk";
+      }
+      proto.barkfluff.files.CheckFedAvatarAccessRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.CheckFedAvatarAccessRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.CheckFedAvatarAccessRequest.displayName = "proto.barkfluff.files.CheckFedAvatarAccessRequest";
+      }
+      proto.barkfluff.files.CheckFedAvatarAccessResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.files.CheckFedAvatarAccessResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.files.CheckFedAvatarAccessResponse.displayName = "proto.barkfluff.files.CheckFedAvatarAccessResponse";
+      }
+      proto.barkfluff.files.GetTempDownloadUrlRequest.repeatedFields_ = [1, 2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.files.GetTempDownloadUrlRequest.toObject(opt_includeInstance, this);
         };
         proto.barkfluff.files.GetTempDownloadUrlRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            fileIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+            fileIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2,
+            fedFilesList: jspb2.Message.toObjectList(
+              msg.getFedFilesList(),
+              proto.barkfluff.files.FedFileRef.toObject,
+              includeInstance
+            )
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -39787,6 +46609,11 @@ var BarkFluffBundle = (() => {
               );
               msg.addFileIds(value);
               break;
+            case 2:
+              var value = new proto.barkfluff.files.FedFileRef();
+              reader.readMessage(value, proto.barkfluff.files.FedFileRef.deserializeBinaryFromReader);
+              msg.addFedFiles(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -39808,6 +46635,14 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getFedFilesList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            2,
+            f2,
+            proto.barkfluff.files.FedFileRef.serializeBinaryToWriter
+          );
+        }
       };
       proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.getFileIdsList = function() {
         return (
@@ -39823,6 +46658,109 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.clearFileIdsList = function() {
         return this.setFileIdsList([]);
+      };
+      proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.getFedFilesList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.files.FedFileRef>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.files.FedFileRef, 2)
+        );
+      };
+      proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.setFedFilesList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 2, value);
+      };
+      proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.addFedFiles = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.barkfluff.files.FedFileRef, opt_index);
+      };
+      proto.barkfluff.files.GetTempDownloadUrlRequest.prototype.clearFedFilesList = function() {
+        return this.setFedFilesList([]);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.FedFileRef.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.FedFileRef.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.FedFileRef.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            originServer: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            fileId: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.FedFileRef.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.FedFileRef();
+        return proto.barkfluff.files.FedFileRef.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.FedFileRef.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOriginServer(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.FedFileRef.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.FedFileRef.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.FedFileRef.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getOriginServer();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.FedFileRef.prototype.getOriginServer = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.files.FedFileRef.prototype.setOriginServer = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.files.FedFileRef.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.files.FedFileRef.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
       };
       proto.barkfluff.files.GetTempDownloadUrlResponse.repeatedFields_ = [1];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -44215,6 +51153,398 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.files.UploadStickerImageResponse.prototype.setFileUrl = function(value) {
         return jspb2.Message.setProto3StringField(this, 2, value);
       };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.FetchFileStreamRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.FetchFileStreamRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.FetchFileStreamRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fileId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            rangeFrom: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            rangeTo: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.FetchFileStreamRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.FetchFileStreamRequest();
+        return proto.barkfluff.files.FetchFileStreamRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setRangeFrom(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setRangeTo(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.FetchFileStreamRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getRangeFrom();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getRangeTo();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.getRangeFrom = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.setRangeFrom = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.getRangeTo = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.files.FetchFileStreamRequest.prototype.setRangeTo = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.FileStreamChunk.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.FileStreamChunk.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.FileStreamChunk.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            data: msg.getData_asB64(),
+            totalSize: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            contentType: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            fileName: jspb2.Message.getFieldWithDefault(msg, 4, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.FileStreamChunk.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.FileStreamChunk();
+        return proto.barkfluff.files.FileStreamChunk.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.FileStreamChunk.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {!Uint8Array} */
+                reader.readBytes()
+              );
+              msg.setData(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setTotalSize(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setContentType(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileName(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.FileStreamChunk.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.FileStreamChunk.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getData_asU8();
+        if (f2.length > 0) {
+          writer.writeBytes(
+            1,
+            f2
+          );
+        }
+        f2 = message.getTotalSize();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            2,
+            f2
+          );
+        }
+        f2 = message.getContentType();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getFileName();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.getData = function() {
+        return (
+          /** @type {!(string|Uint8Array)} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.getData_asB64 = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.bytesAsB64(
+            this.getData()
+          )
+        );
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.getData_asU8 = function() {
+        return (
+          /** @type {!Uint8Array} */
+          jspb2.Message.bytesAsU8(
+            this.getData()
+          )
+        );
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.setData = function(value) {
+        return jspb2.Message.setProto3BytesField(this, 1, value);
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.getTotalSize = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.setTotalSize = function(value) {
+        return jspb2.Message.setProto3IntField(this, 2, value);
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.getContentType = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.setContentType = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.getFileName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.files.FileStreamChunk.prototype.setFileName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.CheckFedAvatarAccessRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.CheckFedAvatarAccessRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.CheckFedAvatarAccessRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fileId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.CheckFedAvatarAccessRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.CheckFedAvatarAccessRequest();
+        return proto.barkfluff.files.CheckFedAvatarAccessRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFileId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.CheckFedAvatarAccessRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFileId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessRequest.prototype.getFileId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessRequest.prototype.setFileId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.files.CheckFedAvatarAccessResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.files.CheckFedAvatarAccessResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.files.CheckFedAvatarAccessResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            allowed: jspb2.Message.getBooleanFieldWithDefault(msg, 1, false)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.files.CheckFedAvatarAccessResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.files.CheckFedAvatarAccessResponse();
+        return proto.barkfluff.files.CheckFedAvatarAccessResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {boolean} */
+                reader.readBool()
+              );
+              msg.setAllowed(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.files.CheckFedAvatarAccessResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getAllowed();
+        if (f2) {
+          writer.writeBool(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessResponse.prototype.getAllowed = function() {
+        return (
+          /** @type {boolean} */
+          jspb2.Message.getBooleanFieldWithDefault(this, 1, false)
+        );
+      };
+      proto.barkfluff.files.CheckFedAvatarAccessResponse.prototype.setAllowed = function(value) {
+        return jspb2.Message.setProto3BooleanField(this, 1, value);
+      };
       proto.barkfluff.files.UploadFileType = {
         UPLOAD_FILE_TYPE_UNKNOWN: 0,
         USER_AVATAR: 1,
@@ -44669,6 +51999,37 @@ var BarkFluffBundle = (() => {
           methodDescriptor_FilesServerApi_UploadFileServer
         );
       };
+      var methodDescriptor_FilesServerApi_GetTempDownloadUrlServer = new grpc.web.MethodDescriptor(
+        "/barkfluff.files.FilesServerApi/GetTempDownloadUrlServer",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.files.GetTempDownloadUrlRequest,
+        proto2.barkfluff.files.GetTempDownloadUrlResponse,
+        /**
+         * @param {!proto.barkfluff.files.GetTempDownloadUrlRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.files.GetTempDownloadUrlResponse.deserializeBinary
+      );
+      proto2.barkfluff.files.FilesServerApiClient.prototype.getTempDownloadUrlServer = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/GetTempDownloadUrlServer",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_GetTempDownloadUrlServer,
+          callback
+        );
+      };
+      proto2.barkfluff.files.FilesServerApiPromiseClient.prototype.getTempDownloadUrlServer = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/GetTempDownloadUrlServer",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_GetTempDownloadUrlServer
+        );
+      };
       var methodDescriptor_FilesServerApi_CreateStickerPack = new grpc.web.MethodDescriptor(
         "/barkfluff.files.FilesServerApi/CreateStickerPack",
         grpc.web.MethodType.UNARY,
@@ -44977,6 +52338,67 @@ var BarkFluffBundle = (() => {
           request,
           metadata || {},
           methodDescriptor_FilesServerApi_UploadStickerImage
+        );
+      };
+      var methodDescriptor_FilesServerApi_FetchFileStream = new grpc.web.MethodDescriptor(
+        "/barkfluff.files.FilesServerApi/FetchFileStream",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.files.FetchFileStreamRequest,
+        proto2.barkfluff.files.FileStreamChunk,
+        /**
+         * @param {!proto.barkfluff.files.FetchFileStreamRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.files.FileStreamChunk.deserializeBinary
+      );
+      proto2.barkfluff.files.FilesServerApiClient.prototype.fetchFileStream = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/FetchFileStream",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_FetchFileStream
+        );
+      };
+      proto2.barkfluff.files.FilesServerApiPromiseClient.prototype.fetchFileStream = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/FetchFileStream",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_FetchFileStream
+        );
+      };
+      var methodDescriptor_FilesServerApi_CheckFedAvatarAccess = new grpc.web.MethodDescriptor(
+        "/barkfluff.files.FilesServerApi/CheckFedAvatarAccess",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.files.CheckFedAvatarAccessRequest,
+        proto2.barkfluff.files.CheckFedAvatarAccessResponse,
+        /**
+         * @param {!proto.barkfluff.files.CheckFedAvatarAccessRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.files.CheckFedAvatarAccessResponse.deserializeBinary
+      );
+      proto2.barkfluff.files.FilesServerApiClient.prototype.checkFedAvatarAccess = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/CheckFedAvatarAccess",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_CheckFedAvatarAccess,
+          callback
+        );
+      };
+      proto2.barkfluff.files.FilesServerApiPromiseClient.prototype.checkFedAvatarAccess = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.files.FilesServerApi/CheckFedAvatarAccess",
+          request,
+          metadata || {},
+          methodDescriptor_FilesServerApi_CheckFedAvatarAccess
         );
       };
       module2.exports = proto2.barkfluff.files;
@@ -48237,8 +55659,12 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.GetLocalPresenceRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.GetLocalPresenceResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.GetOnlineStatusRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.GetOnlineStatusResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.InjectRemoteTypingRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.InjectRemoteTypingResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.SetOnlineStatusRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.SetOnlineStatusResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.SetTypingStatusRequest", null, global2);
@@ -48248,6 +55674,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.onliner.SubscribeToTypingRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.TypingAction", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.TypingEvent", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.UpsertRemoteStatusRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.onliner.UpsertRemoteStatusResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.onliner.UserOnlineStatus", null, global2);
       proto.barkfluff.onliner.SubscribeToOnlineStatusRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.repeatedFields_, null);
@@ -48347,14 +55775,57 @@ var BarkFluffBundle = (() => {
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.displayName = "proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse";
       }
-      proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.repeatedFields_ = [1];
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.UpsertRemoteStatusRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.UpsertRemoteStatusRequest.displayName = "proto.barkfluff.onliner.UpsertRemoteStatusRequest";
+      }
+      proto.barkfluff.onliner.UpsertRemoteStatusResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.UpsertRemoteStatusResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.UpsertRemoteStatusResponse.displayName = "proto.barkfluff.onliner.UpsertRemoteStatusResponse";
+      }
+      proto.barkfluff.onliner.InjectRemoteTypingRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.InjectRemoteTypingRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.InjectRemoteTypingRequest.displayName = "proto.barkfluff.onliner.InjectRemoteTypingRequest";
+      }
+      proto.barkfluff.onliner.InjectRemoteTypingResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.InjectRemoteTypingResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.InjectRemoteTypingResponse.displayName = "proto.barkfluff.onliner.InjectRemoteTypingResponse";
+      }
+      proto.barkfluff.onliner.GetLocalPresenceRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.onliner.GetLocalPresenceRequest.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.GetLocalPresenceRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.GetLocalPresenceRequest.displayName = "proto.barkfluff.onliner.GetLocalPresenceRequest";
+      }
+      proto.barkfluff.onliner.GetLocalPresenceResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.onliner.GetLocalPresenceResponse.repeatedFields_, null);
+      };
+      goog2.inherits(proto.barkfluff.onliner.GetLocalPresenceResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.onliner.GetLocalPresenceResponse.displayName = "proto.barkfluff.onliner.GetLocalPresenceResponse";
+      }
+      proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.repeatedFields_ = [1, 2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.toObject(opt_includeInstance, this);
         };
         proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2,
+            userUuidsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -48383,6 +55854,13 @@ var BarkFluffBundle = (() => {
                 msg.addUserIds(values[i]);
               }
               break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addUserUuids(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -48404,6 +55882,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getUserUuidsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            2,
+            f2
+          );
+        }
       };
       proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.getUserIdsList = function() {
         return (
@@ -48420,14 +55905,30 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.clearUserIdsList = function() {
         return this.setUserIdsList([]);
       };
-      proto.barkfluff.onliner.GetOnlineStatusRequest.repeatedFields_ = [1];
+      proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.getUserUuidsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 2)
+        );
+      };
+      proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.setUserUuidsList = function(value) {
+        return jspb2.Message.setField(this, 2, value || []);
+      };
+      proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.addUserUuids = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 2, value, opt_index);
+      };
+      proto.barkfluff.onliner.SubscribeToOnlineStatusRequest.prototype.clearUserUuidsList = function() {
+        return this.setUserUuidsList([]);
+      };
+      proto.barkfluff.onliner.GetOnlineStatusRequest.repeatedFields_ = [1, 2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.onliner.GetOnlineStatusRequest.toObject(opt_includeInstance, this);
         };
         proto.barkfluff.onliner.GetOnlineStatusRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2,
+            userUuidsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -48456,6 +55957,13 @@ var BarkFluffBundle = (() => {
                 msg.addUserIds(values[i]);
               }
               break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addUserUuids(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -48477,6 +55985,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getUserUuidsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            2,
+            f2
+          );
+        }
       };
       proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.getUserIdsList = function() {
         return (
@@ -48492,6 +56007,21 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.clearUserIdsList = function() {
         return this.setUserIdsList([]);
+      };
+      proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.getUserUuidsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 2)
+        );
+      };
+      proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.setUserUuidsList = function(value) {
+        return jspb2.Message.setField(this, 2, value || []);
+      };
+      proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.addUserUuids = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 2, value, opt_index);
+      };
+      proto.barkfluff.onliner.GetOnlineStatusRequest.prototype.clearUserUuidsList = function() {
+        return this.setUserUuidsList([]);
       };
       proto.barkfluff.onliner.GetOnlineStatusResponse.repeatedFields_ = [1];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -48653,7 +56183,8 @@ var BarkFluffBundle = (() => {
           var f2, obj = {
             userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
             status: jspb2.Message.getFieldWithDefault(msg, 2, 0),
-            lastSeen: (f2 = msg.getLastSeen()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+            lastSeen: (f2 = msg.getLastSeen()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 4, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -48692,6 +56223,13 @@ var BarkFluffBundle = (() => {
               reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
               msg.setLastSeen(value);
               break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -48728,6 +56266,13 @@ var BarkFluffBundle = (() => {
             google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
           );
         }
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
       };
       proto.barkfluff.onliner.UserOnlineStatus.prototype.getUserId = function() {
         return (
@@ -48762,14 +56307,24 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.onliner.UserOnlineStatus.prototype.hasLastSeen = function() {
         return jspb2.Message.getField(this, 3) != null;
       };
-      proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.repeatedFields_ = [1];
+      proto.barkfluff.onliner.UserOnlineStatus.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.onliner.UserOnlineStatus.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.repeatedFields_ = [1, 2];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.toObject = function(opt_includeInstance) {
           return proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.toObject(opt_includeInstance, this);
         };
         proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2,
+            userUuidsList: (f2 = jspb2.Message.getRepeatedField(msg, 2)) == null ? void 0 : f2
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -48798,6 +56353,13 @@ var BarkFluffBundle = (() => {
                 msg.addUserIds(values[i]);
               }
               break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.addUserUuids(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -48819,6 +56381,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getUserUuidsList();
+        if (f2.length > 0) {
+          writer.writeRepeatedString(
+            2,
+            f2
+          );
+        }
       };
       proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.getUserIdsList = function() {
         return (
@@ -48834,6 +56403,21 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.clearUserIdsList = function() {
         return this.setUserIdsList([]);
+      };
+      proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.getUserUuidsList = function() {
+        return (
+          /** @type {!Array<string>} */
+          jspb2.Message.getRepeatedField(this, 2)
+        );
+      };
+      proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.setUserUuidsList = function(value) {
+        return jspb2.Message.setField(this, 2, value || []);
+      };
+      proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.addUserUuids = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 2, value, opt_index);
+      };
+      proto.barkfluff.onliner.ChangeUsersInSubscriptionRequest.prototype.clearUserUuidsList = function() {
+        return this.setUserUuidsList([]);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.onliner.ChangeUsersInSubscriptionResponse.prototype.toObject = function(opt_includeInstance) {
@@ -49080,7 +56664,8 @@ var BarkFluffBundle = (() => {
           var f2, obj = {
             chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
             userId: jspb2.Message.getFieldWithDefault(msg, 2, 0),
-            action: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+            action: jspb2.Message.getFieldWithDefault(msg, 3, 0),
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 4, "")
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -49121,6 +56706,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setAction(value);
               break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -49156,6 +56748,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
       };
       proto.barkfluff.onliner.TypingEvent.prototype.getChatId = function() {
         return (
@@ -49183,6 +56782,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.onliner.TypingEvent.prototype.setAction = function(value) {
         return jspb2.Message.setProto3EnumField(this, 3, value);
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.onliner.TypingEvent.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
       };
       proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionRequest.repeatedFields_ = [1];
       if (jspb2.Message.GENERATE_TO_OBJECT) {
@@ -49293,6 +56901,460 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.onliner.ChangeChatsInTypingSubscriptionResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.UpsertRemoteStatusRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.UpsertRemoteStatusRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            status: jspb2.Message.getFieldWithDefault(msg, 2, 0),
+            lastSeen: (f2 = msg.getLastSeen()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.UpsertRemoteStatusRequest();
+        return proto.barkfluff.onliner.UpsertRemoteStatusRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {!proto.barkfluff.onliner.StatusTypeId} */
+                reader.readEnum()
+              );
+              msg.setStatus(value);
+              break;
+            case 3:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setLastSeen(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.UpsertRemoteStatusRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getStatus();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            2,
+            f2
+          );
+        }
+        f2 = message.getLastSeen();
+        if (f2 != null) {
+          writer.writeMessage(
+            3,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.getStatus = function() {
+        return (
+          /** @type {!proto.barkfluff.onliner.StatusTypeId} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.setStatus = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 2, value);
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.getLastSeen = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 3)
+        );
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.setLastSeen = function(value) {
+        return jspb2.Message.setWrapperField(this, 3, value);
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.clearLastSeen = function() {
+        return this.setLastSeen(void 0);
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusRequest.prototype.hasLastSeen = function() {
+        return jspb2.Message.getField(this, 3) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.UpsertRemoteStatusResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.UpsertRemoteStatusResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.UpsertRemoteStatusResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.UpsertRemoteStatusResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.UpsertRemoteStatusResponse();
+        return proto.barkfluff.onliner.UpsertRemoteStatusResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.UpsertRemoteStatusResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.UpsertRemoteStatusResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.InjectRemoteTypingRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.InjectRemoteTypingRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            chatId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            userUuid: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            action: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.InjectRemoteTypingRequest();
+        return proto.barkfluff.onliner.InjectRemoteTypingRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setChatId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setUserUuid(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {!proto.barkfluff.onliner.TypingAction} */
+                reader.readEnum()
+              );
+              msg.setAction(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.InjectRemoteTypingRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getChatId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getUserUuid();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAction();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.getChatId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.setChatId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.getUserUuid = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.setUserUuid = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.getAction = function() {
+        return (
+          /** @type {!proto.barkfluff.onliner.TypingAction} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingRequest.prototype.setAction = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.InjectRemoteTypingResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.InjectRemoteTypingResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.InjectRemoteTypingResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.InjectRemoteTypingResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.InjectRemoteTypingResponse();
+        return proto.barkfluff.onliner.InjectRemoteTypingResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.InjectRemoteTypingResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.InjectRemoteTypingResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.GetLocalPresenceRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.GetLocalPresenceRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.GetLocalPresenceRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            userIdsList: (f2 = jspb2.Message.getRepeatedField(msg, 1)) == null ? void 0 : f2
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.GetLocalPresenceRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.GetLocalPresenceRequest();
+        return proto.barkfluff.onliner.GetLocalPresenceRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var values = (
+                /** @type {!Array<number>} */
+                reader.isDelimited() ? reader.readPackedInt64() : [reader.readInt64()]
+              );
+              for (var i = 0; i < values.length; i++) {
+                msg.addUserIds(values[i]);
+              }
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.GetLocalPresenceRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getUserIdsList();
+        if (f2.length > 0) {
+          writer.writePackedInt64(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.prototype.getUserIdsList = function() {
+        return (
+          /** @type {!Array<number>} */
+          jspb2.Message.getRepeatedField(this, 1)
+        );
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.prototype.setUserIdsList = function(value) {
+        return jspb2.Message.setField(this, 1, value || []);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.prototype.addUserIds = function(value, opt_index) {
+        return jspb2.Message.addToRepeatedField(this, 1, value, opt_index);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceRequest.prototype.clearUserIdsList = function() {
+        return this.setUserIdsList([]);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.repeatedFields_ = [1];
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.onliner.GetLocalPresenceResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.onliner.GetLocalPresenceResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.onliner.GetLocalPresenceResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            statusesList: jspb2.Message.toObjectList(
+              msg.getStatusesList(),
+              proto.barkfluff.onliner.UserOnlineStatus.toObject,
+              includeInstance
+            )
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.onliner.GetLocalPresenceResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.onliner.GetLocalPresenceResponse();
+        return proto.barkfluff.onliner.GetLocalPresenceResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.onliner.UserOnlineStatus();
+              reader.readMessage(value, proto.barkfluff.onliner.UserOnlineStatus.deserializeBinaryFromReader);
+              msg.addStatuses(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.onliner.GetLocalPresenceResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getStatusesList();
+        if (f2.length > 0) {
+          writer.writeRepeatedMessage(
+            1,
+            f2,
+            proto.barkfluff.onliner.UserOnlineStatus.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.prototype.getStatusesList = function() {
+        return (
+          /** @type{!Array<!proto.barkfluff.onliner.UserOnlineStatus>} */
+          jspb2.Message.getRepeatedWrapperField(this, proto.barkfluff.onliner.UserOnlineStatus, 1)
+        );
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.prototype.setStatusesList = function(value) {
+        return jspb2.Message.setRepeatedWrapperField(this, 1, value);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.prototype.addStatuses = function(opt_value, opt_index) {
+        return jspb2.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.barkfluff.onliner.UserOnlineStatus, opt_index);
+      };
+      proto.barkfluff.onliner.GetLocalPresenceResponse.prototype.clearStatusesList = function() {
+        return this.setStatusesList([]);
       };
       proto.barkfluff.onliner.StatusTypeId = {
         STATUS_TYPE_ID_UNKNOWN: 0,
@@ -49542,6 +57604,111 @@ var BarkFluffBundle = (() => {
           request,
           metadata || {},
           methodDescriptor_OnlinerApi_ChangeChatsInTypingSubscription
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerServerApiClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      proto2.barkfluff.onliner.OnlinerServerApiPromiseClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      var methodDescriptor_OnlinerServerApi_UpsertRemoteStatus = new grpc.web.MethodDescriptor(
+        "/barkfluff.onliner.OnlinerServerApi/UpsertRemoteStatus",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.onliner.UpsertRemoteStatusRequest,
+        proto2.barkfluff.onliner.UpsertRemoteStatusResponse,
+        /**
+         * @param {!proto.barkfluff.onliner.UpsertRemoteStatusRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.onliner.UpsertRemoteStatusResponse.deserializeBinary
+      );
+      proto2.barkfluff.onliner.OnlinerServerApiClient.prototype.upsertRemoteStatus = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerServerApi/UpsertRemoteStatus",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerServerApi_UpsertRemoteStatus,
+          callback
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerServerApiPromiseClient.prototype.upsertRemoteStatus = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerServerApi/UpsertRemoteStatus",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerServerApi_UpsertRemoteStatus
+        );
+      };
+      var methodDescriptor_OnlinerServerApi_InjectRemoteTyping = new grpc.web.MethodDescriptor(
+        "/barkfluff.onliner.OnlinerServerApi/InjectRemoteTyping",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.onliner.InjectRemoteTypingRequest,
+        proto2.barkfluff.onliner.InjectRemoteTypingResponse,
+        /**
+         * @param {!proto.barkfluff.onliner.InjectRemoteTypingRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.onliner.InjectRemoteTypingResponse.deserializeBinary
+      );
+      proto2.barkfluff.onliner.OnlinerServerApiClient.prototype.injectRemoteTyping = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerServerApi/InjectRemoteTyping",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerServerApi_InjectRemoteTyping,
+          callback
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerServerApiPromiseClient.prototype.injectRemoteTyping = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerServerApi/InjectRemoteTyping",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerServerApi_InjectRemoteTyping
+        );
+      };
+      var methodDescriptor_OnlinerServerApi_GetLocalPresence = new grpc.web.MethodDescriptor(
+        "/barkfluff.onliner.OnlinerServerApi/GetLocalPresence",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.onliner.GetLocalPresenceRequest,
+        proto2.barkfluff.onliner.GetLocalPresenceResponse,
+        /**
+         * @param {!proto.barkfluff.onliner.GetLocalPresenceRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.onliner.GetLocalPresenceResponse.deserializeBinary
+      );
+      proto2.barkfluff.onliner.OnlinerServerApiClient.prototype.getLocalPresence = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerServerApi/GetLocalPresence",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerServerApi_GetLocalPresence,
+          callback
+        );
+      };
+      proto2.barkfluff.onliner.OnlinerServerApiPromiseClient.prototype.getLocalPresence = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.onliner.OnlinerServerApi/GetLocalPresence",
+          request,
+          metadata || {},
+          methodDescriptor_OnlinerServerApi_GetLocalPresence
         );
       };
       module2.exports = proto2.barkfluff.onliner;

@@ -1,7 +1,7 @@
 /**
  * Login page bootstrap (index.html).
- * Requires: BF.auth, BF.tokens
- * Wires up login form, OTP flow, temp-login checkbox.
+ * Requires: BF.auth, BF.tokens, BF.legal
+ * Wires up login form, OTP flow, temp-login checkbox, legal consent gate.
  */
 (function () {
     'use strict';
@@ -25,6 +25,11 @@
     var otpSubmitBtn = $('#otpSubmitBtn');
     var otpBack = $('#otpBack');
 
+    var toRegisterBtn = $('#toRegisterBtn');
+    var legalCheck = $('#legalAcceptCheck');
+    var legalRow = $('#legalConsentRow');
+    var fastAuthCard = $('#fastAuthCard');
+
     var pendingLogin = '';
     var pendingPassword = '';
 
@@ -35,13 +40,41 @@
 
         // QR-блок имеет смысл только на главной login-секции — на OTP/welcome скрываем
         // и останавливаем стрим, чтобы не висел зря.
-        var qrCard = document.getElementById('fastAuthCard');
-        if (qrCard) qrCard.style.display = (name === 'login') ? '' : 'none';
+        if (fastAuthCard) fastAuthCard.style.display = (name === 'login') ? '' : 'none';
         if (BF.fastAuth) {
-            if (name === 'login') BF.fastAuth.start();
+            if (name === 'login') startFastAuth();
             else BF.fastAuth.cancel();
         }
     }
+
+    // --- Согласие с документами ---
+
+    /**
+     * QR — такой же полноценный вход, как форма, поэтому сессия не запрашивается,
+     * пока документы не приняты: иначе согласие обходится в один клик.
+     */
+    function startFastAuth() {
+        if (BF.fastAuth && legalCheck.checked) BF.fastAuth.start();
+    }
+
+    function applyGate() {
+        var ok = legalCheck.checked;
+        signInBtn.disabled = !ok;
+        toRegisterBtn.disabled = !ok;
+        fastAuthCard.classList.toggle('gated', !ok);
+        if (ok) {
+            legalRow.classList.remove('nudge');
+        } else {
+            $('#fastAuthStatus').textContent = 'Примите документы, чтобы войти по QR';
+        }
+    }
+
+    legalCheck.addEventListener('change', function () {
+        if (legalCheck.checked) BF.legal.accept();
+        applyGate();
+        if (legalCheck.checked) startFastAuth();
+        else if (BF.fastAuth) BF.fastAuth.cancel();
+    });
 
     function clearErrors() {
         loginError.classList.remove('visible');
@@ -67,6 +100,12 @@
     loginForm.addEventListener('submit', function (e) {
         e.preventDefault();
         clearErrors();
+
+        if (!legalCheck.checked) {
+            legalRow.classList.add('nudge');
+            BF.sound.play('droplet');
+            return;
+        }
 
         var login = loginInput.value.trim();
         var password = passwordInput.value;
@@ -100,7 +139,9 @@
 
             BF.tokens.setTempMode(tempLoginCheck.checked);
             BF.tokens.save(result.data);
-            window.location.href = '/messenger';
+            BF.legal.flushConsent().then(function () {
+                window.location.href = '/messenger';
+            });
         }).catch(function () {
             showError(passwordError, null, 'Не удалось подключиться к серверу');
         }).then(function () {
@@ -165,7 +206,9 @@
 
             BF.tokens.setTempMode(tempLoginCheck.checked);
             BF.tokens.save(result.data);
-            window.location.href = '/messenger';
+            BF.legal.flushConsent().then(function () {
+                window.location.href = '/messenger';
+            });
         }).catch(function () {
             otpError.textContent = 'Не удалось подключиться к серверу';
             otpError.classList.add('visible');
@@ -182,17 +225,27 @@
     });
 
     // --- Check existing session on load ---
-    if (BF.tokens.get()) {
-        document.body.style.visibility = 'hidden';
-        BF.auth.getValidAccessToken().then(function (token) {
-            if (token) {
-                window.location.href = '/messenger';
-            } else {
-                document.body.style.visibility = '';
-                if (BF.fastAuth) BF.fastAuth.start();
-            }
-        });
-    } else {
-        if (BF.fastAuth) BF.fastAuth.start();
-    }
+    // Гейт ставим до init(): у вернувшегося пользователя cookie уже есть, и форма не мигает
+    // заблокированной. init() дочитывает редакцию документов и при её смене снимает галочку.
+    legalCheck.checked = BF.legal.isAccepted();
+    applyGate();
+
+    BF.legal.init().then(function () {
+        legalCheck.checked = BF.legal.isAccepted();
+        applyGate();
+
+        if (BF.tokens.get()) {
+            document.body.style.visibility = 'hidden';
+            BF.auth.getValidAccessToken().then(function (token) {
+                if (token) {
+                    window.location.href = '/messenger';
+                } else {
+                    document.body.style.visibility = '';
+                    startFastAuth();
+                }
+            });
+        } else {
+            startFastAuth();
+        }
+    });
 })();
