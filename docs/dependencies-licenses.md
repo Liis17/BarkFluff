@@ -149,7 +149,7 @@ NuGet-зависимостей нет (только .NET SDK / WPF).
 
 ## Android-клиенты (Kotlin)
 
-### Модуль `:core` (общий для V1 и V2)
+### Модуль `:core`
 
 | Зависимость | Версия | Лицензия |
 |---|---|---|
@@ -185,18 +185,7 @@ NuGet-зависимостей нет (только .NET SDK / WPF).
 | kotlinx-coroutines-android | 1.7.3 | Apache-2.0 |
 | desugar_jdk_libs | 2.1.4 | GPL-2.0 with Classpath Exception |
 
-### Приложение V2 (`Barkfluff.ClientV2.Android/app`)
-
-| Зависимость | Версия | Лицензия |
-|---|---|---|
-| Jetpack Compose (BoM 2025.10.01: ui, material3, icons, activity-compose, lifecycle-*, navigation-compose) | — | Apache-2.0 |
-| io.coil-kt: coil-compose / coil-gif | 2.7.0 | Apache-2.0 |
-| androidx.media3 (exoplayer, ui) | 1.3.1 | Apache-2.0 |
-| Material Components | 1.13.0 | Apache-2.0 |
-| junit (test) | 4.13.2 | EPL-1.0 |
-| androidx.test (espresso, junit ext) (androidTest) | — | Apache-2.0 |
-
-Toolchain обоих приложений: Kotlin 2.2.20 (Apache-2.0), AGP 8.9.1 (Apache-2.0), KSP (Apache-2.0), плагин google-services (Apache-2.0).
+Toolchain приложения: Kotlin 2.2.20 (Apache-2.0), AGP 8.9.1 (Apache-2.0), KSP (Apache-2.0), плагин google-services (Apache-2.0).
 
 ---
 

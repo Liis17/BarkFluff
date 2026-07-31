@@ -89,7 +89,6 @@
 | [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
 | [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
 | [[Клиенты/Android-FileIndex]] | Индекс файлов Android-клиента с кратким описанием каждого |
-| [[Клиенты/Android-V2]] | **V2** (⚠️ заброшен/тестовый, не трогать) — Jetpack Compose + Material 3 Expressive поверх общего модуля `:core` |
 | [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
 | [[Клиенты/Windows-WPF-ProjectMap]] | Карта всех файлов и классов WPF-клиента |
 | [[Клиенты/Windows-WinUI]] | **Целевой Windows-клиент** — WinUI 3 / Windows App SDK, MSIX, порт V2 |
