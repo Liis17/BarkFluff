@@ -292,6 +292,8 @@
     <x:String x:Key="Settings_ChatFolders_ManageChats">Manage chats</x:String>
     <x:String x:Key="Settings_ChatFolders_Delete">Delete the folder</x:String>
     <x:String x:Key="Settings_ChatFolders_DeleteConfirm">Delete the folder? The chats will stay where they are.</x:String>
+    <x:String x:Key="Settings_ChatFolders_MoveUp">Move up</x:String>
+    <x:String x:Key="Settings_ChatFolders_MoveDown">Move down</x:String>
 
     <x:String x:Key="Settings_Notifications_Title">Notifications</x:String>
     <x:String x:Key="Settings_Notifications_ReceivePush">Receive push notifications</x:String>
