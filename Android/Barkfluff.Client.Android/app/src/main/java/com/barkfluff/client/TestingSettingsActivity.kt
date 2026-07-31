@@ -22,11 +22,15 @@ class TestingSettingsActivity : AppCompatActivity() {
         }
 
         binding.switchShowIds.isChecked = globalParam.showIdsInProfile
+        binding.switchShowServerAddresses.isChecked = globalParam.showServerAddressesInAbout
         binding.switchSecretChats.isChecked = globalParam.secretChatsEnabled
         binding.switchPrivateChats.isChecked = globalParam.privateChatsEnabled
 
         binding.switchShowIds.setOnCheckedChangeListener { _, isChecked ->
             globalParam.showIdsInProfile = isChecked
+        }
+        binding.switchShowServerAddresses.setOnCheckedChangeListener { _, isChecked ->
+            globalParam.showServerAddressesInAbout = isChecked
         }
         binding.switchSecretChats.setOnCheckedChangeListener { _, isChecked ->
             globalParam.secretChatsEnabled = isChecked
