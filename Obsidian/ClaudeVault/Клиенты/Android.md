@@ -586,6 +586,31 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 - UI: `LanguageSettingsActivity` (`activity_language_settings.xml`) — карточка с `RadioGroup` из 6 пунктов. Каждая строка содержит **флаг-эмодзи + нативное имя языка** (🌐 Системный, 🇷🇺 Русский, 🇬🇧 English, 🇩🇪 Deutsch, 🇪🇸 Español, 🇨🇳 中文). Открывается из `ProfileFragment` → пункт «Язык».
 - При смене языка AppCompat сам пересоздаёт Activity-стек через `recreate()`.
 
+## Топология сборки и модуль `:core`
+
+Единый Gradle-рут — `Android/`:
+
+```
+Android/
+  settings.gradle.kts        # include(:core, :app-v1)
+  build.gradle.kts           # плагины apply false
+  gradle/libs.versions.toml  # единый каталог версий
+  core/                      # общий не-UI слой + proto
+  Barkfluff.Client.Android/app → :app-v1  (Views/XML)
+```
+
+- **Тулчейн:** AGP 8.9.1, Gradle 9.2.1, Kotlin 2.2.20, Java 17.
+- **Сборка только с JDK 17+:** `JAVA_HOME` = JBR Android Studio (JDK 21). Из `Android/`:
+  `./gradlew :core:assembleDebug :app-v1:assembleDebug`
+
+### Состав `:core`
+
+`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (GrpcManager, AuthInterceptor, DeviceInfoInterceptor, RealtimeService), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, AudioPlayerHelper, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
+
+**Развязка границы:** `RealtimeService` не зависит от UI/Notification/Widget — введён интерфейс `RealtimeSideEffects` (onChatChanged / dismissChatNotifications / showMessageNotification). Реализация `RealtimeSideEffectsImpl` живёт в app-слое (пакет `notifications/`, грузит уведомления через NotificationHelper + AvatarLoader/Coil).
+
+**Осталось в app (НЕ в core):** `EncryptedInviteHandler`, `E2EBootstrap`, `StickerCache`, View-coupled utils (AvatarLoader, LocaleManager, SpringPress, ImageLoadHelper, FirebaseTokenHelper, LogoutHelper, UpdateChecker) — зависят от Activity/Application.
+
 ## Файловая структура
 
 - `gradle/libs.versions.toml` — все версии зависимостей
@@ -611,8 +636,7 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 
 - В release-сборке `Log.v/d/i/w/println` полностью вырезаются R8 через `-assumenosideeffects` в `Barkfluff.Client.Android/app/proguard-rules.pro`. Вместе с вызовом устраняется и конкатенация аргументов — строковые константы не попадают в dex (проверяется поиском по `classes*.dex`).
 - `Log.e` намеренно оставлен для диагностики прод-крашей. Поэтому **в аргументах `Log.e` не должно быть PII**: текста сообщений, `content://` URI, presigned-URL, FCM-токенов, поисковых запросов. Логировать вместо этого ID (`fileId`, `chatId`, `messageId`), длины (`textLength`) и флаги наличия (`hasUrl`).
-- Правило объявлено **только** в proguard-rules.pro у `:app-v1`. В `core/consumer-rules.pro` его класть нельзя: `-assumenosideeffects` действует на весь merged-DEX приложения, и оттуда оно протекло бы в `:app-v2`. Код `:core` при сборке V1 покрывается автоматически.
-- `:app-v2` этим правилом **не покрыт** — логи V2 остаются в release как есть.
+- Правило объявлено в proguard-rules.pro у `:app-v1`. `-assumenosideeffects` действует на весь merged-DEX приложения, поэтому код `:core` при сборке V1 покрывается автоматически.
 - Никогда не логировать proto-сообщения целиком (`$response`, `$user`): `toString()` у protobuf-lite печатает все поля, включая username, bio и URL.
 
 ## Сборка

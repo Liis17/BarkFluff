@@ -3,9 +3,9 @@
 > Компактный справочник всех Kotlin-файлов Android-клиента с кратким описанием роли каждого.
 > Исходники V1 (UI-слой): `Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/`
 > Детальное описание классов и связей: [[Android-ProjectMap]]
-> Общее описание клиента: [[Android]] · Архитектура V2 и модуль `:core`: [[Android-V2]]
+> Общее описание клиента и модуль `:core`: [[Android]]
 >
-> ⚠️ **Пакеты `grpc/`, `data/`, `repository/` физически переехали в общий модуль `Android/core/src/main/java/com/barkfluff/client/` (`:core`)**, чтобы их могли переиспользовать оба приложения (V1 `app` и V2 `Barkfluff.ClientV2.Android`). Пакеты `calls/` и `crypto/` существуют **в обоих** модулях с разным назначением: в `:core` — сетевой/крипто-слой (репозитории, состояние сессий), в `app` — UI (Activities, Views, Telecom-интеграция, bootstrap). Ниже это указано в заголовке каждого раздела.
+> ⚠️ **Пакеты `grpc/`, `data/`, `repository/` физически переехали в общий модуль `Android/core/src/main/java/com/barkfluff/client/` (`:core`)**. Пакеты `calls/` и `crypto/` существуют **в обоих** модулях с разным назначением: в `:core` — сетевой/крипто-слой (репозитории, состояние сессий), в `app` — UI (Activities, Views, Telecom-интеграция, bootstrap). Ниже это указано в заголовке каждого раздела.
 
 ---
 

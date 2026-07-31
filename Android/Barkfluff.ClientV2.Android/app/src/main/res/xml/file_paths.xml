@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<paths>
-    <!-- Кэш медиафайлов (аудио, документы) — FileCache: cacheDir/media_files/ -->
-    <cache-path name="media_files" path="media_files/" />
-</paths>
