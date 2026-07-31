@@ -25,10 +25,29 @@
                 </StackPanel>
             </Border>
 
+            <ProgressRing Margin="0,0,0,16"
+                          HorizontalAlignment="Left"
+                          IsActive="True"
+                          Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <TextBlock Margin="0,0,0,16"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+            <TextBlock Margin="0,0,0,16"
+                       Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.StatusMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Security_SectionParameters}" />
             <Border Style="{StaticResource SettingsGroupCard}">
+                <!--  Пока идёт сценарий, управление заблокировано, чтобы не начать второй.  -->
                 <StackPanel>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                    <Button Command="{x:Bind ViewModel.BeginPasswordChangeCommand}"
+                            IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
+                            Style="{StaticResource SettingsRowButtonStyle}">
                         <controls:SettingsRow Glyph="&#xE192;" Header="{StaticResource Settings_Security_ChangePassword}">
                             <FontIcon FontSize="12"
                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -36,11 +55,113 @@
                         </controls:SettingsRow>
                     </Button>
                     <controls:SettingsRow Glyph="&#xE8D7;" Header="{StaticResource Settings_Security_TwoFactorApp}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
+                                      IsOn="{x:Bind ViewModel.IsAuthenticatorEnabled, Mode=TwoWay}"
+                                      OffContent=""
+                                      OnContent="" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Glyph="&#xE715;" Header="{StaticResource Settings_Security_TwoFactorEmail}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
+                                      IsOn="{x:Bind ViewModel.IsEmailEnabled, Mode=TwoWay}"
+                                      OffContent=""
+                                      OnContent="" />
                     </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <!--
+                Сценарии показываются панелями на самой странице, а не диалогами: IDialogService
+                умеет только показать текст, а состояние шагов и так живёт во ViewModel.
+            -->
+            <Border Style="{StaticResource SettingsGroupCard}" Visibility="{x:Bind ViewModel.IsPasswordRequest, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="16,16,16,20" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_Security_PasswordStep1Title}" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Security_PasswordStep1Hint}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{x:Bind ViewModel.RequestPasswordCodeCommand}" Content="{StaticResource Settings_Security_SendCode}" />
+                        <Button Command="{x:Bind ViewModel.CancelFlowCommand}"
+                                Content="{StaticResource Common_Cancel}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsGroupCard}" Visibility="{x:Bind ViewModel.IsPasswordCode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="16,16,16,20" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_Security_PasswordStep2Title}" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Security_PasswordStep2Hint}" />
+                    <TextBox Header="{StaticResource Settings_Security_ConfirmationCode}"
+                             MaxLength="6"
+                             Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{x:Bind ViewModel.ConfirmPasswordCodeCommand}" Content="{StaticResource Common_Next}" />
+                        <Button Command="{x:Bind ViewModel.CancelFlowCommand}"
+                                Content="{StaticResource Common_Cancel}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsGroupCard}" Visibility="{x:Bind ViewModel.IsPasswordNew, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="16,16,16,20" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_Security_PasswordStep3Title}" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Security_PasswordStep3Hint}" />
+                    <PasswordBox Header="{StaticResource Settings_Security_NewPassword}" Password="{x:Bind ViewModel.NewPassword, Mode=TwoWay}" />
+                    <PasswordBox Header="{StaticResource Settings_Security_RepeatPassword}" Password="{x:Bind ViewModel.RepeatPassword, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{x:Bind ViewModel.SavePasswordCommand}" Content="{StaticResource Common_Save}" />
+                        <Button Command="{x:Bind ViewModel.CancelFlowCommand}"
+                                Content="{StaticResource Common_Cancel}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsGroupCard}" Visibility="{x:Bind ViewModel.IsTwoFactorSetup, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="16,16,16,20" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_Security_TwoFactorSetupTitle}" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="{StaticResource Settings_Security_TwoFactorScanHint}"
+                               Visibility="{x:Bind ViewModel.IsAuthenticatorSetup, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="{StaticResource Settings_Security_TwoFactorEmailHint}"
+                               Visibility="{x:Bind ViewModel.IsEmailSetup, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Image Width="200"
+                           Height="200"
+                           HorizontalAlignment="Left"
+                           Source="{x:Bind ViewModel.QrCode, Mode=OneWay, Converter={StaticResource Base64ToImageSourceConverter}}"
+                           Visibility="{x:Bind ViewModel.QrCode, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <TextBox Header="{StaticResource Settings_Security_TwoFactorManualCode}"
+                             IsReadOnly="True"
+                             Text="{x:Bind ViewModel.ManualCode, Mode=OneWay}"
+                             Visibility="{x:Bind ViewModel.ManualCode, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <TextBox Header="{StaticResource Settings_Security_ConfirmationCode}"
+                             MaxLength="6"
+                             Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{x:Bind ViewModel.ConfirmTwoFactorCommand}" Content="{StaticResource Common_Save}" />
+                        <Button Command="{x:Bind ViewModel.CancelFlowCommand}"
+                                Content="{StaticResource Common_Cancel}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsGroupCard}" Visibility="{x:Bind ViewModel.IsTwoFactorDisable, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="16,16,16,20" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_Security_TwoFactorDisableTitle}" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Security_TwoFactorDisableHint}" />
+                    <TextBox Header="{StaticResource Settings_Security_ConfirmationCode}"
+                             MaxLength="6"
+                             Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{x:Bind ViewModel.ConfirmTwoFactorCommand}"
+                                Content="{StaticResource Common_Save}"
+                                Style="{StaticResource DangerButton}" />
+                        <Button Command="{x:Bind ViewModel.CancelFlowCommand}"
+                                Content="{StaticResource Common_Cancel}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </StackPanel>
