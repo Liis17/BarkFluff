@@ -30,4 +30,12 @@ public class User
     public string? ProfilePicturePreviewUrl { get; set; }
 
     public int StorageLimitGb { get; set; } = 1;
+
+    /// <summary>
+    /// Принятая редакция Пользовательского соглашения и Политики конфиденциальности —
+    /// дата «Последнее обновление» из шапки документа. null = согласие не фиксировалось.
+    /// </summary>
+    public string? AcceptedLegalRevision { get; set; }
+
+    public DateTime? AcceptedLegalAt { get; set; }
 }

@@ -372,6 +372,21 @@ public class UsersStorage
         await _usersContext.SaveChangesAsync();
     }
 
+    public async Task AcceptLegalConsent(long userId, string revision)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+
+        if (user is null)
+        {
+            throw new UserNotFoundException();
+        }
+
+        user.AcceptedLegalRevision = revision;
+        user.AcceptedLegalAt = DateTime.UtcNow;
+
+        await _usersContext.SaveChangesAsync();
+    }
+
     // Методы для работы с баджами
 
     public async Task<List<UserBadge>> GetUserBadgesAsync(long userId, int? limit = null)
