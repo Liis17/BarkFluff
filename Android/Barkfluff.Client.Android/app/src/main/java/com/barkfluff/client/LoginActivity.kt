@@ -18,7 +18,6 @@ import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLoginBinding
 import com.barkfluff.client.grpc.GrpcManager
-import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
@@ -298,9 +297,6 @@ class LoginActivity : AppCompatActivity() {
                     // чтобы гарантировать свежие соединения с актуальными токенами
                     val app = applicationContext as BarkFluffApplication
                     app.grpcManager.recreateAllClients(this@LoginActivity, globalParam)
-                    // Пересоздаём FCM-токен (свежий логин — гарантируем новый токен для этого аккаунта)
-                    // Используем app.grpcManager у которого уже есть usersClient
-                    FirebaseTokenHelper.deleteAndRefreshTokenThenSend(this@LoginActivity, app.grpcManager)
                     navigateToChats()
                 }
             }
