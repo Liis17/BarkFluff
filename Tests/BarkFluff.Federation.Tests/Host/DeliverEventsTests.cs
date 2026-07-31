@@ -125,7 +125,7 @@ public class DeliverEventsTests
         return evt;
     }
 
-    private static async Task<EventResult> DeliverOneAsync(FederationS2SApiService service, FederationEvent evt, string? origin = Origin)
+    private static async Task<EventResult> DeliverOneAsync(FederationS2SApiHandler service, FederationEvent evt, string? origin = Origin)
     {
         var request = new DeliverEventsRequest();
         request.Events.Add(evt);

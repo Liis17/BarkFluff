@@ -3,6 +3,7 @@ using System.Security.Claims;
 using BarkFluff.Calls.Domain;
 using BarkFluff.Calls.Persistence;
 using BarkFluff.Calls.Features.CallLifecycle;
+using BarkFluff.Calls.Services;
 using BarkFluff.Calls.Settings;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
