@@ -1,0 +1,60 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsAccountPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Account_Title}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Account_SectionProfile}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE91B;" Header="{StaticResource Settings_Account_ChangePhoto}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Header="{StaticResource Settings_Account_FirstName}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Header="{StaticResource Settings_Account_LastName}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Header="{StaticResource Settings_Account_Username}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Header="{StaticResource Settings_Account_Bio}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <Button Content="{StaticResource Settings_Account_Logout}"
+                    IsEnabled="False"
+                    Style="{StaticResource DangerButton}" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>
