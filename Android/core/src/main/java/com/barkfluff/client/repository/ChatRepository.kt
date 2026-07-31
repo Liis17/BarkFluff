@@ -104,7 +104,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .setForwardedMessageId(forwardedMessageId)
                 .build()
 
-            Log.d(TAG, "sendMessage: chatId=$chatId, text='$text', fileIds=$fileIds, forwardedMessageId=$forwardedMessageId")
+            Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, forwardedMessageId=$forwardedMessageId")
 
             val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)
@@ -293,7 +293,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val fileId = uploadUrlResponse.fileId
             val uploadUrl = uploadUrlResponse.url
 
-            Log.d(TAG, "Upload URL received, fileId: $fileId, url: $uploadUrl")
+            Log.d(TAG, "Upload URL received, fileId: $fileId")
 
             // Выполняем HTTP POST multipart/form-data
             val boundary = "----BarkFluff${System.currentTimeMillis()}"

@@ -216,7 +216,7 @@ class ChatsFragment : Fragment() {
         val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
 
         if (urlToUse.isNotBlank()) {
-            Log.d(TAG, "loadUserAvatar: Loading from URL=$urlToUse")
+            Log.d(TAG, "loadUserAvatar: Loading from URL")
             // Сначала показываем placeholder пока изображение загружается
             AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
             binding.userAvatar.visibility = View.GONE
@@ -265,7 +265,7 @@ class ChatsFragment : Fragment() {
             val result = grpcManager.getFileDownloadUrl(fileId)
             if (result.isSuccess) {
                 val url = result.getOrNull()
-                Log.d(TAG, "setupChatList: Got URL for fileId=$fileId, url=$url")
+                Log.d(TAG, "setupChatList: Got URL for fileId=$fileId")
                 url
             } else {
                 Log.e(TAG, "setupChatList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
@@ -347,7 +347,7 @@ class ChatsFragment : Fragment() {
                         globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
                         globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
                         globalParam.profilePictureUrl = userData.profilePictureUrl
-                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}', picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
+                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
                     }
                 }
             }

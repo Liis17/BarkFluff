@@ -113,7 +113,7 @@ class SearchActivity : AppCompatActivity() {
                 val result = grpcManager.getFileDownloadUrl(fileId)
                 if (result.isSuccess) {
                     val url = result.getOrNull()
-                    Log.d(TAG, "setupResultsList: Got URL for fileId=$fileId, url=$url")
+                    Log.d(TAG, "setupResultsList: Got URL for fileId=$fileId")
                     url
                 } else {
                     Log.e(TAG, "setupResultsList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
@@ -136,7 +136,7 @@ class SearchActivity : AppCompatActivity() {
             val result = grpcManager.searchUsers(query)
             if (result.isSuccess) {
                 val users = result.getOrNull() ?: emptyList()
-                Log.d(TAG, "Найдено ${users.size} пользователей по запросу '$query'")
+                Log.d(TAG, "Найдено ${users.size} пользователей")
 
                 val displayItems = users.map { user ->
                     // Используем извлечённый fileId (GUID), а не сырой URL Minio

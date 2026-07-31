@@ -1084,7 +1084,7 @@ class ChatActivity : AppCompatActivity() {
                 for (i in 0 until clip.itemCount) {
                     clip.getItemAt(i).uri?.let { uri ->
                         val resolverMime = contentResolver.getType(uri)
-                        Log.d(TAG, "onReceiveContent: uri=$uri, resolverMime=$resolverMime, path=${uri.path}")
+                        Log.d(TAG, "onReceiveContent: uriScheme=${uri.scheme}, resolverMime=$resolverMime")
                         if (isStickerContent(uri, desc, i)) {
                             Log.d(TAG, "onReceiveContent: detected sticker → skip cropper")
                             pendingStickerUris.add(uri)
@@ -1544,7 +1544,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedImages(result: ImagePickerResult) {
-        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, uris=${result.uris}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}, caption=${result.captionText}, isDocuments=${result.isDocuments}, fromCamera=${result.fromCamera}")
+        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}, captionLength=${result.captionText.length}, isDocuments=${result.isDocuments}, fromCamera=${result.fromCamera}")
 
         val uris = result.uris
         if (uris.isEmpty()) return
@@ -1726,7 +1726,7 @@ class ChatActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error querying document info for $uri", e)
+            Log.e(TAG, "Error querying document info", e)
         }
         if (name.isNullOrBlank()) {
             // fallback на последний сегмент пути
@@ -1876,7 +1876,7 @@ class ChatActivity : AppCompatActivity() {
         val replyId = pendingReplyMessageId
         if (messageText.isBlank() && fileIds.isEmpty() && replyId == 0L) return
 
-        Log.d(TAG, "sendMessage: text='$messageText', fileIds=$fileIds, replyId=$replyId")
+        Log.d(TAG, "sendMessage: textLength=${messageText.length}, fileIds=$fileIds, replyId=$replyId")
 
         // Оптимистично добавляем сообщение в чат сразу со статусом SENDING (M3 Expressive feedback).
         // Освобождаем поле ввода и reply-bar моментально — пользователь не ждёт сетевого ответа.

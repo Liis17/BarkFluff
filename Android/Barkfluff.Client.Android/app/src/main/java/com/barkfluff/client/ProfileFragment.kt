@@ -135,7 +135,7 @@ class ProfileFragment : Fragment() {
         val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
 
         Log.d(TAG, "loadAvatar: displayName='$displayName', userId=${globalParam.userId}")
-        Log.d(TAG, "loadAvatar: profilePictureUrl='${globalParam.profilePictureUrl}'")
+        Log.d(TAG, "loadAvatar: hasProfilePictureUrl=${globalParam.profilePictureUrl.isNotBlank()}")
         Log.d(TAG, "loadAvatar: pictureFileId='$fileId'")
 
         val urlToUse = globalParam.profilePictureUrl

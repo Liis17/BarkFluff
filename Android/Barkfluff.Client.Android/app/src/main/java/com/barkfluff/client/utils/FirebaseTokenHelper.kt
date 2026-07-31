@@ -34,9 +34,9 @@ object FirebaseTokenHelper {
                     FirebaseMessaging.getInstance().token.await()
                 }
                 globalParam.firebaseToken = token
-                Log.d(TAG, "getTokenAndSendToServer: получен новый токен: ${token.take(20)}...")
+                Log.d(TAG, "getTokenAndSendToServer: получен новый токен")
             } else {
-                Log.d(TAG, "getTokenAndSendToServer: используем сохраненный токен: ${token.take(20)}...")
+                Log.d(TAG, "getTokenAndSendToServer: используем сохраненный токен")
             }
 
             // Отправляем токен на сервер
@@ -69,7 +69,7 @@ object FirebaseTokenHelper {
             val globalParam = GlobalParam(context)
             globalParam.firebaseToken = token
 
-            Log.d(TAG, "deleteAndRefreshTokenThenSend: новый токен получен: ${token.take(20)}...")
+            Log.d(TAG, "deleteAndRefreshTokenThenSend: новый токен получен")
             sendTokenToServer(grpcManager, token)
         } catch (e: Exception) {
             Log.e(TAG, "deleteAndRefreshTokenThenSend: ошибка", e)
@@ -91,7 +91,7 @@ object FirebaseTokenHelper {
             val globalParam = GlobalParam(context)
             globalParam.firebaseToken = token
 
-            Log.d(TAG, "refreshTokenAndSendToServer: получен токен: ${token.take(20)}...")
+            Log.d(TAG, "refreshTokenAndSendToServer: получен токен")
 
             sendTokenToServer(grpcManager, token)
 

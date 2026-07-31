@@ -516,7 +516,7 @@ class GrpcManager {
             val response = usersClient!!.getUser(request)
             val user = response.user
 
-            Log.d(TAG, "getCurrentUserData: userId=${user.id}, username=${user.username}, profilePicture='$user.profilePicture', profilePicturePreview='$user.profilePicturePreview'")
+            Log.d(TAG, "getCurrentUserData: userId=${user.id}")
 
             val profilePictureFileId = extractGuidFromUrl(user.profilePicture)
             val profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview)
@@ -1511,7 +1511,7 @@ class GrpcManager {
                 )
             }
 
-            Log.d(TAG, "Поиск '$query': найдено ${users.size} пользователей")
+            Log.d(TAG, "Поиск: найдено ${users.size} пользователей")
             Result.success(users)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка поиска пользователей", e)
@@ -1587,7 +1587,7 @@ class GrpcManager {
 
             val fileUrl = response.fileUrlsList.firstOrNull()
             if (fileUrl == null) {
-                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId, response=$response")
+                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId")
                 return@withContext Result.failure(Exception("URL не получен: пустой ответ"))
             }
 
@@ -1755,7 +1755,7 @@ class GrpcManager {
             val fileId = uploadData.fileId
 
             // Выполняем HTTP POST multipart/form-data для загрузки файла
-            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId, url: ${uploadData.url}")
+            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId")
 
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
             val url = URL(uploadData.url)

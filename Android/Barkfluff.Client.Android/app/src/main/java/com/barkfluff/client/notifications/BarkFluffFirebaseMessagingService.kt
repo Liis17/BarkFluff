@@ -35,7 +35,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
-        Log.d(TAG, "onNewToken: получен новый FCM токен: ${token.take(20)}...")
+        Log.d(TAG, "onNewToken: получен новый FCM токен")
 
         // Сохраняем токен локально
         val globalParam = GlobalParam(applicationContext)
@@ -262,7 +262,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
             val result = imageLoader.execute(request)
             (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
         } catch (e: Exception) {
-            Log.w(TAG, "loadBitmapFromUrl: failed to load $url", e)
+            Log.w(TAG, "loadBitmapFromUrl: failed to load", e)
             null
         }
     }
