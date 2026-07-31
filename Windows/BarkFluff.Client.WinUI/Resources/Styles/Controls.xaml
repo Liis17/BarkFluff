@@ -6,6 +6,24 @@
     <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
     <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter" />
 
+    <!--
+        Замена DataTrigger по IsMine и HasOnlyMedia. Кисти берутся синглтонами из Brushes.xaml,
+        а не через ThemeResource: конвертер — не DependencyObject, тему он бы не отследил,
+        а у синглтонов цвет переписывает ApplicationThemeService.
+    -->
+    <converters:BoolToHorizontalAlignmentConverter x:Key="MessageAlignmentConverter"
+                                                   FalseValue="Left"
+                                                   TrueValue="Right" />
+    <converters:BoolToBrushConverter x:Key="MessageBubbleBrushConverter"
+                                     FalseValue="{StaticResource MessageOtherBubbleBrush}"
+                                     TrueValue="{StaticResource MessageOwnBubbleBrush}" />
+    <converters:BoolToBrushConverter x:Key="MessageBubbleTextConverter"
+                                     FalseValue="{StaticResource MessageOtherBubbleTextBrush}"
+                                     TrueValue="{StaticResource MessageOwnBubbleTextBrush}" />
+    <converters:BoolToThicknessConverter x:Key="MessageBubblePaddingConverter"
+                                         FalseValue="12,8,12,8"
+                                         TrueValue="0" />
+
     <Style x:Key="OnboardingCard" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />

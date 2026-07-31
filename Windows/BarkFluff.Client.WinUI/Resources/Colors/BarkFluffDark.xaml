@@ -7,4 +7,9 @@
     <Color x:Key="MessageMediaTimestampColor">#99000000</Color>
     <Color x:Key="MessageMediaTimestampTextColor">#FFFFFFFF</Color>
     <Color x:Key="ChatUnreadBadgeTextColor">#FFFFFFFF</Color>
+    <Color x:Key="MessageOwnBubbleColor">#FF81341E</Color>
+    <Color x:Key="MessageOwnBubbleTextColor">#FFFFFFFF</Color>
+    <Color x:Key="MessageOtherBubbleColor">#FF2F2523</Color>
+    <Color x:Key="MessageOtherBubbleTextColor">#FFF3EAE7</Color>
+    <Color x:Key="PresenceOnlineColor">#FF3FBF5F</Color>
 </ResourceDictionary>

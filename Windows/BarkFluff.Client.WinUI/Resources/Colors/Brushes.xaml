@@ -11,4 +11,9 @@
     <SolidColorBrush x:Key="MessageMediaTimestampBrush" Color="#99000000" />
     <SolidColorBrush x:Key="MessageMediaTimestampTextBrush" Color="#FFFFFFFF" />
     <SolidColorBrush x:Key="ChatUnreadBadgeTextBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="MessageOwnBubbleBrush" Color="#FF0F6CBD" />
+    <SolidColorBrush x:Key="MessageOwnBubbleTextBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="MessageOtherBubbleBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="MessageOtherBubbleTextBrush" Color="#FF1A1A1A" />
+    <SolidColorBrush x:Key="PresenceOnlineBrush" Color="#FF3FBF5F" />
 </ResourceDictionary>
