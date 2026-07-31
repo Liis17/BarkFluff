@@ -2,7 +2,8 @@
     x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsAboutPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls"
+    xmlns:models="using:BarkFluff.Client.Core.ViewModels.Settings">
     <ScrollViewer>
         <StackPanel Margin="32,24,32,40"
                     MaxWidth="720"
@@ -13,25 +14,39 @@
 
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_About_Application}" />
             <Border Style="{StaticResource SettingsGroupCard}">
-                <controls:SettingsRow Glyph="&#xE946;" Header="{StaticResource Settings_About_Version}" />
+                <controls:SettingsRow Description="{x:Bind ViewModel.Version, Mode=OneWay}" Glyph="&#xE946;" Header="{StaticResource Settings_About_Version}" />
             </Border>
 
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_About_Device}" />
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
-                    <controls:SettingsRow Glyph="&#xE770;" Header="{StaticResource Settings_About_Device}" />
-                    <controls:SettingsRow Header="{StaticResource Settings_About_DeviceId}" />
-                    <controls:SettingsRow Header="{StaticResource Settings_About_Os}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.DeviceName, Mode=OneWay}" Glyph="&#xE770;" Header="{StaticResource Settings_About_Device}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.DeviceId, Mode=OneWay}" Header="{StaticResource Settings_About_DeviceId}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.OperatingSystem, Mode=OneWay}" Header="{StaticResource Settings_About_Os}" />
                 </StackPanel>
             </Border>
 
-            <!--  Карточку микросервисов откроет флаг «Показывать адреса микросервисов» из раздела «Тестирование».  -->
-            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_About_Microservices}" />
-            <Border Style="{StaticResource SettingsGroupCard}">
+            <TextBlock Style="{StaticResource SettingsGroupTitle}"
+                       Text="{StaticResource Settings_About_Microservices}"
+                       Visibility="{x:Bind ViewModel.IsServerAddressesVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Border Style="{StaticResource SettingsGroupCard}"
+                    Visibility="{x:Bind ViewModel.IsServerAddressesVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel>
-                    <controls:SettingsRow Header="{StaticResource Settings_About_PingChecking}" />
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow Glyph="&#xE9D9;" Header="{StaticResource Settings_About_Ping}" />
+                    <ListView ItemsSource="{x:Bind ViewModel.Services, Mode=OneWay}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:SettingsAboutServiceItem">
+                                <controls:SettingsRow Description="{x:Bind Address}" Header="{x:Bind Name}" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock Margin="16,0,16,12"
+                               Style="{StaticResource MutedText}"
+                               Text="{x:Bind ViewModel.PingResult, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.PingResult, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <Button Click="OnPingClick" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Description="{StaticResource Settings_About_PingChecking}" Glyph="&#xE9D9;" Header="{StaticResource Settings_About_Ping}">
+                            <ProgressRing Height="20" IsActive="{x:Bind ViewModel.IsPinging, Mode=OneWay}" Width="20" />
+                        </controls:SettingsRow>
                     </Button>
                 </StackPanel>
             </Border>

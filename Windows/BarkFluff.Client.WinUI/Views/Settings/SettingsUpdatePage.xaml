@@ -12,29 +12,35 @@
                        Text="{StaticResource Settings_Update_Title}" />
 
             <Border Style="{StaticResource SettingsGroupCard}">
-                <controls:SettingsRow Glyph="&#xE895;" Header="{StaticResource Settings_Update_CurrentVersion}" />
+                <controls:SettingsRow Description="{x:Bind ViewModel.CurrentVersion, Mode=OneWay}"
+                                      Glyph="&#xE895;"
+                                      Header="{StaticResource Settings_Update_CurrentVersion}" />
             </Border>
 
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
                     <controls:SettingsRow Header="{StaticResource Settings_Update_ChannelRelease}">
-                        <Button Content="{StaticResource Settings_Update_Download}"
-                                IsEnabled="False"
-                                Style="{StaticResource SecondaryButton}" />
+                        <Button Click="OnReleaseCheckClick" Content="{StaticResource Settings_Update_Check}" Style="{StaticResource SecondaryButton}" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_Update_ChannelBeta}">
-                        <Button Content="{StaticResource Settings_Update_Download}"
-                                IsEnabled="False"
-                                Style="{StaticResource SecondaryButton}" />
+                        <Button Click="OnBetaCheckClick" Content="{StaticResource Settings_Update_Check}" Style="{StaticResource SecondaryButton}" />
                     </controls:SettingsRow>
                 </StackPanel>
             </Border>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <Button Content="{StaticResource Settings_Update_Check}" IsEnabled="False" />
-                <Button Content="{StaticResource Settings_Update_OpenSite}"
-                        IsEnabled="False"
-                        Style="{StaticResource SecondaryButton}" />
+            <ProgressRing HorizontalAlignment="Left"
+                          IsActive="True"
+                          Visibility="{x:Bind ViewModel.IsChecking, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <TextBlock Margin="0,12,0,0"
+                       Style="{StaticResource MutedText}"
+                       Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                       TextWrapping="Wrap" />
+
+            <StackPanel Margin="0,16,0,0" Orientation="Horizontal" Spacing="12">
+                <Button Click="OnDownloadClick"
+                        Content="{StaticResource Settings_Update_Download}"
+                        Visibility="{x:Bind ViewModel.IsUpdateAvailable, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Button Click="OnOpenSiteClick" Content="{StaticResource Settings_Update_OpenSite}" Style="{StaticResource SecondaryButton}" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>
