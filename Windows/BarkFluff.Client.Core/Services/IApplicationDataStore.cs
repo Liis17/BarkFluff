@@ -43,4 +43,8 @@ public interface IApplicationDataStore
     Task DeleteProtectedPrivateChatKeyAsync(string scope, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     Task DeleteAllProtectedPrivateChatKeysAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    Task<string?> GetPreferenceAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+
+    Task SavePreferenceAsync(string key, string value, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

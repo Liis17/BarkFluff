@@ -214,6 +214,12 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public Task<string?> GetPreferenceAsync(string key, CancellationToken cancellationToken = default) =>
+        GetSettingAsync(key, cancellationToken);
+
+    public Task SavePreferenceAsync(string key, string value, CancellationToken cancellationToken = default) =>
+        SaveSettingAsync(key, value, cancellationToken);
+
     private async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);

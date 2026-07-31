@@ -8,6 +8,7 @@ namespace BarkFluff.Client.WinUI.Tests;
 /// </summary>
 internal sealed class TestApplicationDataStore : IApplicationDataStore
 {
+    private readonly Dictionary<string, string> _preferences = [];
     public WindowClosingBehavior? StoredClosingBehavior { get; set; }
 
     public int ClosingBehaviorSaveCount { get; private set; }
@@ -34,4 +35,13 @@ internal sealed class TestApplicationDataStore : IApplicationDataStore
     public Task<NodeProfile?> GetSelectedNodeAsync(CancellationToken cancellationToken = default) => Task.FromResult<NodeProfile?>(null);
     public Task SaveNodeServiceConfigurationAsync(NodeConnection connection, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task<NodeConnection?> GetNodeServiceConfigurationAsync(CancellationToken cancellationToken = default) => Task.FromResult<NodeConnection?>(null);
+
+    public Task<string?> GetPreferenceAsync(string key, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_preferences.GetValueOrDefault(key));
+
+    public Task SavePreferenceAsync(string key, string value, CancellationToken cancellationToken = default)
+    {
+        _preferences[key] = value;
+        return Task.CompletedTask;
+    }
 }
