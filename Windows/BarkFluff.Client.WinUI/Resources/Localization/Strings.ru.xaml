@@ -292,6 +292,8 @@
     <x:String x:Key="Settings_ChatFolders_ManageChats">Управлять чатами</x:String>
     <x:String x:Key="Settings_ChatFolders_Delete">Удалить папку</x:String>
     <x:String x:Key="Settings_ChatFolders_DeleteConfirm">Удалить папку? Чаты останутся на месте.</x:String>
+    <x:String x:Key="Settings_ChatFolders_MoveUp">Переместить выше</x:String>
+    <x:String x:Key="Settings_ChatFolders_MoveDown">Переместить ниже</x:String>
 
     <x:String x:Key="Settings_Notifications_Title">Уведомления</x:String>
     <x:String x:Key="Settings_Notifications_ReceivePush">Получать push-уведомления</x:String>
