@@ -1,6 +1,7 @@
 package com.barkfluff.client.utils
 
 import android.text.Editable
+import android.text.InputFilter
 import android.text.TextWatcher
 import android.view.KeyEvent
 import android.widget.EditText
@@ -19,6 +20,18 @@ class OtpCellsHelper(
     fun setup() {
         for (i in cells.indices) {
             val cell = cells[i]
+
+            if (i == 0) {
+                cell.filters = arrayOf(InputFilter { source, start, end, _, _, _ ->
+                    val code = source.subSequence(start, end).toString()
+                    if (code.length == cells.size && code.all(Char::isDigit)) {
+                        cell.post { fillCode(code) }
+                        ""
+                    } else {
+                        null
+                    }
+                }) + cell.filters
+            }
 
             cell.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -64,6 +77,13 @@ class OtpCellsHelper(
 
     fun focusFirst() {
         cells.first().requestFocus()
+    }
+
+    private fun fillCode(code: String) {
+        cells.forEachIndexed { index, cell ->
+            cell.setText(code[index].toString())
+        }
+        cells.last().requestFocus()
     }
 
     private fun updateCellState(index: Int) {
