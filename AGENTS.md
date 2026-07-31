@@ -43,8 +43,8 @@ dotnet build Backend/BarkFluff.{Service}/BarkFluff.{Service}.csproj
 ### Android
 
 ```bash
-cd Android/Barkfluff.Client.Android
-./gradlew assembleDebug
+cd Android
+./gradlew :app-v1:assembleDebug
 ```
 
 ### Windows (WPF)
