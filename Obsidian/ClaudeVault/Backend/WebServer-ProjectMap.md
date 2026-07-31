@@ -16,7 +16,7 @@
 | `Controllers/VersionApiController.cs` | `GET /api/versions` | Возвращает актуальные версии клиентов (Android/Windows/macOS, release+beta) |
 | `Controllers/InstallController.cs` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Скрипты установки клиента (Windows PowerShell и Linux Bash, релиз и бета) |
 | `Controllers/DownloadController.cs` | `GET /download/installer` | Отдаёт `Barkfluff.Updater.CLI.exe` — инсталлятор Windows |
-| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт изображения-ассеты (png/jpg для магазинов и превью) |
+| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт ассеты по whitelist `_allowedFiles`: изображения (png/jpg для магазинов и превью) и `cookie-notice.js` |
 | `Controllers/FaviconController.cs` | `GET /favicon.ico` | Отдаёт `files/favicon.ico` |
 
 ---
@@ -72,6 +72,7 @@
 | `files/installbeta.sh` | Скрипт установки Linux (beta) |
 | `files/favicon.ico` | Иконка сайта |
 | `files/linkpreview.png` | OG-изображение для превью ссылок |
+| `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
 | `files/barkfluff.windows.png` | Скриншот Windows-клиента |
 | `files/barkfluff.web.png` | Скриншот Web-клиента |
 | `files/barkfluff.android.jpg` | Скриншот Android-клиента |
