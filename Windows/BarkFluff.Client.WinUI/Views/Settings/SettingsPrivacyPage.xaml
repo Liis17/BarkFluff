@@ -17,29 +17,35 @@
                     <controls:SettingsRow Glyph="&#xE774;"
                                           Description="{StaticResource Settings_Privacy_ProfileOnSiteHint}"
                                           Header="{StaticResource Settings_Privacy_ProfileOnSite}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ProfileVisibleOnSite, Mode=OneWay}" Toggled="OnProfileVisibleToggled" OffContent="" OnContent="" />
                     </controls:SettingsRow>
+                    <controls:SettingsRow Glyph="&#xE77B;" Header="{StaticResource Settings_Privacy_AvatarVisibility}">
+                        <ComboBox SelectedIndex="{x:Bind ViewModel.AvatarVisibility, Mode=OneWay}" SelectionChanged="OnAvatarVisibilityChanged"><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityAll}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityFriends}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityNone}"/></ComboBox>
+                    </controls:SettingsRow>
+                    <!--
                     <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
                         <controls:SettingsRow Glyph="&#xE77B;" Header="{StaticResource Settings_Privacy_AvatarVisibility}">
                             <FontIcon FontSize="12"
                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                       Glyph="&#xE76C;" />
                         </controls:SettingsRow>
-                    </Button>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                    </Button>-->
+                    <controls:SettingsRow Glyph="&#xE70F;" Header="{StaticResource Settings_Privacy_DescriptionVisibility}"><ComboBox SelectedIndex="{x:Bind ViewModel.BioVisibility, Mode=OneWay}" SelectionChanged="OnBioVisibilityChanged"><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityAll}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityFriends}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityNone}"/></ComboBox></controls:SettingsRow>
+                    <!-- <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
                         <controls:SettingsRow Glyph="&#xE70F;" Header="{StaticResource Settings_Privacy_DescriptionVisibility}">
                             <FontIcon FontSize="12"
                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                       Glyph="&#xE76C;" />
                         </controls:SettingsRow>
-                    </Button>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                    </Button>-->
+                    <controls:SettingsRow Glyph="&#xE715;" Header="{StaticResource Settings_Privacy_EmailVisibility}"><ComboBox SelectedIndex="{x:Bind ViewModel.EmailVisibility, Mode=OneWay}" SelectionChanged="OnEmailVisibilityChanged"><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityAll}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityFriends}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityNone}"/></ComboBox></controls:SettingsRow>
+                    <!-- <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
                         <controls:SettingsRow Glyph="&#xE715;" Header="{StaticResource Settings_Privacy_EmailVisibility}">
                             <FontIcon FontSize="12"
                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                       Glyph="&#xE76C;" />
                         </controls:SettingsRow>
-                    </Button>
+                    </Button>-->
                 </StackPanel>
             </Border>
 
@@ -47,15 +53,16 @@
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
                     <controls:SettingsRow Glyph="&#xE721;" Header="{StaticResource Settings_Privacy_SearchVisibility}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.SearchVisible, Mode=OneWay}" Toggled="OnSearchVisibleToggled" OffContent="" OnContent="" />
                     </controls:SettingsRow>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                    <controls:SettingsRow Glyph="&#xE890;" Header="{StaticResource Settings_Privacy_OnlineVisibility}"><ComboBox SelectedIndex="{x:Bind ViewModel.OnlineVisibility, Mode=OneWay}" SelectionChanged="OnOnlineVisibilityChanged"><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityAll}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityFriends}"/><ComboBoxItem Content="{StaticResource Settings_Privacy_VisibilityNone}"/></ComboBox></controls:SettingsRow>
+                    <!-- <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
                         <controls:SettingsRow Glyph="&#xE890;" Header="{StaticResource Settings_Privacy_OnlineVisibility}">
                             <FontIcon FontSize="12"
                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                       Glyph="&#xE76C;" />
                         </controls:SettingsRow>
-                    </Button>
+                    </Button>-->
                 </StackPanel>
             </Border>
         </StackPanel>
