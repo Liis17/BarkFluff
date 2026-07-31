@@ -201,6 +201,7 @@ public partial class App : Application
         builder.Services.AddSingleton<SettingsPrivacyViewModel>();
         builder.Services.AddSingleton<SettingsNotificationsViewModel>();
         builder.Services.AddSingleton<SettingsDevicesViewModel>();
+        builder.Services.AddSingleton<SettingsStorageViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();
