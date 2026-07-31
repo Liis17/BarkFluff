@@ -145,4 +145,230 @@
     <x:String x:Key="Profile_About">About</x:String>
     <x:String x:Key="Profile_RegisteredAt">Member since</x:String>
     <x:String x:Key="Error_ProfileLoadFailed">Could not load the profile.</x:String>
+
+    <!--  Settings: left-hand section list  -->
+    <x:String x:Key="Settings_Nav_General">General</x:String>
+    <x:String x:Key="Settings_Nav_Account">Account</x:String>
+    <x:String x:Key="Settings_Nav_Security">Security</x:String>
+    <x:String x:Key="Settings_Nav_Privacy">Privacy</x:String>
+    <x:String x:Key="Settings_Nav_Devices">Devices</x:String>
+    <x:String x:Key="Settings_Nav_Personalization">Personalization</x:String>
+    <x:String x:Key="Settings_Nav_Widgets">Widgets</x:String>
+    <x:String x:Key="Settings_Nav_ChatFolders">Chat folders</x:String>
+    <x:String x:Key="Settings_Nav_Notifications">Notifications</x:String>
+    <x:String x:Key="Settings_Nav_Language">Language</x:String>
+    <x:String x:Key="Settings_Nav_Storage">Data and cache</x:String>
+    <x:String x:Key="Settings_Nav_Update">Update</x:String>
+    <x:String x:Key="Settings_Nav_About">About</x:String>
+    <x:String x:Key="Settings_Nav_Testing">Testing</x:String>
+
+    <!--  Unavailability badges  -->
+    <x:String x:Key="Settings_BadgeComingSoon">Coming soon</x:String>
+    <x:String x:Key="Settings_BadgeAndroidOnly">Android only</x:String>
+
+    <x:String x:Key="Common_Save">Save</x:String>
+    <x:String x:Key="Common_Cancel">Cancel</x:String>
+    <x:String x:Key="Common_Delete">Delete</x:String>
+    <x:String x:Key="Common_Next">Next</x:String>
+    <x:String x:Key="Common_NotSet">Not set</x:String>
+    <x:String x:Key="Common_Unknown">Unknown</x:String>
+
+    <x:String x:Key="Settings_General_Title">General</x:String>
+
+    <x:String x:Key="Settings_Account_Title">Account</x:String>
+    <x:String x:Key="Settings_Account_SectionProfile">Profile</x:String>
+    <x:String x:Key="Settings_Account_ChangePhoto">Change photo</x:String>
+    <x:String x:Key="Settings_Account_FirstName">First name</x:String>
+    <x:String x:Key="Settings_Account_LastName">Last name</x:String>
+    <x:String x:Key="Settings_Account_Username">Username</x:String>
+    <x:String x:Key="Settings_Account_Bio">About you</x:String>
+    <x:String x:Key="Settings_Account_Logout">Sign out</x:String>
+    <x:String x:Key="Settings_Account_LogoutConfirmTitle">Sign out</x:String>
+    <x:String x:Key="Settings_Account_LogoutConfirmText">Are you sure you want to sign out?</x:String>
+    <x:String x:Key="Settings_Account_LogoutConfirm">Sign out</x:String>
+    <x:String x:Key="Settings_Account_PickImageTitle">Choose an image</x:String>
+    <x:String x:Key="Settings_Account_PickImageHint">Cropping will come later: for now the image is uploaded whole.</x:String>
+    <x:String x:Key="Settings_Account_ChooseFile">Choose a file</x:String>
+
+    <x:String x:Key="Settings_Security_Title">Security</x:String>
+    <x:String x:Key="Settings_Security_HeroTitle">Your account is protected</x:String>
+    <x:String x:Key="Settings_Security_HeroSubtitle">Turn on 2FA for stronger protection</x:String>
+    <x:String x:Key="Settings_Security_SectionParameters">Options</x:String>
+    <x:String x:Key="Settings_Security_ChangePassword">Change password</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorApp">2FA via app</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorEmail">2FA via email</x:String>
+    <x:String x:Key="Settings_Security_PasswordStep1Title">Step 1 of 3: request a code</x:String>
+    <x:String x:Key="Settings_Security_PasswordStep1Hint">We will send a confirmation code to the email linked to your account.</x:String>
+    <x:String x:Key="Settings_Security_PasswordStep2Title">Step 2 of 3: confirm the code</x:String>
+    <x:String x:Key="Settings_Security_PasswordStep2Hint">Enter the six-digit code from the email.</x:String>
+    <x:String x:Key="Settings_Security_PasswordStep3Title">Step 3 of 3: new password</x:String>
+    <x:String x:Key="Settings_Security_PasswordStep3Hint">The password must be at least six characters long.</x:String>
+    <x:String x:Key="Settings_Security_SendCode">Send the code</x:String>
+    <x:String x:Key="Settings_Security_ConfirmationCode">Confirmation code</x:String>
+    <x:String x:Key="Settings_Security_NewPassword">New password</x:String>
+    <x:String x:Key="Settings_Security_RepeatPassword">Repeat the new password</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorSetupTitle">Set up 2FA</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorScanHint">Scan the QR code in your authenticator app, or enter the code manually.</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorManualCode">Code for manual entry</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorEmailHint">A confirmation code has been sent to the email linked to your account.</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorDisableTitle">Turn off 2FA</x:String>
+    <x:String x:Key="Settings_Security_TwoFactorDisableHint">Enter the code from your authenticator app to confirm.</x:String>
+    <x:String x:Key="Settings_Security_PasswordChanged">Password changed.</x:String>
+
+    <x:String x:Key="Settings_Privacy_Title">Privacy</x:String>
+    <x:String x:Key="Settings_Privacy_SectionProfile">Profile</x:String>
+    <x:String x:Key="Settings_Privacy_ProfileOnSite">Profile on the website</x:String>
+    <x:String x:Key="Settings_Privacy_ProfileOnSiteHint">The barkfluff.com/{username} page</x:String>
+    <x:String x:Key="Settings_Privacy_AvatarVisibility">Avatar visibility</x:String>
+    <x:String x:Key="Settings_Privacy_DescriptionVisibility">Description visibility</x:String>
+    <x:String x:Key="Settings_Privacy_EmailVisibility">Email visibility</x:String>
+    <x:String x:Key="Settings_Privacy_SectionSearchOnline">Search and presence</x:String>
+    <x:String x:Key="Settings_Privacy_SearchVisibility">Visibility in search</x:String>
+    <x:String x:Key="Settings_Privacy_OnlineVisibility">Presence visibility</x:String>
+    <x:String x:Key="Settings_Privacy_VisibilityAll">Everyone</x:String>
+    <x:String x:Key="Settings_Privacy_VisibilityFriends">Friends</x:String>
+    <x:String x:Key="Settings_Privacy_VisibilityNone">No one</x:String>
+
+    <x:String x:Key="Settings_Devices_Title">Devices</x:String>
+    <x:String x:Key="Settings_Devices_Hint">You can sign in on another device by scanning a QR code in the BarkFluff app</x:String>
+    <x:String x:Key="Settings_Devices_Connect">Connect a device</x:String>
+    <x:String x:Key="Settings_Devices_ThisDevice">This device</x:String>
+    <x:String x:Key="Settings_Devices_OtherDevices">Other devices</x:String>
+    <x:String x:Key="Settings_Devices_Empty">There are no other devices</x:String>
+    <x:String x:Key="Settings_Devices_TerminateOthers">End all other sessions</x:String>
+    <x:String x:Key="Settings_Devices_TerminateOthersTitle">End all sessions</x:String>
+    <x:String x:Key="Settings_Devices_TerminateOthersText">End all sessions on other devices? You will stay signed in on this device only.</x:String>
+    <x:String x:Key="Settings_Devices_Rename">Rename</x:String>
+    <x:String x:Key="Settings_Devices_RenameTitle">Rename the device</x:String>
+    <x:String x:Key="Settings_Devices_RenameHint">Enter a new device name</x:String>
+    <x:String x:Key="Settings_Devices_Terminate">End</x:String>
+    <x:String x:Key="Settings_Devices_TerminateTitle">End the session</x:String>
+    <x:String x:Key="Settings_Devices_TerminateText">The session on the selected device will be ended.</x:String>
+    <x:String x:Key="Settings_Devices_SectionApp">Application</x:String>
+    <x:String x:Key="Settings_Devices_SectionOs">OS</x:String>
+    <x:String x:Key="Settings_Devices_SectionLocation">Location</x:String>
+    <x:String x:Key="Settings_Devices_Id">Device ID</x:String>
+
+    <x:String x:Key="Settings_Personalization_Title">Personalization</x:String>
+    <x:String x:Key="Settings_Personalization_Poster">Profile poster</x:String>
+    <x:String x:Key="Settings_Personalization_SetNewPoster">Set a new poster</x:String>
+    <x:String x:Key="Settings_Personalization_DisplaySettings">Display options</x:String>
+    <x:String x:Key="Settings_Personalization_CornerRadius">Message corner radius</x:String>
+    <x:String x:Key="Settings_Personalization_BlurBackground">Blur the background</x:String>
+    <x:String x:Key="Settings_Personalization_BlurStrength">Blur strength</x:String>
+    <x:String x:Key="Settings_Personalization_DimBackground">Background dimming</x:String>
+    <x:String x:Key="Settings_Personalization_Folders">Folders</x:String>
+    <x:String x:Key="Settings_Personalization_CompactFolders">Compact folders</x:String>
+    <x:String x:Key="Settings_Personalization_CompactFoldersHint">Show the icon only</x:String>
+    <x:String x:Key="Settings_Personalization_FolderTabsNoOutline">Remove folder outlines</x:String>
+    <x:String x:Key="Settings_Personalization_FolderTabsNoOutlineHint">Keep only the icon and the active folder highlight</x:String>
+    <x:String x:Key="Settings_Personalization_ExcludeFromAll">Hide foldered chats from All chats</x:String>
+    <x:String x:Key="Settings_Personalization_ExcludeFromAllHint">A chat that belongs to a folder will not appear on the All chats tab</x:String>
+    <x:String x:Key="Settings_Personalization_MainTabs">Tab bar</x:String>
+    <x:String x:Key="Settings_Personalization_MainTabChats">Chats</x:String>
+    <x:String x:Key="Settings_Personalization_MainTabCalls">Calls</x:String>
+    <x:String x:Key="Settings_Personalization_MainTabProfile">Profile</x:String>
+    <x:String x:Key="Settings_Personalization_OnlineTime">Presence</x:String>
+    <x:String x:Key="Settings_Personalization_RelativeOnlineTime">Relative presence time</x:String>
+    <x:String x:Key="Settings_Personalization_RelativeOnlineTimeHint">15 minutes ago instead of a clock time</x:String>
+    <x:String x:Key="Settings_Personalization_Stickers">Stickers</x:String>
+    <x:String x:Key="Settings_Personalization_StickerSize">Sticker size</x:String>
+    <x:String x:Key="Settings_Personalization_ChatBackground">Chat background</x:String>
+    <x:String x:Key="Settings_Personalization_AddBackground">Add a background</x:String>
+    <x:String x:Key="Settings_Personalization_NoBackground">No background</x:String>
+
+    <x:String x:Key="Settings_Widgets_Title">Widgets</x:String>
+    <x:String x:Key="Settings_Widgets_Empty">No widgets have been created yet.</x:String>
+    <x:String x:Key="Settings_Widgets_AndroidHint">Home screen widgets exist only in the Android app.</x:String>
+
+    <x:String x:Key="Settings_ChatFolders_Title">Chat folders</x:String>
+    <x:String x:Key="Settings_ChatFolders_Section">Your folders</x:String>
+    <x:String x:Key="Settings_ChatFolders_EmptyTitle">No folders yet</x:String>
+    <x:String x:Key="Settings_ChatFolders_EmptySubtitle">Create a folder to switch between groups of chats quickly</x:String>
+    <x:String x:Key="Settings_ChatFolders_NewFolder">New folder</x:String>
+    <x:String x:Key="Settings_ChatFolders_EditTitle">Folder</x:String>
+    <x:String x:Key="Settings_ChatFolders_Name">Folder name</x:String>
+    <x:String x:Key="Settings_ChatFolders_Icon">Icon</x:String>
+    <x:String x:Key="Settings_ChatFolders_ManageChats">Manage chats</x:String>
+    <x:String x:Key="Settings_ChatFolders_Delete">Delete the folder</x:String>
+    <x:String x:Key="Settings_ChatFolders_DeleteConfirm">Delete the folder? The chats will stay where they are.</x:String>
+
+    <x:String x:Key="Settings_Notifications_Title">Notifications</x:String>
+    <x:String x:Key="Settings_Notifications_ReceivePush">Receive push notifications</x:String>
+    <x:String x:Key="Settings_Notifications_Hint">Turning notifications off disables push notifications on this device only. Other devices keep receiving them.</x:String>
+
+    <x:String x:Key="Settings_Language_Title">Language</x:String>
+    <x:String x:Key="Settings_Language_Section">Application language</x:String>
+    <x:String x:Key="Settings_Language_System">🌐  System</x:String>
+    <x:String x:Key="Settings_Language_Russian">🇷🇺  Русский</x:String>
+    <x:String x:Key="Settings_Language_English">🇬🇧  English</x:String>
+    <x:String x:Key="Settings_Language_German">🇩🇪  Deutsch</x:String>
+    <x:String x:Key="Settings_Language_Spanish">🇪🇸  Español</x:String>
+    <x:String x:Key="Settings_Language_Chinese">🇨🇳  中文</x:String>
+    <x:String x:Key="Settings_Language_Hint">System follows the language of your device.</x:String>
+    <x:String x:Key="Settings_Language_RestartRequired">The language will change after you restart the application.</x:String>
+
+    <x:String x:Key="Settings_Storage_Title">Data and cache</x:String>
+    <x:String x:Key="Settings_Storage_ServerStorage">Server storage</x:String>
+    <x:String x:Key="Settings_Storage_Used">Used</x:String>
+    <x:String x:Key="Settings_Storage_OfLimit">of {0}</x:String>
+    <x:String x:Key="Settings_Storage_LocalStorage">Storage on this device</x:String>
+    <x:String x:Key="Settings_Storage_AppCache">Application cache</x:String>
+    <x:String x:Key="Settings_Storage_ImageCache">Image cache</x:String>
+    <x:String x:Key="Settings_Storage_ChatCache">Chat cache</x:String>
+    <x:String x:Key="Settings_Storage_ClearCache">Clear the cache</x:String>
+    <x:String x:Key="Settings_Storage_CategoryImages">Images</x:String>
+    <x:String x:Key="Settings_Storage_CategoryVideos">Video</x:String>
+    <x:String x:Key="Settings_Storage_CategoryAudio">Audio</x:String>
+    <x:String x:Key="Settings_Storage_CategoryDocuments">Documents</x:String>
+    <x:String x:Key="Settings_Storage_CategoryStickers">Stickers</x:String>
+    <x:String x:Key="Settings_Storage_CategoryAvatars">Avatars</x:String>
+
+    <x:String x:Key="Settings_Update_Title">Update</x:String>
+    <x:String x:Key="Settings_Update_CurrentVersion">Current version</x:String>
+    <x:String x:Key="Settings_Update_ChannelRelease">Release</x:String>
+    <x:String x:Key="Settings_Update_ChannelBeta">Beta</x:String>
+    <x:String x:Key="Settings_Update_Check">Check for updates</x:String>
+    <x:String x:Key="Settings_Update_Download">Update</x:String>
+    <x:String x:Key="Settings_Update_Checking">Checking for updates…</x:String>
+    <x:String x:Key="Settings_Update_UpToDate">You are on the latest version</x:String>
+    <x:String x:Key="Settings_Update_Available">Version {0} is available</x:String>
+    <x:String x:Key="Settings_Update_OpenSite">Open barkfluff.com</x:String>
+
+    <x:String x:Key="Settings_About_Title">About</x:String>
+    <x:String x:Key="Settings_About_Application">Application</x:String>
+    <x:String x:Key="Settings_About_Version">Version</x:String>
+    <x:String x:Key="Settings_About_Device">Device</x:String>
+    <x:String x:Key="Settings_About_DeviceId">Device ID</x:String>
+    <x:String x:Key="Settings_About_Os">Operating system</x:String>
+    <x:String x:Key="Settings_About_Microservices">Server microservices</x:String>
+    <x:String x:Key="Settings_About_Ping">Check the ping</x:String>
+    <x:String x:Key="Settings_About_PingChecking">Contacting Beacon…</x:String>
+    <x:String x:Key="Settings_About_PingResult">Beacon replied in {0} ms</x:String>
+    <x:String x:Key="Settings_About_PingFailed">Beacon did not reply</x:String>
+
+    <x:String x:Key="Settings_Testing_Title">Testing</x:String>
+    <x:String x:Key="Settings_Testing_SectionParameters">Options</x:String>
+    <x:String x:Key="Settings_Testing_ExperimentalHint">Experimental features. They may be unstable.</x:String>
+    <x:String x:Key="Settings_Testing_ShowIds">Show IDs in the profile</x:String>
+    <x:String x:Key="Settings_Testing_ShowIdsHint">UserId and ChatId under the presence status</x:String>
+    <x:String x:Key="Settings_Testing_ShowServerAddresses">Show microservice addresses</x:String>
+    <x:String x:Key="Settings_Testing_ShowServerAddressesHint">In the About section</x:String>
+    <x:String x:Key="Settings_Testing_SecretChats">Hidden chats</x:String>
+    <x:String x:Key="Settings_Testing_SecretChatsHint">A deferred experimental take on secret chats</x:String>
+    <x:String x:Key="Settings_Testing_PrivateChats">Private chats</x:String>
+    <x:String x:Key="Settings_Testing_PrivateChatsHint">Show creation of a chat with a shared password</x:String>
+
+    <!--  Settings errors: services return a key, the page resolves it  -->
+    <x:String x:Key="Error_SettingsLoadFailed">Could not load the settings.</x:String>
+    <x:String x:Key="Error_SettingsSaveFailed">Could not save the setting.</x:String>
+    <x:String x:Key="Error_UsernameTaken">That username is already taken.</x:String>
+    <x:String x:Key="Error_TwoFactorFailed">Could not change the two-factor authentication setting.</x:String>
+    <x:String x:Key="Error_TwoFactorCodeInvalid">The confirmation code is incorrect.</x:String>
+    <x:String x:Key="Error_ConfirmationCodeFormat">The code is six digits long.</x:String>
+    <x:String x:Key="Error_PasswordTooShort">The password must be at least six characters long.</x:String>
+    <x:String x:Key="Error_StorageLoadFailed">Could not load the storage details.</x:String>
+    <x:String x:Key="Error_DevicesLoadFailed">Could not load the device list.</x:String>
+    <x:String x:Key="Error_UpdateCheckFailed">Could not check for updates.</x:String>
+    <x:String x:Key="Error_LogoutFailed">Could not sign out.</x:String>
 </ResourceDictionary>

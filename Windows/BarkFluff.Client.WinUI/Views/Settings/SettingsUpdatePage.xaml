@@ -1,0 +1,41 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsUpdatePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Update_Title}" />
+
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <controls:SettingsRow Glyph="&#xE895;" Header="{StaticResource Settings_Update_CurrentVersion}" />
+            </Border>
+
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Header="{StaticResource Settings_Update_ChannelRelease}">
+                        <Button Content="{StaticResource Settings_Update_Download}"
+                                IsEnabled="False"
+                                Style="{StaticResource SecondaryButton}" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Header="{StaticResource Settings_Update_ChannelBeta}">
+                        <Button Content="{StaticResource Settings_Update_Download}"
+                                IsEnabled="False"
+                                Style="{StaticResource SecondaryButton}" />
+                    </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="{StaticResource Settings_Update_Check}" IsEnabled="False" />
+                <Button Content="{StaticResource Settings_Update_OpenSite}"
+                        IsEnabled="False"
+                        Style="{StaticResource SecondaryButton}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

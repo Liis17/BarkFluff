@@ -1,0 +1,125 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsPersonalizationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Personalization_Title}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_Poster}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                    <controls:SettingsRow Glyph="&#xE91B;" Header="{StaticResource Settings_Personalization_SetNewPoster}">
+                        <FontIcon FontSize="12"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                  Glyph="&#xE76C;" />
+                    </controls:SettingsRow>
+                </Button>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_DisplaySettings}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Header="{StaticResource Settings_Personalization_CornerRadius}">
+                        <Slider Width="220"
+                                IsEnabled="False"
+                                Maximum="30"
+                                Minimum="0"
+                                Value="20" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Header="{StaticResource Settings_Personalization_BlurBackground}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Header="{StaticResource Settings_Personalization_BlurStrength}">
+                        <Slider Width="220"
+                                IsEnabled="False"
+                                Maximum="25"
+                                Minimum="1"
+                                Value="10" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Header="{StaticResource Settings_Personalization_DimBackground}">
+                        <Slider Width="220"
+                                IsEnabled="False"
+                                Maximum="100"
+                                Minimum="0"
+                                Value="0" />
+                    </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_Folders}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}"
+                                          Description="{StaticResource Settings_Personalization_CompactFoldersHint}"
+                                          Header="{StaticResource Settings_Personalization_CompactFolders}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}"
+                                          Description="{StaticResource Settings_Personalization_FolderTabsNoOutlineHint}"
+                                          Header="{StaticResource Settings_Personalization_FolderTabsNoOutline}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}"
+                                          Description="{StaticResource Settings_Personalization_ExcludeFromAllHint}"
+                                          Header="{StaticResource Settings_Personalization_ExcludeFromAll}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <!--  Вкладок в WinUI нет: навигация построена на бургере, поэтому пункты остаются справочными.  -->
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_MainTabs}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Personalization_MainTabChats}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Personalization_MainTabCalls}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Personalization_MainTabProfile}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_OnlineTime}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <controls:SettingsRow Description="{StaticResource Settings_Personalization_RelativeOnlineTimeHint}" Header="{StaticResource Settings_Personalization_RelativeOnlineTime}">
+                    <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                </controls:SettingsRow>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_Stickers}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}" Header="{StaticResource Settings_Personalization_StickerSize}">
+                    <Slider Width="220"
+                            IsEnabled="False"
+                            Maximum="240"
+                            Minimum="96"
+                            Value="160" />
+                </controls:SettingsRow>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Personalization_ChatBackground}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}" Header="{StaticResource Settings_Personalization_NoBackground}" />
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE710;" Header="{StaticResource Settings_Personalization_AddBackground}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

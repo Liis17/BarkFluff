@@ -1,0 +1,63 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsPrivacyPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Privacy_Title}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Privacy_SectionProfile}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Glyph="&#xE774;"
+                                          Description="{StaticResource Settings_Privacy_ProfileOnSiteHint}"
+                                          Header="{StaticResource Settings_Privacy_ProfileOnSite}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE77B;" Header="{StaticResource Settings_Privacy_AvatarVisibility}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE70F;" Header="{StaticResource Settings_Privacy_DescriptionVisibility}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE715;" Header="{StaticResource Settings_Privacy_EmailVisibility}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Privacy_SectionSearchOnline}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Glyph="&#xE721;" Header="{StaticResource Settings_Privacy_SearchVisibility}">
+                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    </controls:SettingsRow>
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE890;" Header="{StaticResource Settings_Privacy_OnlineVisibility}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

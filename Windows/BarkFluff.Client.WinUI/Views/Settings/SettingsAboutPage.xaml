@@ -1,0 +1,40 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsAboutPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_About_Title}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_About_Application}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <controls:SettingsRow Glyph="&#xE946;" Header="{StaticResource Settings_About_Version}" />
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_About_Device}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Glyph="&#xE770;" Header="{StaticResource Settings_About_Device}" />
+                    <controls:SettingsRow Header="{StaticResource Settings_About_DeviceId}" />
+                    <controls:SettingsRow Header="{StaticResource Settings_About_Os}" />
+                </StackPanel>
+            </Border>
+
+            <!--  Карточку микросервисов откроет флаг «Показывать адреса микросервисов» из раздела «Тестирование».  -->
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_About_Microservices}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Header="{StaticResource Settings_About_PingChecking}" />
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE9D9;" Header="{StaticResource Settings_About_Ping}" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
