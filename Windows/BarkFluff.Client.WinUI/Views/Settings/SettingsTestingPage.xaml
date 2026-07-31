@@ -21,16 +21,16 @@
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
                     <controls:SettingsRow Description="{StaticResource Settings_Testing_ShowIdsHint}" Header="{StaticResource Settings_Testing_ShowIds}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ShowIdsInProfile, Mode=TwoWay}" OffContent="" OnContent="" Toggled="OnShowIdsToggled" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Description="{StaticResource Settings_Testing_SecretChatsHint}" Header="{StaticResource Settings_Testing_SecretChats}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.SecretChatsEnabled, Mode=TwoWay}" OffContent="" OnContent="" Toggled="OnSecretChatsToggled" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Description="{StaticResource Settings_Testing_PrivateChatsHint}" Header="{StaticResource Settings_Testing_PrivateChats}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.PrivateChatsEnabled, Mode=TwoWay}" OffContent="" OnContent="" Toggled="OnPrivateChatsToggled" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Description="{StaticResource Settings_Testing_ShowServerAddressesHint}" Header="{StaticResource Settings_Testing_ShowServerAddresses}">
-                        <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ShowServerAddressesInAbout, Mode=TwoWay}" OffContent="" OnContent="" Toggled="OnShowServerAddressesToggled" />
                     </controls:SettingsRow>
                 </StackPanel>
             </Border>

@@ -57,12 +57,11 @@ public partial class App : Application
 
             var localization = services.GetRequiredService<ILocalizationService>();
             var language = await dataStore.GetLanguageAsync();
-            language = localization.ResolveSupportedLanguage(language);
-            localization.Apply(language);
+            localization.Apply(localization.ResolveSupportedLanguage(language));
 
-            if (await dataStore.GetLanguageAsync() is null)
+            if (language is null)
             {
-                await dataStore.SaveLanguageAsync(language);
+                await dataStore.SaveLanguageAsync("system");
             }
 
             await services.GetRequiredService<SettingsViewModel>().LoadAsync();
@@ -186,6 +185,9 @@ public partial class App : Application
         builder.Services.AddSingleton<IUserPreferencesService, UserPreferencesService>();
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
         builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
+        builder.Services.AddSingleton<IAboutSettingsService, AboutSettingsService>();
+        builder.Services.AddSingleton<IUpdateService, UpdateService>();
+        builder.Services.AddSingleton<HttpClient>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
@@ -205,6 +207,10 @@ public partial class App : Application
         builder.Services.AddSingleton<SettingsStorageViewModel>();
         builder.Services.AddSingleton<SettingsPersonalizationViewModel>();
         builder.Services.AddSingleton<SettingsChatFoldersViewModel>();
+        builder.Services.AddSingleton<SettingsLanguageViewModel>();
+        builder.Services.AddSingleton<SettingsUpdateViewModel>();
+        builder.Services.AddSingleton<SettingsAboutViewModel>();
+        builder.Services.AddSingleton<SettingsTestingViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();

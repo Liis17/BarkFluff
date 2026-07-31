@@ -15,13 +15,13 @@
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
                     <controls:SettingsRow Header="{StaticResource Settings_Language_System}">
-                        <RadioButton GroupName="ApplicationLanguage" IsEnabled="False" />
+                        <RadioButton x:Name="SystemLanguageRadio" Click="OnLanguageClick" GroupName="ApplicationLanguage" Tag="system" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_Language_Russian}">
-                        <RadioButton GroupName="ApplicationLanguage" IsEnabled="False" />
+                        <RadioButton x:Name="RussianLanguageRadio" Click="OnLanguageClick" GroupName="ApplicationLanguage" Tag="ru" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_Language_English}">
-                        <RadioButton GroupName="ApplicationLanguage" IsEnabled="False" />
+                        <RadioButton x:Name="EnglishLanguageRadio" Click="OnLanguageClick" GroupName="ApplicationLanguage" Tag="en" />
                     </controls:SettingsRow>
                     <!--  Немецкий, испанский и китайский требуют по отдельному словарю строк целиком.  -->
                     <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}" Header="{StaticResource Settings_Language_German}">
