@@ -152,7 +152,7 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
             val bmp = requireContext().contentResolver.loadThumbnail(uri, Size(512, 512), null)
             target.setImageBitmap(bmp)
         } catch (e: Exception) {
-            Log.w(TAG, "loadThumbnail failed for $uri", e)
+            Log.w(TAG, "loadThumbnail failed", e)
             target.setImageResource(android.R.drawable.ic_menu_gallery)
         }
     }
@@ -170,7 +170,7 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "query failed for $uri", e)
+            Log.w(TAG, "query failed", e)
         }
         return name to size
     }

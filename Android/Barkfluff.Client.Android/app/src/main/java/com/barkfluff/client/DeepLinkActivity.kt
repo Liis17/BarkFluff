@@ -39,7 +39,7 @@ class DeepLinkActivity : AppCompatActivity() {
             return
         }
 
-        Log.d(TAG, "Deep link received: $uri")
+        Log.d(TAG, "Deep link received: host=${uri.host}")
 
         val command = DeepLinkHandler.parse(uri)
 
