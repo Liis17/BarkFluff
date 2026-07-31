@@ -111,6 +111,12 @@
 | `Features/Privacy/UpdatePrivacySettings/` | Обновление настроек приватности |
 | `Features/Privacy/GetUserPrivacyServer/` | Получение настроек приватности для других сервисов (Onliner) |
 
+### Согласие с документами
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/Legal/AcceptLegalConsent/` | Фиксация принятой редакции соглашения и политики в `User.AcceptedLegalRevision` / `AcceptedLegalAt` |
+
 ### Персонализация
 
 | Файл | Назначение |
