@@ -124,6 +124,9 @@
                         refreshToken: state.refreshToken,
                         refreshTokenExpiration: state.refreshTokenExpiration
                     });
+                    // Первый момент, когда согласие (данное на странице входа) можно
+                    // зафиксировать в профиле: до этого шага токена не было.
+                    BF.legal.flushConsent();
                     resolve();
                 });
             });

@@ -330,6 +330,9 @@
             align-items: center;
         }
 
+        /* Документы не приняты — QR-сессия не запрашивается, карточка приглушена. */
+        .qr-card.gated { opacity: 0.45; }
+
         .qr-title {
             font-size: 18px;
             font-weight: 700;
@@ -538,6 +541,106 @@
             cursor: pointer;
             line-height: 1.4;
         }
+
+        /* ─────────────── LEGAL CONSENT ─────────────── */
+        .legal-consent { align-items: flex-start; }
+        .legal-consent input[type="checkbox"] { margin-top: 1px; }
+        .legal-consent-text {
+            margin: 0;
+            font-size: 13.5px;
+            line-height: 1.45;
+            color: var(--text-sub);
+        }
+        .legal-consent-text label { display: inline; }
+        .legal-link {
+            padding: 0;
+            border: none;
+            background: none;
+            font: inherit;
+            color: var(--link);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .legal-link:hover { opacity: 0.75; }
+
+        /* Подсветка, когда вход нажали без согласия. */
+        .legal-consent.nudge .legal-consent-text { color: var(--error); }
+
+        /* ─────────────── COOKIE NOTICE ─────────────── */
+        .cookie-notice {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin: 20px auto 0;
+            padding: 12px 18px;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-input);
+            background: var(--card-bg);
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-sub);
+        }
+        .cookie-notice[hidden] { display: none; }
+        .cookie-notice span { flex: 1 1 280px; }
+        .cookie-notice button {
+            flex: 0 0 auto;
+            padding: 8px 18px;
+            border: none;
+            border-radius: var(--radius-btn);
+            background: var(--primary);
+            color: var(--btn-text);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cookie-notice button:hover { background: var(--primary-2); }
+
+        /* ─────────────── LEGAL READER ─────────────── */
+        .legal-dialog { width: 640px; }
+        .legal-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 24px 14px;
+            border-bottom: 1px solid var(--divider);
+        }
+        .legal-tab {
+            padding: 8px 14px;
+            border: none;
+            border-radius: var(--radius-btn);
+            background: var(--theme-btn-bg);
+            color: var(--text-sub);
+            font: inherit;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: background var(--transition), color var(--transition);
+        }
+        .legal-tab:hover { background: var(--theme-btn-hover); }
+        .legal-tab.active { background: var(--primary); color: var(--btn-text); }
+        .legal-body {
+            padding: 18px 24px 24px;
+            overflow-y: auto;
+            color: var(--text-sub);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+        .legal-body h1, .legal-body h2, .legal-body h3 { color: var(--text); margin: 22px 0 8px; }
+        .legal-body h1 { font-size: 20px; }
+        .legal-body h2 { font-size: 17px; }
+        .legal-body h3 { font-size: 15px; }
+        .legal-body p, .legal-body li { margin: 8px 0; }
+        .legal-body ul, .legal-body ol { padding-left: 22px; }
+        .legal-body a { color: var(--link); }
+        .legal-body table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+        .legal-body th, .legal-body td {
+            border: 1px solid var(--divider);
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .legal-body .md-table-wrap { overflow-x: auto; }
 
         /* ─────────────── BUTTONS ─────────────── */
         .btn-primary {
@@ -1261,6 +1364,16 @@
                         <label for="tempLoginCheck">Временный вход (выход при закрытии вкладки)</label>
                     </div>
 
+                    <div class="checkbox-group legal-consent" id="legalConsentRow">
+                        <input type="checkbox" id="legalAcceptCheck">
+                        <p class="legal-consent-text">
+                            <label for="legalAcceptCheck">Я принимаю</label>
+                            <button type="button" class="legal-link" data-doc="terms">Пользовательское соглашение</button>
+                            и
+                            <button type="button" class="legal-link" data-doc="privacy">Политику конфиденциальности</button>
+                        </p>
+                    </div>
+
                     <button type="submit" class="btn-primary" id="signInBtn">
                         <span class="btn-label">Войти</span>
                         <span class="btn-arrow">→</span>
@@ -1323,8 +1436,30 @@
 
         </div><!-- /.login-row -->
 
+        <p class="cookie-notice" id="cookieNotice" hidden>
+            <span>Мы используем cookie только для работы клиента: выбранная тема и отметка о принятых документах. Аналитики и рекламы нет.</span>
+            <button type="button" id="cookieNoticeOk">Понятно</button>
+        </p>
+
         <p class="copyright">2026 BarkFluff. Никакие права не защищены.</p>
     </main>
+
+    <!-- ═══════════════ LEGAL READER ═══════════════ -->
+    <div class="reg-overlay" id="legalOverlay" role="dialog" aria-modal="true" aria-labelledby="legalTitle">
+        <div class="reg-dialog legal-dialog">
+            <div class="reg-header">
+                <div class="reg-head-text">
+                    <div class="reg-title" id="legalTitle">Пользовательское соглашение</div>
+                </div>
+                <button type="button" class="reg-close" id="legalClose" aria-label="Закрыть">×</button>
+            </div>
+            <div class="legal-tabs" role="tablist">
+                <button type="button" class="legal-tab active" data-doc="terms">Соглашение</button>
+                <button type="button" class="legal-tab" data-doc="privacy">Политика</button>
+            </div>
+            <div class="legal-body" id="legalBody"></div>
+        </div>
+    </div>
 
     <!-- ═══════════════ REGISTRATION MODAL ═══════════════ -->
     <div class="reg-overlay" id="registerOverlay" role="dialog" aria-modal="true" aria-label="Регистрация">
@@ -1513,7 +1648,9 @@
     <script src="/js/app/device.js"    onerror="void 0"></script>
     <script src="/js/app/tokens.js"    onerror="void 0"></script>
     <script src="/js/app/metadata.js"  onerror="void 0"></script>
+    <script src="/js/app/utils.js"     onerror="void 0"></script>
     <script src="/js/app/auth.js"      onerror="void 0"></script>
+    <script src="/js/app/legal.js"     onerror="void 0"></script>
     <script src="/js/app/fast-auth.js" onerror="void 0"></script>
     <script src="/js/app/login-page.js" onerror="void 0"></script>
     <script src="/js/app/register.js" onerror="void 0"></script>
