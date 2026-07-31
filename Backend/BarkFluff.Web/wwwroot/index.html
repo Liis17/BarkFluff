@@ -759,14 +759,19 @@
             transition: background var(--transition), border-color var(--transition), transform 0.18s;
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: var(--theme-btn-hover);
             border-color: var(--input-focus-border);
             transform: translateY(-1px);
         }
 
+        .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .btn-secondary .btn-arrow { font-size: 16px; transition: transform 0.2s; }
-        .btn-secondary:hover .btn-arrow { transform: translateX(3px); }
+        .btn-secondary:hover:not(:disabled) .btn-arrow { transform: translateX(3px); }
 
         /* ─────────────── SECTION TRANSITIONS ─────────────── */
         .section { display: block; }
