@@ -12,6 +12,9 @@ public sealed partial class SettingsChatFoldersViewModel(IUserPreferencesService
     [ObservableProperty] private bool _hasFolders;
 
     public ObservableCollection<SettingsChatFolderItem> Folders { get; } = [];
+    public bool IsEmpty => !HasFolders;
+
+    partial void OnHasFoldersChanged(bool value) => OnPropertyChanged(nameof(IsEmpty));
 
     public async Task LoadAsync()
     {

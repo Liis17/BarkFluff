@@ -27,7 +27,7 @@
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
                     <StackPanel Margin="16,20"
-                                Visibility="{x:Bind ViewModel.HasFolders, Mode=OneWay, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Text="{StaticResource Settings_ChatFolders_EmptyTitle}" />
                         <TextBlock Margin="0,4,0,0"
                                    Style="{StaticResource MutedText}"
@@ -40,24 +40,20 @@
                                 <controls:SettingsRow Description="{x:Bind Icon}" Glyph="&#xE8B7;" Header="{x:Bind Name}">
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <Button Click="OnMoveUpClick"
-                                                CommandParameter="{x:Bind}"
                                                 Style="{StaticResource SettingsRowButtonStyle}"
                                                 ToolTipService.ToolTip="{StaticResource Settings_ChatFolders_MoveUp}">
                                             <FontIcon Glyph="&#xE70E;" />
                                         </Button>
                                         <Button Click="OnMoveDownClick"
-                                                CommandParameter="{x:Bind}"
                                                 Style="{StaticResource SettingsRowButtonStyle}"
                                                 ToolTipService.ToolTip="{StaticResource Settings_ChatFolders_MoveDown}">
                                             <FontIcon Glyph="&#xE70D;" />
                                         </Button>
                                         <Button Click="OnEditClick"
-                                                CommandParameter="{x:Bind}"
                                                 Style="{StaticResource SettingsRowButtonStyle}">
                                             <FontIcon Glyph="&#xE70F;" />
                                         </Button>
                                         <Button Click="OnDeleteClick"
-                                                CommandParameter="{x:Bind}"
                                                 Style="{StaticResource SettingsRowButtonStyle}">
                                             <FontIcon Glyph="&#xE74D;" />
                                         </Button>
