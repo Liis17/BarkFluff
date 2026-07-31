@@ -49,6 +49,9 @@
     <Content Include="files\linkpreview.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="files\cookie-notice.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="html\barkfluff.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
