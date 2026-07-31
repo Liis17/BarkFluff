@@ -472,6 +472,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
 | `showIdsInProfile` | `testing_show_ids_in_profile` | ID-строки в `UserProfileActivity` и ChatId-карточка в `GroupInfoActivity`. В профиле пользователя показывает `UserId: <otherUserId>` и `ChatId: <chatId>`, в профиле группы — `ChatId: <chatId>`. Тап по строке копирует значение в `ClipboardManager` + Toast. |
+| `showServerAddressesInAbout` | `testing_show_server_addresses_in_about` | Карточка диагностических адресов в `AboutActivity`. Кнопка «Проверить пинг» вызывает `BeaconApi.GetServerInfo`, обновляет список endpoint'ов и показывает измеренное на клиенте RTT до [[Backend/Beacon\|Beacon]]. |
 | `secretChatsEnabled` | `testing_secret_chats_enabled` | `encryptedChatButton` в шапке `ChatsFragment` (иконка `ic_hood`, открывает `CreateEncryptedChatActivity`). По умолчанию кнопка `View.GONE`; видимость переоценивается в `onViewCreated` и `onResume`, чтобы переключение в TestingSettings подхватывалось при возврате. |
 
 Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.
