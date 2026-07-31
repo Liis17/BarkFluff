@@ -26,7 +26,12 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         "MessengerModalScrimBrush",
         "MessageMediaTimestampBrush",
         "MessageMediaTimestampTextBrush",
-        "ChatUnreadBadgeTextBrush"
+        "ChatUnreadBadgeTextBrush",
+        "MessageOwnBubbleBrush",
+        "MessageOwnBubbleTextBrush",
+        "MessageOtherBubbleBrush",
+        "MessageOtherBubbleTextBrush",
+        "PresenceOnlineBrush"
     ];
 
     private FrameworkElement? _root;
