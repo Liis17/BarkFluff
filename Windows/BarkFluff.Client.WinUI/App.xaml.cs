@@ -4,6 +4,7 @@ using BarkFluff.Client.Core.Infrastructure.Threading;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.WinUI.Infrastructure.Appearance;
 using BarkFluff.Client.WinUI.Infrastructure.Dialogs;
 using BarkFluff.Client.WinUI.Infrastructure.Localization;
@@ -180,6 +181,7 @@ public partial class App : Application
         builder.Services.AddSingleton<INodeConnectionService, NodeConnectionService>();
         builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<IOnboardingNavigationService, OnboardingNavigationService>();
+        builder.Services.AddSingleton<ISecuritySettingsService, SecuritySettingsService>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
@@ -191,6 +193,7 @@ public partial class App : Application
         builder.Services.AddSingleton<PasswordRecoveryViewModel>();
         builder.Services.AddSingleton<MessengerViewModel>();
         builder.Services.AddSingleton<ProfileViewModel>();
+        builder.Services.AddSingleton<SettingsSecurityViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();
