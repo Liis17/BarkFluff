@@ -107,6 +107,26 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Стирает всё, что относится к прошедшей сессии. Нужен при выходе из аккаунта: страница
+    /// мессенджера закэширована, а сама ViewModel — синглтон, поэтому без сброса следующий
+    /// вошедший увидел бы чужие чаты и открытую переписку. Полагаться на перезагрузку нельзя:
+    /// она очищает список только при успешном ответе сервера и не трогает открытый чат.
+    /// </summary>
+    public void Reset()
+    {
+        CancelPendingReadBatch();
+        _messageLoadVersion++;
+        SelectedChat = null;
+        Chats.Clear();
+        VisibleChats.Clear();
+        Messages.Clear();
+        DraftText = string.Empty;
+        SearchText = string.Empty;
+        ScrollRequest = null;
+        CancelPrivateUnlock();
+    }
+
     partial void OnSearchTextChanged(string value) => ApplyChatFilter();
 
     /// <summary>
