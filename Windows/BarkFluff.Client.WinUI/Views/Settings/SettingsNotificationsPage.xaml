@@ -15,7 +15,7 @@
                 <controls:SettingsRow Glyph="&#xE7ED;"
                                       Description="{StaticResource Settings_Notifications_ReceivePush}"
                                       Header="{StaticResource Settings_Notifications_Title}">
-                    <ToggleSwitch IsEnabled="False" OffContent="" OnContent="" />
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.IsEnabled, Mode=OneWay}" Toggled="OnToggled" OffContent="" OnContent="" />
                 </controls:SettingsRow>
             </Border>
 
@@ -23,6 +23,7 @@
                      IsOpen="True"
                      Message="{StaticResource Settings_Notifications_Hint}"
                      Severity="Informational" />
+            <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
         </StackPanel>
     </ScrollViewer>
 </Page>
