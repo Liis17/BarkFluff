@@ -1,5 +1,6 @@
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels.Settings;
+using BarkFluff.Client.Core.Models;
 using BarkFluff.Proto.Users;
 
 namespace BarkFluff.Client.WinUI.Tests;
@@ -50,5 +51,8 @@ public sealed class SettingsPrivacyViewModelTests
             LastSaved = settings;
             return Task.FromResult(SaveError);
         }
+
+        public Task<(string? ErrorKey, UserStorageInfo? Storage)> GetUserStorageInfoAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(string?, UserStorageInfo?)>((null, null));
     }
 }
