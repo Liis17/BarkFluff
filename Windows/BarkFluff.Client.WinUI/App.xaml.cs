@@ -185,6 +185,7 @@ public partial class App : Application
         builder.Services.AddSingleton<IAccountSettingsService, AccountSettingsService>();
         builder.Services.AddSingleton<IUserPreferencesService, UserPreferencesService>();
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
+        builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
@@ -202,6 +203,7 @@ public partial class App : Application
         builder.Services.AddSingleton<SettingsNotificationsViewModel>();
         builder.Services.AddSingleton<SettingsDevicesViewModel>();
         builder.Services.AddSingleton<SettingsStorageViewModel>();
+        builder.Services.AddSingleton<SettingsPersonalizationViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();
