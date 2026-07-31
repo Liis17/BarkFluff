@@ -413,3 +413,7 @@ Android/Barkfluff.Client.Android/barkfluff-release.jks
 *.jks
 default.profraw
 .nodeterm/project.json
+
+# Копии legal-документов для веб-клиента: их кладёт таргет CopyLegalDocs,
+# оригинал — Backend/Barkfluff.WebServer/html/legal
+/Backend/BarkFluff.Web/wwwroot/legal/
