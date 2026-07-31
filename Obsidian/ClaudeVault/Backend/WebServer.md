@@ -74,10 +74,34 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 - `html/selfhosted.html` — инструкция по развёртыванию своей ноды, см. ниже
 - `html/legal/*.html` — юридические страницы **для сайта** (RU+EN в одном файле через `<article data-lang>`, переключатель на клиенте)
 - `html/legal/*.md` — те же документы **для клиентов**, см. ниже
+- `files/cookie-notice.js` — баннер об использовании cookie, см. ниже
 - `html/new/` — **WIP** редизайн главной страницы (Barkfluff Redesign.html, profile.html, стили)
 - `files/install.ps1`, `files/installbeta.ps1` — скрипты установки Windows
 - `files/install.sh`, `files/installbeta.sh` — скрипты установки Linux
 - `files/Barkfluff.Updater.CLI.exe` — инсталлятор (не в git)
+
+## Cookie-уведомление (`files/cookie-notice.js`)
+
+Информационный баннер внизу страницы: одна кнопка «Понятно», отказа нет. Сайт ставит только cookie, без которых не работают чат поддержки и переход в веб-клиент; аналитики и рекламы нет, поэтому категорий и тумблеров тоже нет.
+
+Общего layout у `html/` не существует — каждая страница самостоятельна. Поэтому баннер сделан **одним внешним файлом** и подключается строкой `<script src="/assets/cookie-notice.js" defer></script>` перед `</body>`. Раздаётся через whitelist `AssetsController._allowedFiles` (там же прописан `text/javascript`), в `.csproj` добавлен `<Content Include="files\cookie-notice.js">`.
+
+⚠️ Новая страница сайта → добавить эту строку вручную. Сейчас подключено в 8 файлах: `barkfluff.html`, `userpage.html`, `selfhosted.html`, `UniqueUsers/paws.page.html`, все четыре `legal/*.html`. Каталог `html/new/` (WIP-редизайн) не подключён.
+
+- Локализация RU/EN — собственный словарь `S` внутри скрипта, язык берётся из `document.documentElement.lang` / `localStorage.bf_lang` (та же схема, что у `barkfluff.html` и `legal/*.html`). Свой обработчик на `#langToggle`, потому что `applyLang` главной страницы работает по фиксированному списку id.
+- Стили инжектит сам скрипт, цвета через `var(--panel, var(--bg-2, …))` и т.п. — наборы CSS-переменных у главной страницы и legal-страниц разные.
+- По «Понятно» пишется cookie `bf_cookie_notice=1` (`path=/`, 1 год, `SameSite=Lax`), на `*.barkfluff.com` — ещё и `domain=.barkfluff.com`, чтобы баннер не всплыл повторно на `web.barkfluff.com`. Веб-клиент использует **то же имя и значение** (см. [[Backend/Web]]).
+- Версия уведомления — константа `VERSION` в скрипте. Изменился состав cookie → бампнуть, и баннер покажется заново.
+
+## Cookie сайта
+
+| Cookie | Где ставится | Срок |
+|---|---|---|
+| `barkfluff_chat_id` | `barkfluff.html`, сессия чата поддержки | 1 год |
+| `bf_open_chat` | `userpage.html` / `paws.page.html`, переход в веб-клиент | 300 c |
+| `bf_cookie_notice` | `files/cookie-notice.js` | 1 год |
+
+Все три перечислены в разделе «10. Cookies и локальное хранение» Политики конфиденциальности — вместе с cookie веб-клиента (`bf_theme`, `bf_legal_accepted`). При добавлении новой cookie раздел надо обновить **и** в `privacy-policy.html`, **и** во всех пяти `PRIVACY_POLICY.*.md`.
 
 ## Юридические документы — два формата
 
@@ -86,7 +110,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 | Формат | Кто использует | Локализация |
 |--------|----------------|-------------|
 | `*.html` (kebab-case: `privacy-policy.html`) | сайт через `LegalPageService` | RU+EN в одном файле, `<article data-lang>` + `localStorage.bf_lang` |
-| `*.md` (`PRIVACY_POLICY.<lang>.md`) | мобильные клиенты, попадают в сборку | отдельный файл на локаль |
+| `*.md` (`PRIVACY_POLICY.<lang>.md`) | мобильные клиенты и веб-клиент, попадают в сборку | отдельный файл на локаль |
 
 Markdown-версии:
 
@@ -99,7 +123,7 @@ Markdown-версии:
 
 ⚠️ При правке документа надо обновить **и** `.html` (сайт), **и** соответствующие `.md` (клиенты) — автоматической синхронизации между форматами нет.
 
-Android-клиент забирает `.md` на этапе сборки gradle-таском `copyLegalDocs`, см. [[Клиенты/Android]].
+Android-клиент забирает `.md` на этапе сборки gradle-таском `copyLegalDocs`, см. [[Клиенты/Android]]. Веб-клиент — MSBuild-таргетом `CopyLegalDocs` в `BarkFluff.Web.csproj`, см. [[Backend/Web]]. Оба читают отсюда, копий-источников нет.
 
 ### Модель ответственности (редакция от 29.07.2026)
 

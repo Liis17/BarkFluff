@@ -55,6 +55,7 @@ docker-compose -f docker-compose-dev.yml up web
 - `login-page.js` — форма логина, OTP, проверка сессии, запуск/остановка QR-сессии при смене секции
 - `fast-auth.js` — `BF.fastAuth`: QR fast-auth логин (анонимный `GenerateFastAuthToken` + server-streaming `SubscribeFastAuthResult`), автоперезапуск при EXPIRED/REJECTED, отсчёт TTL 5 минут
 - `register.js` — `BF.register`: модальный мастер регистрации из 9 шагов (кнопка `#toRegisterBtn`). См. раздел [[#Регистрация по шагам (register.js)]].
+- `legal.js` — `BF.legal`: согласие с документами и cookie-уведомление. См. раздел [[#Согласие с документами (legal.js)]].
 
 **Мессенджер** (messenger.html):
 - `clients.js` — gRPC-Web клиенты, authCall с auto-refresh
@@ -79,7 +80,7 @@ docker-compose -f docker-compose-dev.yml up web
 **Proto bundle** (`wwwroot/js/proto/barkfluff.bundle.js`):
 Генерируется через `scripts/generate-proto.ps1` (или `.sh`). Требует: protoc, protoc-gen-grpc-web, Node.js (esbuild).
 
-> `wwwroot/` содержит только `index.html`, `messenger.html`, `favicon.ico` и каталог `js/`. Отдельной мобильной страницы (`mobile.html`) нет — мобильный режим реализуется адаптивной вёрсткой основных страниц.
+> `wwwroot/` содержит только `index.html`, `messenger.html`, `favicon.ico`, каталог `js/` и генерируемый при сборке `legal/` (см. [[#Согласие с документами (legal.js)]]). Отдельной мобильной страницы (`mobile.html`) нет — мобильный режим реализуется адаптивной вёрсткой основных страниц.
 
 ## Аутентификация (gRPC-Web)
 
@@ -220,6 +221,36 @@ RPC — `MessagesApi.PinMessage/UnpinMessage/ListPinnedMessages/UnpinAll`, ст�
 - **Навигация**: кнопка «Назад» только на шагах 2–3 (после создания аккаунта возврат запрещён); «Пропустить» — на 6/7/8; прогресс-бар `#regProgressBar`.
 - **Graceful-фолбэк**: ошибки сети при `CheckExist*` и опциональных шагах (аватар/био) не блокируют регистрацию — сервер валидирует повторно при `CreateAccount`.
 - **Resend OTP**: кулдаун 60с, повторно вызывает `CreateAccount`.
+
+## Согласие с документами (`legal.js`)
+
+Блок на странице входа: чекбокс «Я принимаю Пользовательское соглашение и Политику конфиденциальности» + информационная плашка про cookie. Повторяет схему Android (`LegalConsentBottomSheet` + `GlobalParam.acceptedLegalRevision`, см. [[Клиенты/Android]]): один чекбокс на **оба** документа, и хранится **редакция**, а не флаг.
+
+**Редакция** — строка `**Последнее обновление:** …` из шапки `TERMS_OF_SERVICE.ru.md` (сейчас `29 июля 2026 г.`). Парсер повторяет `LegalDocsRepository.revision`: последняя строка вида `**Метка:** значение` в первых 8 строках, всегда из русского оригинала. Обновилась дата в документе — cookie перестаёт совпадать, согласие спрашивается заново. Хардкодить дату нельзя.
+
+**Что блокируется до согласия** (`login-page.js`):
+
+| Путь входа | Как заблокирован |
+|---|---|
+| Форма входа | `#signInBtn.disabled`, submit-хендлер выходит раньше и подсвечивает строку (`.legal-consent.nudge`) |
+| Регистрация | `#toRegisterBtn.disabled` — мастер не открывается |
+| QR fast-auth | `BF.fastAuth.start()` не вызывается, `.qr-card` получает класс `gated`, статус — «Примите документы, чтобы войти по QR» |
+
+QR блокируется **обязательно**: это полноценный вход, и без этого согласие обходится в один клик. `startFastAuth()` — единственная точка запуска, `showSection('login')` и bootstrap идут через неё.
+
+**Хранение — два уровня:**
+- cookie `bf_legal_accepted=<редакция>` (`path=/`, 1 год, `SameSite=Lax`) — это и есть гейт до входа;
+- `UsersApi.AcceptLegalConsent(revision)` — запись в профиль (`User.AcceptedLegalRevision` / `AcceptedLegalAt`, см. [[Backend/Users]]). Вызывается **после** появления токена: до входа RPC вызвать нечем. Точки вызова — `login-page.js` перед редиректом на `/messenger` и `register.js` сразу после `BF.tokens.save` на шаге 4. `flushConsent()` возвращает промис, который резолвится не дольше `FLUSH_TIMEOUT` (1500 мс), чтобы медленная сеть не задерживала вход.
+
+**Модалка чтения** `#legalOverlay` — переиспользует `.reg-overlay` / `.reg-dialog` / `.reg-header`, свои классы только `.legal-tabs` / `.legal-tab` / `.legal-body` (`.legal-dialog` расширяет ширину до 640px). Вкладки «Соглашение» / «Политика», открывается кликом по названию документа в строке согласия. Рендер — существующий `BF.utils.renderMarkdown`, из-за чего `utils.js` подключён и в `index.html` (раньше только в `messenger.html`).
+
+**Откуда берётся текст.** `web.barkfluff.com` и `barkfluff.com` — разные origin, `fetch` за документом упёрся бы в CORS. Поэтому MSBuild-таргет `CopyLegalDocs` (`BarkFluff.Web.csproj`, `BeforeTargets="AssignTargetPaths"`) копирует `..\Barkfluff.WebServer\html\legal\{TERMS_OF_SERVICE,PRIVACY_POLICY}.*.md` в `wwwroot/legal/`. Зеркало gradle-таска `copyLegalDocs` у Android; источник по-прежнему один — [[Backend/WebServer]]. Копии сгенерированные, поэтому `wwwroot/legal/` в `.gitignore`, а каталог исключён из дефолтных Content-глобов SDK (`<Content Remove="wwwroot\legal\**" />`), иначе на второй сборке файлы попали бы в Content дважды.
+
+**Устойчивость.** Если документ не загрузился, `revision` остаётся пустой и `isAccepted()` считает достаточным сам факт cookie — недоступный файл не должен запирать вход. Гейт применяется дважды: сразу по cookie (вернувшийся пользователь не видит мигания заблокированной формы) и повторно после `init()`, когда редакция прочитана.
+
+**Cookie-уведомление** — плашка `#cookieNotice` с одной кнопкой «Понятно». Имя и значение cookie (`bf_cookie_notice=1`) совпадают с баннером сайта, который ставит её на `.barkfluff.com`, — принявшему на `barkfluff.com` здесь ничего не покажется.
+
+**Не сделано намеренно:** Android / WinUI / macOS / iOS `AcceptLegalConsent` не отправляют — у них согласие остаётся локальным. Серверного гейта (отказ в `Auth` без принятой редакции) нет: это поменяло бы поведение сразу всех клиентов.
 
 ## QR Fast-Auth (`fast-auth.js`)
 

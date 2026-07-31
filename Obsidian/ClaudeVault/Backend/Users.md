@@ -101,6 +101,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                                      |
 | `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                                      |
+| `AcceptLegalConsent(revision)`           | Зафиксировать принятие соглашения и политики  | Пишет `User.AcceptedLegalRevision` + `AcceptedLegalAt`. Пустая `revision` не записывается (warning в лог). См. [[#Согласие с документами]] |
 | `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                                      |
 | `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                                |
 | `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера                 |
@@ -191,6 +192,23 @@ FRIENDS трактуется как NONE до появления сервиса 
 - Proto `deny_federated_dm` в `PrivacySettings` (7) появился ещё в 0.4; маппинг `PrivacyMapping`
   (`ToGrpc`/`ToDomain`) и `PrivacyStorage.Update` дополнены этапом 2.5.
 
+## Согласие с документами
+
+Поля прямо в `User` (миграция `20260731090000_AddLegalConsent`, обе колонки nullable — у существующих пользователей согласие не фиксировалось):
+
+| Поле | Тип | Смысл |
+|---|---|---|
+| `AcceptedLegalRevision` | `string?` | Редакция принятых Пользовательского соглашения и Политики конфиденциальности — дата «Последнее обновление» из шапки документа (`29 июля 2026 г.`). `null` = согласия не было |
+| `AcceptedLegalAt` | `DateTime?` | Момент фиксации (UTC) |
+
+Хранится **редакция, а не флаг** — как `GlobalParam.acceptedLegalRevision` в Android: обновился документ, старая редакция перестала совпадать, согласие запрашивается заново.
+
+`AcceptLegalConsent` вызывается клиентом **после** аутентификации: до входа токена нет, поэтому RPC — не гейт, а фиксация факта. Сам гейт клиентский (cookie `bf_legal_accepted`, см. [[Backend/Web]]). Сервер вход без согласия **не** отклоняет — это поменяло бы поведение всех клиентов сразу.
+
+Сейчас RPC зовёт только веб-клиент. Android / WinUI / macOS / iOS хранят согласие локально и на сервер его не шлют.
+
+Feature: `Features/Legal/AcceptLegalConsent/` (по образцу `Features/Privacy/UpdatePrivacySettings/`), запись — `UsersStorage.AcceptLegalConsent`.
+
 ## Персонализация
 
 `UserPersonalization` (1:1 с `User`). Поля:
@@ -266,6 +284,7 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `bot_users_create_requests` | CreateBotUser (service-to-service) |
 | `bot_users_delete_requests` | DeleteBotUser (service-to-service) |
 | `profile_updates_server` | UpdateProfileServer (service-to-service) |
+| `legal_consents_accepted` | AcceptLegalConsent |
 
 ## Конфигурация
 
