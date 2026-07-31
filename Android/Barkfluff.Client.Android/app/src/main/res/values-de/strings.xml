@@ -525,12 +525,18 @@
     <string name="about_device">Gerät</string>
     <string name="about_os">Betriebssystem</string>
     <string name="about_microservices">Server-Microservices</string>
+    <string name="about_ping_server">Ping prüfen</string>
+    <string name="about_ping_checking">Beacon-Verbindung wird geprüft…</string>
+    <string name="about_ping_result">Beacon-Antwort: %1$d ms</string>
+    <string name="about_ping_failed">Beacon hat nicht geantwortet</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Test</string>
     <string name="testing_section_params">Parameter</string>
     <string name="testing_show_ids">IDs im Profil anzeigen</string>
     <string name="testing_show_ids_subtitle">UserId und ChatId unter dem Online-Status</string>
+    <string name="testing_show_server_addresses">Microservice-Adressen anzeigen</string>
+    <string name="testing_show_server_addresses_subtitle">Auf dem Über-Bildschirm</string>
     <string name="testing_secret_chats">Versteckte Chats</string>
     <string name="testing_secret_chats_subtitle">Schaltfläche zum Erstellen privater und geheimer Chats</string>
 

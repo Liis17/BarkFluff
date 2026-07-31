@@ -609,6 +609,10 @@
     <string name="about_device">Устройство</string>
     <string name="about_os">Операционная система</string>
     <string name="about_microservices">Микросервисы сервера</string>
+    <string name="about_ping_server">Проверить пинг</string>
+    <string name="about_ping_checking">Проверяем связь с Beacon…</string>
+    <string name="about_ping_result">Ответ Beacon: %1$d мс</string>
+    <string name="about_ping_failed">Beacon не ответил</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Тестирование</string>
@@ -616,6 +620,8 @@
     <string name="testing_experimental_hint">Экспериментальные функции. Могут работать нестабильно.</string>
     <string name="testing_show_ids">Показывать ID в профиле</string>
     <string name="testing_show_ids_subtitle">UserId и ChatId под статусом онлайна</string>
+    <string name="testing_show_server_addresses">Показывать адреса микросервисов</string>
+    <string name="testing_show_server_addresses_subtitle">В разделе «О приложении»</string>
     <string name="testing_secret_chats">Скрытые чаты</string>
     <string name="testing_secret_chats_subtitle">Отложенный экспериментальный сценарий секретных чатов</string>
     <string name="testing_private_chats">Приватные чаты</string>

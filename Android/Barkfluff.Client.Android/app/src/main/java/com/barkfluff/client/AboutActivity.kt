@@ -1,6 +1,8 @@
 package com.barkfluff.client
 
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -11,6 +13,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import com.google.android.material.divider.MaterialDivider
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class AboutActivity : AppCompatActivity() {
 
@@ -28,8 +31,7 @@ class AboutActivity : AppCompatActivity() {
         setupToolbar()
         fillAppInfo()
         fillDeviceInfo()
-        fillServerInfo()
-        refreshServerInfo()
+        setupServerInfo()
     }
 
     private fun setupToolbar() {
@@ -117,11 +119,35 @@ class AboutActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshServerInfo() {
+    private fun setupServerInfo() {
+        val showServerAddresses = globalParam.showServerAddressesInAbout
+        binding.serverInfoCard.visibility = if (showServerAddresses) View.VISIBLE else View.GONE
+        if (!showServerAddresses) {
+            return
+        }
+
+        fillServerInfo()
+        binding.pingServerButton.setOnClickListener { pingServer() }
+    }
+
+    private fun pingServer() {
+        binding.pingServerButton.isEnabled = false
+        binding.textPingResult.visibility = View.VISIBLE
+        binding.textPingResult.text = getString(R.string.about_ping_checking)
+
         lifecycleScope.launch {
-            if (refreshServerInfoFromBeacon(grpcManager, globalParam)) {
+            val startedAt = SystemClock.elapsedRealtime()
+            val serverInfoUpdated = withTimeoutOrNull(3_000L) {
+                refreshServerInfoFromBeacon(grpcManager, globalParam)
+            } == true
+            if (serverInfoUpdated) {
                 fillServerInfo()
+                val responseTimeMs = SystemClock.elapsedRealtime() - startedAt
+                binding.textPingResult.text = getString(R.string.about_ping_result, responseTimeMs)
+            } else {
+                binding.textPingResult.text = getString(R.string.about_ping_failed)
             }
+            binding.pingServerButton.isEnabled = true
         }
     }
 
