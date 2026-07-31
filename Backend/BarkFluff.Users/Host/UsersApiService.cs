@@ -22,6 +22,7 @@ using BarkFluff.Users.Features.Devices.RenameDevice;
 using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 using BarkFluff.Users.Features.GetUser;
+using BarkFluff.Users.Features.Legal.AcceptLegalConsent;
 using BarkFluff.Users.Features.Personalization.GetPersonalization;
 using BarkFluff.Users.Features.Personalization.GetProfilePoster;
 using BarkFluff.Users.Features.Personalization.SetProfilePoster;
@@ -299,6 +300,13 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("privacy_updates");
         await _mediator.Send(new UpdatePrivacySettingsCommand { Settings = request.Settings });
         return new UpdatePrivacySettingsResponse();
+    }
+
+    public override async Task<AcceptLegalConsentResponse> AcceptLegalConsent(AcceptLegalConsentRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("legal_consents_accepted");
+        await _mediator.Send(new AcceptLegalConsentCommand { Revision = request.Revision });
+        return new AcceptLegalConsentResponse();
     }
 
     public override Task<GetPersonalizationResponse> GetPersonalization(GetPersonalizationRequest request, ServerCallContext context)

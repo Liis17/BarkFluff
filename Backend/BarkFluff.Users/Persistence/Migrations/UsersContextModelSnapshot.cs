@@ -271,6 +271,12 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<DateTime?>("AcceptedLegalAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcceptedLegalRevision")
+                        .HasColumnType("text");
+
                     b.Property<string>("Bio")
                         .HasColumnType("text");
 

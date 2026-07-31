@@ -67,6 +67,9 @@ service UsersApi {
   // Обновить настройки приватности текущего пользователя
   rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
 
+  // Зафиксировать принятие Пользовательского соглашения и Политики конфиденциальности
+  rpc AcceptLegalConsent(AcceptLegalConsentRequest) returns(AcceptLegalConsentResponse);
+
   // Получить персонализацию текущего пользователя
   rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
 
@@ -815,6 +818,12 @@ message UpdatePrivacySettingsRequest {
 }
 
 message UpdatePrivacySettingsResponse { }
+
+message AcceptLegalConsentRequest {
+  string revision = 1; // Редакция документов — дата «Последнее обновление» из шапки соглашения
+}
+
+message AcceptLegalConsentResponse { }
 
 message GetUserPrivacyRequest {
   int64 user_id = 1;
