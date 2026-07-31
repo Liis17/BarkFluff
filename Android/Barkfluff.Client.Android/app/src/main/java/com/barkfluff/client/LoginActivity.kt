@@ -3,6 +3,7 @@ package com.barkfluff.client
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputFilter
 import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
@@ -135,6 +136,18 @@ class LoginActivity : AppCompatActivity() {
         for (i in otpBoxes.indices) {
             val box = otpBoxes[i]
 
+            if (i == 0) {
+                box.filters = arrayOf(InputFilter { source, start, end, _, _, _ ->
+                    val code = source.subSequence(start, end).toString()
+                    if (code.length == otpBoxes.size && code.all(Char::isDigit)) {
+                        box.post { fillOtpBoxes(code) }
+                        ""
+                    } else {
+                        null
+                    }
+                }) + box.filters
+            }
+
             box.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -165,6 +178,13 @@ class LoginActivity : AppCompatActivity() {
                 false
             }
         }
+    }
+
+    private fun fillOtpBoxes(code: String) {
+        otpBoxes.forEachIndexed { index, box ->
+            box.setText(code[index].toString())
+        }
+        otpBoxes.last().requestFocus()
     }
 
     private fun getOtpCode(): String {
