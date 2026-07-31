@@ -321,7 +321,7 @@ public sealed partial class MessengerViewModel
         // Приватные чаты шифруются отдельным методом отправки, пересылка в них не поддерживается.
         foreach (var chat in Chats.Where(chat => !chat.IsPrivate))
         {
-            ForwardTargets.Add(new ForwardTargetViewModel(chat.Id, chat.Title, chat.Initials));
+            ForwardTargets.Add(new ForwardTargetViewModel(this, chat.Id, chat.Title, chat.Initials));
         }
 
         NotifyForwardSelectionChanged();
@@ -529,8 +529,10 @@ public sealed partial class PinnedPreviewViewModel(long messageId, string author
 /// <summary>
 /// Чат в списке получателей пересылки.
 /// </summary>
-public sealed partial class ForwardTargetViewModel(string chatId, string title, string initials) : ObservableObject
+public sealed partial class ForwardTargetViewModel(MessengerViewModel owner, string chatId, string title, string initials) : ObservableObject
 {
+    /// <summary>Команда переключения живёт на владельце: в WinUI нет <c>RelativeSource AncestorType</c>.</summary>
+    public MessengerViewModel Owner { get; } = owner;
     public string ChatId { get; } = chatId;
     public string Title { get; } = title;
     public string Initials { get; } = initials;
