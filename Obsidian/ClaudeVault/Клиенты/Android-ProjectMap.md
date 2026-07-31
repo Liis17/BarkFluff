@@ -6,7 +6,7 @@
 
 > Версия: 2026-04-11 (актуализирована частично 2026-07-04). Этот файл предназначен для агентов/AI-сессий — позволяет понять архитектуру без полного перечитывания исходников.
 
-> ⚠️ **Устарело относительно V2:** после появления модуля `Android/core/` (общий для V1 `app` и V2 `Barkfluff.ClientV2.Android`) пакеты `grpc/`, `data/`, `repository/`, часть `utils/`, `calls/` (сетевой слой) и `crypto/` (примитивы) физически переехали из `app/src/main/java/com/barkfluff/client/` в `core/src/main/java/com/barkfluff/client/`. Этот файл всё ещё описывает их как часть `app` — по сути (классы, методы) описание верно, но путь неточен. Точное распределение по модулям файл-за-файлом → [[Android-FileIndex]]. Архитектура `:core`/V2 → [[Android-V2]]. Также не описаны новые пакеты `editor/`, `send/`, `share/`, `widget/`, `dialog/` и полный состав `calls/` (звонки на LiveKit) — см. [[Android-FileIndex]].
+> ⚠️ **Устарело относительно модульной структуры:** после появления модуля `Android/core/` пакеты `grpc/`, `data/`, `repository/`, часть `utils/`, `calls/` (сетевой слой) и `crypto/` (примитивы) физически переехали из `app/src/main/java/com/barkfluff/client/` в `core/src/main/java/com/barkfluff/client/`. Этот файл всё ещё описывает их как часть `app` — по сути (классы, методы) описание верно, но путь неточен. Точное распределение по модулям файл-за-файлом → [[Android-FileIndex]]. Архитектура `:core` → [[Android]]. Также не описаны новые пакеты `editor/`, `send/`, `share/`, `widget/`, `dialog/` и полный состав `calls/` (звонки на LiveKit) — см. [[Android-FileIndex]].
 
 ---
 

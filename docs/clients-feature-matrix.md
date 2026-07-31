@@ -12,7 +12,6 @@
 | Клиент | Расположение | Документация |
 |---|---|---|
 | Android V1 | `Android/Barkfluff.Client.Android` (`:app-v1` + `:core`) | `Obsidian/ClaudeVault/Клиенты/Android.md` |
-| Android V2 | `Android/Barkfluff.ClientV2.Android` (`:app-v2`) | `Клиенты/Android-V2.md` |
 | iOS | `iOS/Barkfluff` | `Клиенты/iOS.md` |
 | macOS | `Mac/Barkfluff` | `Клиенты/macOS.md` |
 | Web | `Backend/BarkFluff.Web/wwwroot` (vanilla JS) | `Клиенты/Web.md` |
@@ -29,7 +28,6 @@
 - **Web** — vanilla-JS SPA, единственный с полноценными звонками «из коробки» + приватные чаты.
 - **WPF V1** — **заморожен**, развитие не ведётся. Используется как источник UX-решений, не как код-база.
 - **WPF V2** — текущая разработка (эта задача).
-- **Android V2** — заброшенный тестовый Compose-проект, в матрицу не включён (см. `Клиенты/Android-V2.md`).
 - **Linux Qt** — данные ограничены: документация архитектурная, не пофункциональная. Ячейки отмечены `?`, где по документации нельзя утверждать.
 
 ## Легенда

@@ -29,13 +29,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "BarkFluff"
 
-// Общий модуль: не-UI слой (gRPC, репозитории, крипто, proto), переиспользуется V1 и V2.
+// Общий модуль: не-UI слой (gRPC, репозитории, крипто, proto).
 include(":core")
 
 // V1 (Views/XML) — физически остаётся в своей папке.
 include(":app-v1")
 project(":app-v1").projectDir = file("Barkfluff.Client.Android/app")
-
-// V2 (Jetpack Compose, Material 3 Expressive) — физически остаётся в своей папке.
-include(":app-v2")
-project(":app-v2").projectDir = file("Barkfluff.ClientV2.Android/app")
