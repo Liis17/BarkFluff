@@ -183,6 +183,7 @@ public partial class App : Application
         builder.Services.AddSingleton<IOnboardingNavigationService, OnboardingNavigationService>();
         builder.Services.AddSingleton<ISecuritySettingsService, SecuritySettingsService>();
         builder.Services.AddSingleton<IAccountSettingsService, AccountSettingsService>();
+        builder.Services.AddSingleton<IUserPreferencesService, UserPreferencesService>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
@@ -196,6 +197,7 @@ public partial class App : Application
         builder.Services.AddSingleton<ProfileViewModel>();
         builder.Services.AddSingleton<SettingsSecurityViewModel>();
         builder.Services.AddSingleton<SettingsAccountViewModel>();
+        builder.Services.AddSingleton<SettingsPrivacyViewModel>();
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();
