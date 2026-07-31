@@ -58,6 +58,12 @@ public sealed class DpapiPrivateChatKeyStore : IPrivateChatKeyStore
         await _dataStore.DeleteProtectedPrivateChatKeyAsync(scope, cancellationToken);
     }
 
+    public async Task ForgetAllAsync(CancellationToken cancellationToken = default)
+    {
+        _memoryCache.Clear();
+        await _dataStore.DeleteAllProtectedPrivateChatKeysAsync(cancellationToken);
+    }
+
     private static string CreateScope(string nodeAddress, long userId, string chatId) =>
         $"{nodeAddress.Trim().TrimEnd('/').ToUpperInvariant()}:{userId}:{chatId}";
 

@@ -1,8 +1,7 @@
 <Page
     x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsAccountPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
         <StackPanel Margin="32,24,32,40"
                     MaxWidth="720"
@@ -11,50 +10,66 @@
                        Style="{StaticResource OnboardingTitle}"
                        Text="{StaticResource Settings_Account_Title}" />
 
+            <ProgressRing Margin="0,0,0,16"
+                          HorizontalAlignment="Left"
+                          IsActive="True"
+                          Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <TextBlock Margin="0,0,0,16"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Account_SectionProfile}" />
             <Border Style="{StaticResource SettingsGroupCard}">
-                <StackPanel>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow Glyph="&#xE91B;" Header="{StaticResource Settings_Account_ChangePhoto}">
-                            <FontIcon FontSize="12"
-                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                      Glyph="&#xE76C;" />
-                        </controls:SettingsRow>
-                    </Button>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow Header="{StaticResource Settings_Account_FirstName}">
-                            <FontIcon FontSize="12"
-                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                      Glyph="&#xE76C;" />
-                        </controls:SettingsRow>
-                    </Button>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow Header="{StaticResource Settings_Account_LastName}">
-                            <FontIcon FontSize="12"
-                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                      Glyph="&#xE76C;" />
-                        </controls:SettingsRow>
-                    </Button>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow Header="{StaticResource Settings_Account_Username}">
-                            <FontIcon FontSize="12"
-                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                      Glyph="&#xE76C;" />
-                        </controls:SettingsRow>
-                    </Button>
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow Header="{StaticResource Settings_Account_Bio}">
-                            <FontIcon FontSize="12"
-                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                      Glyph="&#xE76C;" />
-                        </controls:SettingsRow>
-                    </Button>
+                <StackPanel Margin="16,16,16,20" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                        <PersonPicture Width="96"
+                                       Height="96"
+                                       DisplayName="{x:Bind ViewModel.FirstName, Mode=OneWay}"
+                                       ProfilePicture="{x:Bind ViewModel.AvatarUrl, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" />
+                        <Button VerticalAlignment="Center"
+                                Click="OnChangePhotoClick"
+                                Content="{StaticResource Settings_Account_ChangePhoto}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <TextBox Header="{StaticResource Settings_Account_FirstName}" Text="{x:Bind ViewModel.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Header="{StaticResource Settings_Account_LastName}" Text="{x:Bind ViewModel.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Command="{x:Bind ViewModel.SaveNameCommand}" Content="{StaticResource Common_Save}" />
+
+                    <TextBox Header="{StaticResource Settings_Account_Username}" Text="{x:Bind ViewModel.Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Command="{x:Bind ViewModel.SaveUsernameCommand}" Content="{StaticResource Common_Save}" />
+
+                    <TextBox AcceptsReturn="True"
+                             Header="{StaticResource Settings_Account_Bio}"
+                             MinHeight="80"
+                             Text="{x:Bind ViewModel.Bio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             TextWrapping="Wrap" />
+                    <Button Command="{x:Bind ViewModel.SaveBioCommand}" Content="{StaticResource Common_Save}" />
                 </StackPanel>
             </Border>
 
-            <Button Content="{StaticResource Settings_Account_Logout}"
-                    IsEnabled="False"
-                    Style="{StaticResource DangerButton}" />
+            <Button Command="{x:Bind ViewModel.RequestLogoutCommand}"
+                    Content="{StaticResource Settings_Account_Logout}"
+                    Style="{StaticResource DangerButton}"
+                    Visibility="{x:Bind ViewModel.IsLogoutIdle, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <Border Style="{StaticResource SettingsGroupCard}" Visibility="{x:Bind ViewModel.IsLogoutConfirmVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="16,16,16,20" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Settings_Account_LogoutConfirmTitle}" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Account_LogoutConfirmText}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{x:Bind ViewModel.ConfirmLogoutCommand}"
+                                Content="{StaticResource Settings_Account_LogoutConfirm}"
+                                Style="{StaticResource DangerButton}" />
+                        <Button Command="{x:Bind ViewModel.CancelLogoutCommand}"
+                                Content="{StaticResource Common_Cancel}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>
