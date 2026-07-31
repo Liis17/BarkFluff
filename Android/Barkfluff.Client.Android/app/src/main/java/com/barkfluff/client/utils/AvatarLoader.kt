@@ -154,7 +154,7 @@ object AvatarLoader {
         userId: Long = 0,
         circleCrop: Boolean = true
     ) {
-        Log.d("AvatarLoader", "load: avatarUrl='$avatarUrl', displayName='$displayName', userId=$userId")
+        Log.d("AvatarLoader", "load: hasAvatarUrl=${!avatarUrl.isNullOrBlank()}, userId=$userId")
         
         if (!avatarUrl.isNullOrBlank()) {
             placeholderView.visibility = View.GONE
@@ -170,13 +170,13 @@ object AvatarLoader {
 
             requestBuilder.target(
                     onSuccess = { drawable ->
-                        android.util.Log.d("AvatarLoader", "load: onSuccess url=$avatarUrl")
+                        android.util.Log.d("AvatarLoader", "load: onSuccess")
                         imageView.setImageDrawable(drawable)
                         imageView.visibility = View.VISIBLE
                         placeholderView.visibility = View.GONE
                     },
                     onError = {
-                        android.util.Log.e("AvatarLoader", "load: onError url=$avatarUrl")
+                        android.util.Log.e("AvatarLoader", "load: onError")
                         imageView.visibility = View.GONE
                         showPlaceholderInternal(placeholderView, displayName, userId)
                     }
@@ -184,7 +184,7 @@ object AvatarLoader {
 
             val request = requestBuilder.build()
 
-            Log.d("AvatarLoader", "load: enqueueing request for url=$avatarUrl")
+            Log.d("AvatarLoader", "load: enqueueing request")
             getImageLoader(imageView.context).enqueue(request)
         } else {
             Log.d("AvatarLoader", "load: avatarUrl is null or blank, showing placeholder")
@@ -306,7 +306,7 @@ object AvatarLoader {
             val url = withContext(Dispatchers.IO) {
                 getUrlCallback()
             }
-            android.util.Log.d("AvatarLoader", "loadByFileId: fileId=$fileId, url=$url")
+            android.util.Log.d("AvatarLoader", "loadByFileId: fileId=$fileId, hasUrl=${!url.isNullOrBlank()}")
 
             if (url.isNullOrBlank()) {
                 android.util.Log.e("AvatarLoader", "loadByFileId: Failed to get URL for fileId=$fileId")
@@ -337,7 +337,7 @@ object AvatarLoader {
         size: Int,
         circleCrop: Boolean
     ) {
-        android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading url=$url, cacheKey=$cacheKey, size=$size")
+        android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading cacheKey=$cacheKey, size=$size")
         val imageLoader = getImageLoader(imageView.context)
 
         // Сохраняем cacheKey в tag для проверки при recycling
@@ -364,7 +364,7 @@ object AvatarLoader {
                 },
                 onError = { _ ->
                     if (imageView.tag == cacheKey) {
-                        android.util.Log.e("AvatarLoader", "loadImageWithCoil: onError cacheKey=$cacheKey, url=$url")
+                        android.util.Log.e("AvatarLoader", "loadImageWithCoil: onError cacheKey=$cacheKey")
                         imageView.visibility = View.GONE
                         showPlaceholderInternal(placeholderView, displayName, userId)
                     }

@@ -90,7 +90,7 @@ class StickerPanelAdapter(
 
         // Попробовать directUrl сначала
         if (directUrl.isNotBlank()) {
-            Log.d(TAG, "loadStickerImage: trying directUrl for $fileId: $directUrl")
+            Log.d(TAG, "loadStickerImage: trying directUrl for $fileId")
             imageView.load(directUrl, imageLoader) {
                 memoryCacheKey(fileId)
                 diskCacheKey(fileId)
@@ -116,7 +116,7 @@ class StickerPanelAdapter(
         imageView.tag = fileId
         MainScope().launch {
             val url = withContext(Dispatchers.IO) { getFileUrl(fileId) }
-            Log.d(TAG, "loadViaGrpc: fileId=$fileId, url=$url")
+            Log.d(TAG, "loadViaGrpc: fileId=$fileId, hasUrl=${!url.isNullOrBlank()}")
             if (url.isNullOrBlank()) {
                 Log.e(TAG, "loadViaGrpc: gRPC returned null/blank URL for $fileId")
                 return@launch
@@ -134,7 +134,7 @@ class StickerPanelAdapter(
                             Log.d(TAG, "loadViaGrpc: SUCCESS for $fileId")
                         },
                         onError = { _, result ->
-                            Log.e(TAG, "loadViaGrpc: FAILED for $fileId url=$url: ${result.throwable.message}")
+                            Log.e(TAG, "loadViaGrpc: FAILED for $fileId: ${result.throwable.message}")
                         }
                     )
                 }

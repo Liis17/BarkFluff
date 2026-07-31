@@ -271,7 +271,7 @@ class LoginActivity : AppCompatActivity() {
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()
                                 if (userData != null) {
-                                    Log.d(TAG, "Login: userData.userId=${userData.userId}, profilePictureUrl='${userData.profilePictureUrl}', profilePicturePreviewUrl='${userData.profilePicturePreviewUrl}', profilePictureFileId='${userData.profilePictureFileId}', profilePicturePreviewFileId='${userData.profilePicturePreviewFileId}'")
+                                    Log.d(TAG, "Login: userData.userId=${userData.userId}, profilePictureFileId='${userData.profilePictureFileId}', profilePicturePreviewFileId='${userData.profilePicturePreviewFileId}'")
 
                                     globalParam.userId = userData.userId
                                     globalParam.userName = userData.username
@@ -286,7 +286,7 @@ class LoginActivity : AppCompatActivity() {
                                     globalParam.profilePictureUrl = userData.profilePictureUrl
                                     globalParam.registrationDate = userData.registrationDate
 
-                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}', picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
+                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
                                 }
                             }
                         }

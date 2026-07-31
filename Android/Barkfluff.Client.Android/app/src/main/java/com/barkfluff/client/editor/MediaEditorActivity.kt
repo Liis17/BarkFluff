@@ -559,7 +559,7 @@ class MediaEditorActivity : AppCompatActivity() {
                     BitmapFactory.decodeStream(it, null, opts2)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "loadBitmap failed for $uri", e)
+                Log.e(TAG, "loadBitmap failed", e)
                 null
             }
         }
