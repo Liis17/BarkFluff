@@ -642,8 +642,8 @@ Android/
 ## Сборка
 
 ```bash
-cd Android/Barkfluff.Client.Android
-./gradlew assembleDebug
+cd Android
+./gradlew :app-v1:assembleDebug
 ```
 
 ### Тестовая сборка на macOS
