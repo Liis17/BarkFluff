@@ -124,6 +124,35 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.ToTable("ChatMembers");
                 });
 
+            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatDraft", b =>
+                {
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ReplyToMessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("Revision")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ChatId", "UserId");
+
+                    b.HasIndex("UserId", "ChatId");
+
+                    b.ToTable("ChatDrafts");
+                });
+
             modelBuilder.Entity("BarkFluff.Messages.Domain.EncryptedMessage", b =>
                 {
                     b.Property<long>("Id")
@@ -359,6 +388,17 @@ namespace BarkFluff.Messages.Persistence.Migrations
                 {
                     b.HasOne("BarkFluff.Messages.Domain.Chat", "Chat")
                         .WithMany("Members")
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chat");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatDraft", b =>
+                {
+                    b.HasOne("BarkFluff.Messages.Domain.Chat", "Chat")
+                        .WithMany()
                         .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
