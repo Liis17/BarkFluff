@@ -165,7 +165,7 @@ Android-клиент забирает `.md` на этапе сборки gradle-
 | «Автозаполнение поставило заглушку» | `ResolveDefault`: `ExternalEndpoint:Host` → `*.example.com`, `S3Buckets:*` → `minioadmin`, `LiveKit` → `devkey`/`devsecret_change_me…`, `NavigatorUrl` → `http://navigator:7010` |
 | Федерация | `Federation:ServerName`/`ExternalEndpoint`/`TlsSpkiSha256` пустые по замыслу, `Enabled=false` — см. [[Backend/Federation]] |
 
-Отличия релизного compose на странице от dev-варианта: образы без `-dev`; порт postgres не публикуется; `seq`/`minio` без проброса портов; `minio` раскомментирован; у `livekit` 7880 не публикуется (за nginx); убраны сервисы и переменные, специфичные для инфраструктуры barkfluff.com (`developers`, `Mail__*`, `RemoteServers__*`, `TELEGRAM_PROXY_*`).
+Отличия релизного compose на странице от dev-варианта: образы без `-dev`; порт postgres не публикуется; `seq`/`minio` без проброса портов; `minio` раскомментирован; у `livekit` 7880 не публикуется (за nginx); убраны сервисы и переменные, специфичные для инфраструктуры barkfluff.com (`developers`, `Mail__*`, `TELEGRAM_PROXY_*`). Удалённые SSH-серверы настраиваются в AdminPanel и не относятся к Compose/.env.
 
 Расхождение в `sample-backend.env`: `CONFIGURATION_SERVICE_HOST=http://configuration:7010`, хотя Configuration слушает **7003** (`ConfigurationService:Host` в миграции `20260308000000` и дефолт в `WebApplicationBuilderExtensions`). На странице указан 7003.
 

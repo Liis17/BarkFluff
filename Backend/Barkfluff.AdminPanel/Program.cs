@@ -60,6 +60,7 @@ public class Program
         var metricsCacheSettings = builder.Configuration.GetSection(MetricsCacheSettings.SectionName).Get<MetricsCacheSettings>() ?? new MetricsCacheSettings();
         builder.Services.AddSingleton(metricsCacheSettings);
         builder.Services.AddSingleton<MetricsCacheDbContext>();
+        builder.Services.AddSingleton<RemoteDockerDbContext>();
 
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
@@ -88,8 +89,8 @@ public class Program
         // Register DockerService as Singleton
         builder.Services.AddSingleton<DockerService>();
 
-        // Register RemoteDockerService as Singleton
-        builder.Services.Configure<RemoteServersSettings>(builder.Configuration.GetSection(RemoteServersSettings.SectionName));
+        // Register Remote Docker management services
+        builder.Services.AddSingleton<IRemoteSshClient, SshNetRemoteSshClient>();
         builder.Services.AddSingleton<RemoteDockerService>();
 
         // Register MetricsCollectorService as background service
@@ -474,19 +475,4 @@ public class AuthSettings
     public const string SectionName = "Auth";
     public int TokenExpirationDays { get; set; } = 3;
     public int PendingRequestTimeoutMinutes { get; set; } = 10;
-}
-
-public class RemoteServerSettings
-{
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; } = 22;
-    public string Username { get; set; } = "root";
-    public string Password { get; set; } = string.Empty;
-}
-
-public class RemoteServersSettings
-{
-    public const string SectionName = "RemoteServers";
-    public RemoteServerSettings Navigator { get; set; } = new();
-    public RemoteServerSettings Msk { get; set; } = new();
 }

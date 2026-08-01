@@ -1,4 +1,5 @@
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
 namespace Barkfluff.AdminPanel.Endpoints;
@@ -10,107 +11,98 @@ public static class RemoteDockerEndpoints
         var group = app.MapGroup("/api/remote")
             .WithTags("RemoteDocker");
 
-        group.MapGet("/{server}/inspect/{containerName}", async (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server,
-            string containerName) =>
+        group.MapGet("/servers", (RemoteDockerService service, HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            return Results.Ok(service.GetServers());
+        });
 
-            var labels = await remoteDockerService.InspectContainerLabelsAsync(server, containerName);
-            return Results.Ok(new { containerName, labels });
-        })
-        .WithName("InspectRemoteContainer")
-        .WithOpenApi();
-
-        group.MapGet("/{server}/config", (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server) =>
+        group.MapPost("/servers", async (RemoteDockerService service, HttpContext context, SaveRemoteServerRequest request,
+            CancellationToken cancellationToken) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            try
+            {
+                return Results.Created($"/api/remote/servers", await service.CreateServerAsync(request, cancellationToken));
+            }
+            catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
+            catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
+        });
 
-            var info = remoteDockerService.GetServerInfo(server);
-            return Results.Ok(info);
-        })
-        .WithName("GetRemoteServerConfig")
-        .WithOpenApi();
-
-        group.MapGet("/{server}/containers", async (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server) =>
+        group.MapPut("/servers/{serverId:guid}", async (RemoteDockerService service, HttpContext context, Guid serverId,
+            SaveRemoteServerRequest request, CancellationToken cancellationToken) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            try
+            {
+                var updated = await service.UpdateServerAsync(serverId, request, cancellationToken);
+                return updated is null ? Results.NotFound() : Results.Ok(updated);
+            }
+            catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
+            catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
+        });
 
-            var containers = await remoteDockerService.GetContainersStatusAsync(server);
-            return Results.Ok(containers);
-        })
-        .WithName("GetRemoteContainers")
-        .WithOpenApi();
-
-        group.MapPost("/{server}/containers/{name}/start", async (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server,
-            string name) =>
+        group.MapDelete("/servers/{serverId:guid}", (RemoteDockerService service, HttpContext context, Guid serverId) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            return service.DeleteServer(serverId) ? Results.NoContent() : Results.NotFound();
+        });
 
-            var result = await remoteDockerService.StartAsync(server, name);
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
-        })
-        .WithName("StartRemoteContainer")
-        .WithOpenApi();
-
-        group.MapPost("/{server}/containers/{name}/stop", async (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server,
-            string name) =>
+        group.MapGet("/servers/{serverId:guid}/discover", async (RemoteDockerService service, HttpContext context, Guid serverId,
+            CancellationToken cancellationToken) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            try { return Results.Ok(await service.DiscoverContainersAsync(serverId, cancellationToken)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
 
-            var result = await remoteDockerService.StopAsync(server, name);
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
-        })
-        .WithName("StopRemoteContainer")
-        .WithOpenApi();
-
-        group.MapPost("/{server}/containers/{name}/restart", async (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server,
-            string name) =>
+        group.MapGet("/servers/{serverId:guid}/containers", async (RemoteDockerService service, HttpContext context, Guid serverId,
+            CancellationToken cancellationToken) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            try { return Results.Ok(await service.GetContainersStatusAsync(serverId, cancellationToken)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
 
-            var result = await remoteDockerService.RestartAsync(server, name);
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
-        })
-        .WithName("RestartRemoteContainer")
-        .WithOpenApi();
-
-        group.MapPost("/{server}/containers/{name}/pull", async (
-            RemoteDockerService remoteDockerService,
-            HttpContext context,
-            string server,
-            string name) =>
+        group.MapPost("/servers/{serverId:guid}/containers", async (RemoteDockerService service, HttpContext context, Guid serverId,
+            AddRemoteContainerRequest request, CancellationToken cancellationToken) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            try
+            {
+                var container = await service.AddContainerAsync(serverId, request.ContainerName, cancellationToken);
+                return container is null ? Results.NotFound(new { message = "Контейнер не найден на сервере" }) : Results.Ok(container);
+            }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+            catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
+            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+        });
 
-            var result = await remoteDockerService.PullAndRecreateAsync(server, name);
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
-        })
-        .WithName("PullRemoteContainer")
-        .WithOpenApi();
+        group.MapDelete("/servers/{serverId:guid}/containers/{containerId:guid}",
+            (RemoteDockerService service, HttpContext context, Guid serverId, Guid containerId) =>
+            {
+                if (!IsAuthorized(context)) return Results.Unauthorized();
+                return service.DeleteContainer(serverId, containerId) ? Results.NoContent() : Results.NotFound();
+            });
+
+        group.MapPost("/servers/{serverId:guid}/containers/{containerId:guid}/{action}", async (
+            RemoteDockerService service, HttpContext context, Guid serverId, Guid containerId, string action,
+            CancellationToken cancellationToken) =>
+        {
+            if (!IsAuthorized(context)) return Results.Unauthorized();
+            try
+            {
+                var result = await service.ExecuteActionAsync(serverId, containerId, action, cancellationToken);
+                return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+            }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+        });
     }
+
+    private static bool IsAuthorized(HttpContext context) => context.Items["AuthToken"] is AuthToken;
 }

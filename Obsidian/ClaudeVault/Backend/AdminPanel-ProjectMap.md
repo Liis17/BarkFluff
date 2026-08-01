@@ -17,7 +17,8 @@ Barkfluff.AdminPanel/
 ├── dotnet-tools.json                      ← манифест .NET инструментов
 ├── Data/
 │   ├── TokenDbContext.cs              ← LiteDB: auth-токены
-│   └── MetricsCacheDbContext.cs       ← LiteDB: кеш метрик
+│   ├── MetricsCacheDbContext.cs       ← LiteDB: кеш метрик
+│   └── RemoteDockerDbContext.cs       ← LiteDB: удалённые серверы и контейнеры
 ├── Endpoints/
 │   ├── AuthEndpoints.cs               ← /api/auth/*
 │   ├── DockerEndpoints.cs             ← /api/docker/*
@@ -318,14 +319,13 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 Конфиг: `Mail:ImapHost/ImapPort/ImapSecurity`, `Mail:SmtpHost/SmtpPort/SmtpSecurity` (`SslOnConnect`/`StartTls`/`StartTlsWhenAvailable`/`None`/`Auto`), `Mail:AcceptInvalidCertificates`, `Mail:Accounts[]`.
 
 ### RemoteDockerService
-Управление Docker-контейнерами на удалённых хостах (например, второй сервер платформы) — аналог `DockerService`, но по сети через настройки `RemoteServersSettings` (host/port/credentials на сервер).
+Управляет сохранёнными LiteDB SSH-серверами через `IRemoteSshClient`; адреса и пароли не поступают из `.env` или Docker Compose. Создание и изменение сервера сперва проверяют SSH-подключение. При discovery берутся все `docker ps -a`; Compose-метки контейнера сохраняются при добавлении.
 
 | Метод | Описание |
 |-------|---------|
-| `GetContainersStatusAsync(server)` | Статус контейнеров удалённого хоста |
-| `StartAsync` / `StopAsync` / `RestartAsync` / `PullAndRecreateAsync` | Управление контейнером |
-| `InspectContainerLabelsAsync` | Docker labels контейнера |
-| `GetServerInfo(server)` | Host/port/credentials сервера из конфига |
+| `CreateServerAsync` / `UpdateServerAsync` / `DeleteServer` | CRUD серверов с проверкой SSH и каскадным удалением записей контейнеров |
+| `DiscoverContainersAsync` / `AddContainerAsync` | Поиск Docker-контейнеров и сохранение выбранного с Compose-метками |
+| `GetContainersStatusAsync` / `ExecuteActionAsync` | Статусы и start/stop/restart; pull + recreate доступен только Docker Compose |
 
 ---
 
@@ -473,13 +473,12 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 | Метод | Путь | Описание |
 |-------|------|---------|
-| GET | `/api/remote/{server}/inspect/{containerName}` | Docker labels контейнера |
-| GET | `/api/remote/{server}/config` | Host/port/credentials сервера |
-| GET | `/api/remote/{server}/containers` | Статус контейнеров |
-| POST | `/api/remote/{server}/containers/{name}/start` | Запустить |
-| POST | `/api/remote/{server}/containers/{name}/stop` | Остановить |
-| POST | `/api/remote/{server}/containers/{name}/restart` | Перезапустить |
-| POST | `/api/remote/{server}/containers/{name}/pull` | Обновить образ |
+| GET / POST | `/api/remote/servers` | Список / создание SSH-серверов |
+| PUT / DELETE | `/api/remote/servers/{serverId}` | Изменение / удаление сервера |
+| GET | `/api/remote/servers/{serverId}/discover` | Все ещё не отслеживаемые контейнеры Docker |
+| GET / POST | `/api/remote/servers/{serverId}/containers` | Статусы / добавление контейнера |
+| DELETE | `/api/remote/servers/{serverId}/containers/{containerId}` | Убрать контейнер из панели |
+| POST | `/api/remote/servers/{serverId}/containers/{containerId}/{action}` | start, stop, restart или Compose pull |
 
 ### /api/seq/compress-metrics — LogsCompressionEndpoints.cs
 
