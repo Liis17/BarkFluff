@@ -161,14 +161,25 @@ class IncomingCallActivity : AppCompatActivity() {
      * При отсутствии userId/профиля остаются инициалы из bindViews().
      */
     private fun loadCallerInfo() {
-        if (callerUserId <= 0L) return
-
         val app = application as BarkFluffApplication
         val repository = ChatRepository(this, app.grpcManager)
         val avatarImage = findViewById<ImageView>(R.id.avatarImage)
         val avatarInitials = findViewById<TextView>(R.id.avatarInitials)
 
+        // Аватар, подготовленный при обработке push — рисуем без ожидания сети
+        val prefetchedAvatar = IncomingCallPrefetch.avatarBitmap(callId)
+        if (prefetchedAvatar != null) {
+            avatarImage.setImageBitmap(prefetchedAvatar)
+            avatarImage.visibility = View.VISIBLE
+            avatarInitials.visibility = View.GONE
+        }
+
+        if (callerUserId <= 0L) return
+
         lifecycleScope.launch {
+            // Приложение могло стартовать от push — gRPC-клиентов ещё нет
+            if (!IncomingCallPrefetch.ensureClients(this@IncomingCallActivity)) return@launch
+
             val user = repository.getUserData(callerUserId).getOrNull() ?: return@launch
 
             val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
@@ -179,7 +190,7 @@ class IncomingCallActivity : AppCompatActivity() {
             }
 
             val avatarFileId = user.profilePictureFileId
-            if (avatarFileId.isNotBlank()) {
+            if (prefetchedAvatar == null && avatarFileId.isNotBlank()) {
                 loadCallerAvatarWithRetry(avatarImage, avatarInitials, avatarFileId, repository)
             }
         }
