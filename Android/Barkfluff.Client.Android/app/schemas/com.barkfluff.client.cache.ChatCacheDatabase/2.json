@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "c1b9f96bd1ee68d88620809960f4144a",
+    "identityHash": "3af5342c7b269d4e385536248ef26193",
     "entities": [
       {
         "tableName": "chat_cache_meta",
@@ -36,7 +36,7 @@
       },
       {
         "tableName": "cached_chats",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `title` TEXT NOT NULL, `picture` TEXT NOT NULL, `pictureFileId` TEXT NOT NULL, `picturePreviewFileId` TEXT NOT NULL, `isGroupChat` INTEGER NOT NULL, `lastMessageId` INTEGER, `lastMessageSenderId` INTEGER, `lastMessageText` TEXT, `lastMessageSentAt` INTEGER, `lastMessageReadBy` TEXT NOT NULL, `memberIds` TEXT NOT NULL, `countUnread` INTEGER NOT NULL, `firstUnreadMessageId` INTEGER NOT NULL, `chatTypeNumber` INTEGER NOT NULL, `lastActivityAt` INTEGER NOT NULL, `privateInviteStateNumber` INTEGER NOT NULL, `privateInviterUserId` INTEGER NOT NULL, `hasDraft` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `chatId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `title` TEXT NOT NULL, `picture` TEXT NOT NULL, `pictureFileId` TEXT NOT NULL, `picturePreviewFileId` TEXT NOT NULL, `isGroupChat` INTEGER NOT NULL, `lastMessageId` INTEGER, `lastMessageSenderId` INTEGER, `lastMessageText` TEXT, `lastMessageSentAt` INTEGER, `lastMessageReadBy` TEXT NOT NULL, `memberIds` TEXT NOT NULL, `countUnread` INTEGER NOT NULL, `firstUnreadMessageId` INTEGER NOT NULL, `chatTypeNumber` INTEGER NOT NULL, `lastActivityAt` INTEGER NOT NULL, `privateInviteStateNumber` INTEGER NOT NULL, `privateInviterUserId` INTEGER NOT NULL, `hasDraft` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`scopeId`, `chatId`))",
         "fields": [
           {
             "fieldPath": "scopeId",
@@ -152,7 +152,8 @@
             "fieldPath": "hasDraft",
             "columnName": "hasDraft",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -450,7 +451,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c1b9f96bd1ee68d88620809960f4144a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3af5342c7b269d4e385536248ef26193')"
     ]
   }
 }

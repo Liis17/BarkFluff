@@ -28,6 +28,15 @@ class ChatDraftJournalTest {
     }
 
     @Test
+    fun `clearing an edited server draft retains revision for conditional delete`() {
+        val synced = ChatDraftJournal.markSynced(ChatDraftJournal.edit(null, "Первый", 0L), 1L, "r1")
+        val cleared = ChatDraftJournal.edit(ChatDraftJournal.edit(synced, "Второй", 0L), "", 0L)
+
+        assertEquals("r1", cleared.revision)
+        assertEquals(ChatDraftSyncState.DELETE_PENDING, cleared.syncState)
+    }
+
+    @Test
     fun `stale sync response cannot overwrite a newer edit`() {
         val first = ChatDraftJournal.edit(null, "Первый", 0L)
         val second = ChatDraftJournal.edit(first, "Второй", 0L)
@@ -45,6 +54,15 @@ class ChatDraftJournalTest {
 
         assertEquals(ChatDraftSyncState.SYNCED, result.syncState)
         assertEquals("server-revision", result.revision)
+    }
+
+    @Test
+    fun `later response for same generation replaces server revision`() {
+        val synced = ChatDraftJournal.markSynced(ChatDraftJournal.edit(null, "Черновик", 0L), 1L, "r1")
+
+        val result = ChatDraftJournal.markSynced(synced, 1L, "r2")
+
+        assertEquals("r2", result.revision)
     }
 
     @Test
