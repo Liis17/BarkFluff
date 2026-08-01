@@ -686,6 +686,27 @@
         .call-btn-accept { background: #2e9e5b; }
         .call-btn-reject, .call-ctl-end { background: #d83a3a; }
 
+        /* Запрос доступа к микрофону/камере перед сигнализацией звонка. */
+        .call-permission-overlay {
+            display: none; position: fixed; inset: 0; z-index: 1210;
+            background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+        }
+        .call-permission-overlay.visible { display: flex; }
+        .call-permission-card {
+            background: var(--dialog-bg); border-radius: 20px; padding: 28px 32px;
+            width: 360px; max-width: 90%; text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .call-permission-title { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+        .call-permission-text { font-size: 14px; line-height: 1.45; color: var(--text-sub); margin-bottom: 24px; }
+        .call-permission-actions { display: flex; justify-content: center; gap: 10px; }
+        .call-permission-actions button {
+            border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font: inherit;
+        }
+        .call-permission-actions .primary { background: var(--primary); color: #fff; }
+        .call-permission-actions .secondary { background: var(--hover-bg); color: var(--text); }
+        .call-permission-actions button:disabled { opacity: .6; cursor: wait; }
+
         /* Active call screen */
         .call-screen {
             display: none; position: fixed; inset: 0; z-index: 1150;
@@ -4997,6 +5018,18 @@
         <button class="overlay-nav next" id="overlayNext" aria-label="Следующее" hidden>&#8250;</button>
     </div>
 
+    <!-- Доступ к микрофону и камере до начала звонка -->
+    <div class="call-permission-overlay" id="callPermissionOverlay" role="dialog" aria-modal="true" aria-labelledby="callPermissionTitle">
+        <div class="call-permission-card">
+            <div class="call-permission-title" id="callPermissionTitle"></div>
+            <div class="call-permission-text" id="callPermissionText"></div>
+            <div class="call-permission-actions">
+                <button class="secondary" id="callPermissionCancel" type="button">Отмена</button>
+                <button class="primary" id="callPermissionRequest" type="button">Разрешить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Входящий звонок (ring) -->
     <div class="call-ring-overlay" id="callRingOverlay">
         <div class="call-ring-card">
@@ -5486,7 +5519,7 @@
     <script src="/js/app/messages.js?v=resilient-media-1"></script>
     <script src="/js/app/realtime.js?v=private-chats-1"></script>
     <script src="/js/app/calls.js?v=calls-4"></script>
-    <script src="/js/app/calls-ui.js?v=calls-7"></script>
+    <script src="/js/app/calls-ui.js?v=calls-8"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
