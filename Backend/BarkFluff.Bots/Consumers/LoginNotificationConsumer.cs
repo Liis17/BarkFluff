@@ -52,14 +52,14 @@ public class LoginNotificationConsumer : IConsumer<EmailNotification>
         }
 
         var payload = notification.Payload ?? new Dictionary<string, string>();
-        var text = "Выполнен вход в твой аккаунт.\n\n" +
-                   $"Устройство: {payload.GetValueOrDefault("devicename", "неизвестно")}\n" +
-                   $"ОС: {payload.GetValueOrDefault("os", "неизвестно")}\n" +
-                   $"Приложение: {payload.GetValueOrDefault("appname", "неизвестно")}\n" +
-                   $"IP: {payload.GetValueOrDefault("ip", "неизвестно")}\n" +
-                   $"Местоположение: {payload.GetValueOrDefault("location", "неизвестно")}\n" +
-                   $"Время (UTC): {payload.GetValueOrDefault("datetime", "неизвестно")}\n\n" +
-                   "Если это не ты — смени пароль и заверши другие сессии.";
+        var text = "## Выполнен вход в твой аккаунт\n\n" +
+                   $"- **Устройство:** {payload.GetValueOrDefault("devicename", "неизвестно")}\n" +
+                   $"- **ОС:** {payload.GetValueOrDefault("os", "неизвестно")}\n" +
+                   $"- **Приложение:** {payload.GetValueOrDefault("appname", "неизвестно")}\n" +
+                   $"- **IP:** {payload.GetValueOrDefault("ip", "неизвестно")}\n" +
+                   $"- **Местоположение:** {payload.GetValueOrDefault("location", "неизвестно")}\n" +
+                   $"- **Время (UTC):** {payload.GetValueOrDefault("datetime", "неизвестно")}\n\n" +
+                   "> **Если это не ты,** смени пароль и заверши другие сессии.";
 
         try
         {

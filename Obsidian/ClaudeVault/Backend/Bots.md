@@ -48,7 +48,7 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 | Бот                  | Роль      | Что делает                                                                                                                                                                                                                               |
 | -------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@botfather`         | BotFather | State machine создания/управления ботами: `/newbot`, `/mybots`, `/token`, `/setname`, `/setdescription`, `/setuserpic`, `/deletebot`, `/cancel`. Сессии — `BotFatherSessions` (TTL 30 мин). Username `botfather` создан с bypass правил. |
-| `@barkfluffnotifier` | Barkfluff | Consumer `EmailNotification` (очередь `email-notifications-bots-handler`), фильтр `SuccessfulLogin` → DM о входе (устройство/ОС/IP/локация). Может создать чат первым (`allow_chat_creation`).                                           |
+| `@barkfluffnotifier` | Barkfluff | Consumer `EmailNotification` (очередь `email-notifications-bots-handler`), фильтр `SuccessfulLogin` → DM о входе (устройство/ОС/IP/локация) в Markdown: заголовок, маркированные поля и предупреждение-цитата. Может создать чат первым (`allow_chat_creation`).                                           |
 
 Consumer дополнительно пропускает события, где `OwnerId` принадлежит боту: уведомления о входе остаются у людей и не создают DM ботам.
 
