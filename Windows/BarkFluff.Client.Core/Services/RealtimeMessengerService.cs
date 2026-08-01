@@ -30,6 +30,8 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
 
     public event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
 
+    public event EventHandler<bool>? ConnectionChanged;
+
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
@@ -92,7 +94,9 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
                     MessageReceived?.Invoke(this, new IncomingMessage(update.ChatId, WebApiClient.MapEventMessage(update.Message, update.ChatId)));
                 }
             },
-            onConnectedChanged: null,
+            // Все три стрима идут одним каналом UpdatesAC и рвутся вместе, поэтому о связи
+            // сообщает только этот цикл: три источника одного и того же состояния не нужны.
+            isConnected => ConnectionChanged?.Invoke(this, isConnected),
             StreamRetryLoop.Backoff,
             cancellationToken);
 

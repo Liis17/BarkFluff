@@ -7,6 +7,12 @@ public interface IOnlinePresenceService : IAsyncDisposable
     event EventHandler<UserPresence>? PresenceChanged;
 
     /// <summary>
+    /// Состояние связи: <c>false</c> — стрим оборван, идёт переподключение.
+    /// Приходит из фонового потока, маршалить в UI обязан подписчик.
+    /// </summary>
+    event EventHandler<bool>? ConnectionChanged;
+
+    /// <summary>
     /// Последний известный статус пользователя; <c>null</c>, если по нему ещё ничего не приходило.
     /// Нужен экранам, которые открываются без собственной подписки — например, профилю собеседника.
     /// </summary>

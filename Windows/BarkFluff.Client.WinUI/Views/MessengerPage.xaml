@@ -292,12 +292,20 @@
         <Grid Margin="16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBox PlaceholderText="{StaticResource Messenger_Search}" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <!--  Пока чат не выбран, шапка с индикатором связи скрыта, и обрыв был бы невидим.  -->
+            <TextBlock Margin="0,0,0,8"
+                       Opacity=".7"
+                       Style="{StaticResource MutedText}"
+                       Text="{StaticResource Messenger_Reconnecting}"
+                       Visibility="{x:Bind ViewModel.IsChatListReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-            <Grid Grid.Row="1" Margin="0,12,0,0">
+            <TextBox Grid.Row="1" PlaceholderText="{StaticResource Messenger_Search}" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+            <Grid Grid.Row="2" Margin="0,12,0,0">
                 <!--  Свойства списка заданы прямо на контроле: WinUI не публикует базовый стиль ListView.  -->
                 <ListView Padding="0"
                           Background="Transparent"
@@ -341,7 +349,12 @@
                     <TextBlock Opacity=".7"
                                Style="{StaticResource MutedText}"
                                Text="{x:Bind ViewModel.SelectedChat.PresenceLabel, Mode=OneWay}"
-                               Visibility="{x:Bind ViewModel.SelectedChat.HasPresence, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                               Visibility="{x:Bind ViewModel.IsPresenceLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <!--  Пока связь восстанавливается, статус собеседника устарел и показывать его нельзя.  -->
+                    <TextBlock Opacity=".7"
+                               Style="{StaticResource MutedText}"
+                               Text="{StaticResource Messenger_Reconnecting}"
+                               Visibility="{x:Bind ViewModel.IsChatHeaderReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
             </Button>
 
