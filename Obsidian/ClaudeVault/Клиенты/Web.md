@@ -75,6 +75,11 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - `js/app/main.js`, секция `PRIVATE CHATS`: `openPrivateChat` (обходит `getChatInfo`/`listMessages`, данные чата из ListChats); карточки состояний (`showPrivateCard`) — инвайт «Принять/Отклонить» (PENDING у приглашённого), «Ожидание собеседника» (PENDING у инициатора), «Чат заблокирован» (ACCEPTED без ключа); passphrase-модал `#privatePassOverlay` с проверкой verifier'а до `AcceptPrivateChat`; расшифрованные сообщения маппятся в обычный формат и рендерятся `BF.messages.buildMessageElement`.
 - Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
 
+### Черновики обычных чатов
+- `js/app/drafts.js` (`BF.drafts`) держит локальный durable outbox в `localStorage` на пользователя и синхронизирует текст/reply с [[Backend/Messages]] через 2 секунды бездействия, при смене чата и после `online`.
+- При внезапном закрытии сохраняется локальная запись; после перезапуска она синхронизируется с сервером. Список чатов показывает «Черновик» через `Chat.has_draft` или несинхронизированную локальную запись.
+- Вложения, диалог прикрепления и незавершённые загрузки не восстанавливаются. Private/Secret-чаты исключены, чтобы не нарушать E2E-модель.
+
 ### Создание чатов
 - `js/app/newchat.js` (`BF.newchat`) — FAB (карандаш) в сайдбаре над навигацией → меню из трёх пунктов → оверлей `#newChatOverlay` с поиском пользователей (`SearchUsers`, исключается сам пользователь):
   - **Новое сообщение** — клик по пользователю → `GetPersonChatId` → `openChat` (создания RPC нет, ЛС материализуется лениво).

@@ -255,8 +255,11 @@
 
             var isPrivate = chat.chatType === 1;
             var lm = chat.lastMessage;
+            var hasDraft = chat.chatType === 0 && ((chat.hasDraft === true) || (BF.drafts && BF.drafts.has(chat.id)));
             var previewHtml = '';
-            if (isPrivate) {
+            if (hasDraft) {
+                previewHtml = '<span class="preview-draft">Черновик</span>';
+            } else if (isPrivate) {
                 // Содержимое зашифровано — сервер (и превью) его не знает.
                 if (chat.privateInviteState === 0) {
                     previewHtml = chat.privateInviterUserId === myUserId
@@ -386,6 +389,7 @@
 
     function openChat(chatId) {
         if (chatId === currentChatId) return;
+        if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
         stopTypingSend(true);
         clearTypingReceiveState();
 
@@ -397,12 +401,12 @@
         currentChatId = chatId;
         BF.realtime.subscribeTyping(chatId);
         currentChatInfo = null;
-        currentChatType = 0;
+        currentChatType = chatMeta ? chatMeta.chatType : 0;
         currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
         knownMessageIds = new Set();
-        clearPendingReply();
+        clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
@@ -480,8 +484,39 @@
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
                 renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
+                restoreChatDraft(chatId);
             }
         }).catch(function () { loadingMessages.classList.remove('visible'); });
+    }
+
+    function restoreChatDraft(chatId) {
+        if (!BF.drafts || chatId !== currentChatId) return;
+        BF.drafts.load(chatId).then(function (draft) {
+            if (!draft || chatId !== currentChatId) return;
+            messageInput.value = draft.text || '';
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+            if (draft.replyToMessageId) {
+                var reply = messages.find(function (m) { return Number(m.id) === Number(draft.replyToMessageId); });
+                if (reply) {
+                    setPendingReply(reply, false);
+                } else {
+                    BF.api.listMessages(chatId, draft.replyToMessageId, 1, 1).then(function (data) {
+                        if (chatId !== currentChatId || !data || !data.messages) return;
+                        var loadedReply = data.messages.find(function (m) { return Number(m.id) === Number(draft.replyToMessageId); });
+                        if (loadedReply) setPendingReply(loadedReply, false);
+                        else BF.drafts.set(chatId, draft.text || '', 0);
+                    }).catch(function () {});
+                }
+            }
+            renderChatList();
+        });
+    }
+
+    function saveCurrentDraft() {
+        if (!currentChatId || currentChatType !== 0 || pendingEdit || !BF.drafts) return;
+        BF.drafts.set(currentChatId, messageInput.value, pendingReply ? pendingReply.messageId : 0);
+        renderChatList();
     }
 
     // Скроллит к первому непрочитанному (если есть) либо в самый низ чата,
@@ -832,6 +867,7 @@
         sendBtn.disabled = true;
         var sentChatId = currentChatId;
         var replyId = pendingReply ? pendingReply.messageId : 0;
+        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
 
         BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null, forwardedMessageId: replyId }).then(function (resp) {
             messageInput.value = '';
@@ -839,6 +875,7 @@
             sendBtn.disabled = false;
             messageInput.focus();
             clearPendingReply();
+            if (BF.drafts) BF.drafts.clearSent(sentChatId, draftSnapshot);
 
             if (resp && resp.message) {
                 var msg = resp.message;
@@ -868,6 +905,7 @@
         stopTypingSend(true);
         var text = (caption != null ? caption : messageInput.value).trim();
         var sentChatId = currentChatId;
+        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
         sendBtn.disabled = true;
 
         var localId = 'pending-upload-' + Date.now() + '-' + (++pendingUploadCounter);
@@ -948,6 +986,7 @@
                 sendBtn.disabled = false;
                 messageInput.focus();
                 clearPendingReply();
+                if (BF.drafts) BF.drafts.clearSent(sentChatId, draftSnapshot);
                 if (resp && resp.message) {
                     var msg = resp.message;
                     reconcilePendingUpload(sentChatId, msg, pendingEntry);
@@ -990,6 +1029,7 @@
     messageInput.addEventListener('input', function () {
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        saveCurrentDraft();
 
         if (!currentChatId || currentChatType !== 0) return;
         var value = messageInput.value;
@@ -2771,6 +2811,7 @@
 
     BF.settings.init({ myUserId: myUserId });
     BF.attach.init();
+    if (BF.drafts) BF.drafts.init(myUserId);
     if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
@@ -2940,7 +2981,7 @@
         return '';
     }
 
-    function setPendingReply(msg) {
+    function setPendingReply(msg, persist) {
         if (!msg) return;
         pendingReply = {
             messageId: msg.id,
@@ -2963,6 +3004,7 @@
         if (messageInput) {
             try { messageInput.focus(); } catch (e) { }
         }
+        if (persist !== false) saveCurrentDraft();
     }
 
     function renderReplyPreview() {
@@ -2976,9 +3018,10 @@
         replyPreviewBar.classList.add('visible');
     }
 
-    function clearPendingReply() {
+    function clearPendingReply(persist) {
         pendingReply = null;
         if (replyPreviewBar) replyPreviewBar.classList.remove('visible');
+        if (persist !== false) saveCurrentDraft();
     }
 
     function setPendingEdit(msg) {
