@@ -100,7 +100,7 @@
     function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 
     function fillAvatar(el, user, fallbackText) {
-        var src = user && (user.profilePicturePreview || user.profilePicture);
+        var src = user && (user.profilePicture || user.profilePicturePreview);
         if (src) el.innerHTML = '<img src="' + escapeAttr(src) + '" alt="">';
         else el.textContent = (fallbackText || '?').charAt(0).toUpperCase();
     }
