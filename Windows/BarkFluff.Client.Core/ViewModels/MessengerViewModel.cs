@@ -100,12 +100,14 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         IsLoading = true;
+        ActionError = null;
         try
         {
             await _realtimeMessenger.StartAsync();
             var result = await _messenger.GetChatsAsync();
             if (!result.error.IsSuccess || result.chats is null)
             {
+                ActionError = DescribeError(result.error);
                 return;
             }
 
@@ -206,6 +208,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
+        ActionError = null;
         if (SelectedChat.IsPrivate)
         {
             var key = await GetPrivateChatKeyAsync(SelectedChat);
@@ -221,7 +224,11 @@ public sealed partial class MessengerViewModel : ObservableObject
                 InsertMessageInOrder(CreatePrivateMessageItem(privateResult.message, currentUserId.Value));
                 DraftText = string.Empty;
                 RequestScroll(MessageScrollTarget.Bottom);
+                return;
             }
+
+            // Черновик остаётся в композере: отправлять заново пользователю нечего было бы.
+            ActionError = DescribeError(privateResult.error);
             return;
         }
 
@@ -233,7 +240,10 @@ public sealed partial class MessengerViewModel : ObservableObject
             DraftText = string.Empty;
             ReplyTarget = null;
             RequestScroll(MessageScrollTarget.Bottom);
+            return;
         }
+
+        ActionError = DescribeError(result.error);
     }
 
     [RelayCommand]
@@ -271,8 +281,16 @@ public sealed partial class MessengerViewModel : ObservableObject
             hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
             50,
             hasUnreadMessages ? 50 : 0);
-        if (!result.error.IsSuccess || result.messages is null || SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
+        // Устаревание проверяется первым: об ошибке уже покинутого чата сообщать нельзя,
+        // иначе баннер вылезал бы поверх открытого следующим.
+        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
         {
+            return;
+        }
+
+        if (!result.error.IsSuccess || result.messages is null)
+        {
+            ActionError = DescribeError(result.error);
             return;
         }
 
@@ -359,8 +377,14 @@ public sealed partial class MessengerViewModel : ObservableObject
             hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
             50,
             hasUnreadMessages ? 50 : 0);
-        if (!result.error.IsSuccess || result.messages is null || SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
+        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
         {
+            return;
+        }
+
+        if (!result.error.IsSuccess || result.messages is null)
+        {
+            ActionError = DescribeError(result.error);
             return;
         }
 
@@ -431,6 +455,11 @@ public sealed partial class MessengerViewModel : ObservableObject
             if (!result.IsSuccess || SelectedChat?.Id != chat.Id)
             {
                 _pendingReadMessageIds.ExceptWith(messageIds);
+                if (!result.IsSuccess)
+                {
+                    ReportBackgroundError(result);
+                }
+
                 return;
             }
 
@@ -666,8 +695,14 @@ public sealed partial class MessengerViewModel : ObservableObject
     private async Task AppendUnknownChatAsync(IncomingMessage incoming, long currentUserId)
     {
         var (error, chats) = await _messenger.GetChatsAsync();
+        if (!error.IsSuccess)
+        {
+            ReportBackgroundError(error);
+            return;
+        }
+
         var definition = chats?.FirstOrDefault(item => item.Id == incoming.ChatId);
-        if (!error.IsSuccess || definition is null || Chats.Any(item => item.Id == incoming.ChatId))
+        if (definition is null || Chats.Any(item => item.Id == incoming.ChatId))
         {
             return;
         }
@@ -808,6 +843,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         var result = await _messenger.GetChatsAsync();
         if (!result.error.IsSuccess || result.chats is null)
         {
+            ReportBackgroundError(result.error);
             return;
         }
 
