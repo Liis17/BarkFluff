@@ -654,6 +654,8 @@
     <string name="profile_tab_media">Медиа</string>
     <string name="profile_tab_voice">Голосовые</string>
     <string name="profile_no_voice">Нет голосовых</string>
+    <string name="profile_files_search_hint">Поиск файлов</string>
+    <string name="profile_files_not_found">Файлы не найдены</string>
     <string name="profile_copied">Скопировано</string>
     <string name="group_online_count">%1$d участников · %2$d в сети</string>
     <string name="group_members_count">%1$d участников</string>
