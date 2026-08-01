@@ -2364,24 +2364,15 @@
     function openProfile(userId) {
         if (!userId) return;
         currentProfileUserId = userId;
+        if (profilePoster) BF.files.loadResilientBackground(profilePoster, null, false);
 
         BF.api.getUser(userId).then(function (d) {
+            if (currentProfileUserId !== userId) return;
             if (!d || !d.user) return;
             var user = d.user;
 
             if (profilePoster) {
-                profilePoster.classList.remove('visible');
-                profilePoster.style.backgroundImage = '';
-                if (user.profilePosterFileId) {
-                    BF.files.getFileUrls([user.profilePosterFileId]).then(function (urls) {
-                        var u = urls && urls[0];
-                        var url = u && (u.url || u.previewUrl);
-                        if (url) {
-                            profilePoster.style.backgroundImage = 'url("' + url + '")';
-                            profilePoster.classList.add('visible');
-                        }
-                    });
-                }
+                BF.files.loadResilientBackground(profilePoster, user.profilePosterFileId, false);
             }
 
             var initial = (user.firstName || user.username || '?')[0].toUpperCase();

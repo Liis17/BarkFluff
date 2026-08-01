@@ -180,6 +180,75 @@
         }
     }
 
+    /**
+     * Загрузить background-image через Image, чтобы CSS-фон мог обработать ошибку
+     * загрузки так же, как обычные media-элементы. При первой ошибке URL
+     * обновляется по fileId; при повторной показывается заглушка.
+     */
+    function loadResilientBackground(el, fileId, preferPreview) {
+        if (!el) return;
+
+        var requestId = String(Number(el.getAttribute('data-bf-background-request') || '0') + 1);
+        el.setAttribute('data-bf-background-request', requestId);
+        el.setAttribute('data-bf-file-id', fileId || '');
+        el.classList.remove('visible', 'bf-load-failed');
+        el.style.backgroundImage = '';
+
+        if (!fileId) return;
+
+        function isCurrent() {
+            return el.getAttribute('data-bf-background-request') === requestId &&
+                el.getAttribute('data-bf-file-id') === fileId;
+        }
+
+        function preload(url) {
+            if (!url) return Promise.resolve(false);
+            return new Promise(function (resolve) {
+                var image = new Image();
+                image.onload = function () { resolve(true); };
+                image.onerror = function () { resolve(false); };
+                image.src = url;
+            });
+        }
+
+        function apply(url) {
+            if (!isCurrent()) return false;
+            el.style.backgroundImage = 'url("' + url + '")';
+            el.classList.add('visible');
+            return true;
+        }
+
+        function showPlaceholder() {
+            if (!isCurrent()) return;
+            el.style.backgroundImage = 'url("' + BROKEN_MEDIA_SVG + '")';
+            el.classList.add('visible', 'bf-load-failed');
+        }
+
+        function loadUrl(fileData, refreshed) {
+            var url = pickUrl(fileData, preferPreview);
+            return preload(url).then(function (loaded) {
+                if (loaded) return apply(url);
+                if (refreshed || !isCurrent()) return false;
+                return refreshFileUrl(fileId).then(function (fresh) {
+                    return loadUrl(fresh, true);
+                });
+            });
+        }
+
+        getFileUrls([fileId]).then(function (urls) {
+            return loadUrl(urls[0] || null, false);
+        }).then(function (loaded) {
+            if (!loaded) showPlaceholder();
+        }).catch(function () {
+            if (!isCurrent()) return;
+            refreshFileUrl(fileId).then(function (fresh) {
+                return loadUrl(fresh, true);
+            }).then(function (loaded) {
+                if (!loaded) showPlaceholder();
+            });
+        });
+    }
+
     function handleMediaError(el) {
         if (!el || el.getAttribute('data-bf-failed') === '1') return;
         var fileId = el.getAttribute('data-bf-file-id');
@@ -253,6 +322,7 @@
         applyPlaceholder: applyPlaceholder,
         bindResilientMedia: bindResilientMedia,
         bindResilientLink: bindResilientLink,
+        loadResilientBackground: loadResilientBackground,
         clearCache: function () { urlCache.clear(); }
     };
 })();
