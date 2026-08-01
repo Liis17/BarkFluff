@@ -125,8 +125,8 @@
         var callId = r.getCallId();
         if (!currentCall || currentCall.callId !== callId) return;
         if (currentCall.role === 'caller') {
+            currentCall = null;
             emit('peer_rejected', { callId: callId, userId: r.getRejectedByUserId() });
-            // Для 1-на-1 следом придёт 'ended' (reason=REJECTED) и снимет экран.
         } else if (currentCall.status === 'incoming') {
             // Отклонено на другом моём устройстве — гасим ринг.
             currentCall = null;
