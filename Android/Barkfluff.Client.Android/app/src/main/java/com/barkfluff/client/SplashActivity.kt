@@ -11,6 +11,7 @@ import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 /**
  * SplashActivity - точка входа приложения
@@ -172,52 +173,57 @@ class SplashActivity : AppCompatActivity() {
                 grpcManager.createUsersClient(usersAddress, this)
             }
 
-            // Загружаем профиль и синхронизируемые настройки параллельно.
-            val userSettingsDeferred = async { grpcManager.getUserSettings() }
-            var userDataResult = grpcManager.getCurrentUserData()
-            var reloadUserSettings = false
+            val shouldContinue = coroutineScope {
+                // Загружаем профиль и синхронизируемые настройки параллельно.
+                val userSettingsDeferred = async { grpcManager.getUserSettings() }
+                var userDataResult = grpcManager.getCurrentUserData()
+                var reloadUserSettings = false
 
-            // Если 401 — токен инвалидирован на сервере, пробуем обновить принудительно
-            if (userDataResult.isFailure) {
-                val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
-                if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
-                    val refreshed = grpcManager.forceRefreshToken(this)
-                    if (!refreshed) {
-                        // Refresh тоже невалиден — на Login
-                        globalParam.clearUserData()
-                        navigateToLogin()
-                        return
+                // Если 401 — токен инвалидирован на сервере, пробуем обновить принудительно
+                if (userDataResult.isFailure) {
+                    val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
+                    if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
+                        val refreshed = grpcManager.forceRefreshToken(this@SplashActivity)
+                        if (!refreshed) {
+                            // Refresh тоже невалиден — на Login
+                            globalParam.clearUserData()
+                            navigateToLogin()
+                            userSettingsDeferred.cancel()
+                            return@coroutineScope false
+                        }
+                        // Повторяем запрос с новым токеном
+                        userDataResult = grpcManager.getCurrentUserData()
+                        reloadUserSettings = true
                     }
-                    // Повторяем запрос с новым токеном
-                    userDataResult = grpcManager.getCurrentUserData()
-                    reloadUserSettings = true
                 }
-            }
 
-            if (userDataResult.isSuccess) {
-                val userData = userDataResult.getOrNull()
-                if (userData != null) {
-                    globalParam.userId = userData.userId
-                    globalParam.userName = userData.username
-                    globalParam.firstName = userData.firstName
-                    globalParam.lastName = userData.lastName
-                    globalParam.description = userData.bio
+                if (userDataResult.isSuccess) {
+                    val userData = userDataResult.getOrNull()
+                    if (userData != null) {
+                        globalParam.userId = userData.userId
+                        globalParam.userName = userData.username
+                        globalParam.firstName = userData.firstName
+                        globalParam.lastName = userData.lastName
+                        globalParam.description = userData.bio
+                    }
                 }
+                // Настройки фонов не входят в публичный профиль: забираем отдельным RPC при запуске.
+                // Ошибка не блокирует вход — до следующего удачного старта используется кэш.
+                val userSettingsResult = if (reloadUserSettings) {
+                    userSettingsDeferred.cancel()
+                    grpcManager.getUserSettings()
+                } else {
+                    userSettingsDeferred.await()
+                }
+                userSettingsResult.onSuccess { settings ->
+                    globalParam.applyChatBackgroundSettings(
+                        settings.globalChatBackgroundFileId,
+                        settings.chatBackgroundFileIds
+                    )
+                }
+                true
             }
-            // Настройки фонов не входят в публичный профиль: забираем отдельным RPC при запуске.
-            // Ошибка не блокирует вход — до следующего удачного старта используется кэш.
-            val userSettingsResult = if (reloadUserSettings) {
-                userSettingsDeferred.cancel()
-                grpcManager.getUserSettings()
-            } else {
-                userSettingsDeferred.await()
-            }
-            userSettingsResult.onSuccess { settings ->
-                globalParam.applyChatBackgroundSettings(
-                    settings.globalChatBackgroundFileId,
-                    settings.chatBackgroundFileIds
-                )
-            }
+            if (!shouldContinue) return
             // Отправляем актуальный FCM-токен на сервер (уже залогинен — не пересоздаём)
             try {
                 FirebaseTokenHelper.getTokenAndSendToServer(this, grpcManager)
