@@ -30,18 +30,27 @@ public class DeleteMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidDelete_SoftDeletesMessage()
+    public async Task Handle_ValidDelete_SoftDeletesMessageAndClearsContent()
     {
         var userId = 1L;
         var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
         var message = await _h.SeedMessage(chat.Id, userId, "delete me");
+        message.Content!.Attachments!.Add(new Domain.MessageAttachment
+        {
+            Type = Domain.MessageAttachmentType.Document,
+            FileId = Guid.NewGuid().ToString(),
+        });
+        await _h.DbContext.SaveChangesAsync();
         var handler = CreateHandler(userId);
 
         var result = await handler.Handle(new DeleteMessageCommand { MessageId = message.Id }, CancellationToken.None);
 
         result.Should().NotBeNull();
+        _h.DbContext.ChangeTracker.Clear();
         var dbMessage = await _h.MessagesStorage.GetMessageById(message.Id);
         dbMessage!.IsDeleted.Should().BeTrue();
+        dbMessage.Content!.Text.Should().BeEmpty();
+        dbMessage.Content.Attachments.Should().BeEmpty();
     }
 
     [Fact]

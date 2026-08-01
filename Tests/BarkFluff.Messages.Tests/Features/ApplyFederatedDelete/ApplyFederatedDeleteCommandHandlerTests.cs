@@ -115,8 +115,14 @@ public class ApplyFederatedDeleteCommandHandlerTests
         var remoteUuid = Guid.NewGuid();
         var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
         var federatedId = Guid.NewGuid();
-        await _h.SeedFederatedMessage(chat.Id, federatedId, senderUuid: remoteUuid, text: "to-delete",
+        var message = await _h.SeedFederatedMessage(chat.Id, federatedId, senderUuid: remoteUuid, text: "to-delete",
             lastChangeAt: DateTime.UtcNow.AddMinutes(-5));
+        message.Content!.Attachments!.Add(new MessageAttachment
+        {
+            Type = MessageAttachmentType.Document,
+            FileId = Guid.NewGuid().ToString(),
+        });
+        await _h.DbContext.SaveChangesAsync();
         var handler = CreateHandler();
 
         var response = await handler.Handle(new ApplyFederatedDeleteCommand(
@@ -124,8 +130,11 @@ public class ApplyFederatedDeleteCommandHandlerTests
             CancellationToken.None);
 
         response.Applied.Should().BeTrue();
+        _h.DbContext.ChangeTracker.Clear();
         var updated = await _h.MessagesStorage.GetByFederatedIdAsync(chat.Id, federatedId);
         updated!.IsDeleted.Should().BeTrue();
+        updated.Content!.Text.Should().BeEmpty();
+        updated.Content.Attachments.Should().BeEmpty();
 
         _h.PublishEndpointMock.Verify(
             p => p.Publish(It.IsAny<Shared.Queue.Messages.MessageDeletedEvent>(), It.IsAny<CancellationToken>()),
