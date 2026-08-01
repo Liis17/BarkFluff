@@ -1583,8 +1583,8 @@
         var dev = window.BF && BF.device ? BF.device : null;
         var rows = [
             { label: 'Версия веб-клиента', value: WEB_VERSION },
-            { label: 'Браузер', value: dev ? dev.browserName : '—' },
-            { label: 'ОС', value: dev ? dev.osName : '—' },
+            { label: 'Браузер', value: dev ? dev.getBrowserName() : '—' },
+            { label: 'ОС', value: dev ? dev.getOsName() : '—' },
             { label: 'Device ID', value: dev ? dev.getDeviceId() : '—' },
             { label: 'Сервер', value: window.location.origin }
         ];
