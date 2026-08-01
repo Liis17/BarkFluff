@@ -25,6 +25,8 @@ namespace BarkFluff.Calls.Features.CallLifecycle;
 /// </summary>
 public class CallLifecycleHandler
 {
+    private static readonly TimeSpan GroupCallRestartDelay = TimeSpan.FromSeconds(10);
+
     private readonly CallsContext _db;
     private readonly LiveKitTokenService _tokens;
     private readonly ICallEventDispatcher _dispatcher;
@@ -88,6 +90,7 @@ public class CallLifecycleHandler
             case InitiateCallRequest.TargetOneofCase.ChatId:
                 var chatId = ParseGuid(request.ChatId, "chat_id");
                 await EnsureChatMemberAsync(callerId, chatId, ct);
+                await EnsureGroupCallCanBeInitiatedAsync(chatId, ct);
                 session.ChatId = chatId;
                 break;
 
@@ -98,7 +101,14 @@ public class CallLifecycleHandler
         session.RoomName = $"call:{session.Id}";
 
         _db.CallSessions.Add(session);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (session.IsGroup && IsActiveGroupCallConstraintViolation(ex))
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "В этом чате уже идёт звонок"));
+        }
 
         // Таймаут ринга обрабатывает durable-sweeper (CallRingTimeoutSweeper) — переживает перезапуск инстанса.
 
@@ -665,6 +675,29 @@ public class CallLifecycleHandler
             throw new RpcException(new Status(StatusCode.PermissionDenied, "Вы не состоите в этом чате"));
         }
     }
+
+    private async Task EnsureGroupCallCanBeInitiatedAsync(Guid chatId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var calls = _db.CallSessions.AsNoTracking().Where(c => c.ChatId == chatId);
+
+        if (await calls.AnyAsync(c => c.Status == CallStatus.Ringing || c.Status == CallStatus.Active, ct))
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "В этом чате уже идёт звонок"));
+        }
+
+        if (await calls.AnyAsync(c => c.StartedAt > now - GroupCallRestartDelay, ct))
+        {
+            throw new RpcException(new Status(StatusCode.ResourceExhausted, "Новый звонок в этом чате можно начать через 10 секунд после предыдущего"));
+        }
+    }
+
+    private static bool IsActiveGroupCallConstraintViolation(DbUpdateException ex)
+        => ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: "23505",
+            ConstraintName: "IX_CallSessions_OneActiveGroupCall",
+        };
 
     private async Task<CallSession> LoadAsync(string callId, CancellationToken ct)
     {

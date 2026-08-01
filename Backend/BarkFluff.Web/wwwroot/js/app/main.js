@@ -2335,26 +2335,9 @@
     chatHeaderName.addEventListener('click', onChatHeaderClick);
 
     // --- Call buttons (шапка чата) ---
+    var isInitiatingCall = false;
     function startCall(media) {
-        if (!currentChatId || !currentChatInfo) return;
-        var target;
-        if (currentChatInfo.isGroupChat) {
-            target = { chatId: currentChatId };
-        } else {
-            var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-            if (!peerId) return;
-            target = { userId: peerId };
-        }
-        BF.calls.initiate(target, media).catch(function (e) { console.error('Не удалось начать звонок:', e); });
-    }
-    var _btnCallAudio = $('#btnCallAudio');
-    var _btnCallVideo = $('#btnCallVideo');
-    if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
-    if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
-
-    // --- Call buttons (шапка чата) ---
-    function startCall(media) {
-        if (!currentChatId || !currentChatInfo) return;
+        if (isInitiatingCall || !currentChatId || !currentChatInfo) return;
         if (!currentChatInfo.isGroupChat && currentChatPeerIsBot) return;
         var target;
         if (currentChatInfo.isGroupChat) {
@@ -2364,7 +2347,10 @@
             if (!peerId) return;
             target = { userId: peerId };
         }
-        BF.calls.initiate(target, media).catch(function (e) { console.error('Не удалось начать звонок:', e); });
+        isInitiatingCall = true;
+        BF.calls.initiate(target, media)
+            .catch(function (e) { console.error('Не удалось начать звонок:', e); })
+            .finally(function () { isInitiatingCall = false; });
     }
     var _btnCallAudio = $('#btnCallAudio');
     var _btnCallVideo = $('#btnCallVideo');
