@@ -290,7 +290,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Постер профиля (соотношение 3:1) с кэшированием URL через `AvatarLoader.urlCache`
 - Аватар (120dp, круглый) с перекрытием нижней части постера
 - Имя, @username, статус онлайна (через Onliner API), био
-- Медиафайлы чата с фильтрами по типу (фото/видео/файлы) через `AttachmentPreviewAdapter`
+- Вложения чата: независимые панели для медиа-сетки, файлового списка и голосовых; поиск документов по имени через `ListChatAttachments.file_name_query` (debounce 300 мс)
 
 Использует `activity_user_profile.xml`.
 

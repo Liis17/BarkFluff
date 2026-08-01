@@ -567,6 +567,8 @@
     <string name="profile_tab_media">Medien</string>
     <string name="profile_tab_voice">Sprachnachrichten</string>
     <string name="profile_no_voice">Keine Sprachnachrichten</string>
+    <string name="profile_files_search_hint">Dateien suchen</string>
+    <string name="profile_files_not_found">Keine Dateien gefunden</string>
     <string name="profile_copied">Kopiert</string>
     <string name="group_online_count">%1$d Mitglieder · %2$d online</string>
     <string name="group_members_count">%1$d Mitglieder</string>

@@ -505,7 +505,7 @@
 
         </LinearLayout>
 
-        <!-- Контент вложений -->
+        <!-- Независимые панели вкладок: сетка и списки никогда не переиспользуют RecyclerView. -->
         <FrameLayout
             android:id="@+id/attachmentsContainer"
             android:layout_width="match_parent"
@@ -513,31 +513,127 @@
             android:layout_marginTop="8dp"
             android:minHeight="168dp">
 
-            <ProgressBar
-                android:id="@+id/attachmentsLoading"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="24dp"
-                android:visibility="gone" />
+            <FrameLayout
+                android:id="@+id/mediaAttachmentsPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/attachmentsRecyclerView"
+                <ProgressBar
+                    android:id="@+id/mediaAttachmentsLoading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="24dp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/mediaAttachmentsRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_attachment_preview" />
+
+                <TextView
+                    android:id="@+id/mediaAttachmentsEmpty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="24dp"
+                    android:textColor="@color/profile_text_dim"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    tools:text="Нет вложений" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:id="@+id/filesAttachmentsPanel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_attachment_preview" />
+                android:orientation="vertical"
+                android:visibility="gone">
 
-            <TextView
-                android:id="@+id/attachmentsEmpty"
-                android:layout_width="wrap_content"
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.FilledBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="8dp"
+                    android:hint="@string/profile_files_search_hint"
+                    app:startIconDrawable="@drawable/ic_search">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/fileSearchEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:maxLength="255"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <ProgressBar
+                        android:id="@+id/filesAttachmentsLoading"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="24dp"
+                        android:visibility="gone" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/filesAttachmentsRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        tools:listitem="@layout/item_attachment_file" />
+
+                    <TextView
+                        android:id="@+id/filesAttachmentsEmpty"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="24dp"
+                        android:textColor="@color/profile_text_dim"
+                        android:textSize="14sp"
+                        android:visibility="gone"
+                        tools:text="Файлы не найдены" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/voiceAttachmentsPanel"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="24dp"
-                android:textColor="@color/profile_text_dim"
-                android:textSize="14sp"
-                android:visibility="gone"
-                tools:text="Нет вложений" />
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/voiceAttachmentsLoading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="24dp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/voiceAttachmentsRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_profile_voice" />
+
+                <TextView
+                    android:id="@+id/voiceAttachmentsEmpty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="24dp"
+                    android:textColor="@color/profile_text_dim"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    tools:text="Нет голосовых" />
+            </FrameLayout>
 
         </FrameLayout>
 

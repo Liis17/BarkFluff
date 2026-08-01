@@ -455,7 +455,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     suspend fun getChatAttachments(
         chatId: String,
         attachmentType: barkfluff.shared.Shared.MessageAttachmentType = barkfluff.shared.Shared.MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN,
-        pageSize: Int = 100
+        pageSize: Int = 100,
+        fileNameQuery: String = ""
     ): Result<List<MessagesApiOuterClass.ChatAttachmentInfo>> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.messagesClient == null) {
@@ -466,6 +467,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .setChatId(chatId)
                 .setAttachmentType(attachmentType)
                 .setSortDescending(true)
+                .setFileNameQuery(fileNameQuery)
                 .setPagination(
                     barkfluff.shared.Shared.PageRequest.newBuilder()
                         .setOffset(0)
